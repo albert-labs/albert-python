@@ -1,4 +1,3 @@
-from collections.abc import Generator
 
 from albert.albert import Albert
 from albert.resources.teams import Team
