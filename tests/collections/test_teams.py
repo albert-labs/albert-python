@@ -1,4 +1,3 @@
-
 from albert.albert import Albert
 from albert.resources.teams import Team
 
