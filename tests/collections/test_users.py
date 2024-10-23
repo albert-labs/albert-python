@@ -27,7 +27,7 @@ def test_simple_users_list(client: Albert, seeded_users: list[User]):
 def test_advanced_users_list(client: Albert, seeded_users: list[User]):
     # Check something reasonable was found near the top
     faux_name = seeded_users[1].name.split(" ")[0]
-    adv_list = client.users.list(text=faux_name, status=Status.ACTIVE)
+    adv_list = client.users.list(text=faux_name, status=Status.ACTIVE, search_fields=["name"])
     found = False
     for i, u in enumerate(adv_list):
         if i == 20:
@@ -37,7 +37,9 @@ def test_advanced_users_list(client: Albert, seeded_users: list[User]):
             break
     assert found
 
-    adv_list_no_match = client.users.list(text="h78frg279fbg92ubue9b 80fh0hnvioh")
+    adv_list_no_match = client.users.list(
+        text="h78frg279fbg92ubue9b80fhXBGYF&*0hnvioh", search_fields=["name"]
+    )
     assert isinstance(adv_list_no_match, Generator)
     assert next(adv_list_no_match, None) is None
 

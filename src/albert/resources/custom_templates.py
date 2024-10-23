@@ -159,10 +159,32 @@ class TemplateACL(BaseResource):
 
 
 class CustomTemplate(BaseTaggedEntity):
-    id: str = Field(alias="albertId")
+    """A custom template entity.
+
+    Attributes
+    ----------
+    name : str
+        The name of the template.
+    id : str
+        The Albert ID of the template. Set when the template is retrieved from Albert.
+    category : TemplateCategory
+        The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
+    metadata : Dict[str, str | List[BaseEntityLink] | BaseEntityLink] | None
+        The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
+    data : CustomTemplateData | None
+        The data of the template.
+    team : List[TeamACL] | None
+        The team of the template.
+    acl : TemplateACL | None
+
+    """
+
     name: str
+    id: str = Field(alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
-    metadata: dict[str, str | list[BaseEntityLink]] | None = Field(default=None, alias="Metadata")
+    metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None = Field(
+        default=None, alias="Metadata"
+    )
     data: None | CustomTemplateData = Field(default=None, alias="Data")
     team: list[TeamACL] | None = Field(default=[])
     acl: TemplateACL | None = Field(default=[], alias="ACL")

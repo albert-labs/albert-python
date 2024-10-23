@@ -1,6 +1,6 @@
 from collections import Counter
 from enum import Enum
-from typing import Union
+from typing import ForwardRef, Union
 
 import pandas as pd
 from pydantic import Field, PrivateAttr, model_validator
@@ -9,8 +9,15 @@ from albert.resources.base import BaseResource, BaseSessionResource
 from albert.resources.inventory import InventoryItem
 from albert.utils.exceptions import AlbertException
 
+# Define forward references
+Row = ForwardRef("Row")
+Column = ForwardRef("Column")
+Sheet = ForwardRef("Sheet")
+
 
 class CellColor(str, Enum):
+    """The allowed colors for a cell"""
+
     WHITE = "RGB(255, 255, 255)"
     RED = "RGB(255, 161, 161)"
     GREEN = "RGB(130, 222, 198)"
@@ -21,6 +28,8 @@ class CellColor(str, Enum):
 
 
 class CellType(str, Enum):
+    """The type of information in the Cell"""
+
     INVENTORY = "INV"
     APP = "APP"
     BLANK = "BLK"
@@ -38,12 +47,40 @@ class CellType(str, Enum):
 
 
 class DesignType(str, Enum):
+    """The type of Design"""
+
     APPS = "apps"
     PRODUCTS = "products"
     RESULTS = "results"
 
 
 class Cell(BaseResource):
+    """A Cell in a Sheet
+
+    Attributes
+    ----------
+    column_id : str
+        The column ID of the cell.
+    row_id : str
+        The row ID of the cell.
+    value : str | dict
+        The value of the cell. If the cell is an inventory item, this will be a dict.
+    type : CellType
+        The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+    name : str | None
+        The name of the cell. Optional. Default is None.
+    calculation : str
+        The calculation of the cell. Optional. Default is "".
+    design_id : str
+        The design ID of the design this cell is in.
+    format : dict
+        The format of the cell. Optional. Default is {}. The format is a dict with the keys `bgColor` and `fontColor`. The values are strings in the format `RGB(255, 255, 255)`.
+    raw_value : str
+        The raw value of the cell. If the cell is an inventory item, this will be the value of the inventory item. Read-only.
+    color : str | None
+        The color of the cell. Read only.
+    """
+
     column_id: str = Field(alias="colId")
     row_id: str = Field(alias="rowId")
     value: str | dict = ""
@@ -66,6 +103,18 @@ class Cell(BaseResource):
 
 
 class Component(BaseResource):
+    """Represents an amount of an inventory item in a formulation
+
+    Attributes
+    ----------
+    inventory_item : InventoryItem
+        The inventory item in the component
+    amount : float
+        The amount of the inventory item in the component
+    cell : Cell
+        The cell that the component is in. Read-only.
+    """
+
     inventory_item: InventoryItem
     amount: float
     _cell: Cell = None  # read only property set on registrstion
@@ -76,17 +125,37 @@ class Component(BaseResource):
 
 
 class DesignState(BaseResource):
+    """The state of a Design"""
+
     collapsed: bool | None = False
 
 
 class Design(BaseSessionResource):
+    """A Design in a Sheet. Designs are sheet subsections that are largly abstracted away from the user.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the design.
+    design_type : DesignType
+        The type of the design. Allowed values are `apps`, `products`, and `results`.
+    state : DesignState | None
+        The state of the design. Optional. Default is None.
+    grid : pd.DataFrame | None
+        The grid of the design. Optional. Default is None. Read-only.
+    rows : list[Row] | None
+        The rows of the design. Optional. Default is None. Read-only.
+    columns : list[Column] | None
+        The columns of the design. Optional. Default is None. Read-only.
+    """
+
     state: DesignState | None = Field({})
     id: str = Field(alias="albertId")
     design_type: DesignType = Field(alias="designType")
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
     _rows: list["Row"] | None = PrivateAttr(default=None)
     _columns: list["Column"] | None = PrivateAttr(default=None)
-    _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # ruff: noqa
+    _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # noqa
 
     def _grid_to_cell_df(self, *, grid_response):
         all_rows = []
@@ -186,7 +255,30 @@ class Design(BaseSessionResource):
         return self._rows
 
 
-class Sheet(BaseSessionResource):
+class Sheet(BaseSessionResource):  # noqa:F811
+    """A Sheet in Albert
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the sheet.
+    name : str
+        The name of the sheet.
+    hidden : bool
+        Whether the sheet is hidden.
+    designs : list[Design]
+        The designs of the sheet.
+    project_id : str
+        The Albert ID of the project the sheet is in.
+    grid : pd.DataFrame | None
+        The grid of the sheet. Optional. Default is None. Read-only.
+    columns : list[Column]
+        The columns of the sheet. Read-only.
+    rows : list[Row]
+        The rows of the sheet. Read-only.
+
+    """
+
     id: str = Field(alias="albertId")
     name: str
     # formulations: list[Formulations] | None = Field(None)
@@ -720,7 +812,25 @@ class Sheet(BaseSessionResource):
             )
 
 
-class Column(BaseSessionResource):
+class Column(BaseSessionResource):  # noqa:F811
+    """A column in a Sheet
+
+    Attributes
+    ----------
+    column_id : str
+        The column ID of the column.
+    name : str | None
+        The name of the column. Optional. Default is None.
+    type : CellType
+        The type of the column. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+    sheet : Sheet
+        The sheet the column is in.
+    cells : list[Cell]
+        The cells in the column. Read-only.
+    df_name : str
+        The name of the column in the DataFrame. Read-only
+    """
+
     column_id: str = Field(alias="colId")
     name: str | None = Field(default=None)
     type: CellType
@@ -767,7 +877,32 @@ class Column(BaseSessionResource):
         return self.sheet.update_cells(cells=new_cells)
 
 
-class Row(BaseSessionResource):
+class Row(BaseSessionResource):  # noqa:F811
+    """A row in a Sheet
+
+    Attributes
+    ----------
+    row_id : str
+        The row ID of the row.
+    type : CellType
+        The type of the row. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+    design : Design
+        The design the row is in.
+    sheet : Sheet
+        The sheet the row is in.
+    name : str | None
+        The name of the row. Optional. Default is None.
+    inventory_id : str | None
+        The inventory ID of the row. Optional. Default is None.
+    manufacturer : str | None
+        The manufacturer of the row. Optional. Default is None.
+    row_unique_id : str
+        The unique ID of the row. Read-only.
+    cells : list[Cell]
+        The cells in the row. Read-only.
+
+    """
+
     row_id: str = Field(alias="rowId")
     type: CellType
     design: Design
@@ -791,3 +926,10 @@ class Row(BaseSessionResource):
             cell_copy.format = {"bgColor": color.value}
             new_cells.append(cell_copy)
         return self.sheet.update_cells(cells=new_cells)
+
+
+# Resolve forward references after all classes are defined
+Design.model_rebuild()
+Row.model_rebuild()
+Column.model_rebuild()
+Sheet.model_rebuild()

@@ -85,20 +85,20 @@ class Unit(BaseResource, EntityLinkConvertible):
 
     Attributes
     ----------
-    id : Optional[str]
-        The Albert ID of the unit.
+    id : str | None
+        The Albert ID of the unit. Set when the unit is retrieved from Albert.
     name : str
         The name of the unit.
-    symbol : Optional[str]
+    symbol : str | None
         The symbol of the unit.
-    synonyms : Optional[List[str]]
+    synonyms : List[str] | None
         The list of synonyms for the unit.
     category : UnitCategory
         The category of the unit.
-    verified : Optional[bool]
+    verified : bool | None
         Whether the unit is verified.
-    status : Optional[Status]
-        The status of the unit.
+    status : Status | None
+        The status of the unit. Allowed values are `active`, and `inactive`
     """
 
     id: str | None = Field(None, alias="albertId")

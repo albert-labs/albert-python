@@ -40,14 +40,15 @@ class CasAmount(BaseResource):
 
     Attributes
     ----------
+    cas : Cas
+        The CAS object associated with this amount. Provide either a Cas or an id.
     id : str
-        The unique identifier of the CAS Number this amount represents.
+        The Albert id of the CAS Number Resource this amount represents. Provide either a Cas or an id.
     min : float, optional
         The minimum amount of the CAS in the formulation.
     max : float, optional
         The maximum amount of the CAS in the formulation.
-    _cas : Cas
-        The CAS object associated with this amount.
+
     """
 
     id: str | None = Field(default=None)
@@ -109,8 +110,49 @@ class InventoryMinimum(BaseResource):
 
 
 class InventoryItem(BaseTaggedEntity, EntityLinkConvertible):
-    id: str | None = Field(None, alias="albertId")
+    """An InventoryItem is a Pydantic model representing an item in the inventory. Can be a raw material, consumable, equipment, or formula.
+    Note: Formulas should be registered via the Worksheet collection / Sheet resource.
+
+    Returns
+    -------
+    InventoryItem
+        An InventoryItem that can be used to represent an item in the inventory. Can be a raw material, consumable, equipment, or formula.
+
+    Attributes
+    ------
+
+    name : str
+        The name of the InventoryItem.
+    id : str | None
+        The Albert ID of the InventoryItem. Set when the InventoryItem is retrieved from Albert.
+    description : str | None
+        The description of the InventoryItem.
+    category : InventoryCategory
+        The category of the InventoryItem. Allowed values are `RawMaterials`, `Consumables`, `Equipment`, and `Formulas`.
+    unit_category : InventoryUnitCategory
+        The unit category of the InventoryItem. Can be mass, volume, length, pressure, or units. By default, mass is used for RawMaterials and Formulas, and units is used for Equipment and Consumables.
+    security_class : SecurityClass | None
+        The security class of the InventoryItem. Optional. Can be confidential, shared, or restricted.
+    company : Company | str | None
+        The company associated with the InventoryItem. Can be a Company object or a string. If a String is provided, a Company object with the name of the provided string will be first-or-created.
+    minimum : list[InventoryMinimum] | None
+        The minimum amount of the InventoryItem that must be kept in stock at a given Location. Optional.
+    alias : str | None
+        An alias for the InventoryItem. Optional.
+    cas : list[CasAmount] | None
+        The CAS numbers associated with the InventoryItem. This is how a compositional breakdown can be provided. Optional.
+    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+        Metadata associated with the InventoryItem. Optional. Allowed metadata fields can be found in the CustomFields documentation.
+    project_id : str | None
+        The project ID associated with the InventoryItem. Read Only. Required for Formulas.
+    formula_id : str | None
+        The formula ID associated with the InventoryItem. Read Only.
+    tags : list[str|Tag] | None
+        The tags associated with the InventoryItem. Optional. If a string is provided, a Tag object with the name of the provided string will be first-or-created.
+    """
+
     name: str | None = None
+    id: str | None = Field(None, alias="albertId")
     description: str | None = None
     category: InventoryCategory
     unit_category: InventoryUnitCategory = Field(default=None, alias="unitCategory")

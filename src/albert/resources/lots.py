@@ -13,12 +13,56 @@ from albert.resources.users import User
 
 
 class LotStatus(str, Enum):
+    """The status of a lot"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     QUARANTINED = "quarantined"
 
 
 class Lot(BaseResource):
+    """A lot in Albert.
+
+    Attributes
+    ----------
+    id : str | None
+        The Albert ID of the lot. Set when the lot is retrieved from Albert.
+    inventory_id : str
+        The Albert ID of the inventory item associated with the lot.
+    task_id : str | None
+        The Albert ID of the task associated with the creation of lot. Optional.
+    notes : str | None
+        The notes associated with the lot. Optional.
+    expiration_date : str | None
+        The expiration date of the lot. YYYY-MM-DD format. Optional.
+    manufacturer_lot_number : str | None
+        The manufacturer lot number of the lot. Optional.
+    storage_location : StorageLocation | None
+        The storage location of the lot. Optional.
+    pack_size : str | None
+        The pack size of the lot. Optional. Used to calculate the cost per unit.
+    initial_quantity : NonNegativeFloat | None
+        The initial quantity of the lot. Optional.
+    cost : NonNegativeFloat | None
+        The cost of the lot. Optional.
+    inventory_on_hand : NonNegativeFloat
+        The inventory on hand of the lot.
+    owner : list[User] | None
+        The owners of the lot. Optional.
+    lot_number : str | None
+        The lot number of the lot. Optional.
+    external_barcode_id : str | None
+        The external barcode ID of the lot. Optional.
+    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+        The metadata of the lot. Optional. Metadata allowed values can be found using the Custom Fields API.
+    has_notes : bool
+        Whether the lot has notes. Read-only.
+    has_attachments : bool
+        Whether the lot has attachments. Read-only.
+    barcode_id : str
+        The barcode ID of the lot. Read-only.
+    """
+
     id: str | None = Field(None, alias="albertId")
     inventory_id: str = Field(alias="parentId")
     task_id: str | None = Field(default=None, alias="taskId")
@@ -44,7 +88,9 @@ class Lot(BaseResource):
     _parent_unit: str | None = PrivateAttr(default=None)
     _parent_category: InventoryCategory | None = PrivateAttr(default=None)
     _barcode_id: str | None = PrivateAttr(default=None)
-    metadata: dict[str, str | list[BaseEntityLink]] | None = Field(alias="Metadata", default=None)
+    metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None = Field(
+        alias="Metadata", default=None
+    )
 
     # because quarantined is an allowed Lot status, we need to extend the normal status
     _status: LotStatus | None = PrivateAttr(default=None)

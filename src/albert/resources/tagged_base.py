@@ -10,18 +10,12 @@ from albert.resources.tags import Tag
 
 class BaseTaggedEntity(BaseResource):
     """
-    BaseTaggedEntity is a Pydantic model that includes functionality for handling tags.
-    This BaseModel is in its own module so that it can utilize Tags
+    BaseTaggedEntity is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
 
     Attributes
     ----------
-    tags : Optional[List[Union[Tag,str]]]
+    tags : List[Tag | str] | None
         A list of Tag objects or strings representing tags.
-
-    Methods
-    -------
-    convert_tags(values: Dict[str, Any]) -> Dict[str, Any]
-        Converts tag strings to Tag objects.
     """
 
     tags: list[SerializeAsEntityLink[Tag]] | None = Field(None, alias="Tags")

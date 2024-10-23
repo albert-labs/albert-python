@@ -6,11 +6,15 @@ from albert.resources.base import BaseResource
 
 
 class FieldType(str, Enum):
+    """The type (list or string) of the custom field"""
+
     LIST = "list"
     STRING = "string"
 
 
 class ServiceType(str, Enum):
+    """The service type the custom field is associated with"""
+
     INVENTORIES = "inventories"
     LOTS = "lots"
     PROJECTS = "projects"
@@ -19,11 +23,15 @@ class ServiceType(str, Enum):
 
 
 class FieldCategory(str, Enum):
+    """The ACL level of the custom field"""
+
     BUSINESS_DEFINED = "businessDefined"
     USER_DEFINED = "userDefined"
 
 
 class EntityCategory(str, Enum):
+    """The entity category of the custom field. Only some categories are allowed for certain services"""
+
     FORMULAS = "Formulas"
     RAW_MATERIALS = "RawMaterials"
     CONSUMABLES = "Consumables"
@@ -34,11 +42,53 @@ class EntityCategory(str, Enum):
 
 
 class UIComponent(str, Enum):
+    """The UI component available to the custom field"""
+
     CREATE = "create"
     DETAILS = "details"
 
 
 class CustomField(BaseResource):
+    """A custom field for an entity in Albert.
+
+    Returns
+    -------
+    CustomField
+        A CustomField that can be used to attach Metadata to an entity in Albert.
+    Attributes
+    ------
+    name : str
+        The name of the custom field. Cannot contain spaces.
+    id : str | None
+        The Albert ID of the custom field.
+    field_type : FieldType
+        The type of the custom field. Allowed values are `list` and `string`. String fields cannot be searchable or multiselect and are used to set uncontrolled metadata. List fields can be searchable and multiselect and are used to set controlled metadata.
+    display_name : str
+        The display name of the custom field. Can contain spaces.
+    searchable : bool | None
+        Whether the custom field is searchable, optional. Defaults to False.
+    service : ServiceType
+        The service type the custom field is associated with.
+    hidden : bool | None
+        Whether the custom field is hidden, optional. Defaults to False.
+    lookup_column : bool | None
+        Whether the custom field is a lookup column, optional. Defaults to False. Only allowed for inventories.
+    lookup_row : bool | None
+        Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
+    multiselect : bool | None
+        Whether the custom field is a multiselect field, optional. Defaults to False.
+    category : FieldCategory | None
+        The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
+    min : int | None
+        The minimum value of the custom field, optional. Defaults to None. Only used in list fields with multiselect.
+    max : int | None
+        The maximum value of the custom field, optional. Defaults to None. Only used in list fields with multiselect.
+    entity_categories : list[EntityCategory] | None
+        The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
+    ui_components : list[UIComponent] | None
+        The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
+    """
+
     name: str
     id: str | None = Field(default=None, alias="albertId")
     field_type: FieldType = Field(alias="type")

@@ -10,11 +10,15 @@ from albert.utils.types import BaseAlbertModel
 
 
 class Status(str, Enum):
+    """The status of a resource"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
 
 
 class SecurityClass(str, Enum):
+    """The security class of a resource"""
+
     SHARED = "shared"
     RESTRICTED = "restricted"
     CONFIDENTIAL = "confidential"
@@ -23,12 +27,26 @@ class SecurityClass(str, Enum):
 
 
 class AuditFields(BaseAlbertModel):
+    """The audit fields for a resource"""
+
     by: str = Field(None)
     by_name: str | None = Field(None, alias="byName")
     at: datetime | None = Field(None)
 
 
 class BaseResource(BaseAlbertModel):
+    """The base resource for all Albert resources.
+
+    Attributes
+    ----------
+    created: AuditFields | None
+        Audit fields for the creation of the resource, optional.
+    updated: AuditFields | None
+        Audit fields for the update of the resource, optional.
+    status: Status | None
+        The status of the resource, optional.
+    """
+
     _created: AuditFields | None = PrivateAttr(default=None)
     _updated: AuditFields | None = PrivateAttr(default=None)
     status: Status | None = Field(default=None)
@@ -38,9 +56,6 @@ class BaseResource(BaseAlbertModel):
     )
 
     def __init__(self, **data: Any):
-        """
-        Initialize a Base resource instance.
-        """
         super().__init__(**data)
         if "Created" in data:
             self._created = AuditFields(**data["Created"])

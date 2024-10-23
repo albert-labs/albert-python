@@ -6,16 +6,7 @@ from albert.resources.base import BaseResource, EntityLinkConvertible
 
 
 class TagEntity(str, Enum):
-    """
-    TagEntity is an enumeration of possible tag entities.
-
-    Attributes
-    ----------
-    INVENTORY : str
-        Represents an inventory tag entity.
-    COMPANY : str
-        Represents a company tag entity.
-    """
+    """TagEntity is an enumeration of possible tag entities."""
 
     INVENTORY = "Inventory"
     COMPANY = "Company"
@@ -29,8 +20,8 @@ class Tag(BaseResource, EntityLinkConvertible):
     ----------
     tag : str
         The name of the tag.
-    id : Optional[str]
-        The Albert ID of the tag.
+    id : str | None
+        The Albert ID of the tag. Set when the tag is retrieved from Albert.
 
     Methods
     -------

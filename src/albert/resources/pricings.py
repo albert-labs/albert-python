@@ -9,12 +9,44 @@ from albert.resources.serialization import SerializeAsEntityLink
 
 
 class LeadTimeUnit(str, Enum):
+    """The unit of measure for the provided lead time."""
+
     DAYS = "Days"
     WEEKS = "Weeks"
     MONTHS = "Months"
 
 
 class Pricing(BaseResource):
+    """A Price of a given InventoryItem at a given Location.
+
+    Attributes
+    ----------
+    id : str | None
+        The Albert ID of the pricing. Set when the pricing is retrieved from Albert.
+    inventory_item_id : str
+        The Albert ID of the inventory item.
+    company : Company
+        The company that the pricing belongs to.
+    location : Location
+        The location that the pricing belongs to.
+    description : str | None
+        The description of the pricing. Optional.
+    pack_size : str | None
+        The pack size of the pricing. Optional. Used to calculate the cost per unit.
+    price : float
+        The price of the pricing.
+    currency : str
+        The currency of the pricing. Defaults to `USD`.
+    fob : str | None
+        The FOB of the pricing. Optional.
+    lead_time : int | None
+        The lead time of the pricing. Optional.
+    lead_time_unit : LeadTimeUnit | None
+        The unit of measure for the provided lead time. Optional.
+    expiration_date : str | None
+        The expiration date of the pricing. YYYY-MM-DD format.
+    """
+
     id: str | None = Field(default=None, alias="albertId")
     inventory_item_id: str = Field(default=None, alias="parentId")
     company: SerializeAsEntityLink[Company] = Field(alias="Company")

@@ -13,16 +13,40 @@ from albert.utils.exceptions import AlbertException
 
 
 class PGType(str, Enum):
+    """The type of a parameter group"""
+
     GENERAL = "general"
     BATCH = "batch"
     PROPERTY = "property"
 
 
 class PGMetadata(BaseResource):
+    """The metadata of a parameter group"""
+
     standards: list[BaseEntityLink] = Field(alias="Standards")
 
 
 class ParameterValue(BaseResource):
+    """The valie of a parameter in a parameter group.
+
+    Attributes
+    ----------
+    parameter : Parameter
+        The Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
+    id : str | None
+        The Albert ID of the Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
+    short_name : str | None
+        The short name of the parameter value.
+    value : str | None
+        The value of the parameter. Can be a string or an InventoryItem (if, for example, the parameter is an instrumnt choice).
+    unit : Unit | None
+        The unit of measure for the provided parameter value.
+    name : str
+        The name of the parameter. Read-only.
+    sequence : int
+        The sequence of the parameter. Read-only.
+    """
+
     parameter: Parameter = Field(default=None, exclude=True)
     id: str | None = Field(default=None)
     _name = PrivateAttr(default=None)
