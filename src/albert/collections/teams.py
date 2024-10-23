@@ -44,7 +44,7 @@ class TeamsCollection(BaseCollection):
         *,
         limit: int = 100,
         # order_by: OrderBy = OrderBy.DESCENDING,
-        # name: str | list[str] = None,
+        name: list[str] = None,
         # exact_match: bool = True,
         # start_key: str | None = None,
     ) -> Generator[Team, None, None]:
@@ -62,8 +62,8 @@ class TeamsCollection(BaseCollection):
             A generator of Team objects.
         """
         params = {"limit": limit}  # , "orderBy": order_by.value}
-        # if name:
-        #     params["name"] = name if isinstance(name, list) else [name]
+        if name:
+            params["name"] = name if isinstance(name, list) else [name]
         #     params["exactMatch"] = str(exact_match).lower()
         # if start_key:  # pragma: no cover
         #     params["startKey"] = start_key
@@ -85,7 +85,7 @@ class TeamsCollection(BaseCollection):
         self,
         # *,
         # order_by: OrderBy = OrderBy.DESCENDING,
-        # name: str | list[str] = None,
+        name: str | list[str] = None,
         # exact_match: bool = True
     ) -> Iterator[Team]:
         """Lists the available Teams
@@ -100,7 +100,7 @@ class TeamsCollection(BaseCollection):
         List
             List of available Roles
         """
-        return self._list_generator()
+        return self._list_generator(name=name)
 
     def create(self, *, team: Team) -> Team:
         """ """
