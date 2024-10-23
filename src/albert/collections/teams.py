@@ -60,6 +60,27 @@ class TeamsCollection(BaseCollection):
         self.session.patch(self.base_path, json=payload)
         return True
 
+    def remove_users_from_team(self, *, team: Team, users: list[User]) -> bool:
+        """
+        add users to a team
+        """
+        # build payload
+        payload = [
+            {
+                "id": team.id,
+                "data": [
+                    {
+                        "operation": "delete",
+                        "attribute": "ACL",
+                        "oldValue": [{"id": _u.id} for _u in users],
+                    }
+                ],
+            }
+        ]
+        # run request
+        self.session.patch(self.base_path, json=payload)
+        return True
+
     def _list_generator(
         self,
         *,
