@@ -32,6 +32,7 @@ from albert.resources.projects import (
 from albert.resources.roles import Role
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
+from albert.resources.teams import Team
 from albert.resources.units import Unit, UnitCategory
 from albert.resources.users import User, UserClass
 
@@ -663,3 +664,7 @@ def generate_pricing_seeds(
             price=5375.97,
         ),
     ]
+
+
+def generate_teams_seeds() -> list[Team]:
+    return [Team(name="TEST -- Team A (SDK)"), Team(name="TEST -- Team B (SDK)")]

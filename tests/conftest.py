@@ -36,6 +36,7 @@ from tests.seeding import (
     generate_project_seeds,
     generate_storage_location_seeds,
     generate_tag_seeds,
+    generate_teams_seeds,
     generate_unit_seeds,
     generate_user_seeds,
 )
@@ -347,3 +348,15 @@ def seeded_pricings(client: Albert, seeded_inventory, seeded_locations):
     for p in seeded:
         with suppress(NotFoundError):
             client.pricings.delete(pricing_id=p.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_teams(client: Albert):
+    seeded = []  # init list
+    all_teams = generate_teams_seeds()  # get list of teams from "seeding.py"
+    for t in all_teams:
+        seeded.append(client.teams.create(team=t))  # create all teams -> "setup"
+    yield seeded
+    for t in seeded:
+        with suppress(NotFoundError):
+            client.teams.delete(team_id=t.id)  # delete all teams -> "cleanup"
