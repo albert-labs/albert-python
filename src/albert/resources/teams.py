@@ -1,7 +1,14 @@
+from enum import Enum
+
 from pydantic import Field
 
 from albert.resources.base import BaseResource, EntityLinkConvertible, SecurityClass
 from albert.resources.users import User
+
+
+class TeamRole(str, Enum):
+    TEAM_OWNER = "TeamOwner"
+    TEAM_VIEWER = "TeamViewer"
 
 
 class Team(BaseResource, EntityLinkConvertible):

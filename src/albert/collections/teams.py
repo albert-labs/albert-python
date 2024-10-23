@@ -1,7 +1,8 @@
 from collections.abc import Generator, Iterator
 
 from albert.collections.base import BaseCollection
-from albert.resources.teams import Team
+from albert.resources.teams import Team, TeamRole
+from albert.resources.users import User
 from albert.session import AlbertSession
 
 
@@ -38,6 +39,26 @@ class TeamsCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TeamsCollection._api_version}/teams"
+
+    def add_users_to_team(
+        self, *, team: Team, users: list[User], team_role: TeamRole = TeamRole.TEAM_VIEWER
+    ) -> bool:
+        """
+        add users to a team
+        """
+        # build payload
+        newValue = []
+        for _u in users:
+            newValue.append({"id": _u.id, "fgc": team_role})
+        payload = [
+            {
+                "id": team.id,
+                "data": [{"operation": "add", "attribute": "ACL", "newValue": newValue}],
+            }
+        ]
+        # run request
+        self.session.patch(self.base_path, json=payload)
+        return True
 
     def _list_generator(
         self,
