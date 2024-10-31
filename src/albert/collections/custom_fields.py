@@ -1,6 +1,9 @@
+import json
+
 from albert.collections.base import BaseCollection
 from albert.resources.custom_fields import CustomField, ServiceType
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CustomFieldCollection(BaseCollection):
@@ -28,47 +31,26 @@ class CustomFieldCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomFieldCollection._api_version}/customfields"
 
-    def _list_generator(
-        self,
-        *,
-        limit: int = 100,
-        start_key: str = None,
-        name: str = None,
-        service: ServiceType = None,
-        lookup_column: bool = None,
-        lookup_row: bool = None,
-    ):
-        params = {
-            "limit": limit,
-            "startKey": start_key,
-            "name": name,
-            "service": service,
-            "lookupColumn": lookup_column,
-            "lookupRow": lookup_row,
-        }
-        params = {k: v for k, v in params.items() if v is not None}
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            data = response.json().get("Items", [])
-            if not data or data == []:
-                break
-            for item in data:
-                yield CustomField(**item)
-            start_key = response.json().get("lastKey", None)
-            if not start_key:
-                break
-            params["startKey"] = start_key
-
     def list(
         self,
         *,
-        name: str = None,
-        service: ServiceType = None,
-        lookup_column: bool = None,
-        lookup_row: bool = None,
-    ):
-        return self._list_generator(
-            name=name, service=service, lookup_column=lookup_column, lookup_row=lookup_row
+        name: str | None = None,
+        service: ServiceType | None = None,
+        lookup_column: bool | None = None,
+        lookup_row: bool | None = None,
+    ) -> AlbertPaginator[CustomField]:
+        params = {
+            "name": name,
+            "service": service if service else None,
+            "lookupColumn": json.dumps(lookup_column) if lookup_column is not None else None,
+            "lookupRow": json.dumps(lookup_row) if lookup_row is not None else None,
+        }
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            params=params,
+            session=self.session,
+            deserialize=lambda data: CustomField(**data),
         )
 
     def get_by_id(self, *, id: str):

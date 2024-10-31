@@ -3,7 +3,7 @@ from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightSt
 from albert.session import AlbertSession
 from albert.utils.exceptions import ForbiddenError, InternalServerError
 from albert.utils.logging import logger
-from albert.utils.pagination import SearchPaginator
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class BTInsightCollection(BaseCollection):
@@ -97,7 +97,7 @@ class BTInsightCollection(BaseCollection):
         name: str | list[str] | None = None,
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
-    ) -> SearchPaginator[BTInsight]:
+    ) -> AlbertPaginator[BTInsight]:
         """List items in the BTInsight collection.
 
         Parameters
@@ -121,7 +121,7 @@ class BTInsightCollection(BaseCollection):
 
         Returns
         -------
-        SearchPaginator[BTInsight | None]
+        AlbertPaginator[BTInsight]
             An iterable of elements returned by the BTInsight search query.
         """
 
@@ -148,11 +148,12 @@ class BTInsightCollection(BaseCollection):
             category = category if isinstance(category, list) else [category]
             params["category"] = [BTInsightCategory(x).value for x in category]
 
-        return SearchPaginator(
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=deserialize,
             params=params,
+            deserialize=deserialize,
         )
 
     def update(self, *, insight: BTInsight) -> BTInsight:
