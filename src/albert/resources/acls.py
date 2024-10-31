@@ -15,6 +15,7 @@ class AccessControlLevel(str, Enum):
     PROJECT_PROPERTY_TASKS = "ProjectPropertyTask"
     INVENTORY_OWNER = "InventoryOwner"
     INVENTORY_VIEWER = "InventoryViewer"
+    CUSTOM_TEMPLATE_OWNER = "CustomTemplateOwner"
 
 
 class ACL(BaseAlbertModel):

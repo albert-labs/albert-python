@@ -37,11 +37,9 @@ class LotCollection(BaseCollection):
     #
     #     return lot_id
 
-    def delete(self, *, lot_id: str) -> bool:
+    def delete(self, *, lot_id: str) -> None:
         url = f"{self.base_path}?id={lot_id}"
         self.session.delete(url)
-
-        return True
 
     def _list_generator(
         self,

@@ -58,6 +58,17 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert seeded_inventory[0].id == get_by_id.id
 
 
+def test_get_by_ids(client: Albert, seeded_inventory):
+    inventory_ids = [x.id for x in seeded_inventory]
+
+    bulk_get = client.inventory.get_by_ids(inventory_ids=inventory_ids)
+    assert {x.id for x in bulk_get} == set(inventory_ids)
+
+    inventory_ids_bare = [x.replace("INV", "") for x in inventory_ids]
+    bulk_get_no_inv = client.inventory.get_by_ids(inventory_ids=inventory_ids_bare)
+    assert {x.id for x in bulk_get_no_inv} == set(inventory_ids)
+
+
 def test_inventory_update(client: Albert, seeded_inventory):
     assert client.inventory.inventory_exists(inventory_item=seeded_inventory[2])
     test_inv_item = seeded_inventory[2]
@@ -68,8 +79,8 @@ def test_inventory_update(client: Albert, seeded_inventory):
     assert updated.description == d
     assert updated.id == seeded_inventory[2].id
 
-    deleted = client.inventory.delete(inventory_id=test_inv_item)
-    assert deleted
+    client.inventory.delete(inventory_id=test_inv_item)
+    assert not client.inventory.inventory_exists(inventory_item=test_inv_item)
 
 
 def test_collection_blocks_formulation(client: Albert, seeded_projects):

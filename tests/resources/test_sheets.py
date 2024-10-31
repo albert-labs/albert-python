@@ -32,7 +32,7 @@ def test_crud_empty_column(sheet: Sheet):
     assert new_col.column_id == renamed_column.column_id
     assert renamed_column.name == "My renamed column"
 
-    assert sheet.delete_column(column_id=new_col.column_id)
+    sheet.delete_column(column_id=new_col.column_id)
 
 
 def test_add_formulation(sheet: Sheet, seeded_inventory):
@@ -93,11 +93,11 @@ def test_property_reads(sheet: Sheet):
 def test_add_and_remove_blank_rows(sheet: Sheet):
     new_row = sheet.add_blank_row(row_name="TEST app Design", design=DesignType.APPS)
     assert isinstance(new_row, Row)
-    assert sheet.delete_row(row_id=new_row.row_id, design_id=sheet.app_design.id)
+    sheet.delete_row(row_id=new_row.row_id, design_id=sheet.app_design.id)
 
     new_row = sheet.add_blank_row(row_name="TEST products Design", design=DesignType.PRODUCTS)
     assert isinstance(new_row, Row)
-    assert sheet.delete_row(row_id=new_row.row_id, design_id=sheet.product_design.id)
+    sheet.delete_row(row_id=new_row.row_id, design_id=sheet.product_design.id)
 
     # You cannot add a blank row to results design
     with pytest.raises(AlbertException):

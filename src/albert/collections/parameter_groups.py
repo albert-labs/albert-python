@@ -60,10 +60,9 @@ class ParameterGroupCollection(BaseCollection):
             order_by=order_by,
         )
 
-    def delete(self, *, id: str) -> bool:
+    def delete(self, *, id: str) -> None:
         path = f"{self.base_path}/{id}"
         self.session.delete(path)
-        return True
 
     def create(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
         response = self.session.post(
@@ -82,5 +81,5 @@ class ParameterGroupCollection(BaseCollection):
         existing = self.get_by_id(id=updated.id)
         path = f"{self.base_path}/{existing.id}"
         payload = self._generate_patch_payload(existing=existing, updated=updated)
-        response = self.session.patch(path, json=payload)
+        response = self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return ParameterGroup(**response.json())

@@ -23,7 +23,9 @@ class FileCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{FileCollection._api_version}/files"
 
-    def get(self, *, name: str, namespace: FileNamespace, generic: bool = False) -> FileInfo:
+    def get_by_name(
+        self, *, name: str, namespace: FileNamespace, generic: bool = False
+    ) -> FileInfo:
         params = {
             "name": name,
             "namespace": namespace,

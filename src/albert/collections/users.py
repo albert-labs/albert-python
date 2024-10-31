@@ -123,12 +123,10 @@ class UserCollection(BaseCollection):
         current_object = self.get_by_id(user_id=updated_object.id)
 
         # Generate the PATCH payload
-        patch_payload = self._generate_patch_payload(
-            existing=current_object, updated=updated_object
-        )
+        payload = self._generate_patch_payload(existing=current_object, updated=updated_object)
 
         url = f"{self.base_path}/{updated_object.id}"
-        self.session.patch(url, json=patch_payload)
+        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
 
         updated_user = self.get_by_id(user_id=updated_object.id)
         return updated_user

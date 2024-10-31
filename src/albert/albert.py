@@ -1,9 +1,14 @@
 import os
 
+from albert.collections.btdataset import BTDatasetCollection
+from albert.collections.btinsight import BTInsightCollection
+from albert.collections.btmodel import BTModelCollection, BTModelSessionCollection
 from albert.collections.cas import CasCollection
 from albert.collections.companies import CompanyCollection
 from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
+from albert.collections.data_columns import DataColumnCollection
+from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.files import FileCollection
 from albert.collections.inventory import InventoryCollection
 from albert.collections.lists import ListsCollection
@@ -13,6 +18,7 @@ from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.projects import ProjectCollection
+from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.tags import TagCollection
@@ -32,12 +38,12 @@ class Albert:
     Parameters
     ----------
     base_url : str, optional
-        The base URL of the Albert API (default is "https://dev.albertinventdev.com").
+        The base URL of the Albert API (default is "https://app.albertinvent.com").
     token : str, optional
         The token for authentication (default is read from environment variable "ALBERT_TOKEN").
     client_credentials: ClientCredentials, optional
-        The client credentials for programmatic authentication
-        (default is read from the environment varaibles "ALBERT_CLIENT_ID" and "ALBERT_CLIENT_SECRET").
+        The client credentials for programmatic authentication.
+        Client credentials can be read from the environment by `ClientCredentials.from_env()`.
 
     Attributes
     ----------
@@ -63,7 +69,7 @@ class Albert:
         self.session = AlbertSession(
             base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
-            client_credentials=client_credentials or ClientCredentials.from_env(),
+            client_credentials=client_credentials,
         )
 
     @property
@@ -95,6 +101,14 @@ class Albert:
         return CasCollection(session=self.session)
 
     @property
+    def data_columns(self) -> DataColumnCollection:
+        return DataColumnCollection(session=self.session)
+
+    @property
+    def data_templates(self) -> DataTemplateCollection:
+        return DataTemplateCollection(session=self.session)
+
+    @property
     def un_numbers(self) -> UnNumberCollection:
         return UnNumberCollection(session=self.session)
 
@@ -113,6 +127,10 @@ class Albert:
     @property
     def custom_fields(self) -> CustomFieldCollection:
         return CustomFieldCollection(session=self.session)
+
+    @property
+    def reports(self) -> ReportCollection:
+        return ReportCollection(session=self.session)
 
     @property
     def roles(self) -> RoleCollection:
@@ -149,3 +167,18 @@ class Albert:
     @property	
     def files(self) -> FileCollection:
         return FileCollection(session=self.session)
+
+    @property
+    def btdatasets(self) -> BTDatasetCollection:
+        return BTDatasetCollection(session=self.session)
+
+    @property
+    def btmodelsessions(self) -> BTModelSessionCollection:
+        return BTModelSessionCollection(session=self.session)
+
+    def btmodels(self, *, parent_id: str) -> BTModelCollection:
+        return BTModelCollection(session=self.session, parent_id=parent_id)
+
+    @property
+    def btinsights(self) -> BTInsightCollection:
+        return BTInsightCollection(session=self.session)

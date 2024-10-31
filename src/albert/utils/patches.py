@@ -1,0 +1,33 @@
+from enum import Enum
+from typing import Any
+
+from pydantic import Field
+
+from albert.utils.types import BaseAlbertModel
+
+
+class PatchOperation(str, Enum):
+    ADD = "add"
+    UPDATE = "update"
+    DELETE = "delete"
+
+
+class PatchDatum(BaseAlbertModel):
+    operation: str
+    attribute: str
+    new_value: Any | None = Field(default=None, alias="newValue")
+    old_value: Any | None = Field(default=None, alias="oldValue")
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        # Default to exclude_unset=True to remove old/new value when not explicitly set
+        kwargs.setdefault("exclude_unset", True)
+        return super().model_dump(**kwargs)
+
+
+class PatchPayload(BaseAlbertModel):
+    data: list[PatchDatum]
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        # Default to exclude_unset=True to remove old/new value when not explicitly set
+        kwargs.setdefault("exclude_unset", True)
+        return super().model_dump(**kwargs)

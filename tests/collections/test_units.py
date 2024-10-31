@@ -79,8 +79,7 @@ def test_unit_crud(client: Albert):
     assert updated_unit.id == created_unit.id
     assert updated_unit.symbol == "y"
 
-    deleted = client.units.delete(unit_id=updated_unit.id)
-    assert deleted
+    client.units.delete(unit_id=updated_unit.id)
     assert not client.units.unit_exists(name=updated_unit.name)
 
 

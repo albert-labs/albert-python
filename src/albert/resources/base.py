@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import ConfigDict, Field, PrivateAttr
+from pydantic import Field, PrivateAttr
 
 from albert.session import AlbertSession
 from albert.utils.exceptions import AlbertException
@@ -51,10 +51,6 @@ class BaseResource(BaseAlbertModel):
     _updated: AuditFields | None = PrivateAttr(default=None)
     status: Status | None = Field(default=None)
 
-    model_config = ConfigDict(
-        exclude={"session"},
-    )
-
     def __init__(self, **data: Any):
         super().__init__(**data)
         if "Created" in data:
@@ -74,6 +70,7 @@ class BaseResource(BaseAlbertModel):
 class BaseSessionResource(BaseResource):
     session: AlbertSession | None = Field(
         default=None,
+        exclude=True,
         description=(
             "Albert session for accessing the Albert API. "
             "The session is included as an optional field to allow for resources of this type "

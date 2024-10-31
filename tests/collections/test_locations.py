@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 
 from albert.albert import Albert
@@ -60,8 +61,9 @@ def test_create_location(caplog, client: Albert, seeded_locations: list[Location
 def test_update_location(client: Albert, seeded_locations: list[Location]):
     # Update the first seeded location
     seeded_location = seeded_locations[0]
+    updated_name = f"TEST - {uuid.uuid4()}"
     updated_location = Location(
-        name="Updated Test Location",
+        name=updated_name,
         latitude=40.0,
         longitude=-75.0,
         address=seeded_location.address,
@@ -72,7 +74,7 @@ def test_update_location(client: Albert, seeded_locations: list[Location]):
     updated_loc = client.locations.update(updated_object=updated_location)
 
     assert isinstance(updated_loc, Location)
-    assert updated_loc.name == "Updated Test Location"
+    assert updated_loc.name == updated_name
     assert updated_loc.latitude == 40.0
     assert updated_loc.longitude == -75.0
 
@@ -90,8 +92,7 @@ def test_location_exists(client: Albert, seeded_locations):
 def test_delete_location(client: Albert, seeded_locations: list[Location]):
     # Create a new location to delete
 
-    deleted = client.locations.delete(location_id=seeded_locations[2].id)
-    assert deleted is True
+    client.locations.delete(location_id=seeded_locations[2].id)
 
     # Ensure it no longer exists
     does_exist = client.locations.location_exists(location=seeded_locations[2])

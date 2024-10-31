@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 
 import pytest
@@ -61,7 +62,7 @@ def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
 def test_update_cas(client: Albert, seeded_cas: list[Cas]):
     # Update the description of a seeded CAS entry
     cas_to_update = seeded_cas[0]
-    updated_description = "Updated CAS Description"
+    updated_description = f"TEST - {uuid.uuid4()}"
     cas_to_update.description = updated_description
 
     updated_cas = client.cas_numbers.update(updated_object=cas_to_update)

@@ -83,10 +83,12 @@ class LocationCollection(BaseCollection):
         current_object = self.get_by_id(id=updated_object.id)
         # Generate the PATCH payload
         patch_payload = self._generate_patch_payload(
-            existing=current_object, updated=updated_object
+            existing=current_object,
+            updated=updated_object,
+            stringify_values=True,
         )
         url = f"{self.base_path}/{updated_object.id}"
-        self.session.patch(url, json=patch_payload)
+        self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=updated_object.id)
 
     def location_exists(self, *, location: Location):
@@ -123,7 +125,7 @@ class LocationCollection(BaseCollection):
 
         return Location(**response.json())
 
-    def delete(self, *, location_id: str) -> bool:
+    def delete(self, *, location_id: str) -> None:
         """
         Deletes a Location entity.
 
@@ -134,9 +136,7 @@ class LocationCollection(BaseCollection):
 
         Returns
         -------
-        bool
-            True if deleted.
+        None
         """
         url = f"{self.base_path}/{location_id}"
         self.session.delete(url)
-        return True

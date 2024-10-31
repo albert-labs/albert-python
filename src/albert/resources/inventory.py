@@ -7,16 +7,12 @@ from albert.collections.cas import Cas
 from albert.collections.companies import Company
 from albert.collections.un_numbers import UnNumber
 from albert.resources.acls import ACL
-from albert.resources.base import (
-    BaseEntityLink,
-    BaseResource,
-    EntityLinkConvertible,
-    SecurityClass,
-)
+from albert.resources.base import BaseEntityLink, EntityLinkConvertible, SecurityClass
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.utils.exceptions import AlbertException
+from albert.utils.types import BaseAlbertModel
 
 
 class InventoryCategory(str, Enum):
@@ -34,57 +30,61 @@ class InventoryUnitCategory(str, Enum):
     UNITS = "units"
 
 
-class CasAmount(BaseResource):
+class CasAmount(BaseAlbertModel):
     """
     CasAmount is a Pydantic model representing an amount of a given CAS.
 
     Attributes
     ----------
-    cas : Cas
-        The CAS object associated with this amount. Provide either a Cas or an id.
-    id : str
-        The Albert id of the CAS Number Resource this amount represents. Provide either a Cas or an id.
-    min : float, optional
+    min : float
         The minimum amount of the CAS in the formulation.
-    max : float, optional
+    max : float
         The maximum amount of the CAS in the formulation.
-
+    id : str | None
+        The Albert ID of the CAS Number Resource this amount represents. Provide either a Cas or an ID.
+    cas : Cas | None
+        The CAS object associated with this amount. Provide either a Cas or an id.
+    cas_smiles: str | None
+        The SMILES string of the CAS Number resource. Obtained from the Cas object when provided.
+    number: str | None
+        The CAS number. Obtained from the Cas object when provided.
     """
 
+    min: float
+    max: float
     id: str | None = Field(default=None)
-    min: float = Field(default=None)
-    max: float = Field(default=None)
 
-    # Define a private attribute to store the Cas object
+    # Excluded, read-only fields
     cas: Cas = Field(default=None, exclude=True)
+    cas_smiles: str | None = Field(default=None, alias="casSmiles", exclude=True, frozen=True)
+    number: str | None = Field(default=None, exclude=True, frozen=True)
 
     @model_validator(mode="after")
-    def set_cas_private_attr(self: "CasAmount") -> "CasAmount":
-        """
-        Set the _cas attribute after model initialization.
-        """
-        if hasattr(self, "cas") and isinstance(self.cas, Cas):
-            # Avoid recursion by setting the attribute directly
-            object.__setattr__(self, "_cas", self.cas)  # Set the private _cas attribute
-            object.__setattr__(self, "id", self.cas.id)  # Set the id to the Cas id
-
+    def set_cas_attributes(self: "CasAmount") -> "CasAmount":
+        """Set attributes after model initialization from the Cas object, if provided."""
+        if self.cas is not None:
+            object.__setattr__(self, "id", self.cas.id)
+            object.__setattr__(self, "cas_smiles", self.cas.smiles)
+            object.__setattr__(self, "number", self.cas.number)
         return self
 
 
-class InventoryMinimum(BaseResource):
+class InventoryMinimum(BaseAlbertModel):
     """Defined the minimum amount of an InventoryItem that must be kept in stock at a given Location.
+
     Attributes
     ----------
+    id : str
+        The unique identifier of the Location object associated with this InventoryMinimum.
+        Provide either a Location or a location id.
     location : Location
         The Location object associated with this InventoryMinimum. Provide either a Location or a location id.
-    id : str
-        The unique identifier of the Location object associated with this InventoryMinimum. Provide either a Location or a location id.
     minimum : float
         The minimum amount of the InventoryItem that must be kept in stock at the given Location.
     """
 
-    location: Location | None = Field(exclude=True, default=None)
     id: str | None = Field(default=None)
+    location: Location | None = Field(exclude=True, default=None)
     minimum: float = Field(ge=0, le=1000000000000000)
 
     @model_validator(mode="after")

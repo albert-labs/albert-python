@@ -10,6 +10,8 @@ from albert.resources.base import Status
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
+from albert.resources.data_columns import DataColumn
+from albert.resources.data_templates import DataTemplate
 from albert.resources.inventory import InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
@@ -21,11 +23,14 @@ from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
 from albert.resources.worksheets import Worksheet
+from albert.utils.client_credentials import ClientCredentials
 from albert.utils.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from tests.seeding import (
     generate_cas_seeds,
     generate_company_seeds,
     generate_custom_fields,
+    generate_data_column_seeds,
+    generate_data_template_seeds,
     generate_inventory_seeds,
     generate_list_item_seeds,
     generate_location_seeds,
@@ -44,7 +49,14 @@ from tests.seeding import (
 
 @pytest.fixture(scope="session")
 def client() -> Albert:
-    return Albert()
+    credentials = ClientCredentials.from_env(
+        client_id_env="ALBERT_CLIENT_ID_SDK",
+        client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+    )
+    return Albert(
+        base_url="https://app.albertinvent.com",
+        client_credentials=credentials,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -200,8 +212,26 @@ def seeded_units(client: Albert) -> Iterator[list[Unit]]:
 
     # Teardown - delete the seeded units after the test
     for unit in seeded:
-        with suppress(NotFoundError):
+        with suppress(NotFoundError, BadRequestError):
             client.units.delete(unit_id=unit.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_data_columns(client: Albert, seeded_units: list[Unit]) -> Iterator[list[DataColumn]]:
+    # Seed the data columns
+    seeded = []
+    for data_column in generate_data_column_seeds(seeded_units=seeded_units):
+        created_data_column = client.data_columns.get_by_name(name=data_column.name)
+        if created_data_column is None:
+            created_data_column = client.data_columns.create(data_column=data_column)
+        seeded.append(created_data_column)
+    time.sleep(1.5)
+    yield seeded  # Provide the seeded data columns to the test
+
+    # tearDown - delete the seeded data columns after the test
+    for data_column in seeded:
+        with suppress(NotFoundError):
+            client.data_columns.delete(data_column_id=data_column.id)
 
 
 @pytest.fixture(scope="session")
@@ -239,6 +269,29 @@ def seeded_users(client: Albert, seeded_roles, seeded_locations) -> Iterator[lis
     for user in seeded:
         user.status = Status.INACTIVE.value
         client.users.update(updated_object=user)
+
+
+@pytest.fixture(scope="session")
+def seeded_data_templates(
+    client: Albert,
+    seeded_data_columns: list[DataColumn],
+    seeded_users: list[User],
+    seeded_units: list[Unit],
+) -> Iterator[list[DataTemplate]]:
+    seeded = []
+    for data_template in generate_data_template_seeds(
+        seeded_data_columns=seeded_data_columns,
+        seeded_units=seeded_units,
+        seeded_users=seeded_users,
+    ):
+        dt = client.data_templates.get_by_name(name=data_template.name)
+        if dt is None:
+            dt = client.data_templates.create(data_template=data_template)
+        seeded.append(dt)
+    yield seeded
+    for data_template in seeded:
+        with suppress(NotFoundError):
+            client.data_templates.delete(data_template_id=data_template.id)
 
 
 # Move to conftest.py in a bit

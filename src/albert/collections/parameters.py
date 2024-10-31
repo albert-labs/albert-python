@@ -32,10 +32,9 @@ class ParameterCollection(BaseCollection):
         )
         return Parameter(**response.json())
 
-    def delete(self, *, id: str) -> bool:
+    def delete(self, *, id: str) -> None:
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
-        return True
 
     def _list_generator(
         self,
@@ -78,8 +77,11 @@ class ParameterCollection(BaseCollection):
 
     def update(self, *, updated_parameter) -> Parameter:
         param_id = updated_parameter.id
-        patch_params = self._generate_patch_payload(
+        payload = self._generate_patch_payload(
             existing=self.get_by_id(id=param_id), updated=updated_parameter
         )
-        self.session.patch(f"{self.base_path}/{param_id}", json=patch_params)
+        self.session.patch(
+            f"{self.base_path}/{param_id}",
+            json=payload.model_dump(mode="json", by_alias=True),
+        )
         return updated_parameter

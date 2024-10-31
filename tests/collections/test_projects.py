@@ -74,8 +74,7 @@ def test_delete_project(client: Albert, seeded_locations):
     assert isinstance(created_project, Project)
 
     # Now delete the project
-    success = client.projects.delete(project_id=created_project.id)
-    assert success
+    client.projects.delete(project_id=created_project.id)
 
     # Try to fetch the project, should return None or not found
     with pytest.raises(NotFoundError):

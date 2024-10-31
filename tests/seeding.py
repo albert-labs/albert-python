@@ -9,6 +9,8 @@ from albert.resources.custom_fields import (
     FieldType,
     ServiceType,
 )
+from albert.resources.data_columns import DataColumn
+from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.inventory import (
     CasAmount,
     InventoryCategory,
@@ -366,6 +368,85 @@ def generate_unit_seeds() -> list[Unit]:
     ]
 
 
+def generate_data_column_seeds(seeded_units) -> list[DataColumn]:
+    """
+    Generates a list of DataColumn seed objects for testing without IDs.
+
+    Returns
+    -------
+    List[DataColumn]
+        A list of DataColumn objects with different permutations.
+    """
+
+    return [
+        # Basic data column with required fields
+        DataColumn(
+            name="TEST - only unit 1",
+            unit=BaseEntityLink(id=seeded_units[0].id),
+        ),
+        # Data column with full fields including optional calculation
+        DataColumn(
+            name="TEST - unit and calculation",
+            unit=BaseEntityLink(id=seeded_units[1].id),
+            calculation="Pressure = Force / Area",
+        ),
+        # Data column with required fields but without the calculation
+        DataColumn(
+            name="TEST - only name",
+        ),
+        # Another data column with all fields
+        DataColumn(
+            name="TEST - only calculation",
+            calculation="Mass = Density * Volume",
+        ),
+    ]
+
+
+def generate_data_template_seeds(
+    seeded_data_columns: list[DataColumn], seeded_units: list[Unit], seeded_users: list[User]
+) -> list[DataTemplate]:
+    return [
+        DataTemplate(
+            name="TEST - Basic Data Template",
+            description="A basic data template with no metadata.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    value="25.0",
+                    unit=BaseEntityLink(id=seeded_units[0].id),
+                )
+            ],
+        ),
+        DataTemplate(
+            name="TEST - ACL Data Template",
+            description="A basic data template with no metadata.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    value="45.0",
+                    unit=seeded_units[0],
+                )
+            ],
+            users_with_access=[seeded_users[0], seeded_users[1]],
+        ),
+        DataTemplate(
+            name="TEST - Data Template with Calculations",
+            description="A data template with calculations.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column_id=seeded_data_columns[0].id,
+                    unit=seeded_units[0],
+                ),
+                DataColumnValue(
+                    data_column=seeded_data_columns[1],
+                    calculation=f"={seeded_data_columns[0].name}/2",
+                    unit=seeded_units[0],
+                ),
+            ],
+        ),
+    ]
+
+
 def generate_user_seeds(seeded_locations: list[Location], seeded_roles: list[Role]) -> list[User]:
     """
     Generates a list of User seed objects for testing without IDs.
@@ -533,7 +614,7 @@ def generate_inventory_seeds(
             category=InventoryCategory.CONSUMABLES.value,
             unit_category=InventoryUnitCategory.VOLUME.value,
             tags=seeded_tags[0:1],
-            cas=[CasAmount(id=seeded_cas[1].id, min=0.98, max=1)],
+            cas=[CasAmount(id=seeded_cas[1].id, min=0.98, max=1, cas_smiles=seeded_cas[1].smiles)],
             security_class=SecurityClass.SHARED,
             company=seeded_companies[1].name,  # ensure it knows to use the company object
         ),
@@ -543,10 +624,9 @@ def generate_inventory_seeds(
             category=InventoryCategory.RAW_MATERIALS,
             unit_category=InventoryUnitCategory.VOLUME,
             cas=[
-                CasAmount(
-                    cas=seeded_cas[0], min=0.50, max=1.0
-                ),  # ensure it will reslove the cas obj to an id
-                CasAmount(id=seeded_cas[1].id, min=0.30, max=0.6),
+                # ensure it will reslove the cas obj to an id
+                CasAmount(cas=seeded_cas[0], min=0.50, max=1.0, cas_smiles=seeded_cas[0].smiles),
+                CasAmount(id=seeded_cas[1].id, min=0.30, max=0.6, cas_smiles=seeded_cas[1].smiles),
             ],
             security_class=SecurityClass.SHARED,
             company=seeded_companies[1],

@@ -81,15 +81,14 @@ class StorageLocationsCollection(BaseCollection):
         )
         return StorageLocation(**response.json())
 
-    def delete(self, *, id: str) -> bool:
+    def delete(self, *, id: str) -> None:
         path = f"{self.base_path}/{id}"
         self.session.delete(path)
-        return True
 
     def update(self, *, storage_location: StorageLocation) -> StorageLocation:
         path = f"{self.base_path}/{storage_location.id}"
-        patch = self._generate_patch_payload(
+        payload = self._generate_patch_payload(
             existing=self.get_by_id(id=storage_location.id), updated=storage_location
         )
-        self.session.patch(path, json=patch)
+        self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=storage_location.id)

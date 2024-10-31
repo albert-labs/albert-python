@@ -19,7 +19,7 @@ def test_file_round_trip(client: Albert):
     )
 
     # Second: Retrieve the file info
-    file_info = client.files.get(name=file_name, namespace=FileNamespace.BREAKTHROUGH)
+    file_info = client.files.get_by_name(name=file_name, namespace=FileNamespace.BREAKTHROUGH)
     assert file_info.name == file_name
     assert file_info.content_type == "application/json"
 

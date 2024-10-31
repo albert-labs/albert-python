@@ -763,23 +763,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None  # reset the known grid. We could probably make this nicer later.
         return Column(**data[0])
 
-    def delete_column(self, *, column_id: str):
+    def delete_column(self, *, column_id: str) -> None:
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [{"colId": column_id}]
         self.session.delete(endpoint, json=payload)
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
-        return True
 
-    def delete_row(self, *, row_id: str, design_id: str):
+    def delete_row(self, *, row_id: str, design_id: str) -> None:
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
         payload = [{"rowId": row_id}]
         self.session.delete(endpoint, json=payload)
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
-        return True
 
     def _find_column(self, *, column_id: str = "", column_name: str = ""):
         if column_id == None:

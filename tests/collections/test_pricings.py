@@ -1,3 +1,5 @@
+import uuid
+
 from albert import Albert
 from albert.resources.inventory import InventoryItem
 from albert.resources.locations import Location
@@ -21,9 +23,10 @@ def test_get_by_id(client: Albert, seeded_pricings: list[Pricing]):
 
 def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations: list[Location]):
     pricing = seeded_pricings[0]
-    pricing.description = "Updated description"
+    updated_description = f"TEST - {uuid.uuid4()}"
+    pricing.description = updated_description
     pricing.location = seeded_locations[1]
     assert client.pricings.update(updated_pricing=pricing)
     updated = client.pricings.get_by_id(pricing_id=pricing.id)
-    assert updated.description == "Updated description"
+    assert updated.description == updated_description
     assert updated.location.id == seeded_locations[1].id

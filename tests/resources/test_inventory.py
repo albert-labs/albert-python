@@ -1,7 +1,27 @@
 import pytest
 
-from albert.resources.inventory import InventoryCategory, InventoryItem, InventoryMinimum
+from albert.resources.cas import Cas
+from albert.resources.inventory import (
+    CasAmount,
+    InventoryCategory,
+    InventoryItem,
+    InventoryMinimum,
+)
 from albert.utils.exceptions import AlbertException
+
+
+def test_cas_amount_attributes():
+    amt = CasAmount(min=5, max=95)
+    cas = Cas(number="test", smiles="CCC", id="dogs")
+
+    amt.cas = cas
+    assert amt.cas == cas
+    assert amt.id == cas.id
+    assert amt.number == cas.number
+    assert amt.cas_smiles == cas.smiles
+
+    data = amt.model_dump()
+    assert set(data.keys()) == {"id", "min", "max"}
 
 
 def test_inventory_minimum(seeded_locations):

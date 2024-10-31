@@ -7,7 +7,7 @@ from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.session import AlbertSession
-from albert.utils.exceptions import ForbiddenError
+from albert.utils.exceptions import ForbiddenError, NotFoundError
 
 
 class InventoryCollection(BaseCollection):
@@ -164,26 +164,45 @@ class InventoryCollection(BaseCollection):
         response = self.session.get(url)
         return InventoryItem(**response.json())
 
-    def delete(self, *, inventory_id: str) -> bool:
+    def get_by_ids(self, *, inventory_ids: list[str]) -> list[InventoryItem]:
+        """
+        Retrieve an set of inventory items by their IDs.
+
+        Parameters
+        ----------
+        inventory_ids : str
+            The list of IDs of the inventory items.
+
+        Returns
+        -------
+        list[InventoryItem]
+            The retrieved inventory items.
+        """
+        inventory_ids = [x if x.startswith("INV") else f"INV{x}" for x in inventory_ids]
+        response = self.session.get(
+            f"{self.base_path}/ids",
+            params={"id": inventory_ids},
+        )
+        return [InventoryItem(**item) for item in response.json()["Items"]]
+
+    def delete(self, *, inventory_id: str | InventoryItem) -> bool:
         """
         Delete an inventory item by its ID.
 
         Parameters
         ----------
-        inventory_id : str
+        inventory_id : str | InventoryItem
             The ID of the inventory item.
 
         Returns
         -------
-        bool
-            True if the item was deleted, False otherwise.
+        None
         """
         if isinstance(inventory_id, InventoryItem):
             inventory_id = inventory_id.id
         inventory_id = inventory_id if inventory_id.startswith("INV") else "INV" + inventory_id
         url = f"{self.base_path}/{inventory_id}"
         self.session.delete(url)
-        return True
 
     def _list_generator(
         self,
@@ -254,7 +273,7 @@ class InventoryCollection(BaseCollection):
                 )
                 try:
                     yield self.get_by_id(inventory_id=this_aid)
-                except ForbiddenError:
+                except (NotFoundError, ForbiddenError):
                     # Sometimes InventoryItems are listed that the current user does not have full access to. Just skip those
                     continue
             if not raw_inventory or raw_inventory == [] or len(raw_inventory) < limit:
@@ -324,6 +343,7 @@ class InventoryCollection(BaseCollection):
 
         _updatable_attributes_special = {"company", "tags", "cas"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
+        payload = payload.model_dump(mode="json", by_alias=True)
         for attribute in _updatable_attributes_special:
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)

@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 
 from albert.albert import Albert
@@ -44,7 +45,8 @@ def test_returns_dupe(caplog, client: Albert, seeded_parameters: list[Parameter]
 
 
 def test_update(client: Albert, seeded_parameters: list[Parameter]):
-    p = seeded_parameters[0]
-    p.name = "Updated"
+    p = seeded_parameters[0].model_copy(deep=True)
+    updated_name = f"TEST - {uuid.uuid4()}"
+    p.name = updated_name
     updated = client.parameters.update(updated_parameter=p)
-    assert updated.name == "Updated"
+    assert updated.name == updated_name

@@ -81,8 +81,30 @@ class CustomFieldCollection(BaseCollection):
                 return custom_field
         return None
 
-    def create(self, *, custom_field: CustomField):
+    def create(self, *, custom_field: CustomField, avoid_duplicates: bool = True):
+        # post new customfield
         response = self.session.post(
             self.base_path, json=custom_field.model_dump(by_alias=True, exclude_none=True)
         )
         return CustomField(**response.json())
+
+    def update(self, *, updated_object: CustomField) -> CustomField:
+        """
+        Update a CustomField item.
+        """
+        # fetch current object state
+        current_object = self.get_by_id(id=updated_object.id)
+
+        # generate the patch payload
+        payload = self._generate_patch_payload(
+            existing=current_object,
+            updated=updated_object,
+            generate_metadata_diff=False,
+            stringify_values=False,
+        )
+
+        # run patch
+        url = f"{self.base_path}/{updated_object.id}"
+        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
+        updated_ctf = self.get_by_id(id=updated_object.id)
+        return updated_ctf

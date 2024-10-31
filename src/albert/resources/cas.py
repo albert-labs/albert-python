@@ -78,10 +78,6 @@ class Cas(BaseResource):
     classification_type: str | None = Field(None, alias="classificationType")
     order: str | None = None
 
-    @property
-    def status(self):
-        return self._status
-
     @classmethod
     def from_string(cls, *, number: str) -> "Cas":
         """

@@ -209,10 +209,9 @@ class CompanyCollection(BaseCollection):
         this_company = Company(**response.json())
         return this_company
 
-    def delete(self, *, id: str) -> bool:
+    def delete(self, *, id: str) -> None:
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
-        return True
 
     def rename(self, *, old_name: str, new_name: str) -> Company | None:
         """
@@ -260,6 +259,6 @@ class CompanyCollection(BaseCollection):
             existing=current_object, updated=updated_object
         )
         url = f"{self.base_path}/{updated_object.id}"
-        self.session.patch(url, json=patch_payload)
+        self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         updated_company = self.get_by_id(id=updated_object.id)
         return updated_company

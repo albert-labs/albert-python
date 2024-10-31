@@ -3,6 +3,7 @@ from enum import Enum
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.pricings import Pricing
 from albert.session import AlbertSession
+from albert.utils.patches import PatchDatum, PatchOperation, PatchPayload
 
 
 class PricingBy(str, Enum):
@@ -59,25 +60,24 @@ class PricingCollection(BaseCollection):
         items = response.json().get("Items", [])
         return [Pricing(**x) for x in items]
 
-    def delete(self, *, pricing_id: str) -> bool:
+    def delete(self, *, pricing_id: str) -> None:
         url = f"{self.base_path}/{pricing_id}"
         self.session.delete(url)
-        return True
 
-    def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> dict:
+    def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> PatchPayload:
         patch_payload = self._generate_patch_payload(existing=existing, updated=updated)
         for attr in ("company", "location"):
             # These must be set, so we don't need to worry about add or delete
             existing_attr = getattr(existing, attr).id
             updated_attr = getattr(updated, attr).id
             if existing_attr != updated_attr:
-                patch_payload["data"].append(
-                    {
-                        "operation": "update",
-                        "attribute": f"{attr}Id",
-                        "oldValue": existing_attr,
-                        "newValue": updated_attr,
-                    }
+                patch_payload.data.append(
+                    PatchDatum(
+                        operation=PatchOperation.UPDATE,
+                        attribute=f"{attr}Id",
+                        old_value=existing_attr,
+                        new_value=updated_attr,
+                    )
                 )
         return patch_payload
 
@@ -87,5 +87,5 @@ class PricingCollection(BaseCollection):
             existing=current_pricing, updated=updated_pricing
         )
         url = f"{self.base_path}/{updated_pricing.id}"
-        self.session.patch(url, json=patch_payload)
+        self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return updated_pricing

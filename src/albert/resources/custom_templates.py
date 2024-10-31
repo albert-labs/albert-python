@@ -126,10 +126,10 @@ class NotebookData(BaseTaggedEntity):
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
-CustomTemplateData = Annotated[
-    PropertyData | BatchData | SheetData | NotebookData | QCBatchData | GeneralData,
-    Field(discriminator="category"),
-]
+_CustomTemplateDataUnion = (
+    PropertyData | BatchData | SheetData | NotebookData | QCBatchData | GeneralData
+)
+CustomTemplateData = Annotated[_CustomTemplateDataUnion, Field(discriminator="category")]
 
 
 class ACLType(str, Enum):
@@ -185,7 +185,7 @@ class CustomTemplate(BaseTaggedEntity):
     metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None = Field(
         default=None, alias="Metadata"
     )
-    data: None | CustomTemplateData = Field(default=None, alias="Data")
+    data: CustomTemplateData | None = Field(default=None, alias="Data")
     team: list[TeamACL] | None = Field(default=[])
     acl: TemplateACL | None = Field(default=[], alias="ACL")
 

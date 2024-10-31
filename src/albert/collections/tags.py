@@ -211,7 +211,7 @@ class TagCollection(BaseCollection):
         found = self.list(name=tag, exact_match=exact_match)
         return next(found, None)
 
-    def delete(self, *, tag_id: str) -> bool:
+    def delete(self, *, tag_id: str) -> None:
         """
         Deletes a tag by its ID.
 
@@ -222,12 +222,10 @@ class TagCollection(BaseCollection):
 
         Returns
         -------
-        bool
-            True if the tag was successfully deleted, False otherwise.
+        None
         """
         url = f"{self.base_path}/{tag_id}"
         self.session.delete(url)
-        return True
 
     def rename(self, *, old_name: str, new_name: str) -> Tag | None:
         """

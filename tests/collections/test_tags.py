@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 
 import pytest
@@ -77,14 +78,14 @@ def test_tag_exists(client: Albert, seeded_tags: list[Tag]):
 
 def test_tag_update(client: Albert, seeded_tags: list[Tag]):
     test_tag = seeded_tags[3]
-    renamed_tag = "TEST - SDK test tag that has been Updated!"
+    new_name = f"TEST - {uuid.uuid4()}"
 
     assert test_tag.id is not None
 
-    updated_tag = client.tags.rename(old_name=test_tag.tag, new_name=renamed_tag)
+    updated_tag = client.tags.rename(old_name=test_tag.tag, new_name=new_name)
     assert isinstance(updated_tag, Tag)
     assert test_tag.id == updated_tag.id
-    assert updated_tag.tag == renamed_tag
+    assert updated_tag.tag == new_name
 
     with pytest.raises(AlbertException):
         client.tags.rename(

@@ -115,13 +115,13 @@ class UnitCollection(BaseCollection):
         """
         unit_id = updated_unit.id
         original_unit = self.get_by_id(unit_id=unit_id)
-        patch_data = self._generate_patch_payload(existing=original_unit, updated=updated_unit)
+        payload = self._generate_patch_payload(existing=original_unit, updated=updated_unit)
         url = f"{self.base_path}/{unit_id}"
-        self.session.patch(url, json=patch_data)
+        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
         updated_unit = self.get_by_id(unit_id=unit_id)
         return updated_unit
 
-    def delete(self, *, unit_id: str) -> bool:
+    def delete(self, *, unit_id: str) -> None:
         """
         Deletes a unit by its ID.
 
@@ -132,12 +132,10 @@ class UnitCollection(BaseCollection):
 
         Returns
         -------
-        bool
-            True if the unit was successfully deleted, False otherwise.
+        None
         """
         url = f"{self.base_path}/{unit_id}"
         self.session.delete(url)
-        return True
 
     def list(
         self,
