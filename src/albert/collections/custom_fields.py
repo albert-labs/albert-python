@@ -70,23 +70,23 @@ class CustomFieldCollection(BaseCollection):
         )
         return CustomField(**response.json())
 
-    def update(self, *, updated_object: CustomField) -> CustomField:
+    def update(self, *, custom_field: CustomField) -> CustomField:
         """
         Update a CustomField item.
         """
         # fetch current object state
-        current_object = self.get_by_id(id=updated_object.id)
+        current_object = self.get_by_id(id=custom_field.id)
 
         # generate the patch payload
         payload = self._generate_patch_payload(
             existing=current_object,
-            updated=updated_object,
+            updated=custom_field,
             generate_metadata_diff=False,
             stringify_values=False,
         )
 
         # run patch
-        url = f"{self.base_path}/{updated_object.id}"
+        url = f"{self.base_path}/{custom_field.id}"
         self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
-        updated_ctf = self.get_by_id(id=updated_object.id)
+        updated_ctf = self.get_by_id(id=custom_field.id)
         return updated_ctf

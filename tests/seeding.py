@@ -37,6 +37,12 @@ from albert.resources.tags import Tag
 from albert.resources.teams import Team
 from albert.resources.units import Unit, UnitCategory
 from albert.resources.users import User, UserClass
+from albert.resources.workflows import (
+    Interval,
+    ParameterGroupSetpoints,
+    ParameterSetpoint,
+    Workflow,
+)
 
 
 def generate_custom_fields() -> list[CustomField]:
@@ -748,3 +754,86 @@ def generate_pricing_seeds(
 
 def generate_teams_seeds() -> list[Team]:
     return [Team(name="TEST -- Team A (SDK)"), Team(name="TEST -- Team B (SDK)")]
+
+
+def generate_workflow_seeds(
+    seeded_parameter_groups: list[ParameterGroup], seeded_parameters: list[Parameter]
+) -> list[Workflow]:
+    def _get_param_from_id(seeded_parameters, param_id):
+        for x in seeded_parameters:
+            if x.id == param_id:
+                return x
+
+    return [
+        Workflow(
+            name="TEST - Workflow 1",
+            parameter_group_setpoints=[
+                ParameterGroupSetpoints(
+                    parameter_group=seeded_parameter_groups[0],
+                    parameter_setpoints=[
+                        ParameterSetpoint(
+                            parameter_id=seeded_parameter_groups[0].parameters[0].id,
+                            value="25.0",
+                            unit=seeded_parameter_groups[0].parameters[0].unit,
+                        ),
+                    ],
+                )
+            ],
+        ),
+        Workflow(
+            name="TEST - Workflow 2",
+            parameter_group_setpoints=[
+                ParameterGroupSetpoints(
+                    parameter_group=seeded_parameter_groups[1],
+                    parameter_setpoints=[
+                        ParameterSetpoint(
+                            parameter_id=seeded_parameter_groups[1].parameters[0].id,
+                            value="25.0",
+                            unit=seeded_parameter_groups[1].parameters[0].unit,
+                        ),
+                        ParameterSetpoint(
+                            parameter=_get_param_from_id(
+                                seeded_parameters, seeded_parameter_groups[1].parameters[1].id
+                            ),  # Make sure setting from the parameter works
+                            intervals=[
+                                Interval(
+                                    value="1.1", unit=seeded_parameter_groups[1].parameters[1].unit
+                                ),
+                                Interval(
+                                    value="2.2", unit=seeded_parameter_groups[1].parameters[1].unit
+                                ),
+                            ],
+                        ),
+                    ],
+                )
+            ],
+        ),
+        Workflow(
+            name="TEST - Workflow 3",
+            parameter_group_setpoints=[
+                ParameterGroupSetpoints(
+                    parameter_group=seeded_parameter_groups[2],
+                    parameter_setpoints=[
+                        ParameterSetpoint(
+                            parameter=_get_param_from_id(
+                                seeded_parameters, seeded_parameter_groups[2].parameters[1].id
+                            ),  # make sure setting from a parameter works
+                            value="12.2",
+                            unit=seeded_parameter_groups[2].parameters[1].unit,
+                        ),
+                        ParameterSetpoint(
+                            parameter_id=seeded_parameter_groups[2].parameters[0].id,
+                            intervals=[
+                                Interval(
+                                    value="1.1", unit=seeded_parameter_groups[2].parameters[0].unit
+                                ),
+                                Interval(
+                                    value="2.2", unit=seeded_parameter_groups[2].parameters[0].unit
+                                ),
+                            ],
+                        ),
+                    ],
+                )
+            ],
+        ),
+    ]

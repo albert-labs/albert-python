@@ -26,6 +26,7 @@ from albert.collections.teams import TeamsCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
+from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.session import AlbertSession
 from albert.utils.client_credentials import ClientCredentials
@@ -167,6 +168,10 @@ class Albert:
     @property	
     def files(self) -> FileCollection:
         return FileCollection(session=self.session)
+
+    @property
+    def workflows(self) -> WorkflowCollection:
+        return WorkflowCollection(session=self.session)
 
     @property
     def btdatasets(self) -> BTDatasetCollection:

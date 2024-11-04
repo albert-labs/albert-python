@@ -15,6 +15,7 @@ from albert.resources.data_templates import DataTemplate
 from albert.resources.inventory import InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
+from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
 from albert.resources.roles import Role
@@ -22,6 +23,7 @@ from albert.resources.sheets import Sheet
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
+from albert.resources.workflows import Workflow
 from albert.resources.worksheets import Worksheet
 from albert.utils.client_credentials import ClientCredentials
 from albert.utils.exceptions import BadRequestError, ForbiddenError, NotFoundError
@@ -44,6 +46,7 @@ from tests.seeding import (
     generate_teams_seeds,
     generate_unit_seeds,
     generate_user_seeds,
+    generate_workflow_seeds,
 )
 
 
@@ -356,7 +359,7 @@ def seeded_parameters(client: Albert) -> Iterator[list[Parameter]]:
 @pytest.fixture(scope="session")
 def seeded_parameter_groups(
     client: Albert, seeded_parameters, seeded_tags, seeded_units
-) -> Iterator[list[Parameter]]:
+) -> Iterator[list[ParameterGroup]]:
     seeded = []
     for parameter_group in generate_parameter_group_seeds(
         seeded_parameters=seeded_parameters, seeded_tags=seeded_tags, seeded_units=seeded_units
@@ -413,3 +416,20 @@ def seeded_teams(client: Albert):
     for t in seeded:
         with suppress(NotFoundError):
             client.teams.delete(team_id=t.id)  # delete all teams -> "cleanup"
+
+
+@pytest.fixture(scope="session")
+def seeded_workflows(
+    client: Albert,
+    seeded_parameter_groups: list[ParameterGroup],
+    seeded_parameters: list[Parameter],
+) -> Iterator[Workflow]:
+    seeded = []
+    all_workflows = generate_workflow_seeds(
+        seeded_parameter_groups=seeded_parameter_groups, seeded_parameters=seeded_parameters
+    )
+    for wf in all_workflows:
+        seeded.append(client.workflows.create(workflow=wf))
+    yield seeded
+    # workflows cannot be deleted
+
