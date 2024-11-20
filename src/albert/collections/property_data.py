@@ -199,6 +199,26 @@ class PropertyDataCollection(BaseCollection):
         else:
             return self.get_all_task_properties(task_id=task_id)
 
+    def delete_task_property_row(
+        self,
+        *,
+        task_id: str,
+        inventory_id: str,
+        block_id: str | None = None,
+        lot_id: str | None = None,
+        interval_row: str | None,
+    ) -> None:
+        if not task_id.startswith("TAS"):
+            task_id = f"TAS{task_id}"
+        if not inventory_id.startswith("INV"):
+            inventory_id = f"INV{inventory_id}"
+        url = f"{self.base_path}/{task_id}?blockId={block_id}&inventoryId={inventory_id}"
+        if lot_id is not None:
+            url = f"{url}&lotId={lot_id}"
+        if interval_row is not None:
+            url = f"{url}&intervalRow={interval_row}"
+        self.session.delete(url=url)
+
     ################### Methods to support calculated value patches ##################
 
     def _form_calculated_task_property_patches(

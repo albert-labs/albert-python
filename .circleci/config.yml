@@ -2,8 +2,27 @@ version: "2.1"
 
 orbs:
   python: circleci/python@2.1.1
+  snyk: snyk/snyk@1.1.2
 
 jobs:
+  snyk-app-scan:
+    snyk-app-scan:
+    docker:
+      - image: cimg/python:3.10.15
+    resource_class: small
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: poetry
+      - run:
+          name: Install Snyk
+          command: |
+            pip install snyk
+      - snyk/scan:
+          fail-on-issues: false
+          monitor-on-build: true
+          severity-threshold: high
+          token-variable: SNYK_TOKEN
   test:
     executor:
       name: python/default
@@ -70,6 +89,9 @@ jobs:
 workflows:
   main:
     jobs:
+      - snyk-app-scan:
+          name: Snyk App Scan
+          context: ds-dev
       - test:
           name: Test
           context: ds-dev

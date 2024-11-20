@@ -2,4 +2,4 @@ from albert.albert import Albert
 
 __all__ = ["Albert"]
 
-__version__ = "0.3.12"
+__version__ = "0.3.13"
