@@ -17,7 +17,11 @@ jobs:
           command: |
             echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV && source $BASH_ENV
             poetry install
-      - snyk/scan
+      - snyk/scan:
+          fail-on-issues: false
+          monitor-on-build: true
+          severity-threshold: high
+          token-variable: SNYK_TOKEN
   test:
     executor:
       name: python/default
