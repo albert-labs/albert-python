@@ -7,7 +7,7 @@ orbs:
 jobs:
   snyk-app-scan:
     docker:
-      - image: circleci/python:3.7.4
+      - image: circleci/python:3.10.15
     steps:
       - checkout
       - run:
