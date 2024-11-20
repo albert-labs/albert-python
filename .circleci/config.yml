@@ -11,6 +11,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Ensure pip is installed
+          command: |
+            python -m ensurepip --upgrade
+      - run:
           name: Install Python Dependencies
           command: |
             echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV && source $BASH_ENV
