@@ -2,7 +2,7 @@ version: "2.1"
 
 orbs:
   python: circleci/python@2.1.1
-  snyk: snyk/snyk@2.2.0
+  snyk: snyk/snyk@1.1.2
 
 jobs:
   snyk-app-scan:
