@@ -18,6 +18,7 @@ jobs:
           name: Install Python Dependencies
           command: |
             echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV && source $BASH_ENV
+            python -m ensurepip --upgrade
             pip install .
       - snyk/scan
   test:
