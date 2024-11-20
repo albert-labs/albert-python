@@ -2,27 +2,20 @@ version: "2.1"
 
 orbs:
   python: circleci/python@2.1.1
-  snyk: snyk/snyk@1.1.2
+  snyk: snyk/snyk@1.4.0
 
 jobs:
   snyk-app-scan:
-    snyk-app-scan:
     docker:
-      - image: cimg/python:3.10.15
-    resource_class: small
+      - image: circleci/python:3.7.4
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: poetry
       - run:
-          name: Install Snyk
+          name: Install Python Dependencies
           command: |
-            pip install snyk
-      - snyk/scan:
-          fail-on-issues: false
-          monitor-on-build: true
-          severity-threshold: high
-          token-variable: SNYK_TOKEN
+            echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV && source $BASH_ENV
+            pip install .
+      - snyk/scan
   test:
     executor:
       name: python/default
