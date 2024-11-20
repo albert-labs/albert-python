@@ -10,11 +10,8 @@ jobs:
       - image: cimg/python:3.10.15
     steps:
       - checkout
-      - run:
-          name: Install pip
-          command: |
-            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-            python get-pip.py
+      - python/install-packages:
+          pkg-manager: pip
       - run:
           name: Install Python Dependencies
           command: |
