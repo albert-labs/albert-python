@@ -25,8 +25,13 @@ class DataTemplateCollection(BaseCollection):
         return DataTemplate(**response.json())
 
     def get_by_ids(self, *, ids: list[str]) -> list[DataTemplate]:
-        response = self.session.get(f"{self.base_path}/ids", params={"id": ids})
-        return [DataTemplate(**item) for item in response.json()["Items"]]
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
+        return [
+            DataTemplate(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     def get_by_name(self, *, name: str) -> DataTemplate | None:
         hits = list(self.list(name=name))
@@ -38,7 +43,7 @@ class DataTemplateCollection(BaseCollection):
     def list(
         self,
         *,
-        limit: int = 25,
+        limit: int = 100,
         offset: int = 0,
         order_by: OrderBy = OrderBy.DESCENDING,
         name: str | None = None,

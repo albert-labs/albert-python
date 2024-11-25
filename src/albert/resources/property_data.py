@@ -49,13 +49,13 @@ class Trial(BaseAlbertModel):
     trial_number: int = Field(alias="trialNo")
     visible_trial_number: int = Field(default=1, alias="visibleTrialNo")
     void: bool = Field(default=False)
-    data_columns: list[PropertyValue] = Field(alias="DataColumns")
+    data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
 
 
 class DataInterval(BaseAlbertModel):
     interval_combination: str = Field(alias="intervalCombination")
     void: bool = Field(default=False)
-    trials: list[Trial] = Field(alias="Trials")
+    trials: list[Trial] = Field(default_factory=list, alias="Trials")
     name: str | None = Field(default=None)
 
 
@@ -66,7 +66,7 @@ class TaskData(BaseAlbertModel):
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
     finial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
     data_template: SerializeAsEntityLink[DataTemplate] = Field(alias="Datatemplate")
-    data: DataInterval
+    data: list[DataInterval] = Field(default_factory=list, alias="Data")
 
 
 class CustomInventoryDataColumn(BaseAlbertModel):
@@ -100,25 +100,25 @@ class CheckPropertyData(BaseResource):
 
 class InventoryPropertyData(BaseResource):
     inventory_id: str = Field(alias="inventoryId")
-    inventory_name: str | None = Field(alias="inventoryName", default=None)
-    task_property_data: list[TaskData] = Field(alias="Task")
-    custom_property_data: list[CustomData] = Field(alias="NoTask")
+    inventory_name: str | None = Field(default=None, alias="inventoryName")
+    task_property_data: list[TaskData] = Field(default_factory=list, alias="Task")
+    custom_property_data: list[CustomData] = Field(default_factory=list, alias="NoTask")
 
 
 class TaskPropertyData(BaseResource):
     entity: Literal[DataEntity.TASK] = DataEntity.TASK
     parent_id: str = Field(..., alias="parentId")
-    task_id: str | None = Field(None, alias="id")
-    inventory: InventoryInformation | None = Field(alias="Inventory", default=None)
-    category: DataEntity | None = Field(None)
+    task_id: str | None = Field(default=None, alias="id")
+    inventory: InventoryInformation | None = Field(default=None, alias="Inventory")
+    category: DataEntity | None = Field(default=None)
     initial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
-        alias="InitialWorkflow", default=None
+        default=None, alias="InitialWorkflow"
     )
     finial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
-        alias="FinalWorkflow", default=None
+        default=None, alias="FinalWorkflow"
     )
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
-        alias="DataTemplate", default=None
+        default=None, alias="DataTemplate"
     )
     data: list[DataInterval] = Field(alias="Data", frozen=True, exclude=True)
     block_id: str | None = Field(alias="blockId", default=None)
@@ -151,7 +151,7 @@ class TaskDataColumnValue(TaskDataColumn):
 
 class TaskTrialData(BaseAlbertModel):
     trial_number: int | None = Field(alias="trialNo", default=None)
-    data_columns: list[TaskDataColumnValue] = Field(alias="DataColumns")
+    data_columns: list[TaskDataColumnValue] = Field(alias="DataColumns", default_factory=list)
 
 
 class InventoryDataColumn(BaseAlbertModel):
@@ -195,5 +195,7 @@ class PropertyDataPatchDatum(PatchDatum):
 class InventoryPropertyDataCreate(BaseResource):
     entity: Literal[DataEntity.INVENTORY] = Field(default=DataEntity.INVENTORY)
     inventory_id: str = Field(alias="parentId")
-    data_columns: list[InventoryDataColumn] = Field(alias="DataColumn", max_length=1)
+    data_columns: list[InventoryDataColumn] = Field(
+        default_factory=list, max_length=1, alias="DataColumn"
+    )
     status: PropertyDataStatus | None = Field(default=None)

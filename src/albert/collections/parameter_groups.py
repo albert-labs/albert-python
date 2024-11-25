@@ -21,9 +21,13 @@ class ParameterGroupCollection(BaseCollection):
         return ParameterGroup(**response.json())
 
     def get_by_ids(self, *, ids: list[str]) -> ParameterGroup:
-        path = f"{self.base_path}/ids"
-        response = self.session.get(path, params={"id": ids})
-        return [ParameterGroup(**item) for item in response.json()["Items"]]
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
+        return [
+            ParameterGroup(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     def list(
         self,

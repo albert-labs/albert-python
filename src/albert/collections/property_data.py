@@ -39,7 +39,8 @@ class PropertyDataCollection(BaseCollection):
 
     def get_properties_on_inventory(self, *, inventory_id: str) -> InventoryPropertyData:
         """Returns all the properties of an inventory item."""
-        response = self.session.get(url=f"{self.base_path}?entity=inventory&id[]={inventory_id}")
+        params = {"entity": "inventory", "id": [inventory_id]}
+        response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
         return InventoryPropertyData(**response_json[0])
 
@@ -102,24 +103,34 @@ class PropertyDataCollection(BaseCollection):
     ) -> TaskPropertyData:
         if not task_id.startswith("TAS"):
             task_id = f"TAS{task_id}"
-        url = f"{self.base_path}?entity=task&blockId={block_id}&id={task_id}&inventoryId={inventory_id}"
-        if lot_id is not None:
-            url = f"{url}&lotId={lot_id}"
 
-        response = self.session.get(url=url)
+        params = {
+            "entity": "task",
+            "blockId": block_id,
+            "id": task_id,
+            "inventoryId": inventory_id,
+            "lotId": lot_id,
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+
+        response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
         return TaskPropertyData(**response_json[0])
 
     def check_for_task_data(self, *, task_id: str) -> list[CheckPropertyData]:
         if not task_id.startswith("TAS"):
             task_id = f"TAS{task_id}"
+
         task_info = self._get_task_from_id(id=task_id)
 
-        blk_ids = [x.id for x in task_info.blocks]
-        blk_query = "&".join([f"id={x}" for x in blk_ids])
-        response = self.session.get(
-            url=f"{self.base_path}?entity=block&action=checkdata&{blk_query}&parentId={task_id}"
-        )
+        params = {
+            "entity": "block",
+            "action": "checkdata",
+            "parentId": task_id,
+            "id": [x.id for x in task_info.blocks],
+        }
+
+        response = self.session.get(url=self.base_path, params=params)
         return [CheckPropertyData(**x) for x in response.json()]
 
     def check_block_interval_for_data(
@@ -127,9 +138,16 @@ class PropertyDataCollection(BaseCollection):
     ) -> CheckPropertyData:
         if not task_id.startswith("TAS"):
             task_id = f"TAS{task_id}"
-        response = self.session.get(
-            url=f"{self.base_path}?entity=block&action=checkdata&id={block_id}&parentId={task_id}&intervalId={interval_id}"
-        )
+
+        params = {
+            "entity": "block",
+            "action": "checkdata",
+            "id": block_id,
+            "parentId": task_id,
+            "intervalId": interval_id,
+        }
+
+        response = self.session.get(url=self.base_path, params=params)
         return CheckPropertyData(response.json())
 
     def get_all_task_properties(self, *, task_id: str) -> list[TaskPropertyData]:
@@ -177,14 +195,20 @@ class PropertyDataCollection(BaseCollection):
             task_id = f"TAS{task_id}"
         if not inventory_id.startswith("INV"):
             inventory_id = f"INV{inventory_id}"
-        url = f"{self.base_path}/{task_id}?blockId={block_id}&inventoryId={inventory_id}&autoCalculate=true&history=true"
-        if lot_id is not None:
-            url = f"{url}&lotId={lot_id}"
 
+        params = {
+            "blockId": block_id,
+            "inventoryId": inventory_id,
+            "lotId": lot_id,
+            "autoCalculate": "true",
+            "history": "true",
+        }
+        params = {k: v for k, v in params.items() if v is not None}
         response = self.session.post(
-            url=url,
+            url=f"{self.base_path}/{task_id}",
             json=[x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties],
         )
+
         registered_properties = [
             TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
         ]

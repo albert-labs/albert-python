@@ -33,8 +33,13 @@ class WorkflowCollection(BaseCollection):
         return Workflow(**response.json())
 
     def get_by_ids(self, *, ids: list[str]) -> Workflow:
-        response = self.session.get(f"{self.base_path}/ids", params={"id": ids})
-        return [Workflow(**item) for item in response.json()["Items"]]
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
+        return [
+            Workflow(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     def list(self, limit: int = 50) -> Iterator[Workflow]:
         def deserialize(items: list[dict]) -> list[Workflow]:

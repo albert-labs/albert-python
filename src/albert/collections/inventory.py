@@ -186,17 +186,25 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The retrieved inventory items.
         """
+        url = f"{self.base_path}/ids"
         ids = [x if x.startswith("INV") else f"INV{x}" for x in ids]
-        response = self.session.get(
-            f"{self.base_path}/ids",
-            params={"id": ids},
-        )
-        return [InventoryItem(**item) for item in response.json()["Items"]]
+        batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
+        return [
+            InventoryItem(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     def get_specs(self, *, ids: list[str]) -> list[InventorySpecList]:
         url = f"{self.base_path}/specs"
-        response = self.session.get(url, params={"id": ids})
-        return TypeAdapter(list[InventorySpecList]).validate_python(response.json())
+        ids = [x if x.startswith("INV") else f"INV{x}" for x in ids]
+        batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
+        ta = TypeAdapter(InventorySpecList)
+        return [
+            ta.validate_python(item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()
+        ]
 
     def delete(self, *, id: str) -> None:
         """
