@@ -90,7 +90,7 @@ workflows:
     jobs:
       - snyk-app-scan:
           name: Snyk App Scan
-          context: ds-dev
+          context: dev
       - test:
           name: Test
           context: ds-dev

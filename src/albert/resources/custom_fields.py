@@ -63,7 +63,7 @@ class CustomField(BaseResource):
     id : str | None
         The Albert ID of the custom field.
     field_type : FieldType
-        The type of the custom field. Allowed values are `list` and `string`. String fields cannot be searchable or multiselect and are used to set uncontrolled metadata. List fields can be searchable and multiselect and are used to set controlled metadata.
+        The type of the custom field. Allowed values are `list` and `string`. String fields cannot be searchable and are used to set uncontrolled metadata. List fields can be searchable and are used to set controlled metadata.
     display_name : str
         The display name of the custom field. Can contain spaces.
     searchable : bool | None
@@ -76,14 +76,12 @@ class CustomField(BaseResource):
         Whether the custom field is a lookup column, optional. Defaults to False. Only allowed for inventories.
     lookup_row : bool | None
         Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
-    multiselect : bool | None
-        Whether the custom field is a multiselect field, optional. Defaults to False.
     category : FieldCategory | None
         The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
     min : int | None
-        The minimum value of the custom field, optional. Defaults to None. Only used in list fields with multiselect.
+        The minimum value of the custom field, optional. Defaults to None.
     max : int | None
-        The maximum value of the custom field, optional. Defaults to None. Only used in list fields with multiselect.
+        The maximum value of the custom field, optional. Defaults to None.
     entity_categories : list[EntityCategory] | None
         The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
     ui_components : list[UIComponent] | None
@@ -99,7 +97,6 @@ class CustomField(BaseResource):
     hidden: bool | None = Field(default=None)
     lookup_column: bool | None = Field(default=None, alias="lkpColumn")
     lookup_row: bool | None = Field(default=None, alias="lkpRow")
-    multiselect: bool | None = Field(default=None)
     category: FieldCategory | None = Field(default=None)
     min: int | None = Field(default=None)
     max: int | None = Field(default=None)
@@ -111,11 +108,8 @@ class CustomField(BaseResource):
         if self.field_type == FieldType.LIST:
             if self.category is None:
                 raise ValueError("Category must be set for list fields")
-        elif self.field_type == FieldType.STRING:
-            if self.searchable is not None:
-                raise ValueError("Searchable must be None for string fields")
-            if self.multiselect is not None:
-                raise ValueError("Multiselect must be None for string fields")
+        elif self.field_type == FieldType.STRING and self.searchable is not None:
+            raise ValueError("Searchable must be None for string fields")
         if self.lookup_column is not None and self.service != ServiceType.INVENTORIES:
             raise ValueError("Lookup column is only allowed for inventories")
         if self.lookup_row is not None and (

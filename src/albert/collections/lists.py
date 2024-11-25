@@ -101,7 +101,7 @@ class ListsCollection(BaseCollection):
         )
         return ListItem(**response.json())
 
-    def get_matching_item(self, *, name: str, list_type) -> ListItem | None:
+    def get_matching_item(self, *, name: str, list_type: str) -> ListItem | None:
         for list_item in self.list(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():
                 return list_item
