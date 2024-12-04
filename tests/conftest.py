@@ -581,4 +581,3 @@ def seeded_notes(
     for note in seeded:
         with suppress(NotFoundError):
             client.notes.delete(id=note.id)
-

@@ -185,7 +185,7 @@ class Albert:
     def teams(self) -> TeamsCollection:
         return TeamsCollection(session=self.session)
 
-    @property	
+    @property
     def files(self) -> FileCollection:
         return FileCollection(session=self.session)
 
