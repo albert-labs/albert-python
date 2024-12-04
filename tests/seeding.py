@@ -34,7 +34,6 @@ from albert.resources.projects import (
 )
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
-from albert.resources.teams import Team
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -45,6 +44,7 @@ from albert.resources.tasks import (
     TaskCategory,
     TaskPriority,
 )
+from albert.resources.teams import Team
 from albert.resources.units import Unit, UnitCategory
 from albert.resources.users import User
 from albert.resources.workflows import (

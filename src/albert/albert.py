@@ -25,8 +25,8 @@ from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.tags import TagCollection
-from albert.collections.teams import TeamsCollection
 from albert.collections.tasks import TaskCollection
+from albert.collections.teams import TeamsCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
