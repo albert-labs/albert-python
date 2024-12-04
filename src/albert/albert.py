@@ -1,5 +1,6 @@
 import os
 
+from albert.collections.attachments import AttachmentCollection
 from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
 from albert.collections.btmodel import BTModelCollection, BTModelSessionCollection
@@ -14,15 +15,18 @@ from albert.collections.inventory import InventoryCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
 from albert.collections.lots import LotCollection
+from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.projects import ProjectCollection
+from albert.collections.property_data import PropertyDataCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.tags import TagCollection
 from albert.collections.teams import TeamsCollection
+from albert.collections.tasks import TaskCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
@@ -78,6 +82,10 @@ class Albert:
         return ProjectCollection(session=self.session)
 
     @property
+    def attachments(self) -> AttachmentCollection:
+        return AttachmentCollection(session=self.session)
+
+    @property
     def tags(self) -> TagCollection:
         return TagCollection(session=self.session)
 
@@ -126,6 +134,10 @@ class Albert:
         return ListsCollection(session=self.session)
 
     @property
+    def notes(self) -> NotesCollection:
+        return NotesCollection(session=self.session)
+
+    @property
     def custom_fields(self) -> CustomFieldCollection:
         return CustomFieldCollection(session=self.session)
 
@@ -142,6 +154,10 @@ class Albert:
         return WorksheetCollection(session=self.session)
 
     @property
+    def tasks(self) -> TaskCollection:
+        return TaskCollection(session=self.session)
+
+    @property
     def templates(self) -> CustomTemplatesCollection:
         return CustomTemplatesCollection(session=self.session)
 
@@ -152,6 +168,10 @@ class Albert:
     @property
     def parameters(self) -> ParameterCollection:
         return ParameterCollection(session=self.session)
+
+    @property
+    def property_data(self) -> PropertyDataCollection:
+        return PropertyDataCollection(session=self.session)
 
     @property
     def storage_locations(self) -> StorageLocationsCollection:

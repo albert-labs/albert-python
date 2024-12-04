@@ -1,32 +1,38 @@
 import time
+import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 
+import jwt
 import pytest
 
 from albert import Albert
 from albert.collections.worksheets import WorksheetCollection
-from albert.resources.base import Status
+from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from albert.resources.btdataset import BTDataset
+from albert.resources.btinsight import BTInsight
+from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
-from albert.resources.inventory import InventoryItem
+from albert.resources.files import FileCategory, FileInfo, FileNamespace
+from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
 from albert.resources.roles import Role
-from albert.resources.sheets import Sheet
+from albert.resources.sheets import Component, Sheet
 from albert.resources.tags import Tag
+from albert.resources.tasks import BaseTask
 from albert.resources.units import Unit
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
 from albert.resources.worksheets import Worksheet
 from albert.utils.client_credentials import ClientCredentials
-from albert.utils.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from tests.seeding import (
     generate_cas_seeds,
     generate_company_seeds,
@@ -37,6 +43,7 @@ from tests.seeding import (
     generate_list_item_seeds,
     generate_location_seeds,
     generate_lot_seeds,
+    generate_note_seeds,
     generate_parameter_group_seeds,
     generate_parameter_seeds,
     generate_pricing_seeds,
@@ -45,7 +52,6 @@ from tests.seeding import (
     generate_tag_seeds,
     generate_teams_seeds,
     generate_unit_seeds,
-    generate_user_seeds,
     generate_workflow_seeds,
 )
 
@@ -63,7 +69,63 @@ def client() -> Albert:
 
 
 @pytest.fixture(scope="session")
-def seeded_custom_fields(client: Albert):
+def seed_prefix() -> str:
+    return f"SDK-Test-{uuid.uuid4()}"
+
+
+### STATIC RESOURCES -- CANNOT BE DELETED
+
+
+@pytest.fixture(scope="session")
+def static_image_file(client: Albert) -> FileInfo:
+    try:
+        r = client.files.get_by_name(name="dontpanic.jpg", namespace=FileNamespace.RESULT)
+    except:
+        with open("tests/data/dontpanic.jpg", "rb") as file:
+            client.files.sign_and_upload_file(
+                data=file,
+                name="dontpanic.jpg",
+                namespace=FileNamespace.RESULT,
+                content_type="image/jpeg",
+            )
+        r = client.files.get_by_name(name="dontpanic.jpg", namespace=FileNamespace.RESULT)
+    return r
+
+
+@pytest.fixture(scope="session")
+def static_sds_file(client: Albert) -> FileInfo:
+    try:
+        r = client.files.get_by_name(name="SDS_HCL.pdf", namespace=FileNamespace.RESULT)
+    except:
+        with open("tests/data/SDS_HCL.pdf", "rb") as file:
+            client.files.sign_and_upload_file(
+                data=file,
+                name="SDS_HCL.pdf",
+                namespace=FileNamespace.RESULT,
+                content_type="application/pdf",
+                category=FileCategory.SDS,
+            )
+        r = client.files.get_by_name(name="SDS_HCL.pdf", namespace=FileNamespace.RESULT)
+    return r
+
+
+@pytest.fixture(scope="session")
+def static_user(client: Albert) -> User:
+    # Users cannot be deleted, so we just pull the SDK client user for testing
+    # Do not write to/modify this resource since it is shared across all test runs
+    claims = jwt.decode(client.session._access_token, options={"verify_signature": False})
+    user_id = claims["id"]
+    return client.users.get_by_id(id=user_id)
+
+
+@pytest.fixture(scope="session")
+def static_roles(client: Albert) -> list[Role]:
+    # Roles are not deleted or created. We just use the existing roles.
+    return list(client.roles.list())
+
+
+@pytest.fixture(scope="session")
+def static_custom_fields(client: Albert) -> list[CustomField]:
     seeded = []
     for cf in generate_custom_fields():
         try:
@@ -74,104 +136,16 @@ def seeded_custom_fields(client: Albert):
             if registered_cf is None:  # If it was something else, raise the error
                 raise e
         seeded.append(registered_cf)
-    yield seeded
-
-    # Custom Fields cannot be deleted
+    return seeded
 
 
 @pytest.fixture(scope="session")
-def seeded_projects(client: Albert, seeded_locations) -> Iterator[list[Project]]:
-    # Seed the projects using seeded locations
-
+def static_lists(
+    client: Albert,
+    static_custom_fields: list[CustomField],
+) -> list[ListItem]:
     seeded = []
-
-    for project in generate_project_seeds(seeded_locations=seeded_locations):
-        existing = client.projects.list()
-        for m in existing:
-            if m.description.lower() == project.description.lower():
-                client.projects.delete(project_id=m.id)
-        created_project = client.projects.create(project=project)
-        seeded.append(created_project)
-
-    yield seeded  # Provide the seeded projects to the test
-
-    # Teardown - delete the seeded projects after the test
-    for project in seeded:
-        with suppress(NotFoundError):
-            client.projects.delete(project_id=project.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_cas(client: Albert) -> Iterator[list[Cas]]:
-    # Seed the CAS
-    seeded = []
-    for cas in generate_cas_seeds():
-        created_cas = client.cas_numbers.create(cas=cas)
-        seeded.append(created_cas)
-    time.sleep(1.5)  # avoid race condition while it populated through DBs
-    yield seeded  # Provide the seeded CAS to the test
-
-    # Teardown - delete the seeded CAS after the test
-    for cas in seeded:
-        with suppress(BadRequestError | NotFoundError):
-            client.cas_numbers.delete(cas_id=cas.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_companies(client: Albert) -> Iterator[list[Company]]:
-    # Seed the companies
-    seeded = []
-    for company in generate_company_seeds():
-        created_company = client.companies.create(company=company)
-        seeded.append(created_company)
-
-    yield seeded  # Provide the seeded companies to the test
-
-    # Teardown - delete the seeded companies after the test
-    # ForbiddenError is raised when trying to delete a company that has InventoryItems associated with it (may be a bug. Teams discussion ongoing)
-    for company in seeded:
-        with suppress(NotFoundError, ForbiddenError, BadRequestError):
-            client.companies.delete(id=company.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_locations(client: Albert) -> Iterator[list[Location]]:
-    # Seed the Locations
-    seeded = []
-    for location in generate_location_seeds():
-        created_location = client.locations.create(location=location)
-        seeded.append(created_location)
-
-    yield seeded  # Provide the seeded Locations to the test
-
-    # Teardown - delete the seeded Locations after the test
-    for location in seeded:
-        with suppress(NotFoundError):
-            client.locations.delete(location_id=location.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_storage_locations(
-    client: Albert, seeded_locations: list[Location]
-) -> Iterator[list[Location]]:
-    seeded = []
-    for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
-        created_location = client.storage_locations.create(storage_location=storage_location)
-        seeded.append(created_location)
-    yield seeded
-
-    for storage_location in seeded:
-        with suppress(NotFoundError):
-            client.storage_locations.delete(id=storage_location.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_lists(
-    client: Albert, seeded_custom_fields: list[CustomField]
-) -> Iterator[list[ListItem]]:
-    seeded = []
-    # Seed the lists
-    for list_item in generate_list_item_seeds(seeded_custom_fields=seeded_custom_fields):
+    for list_item in generate_list_item_seeds(seeded_custom_fields=static_custom_fields):
         try:
             created_list = client.lists.create(list_item=list_item)
         except BadRequestError as e:
@@ -182,124 +156,202 @@ def seeded_lists(
             if created_list is None:
                 raise e
         seeded.append(created_list)
-
-    yield seeded
-    # NOTE: There is NO delete method for lists. This is because the list Items cannot be deleted in the Albert API.
+    return seeded
 
 
 @pytest.fixture(scope="session")
-def seeded_tags(client: Albert) -> Iterator[list[Tag]]:
-    # Seed the tags
+def static_btdataset(client: Albert) -> BTDataset:
+    return client.btdatasets.get_by_id(id="DST1")
+
+
+@pytest.fixture(scope="session")
+def static_btinsight(client: Albert) -> BTInsight:
+    return client.btinsights.get_by_id(id="INS10")
+
+
+@pytest.fixture(scope="session")
+def static_btmodelsession(client: Albert) -> BTModelSession:
+    return client.btmodelsessions.get_by_id(id="MDS1")
+
+
+@pytest.fixture(scope="session")
+def static_btmodel(static_btmodelsession: BTModelSession) -> BTModel:
+    return static_btmodelsession.models.get_by_id(id="MDL1")
+
+
+### SEEDED RESOURCES -- CREATED ONCE PER SESSION, CAN BE DELETED
+
+
+@pytest.fixture(scope="session")
+def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
     seeded = []
-    for tag in generate_tag_seeds():
+    for cas in generate_cas_seeds(seed_prefix):
+        created_cas = client.cas_numbers.create(cas=cas)
+        seeded.append(created_cas)
+
+    # Avoid race condition while it populated through DBs
+    time.sleep(1.5)
+
+    yield seeded
+
+    for cas in seeded:
+        with suppress(BadRequestError | NotFoundError):
+            client.cas_numbers.delete(id=cas.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
+    seeded = []
+    for location in generate_location_seeds(seed_prefix):
+        created_location = client.locations.create(location=location)
+        seeded.append(created_location)
+
+    yield seeded
+
+    for location in seeded:
+        with suppress(NotFoundError):
+            client.locations.delete(id=location.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_projects(
+    client: Albert,
+    seed_prefix: str,
+    seeded_locations: list[Location],
+) -> Iterator[list[Project]]:
+    seeded = []
+    for project in generate_project_seeds(
+        seed_prefix=seed_prefix, seeded_locations=seeded_locations
+    ):
+        created_project = client.projects.create(project=project)
+        seeded.append(created_project)
+
+    yield seeded
+
+    for project in seeded:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_companies(client: Albert, seed_prefix: str) -> Iterator[list[Company]]:
+    seeded = []
+    for company in generate_company_seeds(seed_prefix):
+        created_company = client.companies.create(company=company)
+        seeded.append(created_company)
+
+    yield seeded
+
+    # ForbiddenError is raised when trying to delete a company that has InventoryItems associated with it (may be a bug. Teams discussion ongoing)
+    for company in seeded:
+        with suppress(NotFoundError, ForbiddenError, BadRequestError):
+            client.companies.delete(id=company.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_storage_locations(
+    client: Albert,
+    seeded_locations: list[Location],
+) -> Iterator[list[Location]]:
+    seeded = []
+    for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
+        created_location = client.storage_locations.create(storage_location=storage_location)
+        seeded.append(created_location)
+
+    yield seeded
+
+    for storage_location in seeded:
+        with suppress(NotFoundError):
+            client.storage_locations.delete(id=storage_location.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
+    seeded = []
+    for tag in generate_tag_seeds(seed_prefix):
         created_tag = client.tags.create(tag=tag)
         seeded.append(created_tag)
 
-    yield seeded  # Provide the seeded tags to the test
+    yield seeded
 
-    # Teardown - delete the seeded tags after the test
     for tag in seeded:
         with suppress(NotFoundError, BadRequestError):
-            client.tags.delete(tag_id=tag.id)
+            client.tags.delete(id=tag.id)
 
 
 @pytest.fixture(scope="session")
-def seeded_units(client: Albert) -> Iterator[list[Unit]]:
-    # Seed the units
+def seeded_units(client: Albert, seed_prefix: str) -> Iterator[list[Unit]]:
     seeded = []
-    for unit in generate_unit_seeds():
+    for unit in generate_unit_seeds(seed_prefix):
         created_unit = client.units.create(unit=unit)
         seeded.append(created_unit)
-    time.sleep(1.5)  # avoid race condition while it populated through DBs
-    yield seeded  # Provide the seeded units to the test
 
-    # Teardown - delete the seeded units after the test
+    # Avoid race condition while it populated through search DBs
+    time.sleep(1.5)
+
+    yield seeded
+
     for unit in seeded:
         with suppress(NotFoundError, BadRequestError):
-            client.units.delete(unit_id=unit.id)
+            client.units.delete(id=unit.id)
 
 
 @pytest.fixture(scope="session")
-def seeded_data_columns(client: Albert, seeded_units: list[Unit]) -> Iterator[list[DataColumn]]:
-    # Seed the data columns
+def seeded_data_columns(
+    client: Albert,
+    seed_prefix: str,
+    seeded_units: list[Unit],
+) -> Iterator[list[DataColumn]]:
     seeded = []
-    for data_column in generate_data_column_seeds(seeded_units=seeded_units):
-        created_data_column = client.data_columns.get_by_name(name=data_column.name)
-        if created_data_column is None:
-            created_data_column = client.data_columns.create(data_column=data_column)
+    for data_column in generate_data_column_seeds(
+        seed_prefix=seed_prefix,
+        seeded_units=seeded_units,
+    ):
+        created_data_column = client.data_columns.create(data_column=data_column)
         seeded.append(created_data_column)
+
+    # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
-    yield seeded  # Provide the seeded data columns to the test
 
-    # tearDown - delete the seeded data columns after the test
+    yield seeded
+
     for data_column in seeded:
-        with suppress(NotFoundError):
-            client.data_columns.delete(data_column_id=data_column.id)
-
-
-@pytest.fixture(scope="session")
-def seeded_roles(client: Albert) -> Iterator[list[Role]]:
-    # Roles are not deleted or created. We just use the existing roles.
-    existing = []
-    for role in client.roles.list():
-        existing.append(role)
-
-    yield existing  # Provide the seeded units to the test
-
-
-@pytest.fixture(scope="session")
-def seeded_users(client: Albert, seeded_roles, seeded_locations) -> Iterator[list[User]]:
-    seeded = []
-    # Here, seeded_roles and seeded_locations will already be lists from the respective fixtures
-
-    for user in generate_user_seeds(seeded_roles=seeded_roles, seeded_locations=seeded_locations):
-        matches = client.users.list(text=user.name)
-        found = False
-        for m in matches:
-            if m.name == user.name:
-                created_user = m
-                created_user.status = Status.ACTIVE.value
-                client.users.update(updated_object=created_user)
-                found = True
-                break
-        if not found:
-            created_user = client.users.create(user=user)
-        seeded.append(created_user)
-    time.sleep(1.5)  # avoid race condition while it populates through DBs
-    yield seeded  # Provide the seeded users to the test
-
-    # Teardown - archive/set inactive
-    for user in seeded:
-        user.status = Status.INACTIVE.value
-        client.users.update(updated_object=user)
+        with suppress(
+            NotFoundError, BadRequestError
+        ):  # used on deleted InventoryItem properties are blocking. Instead of making static to accomidate the unexpected behavior, doing this instead
+            client.data_columns.delete(id=data_column.id)
 
 
 @pytest.fixture(scope="session")
 def seeded_data_templates(
     client: Albert,
+    seed_prefix: str,
+    static_user: User,
     seeded_data_columns: list[DataColumn],
-    seeded_users: list[User],
     seeded_units: list[Unit],
 ) -> Iterator[list[DataTemplate]]:
     seeded = []
     for data_template in generate_data_template_seeds(
+        user=static_user,
+        seed_prefix=seed_prefix,
         seeded_data_columns=seeded_data_columns,
         seeded_units=seeded_units,
-        seeded_users=seeded_users,
     ):
-        dt = client.data_templates.get_by_name(name=data_template.name)
-        if dt is None:
-            dt = client.data_templates.create(data_template=data_template)
+        dt = client.data_templates.create(data_template=data_template)
         seeded.append(dt)
+
+    # Avoid race condition while it populated through search DBs
+    time.sleep(1.5)
+
     yield seeded
+
     for data_template in seeded:
         with suppress(NotFoundError):
-            client.data_templates.delete(data_template_id=data_template.id)
+            client.data_templates.delete(id=data_template.id)
 
 
-# Move to conftest.py in a bit
 @pytest.fixture(scope="session")
-def worksheet(client: Albert, seeded_projects: list[Project]) -> Worksheet:
+def seeded_worksheet(client: Albert, seeded_projects: list[Project]) -> Worksheet:
     collection = WorksheetCollection(session=client.session)
     try:
         wksht = collection.get_by_project_id(project_id=seeded_projects[0].id)
@@ -318,18 +370,24 @@ def worksheet(client: Albert, seeded_projects: list[Project]) -> Worksheet:
 
 
 @pytest.fixture(scope="session")
-def sheet(worksheet: Worksheet) -> Sheet:
-    for s in worksheet.sheets:
+def seeded_sheet(seeded_worksheet: Worksheet) -> Sheet:
+    for s in seeded_worksheet.sheets:
         if s.name.lower().startswith("test"):
             return s
 
 
 @pytest.fixture(scope="session")
 def seeded_inventory(
-    client: Albert, seeded_cas, seeded_tags, seeded_companies, seeded_locations
+    client: Albert,
+    seed_prefix: str,
+    seeded_cas,
+    seeded_tags,
+    seeded_companies,
+    seeded_locations,
 ) -> Iterator[list[InventoryItem]]:
     seeded = []
     for inventory in generate_inventory_seeds(
+        seed_prefix=seed_prefix,
         seeded_cas=seeded_cas,
         seeded_tags=seeded_tags,
         seeded_companies=seeded_companies,
@@ -341,15 +399,16 @@ def seeded_inventory(
     for inventory in seeded:
         # If the inv has been used in a formulation, it cannot be deleted and will give a BadRequestError
         with suppress(NotFoundError, BadRequestError):
-            client.inventory.delete(inventory_id=inventory.id)
+            client.inventory.delete(id=inventory.id)
 
 
 @pytest.fixture(scope="session")
-def seeded_parameters(client: Albert) -> Iterator[list[Parameter]]:
+def seeded_parameters(client: Albert, seed_prefix: str) -> Iterator[list[Parameter]]:
     seeded = []
-    for parameter in generate_parameter_seeds():
+    for parameter in generate_parameter_seeds(seed_prefix):
         created_parameter = client.parameters.create(parameter=parameter)
-        seeded.append(created_parameter)
+        # Extra get_by_id is required to populate the category field on parameter
+        seeded.append(client.parameters.get_by_id(id=created_parameter.id))
     yield seeded
     for parameter in seeded:
         with suppress(NotFoundError):
@@ -358,17 +417,27 @@ def seeded_parameters(client: Albert) -> Iterator[list[Parameter]]:
 
 @pytest.fixture(scope="session")
 def seeded_parameter_groups(
-    client: Albert, seeded_parameters, seeded_tags, seeded_units
+    client: Albert,
+    seed_prefix: str,
+    seeded_parameters,
+    seeded_tags,
+    seeded_units,
 ) -> Iterator[list[ParameterGroup]]:
     seeded = []
     for parameter_group in generate_parameter_group_seeds(
-        seeded_parameters=seeded_parameters, seeded_tags=seeded_tags, seeded_units=seeded_units
+        seed_prefix=seed_prefix,
+        seeded_parameters=seeded_parameters,
+        seeded_tags=seeded_tags,
+        seeded_units=seeded_units,
     ):
         created_parameter_group = client.parameter_groups.create(parameter_group=parameter_group)
         seeded.append(created_parameter_group)
-        time.sleep(1.5)  # avoid race condition while it populates through DBs
+
+    # Avoid race condition while it populates through DBs
+    time.sleep(1.5)
 
     yield seeded
+
     for parameter_group in seeded:
         with suppress(NotFoundError):
             client.parameter_groups.delete(id=parameter_group.id)
@@ -376,7 +445,12 @@ def seeded_parameter_groups(
 
 # PUT on lots is currently bugged. Teams discussion ongoing
 @pytest.fixture(scope="session")
-def seeded_lots(client: Albert, seeded_inventory, seeded_storage_locations, seeded_locations):
+def seeded_lots(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+    seeded_locations,
+):
     seeded = []
     all_lots = generate_lot_seeds(
         seeded_inventory=seeded_inventory,
@@ -384,26 +458,21 @@ def seeded_lots(client: Albert, seeded_inventory, seeded_storage_locations, seed
         seeded_locations=seeded_locations,
     )
     seeded = client.lots.create(lots=all_lots)
-    # seeded.append(created_lot)
     yield seeded
     for lot in seeded:
         with suppress(NotFoundError):
-            client.lots.delete(lot_id=lot.id)
+            client.lots.delete(id=lot.id)
 
 
 @pytest.fixture(scope="session")
-def seeded_pricings(client: Albert, seeded_inventory, seeded_locations):
+def seeded_pricings(client: Albert, seed_prefix: str, seeded_inventory, seeded_locations):
     seeded = []
-    all_pricing = generate_pricing_seeds(
-        seeded_inventory=seeded_inventory,
-        seeded_locations=seeded_locations,
-    )
-    for p in all_pricing:
+    for p in generate_pricing_seeds(seed_prefix, seeded_inventory, seeded_locations):
         seeded.append(client.pricings.create(pricing=p))
     yield seeded
     for p in seeded:
         with suppress(NotFoundError):
-            client.pricings.delete(pricing_id=p.id)
+            client.pricings.delete(id=p.id)
 
 
 @pytest.fixture(scope="session")
@@ -421,15 +490,95 @@ def seeded_teams(client: Albert):
 @pytest.fixture(scope="session")
 def seeded_workflows(
     client: Albert,
+    seed_prefix: str,
     seeded_parameter_groups: list[ParameterGroup],
     seeded_parameters: list[Parameter],
-) -> Iterator[Workflow]:
-    seeded = []
+) -> list[Workflow]:
     all_workflows = generate_workflow_seeds(
-        seeded_parameter_groups=seeded_parameter_groups, seeded_parameters=seeded_parameters
+        seed_prefix=seed_prefix,
+        seeded_parameter_groups=seeded_parameter_groups,
+        seeded_parameters=seeded_parameters,
     )
-    for wf in all_workflows:
-        seeded.append(client.workflows.create(workflow=wf))
+
+    return client.workflows.create(workflows=all_workflows)
+
+
+@pytest.fixture(scope="session")
+def seeded_products(
+    client: Albert,
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory: list[InventoryItem],
+) -> list[InventoryItem]:
+    products = []
+
+    components = [
+        Component(inventory_item=seeded_inventory[0], amount=66),
+        Component(inventory_item=seeded_inventory[1], amount=34),
+    ]
+    for n in range(4):
+        products.append(
+            seeded_sheet.add_formulation(
+                formulation_name=f"{seed_prefix} - My cool formulation {str(n)}",
+                components=components,
+            )
+        )
+    return list(
+        client.inventory.list(
+            category=InventoryCategory.FORMULAS,
+            text=f"{seed_prefix} - My cool formulation",
+        )
+    )
+
+
+@pytest.fixture(scope="session")
+def seeded_tasks(
+    client: Albert,
+    seed_prefix: str,
+    static_user: User,
+    seeded_inventory,
+    seeded_lots,
+    seeded_projects,
+    seeded_locations,
+    seeded_data_templates,
+    seeded_workflows,
+    seeded_products,
+):
+    seeded = []
+    all_tasks = generate_task_seeds(
+        seed_prefix=seed_prefix,
+        user=static_user,
+        seeded_inventory=seeded_inventory,
+        seeded_lots=seeded_lots,
+        seeded_projects=seeded_projects,
+        seeded_locations=seeded_locations,
+        seeded_data_templates=seeded_data_templates,
+        seeded_workflows=seeded_workflows,
+        seeded_products=seeded_products,
+    )
+    for t in all_tasks:
+        seeded.append(client.tasks.create(task=t))
     yield seeded
     # workflows cannot be deleted
+    for t in seeded:
+        with suppress(NotFoundError, BadRequestError):
+            client.tasks.delete(id=t.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_notes(
+    client: Albert,
+    seeded_tasks: list[BaseTask],
+    seeded_inventory: list[InventoryItem],
+    seed_prefix: str,
+):
+    seeded = []
+    for note in generate_note_seeds(
+        seeded_tasks=seeded_tasks, seeded_inventory=seeded_inventory, seed_prefix=seed_prefix
+    ):
+        seeded.append(client.notes.create(note=note))
+    yield seeded
+    for note in seeded:
+        with suppress(NotFoundError):
+            client.notes.delete(id=note.id)
 

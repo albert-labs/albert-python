@@ -1,17 +1,15 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from albert.collections.cas import Cas
 from albert.collections.companies import Company
-from albert.collections.un_numbers import UnNumber
 from albert.resources.acls import ACL
-from albert.resources.base import BaseEntityLink, EntityLinkConvertible, SecurityClass
+from albert.resources.base import EntityLinkConvertible, MetadataItem, SecurityClass
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
-from albert.utils.exceptions import AlbertException
 from albert.utils.types import BaseAlbertModel
 
 
@@ -54,8 +52,8 @@ class CasAmount(BaseAlbertModel):
     max: float
     id: str | None = Field(default=None)
 
-    # Excluded, read-only fields
-    cas: Cas = Field(default=None, exclude=True)
+    # Read-only fields
+    cas: Cas | None = Field(default=None, exclude=True)
     cas_smiles: str | None = Field(default=None, alias="casSmiles", exclude=True, frozen=True)
     number: str | None = Field(default=None, exclude=True, frozen=True)
 
@@ -93,11 +91,11 @@ class InventoryMinimum(BaseAlbertModel):
         Ensure that either an id or a location is provided.
         """
         if self.id is None and self.location is None:
-            raise AlbertException(
+            raise ValueError(
                 "Either an id or a location must be provided for an InventoryMinimum."
             )
         if self.id and self.location and self.location.id != self.id:
-            raise AlbertException(
+            raise ValueError(
                 "Only an id or a location can be provided for an InventoryMinimum, not both."
             )
 
@@ -155,128 +153,79 @@ class InventoryItem(BaseTaggedEntity, EntityLinkConvertible):
     id: str | None = Field(None, alias="albertId")
     description: str | None = None
     category: InventoryCategory
-    unit_category: InventoryUnitCategory = Field(default=None, alias="unitCategory")
+    unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
     security_class: SecurityClass | None = Field(default=None, alias="class")
     company: SerializeAsEntityLink[Company] | None = Field(default=None, alias="Company")
     minimum: list[InventoryMinimum] | None = Field(default=None)  # To do
     alias: str | None = Field(default=None)
     cas: list[CasAmount] | None = Field(default=None, alias="Cas")
-    metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None = Field(
-        alias="Metadata", default=None
-    )
+    metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     project_id: str | None = Field(default=None, alias="parentId")
 
-    _task_config: list[dict] | None = PrivateAttr(default=None)
-    _formula_id: str | None = PrivateAttr(default=None)
-    _symbols: list[dict] | None = PrivateAttr(default=None)  # read only: comes from attachments
-    _un_number: UnNumber | None = PrivateAttr(default=None)  # Read only: Comes from attachments
-    _acls: list[ACL] | None = PrivateAttr(default=None)  # read only
+    # Read-only fields
+    task_config: list[dict] | None = Field(
+        default=None, alias="TaskConfig", exclude=True, frozen=True
+    )
+    formula_id: str | None = Field(default=None, alias="formulaId", exclude=True, frozen=True)
+    symbols: list[dict] | None = Field(default=None, alias="Symbols", exclude=True, frozen=True)
+    un_number: str | None = Field(default=None, alias="unNumber", exclude=True, frozen=True)
+    acls: list[ACL] | None = Field(default=None, alias="ACL", exclude=True, frozen=True)
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        # handle aliases on private attributes
-        if "ACL" in data:
-            self._acls = data["ACL"]
-        if "unNumber" in data:  # pragma: no cover (We need them to seed UnNumbers for us)
-            self._un_number = data["unNumber"]
-        if "Symbols" in data:
-            self._symbols = data["Symbols"]
-        if "TaskConfig" in data:
-            self._task_config = data["TaskConfig"]
-        if "Minimum" in data:
-            self._minimum = data["Minimum"]
-        if "formulaId" in data:
-            self._formula_id = data["formulaId"]
-
-    @model_validator(
-        mode="before"
-    )  # Must happen before the model is created so unit_category is set
+    @field_validator("company", mode="before")
     @classmethod
-    def set_unit_category(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """
-        Set the unit category based on the inventory category.
+    def validate_company_string(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = Company(name=value)
+        return value
 
-        Parameters
-        ----------
-        values : Dict[str, Any]
-            A dictionary of field values.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Updated field values with unit category set.
-        """
-        category = values.get("category")
-        unit_category = values.get("unit_category")
-        if unit_category is None:
-            if category in (
-                InventoryCategory.RAW_MATERIALS,
-                InventoryCategory.RAW_MATERIALS.value,
-                InventoryCategory.FORMULAS,
-                InventoryCategory.FORMULAS.value,
-            ):
-                values["unit_category"] = InventoryUnitCategory.MASS.value
-            elif category in (
-                InventoryCategory.EQUIPMENT,
-                InventoryCategory.EQUIPMENT.value,
-                InventoryCategory.CONSUMABLES,
-                InventoryCategory.CONSUMABLES.value,
-            ):
-                values["unit_category"] = InventoryUnitCategory.UNITS.value
-        return values
-
-    @model_validator(mode="before")  # must happen before to keep type consistency
+    @field_validator("un_number", mode="before")
     @classmethod
-    def convert_company(cls, data: dict[str, Any]) -> dict[str, Any]:
-        """
-        Convert the company field to a Company object if it is a string.
-
-        Parameters
-        ----------
-        data : Dict[str, Any]
-            A dictionary of field values.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Updated field values with company converted.
-        """
-        company = data.get("company", data.get("Company"))
-        if company:
-            if isinstance(company, Company):
-                data["company"] = company
-            elif isinstance(company, str):
-                data["company"] = Company(name=company)
-            else:
-                pass
-                # We do not expect this else to be hit because comapanies should only be Company or str
-        return data
+    def validate_un_number(cls, value: Any) -> Any:
+        if value == "N/A":
+            value = None
+        return value
 
     @model_validator(mode="after")
-    def ensure_formula_fields(self: "InventoryMinimum") -> "InventoryItem":
-        """
-        Ensure required fields are present for formulas.
-
-        Parameters
-        ----------
-        data : Dict[str, Any]
-            A dictionary of field values.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Updated field values with required fields ensured.
-
-        Raises
-        ------
-        AttributeError
-            If a required project_id is missing for formulas.
-        """
-        if self.category == "Formulas" and not self.project_id and not self.id:
-            # Some legacy on platform formulas don't have a project_id so check if its already on platform
-            raise AlbertException("A project_id must be supplied for all formulas.")
+    def set_unit_category(self) -> "InventoryItem":
+        """Set unit category from category if not defined."""
+        if self.unit_category is None:
+            if self.category in [InventoryCategory.RAW_MATERIALS, InventoryCategory.FORMULAS]:
+                object.__setattr__(self, "unit_category", InventoryUnitCategory.MASS)
+            elif self.category in [InventoryCategory.EQUIPMENT, InventoryCategory.CONSUMABLES]:
+                object.__setattr__(self, "unit_category", InventoryUnitCategory.UNITS)
         return self
 
-    @property
-    def formula_id(self) -> str | None:
-        return self._formula_id
+    @model_validator(mode="after")
+    def validate_formula_fields(self) -> "InventoryItem":
+        """Ensure required fields are present for formulas."""
+        if self.category == InventoryCategory.FORMULAS and not self.project_id and not self.id:
+            # Some legacy on platform formulas don't have a project_id so check if its already on platform
+            raise ValueError("A project_id must be supplied for all formulas.")
+        return self
+
+
+class InventorySpecValue(BaseAlbertModel):
+    min: str | None = Field(default=None)
+    max: str | None = Field(default=None)
+    reference: str | None = Field(default=None)
+    comparison_operator: str | None = Field(default=None, alias="comparisonOperator")
+
+
+class InventorySpec(BaseAlbertModel):
+    id: str | None = Field(default=None, alias="albertId")
+    name: str
+    data_column_id: str = Field(..., alias="datacolumnId")
+    data_column_name: str | None = Field(default=None, alias="datacolumnName")
+    data_template_id: str | None = Field(default=None, alias="datatemplateId")
+    data_template_name: str | None = Field(default=None, alias="datatemplateName")
+    unit_id: str | None = Field(default=None, alias="unitId")
+    unit_name: str | None = Field(default=None, alias="unitName")
+    workflow_id: str | None = Field(default=None, alias="workflowId")
+    workflow_name: str | None = Field(default=None, alias="workflowName")
+    spec_config: str | None = Field(default=None, alias="specConfig")
+    value: InventorySpecValue | None = Field(default=None, alias="Value")
+
+
+class InventorySpecList(BaseAlbertModel):
+    parent_id: str = Field(..., alias="parentId")
+    specs: list[InventorySpec] = Field(..., alias="Specs")

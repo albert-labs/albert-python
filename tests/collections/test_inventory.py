@@ -1,14 +1,21 @@
-from collections.abc import Generator
-
 import pytest
 
 from albert.albert import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
-from albert.resources.inventory import CasAmount, InventoryItem, InventoryUnitCategory
+from albert.resources.data_columns import DataColumn
+from albert.resources.inventory import (
+    CasAmount,
+    InventoryItem,
+    InventorySpec,
+    InventorySpecValue,
+    InventoryUnitCategory,
+)
 from albert.resources.tags import Tag
-from albert.utils.exceptions import BadRequestError
+from albert.resources.units import Unit
+from albert.resources.workflows import Workflow
 
 
 def _list_asserts(returned_list):
@@ -22,7 +29,6 @@ def _list_asserts(returned_list):
 
 def test_simple_inventory_list(client: Albert, seeded_inventory):
     inventory = client.inventory.list()
-    assert isinstance(inventory, Generator)
     _list_asserts(inventory)
 
 
@@ -32,27 +38,26 @@ def test_advanced_inventory_list(
     test_inv_item = seeded_inventory[1]
     matching_cas = [x for x in seeded_cas if x.id in test_inv_item.cas[0].id][0]
     inventory = client.inventory.list(
-        name=test_inv_item.name,
+        text=test_inv_item.name,
         category=InventoryCategory.CONSUMABLES,
         cas=matching_cas,
         company=test_inv_item.company,
     )
-    assert isinstance(inventory, Generator)
     _list_asserts(inventory)
     for i, x in enumerate(inventory):
         if i == 10:  # just check the first 10 for speed
             break
-        assert "goggles" in x.name.lower()
+        assert "ethanol" in x.name.lower()
 
 
 def test_get_by_id(client: Albert, seeded_inventory):
-    get_by_id = client.inventory.get_by_id(inventory_id=seeded_inventory[1].id)
+    get_by_id = client.inventory.get_by_id(id=seeded_inventory[1].id)
     assert isinstance(get_by_id, InventoryItem)
     assert seeded_inventory[1].name == get_by_id.name
     assert seeded_inventory[1].id == get_by_id.id
 
     id_2 = seeded_inventory[0].id.replace("INV", "")
-    get_by_id = client.inventory.get_by_id(inventory_id=id_2)
+    get_by_id = client.inventory.get_by_id(id=id_2)
     assert isinstance(get_by_id, InventoryItem)
     assert seeded_inventory[0].name == get_by_id.name
     assert seeded_inventory[0].id == get_by_id.id
@@ -61,11 +66,11 @@ def test_get_by_id(client: Albert, seeded_inventory):
 def test_get_by_ids(client: Albert, seeded_inventory):
     inventory_ids = [x.id for x in seeded_inventory]
 
-    bulk_get = client.inventory.get_by_ids(inventory_ids=inventory_ids)
+    bulk_get = client.inventory.get_by_ids(ids=inventory_ids)
     assert {x.id for x in bulk_get} == set(inventory_ids)
 
     inventory_ids_bare = [x.replace("INV", "") for x in inventory_ids]
-    bulk_get_no_inv = client.inventory.get_by_ids(inventory_ids=inventory_ids_bare)
+    bulk_get_no_inv = client.inventory.get_by_ids(ids=inventory_ids_bare)
     assert {x.id for x in bulk_get_no_inv} == set(inventory_ids)
 
 
@@ -75,11 +80,11 @@ def test_inventory_update(client: Albert, seeded_inventory):
     d = "testing SDK CRUD"
     test_inv_item.description = d
 
-    updated = client.inventory.update(updated_object=test_inv_item)
+    updated = client.inventory.update(inventory_item=test_inv_item)
     assert updated.description == d
     assert updated.id == seeded_inventory[2].id
 
-    client.inventory.delete(inventory_id=test_inv_item)
+    client.inventory.delete(id=test_inv_item)
     assert not client.inventory.inventory_exists(inventory_item=test_inv_item)
 
 
@@ -113,6 +118,29 @@ def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryIt
     )
 
 
+def test_add_property_to_inv_spec(
+    seed_prefix: str,
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_data_columns: list[DataColumn],
+    seeded_units: list[Unit],
+    seeded_workflows: list[Workflow],
+):
+    specs = []
+    for dc in seeded_data_columns:
+        spec_to_add = InventorySpec(
+            name=f"{seed_prefix} -- {dc.name}",
+            data_column_id=dc.id,
+            unit_id=seeded_units[0].id,
+            value=InventorySpecValue(reference="42"),
+            workflow_id=seeded_workflows[0].id,
+        )
+        specs.append(spec_to_add)
+    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
+    assert len(added_specs.specs) == len(seeded_data_columns)
+    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
+
+
 def test_update_inventory_item_standard_attributes(
     client: Albert, seeded_inventory: list[InventoryItem]
 ):
@@ -139,7 +167,7 @@ def test_update_inventory_item_standard_attributes(
         }
     )
     # Perform the update
-    updated_item = client.inventory.update(updated_object=updated_inventory_item)
+    updated_item = client.inventory.update(inventory_item=updated_inventory_item)
 
     # Verify that all updatable attributes have been updated
     assert updated_item.name == "Updated Inventory Name"
@@ -149,7 +177,7 @@ def test_update_inventory_item_standard_attributes(
     assert updated_item.alias == "Updated Alias"
 
     # Optionally, re-fetch the item and verify the updates are persisted
-    fetched_item = client.inventory.get_by_id(inventory_id=updated_inventory_item.id)
+    fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.name == "Updated Inventory Name"
     assert fetched_item.description == "Updated Description"
     assert fetched_item.unit_category == InventoryUnitCategory.VOLUME.value
@@ -180,10 +208,11 @@ def test_update_inventory_item_advanced_attributes(
             "cas": [CasAmount(id=seeded_cas[1].id, min=0.5, max=0.75)],
             "company": seeded_companies[1],
             "tags": [seeded_tags[0], seeded_tags[1]],
+            "alias": "Updated Alias Again",
         }
     )
 
-    returned_item = client.inventory.update(updated_object=updated_inventory_item)
+    returned_item = client.inventory.update(inventory_item=updated_inventory_item)
     assert returned_item.cas[0].id == seeded_cas[1].id
     assert returned_item.cas[0].min == 0.5
     assert returned_item.cas[0].max == 0.75
@@ -193,7 +222,7 @@ def test_update_inventory_item_advanced_attributes(
     assert seeded_tags[0].id in [x.id for x in returned_item.tags]
 
     # Get the updated item and verify the changes are persisted
-    fetched_item = client.inventory.get_by_id(inventory_id=updated_inventory_item.id)
+    fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.cas[0].id == seeded_cas[1].id
     assert fetched_item.cas[0].min == 0.5
     assert fetched_item.cas[0].max == 0.75
@@ -211,7 +240,7 @@ def test_update_inventory_item_advanced_attributes(
     fetched_item.company = seeded_companies[0]
     fetched_item.tags = [seeded_tags[0]]
 
-    returned_item = client.inventory.update(updated_object=fetched_item)
+    returned_item = client.inventory.update(inventory_item=fetched_item)
 
     for c in returned_item.cas:
         if c.id == seeded_cas[1].id:
@@ -227,9 +256,9 @@ def test_update_inventory_item_advanced_attributes(
 
     # remove an existing Cas
     fetched_item.cas = [CasAmount(id=seeded_cas[0].id, min=0.4, max=0.9)]
-    returned_item = client.inventory.update(updated_object=fetched_item)
+    returned_item = client.inventory.update(inventory_item=fetched_item)
     assert len(returned_item.cas) == 1
     # You can't unset a company
     with pytest.raises(BadRequestError):
         fetched_item.company = None
-        client.inventory.update(updated_object=fetched_item)
+        client.inventory.update(inventory_item=fetched_item)

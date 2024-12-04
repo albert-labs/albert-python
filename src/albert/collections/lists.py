@@ -1,8 +1,9 @@
-from collections.abc import Generator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.resources.lists import ListItem, ListItemCategory
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ListsCollection(BaseCollection):
@@ -20,16 +21,15 @@ class ListsCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ListsCollection._api_version}/lists"
 
-    def _list_generator(
+    def list(
         self,
         *,
         limit: int = 100,
-        # order_by: OrderBy = OrderBy.DESCENDING,
-        names: list[str] = None,
-        category: ListItemCategory = None,
-        list_type: str = None,
-        start_key: str = None,
-    ) -> Generator[ListItem, None, None]:
+        names: list[str] | None = None,
+        category: ListItemCategory | None = None,
+        list_type: str | None = None,
+        start_key: str | None = None,
+    ) -> Iterator[ListItem]:
         """
         Generates a list of list entities with optional filters.
 
@@ -44,67 +44,24 @@ class ListsCollection(BaseCollection):
         exact_match : bool, optional
             Whether to perform an exact match on the list name.
 
-        Yields
+        Returns
         ------
-        List
-            A list entity.
+        Iterator[ListItem]
+            An iterator of ListItems.
         """
         params = {
             "limit": limit,
-            # "order": order_by.value,
             "startKey": start_key,
-            "name": names,
-            "category": category,
+            "name": [names] if isinstance(names, str) else names,
+            "category": category.value if isinstance(category, ListItemCategory) else category,
             "listType": list_type,
         }
-        params = {k: v for k, v in params.items() if v is not None}
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            response_json = response.json()
-            items = response_json.get("Items", [])
-            if items == []:
-                break
-            for list_data in items:
-                yield ListItem(**list_data)
-            start_key = response_json.get("lastKey")
-            if not start_key or len(items) < limit:
-                break
-            params["startKey"] = start_key
-
-    def list(
-        self,
-        *,
-        limit: int = 100,
-        # order_by: OrderBy = OrderBy.DESCENDING,
-        names: list[str] = None,
-        category: ListItemCategory = None,
-        list_type: str = None,
-    ) -> list[ListItem]:
-        """
-        Lists list entities with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of list entities to return.
-        order_by : OrderBy, optional
-            The order in which to return list entities.
-        name : str, optional
-            The name of the list entity to retrieve.
-        exact_match : bool, optional
-            Whether to perform an exact match on the list name.
-
-        Returns
-        -------
-        List
-            A list of list entities.
-        """
-        if isinstance(names, str):
-            names = [names]
-        if isinstance(category, ListItemCategory):
-            category = category.value
-        return list(
-            self._list_generator(limit=limit, names=names, category=category, list_type=list_type)
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [ListItem(**item) for item in items],
         )
 
     def get_by_id(self, *, id: str) -> ListItem:
@@ -139,11 +96,12 @@ class ListsCollection(BaseCollection):
             The created list entity.
         """
         response = self.session.post(
-            self.base_path, json=list_item.model_dump(by_alias=True, exclude_none=True)
+            self.base_path,
+            json=list_item.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
         return ListItem(**response.json())
 
-    def get_matching_item(self, *, name: str, list_type):
+    def get_matching_item(self, *, name: str, list_type: str) -> ListItem | None:
         for list_item in self.list(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():
                 return list_item

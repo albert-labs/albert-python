@@ -1,7 +1,6 @@
 from enum import Enum
 
-from albert.resources.base import BaseResource
-from albert.resources.serialization import BaseEntityLink
+from albert.resources.base import BaseResource, MetadataItem
 from albert.session import AlbertSession
 from albert.utils.patches import PatchDatum, PatchOperation, PatchPayload
 
@@ -30,8 +29,8 @@ class BaseCollection:
 
     def _generate_metadata_diff(
         self,
-        existing_metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink],
-        updated_metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink],
+        existing_metadata: dict[str, MetadataItem],
+        updated_metadata: dict[str, MetadataItem],
     ) -> list[PatchDatum]:
         if existing_metadata is None:
             existing_metadata = {}

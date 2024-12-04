@@ -1,8 +1,9 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.cas import Cas
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CasCollection(BaseCollection):
@@ -21,59 +22,11 @@ class CasCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
 
-    def _list_generator(
+    def list(
         self,
         *,
         limit: int = 50,
         start_key: str | None = None,
-        number: str | None = None,
-        id: str | None = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-    ) -> Generator[Cas, None, None]:
-        """
-        Lists CAS entities with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of CAS entities to return, by default 50.
-        start_key : Optional[str], optional
-            The primary key of the first item that this operation will evaluate.
-        number : Optional[str], optional
-            Fetches list of CAS by CAS number.
-        id : Optional[str], optional
-            Fetches list of CAS using the CAS Albert ID.
-        order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-
-        Yields
-        -------
-        Generator
-            A Generator of Cas objects.
-        """
-        params = {"limit": limit, "orderBy": order_by.value}
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-        if number:
-            params["number"] = number
-        if id:
-            params["albertId"] = id
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            cas_data = response.json().get("Items", [])
-            if not cas_data or cas_data == []:
-                break
-            for x in cas_data:
-                this_cas = Cas(**x)
-                yield this_cas
-            start_key = response.json().get("lastKey")
-            if not start_key:  # start key is tested here but not on init
-                break
-            params["startKey"] = start_key
-
-    def list(
-        self,
-        *,
         number: str | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -96,10 +49,23 @@ class CasCollection(BaseCollection):
 
         Returns
         -------
-        Generator
-            A generator of Cas objects.
+        Iterator[Cas]
+            An iterator of Cas objects.
         """
-        return self._list_generator(number=number, order_by=order_by, id=id)
+        params = {
+            "limit": limit,
+            "orderBy": order_by.value,
+            "startKey": start_key,
+            "number": number,
+            "albertId": id,
+        }
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [Cas(**item) for item in items],
+        )
 
     def cas_exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
@@ -140,18 +106,18 @@ class CasCollection(BaseCollection):
         if hit:
             return hit
         else:
-            payload = cas.model_dump(by_alias=True, exclude_unset=True)
+            payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
             response = self.session.post(self.base_path, json=payload)
             cas = Cas(**response.json())
             return cas
 
-    def get_by_id(self, *, cas_id: str) -> Cas:
+    def get_by_id(self, *, id: str) -> Cas:
         """
         Retrieves a CAS by its ID.
 
         Parameters
         ----------
-        cas_id : str
+        id : str
             The ID of the CAS to retrieve.
 
         Returns
@@ -159,7 +125,7 @@ class CasCollection(BaseCollection):
         Cas
             The Cas object if found, None otherwise.
         """
-        url = f"{self.base_path}/{cas_id}"
+        url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         cas = Cas(**response.json())
         return cas
@@ -187,33 +153,31 @@ class CasCollection(BaseCollection):
                     return f
         return next(found, None)
 
-    def delete(self, *, cas_id: str) -> None:
+    def delete(self, *, id: str) -> None:
         """
         Deletes a CAS by its ID.
 
         Parameters
         ----------
-        cas_id : str
+        id : str
             The ID of the CAS to delete.
 
         Returns
         -------
         None
         """
-        url = f"{self.base_path}/{cas_id}"
+        url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
     def update(self, *, updated_object: Cas) -> Cas:
         # Fetch the current object state from the server or database
-        current_object = self.get_by_id(cas_id=updated_object.id)
+        existing_cas = self.get_by_id(id=updated_object.id)
 
         # Generate the PATCH payload
-        patch_payload = self._generate_patch_payload(
-            existing=current_object, updated=updated_object
-        )
+        patch_payload = self._generate_patch_payload(existing=existing_cas, updated=updated_object)
 
         url = f"{self.base_path}/{updated_object.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
 
-        updated_cas = self.get_by_id(cas_id=updated_object.id)
+        updated_cas = self.get_by_id(id=updated_object.id)
         return updated_cas

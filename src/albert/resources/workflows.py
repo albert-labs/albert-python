@@ -1,11 +1,10 @@
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 
 from albert.resources.base import BaseAlbertModel, BaseResource
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
-from albert.resources.serialization import SerializeAsEntityLink
+from albert.resources.serialization import EntityLinkConvertible, SerializeAsEntityLink
 from albert.resources.units import Unit
-from albert.utils.exceptions import AlbertException
 
 
 class Interval(BaseAlbertModel):
@@ -20,8 +19,8 @@ class Interval(BaseAlbertModel):
 
     """
 
-    value: str = Field(default=None)
-    unit: SerializeAsEntityLink[Unit] = Field(default=None, alias="Unit")
+    value: str | None = Field(default=None)
+    unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
 
 
 class ParameterSetpoint(BaseAlbertModel):
@@ -44,23 +43,23 @@ class ParameterSetpoint(BaseAlbertModel):
 
     """
 
-    parameter: Parameter = Field(exclude=True, default=None)
-    value: str | dict[str, str] = Field(default=None)
-    unit: SerializeAsEntityLink[Unit] = Field(default=None, alias="Unit")
-    parameter_id: str = Field(alias="id", default=None)
-    intervals: list[Interval] = Field(default=None, alias="Intervals")
+    parameter: Parameter | None = Field(exclude=True, default=None)
+    value: str | dict[str, str] | None = Field(default=None)
+    unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    parameter_id: str | None = Field(alias="id", default=None)
+    intervals: list[Interval] | None = Field(default=None, alias="Intervals")
 
     @model_validator(mode="after")
     def check_parameter_setpoint_validity(self):
         if self.parameter:
             if self.parameter_id is not None and self.parameter_id != self.parameter.id:
-                raise AlbertException("Provided parameter_id does not match the parameter's id.")
+                raise ValueError("Provided parameter_id does not match the parameter's id.")
             if self.parameter_id is None:
                 self.parameter_id = self.parameter.id
         elif self.parameter is None and self.parameter_id is None:
-            raise AlbertException("Either parameter or parameter_id must be provided.")
+            raise ValueError("Either parameter or parameter_id must be provided.")
         if self.value is not None and self.intervals is not None:
-            raise AlbertException("Cannot provide both value and intervals.")
+            raise ValueError("Cannot provide both value and intervals.")
         return self
 
 
@@ -80,17 +79,17 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         The setpoints to apply to the parameter group.
     """
 
-    parameter_group: ParameterGroup = Field(exclude=True, default=None)
-    parameter_group_id: str = Field(alias="id", default=None)
-    parameter_group_name: str = Field(alias="name", default=None, frozen=True, exclude=True)
-    parameter_setpoints: list[ParameterSetpoint] = Field(alias="Parameters")
+    parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
+    parameter_group_id: str | None = Field(alias="id", default=None)
+    parameter_group_name: str | None = Field(alias="name", default=None, frozen=True, exclude=True)
+    parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
 
     @model_validator(mode="after")
     def validate_pg_setpoint(self):
         if self.parameter_group is not None:
             if self.parameter_group_id is not None:
                 if self.parameter_group.id != self.parameter_group_id:
-                    raise AlbertException(
+                    raise ValueError(
                         "Provided parameter_group_id does not match the parameter_group's id."
                     )
             else:
@@ -98,7 +97,7 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         return self
 
 
-class Workflow(BaseResource):
+class Workflow(BaseResource, EntityLinkConvertible):
     """A Pydantic Class representing a workflow in Albert.
 
     Workflows are combinations of Data Templates and Parameter groups and their associated setpoints.
@@ -115,4 +114,9 @@ class Workflow(BaseResource):
 
     name: str
     parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(alias="ParameterGroups")
-    id: str | None = Field(alias="albertId", default=None)
+    id: str | None = Field(
+        alias="albertId",
+        default=None,
+        validation_alias=AliasChoices("albertId", "existingAlbertId"),
+        exclude=True,
+    )

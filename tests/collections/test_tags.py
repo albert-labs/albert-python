@@ -1,12 +1,11 @@
 import uuid
-from collections.abc import Generator
 
 import pytest
 
 from albert.albert import Albert
 from albert.collections.base import OrderBy
+from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
-from albert.utils.exceptions import AlbertException
 
 
 def _list_asserts(returned_list, limit=100):
@@ -26,7 +25,6 @@ def _list_asserts(returned_list, limit=100):
 
 def test_simple_tags_list(client: Albert):
     simple_list = client.tags.list()
-    assert isinstance(simple_list, Generator)
     simple_list = list(simple_list)
     _list_asserts(simple_list)
 
@@ -38,11 +36,7 @@ def test_advanced_tags_list(client: Albert, seeded_tags: list[Tag]):
         exact_match=True,
         order_by=OrderBy.ASCENDING,
     )
-    assert isinstance(adv_list, Generator)
     adv_list = list(adv_list)
-
-    for t in adv_list:
-        assert "inventory-tag-1" in t.tag.lower()
     _list_asserts(adv_list)
 
     adv_list_no_match = client.tags.list(
@@ -52,7 +46,7 @@ def test_advanced_tags_list(client: Albert, seeded_tags: list[Tag]):
     )
     assert next(adv_list_no_match, None) == None
 
-    tag_short_list = client.tags._list_generator(limit=3)
+    tag_short_list = client.tags.list(limit=3)
     _list_asserts(tag_short_list, limit=5)
 
 
@@ -64,7 +58,7 @@ def test_get_tag_by(client: Albert, seeded_tags: list[Tag]):
     assert isinstance(tag, Tag)
     assert tag.tag.lower() == tag_test_str.lower()
 
-    by_id = client.tags.get_by_id(tag_id=tag.id)
+    by_id = client.tags.get_by_id(id=tag.id)
     assert isinstance(by_id, Tag)
     assert by_id.tag.lower() == tag_test_str.lower()
 

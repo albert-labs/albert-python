@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, model_validator
 
 from albert.resources.acls import ACL
-from albert.resources.base import BaseEntityLink, BaseResource
+from albert.resources.base import BaseEntityLink, BaseResource, MetadataItem
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project
@@ -66,20 +66,18 @@ class SamConfig(BaseResource):
 class Workflow(BaseResource):
     id: str
     name: str
-    sam_config: list[SamConfig] | None = Field(
-        default=None, alias="SamConfig"
-    )  # Some workflows may have SamConfig
+    # Some workflows may have SamConfig
+    sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
 
 
-class Block(
-    BaseTaggedEntity
-):  # To Do once DTs are done allow a list of DTs with the correct field_serializer
+# TODO: once DTs are done allow a list of DTs with the correct field_serializer
+class Block(BaseTaggedEntity):
     workflow: list[Workflow] = Field(default=None, alias="Workflow")
     datatemplate: list[BaseEntityLink] | None = Field(default=None, alias="Datatemplate")
 
 
+# TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
 class QCBatchData(BaseTaggedEntity):
-    # To Do once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
     category: Literal[TemplateCategory.QC_BATCH] = TemplateCategory.QC_BATCH
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
@@ -106,7 +104,7 @@ class BatchData(BaseTaggedEntity):
 class PropertyData(BaseTaggedEntity):
     category: Literal[TemplateCategory.PROPERTY] = TemplateCategory.PROPERTY
     name: str | None = Field(default=None)
-    blocks: list[Block] = Field(default=[], alias="Blocks")  # Needs to be it's own class
+    blocks: list[Block] = Field(default_factory=list, alias="Blocks")  # Needs to be it's own class
     priority: Priority  # enum?!
     location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
     assigned_to: SerializeAsEntityLink[User] | None = Field(alias="AssignedTo", default=None)
@@ -118,8 +116,8 @@ class PropertyData(BaseTaggedEntity):
 class SheetData(BaseTaggedEntity):
     category: Literal[TemplateCategory.SHEET] = TemplateCategory.SHEET
     designs: list[DesignLink] = Field(default=None, alias="Designs")
-    formula_info: list = Field(default=[], alias="FormulaInfo")
-    task_rows: list[BaseEntityLink] = Field(default=[], alias="TaskRows")
+    formula_info: list = Field(default_factory=list, alias="FormulaInfo")
+    task_rows: list[BaseEntityLink] = Field(default_factory=list, alias="TaskRows")
 
 
 class NotebookData(BaseTaggedEntity):
@@ -182,12 +180,10 @@ class CustomTemplate(BaseTaggedEntity):
     name: str
     id: str = Field(alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
-    metadata: dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None = Field(
-        default=None, alias="Metadata"
-    )
+    metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
-    team: list[TeamACL] | None = Field(default=[])
-    acl: TemplateACL | None = Field(default=[], alias="ACL")
+    team: list[TeamACL] | None = Field(default_factory=list)
+    acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
 
     @model_validator(mode="before")  # Must happen before construction so the data are captured
     @classmethod

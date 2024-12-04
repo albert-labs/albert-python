@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import Any
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from albert.resources.base import BaseResource, EntityLinkConvertible
 
@@ -106,33 +105,6 @@ class Unit(BaseResource, EntityLinkConvertible):
     symbol: str | None = Field(None)
     synonyms: list[str] | None = Field(default_factory=list, alias="Synonyms")
     category: UnitCategory | None = Field(None)
-    _verified: bool | None = PrivateAttr(default=False)
 
-    def __init__(self, **data: Any):
-        """
-        Initialize a Unit instance.
-
-        Parameters
-        ----------
-        id : Optional[str]
-            The Albert ID of the unit.
-        name : str
-            The name of the unit.
-        symbol : Optional[str]
-            The symbol of the unit.
-        synonyms : Optional[List[str]]
-            The list of synonyms for the unit.
-        category : Optional[str]
-            The category of the unit.
-        verified : Optional[bool]
-            Whether the unit is verified.
-        status : Optional[str]
-            The status of the unit.
-        """
-        super().__init__(**data)
-        if "verified" in data:
-            self._verified = bool(data["verified"])
-
-    @property
-    def verified(self) -> bool:
-        return self._verified
+    # Read-only fields
+    verified: bool | None = Field(default=False, exclude=True, frozen=True)

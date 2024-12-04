@@ -1,20 +1,11 @@
-import uuid
-
-import pytest
-
 from albert import Albert
 from albert.resources.btinsight import BTInsight, BTInsightRegistry
 
 
-@pytest.fixture
-def insight(client: Albert) -> BTInsight:
-    # api-btinsight does not have working list/delete functionality,
-    # so we need to hard-code an existing resource to play with
-    return client.btinsights.get_by_id(id="INS10")
+def test_update(client: Albert, static_btinsight: BTInsight):
+    insight = static_btinsight.model_copy()
 
-
-def test_update(client: Albert, insight: BTInsight):
-    marker = f"TEST - {uuid.uuid4()}"
+    marker = "TEST"
     insight.output_key = marker
     insight.start_time = marker
     insight.end_time = marker

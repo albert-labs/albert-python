@@ -33,7 +33,7 @@ class ListItem(BaseResource):
     list_type: str | None = Field(default=None, alias="listType")
 
     @model_validator(mode="after")
-    def validate_list_type(self):
+    def validate_list_type(self) -> "ListItem":
         if (
             self.category == ListItemCategory.PROJECTS
             and self.list_type is not None
@@ -46,3 +46,4 @@ class ListItem(BaseResource):
             raise ValueError(
                 f"List type {self.list_type} is not allowed for category {self.category}"
             )
+        return self

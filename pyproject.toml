@@ -24,7 +24,7 @@ python = "^3.10"
 requests = "^2.32.3"
 pandas = "^2.2.2"
 pydantic = { version = "^2.8.2", extras = ["email"] }
-python-jose = "^3.3.0"
+pyjwt = "^2.10.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.1"

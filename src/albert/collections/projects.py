@@ -1,8 +1,9 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.projects import Project
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ProjectCollection(BaseCollection):
@@ -48,7 +49,7 @@ class ProjectCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ProjectCollection._api_version}/projects"
 
-    def create(self, *, project: Project) -> Project | None:
+    def create(self, *, project: Project) -> Project:
         """
         Create a new project.
 
@@ -63,18 +64,17 @@ class ProjectCollection(BaseCollection):
             The created project object if successful, None otherwise.
         """
         response = self.session.post(
-            self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True)
+            self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )
-
         return Project(**response.json())
 
-    def get_by_id(self, *, project_id: str) -> Project:
+    def get_by_id(self, *, id: str) -> Project:
         """
         Retrieve a project by its ID.
 
         Parameters
         ----------
-        project_id : str
+        id : str
             The ID of the project to retrieve.
 
         Returns
@@ -82,103 +82,136 @@ class ProjectCollection(BaseCollection):
         Project
             The project object if found
         """
-        url = f"{self.base_path}/{project_id}"
+        url = f"{self.base_path}/{id}"
         response = self.session.get(url)
 
         return Project(**response.json())
 
-    def update(self, *, updated_project: Project) -> Project:
+    def update(self, *, project: Project) -> Project:
         """
         TO DO: This needs some more custom patch logic
         """
-        existing_project = self.get_by_id(project_id=updated_project.id)
-        patch_data = self._generate_patch_payload(
-            existing=existing_project, updated=updated_project
-        )
-        url = f"{self.base_path}/{updated_project.id}"
+        existing_project = self.get_by_id(id=project.id)
+        patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
+        url = f"{self.base_path}/{project.id}"
 
         self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
 
-        return updated_project
+        return self.get_by_id(id=project.id)
 
-    def delete(self, *, project_id: str) -> None:
+    def delete(self, *, id: str) -> None:
         """
         Delete a project by its ID.
 
         Parameters
         ----------
-        project_id : str
+        id : str
             The ID of the project to delete.
 
         Returns
         -------
         None
         """
-        url = f"{self.base_path}/{project_id}"
+        url = f"{self.base_path}/{id}"
         self.session.delete(url)
-
-    def _list_generator(
-        self,
-        *,
-        limit: int = 50,
-        start_key: str = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-    ) -> Generator[Project, None, None]:
-        """
-        Generator for listing projects with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of items to retrieve per request (default is 50).
-        start_key : Union[str, None], optional
-            The start key for pagination.
-        name : Optional[List[str]], optional
-            The name filter for the projects.
-        order_by : OrderBy, optional
-            The order in which to retrieve items (default is OrderBy.DESCENDING).
-        exact_match : bool, optional
-            Whether to match names exactly (default is False).
-
-        Yields
-        ------
-        Project
-            The next project in the generator.
-        """
-        params = {
-            "limit": str(limit),
-            "orderBy": order_by.value,
-        }
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-        while True:
-            response = self.session.get(self.base_path, params=params)
-
-            raw_projects = response.json().get("Items", [])
-            if not raw_projects or raw_projects == []:  # pragma: no cover
-                break
-            for x in raw_projects:
-                yield Project(**x)
-            start_key = response.json().get("lastKey")
-            if not start_key or len(raw_projects) < limit:
-                break
-            params["startKey"] = start_key
 
     def list(
         self,
         *,
+        limit: int = 50,
+        text: str = None,
         order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str = None,
+        status: list[str] = None,
+        market_segment: list[str] = None,
+        application: list[str] = None,
+        technology: list[str] = None,
+        created_by: list[str] = None,
+        location: list[str] = None,
+        from_created_at: str = None,
+        to_created_at: str = None,
+        facet_field: str = None,
+        facet_text: str = None,
+        contains_field: list[str] = None,
+        contains_text: list[str] = None,
+        linked_to: str = None,
+        my_projects: bool = None,
+        my_role: list[str] = None,
     ) -> Iterator[Project]:
         """
         List projects with optional filters.
 
         Parameters
         ----------
+        limit : int, optional
+            The maximum number of items to retrieve per request (default is 50).
+        text : str, optional
+            Search any test in the project.
         order_by : OrderBy, optional
             The order in which to retrieve items (default is OrderBy.DESCENDING).
+        sort_by : str, optional
+            The field to sort by.
+        status : list[str], optional
+            The status filter for the projects.
+        market_segment : list[str], optional
+            The market segment filter for the projects.
+        application : list[str], optional
+            The application filter for the projects.
+        technology : list[str], optional
+            The technology filter for the projects.
+        created_by : list[str], optional
+            The name of the user who created the project.
+        location : list[str], optional
+            The location filter for the projects.
+        from_created_at : str, optional
+            The start date filter for the projects.
+        to_created_at : str, optional
+            The end date filter for the projects.
+        facet_field : str, optional
+            The facet field for the projects.
+        facet_text : str, optional
+            The facet text for the projects.
+        contains_field : list[str], optional
+            To power project facets search
+        contains_text : list[str], optional
+            To power project facets search
+        linked_to : str, optional
+            To pass text for linked to dropdown search in Task creation flow.
+        my_projects : bool, optional
+            Return Projects owned by you.
+        my_role : list[str], optional
+            Filter Projects to ones which you have a specific role in.
+
         Returns
-        -------
-        Generator
-            A generator yielding projects that match the filters.
+        ------
+        Iterator[Project]
+            An iterator of Project resources.
         """
-        return self._list_generator(order_by=order_by)
+        params = {
+            "limit": limit,
+            "order": order_by.value,
+            "text": text,
+            "sortBy": sort_by,
+            "status": status,
+            "marketSegment": market_segment,
+            "application": application,
+            "technology": technology,
+            "createdBy": created_by,
+            "location": location,
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "linkedTo": linked_to,
+            "myProjects": my_projects,
+            "myRole": my_role,
+        }
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [Project(**item) for item in items],
+        )

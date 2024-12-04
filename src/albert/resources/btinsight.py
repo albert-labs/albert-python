@@ -13,6 +13,7 @@ class BTInsightCategory(str, Enum):
     IMPACT_CHART = "Impact Chart"
     MOLECULE = "Molecule"
     SMART_DOE = "Smart DOE"
+    GENERATE = "Generate"
 
 
 class BTInsightState(str, Enum):

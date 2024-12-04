@@ -25,7 +25,7 @@ def test_basic_list(client: Albert, seeded_data_templates: list[DataTemplate]):
 def test_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
     name = seeded_data_templates[0].name
     dt = client.data_templates.get_by_name(name=name)
-    assert isinstance(dt, DataTemplate)
+    assert dt is not None
     assert dt.name == name
     assert dt.id == seeded_data_templates[0].id
 

@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.resources.custom_fields import CustomField, ServiceType
@@ -31,6 +32,16 @@ class CustomFieldCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomFieldCollection._api_version}/customfields"
 
+    def get_by_id(self, *, id: str) -> CustomField:
+        response = self.session.get(f"{self.base_path}/{id}")
+        return CustomField(**response.json())
+
+    def get_by_name(self, *, name: str) -> CustomField | None:
+        for custom_field in self.list(name=name):
+            if custom_field.name.lower() == name.lower():
+                return custom_field
+        return None
+
     def list(
         self,
         *,
@@ -38,7 +49,7 @@ class CustomFieldCollection(BaseCollection):
         service: ServiceType | None = None,
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
-    ) -> AlbertPaginator[CustomField]:
+    ) -> Iterator[CustomField]:
         params = {
             "name": name,
             "service": service if service else None,
@@ -50,23 +61,13 @@ class CustomFieldCollection(BaseCollection):
             path=self.base_path,
             params=params,
             session=self.session,
-            deserialize=lambda data: CustomField(**data),
+            deserialize=lambda items: [CustomField(**item) for item in items],
         )
 
-    def get_by_id(self, *, id: str):
-        response = self.session.get(f"{self.base_path}/{id}")
-        return CustomField(**response.json())
-
-    def get_by_name(self, *, name: str):
-        for custom_field in self.list(name=name):
-            if custom_field.name.lower() == name.lower():
-                return custom_field
-        return None
-
-    def create(self, *, custom_field: CustomField, avoid_duplicates: bool = True):
-        # post new customfield
+    def create(self, *, custom_field: CustomField) -> CustomField:
         response = self.session.post(
-            self.base_path, json=custom_field.model_dump(by_alias=True, exclude_none=True)
+            self.base_path,
+            json=custom_field.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
         return CustomField(**response.json())
 

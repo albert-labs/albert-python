@@ -28,7 +28,7 @@ class Worksheet(BaseSessionResource):
     def add_session_to_sheets(self):
         if self.session is not None:
             for s in self.sheets:
-                s.session = self.session
+                s._session = self.session
                 for d in s.designs:
-                    d.session = self.session
+                    d._session = self.session
         return self

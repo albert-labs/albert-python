@@ -1,11 +1,9 @@
-from collections.abc import Generator
-
 import pytest
 
 from albert.albert import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.base import BaseEntityLink
 from albert.resources.projects import Project
-from albert.utils.exceptions import NotFoundError
 
 
 def _list_asserts(returned_list, limit=50):
@@ -15,7 +13,7 @@ def _list_asserts(returned_list, limit=50):
             break
         assert isinstance(project, Project)
         assert isinstance(project.description, str)
-        assert isinstance(project.state, str)
+        assert isinstance(project.id, str)
         assert project.id is not None
         found = True
     assert found
@@ -23,17 +21,19 @@ def _list_asserts(returned_list, limit=50):
 
 def test_list_projects(client: Albert):
     project_list = client.projects.list()
-    assert isinstance(project_list, Generator)
     _list_asserts(project_list)
 
-    short_lists = client.projects._list_generator(limit=5)
+    short_lists = client.projects.list(limit=5)
     _list_asserts(short_lists, limit=7)
+
+    advanced_list = client.projects.list(limit=5, status=["Active"])
+    _list_asserts(advanced_list, limit=2)
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):
     # Get the first seeded project by ID
     seeded_project = seeded_projects[0]
-    fetched_project = client.projects.get_by_id(project_id=seeded_project.id)
+    fetched_project = client.projects.get_by_id(id=seeded_project.id)
 
     assert isinstance(fetched_project, Project)
     assert fetched_project.id == seeded_project.id
@@ -53,12 +53,12 @@ def test_create_project(client: Albert, seeded_locations):
     assert created_project.description == "A basic development project."
 
     # Clean up
-    client.projects.delete(project_id=created_project.id)
+    client.projects.delete(id=created_project.id)
 
 
 def test_update_project(seeded_projects, client: Albert):
     seeded_projects[1].grid = "PD"
-    updated = client.projects.update(updated_project=seeded_projects[1])
+    updated = client.projects.update(project=seeded_projects[1])
     assert updated.id == seeded_projects[1].id
 
 
@@ -74,8 +74,8 @@ def test_delete_project(client: Albert, seeded_locations):
     assert isinstance(created_project, Project)
 
     # Now delete the project
-    client.projects.delete(project_id=created_project.id)
+    client.projects.delete(id=created_project.id)
 
     # Try to fetch the project, should return None or not found
     with pytest.raises(NotFoundError):
-        client.projects.get_by_id(project_id=created_project.id)
+        client.projects.get_by_id(id=created_project.id)

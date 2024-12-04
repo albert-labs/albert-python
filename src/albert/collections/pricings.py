@@ -22,7 +22,7 @@ class PricingCollection(BaseCollection):
         "expiration_date",
         "lead_time",
         "lead_time_unit",
-        "inventory_item_id",
+        "inventory_id",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -30,12 +30,12 @@ class PricingCollection(BaseCollection):
         self.base_path = f"/api/{PricingCollection._api_version}/pricings"
 
     def create(self, *, pricing: Pricing) -> Pricing:
-        payload = pricing.model_dump(by_alias=True, exclude_none=True)
+        payload = pricing.model_dump(by_alias=True, exclude_none=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         return Pricing(**response.json())
 
-    def get_by_id(self, *, pricing_id: str) -> Pricing:
-        url = f"{self.base_path}/{pricing_id}"
+    def get_by_id(self, *, id: str) -> Pricing:
+        url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return Pricing(**response.json())
 
@@ -60,8 +60,8 @@ class PricingCollection(BaseCollection):
         items = response.json().get("Items", [])
         return [Pricing(**x) for x in items]
 
-    def delete(self, *, pricing_id: str) -> None:
-        url = f"{self.base_path}/{pricing_id}"
+    def delete(self, *, id: str) -> None:
+        url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
     def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> PatchPayload:
@@ -81,11 +81,11 @@ class PricingCollection(BaseCollection):
                 )
         return patch_payload
 
-    def update(self, *, updated_pricing: Pricing) -> Pricing:
-        current_pricing = self.get_by_id(pricing_id=updated_pricing.id)
-        patch_payload = self._pricing_patch_payload(
-            existing=current_pricing, updated=updated_pricing
+    def update(self, *, pricing: Pricing) -> Pricing:
+        current_pricing = self.get_by_id(id=pricing.id)
+        patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)
+        self.session.patch(
+            url=f"{self.base_path}/{pricing.id}",
+            json=patch_payload.model_dump(mode="json", by_alias=True),
         )
-        url = f"{self.base_path}/{updated_pricing.id}"
-        self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
-        return updated_pricing
+        return self.get_by_id(id=pricing.id)

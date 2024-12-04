@@ -1,8 +1,9 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.parameter_groups import ParameterGroup, PGType
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ParameterGroupCollection(BaseCollection):
@@ -19,45 +20,41 @@ class ParameterGroupCollection(BaseCollection):
         response = self.session.get(path)
         return ParameterGroup(**response.json())
 
-    def _list_generator(
-        self,
-        *,
-        text: str | None = None,
-        offset: int | None = None,
-        types: list[PGType] | None = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 25,
-    ) -> Generator[ParameterGroup, None, None]:
-        params = {"limit": limit, "order": order_by.value}
-        if text:
-            params["text"] = text
-        if offset:  # pragma: no cover
-            params["offset"] = offset
-        if types:
-            params["types"] = types if isinstance(types, list) else [types]
-        while True:
-            response = self.session.get(self.base_path + "/search", params=params)
-            pg_data = response.json().get("Items", [])
-            if not pg_data or pg_data == []:
-                break
-            for pg in pg_data:
-                yield self.get_by_id(id=pg["albertId"])
-            offset = response.json().get("offset")
-            if not offset:  # pragma: no cover
-                break
-            params["offset"] = int(offset) + int(limit)
+    def get_by_ids(self, *, ids: list[str]) -> ParameterGroup:
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
+        return [
+            ParameterGroup(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     def list(
         self,
         *,
-        text: str | None = None,
-        types: list[PGType] | None = None,
+        limit: int = 25,
+        offset: int | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
+        text: str | None = None,
+        types: PGType | list[PGType] | None = None,
     ) -> Iterator[ParameterGroup]:
-        return self._list_generator(
-            text=text,
-            types=types,
-            order_by=order_by,
+        def deserialize(items: list[dict]) -> list[ParameterGroup]:
+            return self.get_by_ids(ids=[x["albertId"] for x in items])
+
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "order": order_by.value,
+            "text": text,
+            "types": [types] if isinstance(types, PGType) else types,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            deserialize=deserialize,
         )
 
     def delete(self, *, id: str) -> None:
@@ -66,7 +63,8 @@ class ParameterGroupCollection(BaseCollection):
 
     def create(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
         response = self.session.post(
-            self.base_path, json=parameter_group.model_dump(by_alias=True, exclude_none=True)
+            self.base_path,
+            json=parameter_group.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
         return ParameterGroup(**response.json())
 
@@ -77,9 +75,9 @@ class ParameterGroupCollection(BaseCollection):
                 return m
         return None
 
-    def update(self, *, updated: ParameterGroup) -> ParameterGroup:
-        existing = self.get_by_id(id=updated.id)
+    def update(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
+        existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"
-        payload = self._generate_patch_payload(existing=existing, updated=updated)
+        payload = self._generate_patch_payload(existing=existing, updated=parameter_group)
         response = self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return ParameterGroup(**response.json())

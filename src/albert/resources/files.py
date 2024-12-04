@@ -15,6 +15,24 @@ class FileNamespace(str, Enum):
     SDS = "sds"
 
 
+class FileCategory(str, Enum):
+    SDS = "SDS"
+    OTHER = "Other"
+
+
+class SignURLPOSTFile(BaseAlbertModel):
+    name: str
+    namespace: FileNamespace
+    content_type: str = Field(..., alias="contentType")
+    metadata: list[dict[str, str]] | None = Field(default=None)
+    category: FileCategory | None = Field(default=None)
+    url: str | None = Field(default=None)
+
+
+class SignURLPOST(BaseAlbertModel):
+    files: list[SignURLPOSTFile]
+
+
 class FileInfo(BaseAlbertModel):
     name: str
     size: int

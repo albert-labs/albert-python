@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import Field
 
+from albert.exceptions import AlbertException
 from albert.resources.base import BaseResource, BaseSessionResource
-from albert.utils.exceptions import AlbertException
 from albert.utils.types import BaseAlbertModel
 
 
@@ -43,12 +43,12 @@ class BTModelSession(BaseSessionResource, protected_namespaces=()):
     def models(self):
         from albert.collections.btmodel import BTModelCollection
 
-        if self.session is None:
+        if self._session is None:
             raise AlbertException("Parent entity is missing a session.")
         if self.id is None:
             raise AlbertException("Parent entity is missing an Albert ID.")
 
-        return BTModelCollection(session=self.session, parent_id=self.id)
+        return BTModelCollection(session=self._session, parent_id=self.id)
 
 
 class BTModel(BaseResource, protected_namespaces=()):

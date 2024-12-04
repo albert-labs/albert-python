@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field
 
 from albert.resources.base import BaseResource
 
@@ -27,15 +27,9 @@ class Parameter(BaseResource):
         The rank of the returned parameter. Read-only.
     """
 
-    id: str | None = Field(alias="albertId", default=None)
     name: str
-    _category: ParameterCategory | None = PrivateAttr(default=None)
-    _rank: int | None = PrivateAttr(default=None)
+    id: str | None = Field(alias="albertId", default=None)
 
-    @property
-    def category(self) -> ParameterCategory:
-        return self._category
-
-    @property
-    def rank(self) -> int:
-        return self._rank
+    # Read-only fields
+    category: ParameterCategory | None = Field(default=None, exclude=True, frozen=True)
+    rank: int | None = Field(default=None, exclude=True, frozen=True)

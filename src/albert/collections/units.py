@@ -1,10 +1,11 @@
-import builtins
+import json
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.units import Unit, UnitCategory
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnitCollection(BaseCollection):
@@ -75,75 +76,77 @@ class UnitCollection(BaseCollection):
             )
             return hit
         response = self.session.post(
-            self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True)
+            self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )
         this_unit = Unit(**response.json())
         return this_unit
 
-    def get_by_id(self, *, unit_id: str) -> Unit:
+    def get_by_id(self, *, id: str) -> Unit:
         """
         Retrieves a unit by its ID.
 
         Parameters
         ----------
-        unit_id : str
+        id : str
             The ID of the unit to retrieve.
 
         Returns
         -------
         Unit
-            The Unit object if found, None otherwise.
+            The Unit object if found.
         """
-        url = f"{self.base_path}/{unit_id}"
+        url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         this_unit = Unit(**response.json())
         return this_unit
 
-    def update(self, *, updated_unit: Unit) -> Unit:
+    def update(self, *, unit: Unit) -> Unit:
         """
         Updates a unit entity by its ID.
 
         Parameters
         ----------
-        updated_unit : Unit
+        unit : Unit
             The updated Unit object.
 
         Returns
         -------
         Unit
-            Returns the updated Unit
+            The updated Unit
         """
-        unit_id = updated_unit.id
-        original_unit = self.get_by_id(unit_id=unit_id)
-        payload = self._generate_patch_payload(existing=original_unit, updated=updated_unit)
+        unit_id = unit.id
+        original_unit = self.get_by_id(id=unit_id)
+        payload = self._generate_patch_payload(existing=original_unit, updated=unit)
         url = f"{self.base_path}/{unit_id}"
         self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
-        updated_unit = self.get_by_id(unit_id=unit_id)
-        return updated_unit
+        unit = self.get_by_id(id=unit_id)
+        return unit
 
-    def delete(self, *, unit_id: str) -> None:
+    def delete(self, *, id: str) -> None:
         """
         Deletes a unit by its ID.
 
         Parameters
         ----------
-        unit_id : str
+        id : str
             The ID of the unit to delete.
 
         Returns
         -------
         None
         """
-        url = f"{self.base_path}/{unit_id}"
+        url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
     def list(
         self,
         *,
+        limit: int = 100,
         name: str | list[str] | None = None,
         category: UnitCategory | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         exact_match: bool = False,
+        start_key: str | None = None,
         verified: bool | None = None,
     ) -> Iterator[Unit]:
         """
@@ -166,76 +169,25 @@ class UnitCollection(BaseCollection):
 
         Returns
         -------
-        Generator
-            A generator of Unit objects.
-        """
-        return self._list_generator(
-            category=category,
-            verified=verified,
-            order_by=order_by,
-            name=name,
-            exact_match=exact_match,
-        )
-
-    def _list_generator(
-        self,
-        *,
-        name: str | builtins.list[str] | None = None,
-        category: UnitCategory | None = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-        exact_match: bool = False,
-        start_key: str | None = None,
-        verified: bool | None = None,
-        limit: int = 100,
-    ) -> Generator[Unit, None, None]:
-        """
-        Lists unit entities with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of units to return, by default 50.
-        name : Optional[str], optional
-            The name of the unit to filter by, by default None.
-        category : Optional[UnitCategory], optional
-            The category of the unit to filter by, by default None.
-        order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        exact_match : bool, optional
-            Whether to match the name exactly, by default False.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
-
-        Returns
-        -------
-        Generator
-            A generator of Unit objects.
+        Iterator[Unit]
+            An iterator of Unit objects.
         """
         params = {
-            "orderBy": order_by.value,
-            "exactMatch": str(exact_match).lower(),
             "limit": limit,
+            "startKey": start_key,
+            "orderBy": order_by.value,
+            "name": [name] if isinstance(name, str) else name,
+            "exactMatch": json.dumps(exact_match),
+            "verified": json.dumps(verified) if verified is not None else None,
+            "category": category.value if isinstance(category, UnitCategory) else category,
         }
-        if name:
-            params["name"] = name if isinstance(name, list) else [name]
-        if category:
-            params["category"] = category if isinstance(category, str) else category.value
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-        if not verified is None:
-            params["verified"] = str(verified).lower()
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            units = response.json().get("Items", [])
-            if not units or units == []:
-                break
-            for u in units:
-                this_unit = Unit(**u)
-                yield this_unit
-            start_key = response.json().get("lastKey")
-            if not start_key:
-                break
-            params["startKey"] = start_key
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [Unit(**item) for item in items],
+        )
 
     def get_by_name(self, *, name: str, exact_match: bool = False) -> Unit | None:
         """

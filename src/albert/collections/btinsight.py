@@ -1,7 +1,9 @@
+from collections.abc import Iterator
+
 from albert.collections.base import BaseCollection, OrderBy
+from albert.exceptions import AlbertHTTPError
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
 from albert.session import AlbertSession
-from albert.utils.exceptions import ForbiddenError, InternalServerError
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
@@ -97,7 +99,7 @@ class BTInsightCollection(BaseCollection):
         name: str | list[str] | None = None,
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
-    ) -> AlbertPaginator[BTInsight]:
+    ) -> Iterator[BTInsight]:
         """List items in the BTInsight collection.
 
         Parameters
@@ -121,17 +123,17 @@ class BTInsightCollection(BaseCollection):
 
         Returns
         -------
-        AlbertPaginator[BTInsight]
-            An iterable of elements returned by the BTInsight search query.
+        Iterator[BTInsight]
+            An iterator of elements returned by the BTInsight search query.
         """
 
-        def deserialize(data: dict) -> BTInsight | None:
-            id = data["albertId"]
-            try:
-                return self.get_by_id(id=id)
-            except (ForbiddenError, InternalServerError) as e:
-                logger.warning(f"Error fetching insight '{id}': {e}")
-                return None
+        def deserialize(items: list[dict]) -> Iterator[BTInsight]:
+            for item in items:
+                id = item["albertId"]
+                try:
+                    yield self.get_by_id(id=id)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error fetching insight '{id}': {e}")
 
         params = {
             "limit": limit,

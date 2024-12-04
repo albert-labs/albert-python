@@ -1,10 +1,8 @@
-from collections.abc import Generator
-
 import pytest
 
 from albert.albert import Albert
+from albert.exceptions import BadRequestError
 from albert.resources.parameter_groups import ParameterGroup
-from albert.utils.exceptions import BadRequestError
 
 
 def _list_asserts(returned_list):
@@ -19,7 +17,6 @@ def _list_asserts(returned_list):
 
 def test_basics(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
     list_response = client.parameter_groups.list()
-    assert isinstance(list_response, Generator)
     _list_asserts(list_response)
 
 
@@ -27,7 +24,6 @@ def test_advanced_list(client: Albert, seeded_parameter_groups: list[ParameterGr
     list_response = client.parameter_groups.list(
         text=[seeded_parameter_groups[0].name], types=[seeded_parameter_groups[0].type]
     )
-    assert isinstance(list_response, Generator)
     _list_asserts(list_response)
 
 

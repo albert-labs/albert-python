@@ -1,8 +1,10 @@
-from collections.abc import Generator, Iterator
+import json
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.resources.un_numbers import UnNumber
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnNumberCollection(BaseCollection):
@@ -26,45 +28,31 @@ class UnNumberCollection(BaseCollection):
         """
         raise NotImplementedError()
 
-    def get_by_id(self, *, un_number_id: str) -> UnNumber | None:
-        url = f"{self.base_path}/{un_number_id}"
+    def get_by_id(self, *, id: str) -> UnNumber:
+        url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return UnNumber(**response.json())
 
-    def _list_generator(
-        self,
-        *,
-        name: str = None,
-        start_key: str | None = None,
-        exact_match: bool | None = None,
-    ) -> Generator[UnNumber, None, None]:
-        params = {}
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-        if name:
-            params["name"] = name
-            if exact_match:
-                params["exactMatch"] = str(exact_match).lower()
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            un_numbers = response.json().get("Items", [])
-            if not un_numbers or un_numbers == []:
-                break
-            for x in un_numbers:
-                yield UnNumber(**x)
-            start_key = response.json().get("lastKey")
-            if not start_key:
-                break
-            params["startKey"] = start_key
+    def get_by_name(self, *, name: str) -> UnNumber | None:
+        found = self.list(exact_match=True, name=name)
+        return next(found, None)
 
     def list(
         self,
         *,
-        name: str = None,
-        exact_match: bool | None = None,
-    ) -> Iterator[UnNumber]:
-        return self._list_generator(name=name, exact_match=exact_match)
-
-    def get_by_name(self, *, name: str) -> UnNumber:
-        found = self.list(exact_match=True, name=name)
-        return next(found, None)
+        limit: int = 50,
+        start_key: str | None = None,
+        name: str | None = None,
+        exact_match: bool = False,
+    ) -> Iterator[UnNumber, None, None]:
+        params = {"limit": limit, "startKey": start_key}
+        if name:
+            params["name"] = name
+            params["exactMatch"] = json.dumps(exact_match)
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [UnNumber(**item) for item in items],
+        )

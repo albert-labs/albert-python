@@ -1,10 +1,13 @@
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.exceptions import AlbertHTTPError
 from albert.resources.base import Status
 from albert.resources.users import User
 from albert.session import AlbertSession
+from albert.utils.logging import logger
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UserCollection(BaseCollection):
@@ -23,39 +26,32 @@ class UserCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{UserCollection._api_version}/users"
 
-    def _list_generator(
-        self,
-        *,
-        text: str | None = None,
-        offset: int | None = None,
-        limit: int = 50,
-        status=None,
-        search_fields=None,
-    ) -> Generator[User, None, None]:
-        params = {"limit": limit}
-        if status:
-            params["status"] = status
-        if text:
-            params["text"] = text.lower()
-        if offset:  # pragma: no cover
-            params["offset"] = offset
-        if search_fields:
-            params["searchFields"] = search_fields
-        while True:
-            response = self.session.get(self.base_path + "/search", params=params)
-            user_data = response.json().get("Items", [])
-            if not user_data or user_data == []:
-                break
-            for u in user_data:
-                # do a full get
-                yield self.get_by_id(user_id=u["albertId"])
-            offset = response.json().get("offset")
-            if not offset or len(user_data) < limit:
-                break
-            params["offset"] = int(offset) + int(limit)
+    def get_by_id(self, *, id: str) -> User:
+        """
+        Retrieves a User by its ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the user to retrieve.
+
+        Returns
+        -------
+        User
+            The User object.
+        """
+        url = f"{self.base_path}/{id}"
+        response = self.session.get(url)
+        return User(**response.json())
 
     def list(
-        self, *, text: str | None = None, status: Status = None, search_fields=None
+        self,
+        *,
+        limit: int = 50,
+        offset: int | None = None,
+        text: str | None = None,
+        status: Status | None = None,
+        search_fields: str | None = None,
     ) -> Iterator[User]:
         """Lists Users based on criteria
 
@@ -69,26 +65,30 @@ class UserCollection(BaseCollection):
         Generator
             Generator of matching Users or None
         """
-        return self._list_generator(text=text, status=status, search_fields=search_fields)
 
-    def get_by_id(self, *, user_id: str) -> User | None:
-        """
-        Retrieves a User by its ID.
+        def deserialize(items: list[dict]) -> Iterator[User]:
+            for item in items:
+                id = item["albertId"]
+                try:
+                    yield self.get_by_id(id=id)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error fetching user '{id}': {e}")
 
-        Parameters
-        ----------
-        user_id : str
-            The ID of the user to retrieve.
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "status": status,
+            "text": text,
+            "searchFields": search_fields,
+        }
 
-        Returns
-        -------
-        User
-            The User object if found, None otherwise.
-        """
-        url = f"{self.base_path}/{user_id}"
-        response = self.session.get(url)
-        user = User(**response.json())
-        return user
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            deserialize=deserialize,
+        )
 
     def create(self, *, user: User) -> User:  # pragma: no cover
         """Create a new User
@@ -113,20 +113,20 @@ class UserCollection(BaseCollection):
                 return u
 
         response = self.session.post(
-            self.base_path, json=user.model_dump(by_alias=True, exclude_none=True)
+            self.base_path,
+            json=user.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
-        user = User(**response.json())
-        return user
+        return User(**response.json())
 
-    def update(self, *, updated_object: User) -> User:
+    def update(self, *, user: User) -> User:
         # Fetch the current object state from the server or database
-        current_object = self.get_by_id(user_id=updated_object.id)
+        current_object = self.get_by_id(id=user.id)
 
         # Generate the PATCH payload
-        payload = self._generate_patch_payload(existing=current_object, updated=updated_object)
+        payload = self._generate_patch_payload(existing=current_object, updated=user)
 
-        url = f"{self.base_path}/{updated_object.id}"
+        url = f"{self.base_path}/{user.id}"
         self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
 
-        updated_user = self.get_by_id(user_id=updated_object.id)
+        updated_user = self.get_by_id(id=user.id)
         return updated_user

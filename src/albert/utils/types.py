@@ -61,7 +61,6 @@ class BaseAlbertModel(BaseModel, metaclass=SignatureOverrideMeta):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        use_enum_values=True,
         arbitrary_types_allowed=True,
         validate_assignment=True,
         cli_use_class_docs_for_groups=True,

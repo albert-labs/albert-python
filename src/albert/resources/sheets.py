@@ -5,9 +5,9 @@ from typing import ForwardRef, Union
 import pandas as pd
 from pydantic import Field, PrivateAttr, model_validator
 
+from albert.exceptions import AlbertException
 from albert.resources.base import BaseResource, BaseSessionResource
 from albert.resources.inventory import InventoryItem
-from albert.utils.exceptions import AlbertException
 
 # Define forward references
 Row = ForwardRef("Row")
@@ -234,7 +234,7 @@ class Design(BaseSessionResource):
         return rows
 
     def _get_grid(self):
-        endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type}/grid"
+        endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -294,7 +294,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def set_session(self):
         if self.session is not None:
             for d in self.designs:
-                d.session = self.session
+                d._session = self.session
         return self
 
     @property

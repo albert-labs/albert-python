@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 
+from albert.exceptions import AlbertException
 from albert.resources.sheets import (
     Cell,
     CellColor,
@@ -11,20 +12,19 @@ from albert.resources.sheets import (
     Row,
     Sheet,
 )
-from albert.utils.exceptions import AlbertException
 
 
-def test_get_test_sheet(sheet: Sheet):
-    assert isinstance(sheet, Sheet)
-    sheet.rename(new_name="test renamed")
-    assert sheet.name == "test renamed"
-    sheet.rename(new_name="test")
-    assert sheet.name == "test"
-    assert isinstance(sheet.grid, pd.DataFrame)
+def test_get_test_sheet(seeded_sheet: Sheet):
+    assert isinstance(seeded_sheet, Sheet)
+    seeded_sheet.rename(new_name="test renamed")
+    assert seeded_sheet.name == "test renamed"
+    seeded_sheet.rename(new_name="test")
+    assert seeded_sheet.name == "test"
+    assert isinstance(seeded_sheet.grid, pd.DataFrame)
 
 
-def test_crud_empty_column(sheet: Sheet):
-    new_col = sheet.add_blank_column(name="my cool new column")
+def test_crud_empty_column(seeded_sheet: Sheet):
+    new_col = seeded_sheet.add_blank_column(name="my cool new column")
     assert isinstance(new_col, Column)
     assert new_col.column_id.startswith("COL")
 
@@ -32,27 +32,18 @@ def test_crud_empty_column(sheet: Sheet):
     assert new_col.column_id == renamed_column.column_id
     assert renamed_column.name == "My renamed column"
 
-    sheet.delete_column(column_id=new_col.column_id)
+    seeded_sheet.delete_column(column_id=new_col.column_id)
 
 
-def test_add_formulation(sheet: Sheet, seeded_inventory):
-    components = [
-        Component(inventory_item=seeded_inventory[0], amount=66),
-        Component(inventory_item=seeded_inventory[1], amount=34),
-    ]
-    # Note: A new column with the same name is going to be created every time this test is run.
-    new_col = sheet.add_formulation(
-        formulation_name="TEST my cool formulation", components=components
-    )
-    assert isinstance(new_col, Column)
-
+def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory, seeded_products):
     components_updated = [
         Component(inventory_item=seeded_inventory[0], amount=33),
         Component(inventory_item=seeded_inventory[1], amount=67),
     ]
 
-    new_col = sheet.add_formulation(
-        formulation_name="TEST my cool formulation", components=components_updated
+    new_col = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - My cool formulation base",
+        components=components_updated,
     )
     assert isinstance(new_col, Column)
 
@@ -66,16 +57,16 @@ def test_add_formulation(sheet: Sheet, seeded_inventory):
 ########################## COLUMNS ##########################
 
 
-def test_recolor_column(sheet: Sheet):
-    for col in sheet.columns:
+def test_recolor_column(seeded_sheet: Sheet):
+    for col in seeded_sheet.columns:
         if col.type == "Formula":
             col.recolor_cells(color=CellColor.RED)
             for c in col.cells:
                 assert c.color == CellColor.RED
 
 
-def test_property_reads(sheet: Sheet):
-    for col in sheet.columns:
+def test_property_reads(seeded_sheet: Sheet):
+    for col in seeded_sheet.columns:
         if col.type == "Formula":
             break
 
@@ -90,18 +81,22 @@ def test_property_reads(sheet: Sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]
 
 
-def test_add_and_remove_blank_rows(sheet: Sheet):
-    new_row = sheet.add_blank_row(row_name="TEST app Design", design=DesignType.APPS)
+def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
+    new_row = seeded_sheet.add_blank_row(row_name="TEST app Design", design=DesignType.APPS)
     assert isinstance(new_row, Row)
-    sheet.delete_row(row_id=new_row.row_id, design_id=sheet.app_design.id)
+    seeded_sheet.delete_row(row_id=new_row.row_id, design_id=seeded_sheet.app_design.id)
 
-    new_row = sheet.add_blank_row(row_name="TEST products Design", design=DesignType.PRODUCTS)
+    new_row = seeded_sheet.add_blank_row(
+        row_name="TEST products Design", design=DesignType.PRODUCTS
+    )
     assert isinstance(new_row, Row)
-    sheet.delete_row(row_id=new_row.row_id, design_id=sheet.product_design.id)
+    seeded_sheet.delete_row(row_id=new_row.row_id, design_id=seeded_sheet.product_design.id)
 
     # You cannot add a blank row to results design
     with pytest.raises(AlbertException):
-        new_row = sheet.add_blank_row(row_name="TEST results Design", design=DesignType.RESULTS)
+        new_row = seeded_sheet.add_blank_row(
+            row_name="TEST results Design", design=DesignType.RESULTS
+        )
 
 
 ########################## CELLS ##########################

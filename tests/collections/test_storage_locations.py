@@ -1,5 +1,4 @@
 import uuid
-from collections.abc import Generator
 
 from albert import Albert
 from albert.resources.locations import Location
@@ -18,7 +17,6 @@ def _list_asserts(returned_list):
 
 def test_basic_lists(client: Albert):
     list_response = client.storage_locations.list()
-    assert isinstance(list_response, Generator)
     _list_asserts(list_response)
 
 
@@ -30,7 +28,7 @@ def test_advanced_list(
     list_response = client.storage_locations.list(
         name=[seeded_storage_locations[0].name], exact_match=True
     )
-    assert isinstance(list_response, Generator)
+
     list_response = list(list_response)
     _list_asserts(list_response)
     for sl in list_response:
@@ -46,7 +44,7 @@ def test_advanced_list(
 
 
 def test_pagination(client: Albert, seeded_storage_locations: list[StorageLocation]):
-    list_response = client.storage_locations._list_generator(limit=2)
+    list_response = client.storage_locations.list(limit=2)
     _list_asserts(list_response)
 
 
@@ -59,7 +57,7 @@ def test_avoids_dupes(caplog, client: Albert, seeded_storage_locations: list[Sto
     )
     assert duped.id == seeded_storage_locations[0].id
     assert duped.name == seeded_storage_locations[0].name
-    assert duped.location == seeded_storage_locations[0].location
+    assert duped.location.id == seeded_storage_locations[0].location.id
 
 
 def test_update(client: Albert, seeded_storage_locations: list[StorageLocation]):

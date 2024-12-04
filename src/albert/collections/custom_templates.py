@@ -1,10 +1,11 @@
-import builtins
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.exceptions import AlbertHTTPError
 from albert.resources.custom_templates import CustomTemplate
 from albert.session import AlbertSession
-from albert.utils.exceptions import ForbiddenError
+from albert.utils.logging import logger
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CustomTemplatesCollection(BaseCollection):
@@ -23,57 +24,6 @@ class CustomTemplatesCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomTemplatesCollection._api_version}/customtemplates"
 
-    def _list_generator(
-        self,
-        *,
-        name: str | builtins.list[str] | None = None,
-        start_key: str | None = None,
-        limit: int = 50,
-    ) -> Generator[CustomTemplate, None, None]:
-        params = {
-            "limit": limit,
-        }
-        if name:
-            params["name"] = name if isinstance(name, list) else [name]
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-
-        while True:
-            response = self.session.get(self.base_path + "/search", params=params)
-            templates = response.json().get("Items", [])
-            if not templates or templates == []:
-                break
-            for t in templates:
-                try:
-                    # Like InventoryItems I need to add a get here.
-                    # May want to swap to lazy-load later for speed
-                    yield self.get_by_id(id=t["albertId"])
-                except ForbiddenError:
-                    continue
-            start_key = response.json().get("lastKey")
-            if not start_key:
-                break
-            params["startKey"] = start_key
-
-    def list(
-        self,
-        *,
-        name: str | builtins.list[str] | None = None,
-    ) -> Iterator[CustomTemplate]:
-        """lists Custom Templates
-
-        Parameters
-        ----------
-        name : str | builtins.list[str] | None, optional
-            Name to search on, by default None
-
-        Yields
-        ------
-        Iterator[CustomTemplate]
-            An Iterator with CustomTemplate Objects
-        """
-        return self._list_generator(name=name)
-
     def get_by_id(self, *, id) -> CustomTemplate:
         """Get a Custom Template by ID
 
@@ -89,5 +39,29 @@ class CustomTemplatesCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
-        template = CustomTemplate(**response.json())
-        return template
+        return CustomTemplate(**response.json())
+
+    def list(
+        self,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        text: str | None = None,
+    ) -> Iterator[CustomTemplate]:
+        def deserialize(items: list[dict]) -> Iterator[CustomTemplate]:
+            for item in items:
+                id = item["albertId"]
+                try:
+                    yield self.get_by_id(id=id)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error fetching custom template {id}: {e}")
+
+        params = {"limit": limit, "offset": offset, "text": text}
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            deserialize=deserialize,
+        )

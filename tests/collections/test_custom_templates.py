@@ -19,5 +19,4 @@ def _list_asserts(list_iterator: Iterable[CustomTemplate]):
 
 def test_basics(client: Albert):
     list_response = client.templates.list()
-    assert isinstance(list_response, Iterable)
     _list_asserts(list_response)

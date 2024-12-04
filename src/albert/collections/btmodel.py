@@ -27,7 +27,7 @@ class BTModelSessionCollection(BaseCollection):
 
     def _deserialize_with_session(self, data: dict) -> BTModelSession:
         mds = BTModelSession(**data)
-        mds.session = self.session
+        mds._session = self.session
         return mds
 
     def create(self, *, model_session: BTModelSession) -> BTModelSession:

@@ -1,10 +1,12 @@
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 from albert.session import AlbertSession
-from albert.utils.exceptions import AlbertException
+from albert.utils.logging import logger
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CompanyCollection(BaseCollection):
@@ -52,57 +54,13 @@ class CompanyCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CompanyCollection._api_version}/companies"
 
-    def _list_generator(
+    def list(
         self,
         *,
         limit: int = 50,
         name: str | list[str] = None,
         exact_match: bool = True,
         start_key: str | None = None,
-    ) -> Generator[Company, None, None]:
-        """
-        Lists company entities with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of companies to return, by default 50.
-        name : Union[str, None], optional
-            The name of the company to filter by, by default None.
-        exact_match : bool, optional
-            Whether to match the name exactly, by default True.
-
-        Yields
-        -------
-        Generator
-            A generator that yields Company.
-        """
-        params = {"limit": limit, "dupDetection": "false"}
-        if name:
-            params["name"] = name if isinstance(name, list) else [name]
-            params["exactMatch"] = str(exact_match).lower()
-        if start_key:  # pragma: no cover
-            params["startKey"] = start_key
-        while True:
-            response = self.session.get(self.base_path, params=params)
-
-            company_data = response.json().get("Items", [])
-            if not company_data or company_data == []:
-                break
-
-            for company in company_data:
-                this_company = Company(**company)
-                yield this_company
-            start_key = response.json().get("lastKey")
-            if not start_key or len(company_data) < limit:
-                break
-            params["startKey"] = start_key
-
-    def list(
-        self,
-        *,
-        name: str | list[str] = None,
-        exact_match: bool = False,
     ) -> Iterator[Company]:
         """
         Lists company entities with optional filters.
@@ -118,10 +76,20 @@ class CompanyCollection(BaseCollection):
 
         Returns
         -------
-        Iterator[Company]
-            A generator that yields Company.
+        Iterator
+            An iterator of Company objects.
         """
-        return self._list_generator(name=name, exact_match=exact_match)
+        params = {"limit": limit, "dupDetection": "false", "startKey": start_key}
+        if name:
+            params["name"] = name if isinstance(name, list) else [name]
+            params["exactMatch"] = str(exact_match).lower()
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [Company(**item) for item in items],
+        )
 
     def company_exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
@@ -142,9 +110,9 @@ class CompanyCollection(BaseCollection):
         companies = self.get_by_name(name=name, exact_match=exact_match)
         return bool(companies)
 
-    def get_by_id(self, *, id: str) -> Company | None:
+    def get_by_id(self, *, id: str) -> Company:
         """
-        Retrieves a company by its ID.
+        Get a company by its ID.
 
         Parameters
         ----------
@@ -153,8 +121,8 @@ class CompanyCollection(BaseCollection):
 
         Returns
         -------
-        Union[Company, None]
-            The Company object if found, None otherwise.
+        Company
+            The Company object.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -204,7 +172,7 @@ class CompanyCollection(BaseCollection):
             logging.warning(f"Company {company.name} already exists with id {hit.id}.")
             return hit
 
-        payload = company.model_dump(by_alias=True, exclude_unset=True)
+        payload = company.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         this_company = Company(**response.json())
         return this_company
@@ -213,7 +181,7 @@ class CompanyCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def rename(self, *, old_name: str, new_name: str) -> Company | None:
+    def rename(self, *, old_name: str, new_name: str) -> Company:
         """
         Renames an existing company entity.
 
@@ -232,7 +200,7 @@ class CompanyCollection(BaseCollection):
         company = self.get_by_name(name=old_name, exact_match=True)
         if not company:
             msg = f'Company "{old_name}" not found.'
-            logging.error(msg)
+            logger.error(msg)
             raise AlbertException(msg)
         company_id = company.id
         endpoint = f"{self.base_path}/{company_id}"
@@ -250,15 +218,13 @@ class CompanyCollection(BaseCollection):
         updated_company = self.get_by_id(id=company_id)
         return updated_company
 
-    def update(self, *, updated_object: Company) -> Company:
+    def update(self, *, company: Company) -> Company:
         # Fetch the current object state from the server or database
-        current_object = self.get_by_id(id=updated_object.id)
+        current_object = self.get_by_id(id=company.id)
 
         # Generate the PATCH payload
-        patch_payload = self._generate_patch_payload(
-            existing=current_object, updated=updated_object
-        )
-        url = f"{self.base_path}/{updated_object.id}"
+        patch_payload = self._generate_patch_payload(existing=current_object, updated=company)
+        url = f"{self.base_path}/{company.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
-        updated_company = self.get_by_id(id=updated_object.id)
+        updated_company = self.get_by_id(id=company.id)
         return updated_company

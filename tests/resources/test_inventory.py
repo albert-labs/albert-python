@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from albert.resources.cas import Cas
 from albert.resources.inventory import (
@@ -7,7 +8,6 @@ from albert.resources.inventory import (
     InventoryItem,
     InventoryMinimum,
 )
-from albert.utils.exceptions import AlbertException
 
 
 def test_cas_amount_attributes():
@@ -25,12 +25,12 @@ def test_cas_amount_attributes():
 
 
 def test_inventory_minimum(seeded_locations):
-    with pytest.raises(AlbertException):
+    with pytest.raises(ValidationError):
         InventoryMinimum(
             minimum=1,
         )
 
-    with pytest.raises(AlbertException):
+    with pytest.raises(ValidationError):
         InventoryMinimum(
             minimum=0,
             location=seeded_locations[0],
@@ -44,7 +44,7 @@ def test_inventory_item_private_attributes(seeded_inventory: list[InventoryItem]
 
 
 def test_formula_requirements():
-    with pytest.raises(AlbertException):
+    with pytest.raises(ValidationError):
         InventoryItem(
             name="Test",
             description="Test",
