@@ -17,12 +17,6 @@ class ProjectClass(str, Enum):
     PRIVATE = "private"
 
 
-class ProjectStatus(str, Enum):
-    NOT_STARTED = "not started"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
 class State(str, Enum):
     """The current state of a project"""
 
@@ -74,7 +68,7 @@ class Project(BaseResource, EntityLinkConvertible):
     grid : GridDefault | None
         The default grid of the project. Optional.
     state : State | None
-        The state of the project. Read-only.
+        The state/status of the project. Allowed states are customizeable using the entitystatus API. Optional.
     application_engineering_inventory_ids : list[str] | None
         Inventory Ids to be added as application engineering. Optional.
 
@@ -97,10 +91,10 @@ class Project(BaseResource, EntityLinkConvertible):
     task_config: list[TaskConfig] | None = Field(default_factory=list)
     grid: GridDefault | None = None
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
-    status: ProjectStatus | None = Field(default=None)
-
     # Read-only fields
-    state: State | None = Field(default=None, exclude=True, frozen=True)
+    status: str | None = Field(default=None, exclude=True, frozen=True)
+    # Cannot be sent in a create POST, but can be used to from a PATCH for update.
+    state: State | None = Field(default=None, exclude=True)
 
     @field_validator("status", mode="before")
     def validate_status(cls, value):

@@ -1,31 +1,54 @@
-version: "2.1"
+version: 2.1
 
 orbs:
   python: circleci/python@2.1.1
   snyk: snyk/snyk@1.1.2
 
 jobs:
-  snyk-app-scan:
+  setup:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
       - checkout
-      - python/install-packages:
-          pkg-manager: poetry
+      - run:
+          name: Install uv
+          command: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - persist_to_workspace:
+          root: /home/circleci
+          paths:
+            - "*"
+
+  snyk_app_scan:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: Export dependencies
+          command: |
+            uv sync
+            uv export > requirements_lock.txt
+            uv pip compile requirements_lock.txt > requirements.txt
+            uv pip install --system -r requirements.txt
       - snyk/scan:
           fail-on-issues: false
           monitor-on-build: true
           severity-threshold: high
           token-variable: SNYK_TOKEN
+
   test:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - checkout
-      - python/install-packages:
-          pkg-manager: poetry
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: Install dependencies
+          command: uv sync
       - run:
           name: Set environment
           command: |
@@ -33,35 +56,39 @@ jobs:
       - run:
           name: Check formatting
           command: |
-            poetry run ruff format . --check
+            uv run ruff format . --check
       - run:
           name: Check lints
           command: |
-            poetry run ruff check .
+            uv run ruff check .
       - run:
           name: Run pytest
           command: |
-            poetry run pytest
+            uv run pytest
 
   publish:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - checkout
+      - attach_workspace:
+          at: /home/circleci
       - run:
-          name: Add versioning plugin
-          command: poetry self add "poetry-dynamic-versioning[plugin]"
+          name: Build package
+          command: uv build
       - run:
           name: Publish package
-          command: poetry publish --build --repository albert
+          command: |
+            uv publish --publish-url $ALBERT_PYPI_URL --username $UV_INDEX_ALBERT_USERNAME \
+              --password $UV_INDEX_ALBERT_PASSWORD
 
   validate_version_bump:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - checkout
+      - attach_workspace:
+          at: /home/circleci
       - run:
           name: Check is PR
           command: |
@@ -84,20 +111,29 @@ jobs:
 workflows:
   main:
     jobs:
-      - snyk-app-scan:
-          name: Snyk App Scan
-          context: dev
+      - setup:
+          name: Setup
+          context: ds-dev
       - test:
           name: Test
           context: ds-dev
+          requires:
+            - Setup
       - validate_version_bump:
           name: Validate Version Bump
           context: ds-dev
+          requires:
+            - Setup
+      - snyk_app_scan:
+          name: Snyk App Scan
+          context: dev
+          requires:
+            - Setup
       - publish:
           name: Publish
           context: ds-dev
           requires:
-            - Test
+            - Setup
           filters:
             branches:
               only: ["main"]

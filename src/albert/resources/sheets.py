@@ -1,4 +1,3 @@
-from collections import Counter
 from enum import Enum
 from typing import ForwardRef, Union
 
@@ -166,14 +165,8 @@ class Design(BaseSessionResource):
             row = {}
             this_row_id = item["rowId"]
             row_type = item["type"]
-            # row_name = item["name"]
             this_index = item["rowUniqueId"]
             all_index.append(this_index)
-            # "rowHeight": "0",# These are also available if I need them
-            # "rowHierarchy": [
-            #     "apps",
-            #     "ROW7"
-            # ],
             for c in item["Values"]:
                 c["rowId"] = this_row_id
                 c["design_id"] = self.id
@@ -411,7 +404,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         r = self.update_cells(cells=cleared_cells)
         return r
 
-    def add_formulation(self, *, formulation_name: str, components: list[Component]) -> "Column":
+    def add_formulation(
+        self, *, formulation_name: str, components: list[Component], enforce_order: bool = False
+    ) -> "Column":
         existing_formulation_names = [x.name for x in self.columns]
         if formulation_name not in existing_formulation_names:
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
@@ -420,28 +415,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
             col = self.get_column(column_name=formulation_name)
             self._clear_formulation_from_column(column=col)
         col_id = col.column_id
-        component_dict = {}
-        for c in components:
-            # sometimes, users want to have multiple rows for the SAME inventory item to represent adding in aliquots
-            if c.inventory_item.id not in component_dict:
-                component_dict[c.inventory_item.id] = {"count": 0, "amounts": []}
-            component_dict[c.inventory_item.id]["count"] += 1
-            component_dict[c.inventory_item.id]["amounts"].append(c.amount)
-        existing_inventory_rows = [x.inventory_id for x in self.rows if x.inventory_id is not None]
-        row_count = Counter(existing_inventory_rows)
-        # add any missing inventory rows
-        for inv_id, info in component_dict.items():
-            to_add_count = info["count"] - row_count[inv_id]
-            while to_add_count > 0:
-                self.add_inventory_row(inventory_id=inv_id)
-                to_add_count -= 1
 
         all_cells = []
         self.grid = None  # reset the grid for saftey
 
         for component in components:
             row_id = self._get_row_id_for_component(
-                inventory_item=component.inventory_item, existing_cells=all_cells
+                inventory_item=component.inventory_item,
+                existing_cells=all_cells,
+                enforce_order=enforce_order,
             )
             if row_id is None:
                 raise AlbertException(f"no component with id {component.inventory_item.id}")
@@ -459,16 +441,44 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.update_cells(cells=all_cells)
         return self.get_column(column_id=col_id)
 
-    def _get_row_id_for_component(self, *, inventory_item, existing_cells):
+    def _get_row_id_for_component(self, *, inventory_item, existing_cells, enforce_order):
         self.grid = None
-        matching_rows = [
-            x for x in self.product_design.rows if x.inventory_id == inventory_item.id
-        ]
+
+        # within a sheet, the "INV" prefix is dropped
+        sheet_inv_id = inventory_item.id
+        matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
+
         used_row_ids = [x.row_id for x in existing_cells]
+        if enforce_order:
+            existing_inv_order = [
+                x.row_id for x in self.product_design.rows if x.inventory_id is not None
+            ]
+            index_last_row = 0
+            for row_id in used_row_ids:
+                if row_id in existing_inv_order:
+                    this_row_index = existing_inv_order.index(row_id)
+                    if this_row_index > index_last_row:
+                        index_last_row = this_row_index
         for r in matching_rows:
             if r.row_id not in used_row_ids:
-                return r.row_id
-        return None
+                if enforce_order:
+                    if existing_inv_order.index(r.row_id) >= index_last_row:
+                        return r.row_id
+                    else:
+                        continue
+                else:
+                    return r.row_id
+        # Otherwise I need to add a new row
+        if enforce_order:
+            return self.add_inventory_row(
+                inventory_id=inventory_item.id,
+                position={
+                    "reference_id": existing_inv_order[index_last_row],
+                    "position": "below",
+                },
+            ).row_id
+        else:
+            return self.add_inventory_row(inventory_id=inventory_item.id).row_id
 
     def add_formulation_columns(
         self,

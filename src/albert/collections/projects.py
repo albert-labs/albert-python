@@ -35,7 +35,7 @@ class ProjectCollection(BaseCollection):
     """
 
     _api_version = "v3"
-    _updatable_attributes = {"description", "grid", "metadata"}
+    _updatable_attributes = {"description", "grid", "metadata", "state"}
 
     def __init__(self, *, session: AlbertSession):
         """

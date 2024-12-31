@@ -356,7 +356,7 @@ class InventoryCollection(BaseCollection):
             The payload for the PATCH request.
         """
 
-        _updatable_attributes_special = {"company", "tags", "cas"}
+        _updatable_attributes_special = {"company", "tags", "cas", "acls"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
         payload = payload.model_dump(mode="json", by_alias=True)
         for attribute in _updatable_attributes_special:
@@ -435,6 +435,25 @@ class InventoryCollection(BaseCollection):
                                 }
                             )
 
+            elif attribute == "acls":
+                if old_value and new_value and new_value != old_value:
+                    payload["data"].append(
+                        {
+                            "operation": "update",
+                            "attribute": "ACL",
+                            "oldValue": [x.model_dump(by_alias=True) for x in old_value],
+                            "newValue": [x.model_dump(by_alias=True) for x in new_value],
+                        }
+                    )
+                elif new_value:
+                    payload["data"].append(
+                        {
+                            "operation": "add",
+                            "attribute": "ACL",
+                            "newValue": [x.model_dump(by_alias=True) for x in new_value],
+                        }
+                    )
+
             elif attribute == "tags":
                 if (old_value is None or old_value == []) and new_value is not None:
                     for t in new_value:
@@ -476,7 +495,7 @@ class InventoryCollection(BaseCollection):
                                 "oldValue": id,
                             }
                         )
-            elif attribute == "company":
+            elif attribute == "company" and old_value is not None or new_value is not None:
                 if old_value is None and new_value is not None:
                     payload["data"].append(
                         {

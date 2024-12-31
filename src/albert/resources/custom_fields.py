@@ -21,6 +21,8 @@ class ServiceType(str, Enum):
     PROJECTS = "projects"
     TASKS = "tasks"
     USERS = "users"
+    PARAMETERS = "parameters"
+    DATA_COLUMNS = "datacolumns"
 
 
 class FieldCategory(str, Enum):

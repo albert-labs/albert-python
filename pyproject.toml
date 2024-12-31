@@ -1,54 +1,40 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
+[project]
 name = "albert"
-version = "0.0.0" # Adjust version in src/albert/__init__.py
 description = "A Python SDK for interacting with the Albert API"
-authors = ["Albert Invent <support@albertinvent.com>"]
+authors = [{ name = "Albert Invent", email = "support@albertinvent.com" }]
 readme = "README.md"
-license = "LICENSE"
-packages = [{ include = "albert", from = "src" }]
+license = { file = "LICENSE" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 keywords = ["SDK", "API", "Albert", "Python"]
 
-[tool.poetry.urls]
+dynamic = ["version"]
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.32.3,<3",
+    "pandas>=2.2.2,<3",
+    "pydantic[email]>=2.8.2,<3",
+    "pyjwt>=2.10.0,<3",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3.2", "jupyter>=1.1.1", "ruff>=0.8.1"]
+
+[project.urls]
 Homepage = "https://github.com/MoleculeEngineering/albert-sdk"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-requests = "^2.32.3"
-pandas = "^2.2.2"
-pydantic = { version = "^2.8.2", extras = ["email"] }
-pyjwt = "^2.10.0"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.7.1"
-pytest = "8.3.2"
-jupyter = "1.1.1"
-
-[[tool.poetry.source]]
-name = "albert"
-url = "https://pypi.ai.albertinvent.com"
-priority = "supplemental"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-
-[tool.poetry-dynamic-versioning.from-file]
-source = "src/albert/__init__.py"
-pattern = '__version__ = "(.+)"'
+[tool.hatch.version]
+path = "src/albert/__init__.py"
 
 [tool.ruff]
 target-version = "py310"
-
-# In addition to the standard set of exclusions, omit the following:
 extend-exclude = [".circleci", ".vscode"]
-
 line-length = 99
 indent-width = 4
 

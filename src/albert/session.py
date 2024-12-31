@@ -3,6 +3,8 @@ from urllib.parse import urljoin
 
 import jwt
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 import albert
 from albert.exceptions import handle_http_error
@@ -28,6 +30,8 @@ class AlbertSession(requests.Session):
     ----------
     base_url : str
         The base URL to prefix to all requests.
+    retries : int
+        The number of retries for failed requests. Defaults to 3.
     """
 
     def __init__(
@@ -36,6 +40,7 @@ class AlbertSession(requests.Session):
         base_url: str,
         token: str | None = None,
         client_credentials: ClientCredentials | None = None,
+        retries: int | None = None,
     ):
         super().__init__()
         self.base_url = base_url
@@ -57,6 +62,18 @@ class AlbertSession(requests.Session):
             self._set_access_token(token)
         else:
             raise ValueError("Either client credentials or token must be specified.")
+
+        # Set up retry logic
+        retry = Retry(
+            total=retries,
+            read=retries,
+            connect=retries,
+            backoff_factor=0.3,
+            status_forcelist=(500, 502, 503, 504, 403),
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self.mount("http://", adapter)
+        self.mount("https://", adapter)
 
     def _set_access_token(self, token: str) -> None:
         self._access_token = token

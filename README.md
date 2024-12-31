@@ -37,7 +37,7 @@ client = Albert(
 )
 
 
-# Initalize using an API key/ Bot Token
+# Initalize using an API key from environment
 
 client = Albert(
     client_credentials=ClientCredentials.from_env(
@@ -49,7 +49,6 @@ client = Albert(
 #  By default, if environment variables `ALBERT_CLIENT_ID` and `ALBERT_CLIENT_SECRET` are set you can simply do:
 
 client = Albert()
-
 ```
 
 ## Working with Resource Collections and Models
@@ -59,7 +58,6 @@ You can interact with inventory items using the InventoryCollection class. Here 
 ```python
 from albert import Albert
 from albert.resources.inventory import InventoryItem, InventoryCategory, UnitCategory
-from albert.collections.base import OrderBy
 
 client = Albert()
 
@@ -72,7 +70,7 @@ new_inventory = InventoryItem(
     tags=["safety", "equipment"],
     company="Company ABC"
 )
-created_inventory = client.inventory.create(inventory=new_inventory)
+created_inventory = client.inventory.create(inventory_item=new_inventory)
 
 # List all inventory items
 all_inventories = client.inventory.list()
@@ -85,9 +83,6 @@ inventory_item = client.inventory.get_by_id(inventory_id=inventory_id)
 inventory_item = inventory_collection.list(name="Acetone")
 ```
 
-
-
-
 ## BaseEntityLink / SerializeAsEntityLink
 
 We introduced the concept of a `BaseEntityLink` to represent the forigen key references you can find around The Albert API. Payloads to the API expect these refrences in the BaseEntityLink format (e.g., `{"id":x}`). However, as a convenience, you will see some value types defined as `SerializeAsEntityLink`, and then another resource name (e.g., `SerializeAsEntityLink[Location]`). This allows a user to make that reference either to a base and link or to the actual other entity, and the SDK will handle the serialization for you! For example:
@@ -97,9 +92,7 @@ from albert import Albert
 from albert.resources.project import Project
 from albert.resources.base import BaseEntityLink
 
-
 client = Albert()
-
 
 my_location = next(client.locations.list(name="My Location")
 
@@ -108,15 +101,12 @@ p = Project(
     locations=[my_location]
 )
 
-# Equivilent to
+# Equivalent to
 
 p = Project(
     description="Example project",
-    locations=[
-        BaseEntityLink(id=my_location.id)
-    ]
+    locations=[BaseEntityLink(id=my_location.id)]
 )
-
 ```
 
 ## Custom Fields & Lists
@@ -192,5 +182,4 @@ p = Project(
 
 # Also note that the values of list metadata fields are list[BaseEntityLink]
 )
-
 ```

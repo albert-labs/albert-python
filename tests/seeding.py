@@ -18,6 +18,7 @@ from albert.resources.inventory import (
     InventoryMinimum,
     InventoryUnitCategory,
 )
+from albert.resources.links import Link, LinkCategory
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import (
@@ -829,6 +830,7 @@ def generate_task_seeds(
     seeded_workflows,
     seeded_products,
 ) -> list[BaseTask]:
+    formulation_proj = [x for x in seeded_projects if x.id == seeded_products[2].project_id][0]
     return [
         # Property Task 1
         PropertyTask(
@@ -889,8 +891,8 @@ def generate_task_seeds(
             ],
             location=seeded_locations[1],
             priority=TaskPriority.LOW,
-            project=seeded_projects[2],
-            parent_id=seeded_products[2].project_id,
+            project=formulation_proj,
+            parent_id=formulation_proj.id,
             assigned_to=user,
             start_date="2024-10-01",
             due_date="2024-10-31",
@@ -909,8 +911,8 @@ def generate_task_seeds(
             ],
             location=seeded_locations[2],
             priority=TaskPriority.MEDIUM,
-            project=seeded_projects[2],
-            parent_id=seeded_products[2].project_id,
+            project=formulation_proj,
+            parent_id=formulation_proj.id,
             assigned_to=user,
             start_date="2024-10-01",
             due_date="2024-10-31",
@@ -930,3 +932,17 @@ def generate_note_seeds(
         note=f"{seed_prefix} This is a note for an inventory item",
     )
     return [task_note, inv_note]
+
+
+def generate_link_seeds(seeded_tasks: list[BaseTask]):
+    # NOTE: As more Links are available, we should add tests for them
+    links = []
+    for task in seeded_tasks[1:]:
+        links.append(
+            Link(
+                parent=seeded_tasks[0].to_entity_link(),
+                child=task.to_entity_link(),
+                category=LinkCategory.LINKED_TASK,
+            )
+        )
+    return links

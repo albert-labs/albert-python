@@ -12,6 +12,7 @@ from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.files import FileCollection
 from albert.collections.inventory import InventoryCollection
+from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
 from albert.collections.lots import LotCollection
@@ -19,11 +20,13 @@ from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pricings import PricingCollection
+from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
 from albert.collections.property_data import PropertyDataCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
 from albert.collections.storage_locations import StorageLocationsCollection
+from albert.collections.substance import SubstanceCollection
 from albert.collections.tags import TagCollection
 from albert.collections.tasks import TaskCollection
 from albert.collections.teams import TeamsCollection
@@ -49,6 +52,8 @@ class Albert:
     client_credentials: ClientCredentials, optional
         The client credentials for programmatic authentication.
         Client credentials can be read from the environment by `ClientCredentials.from_env()`.
+    retries : int, optional
+        The maximum number of retries for failed requests (default is None).
 
     Attributes
     ----------
@@ -70,11 +75,13 @@ class Albert:
         base_url: str | None = None,
         token: str | None = None,
         client_credentials: ClientCredentials | None = None,
+        retries: int | None = None,
     ):
         self.session = AlbertSession(
             base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
             client_credentials=client_credentials,
+            retries=retries,
         )
 
     @property
@@ -174,6 +181,10 @@ class Albert:
         return PropertyDataCollection(session=self.session)
 
     @property
+    def product_design(self) -> ProductDesignCollection:
+        return ProductDesignCollection(session=self.session)
+
+    @property
     def storage_locations(self) -> StorageLocationsCollection:
         return StorageLocationsCollection(session=self.session)
 
@@ -207,3 +218,11 @@ class Albert:
     @property
     def btinsights(self) -> BTInsightCollection:
         return BTInsightCollection(session=self.session)
+
+    @property
+    def substances(self) -> SubstanceCollection:
+        return SubstanceCollection(session=self.session)
+
+    @property
+    def links(self) -> LinksCollection:
+        return LinksCollection(session=self.session)

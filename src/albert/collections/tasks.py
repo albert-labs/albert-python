@@ -1,5 +1,7 @@
 from collections.abc import Iterator
 
+from requests.exceptions import RetryError
+
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
 from albert.resources.tasks import BaseTask, TaskAdapter, TaskCategory
@@ -66,7 +68,10 @@ class TaskCollection(BaseCollection):
                 id = item["albertId"]
                 try:
                     yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
+                except (
+                    AlbertHTTPError,
+                    RetryError,
+                ) as e:  # some legacy poorly formed Tasks raise 500s. The allowance on Retry error to also ignore these.
                     logger.warning(f"Error fetching task '{id}': {e}")
 
         params = {

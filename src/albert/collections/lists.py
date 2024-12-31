@@ -101,6 +101,22 @@ class ListsCollection(BaseCollection):
         )
         return ListItem(**response.json())
 
+    def delete(self, *, id: str) -> None:
+        """
+        Delete a lists entry item by its ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the lists item.
+
+        Returns
+        -------
+        None
+        """
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)
+
     def get_matching_item(self, *, name: str, list_type: str) -> ListItem | None:
         for list_item in self.list(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():

@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.resources.base import BaseResource, MetadataItem
 
 
 class ParameterCategory(str, Enum):
@@ -29,6 +29,7 @@ class Parameter(BaseResource):
 
     name: str
     id: str | None = Field(alias="albertId", default=None)
+    metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
 
     # Read-only fields
     category: ParameterCategory | None = Field(default=None, exclude=True, frozen=True)

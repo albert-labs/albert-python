@@ -161,6 +161,7 @@ class InventoryItem(BaseTaggedEntity, EntityLinkConvertible):
     cas: list[CasAmount] | None = Field(default=None, alias="Cas")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     project_id: str | None = Field(default=None, alias="parentId")
+    acls: list[ACL] = Field(default_factory=list, alias="ACL")
 
     # Read-only fields
     task_config: list[dict] | None = Field(
@@ -169,7 +170,6 @@ class InventoryItem(BaseTaggedEntity, EntityLinkConvertible):
     formula_id: str | None = Field(default=None, alias="formulaId", exclude=True, frozen=True)
     symbols: list[dict] | None = Field(default=None, alias="Symbols", exclude=True, frozen=True)
     un_number: str | None = Field(default=None, alias="unNumber", exclude=True, frozen=True)
-    acls: list[ACL] | None = Field(default=None, alias="ACL", exclude=True, frozen=True)
 
     @field_validator("company", mode="before")
     @classmethod
