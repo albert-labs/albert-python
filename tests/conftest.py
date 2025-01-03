@@ -51,6 +51,7 @@ from tests.seeding import (
     generate_project_seeds,
     generate_storage_location_seeds,
     generate_tag_seeds,
+    generate_task_seeds,
     generate_teams_seeds,
     generate_unit_seeds,
     generate_workflow_seeds,
