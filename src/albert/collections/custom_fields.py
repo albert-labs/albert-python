@@ -86,6 +86,11 @@ class CustomFieldCollection(BaseCollection):
             stringify_values=False,
         )
 
+        for patch in payload.data:
+            if patch.attribute == "hidden" and patch.operation == "add":
+                patch.operation = "update"
+                patch.old_value = False
+
         # run patch
         url = f"{self.base_path}/{custom_field.id}"
         self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))

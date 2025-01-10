@@ -7,7 +7,7 @@ from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
 from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
 from albert.resources.projects import Project
-from albert.resources.serialization import EntityLinkConvertible, SerializeAsEntityLink
+from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
@@ -121,7 +121,7 @@ class QCTaskData(BaseAlbertModel):
     workflows: list[QCWorkflowTargets] | None = Field(alias="Workflows", default=None)
 
 
-class BaseTask(BaseTaggedEntity, EntityLinkConvertible):
+class BaseTask(BaseTaggedEntity):
     """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
 
     id: str | None = Field(alias="albertId", default=None)

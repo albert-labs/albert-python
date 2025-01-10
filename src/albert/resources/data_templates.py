@@ -2,7 +2,7 @@ from pydantic import Field, model_validator
 
 from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
 from albert.resources.data_columns import DataColumn
-from albert.resources.serialization import EntityLinkConvertible, SerializeAsEntityLink
+from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.units import Unit
 from albert.resources.users import User
@@ -40,7 +40,7 @@ class DataColumnValue(BaseAlbertModel):
         return self
 
 
-class DataTemplate(BaseTaggedEntity, EntityLinkConvertible):
+class DataTemplate(BaseTaggedEntity):
     name: str
     id: str = Field(None, alias="albertId")
     description: str | None = None

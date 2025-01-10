@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 
 from albert.resources.acls import ACL
-from albert.resources.base import BaseResource, EntityLinkConvertible, MetadataItem
+from albert.resources.base import BaseResource, MetadataItem
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 
@@ -43,7 +43,7 @@ class GridDefault(str, Enum):
     WKS = "WKS"
 
 
-class Project(BaseResource, EntityLinkConvertible):
+class Project(BaseResource):
     """A project in Albert.
 
     Attributes

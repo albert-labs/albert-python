@@ -1,8 +1,8 @@
-from albert.resources.base import BaseEntityLink, BaseResource, EntityLinkConvertible
+from albert.resources.base import BaseEntityLink, BaseResource
 from albert.resources.serialization import SerializeAsEntityLink
 
 
-class FakeEntity(BaseResource, EntityLinkConvertible):
+class FakeEntity(BaseResource):
     id: str
     name: str
     data: float

@@ -33,6 +33,15 @@ class AuditFields(BaseAlbertModel):
     at: datetime | None = Field(default=None)
 
 
+class BaseEntityLink(BaseAlbertModel):
+    id: str
+    name: str | None = Field(default=None, exclude=True)
+
+    def to_entity_link(self) -> "BaseEntityLink":
+        # Convience method to return self, so you can call this method on objects that are already entity links
+        return self
+
+
 class BaseResource(BaseAlbertModel):
     """The base resource for all Albert resources.
 
@@ -62,6 +71,13 @@ class BaseResource(BaseAlbertModel):
         frozen=True,
     )
 
+    def to_entity_link(self) -> BaseEntityLink:
+        if hasattr(self, "id") and self.id is not None:
+            return BaseEntityLink(id=self.id)
+        return AlbertException(
+            "A non-null `id` is required to create an entity link. Ensure the linked object is registered and has a valid `id`."
+        )
+
 
 class BaseSessionResource(BaseResource):
     _session: AlbertSession | None = PrivateAttr(default=None)
@@ -73,20 +89,6 @@ class BaseSessionResource(BaseResource):
     @property
     def session(self) -> AlbertSession | None:
         return self._session
-
-
-class BaseEntityLink(BaseAlbertModel):
-    id: str
-    name: str | None = Field(default=None, exclude=True)
-
-
-class EntityLinkConvertible:
-    def to_entity_link(self) -> BaseEntityLink:
-        if hasattr(self, "id"):
-            return BaseEntityLink(id=self.id)
-        return AlbertException(
-            "`id` is required to create an entity link. Ensure the linked object is registered."
-        )
 
 
 MetadataItem = float | int | str | BaseEntityLink | list[BaseEntityLink]

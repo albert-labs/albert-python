@@ -2,10 +2,10 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLinkConvertible
+from albert.resources.base import BaseResource
 
 
-class Role(BaseResource, EntityLinkConvertible):
+class Role(BaseResource):
     """A role in Albert. Note: Roles are not currently creatable via the SDK.
 
     Attributes

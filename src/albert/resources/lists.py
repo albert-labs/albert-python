@@ -10,6 +10,7 @@ class ListItemCategory(str, Enum):
     USER_DEFINED = "userDefined"
     PROJECTS = "projects"
     EXTENSIONS = "extensions"
+    INVENTORY = "inventory"
 
 
 class ListItem(BaseResource):

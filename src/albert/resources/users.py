@@ -4,7 +4,7 @@ from pydantic import EmailStr, Field
 
 from albert.collections.locations import Location
 from albert.collections.roles import Role
-from albert.resources.base import BaseResource, EntityLinkConvertible, MetadataItem
+from albert.resources.base import BaseResource, MetadataItem
 from albert.resources.serialization import SerializeAsEntityLink
 
 
@@ -18,7 +18,7 @@ class UserClass(str, Enum):
     ADMIN = "admin"
 
 
-class User(BaseResource, EntityLinkConvertible):
+class User(BaseResource):
     """Represents a User on the Albert Platform
 
     Attributes

@@ -21,7 +21,7 @@ def test_cas_amount_attributes():
     assert amt.cas_smiles == cas.smiles
 
     data = amt.model_dump()
-    assert set(data.keys()) == {"id", "min", "max"}
+    assert set(data.keys()) == {"id", "min", "max", "target", "cas_category"}
 
 
 def test_inventory_minimum(seeded_locations):

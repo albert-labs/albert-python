@@ -6,7 +6,7 @@ from pydantic import Field, field_validator, model_validator
 from albert.collections.cas import Cas
 from albert.collections.companies import Company
 from albert.resources.acls import ACL
-from albert.resources.base import EntityLinkConvertible, MetadataItem, SecurityClass
+from albert.resources.base import MetadataItem, SecurityClass
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
@@ -50,7 +50,9 @@ class CasAmount(BaseAlbertModel):
 
     min: float
     max: float
+    target: float | None = Field(default=None, alias="inventoryValue")
     id: str | None = Field(default=None)
+    cas_category: str | None = Field(default=None, alias="casCategory")
 
     # Read-only fields
     cas: Cas | None = Field(default=None, exclude=True)
@@ -107,7 +109,7 @@ class InventoryMinimum(BaseAlbertModel):
         return self
 
 
-class InventoryItem(BaseTaggedEntity, EntityLinkConvertible):
+class InventoryItem(BaseTaggedEntity):
     """An InventoryItem is a Pydantic model representing an item in the inventory. Can be a raw material, consumable, equipment, or formula.
     Note: Formulas should be registered via the Worksheet collection / Sheet resource.
 

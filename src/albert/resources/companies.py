@@ -1,10 +1,9 @@
 from pydantic import Field
 
 from albert.resources.base import BaseResource
-from albert.resources.serialization import EntityLinkConvertible
 
 
-class Company(BaseResource, EntityLinkConvertible):
+class Company(BaseResource):
     """
     Company is a Pydantic model representing a company entity.
 

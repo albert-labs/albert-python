@@ -88,6 +88,7 @@ class Cell(BaseResource):
     calculation: str = ""
     design_id: str
     format: dict = Field(default_factory=dict, alias="cellFormat")
+    inventory_id: str | None = Field(default=None)
 
     @property
     def raw_value(self):
@@ -171,6 +172,7 @@ class Design(BaseSessionResource):
                 c["rowId"] = this_row_id
                 c["design_id"] = self.id
                 c["type"] = row_type
+                c["inventory_id"] = c.get("id", None)
                 this_cell = Cell(**c)
                 col_id = c["colId"]
                 name = c.get("name", None)
@@ -202,6 +204,7 @@ class Design(BaseSessionResource):
                     type=v["type"],
                     session=self.session,
                     sheet=self.sheet,
+                    invetory_id=v.get("id", None),
                 )
             )
         return columns
@@ -391,6 +394,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "type": item["type"],
                 "session": self.session,
                 "sheet": self,
+                "inventory_id": item.get("id", None),
             }
             new_dicts.append(this_dict)
         return new_dicts
@@ -435,6 +439,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 type=CellType.INVENTORY,
                 design_id=self.product_design.id,
                 name=formulation_name,
+                inventory_id=col.inventory_id,
             )
             all_cells.append(this_cell)
 
@@ -817,6 +822,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 type=first_item.type,
                 sheet=self,
                 session=self.session,
+                inventory_id=first_item.inventory_id,
             )
 
 
@@ -843,6 +849,7 @@ class Column(BaseSessionResource):  # noqa:F811
     name: str | None = Field(default=None)
     type: CellType
     sheet: Sheet
+    inventory_id: str | None = Field(default=None, exclude=True)
     _cells: list[Cell] | None = PrivateAttr(default=None)
 
     @property

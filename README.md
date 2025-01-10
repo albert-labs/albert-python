@@ -85,7 +85,7 @@ inventory_item = inventory_collection.list(name="Acetone")
 
 ## BaseEntityLink / SerializeAsEntityLink
 
-We introduced the concept of a `BaseEntityLink` to represent the forigen key references you can find around The Albert API. Payloads to the API expect these refrences in the BaseEntityLink format (e.g., `{"id":x}`). However, as a convenience, you will see some value types defined as `SerializeAsEntityLink`, and then another resource name (e.g., `SerializeAsEntityLink[Location]`). This allows a user to make that reference either to a base and link or to the actual other entity, and the SDK will handle the serialization for you! For example:
+We introduced the concept of a `BaseEntityLink` to represent the foreign key references you can find around the Albert API. Payloads to the API expect these refrences in the BaseEntityLink format (e.g., `{"id":x}`). However, as a convenience, you will see some value types defined as `SerializeAsEntityLink`, and then another resource name (e.g., `SerializeAsEntityLink[Location]`). This allows a user to make that reference either to a base and link or to the actual other entity, and the SDK will handle the serialization for you! For example:
 
 ```python
 from albert import Albert
@@ -111,7 +111,7 @@ p = Project(
 
 ## Custom Fields & Lists
 
-`CustomFields` allow you to store custom metadata on a `Project`, `InventoryItem`, `User`, `BaseTask` (Tasks), and `Lot`. The `FieldType` used determines the shape of the medatdata field's value. If the `FieldType` is `LIST`, then the `FieldCategory` defines the ACL needed to add new allowed items to the given list. A `FieldCategory.USER_DEFINED` allows general users to add new items to the list whereas `FieldCategory.USER_DEFINED` allows only admin users to add new allowed values.
+`CustomFields` allow you to store custom metadata on a `Project`, `InventoryItem`, `User`, `BaseTask` (Tasks), and `Lot`. The `FieldType` used determines the shape of the medatdata field's value. If the `FieldType` is `LIST`, then the `FieldCategory` defines the ACL needed to add new allowed items to the given list. A `FieldCategory.USER_DEFINED` allows general users to add new items to the list whereas `FieldCategory.BUSINESS_DEFINED` allows only admin users to add new allowed values.
 
 ### Creating Custom Fields
 ```python
@@ -174,12 +174,9 @@ p = Project(
     description="Example project",
     locations=[next(client.locations.list(name="My Location"))],
     metadata = {
-       
         stage_gate_field.name: [client.lists.get_matching_item(list_type=stage_gate_field.name, name = stages[0]).to_entity_link()],
         justification_field.name: "To show an example of using custom fields."
     }
-
-
 # Also note that the values of list metadata fields are list[BaseEntityLink]
 )
 ```

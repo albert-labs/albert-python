@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLinkConvertible
+from albert.resources.base import BaseResource
 
 
-class Location(BaseResource, EntityLinkConvertible):
+class Location(BaseResource):
     """A location in Albert.
 
     Attributes

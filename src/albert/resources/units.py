@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLinkConvertible
+from albert.resources.base import BaseResource
 
 
 class UnitCategory(str, Enum):
@@ -78,7 +78,7 @@ class UnitCategory(str, Enum):
     RESISTANCE = "Resistance"
 
 
-class Unit(BaseResource, EntityLinkConvertible):
+class Unit(BaseResource):
     """
     Unit is a Pydantic model representing a unit entity.
 

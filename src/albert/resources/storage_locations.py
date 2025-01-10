@@ -1,11 +1,11 @@
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLinkConvertible
+from albert.resources.base import BaseResource
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 
 
-class StorageLocation(BaseResource, EntityLinkConvertible):
+class StorageLocation(BaseResource):
     """A storage location entity. For example, a specific flammables cabinet or a storage room.
 
     Attributes

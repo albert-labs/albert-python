@@ -6,7 +6,7 @@ from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 from albert.collections.inventory import InventoryCategory
 from albert.resources.base import BaseResource, MetadataItem
 from albert.resources.locations import Location
-from albert.resources.serialization import EntityLinkConvertible, SerializeAsEntityLink
+from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
 
@@ -19,7 +19,7 @@ class LotStatus(str, Enum):
     QUARANTINED = "quarantined"
 
 
-class Lot(BaseResource, EntityLinkConvertible):
+class Lot(BaseResource):
     """A lot in Albert.
 
     Attributes

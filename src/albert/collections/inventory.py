@@ -7,6 +7,7 @@ from albert.collections.base import BaseCollection, OrderBy
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
+from albert.resources.acls import AccessControlLevel
 from albert.resources.inventory import (
     InventoryCategory,
     InventoryItem,
@@ -356,6 +357,11 @@ class InventoryCollection(BaseCollection):
             The payload for the PATCH request.
         """
 
+        def _remove_old_value_on_add(patch_dict):
+            if "oldValue" in patch_dict and patch_dict["operation"] == "add":
+                del patch_dict["oldValue"]
+            return patch_dict
+
         _updatable_attributes_special = {"company", "tags", "cas", "acls"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
         payload = payload.model_dump(mode="json", by_alias=True)
@@ -395,15 +401,17 @@ class InventoryCollection(BaseCollection):
                     to_check_for_update = old_set.intersection(new_set)
 
                     for id in to_add:
-                        payload["data"].append(
-                            {
-                                "operation": "add",
-                                "attribute": "casId",
-                                "newValue": new_lookup[id].id,
-                                "max": new_lookup[id].max,
-                                "min": new_lookup[id].min,
-                            }
-                        )
+                        add_payload = {
+                            "operation": "add",
+                            "attribute": "casId",
+                            "newValue": new_lookup[id].id,
+                            "max": new_lookup[id].max,
+                            "min": new_lookup[id].min,
+                            "inventoryValue": new_lookup[id].target,
+                            "casCategory": new_lookup[id].cas_category,
+                        }
+                        add_payload = {k: v for k, v in add_payload.items() if v is not None}
+                        payload["data"].append(add_payload)
                     for id in to_del:
                         payload["data"].append(
                             {
@@ -416,33 +424,80 @@ class InventoryCollection(BaseCollection):
                     for id in to_check_for_update:
                         if old_lookup[id].max != new_lookup[id].max:
                             payload["data"].append(
-                                {
-                                    "operation": "update",
-                                    "attribute": "max",
-                                    "entityId": id,
-                                    "oldValue": str(old_lookup[id].max),
-                                    "newValue": str(new_lookup[id].max),
-                                }
+                                _remove_old_value_on_add(
+                                    {
+                                        "operation": "update"
+                                        if old_lookup[id].max is not None
+                                        else "add",
+                                        "attribute": "max",
+                                        "entityId": id,
+                                        "oldValue": str(old_lookup[id].max),
+                                        "newValue": str(new_lookup[id].max),
+                                    }
+                                )
                             )
                         if old_lookup[id].min != new_lookup[id].min:
                             payload["data"].append(
-                                {
-                                    "operation": "update",
-                                    "attribute": "min",
-                                    "entityId": id,
-                                    "oldValue": str(old_lookup[id].min),
-                                    "newValue": str(new_lookup[id].min),
-                                }
+                                _remove_old_value_on_add(
+                                    {
+                                        "operation": "update"
+                                        if old_lookup[id].min is not None
+                                        else "add",
+                                        "attribute": "min",
+                                        "entityId": id,
+                                        "oldValue": str(old_lookup[id].min),
+                                        "newValue": str(new_lookup[id].min),
+                                    }
+                                )
+                            )
+                        if old_lookup[id].target != new_lookup[id].target:
+                            payload["data"].append(
+                                _remove_old_value_on_add(
+                                    {
+                                        "operation": "update"
+                                        if old_lookup[id].target is not None
+                                        else "add",
+                                        "attribute": "inventoryValue",
+                                        "entityId": id,
+                                        "oldValue": str(old_lookup[id].target),
+                                        "newValue": str(new_lookup[id].target),
+                                    }
+                                )
+                            )
+                        if old_lookup[id].cas_category != new_lookup[id].cas_category:
+                            payload["data"].append(
+                                _remove_old_value_on_add(
+                                    {
+                                        "operation": "update"
+                                        if old_lookup[id].cas_category is not None
+                                        else "add",
+                                        "attribute": "casCategory",
+                                        "entityId": id,
+                                        "oldValue": str(old_lookup[id].cas_category),
+                                        "newValue": str(new_lookup[id].cas_category),
+                                    }
+                                )
                             )
 
             elif attribute == "acls":
+                new_val_dump = [
+                    x.model_dump(by_alias=True)
+                    for x in new_value
+                    if x.fgc
+                    in [
+                        AccessControlLevel.INVENTORY_OWNER,
+                        AccessControlLevel.INVENTORY_VIEWER,
+                    ]
+                ]
+                if new_val_dump == []:
+                    continue
                 if old_value and new_value and new_value != old_value:
                     payload["data"].append(
                         {
                             "operation": "update",
                             "attribute": "ACL",
                             "oldValue": [x.model_dump(by_alias=True) for x in old_value],
-                            "newValue": [x.model_dump(by_alias=True) for x in new_value],
+                            "newValue": new_val_dump,
                         }
                     )
                 elif new_value:
@@ -450,7 +505,7 @@ class InventoryCollection(BaseCollection):
                         {
                             "operation": "add",
                             "attribute": "ACL",
-                            "newValue": [x.model_dump(by_alias=True) for x in new_value],
+                            "newValue": new_val_dump,
                         }
                     )
 
@@ -517,7 +572,6 @@ class InventoryCollection(BaseCollection):
                             "newValue": new_value.id,
                         }
                     )
-
         return payload
 
     def update(self, *, inventory_item: InventoryItem) -> InventoryItem:

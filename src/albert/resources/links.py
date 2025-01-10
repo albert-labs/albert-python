@@ -9,6 +9,7 @@ class LinkCategory(str, Enum):
     MENTION = "metion"
     LINKED_TASK = "linkedTask"
     SYNTHESIS = "synthesis"
+    LINKED_INVENTORY = "linkedInventory"
 
 
 class Link(BaseResource):

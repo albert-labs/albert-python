@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLinkConvertible, MetadataItem
+from albert.resources.base import BaseResource, MetadataItem
 
 
-class DataColumn(BaseResource, EntityLinkConvertible):
+class DataColumn(BaseResource):
     name: str
     defalt: bool = False
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
