@@ -87,7 +87,7 @@ class CustomFieldCollection(BaseCollection):
         )
 
         for patch in payload.data:
-            if patch.attribute == "hidden" and patch.operation == "add":
+            if patch.attribute in ("hidden", "search") and patch.operation == "add":
                 patch.operation = "update"
                 patch.old_value = False
 

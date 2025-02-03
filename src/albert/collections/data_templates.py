@@ -2,6 +2,7 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.data_templates import DataTemplate
+from albert.resources.identifiers import DataTemplateId
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
@@ -20,7 +21,7 @@ class DataTemplateCollection(BaseCollection):
         )
         return DataTemplate(**response.json())
 
-    def get_by_id(self, *, id: str) -> DataTemplate:
+    def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         response = self.session.get(f"{self.base_path}/{id}")
         return DataTemplate(**response.json())
 

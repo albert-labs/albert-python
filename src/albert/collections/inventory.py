@@ -8,9 +8,11 @@ from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
 from albert.resources.acls import AccessControlLevel
+from albert.resources.facet import FacetItem
 from albert.resources.inventory import (
     InventoryCategory,
     InventoryItem,
+    InventorySearchItem,
     InventorySpec,
     InventorySpecList,
 )
@@ -266,34 +268,24 @@ class InventoryCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def _prepare_parameters(
         self,
         *,
-        limit: int = 100,
+        limit: int | None = None,
         text: str | None = None,
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
-        order: OrderBy = OrderBy.DESCENDING,
-        sort_by: str | None = "createdAt",
-        location: list[Location] | None = None,
-        storage_location: list[StorageLocation] | None = None,
+        order: OrderBy | None = None,
+        sort_by: str | None = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: str | None = None,
         sheet_id: str | None = None,
-        created_by: list[User] = None,
-        lot_owner: list[User] = None,
-        tags: list[str] = None,
-    ) -> Iterator[InventoryItem]:
-        """
-        List inventory items with optional filters.
-        """
-
-        def deserialize(items: list[dict]) -> list[InventoryItem]:
-            return self.get_by_ids(ids=[x["albertId"] for x in items])
-
-        # Note there are other parameters we could add supprt for
-
-        # helpers incase the user fails to provide a list for any of these.
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | None = None,
+        tags: list[str] | None = None,
+    ):
         if isinstance(cas, Cas):
             cas = [cas]
         if isinstance(category, InventoryCategory):
@@ -314,8 +306,8 @@ class InventoryCollection(BaseCollection):
         params = {
             "limit": limit,
             "text": text,
-            "order": order.value,
-            "sortBy": sort_by,
+            "order": order.value if order is not None else None,
+            "sortBy": sort_by if sort_by is not None else None,
             "category": [c.value for c in category] if category is not None else None,
             "tags": tags,
             "manufacturer": [c.name for c in company] if company is not None else None,
@@ -330,9 +322,231 @@ class InventoryCollection(BaseCollection):
             "projectId": project_id,
         }
 
+        return params
+
+    def get_all_facets(
+        self,
+        *,
+        text: str | None = None,
+        cas: list[Cas] | Cas | None = None,
+        category: list[InventoryCategory] | InventoryCategory | None = None,
+        company: list[Company] | Company | None = None,
+        location: list[Location] | None = None,
+        storage_location: list[StorageLocation] | None = None,
+        project_id: str | None = None,
+        sheet_id: str | None = None,
+        created_by: list[User] = None,
+        lot_owner: list[User] = None,
+        tags: list[str] = None,
+        match_all_conditions: bool = False,
+    ) -> list[FacetItem]:
+        """
+        Get available facets for inventory items based on the provided filters.
+        """
+
+        params = self._prepare_parameters(
+            limit=1,
+            text=text,
+            cas=cas,
+            category=category,
+            company=company,
+            location=location,
+            storage_location=storage_location,
+            project_id=project_id,
+            sheet_id=sheet_id,
+            created_by=created_by,
+            lot_owner=lot_owner,
+            tags=tags,
+        )
+        response = self.session.get(
+            url=f"{self.base_path}/llmsearch"
+            if match_all_conditions
+            else f"{self.base_path}/search",
+            params=params,
+        )
+        return [FacetItem.model_validate(x) for x in response.json()["Facets"]]
+
+    def get_facet_by_name(
+        self,
+        name: str | list[str],
+        *,
+        text: str | None = None,
+        cas: list[Cas] | Cas | None = None,
+        category: list[InventoryCategory] | InventoryCategory | None = None,
+        company: list[Company] | Company | None = None,
+        location: list[Location] | None = None,
+        storage_location: list[StorageLocation] | None = None,
+        project_id: str | None = None,
+        sheet_id: str | None = None,
+        created_by: list[User] = None,
+        lot_owner: list[User] = None,
+        tags: list[str] = None,
+        match_all_conditions: bool = False,
+    ) -> list[FacetItem]:
+        """
+        Returns a specific facet by its name with all the filters applied to the search.
+        This can be used for example to fetch all remaining tags as part of an iterative
+        refinement of a search.
+        """
+        if isinstance(name, str):
+            name = [name]
+
+        facets = self.get_all_facets(
+            text=text,
+            cas=cas,
+            category=category,
+            company=company,
+            location=location,
+            storage_location=storage_location,
+            project_id=project_id,
+            sheet_id=sheet_id,
+            created_by=created_by,
+            lot_owner=lot_owner,
+            tags=tags,
+            match_all_conditions=match_all_conditions,
+        )
+        filtered_facets = []
+        for facet in facets:
+            if facet.name in name or facet.name.lower() in name:
+                filtered_facets.append(facet)
+
+        return filtered_facets
+
+    def search(
+        self,
+        *,
+        limit: int = 100,
+        text: str | None = None,
+        cas: list[Cas] | Cas | None = None,
+        category: list[InventoryCategory] | InventoryCategory | None = None,
+        company: list[Company] | Company | None = None,
+        location: list[Location] | None = None,
+        storage_location: list[StorageLocation] | None = None,
+        project_id: str | None = None,
+        sheet_id: str | None = None,
+        created_by: list[User] = None,
+        lot_owner: list[User] = None,
+        tags: list[str] = None,
+        match_all_conditions: bool = False,
+    ) -> Iterator[InventorySearchItem]:
+        """
+        Get a list of inventory items that match the search criteria and
+        return the raw search records. These are not full inventory item
+        objects, but are special short documents intended for fast summary results
+        """
+
+        def deserialize(items: list[dict]):
+            return [InventorySearchItem.model_validate(x) for x in items]
+
+        params = self._prepare_parameters(
+            limit=limit,
+            text=text,
+            cas=cas,
+            category=category,
+            company=company,
+            location=location,
+            storage_location=storage_location,
+            project_id=project_id,
+            sheet_id=sheet_id,
+            created_by=created_by,
+            lot_owner=lot_owner,
+            tags=tags,
+        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/search",
+            path=f"{self.base_path}/llmsearch"
+            if match_all_conditions
+            else f"{self.base_path}/search",
+            params=params,
+            session=self.session,
+            deserialize=deserialize,
+        )
+
+    def list(
+        self,
+        *,
+        limit: int = 100,
+        text: str | None = None,
+        cas: list[Cas] | Cas | None = None,
+        category: list[InventoryCategory] | InventoryCategory | None = None,
+        company: list[Company] | Company | None = None,
+        order: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = "createdAt",
+        location: list[Location] | None = None,
+        storage_location: list[StorageLocation] | None = None,
+        project_id: str | None = None,
+        sheet_id: str | None = None,
+        created_by: list[User] = None,
+        lot_owner: list[User] = None,
+        tags: list[str] = None,
+        match_all_conditions: bool = False,
+    ) -> Iterator[InventoryItem]:
+        """
+        List inventory items with optional filters.
+
+        Parameters
+        ----------
+        limit : int, optional
+            Maximum number of items to return (default is 100)
+        text : str, optional
+            Text to search for in inventory names and descriptions
+        cas : list[Cas] | Cas | None, optional
+            Filter by CAS number(s)
+        category : list[InventoryCategory] | InventoryCategory | None, optional
+            Filter by inventory category/categories
+        company : list[Company] | Company | None, optional
+            Filter by manufacturing company/companies
+        order : OrderBy, optional
+            Sort order, either ASCENDING or DESCENDING (default is DESCENDING)
+        sort_by : str, optional
+            Field to sort by (default is "createdAt")
+        location : list[Location] | None, optional
+            Filter by location(s)
+        storage_location : list[StorageLocation] | None, optional
+            Filter by storage location(s)
+        project_id : str, optional
+            Filter by project ID
+        sheet_id : str, optional
+            Filter by sheet ID
+        created_by : list[User], optional
+            Filter by creator(s)
+        lot_owner : list[User], optional
+            Filter by lot owner(s)
+        tags : list[str], optional
+            Filter by tag(s)
+        match_all_conditions : bool, optional
+            Whether to match all conditions (default is False -- e.g. OR between conditions)
+
+        Returns
+        -------
+        Iterator[InventoryItem]
+            An iterator over the matching inventory items
+        """
+
+        def deserialize(items: list[dict]) -> list[InventoryItem]:
+            return self.get_by_ids(ids=[x["albertId"] for x in items])
+
+        params = self._prepare_parameters(
+            limit=limit,
+            text=text,
+            cas=cas,
+            category=category,
+            company=company,
+            order=order,
+            sort_by=sort_by,
+            location=location,
+            storage_location=storage_location,
+            project_id=project_id,
+            sheet_id=sheet_id,
+            created_by=created_by,
+            lot_owner=lot_owner,
+            tags=tags,
+        )
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/llmsearch"
+            if match_all_conditions
+            else f"{self.base_path}/search",
             params=params,
             session=self.session,
             deserialize=deserialize,
@@ -423,61 +637,101 @@ class InventoryCollection(BaseCollection):
                         )
                     for id in to_check_for_update:
                         if old_lookup[id].max != new_lookup[id].max:
-                            payload["data"].append(
-                                _remove_old_value_on_add(
+                            if new_lookup[id].max is not None:
+                                payload["data"].append(
+                                    _remove_old_value_on_add(
+                                        {
+                                            "operation": "update"
+                                            if old_lookup[id].max is not None
+                                            else "add",
+                                            "attribute": "max",
+                                            "entityId": id,
+                                            "oldValue": str(old_lookup[id].max),
+                                            "newValue": str(new_lookup[id].max),
+                                        }
+                                    )
+                                )
+                            else:
+                                payload["data"].append(
                                     {
-                                        "operation": "update"
-                                        if old_lookup[id].max is not None
-                                        else "add",
+                                        "operation": "delete",
                                         "attribute": "max",
                                         "entityId": id,
                                         "oldValue": str(old_lookup[id].max),
-                                        "newValue": str(new_lookup[id].max),
                                     }
                                 )
-                            )
                         if old_lookup[id].min != new_lookup[id].min:
-                            payload["data"].append(
-                                _remove_old_value_on_add(
+                            if new_lookup[id].min is not None:
+                                payload["data"].append(
+                                    _remove_old_value_on_add(
+                                        {
+                                            "operation": "update"
+                                            if old_lookup[id].min is not None
+                                            else "add",
+                                            "attribute": "min",
+                                            "entityId": id,
+                                            "oldValue": str(old_lookup[id].min),
+                                            "newValue": str(new_lookup[id].min),
+                                        }
+                                    )
+                                )
+                            else:
+                                payload["data"].append(
                                     {
-                                        "operation": "update"
-                                        if old_lookup[id].min is not None
-                                        else "add",
+                                        "operation": "delete",
                                         "attribute": "min",
                                         "entityId": id,
                                         "oldValue": str(old_lookup[id].min),
-                                        "newValue": str(new_lookup[id].min),
                                     }
                                 )
-                            )
                         if old_lookup[id].target != new_lookup[id].target:
-                            payload["data"].append(
-                                _remove_old_value_on_add(
+                            if new_lookup[id].target is not None:
+                                payload["data"].append(
+                                    _remove_old_value_on_add(
+                                        {
+                                            "operation": "update"
+                                            if old_lookup[id].target is not None
+                                            else "add",
+                                            "attribute": "inventoryValue",
+                                            "entityId": id,
+                                            "oldValue": str(old_lookup[id].target),
+                                            "newValue": str(new_lookup[id].target),
+                                        }
+                                    )
+                                )
+                            else:
+                                payload["data"].append(
                                     {
-                                        "operation": "update"
-                                        if old_lookup[id].target is not None
-                                        else "add",
+                                        "operation": "delete",
                                         "attribute": "inventoryValue",
                                         "entityId": id,
                                         "oldValue": str(old_lookup[id].target),
-                                        "newValue": str(new_lookup[id].target),
                                     }
                                 )
-                            )
                         if old_lookup[id].cas_category != new_lookup[id].cas_category:
-                            payload["data"].append(
-                                _remove_old_value_on_add(
+                            if new_lookup[id].cas_category is not None:
+                                payload["data"].append(
+                                    _remove_old_value_on_add(
+                                        {
+                                            "operation": "update"
+                                            if old_lookup[id].cas_category is not None
+                                            else "add",
+                                            "attribute": "casCategory",
+                                            "entityId": id,
+                                            "oldValue": str(old_lookup[id].cas_category),
+                                            "newValue": str(new_lookup[id].cas_category),
+                                        }
+                                    )
+                                )
+                            else:
+                                payload["data"].append(
                                     {
-                                        "operation": "update"
-                                        if old_lookup[id].cas_category is not None
-                                        else "add",
+                                        "operation": "delete",
                                         "attribute": "casCategory",
                                         "entityId": id,
                                         "oldValue": str(old_lookup[id].cas_category),
-                                        "newValue": str(new_lookup[id].cas_category),
                                     }
                                 )
-                            )
 
             elif attribute == "acls":
                 new_val_dump = [

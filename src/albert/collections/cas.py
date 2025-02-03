@@ -1,3 +1,4 @@
+import re
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
@@ -130,6 +131,27 @@ class CasCollection(BaseCollection):
         cas = Cas(**response.json())
         return cas
 
+    import re
+
+    def _clean_cas_number(self, text: str):
+        """
+        Cleans up strings that start with a CAS-like number by removing excess spaces within the CAS number format.
+        This function mimics how the Albert backend checks for matching CAS numbers.
+        Parameters:
+        - text: str, the input string to clean.
+
+        Returns:
+        - str, the cleaned string with corrected CAS number formatting.
+        """
+
+        # Regex pattern to match CAS numbers at the start of the string (e.g., "50  - 0 -0")
+        pattern = r"^(\d+)\s*-\s*(\d+)\s*-\s*(\d+)"
+
+        # Replace matched CAS number patterns with cleaned-up format
+        cleaned_text = re.sub(pattern, r"\1-\2-\3", text)
+
+        return cleaned_text
+
     def get_by_number(self, *, number: str, exact_match: bool = True) -> Cas | None:
         """
         Retrieves a CAS by its number.
@@ -149,7 +171,7 @@ class CasCollection(BaseCollection):
         found = self.list(number=number)
         if exact_match:
             for f in found:
-                if f.number.replace(" ", "") == number:
+                if self._clean_cas_number(f.number) == self._clean_cas_number(number):
                     return f
         return next(found, None)
 
@@ -175,7 +197,6 @@ class CasCollection(BaseCollection):
 
         # Generate the PATCH payload
         patch_payload = self._generate_patch_payload(existing=existing_cas, updated=updated_object)
-
         url = f"{self.base_path}/{updated_object.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
 

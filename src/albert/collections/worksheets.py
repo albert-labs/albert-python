@@ -61,3 +61,10 @@ class WorksheetCollection(BaseCollection):
         path = f"{self.base_path}/project/{project_id}/sheets"
         self.session.post(path, json=payload, params=params)
         return self.get_by_project_id(project_id=project_id)
+
+    def add_sheet(self, *, project_id: str, sheet_name: str) -> Worksheet:
+        payload = {"name": sheet_name}
+        project_id = "PRO" + project_id if not project_id.startswith("PRO") else project_id
+        url = f"{self.base_path}/project/{project_id}/sheets"
+        self.session.put(url=url, json=payload)
+        return self.get_by_project_id(project_id=project_id)

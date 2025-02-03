@@ -515,6 +515,7 @@ def generate_parameter_group_seeds(
     seeded_parameters: list[Parameter],
     seeded_tags: list[Tag],
     seeded_units: list[Unit],
+    static_consumeable_parameter: Parameter,
 ) -> list[ParameterGroup]:
     """
     Generates a list of ParameterGroup seed objects for testing without IDs.
@@ -559,6 +560,9 @@ def generate_parameter_group_seeds(
                     parameter=seeded_parameters[2],
                     value="500.0",
                     unit=seeded_units[2],
+                ),
+                ParameterValue(
+                    parameter=static_consumeable_parameter, category=ParameterCategory.SPECIAL
                 ),
             ],
             tags=[seeded_tags[0]],
@@ -629,6 +633,15 @@ def generate_inventory_seeds(
                 InventoryMinimum(minimum=20.0, id=seeded_locations[1].id),
             ],
             tags=[seeded_tags[0].tag],  # make sure it knows to use the tag object
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Sulfuric Acid",
+            description="Common salt used in various applications.",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.MASS,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+            tags=[seeded_tags[0].tag, seeded_tags[1].tag],
         ),
     ]
 
@@ -738,12 +751,17 @@ def generate_workflow_seeds(
     seed_prefix: str,
     seeded_parameter_groups: list[ParameterGroup],
     seeded_parameters: list[Parameter],
+    static_consumeable_parameter: Parameter,
+    seeded_inventory: list[InventoryItem],
 ) -> list[Workflow]:
     def _get_param_from_id(seeded_parameters, param_id):
         for x in seeded_parameters:
             if x.id == param_id:
                 return x
 
+    consumeable_inv = [x for x in seeded_inventory if x.category == InventoryCategory.CONSUMABLES][
+        0
+    ]
     return [
         Workflow(
             name=f"{seed_prefix} - Workflow 1",
@@ -761,7 +779,7 @@ def generate_workflow_seeds(
             ],
         ),
         Workflow(
-            name=f"{seed_prefix} - Workflow 2",
+            name=f"{seed_prefix} - Workflow 2 Equipment",
             parameter_group_setpoints=[
                 ParameterGroupSetpoints(
                     parameter_group=seeded_parameter_groups[1],
@@ -770,6 +788,12 @@ def generate_workflow_seeds(
                             parameter_id=seeded_parameter_groups[1].parameters[0].id,
                             value="25.0",
                             unit=seeded_parameter_groups[1].parameters[0].unit,
+                        ),
+                        ParameterSetpoint(
+                            parameter_id=static_consumeable_parameter.id,
+                            short_name=f"{seed_prefix[0:6]} - Equipment",
+                            value=consumeable_inv.to_entity_link(),
+                            category=ParameterCategory.SPECIAL,
                         ),
                         ParameterSetpoint(
                             parameter=_get_param_from_id(
@@ -800,6 +824,7 @@ def generate_workflow_seeds(
                             ),  # make sure setting from a parameter works
                             value="12.2",
                             unit=seeded_parameter_groups[2].parameters[1].unit,
+                            categoty=ParameterCategory.NORMAL,
                         ),
                         ParameterSetpoint(
                             parameter_id=seeded_parameter_groups[2].parameters[0].id,
@@ -865,6 +890,25 @@ def generate_task_seeds(
                     lot_id=(
                         [l for l in seeded_lots if l.inventory_id == seeded_inventory[1].id][0].id
                     ),
+                )
+            ],
+            priority=TaskPriority.HIGH,
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[1]],
+                    data_template=[seeded_data_templates[1]],
+                )
+            ],
+            due_date="2024-10-31",
+            location=seeded_locations[1],
+        ),
+        # Property Task 3
+        PropertyTask(
+            name=f"{seed_prefix} - Property Task 3",
+            category=TaskCategory.PROPERTY,
+            inventory_information=[
+                InventoryInformation(
+                    inventory_id=seeded_inventory[2].id,
                 )
             ],
             priority=TaskPriority.HIGH,

@@ -1,13 +1,28 @@
 import re
+from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection
+from pydantic import validate_call
+
+from albert.collections.base import BaseCollection, OrderBy
 from albert.collections.tasks import TaskCollection
+from albert.resources.identifiers import (
+    BlockId,
+    IntervalId,
+    InventoryId,
+    LotId,
+    SearchInventoryId,
+    SearchProjectId,
+    TaskId,
+    UserId,
+)
 from albert.resources.property_data import (
     CheckPropertyData,
+    DataEntity,
     InventoryDataColumn,
     InventoryPropertyData,
     InventoryPropertyDataCreate,
     PropertyDataPatchDatum,
+    PropertyDataSearchItem,
     PropertyValue,
     TaskPropertyCreate,
     TaskPropertyData,
@@ -16,6 +31,7 @@ from albert.resources.property_data import (
 from albert.resources.tasks import PropertyTask
 from albert.session import AlbertSession
 from albert.utils.logging import logger
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 from albert.utils.patches import PatchOperation
 
 
@@ -34,18 +50,21 @@ class PropertyDataCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{PropertyDataCollection._api_version}/propertydata"
 
-    def _get_task_from_id(self, *, id: str) -> PropertyTask:
+    @validate_call
+    def _get_task_from_id(self, *, id: TaskId) -> PropertyTask:
         return TaskCollection(session=self.session).get_by_id(id=id)
 
-    def get_properties_on_inventory(self, *, inventory_id: str) -> InventoryPropertyData:
+    @validate_call
+    def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
         """Returns all the properties of an inventory item."""
         params = {"entity": "inventory", "id": [inventory_id]}
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
         return InventoryPropertyData(**response_json[0])
 
+    @validate_call
     def add_properties_to_inventory(
-        self, *, inventory_id: str, properties: list[InventoryDataColumn]
+        self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
         returned = []
         for p in properties:
@@ -62,8 +81,9 @@ class PropertyDataCollection(BaseCollection):
             returned.append(InventoryPropertyDataCreate(**response_json))
         return returned
 
+    @validate_call
     def update_property_on_inventory(
-        self, *, inventory_id: str, property_data: InventoryDataColumn
+        self, *, inventory_id: InventoryId, property_data: InventoryDataColumn
     ) -> InventoryPropertyData:
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
@@ -98,12 +118,15 @@ class PropertyDataCollection(BaseCollection):
         )
         return self.get_properties_on_inventory(inventory_id=inventory_id)
 
+    @validate_call
     def get_task_block_properties(
-        self, *, inventory_id: str, task_id: str, block_id: str, lot_id: str | None = None
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
     ) -> TaskPropertyData:
-        if not task_id.startswith("TAS"):
-            task_id = f"TAS{task_id}"
-
         params = {
             "entity": "task",
             "blockId": block_id,
@@ -117,10 +140,8 @@ class PropertyDataCollection(BaseCollection):
         response_json = response.json()
         return TaskPropertyData(**response_json[0])
 
-    def check_for_task_data(self, *, task_id: str) -> list[CheckPropertyData]:
-        if not task_id.startswith("TAS"):
-            task_id = f"TAS{task_id}"
-
+    @validate_call
+    def check_for_task_data(self, *, task_id: TaskId) -> list[CheckPropertyData]:
         task_info = self._get_task_from_id(id=task_id)
 
         params = {
@@ -133,12 +154,10 @@ class PropertyDataCollection(BaseCollection):
         response = self.session.get(url=self.base_path, params=params)
         return [CheckPropertyData(**x) for x in response.json()]
 
+    @validate_call
     def check_block_interval_for_data(
-        self, *, block_id: str, task_id: str, interval_id: str
+        self, *, block_id: BlockId, task_id: TaskId, interval_id: IntervalId
     ) -> CheckPropertyData:
-        if not task_id.startswith("TAS"):
-            task_id = f"TAS{task_id}"
-
         params = {
             "entity": "block",
             "action": "checkdata",
@@ -150,9 +169,8 @@ class PropertyDataCollection(BaseCollection):
         response = self.session.get(url=self.base_path, params=params)
         return CheckPropertyData(response.json())
 
-    def get_all_task_properties(self, *, task_id: str) -> list[TaskPropertyData]:
-        if not task_id.startswith("TAS"):
-            task_id = f"TAS{task_id}"
+    @validate_call
+    def get_all_task_properties(self, *, task_id: TaskId) -> list[TaskPropertyData]:
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
         for combo_info in task_data_info:
@@ -167,12 +185,11 @@ class PropertyDataCollection(BaseCollection):
 
         return all_info
 
+    @validate_call
     def update_property_on_task(
-        self, *, task_id: str, patch_payload: list[PropertyDataPatchDatum]
+        self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
     ):
         if len(patch_payload) >= 0:
-            if not task_id.startswith("TAS"):
-                task_id = f"TAS{task_id}"
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
                 json=[
@@ -182,20 +199,16 @@ class PropertyDataCollection(BaseCollection):
             )
         return self.get_all_task_properties(task_id=task_id)
 
-    def add_properies_to_task(
+    @validate_call
+    def add_properties_to_task(
         self,
         *,
-        inventory_id: str,
-        task_id: str,
-        block_id: str,
-        lot_id: str | None = None,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
     ):
-        if not task_id.startswith("TAS"):
-            task_id = f"TAS{task_id}"
-        if not inventory_id.startswith("INV"):
-            inventory_id = f"INV{inventory_id}"
-
         params = {
             "blockId": block_id,
             "inventoryId": inventory_id,
@@ -207,6 +220,7 @@ class PropertyDataCollection(BaseCollection):
         response = self.session.post(
             url=f"{self.base_path}/{task_id}",
             json=[x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties],
+            params=params,
         )
 
         registered_properties = [
@@ -262,7 +276,7 @@ class PropertyDataCollection(BaseCollection):
                         return trial
         return None
 
-    def _get_columns_used_in_calculation(self, *, calculation: str, used_columns: set[str]):
+    def _get_columns_used_in_calculation(self, *, calculation: str | None, used_columns: set[str]):
         if calculation is None:
             return used_columns
         column_pattern = r"COL\d+"
@@ -332,3 +346,141 @@ class PropertyDataCollection(BaseCollection):
                         )
 
         return patch_data
+
+    @validate_call
+    def search(
+        self,
+        *,
+        limit: int = 100,
+        result: str | None = None,
+        text: str | None = None,
+        # Sorting/pagination
+        order: OrderBy | None = None,
+        sort_by: str | None = None,
+        # Core platform identifiers
+        inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
+        project_ids: list[SearchProjectId] | SearchProjectId | None = None,
+        lot_ids: list[LotId] | LotId | None = None,
+        # Data structure filters
+        category: list[DataEntity] | DataEntity | None = None,
+        data_templates: list[str] | str | None = None,
+        data_columns: list[str] | str | None = None,
+        # Data content filters
+        parameters: list[str] | str | None = None,
+        parameter_group: list[str] | str | None = None,
+        unit: list[str] | str | None = None,
+        # User filters
+        created_by: list[UserId] | UserId | None = None,
+        task_created_by: list[UserId] | UserId | None = None,
+        # Response customization
+        return_fields: list[str] | str | None = None,
+        return_facets: list[str] | str | None = None,
+    ) -> Iterator[PropertyDataSearchItem]:
+        """Search for property data with various filtering options.
+
+        Parameters
+        ----------
+        limit : int, default=100
+            Maximum number of results to return.
+        result : str, optional
+            Find results using search syntax. e.g. to find all results with viscosity < 200 at a temperature of 25 we would do
+            result=viscosity(<200)@temperature(25)
+        text : str, optional
+            Free text search across all searchable fields.
+        order : OrderBy, optional
+            Sort order (ascending/descending).
+        sort_by : str, optional
+            Field to sort results by.
+        inventory_ids : SearchInventoryIdType or list of SearchInventoryIdType, optional
+            Filter by inventory IDs.
+        project_ids : ProjectIdType or list of ProjectIdType, optional
+            Filter by project IDs.
+        lot_ids : LotIdType or list of LotIdType, optional
+            Filter by lot IDs.
+        category : DataEntity or list of DataEntity, optional
+            Filter by data entity categories.
+        data_templates : str or list of str (exact match), optional
+            Filter by data template names.
+        data_columns : str or list of str (exact match), optional
+            Filter by data column names (currently non-functional).
+        parameters : str or list of str (exact match), optional
+            Filter by parameter names.
+        parameter_group : str or list of str (exact match), optional
+            Filter by parameter group names.
+        unit : str or list of str (exact match), optional
+            Filter by unit names.
+        created_by : UserIdType or list of UserIdType, optional
+            Filter by creator user IDs.
+        task_created_by : UserIdType or list of UserIdType, optional
+            Filter by task creator user IDs.
+        return_fields : str or list of str, optional
+            Specific fields to include in results. If None, returns all fields.
+        return_facets : str or list of str, optional
+            Specific facets to include in results.
+
+        Returns
+        -------
+        dict
+            Search results matching the specified criteria.
+        """
+
+        def deserialize(items: list[dict]) -> list[PropertyDataSearchItem]:
+            return [PropertyDataSearchItem.model_validate(x) for x in items]
+
+        if isinstance(inventory_ids, str):
+            inventory_ids = [inventory_ids]
+        if isinstance(project_ids, str):
+            project_ids = [project_ids]
+        if isinstance(lot_ids, str):
+            lot_ids = [lot_ids]
+        if isinstance(category, DataEntity):
+            category = [category]
+        if isinstance(data_templates, str):
+            data_templates = [data_templates]
+        if isinstance(data_columns, str):
+            data_columns = [data_columns]
+        if isinstance(parameters, str):
+            parameters = [parameters]
+        if isinstance(parameter_group, str):
+            parameter_group = [parameter_group]
+        if isinstance(unit, str):
+            unit = [unit]
+        if isinstance(created_by, str):
+            created_by = [created_by]
+        if isinstance(task_created_by, str):
+            task_created_by = [task_created_by]
+        if isinstance(return_fields, str):
+            return_fields = [return_fields]
+        if isinstance(return_facets, str):
+            return_facets = [return_facets]
+
+        params = {
+            "limit": limit,
+            "result": result,
+            "text": text,
+            "order": order.value if order is not None else None,
+            "sortBy": sort_by,
+            "inventoryIds": [str(x) for x in inventory_ids] if inventory_ids is not None else None,
+            "projectIds": [str(x) for x in project_ids] if project_ids is not None else None,
+            "lotIds": [str(x) for x in lot_ids] if lot_ids is not None else None,
+            "category": [c.value for c in category] if category is not None else None,
+            "dataTemplates": data_templates,
+            "dataColumns": data_columns,
+            "parameters": parameters,
+            "parameterGroup": parameter_group,
+            "unit": unit,
+            "createdBy": [str(x) for x in created_by] if created_by is not None else None,
+            "taskCreatedBy": [str(x) for x in task_created_by]
+            if task_created_by is not None
+            else None,
+            "returnFields": return_fields,
+            "returnFacets": return_facets,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            params=params,
+            session=self.session,
+            deserialize=deserialize,
+        )

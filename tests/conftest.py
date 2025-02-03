@@ -128,6 +128,14 @@ def static_roles(client: Albert) -> list[Role]:
 
 
 @pytest.fixture(scope="session")
+def static_consumeable_parameter(client: Albert) -> Parameter:
+    consumeables = client.parameters.list(names="Consumables")
+    for c in consumeables:
+        if c.name == "Consumables":
+            return c
+
+
+@pytest.fixture(scope="session")
 def static_custom_fields(client: Albert) -> list[CustomField]:
     seeded = []
     for cf in generate_custom_fields():
@@ -398,6 +406,7 @@ def seeded_inventory(
     ):
         created_inventory = client.inventory.create(inventory_item=inventory)
         seeded.append(created_inventory)
+    time.sleep(1.5)
     yield seeded
     for inventory in seeded:
         # If the inv has been used in a formulation, it cannot be deleted and will give a BadRequestError
@@ -425,6 +434,7 @@ def seeded_parameter_groups(
     seeded_parameters,
     seeded_tags,
     seeded_units,
+    static_consumeable_parameter: Parameter,
 ) -> Iterator[list[ParameterGroup]]:
     seeded = []
     for parameter_group in generate_parameter_group_seeds(
@@ -432,6 +442,7 @@ def seeded_parameter_groups(
         seeded_parameters=seeded_parameters,
         seeded_tags=seeded_tags,
         seeded_units=seeded_units,
+        static_consumeable_parameter=static_consumeable_parameter,
     ):
         created_parameter_group = client.parameter_groups.create(parameter_group=parameter_group)
         seeded.append(created_parameter_group)
@@ -496,11 +507,15 @@ def seeded_workflows(
     seed_prefix: str,
     seeded_parameter_groups: list[ParameterGroup],
     seeded_parameters: list[Parameter],
+    static_consumeable_parameter: Parameter,
+    seeded_inventory: list[InventoryItem],
 ) -> list[Workflow]:
     all_workflows = generate_workflow_seeds(
         seed_prefix=seed_prefix,
         seeded_parameter_groups=seeded_parameter_groups,
         seeded_parameters=seeded_parameters,
+        static_consumeable_parameter=static_consumeable_parameter,
+        seeded_inventory=seeded_inventory,
     )
 
     return client.workflows.create(workflows=all_workflows)
@@ -533,7 +548,7 @@ def seeded_products(
             category=InventoryCategory.FORMULAS,
             text=product_name_prefix,
         )
-        if x.name.startswith(product_name_prefix)
+        if x.name is not None and x.name.startswith(product_name_prefix)
     ]
 
 

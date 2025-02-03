@@ -6,10 +6,11 @@ from pydantic import Field, field_validator, model_validator
 from albert.collections.cas import Cas
 from albert.collections.companies import Company
 from albert.resources.acls import ACL
-from albert.resources.base import MetadataItem, SecurityClass
+from albert.resources.base import MetadataItem, SecurityClass, Status
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tags import Tag
 from albert.utils.types import BaseAlbertModel
 
 
@@ -231,3 +232,39 @@ class InventorySpec(BaseAlbertModel):
 class InventorySpecList(BaseAlbertModel):
     parent_id: str = Field(..., alias="parentId")
     specs: list[InventorySpec] = Field(..., alias="Specs")
+
+
+# TODO: Find other pictogram items across the platform
+# and see if this is unique to the search endpoint or a
+# common resource
+class InventorySearchPictogramItem(BaseAlbertModel):
+    name: str
+    id: str
+    status: Status
+
+
+# This class is very similar to the UnNumber class,
+# but the fields are not all required (and there is no Id in this one)
+# if UnNumber doesn't require all fields we can
+# merge these two classes together
+class InventorySearchSDSItem(BaseAlbertModel):
+    un_number: str | None = Field(default=None, alias="unNumber")
+    storage_class_name: str | None = Field(default=None, alias="storageClassName")
+    shipping_description: str | None = Field(default=None, alias="shippingDescription")
+    storage_class_number: str | None = Field(default=None, alias="storageClassNumber")
+    un_classification: str | None = Field(default=None, alias="unClassification")
+
+
+class InventorySearchItem(BaseAlbertModel):
+    id: str = Field(alias="albertId")
+    name: str = Field(default="")
+    description: str = Field(default="")
+    category: InventoryCategory
+    unit: InventoryUnitCategory
+    lots: list[dict[str, Any]] = Field(default_factory=list)
+    tags: list[Tag] = Field(default_factory=list)
+    pictogram: list[InventorySearchPictogramItem] = Field(default_factory=list)
+    inventory_on_hand: float = Field(
+        default=0.0, alias="inventoryOnHand"
+    )  # missing element implies none on hand
+    sds: InventorySearchSDSItem | None = Field(default=None, alias="SDS")

@@ -5,6 +5,17 @@ from pydantic import Field, field_validator, model_validator
 
 from albert.resources.base import BaseAlbertModel, BaseResource
 from albert.resources.data_templates import DataTemplate
+from albert.resources.identifiers import (
+    DataColumnId,
+    DataTemplateId,
+    InventoryId,
+    ParameterGroupId,
+    ProjectId,
+    PropertyDataId,
+    TaskId,
+    UnitId,
+    WorkflowId,
+)
 from albert.resources.lots import Lot
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
@@ -28,7 +39,7 @@ class DataEntity(str, Enum):
 
 
 class PropertyData(BaseAlbertModel):
-    id: str | None = Field(default=None)
+    id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
 
 
@@ -60,7 +71,7 @@ class DataInterval(BaseAlbertModel):
 
 
 class TaskData(BaseAlbertModel):
-    task_id: str = Field(alias="id")
+    task_id: TaskId = Field(alias="id")
     task_name: str = Field(alias="name")
     qc_task: bool | None = Field(alias="qcTask", default=None)
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
@@ -70,7 +81,7 @@ class TaskData(BaseAlbertModel):
 
 
 class CustomInventoryDataColumn(BaseAlbertModel):
-    data_column_id: str = Field(alias="id")
+    data_column_id: DataColumnId = Field(alias="id")
     data_column_name: str = Field(alias="name")
     property_data: PropertyValue = Field(alias="PropertyData")
     unit: SerializeAsEntityLink[Unit] | None | dict = Field(alias="Unit", default_factory=dict)
@@ -132,7 +143,7 @@ class TaskPropertyValue(BaseAlbertModel):
 
 
 class TaskDataColumn(BaseAlbertModel):
-    data_column_id: str = Field(alias="id")
+    data_column_id: DataColumnId = Field(alias="id")
     column_sequence: str | None = Field(default=None, alias="columnId")
 
 
@@ -155,7 +166,7 @@ class TaskTrialData(BaseAlbertModel):
 
 
 class InventoryDataColumn(BaseAlbertModel):
-    data_column_id: str | None = Field(alias="id", default=None)
+    data_column_id: DataColumnId | None = Field(alias="id", default=None)
     value: str | None = Field(default=None)
 
 
@@ -189,13 +200,52 @@ class TaskPropertyCreate(BaseResource):
 
 
 class PropertyDataPatchDatum(PatchDatum):
-    property_column_id: str = Field(alias="id")
+    property_column_id: DataColumnId = Field(alias="id")
 
 
 class InventoryPropertyDataCreate(BaseResource):
     entity: Literal[DataEntity.INVENTORY] = Field(default=DataEntity.INVENTORY)
-    inventory_id: str = Field(alias="parentId")
+    inventory_id: InventoryId = Field(alias="parentId")
     data_columns: list[InventoryDataColumn] = Field(
         default_factory=list, max_length=1, alias="DataColumn"
     )
     status: PropertyDataStatus | None = Field(default=None)
+
+
+####### Property Data Search #######
+
+
+class WorkflowItem(BaseAlbertModel):
+    name: str
+    id: WorkflowId
+    value: str
+    parameter_group_id: ParameterGroupId = Field(..., alias="parameterGroupId")
+    value_numeric: float | None = Field(None, alias="valueNumeric")
+    unit_name: str | None = Field(None, alias="unitName")
+    unit_id: UnitId | None = Field(None, alias="unitId")
+
+
+class PropertyDataResult(BaseAlbertModel):
+    value_numeric: float | None = Field(None, alias="valueNumeric")
+    name: str
+    # This is not the actual PTD id it is the DAC this result is capturing
+    data_column_id: DataColumnId = Field(..., alias="id")
+    value: str | None = None
+    trial: str
+    value_string: str | None = Field(None, alias="valueString")
+
+
+class PropertyDataSearchItem(BaseAlbertModel):
+    workflow: list[WorkflowItem]
+    data_template_id: DataTemplateId = Field(..., alias="dataTemplateId")
+    workflow_name: str | None = Field(None, alias="workflowName")
+    parent_id: TaskId = Field(..., alias="parentId")
+    data_template_name: str = Field(..., alias="dataTemplateName")
+    result: PropertyDataResult
+    created_by: str = Field(..., alias="createdBy")
+    inventory_id: InventoryId = Field(..., alias="inventoryId")
+    id: PropertyDataId
+    category: str
+    project_id: ProjectId = Field(..., alias="projectId")
+    workflow_id: WorkflowId = Field(..., alias="workflowId")
+    task_id: TaskId = Field(..., alias="taskId")

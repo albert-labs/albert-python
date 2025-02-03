@@ -12,7 +12,15 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 class TaskCollection(BaseCollection):
     _api_version = "v3"
-    _updatable_attributes = {"metadata"}
+    _updatable_attributes = {
+        "metadata",
+        "name",
+        "priority",
+        "state",
+        "tags",
+        "assignedTo",
+        "dueDate",
+    }
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
@@ -102,3 +110,14 @@ class TaskCollection(BaseCollection):
             deserialize=deserialize,
             params=params,
         )
+
+    def update(self, *, task: BaseTask) -> BaseTask:
+        patch_payload = self._generate_patch_payload(
+            existing=self.get_by_id(id=task.id),
+            updated=task,
+        )
+        self.session.patch(
+            url=f"{self.base_path}/{task.id}",
+            json=patch_payload.model_dump(mode="json", by_alias=True),
+        )
+        return self.get_by_id(id=task.id)

@@ -38,7 +38,7 @@ def test_add_to_task(client: Albert, seeded_tasks: list[BaseTask]):
             data_template=full_data[0].data_template,
         )
         payload.append(data_to_add)
-    r = client.property_data.add_properies_to_task(
+    r = client.property_data.add_properties_to_task(
         task_id=prop_task.id,
         properties=payload,
         inventory_id=full_data[0].inventory.inventory_id,
@@ -64,3 +64,48 @@ def test_add_to_inv(client: Albert, seeded_inventory, seeded_data_columns):
     assert r[0].inventory_id == seeded_inventory[2].id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
+
+
+def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: list[BaseTask]):
+    # add some properties to the tasks
+    pvalues = [22.4, 55.6, 52.4]
+    property_search_string = f"{seed_prefix} - only unit 1"
+    for i in range(len(seeded_tasks)):
+        task = seeded_tasks[i]
+        if not isinstance(task, PropertyTask):
+            continue
+        # the data template object on the task does not contain the data column values so we need
+        # fetch them from the data template collection
+        data_template = client.data_templates.get_by_id(id=task.blocks[0].data_template[0].id)
+        workflow = client.workflows.get_by_id(id=task.blocks[0].workflow[0].id)
+        interval_id = (
+            workflow.interval_combinations[0].interval_id
+            if workflow.interval_combinations
+            else "default"
+        )
+        #  z = workflow.parameter_group_setpoints
+        client.property_data.add_properties_to_task(
+            task_id=task.id,
+            inventory_id=task.inventory_information[0].inventory_id,
+            block_id=task.blocks[0].id,
+            properties=[
+                TaskPropertyCreate(
+                    data_template=data_template,
+                    data_column=TaskDataColumn(
+                        data_column_id=data_template.data_column_values[0].data_column_id,
+                        column_sequence=data_template.data_column_values[0].column_sequence,
+                    ),
+                    value=str(pvalues.pop()),
+                    interval_combination=interval_id,
+                )
+            ],
+        )
+
+    # now search for the properties
+    _ = client.property_data.search(result=f"{property_search_string}(50-56)")
+    # Currently the search indexes are not updated automatically so we cannot use
+    # the SDK entities to search against and no other entities are static enough
+    # for us to use as a reliable unit test.
+    # For now we simply confirm that the above doesn't throw an HTTP exception (e.g. the search
+    # syntax is valid and the call isn't returning a 400/500). Once the search index
+    # moves to a more real-time dynamic update we can complete this test.

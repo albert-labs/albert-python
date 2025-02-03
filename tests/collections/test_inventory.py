@@ -1,11 +1,16 @@
+import time
+
 import pytest
 
 from albert.albert import Albert
 from albert.collections.inventory import InventoryCategory
 from albert.exceptions import BadRequestError
+from albert.resources.base import SecurityClass
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.data_columns import DataColumn
+from albert.resources.facet import FacetItem, FacetValue
+from albert.resources.identifiers import ensure_inventory_id
 from albert.resources.inventory import (
     CasAmount,
     InventoryItem,
@@ -50,6 +55,30 @@ def test_advanced_inventory_list(
         assert "ethanol" in x.name.lower()
 
 
+def test_match_all_conditions(
+    client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
+):
+    # First test is using OR between conditions
+    # this should return our 3 test items
+    inventory = client.inventory.list(
+        tags=[seeded_tags[0].tag, seeded_tags[1].tag],
+    )
+
+    for x in inventory:
+        for tag in x.tags:
+            assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
+    # This one tests using AND conditions and will return only
+    # one item that has both seeded tags
+    inventory = client.inventory.list(
+        tags=[seeded_tags[0].tag, seeded_tags[1].tag],
+        match_all_conditions=True,
+    )
+    for x in inventory:
+        assert len(x.tags) >= 2
+        for tag in x.tags:
+            assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
+
+
 def test_get_by_id(client: Albert, seeded_inventory):
     get_by_id = client.inventory.get_by_id(id=seeded_inventory[1].id)
     assert isinstance(get_by_id, InventoryItem)
@@ -74,18 +103,32 @@ def test_get_by_ids(client: Albert, seeded_inventory):
     assert {x.id for x in bulk_get_no_inv} == set(inventory_ids)
 
 
-def test_inventory_update(client: Albert, seeded_inventory):
-    assert client.inventory.inventory_exists(inventory_item=seeded_inventory[2])
-    test_inv_item = seeded_inventory[2]
+def test_inventory_update(client: Albert, seed_prefix: str):
+    # create a new test inventory item
+    ii = InventoryItem(
+        name=f"{seed_prefix} - SDK UPDATE/DELETE TEST",
+        description="SDK item that will be updated and deleted.",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.MASS,
+        security_class=SecurityClass.CONFIDENTIAL,
+        company="",
+    )
+    created = client.inventory.create(inventory_item=ii)
+
+    # Give time for the DB to sync - somewhere between 1 and 3 seconds is needed
+    # for this test to work
+    time.sleep(3)
+
+    assert client.inventory.inventory_exists(inventory_item=created)
     d = "testing SDK CRUD"
-    test_inv_item.description = d
+    created.description = d
 
-    updated = client.inventory.update(inventory_item=test_inv_item)
+    updated = client.inventory.update(inventory_item=created)
     assert updated.description == d
-    assert updated.id == seeded_inventory[2].id
+    assert updated.id == created.id
 
-    client.inventory.delete(id=test_inv_item)
-    assert not client.inventory.inventory_exists(inventory_item=test_inv_item)
+    client.inventory.delete(id=created.id)
+    assert not client.inventory.inventory_exists(inventory_item=created)
 
 
 def test_collection_blocks_formulation(client: Albert, seeded_projects):
@@ -262,3 +305,58 @@ def test_update_inventory_item_advanced_attributes(
     with pytest.raises(BadRequestError):
         fetched_item.company = None
         client.inventory.update(inventory_item=fetched_item)
+
+
+def test_get_facets(client: Albert):
+    facets = client.inventory.get_all_facets()
+    assert len(facets) > 0
+    expected_facets = [
+        "Category",
+        "Manufacturer",
+        "Location",
+        "Storage Location",
+        "CAS Number",
+        "Tags",
+        "Pictograms",
+        "Quarantine Status",
+        "Created By",
+        "Lot Owner",
+        "Lot Created By",
+    ]
+    for facet in facets:
+        assert isinstance(facet, FacetItem)
+        assert facet.name in expected_facets
+
+    assert isinstance(facets[0].value[0], FacetValue)
+
+
+def test_get_facet_by_name(client: Albert):
+    facets = client.inventory.get_facet_by_name("Category")
+    assert isinstance(facets, list)
+    assert len(facets) > 0
+    assert isinstance(facets[0], FacetItem)
+    assert facets[0].name == "Category"
+
+    facets = client.inventory.get_facet_by_name(["Category", "Manufacturer"])
+    assert len(facets) == 2
+    assert facets[0].name == "Category"
+    assert facets[1].name == "Manufacturer"
+
+    # The list order is not preserved, the API always returns facets in the same order
+    facets = client.inventory.get_facet_by_name(["Manufacturer", "Category"])
+    assert len(facets) == 2
+    assert facets[0].name == "Category"
+    assert facets[1].name == "Manufacturer"
+
+
+def test_get_search_records(
+    client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
+):
+    res = client.inventory.search(
+        tags=[x.tag for x in seeded_tags[:2]], match_all_conditions=True, limit=100
+    )
+    c = 0
+    for x in res:
+        assert ensure_inventory_id(x.id) in [y.id for y in seeded_inventory]
+        c += 1
+    assert c == 1

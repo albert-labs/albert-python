@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from albert.resources.base import BaseResource
 
@@ -29,8 +29,17 @@ class Tag(BaseResource):
         Creates a Tag object from a string.
     """
 
-    tag: str = Field(alias="name")
-    id: str | None = Field(None, alias="albertId")
+    # different endpoints use different aliases for the fields
+    # the search endpoints use the 'tag' prefix in their results.
+    tag: str = Field(
+        alias=AliasChoices("name", "tagName"),
+        serialization_alias="name",
+    )
+    id: str | None = Field(
+        None,
+        alias=AliasChoices("albertId", "tagId"),
+        serialization_alias="albertId",
+    )
 
     @classmethod
     def from_string(cls, tag: str) -> "Tag":
