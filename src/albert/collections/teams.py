@@ -2,9 +2,7 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
-from albert.resources.acls import ACL
-from albert.resources.teams import Team, TeamRole
-from albert.resources.users import User
+from albert.resources.teams import Team, TeamRole, TeamUsersPatchPayload
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -14,7 +12,7 @@ class TeamsCollection(BaseCollection):
     """TeamsCollection is a collection class for managing teams entities."""
 
     _api_version = "v3"
-    _updatable_attributes = {"acl"}
+    _updatable_attributes = {"name"}
 
     def __init__(self, *, session: AlbertSession):
         super().__init__(session=session)
@@ -27,12 +25,52 @@ class TeamsCollection(BaseCollection):
         user_ids: list[str],
         role: TeamRole = TeamRole.TEAM_VIEWER,
     ) -> Team:
-        team = self.get_by_id(id=team_id)
-        team.acl.extend([ACL(id=id, fgc=role) for id in user_ids])
-        return self.update(team=team)
+        """Add users to a team.
 
-    def remove_users(self, *, team: Team, users: list[User]) -> Team:
-        pass
+        Parameters
+        ----------
+        team_id : str
+            The ID of the team.
+        user_ids : list[str]
+            The list of user IDs to add to the team.
+
+        Returns
+        -------
+        Team
+            The updated team object.
+        """
+        new_users = [{"id": user_id, "fgc": role} for user_id in user_ids]
+        patch_data = {"operation": "add", "attribute": "ACL", "newValue": new_users}
+        payload = TeamUsersPatchPayload(id=team_id, data=[patch_data])
+        self.session.patch(
+            self.base_path,
+            json=[payload.model_dump(by_alias=True, mode="json")],
+        )
+        return self.get_by_id(id=team_id)
+
+    def remove_users(self, *, team_id: str, user_ids: list[str]) -> Team:
+        """Remove users from a team.
+
+        Parameters
+        ----------
+        team_id : str
+            The ID of the team.
+        user_ids : list[str]
+            The list of user IDs to remove from the team.
+
+        Returns
+        -------
+        Team
+            The updated team object.
+        """
+        old_users = [{"id": user_id} for user_id in user_ids]
+        patch_data = {"operation": "delete", "attribute": "ACL", "oldValue": old_users}
+        payload = TeamUsersPatchPayload(id=team_id, data=[patch_data])
+        self.session.patch(
+            self.base_path,
+            json=[payload.model_dump(by_alias=True, mode="json")],
+        )
+        return self.get_by_id(id=team_id)
 
     def get_by_id(self, *, id: str) -> Team:
         """
@@ -67,8 +105,9 @@ class TeamsCollection(BaseCollection):
             stringify_values=True,
         )
 
-        path = f"{self.base_path}/{team.id}"
-        self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
+        if payload.data:
+            path = f"{self.base_path}/{team.id}"
+            self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
 
         return self.get_by_id(id=team.id)
 
