@@ -1,148 +1,56 @@
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.exceptions import AlbertHTTPError
+from albert.resources.acls import ACL
 from albert.resources.teams import Team, TeamRole
 from albert.resources.users import User
 from albert.session import AlbertSession
+from albert.utils.logging import logger
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class TeamsCollection(BaseCollection):
-    """
-    TeamsCollection is a collection class for managing teams entities.
-
-    Parameters
-    ----------
-    session : AlbertSession
-        The Albert session instance.
-
-    Attributes
-    ----------
-    base_path : str
-        The base URL for project API requests.
-
-    Methods
-    -------
-    list(params: dict) -> Iterator
-        Lists teams with optional filters.
-    """
+    """TeamsCollection is a collection class for managing teams entities."""
 
     _api_version = "v3"
+    _updatable_attributes = {"acl"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize a TeamsCollection object.
-
-        Parameters
-        ----------
-        session : AlbertSession
-            The Albert session instance.
-        """
         super().__init__(session=session)
         self.base_path = f"/api/{TeamsCollection._api_version}/teams"
 
-    def add_users_to_team(
-        self, *, team: Team, users: list[User], team_role: TeamRole = TeamRole.TEAM_VIEWER
-    ) -> bool:
-        """
-        add users to a team
-        """
-        # build payload
-        newValue = []
-        for _u in users:
-            newValue.append({"id": _u.id, "fgc": team_role})
-        payload = [
-            {
-                "id": team.id,
-                "data": [{"operation": "add", "attribute": "ACL", "newValue": newValue}],
-            }
-        ]
-        # run request
-        self.session.patch(self.base_path, json=payload)
-        return True
-
-    def remove_users_from_team(self, *, team: Team, users: list[User]) -> bool:
-        """
-        add users to a team
-        """
-        # build payload
-        payload = [
-            {
-                "id": team.id,
-                "data": [
-                    {
-                        "operation": "delete",
-                        "attribute": "ACL",
-                        "oldValue": [{"id": _u.id} for _u in users],
-                    }
-                ],
-            }
-        ]
-        # run request
-        self.session.patch(self.base_path, json=payload)
-        return True
-
-    def _list_generator(
+    def add_users(
         self,
         *,
-        limit: int = 100,
-        # order_by: OrderBy = OrderBy.DESCENDING,
-        name: list[str] = None,
-        # exact_match: bool = True,
-        # start_key: str | None = None,
-    ) -> Generator[Team, None, None]:
+        team_id: str,
+        user_ids: list[str],
+        role: TeamRole = TeamRole.TEAM_VIEWER,
+    ) -> Team:
+        team = self.get_by_id(id=team_id)
+        team.acl.extend([ACL(id=id, fgc=role) for id in user_ids])
+        return self.update(team=team)
+
+    def remove_users(self, *, team: Team, users: list[User]) -> Team:
+        pass
+
+    def get_by_id(self, *, id: str) -> Team:
         """
-        Lists team entities with optional filters.
+        Get a team by its ID.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of teams to return, by default 100.
+        id : str
+            The ID of the team to retrieve.
 
         Returns
         -------
-        Generator
-            A generator of Team objects.
+        Team
+            The team object.
         """
-        params = {"limit": limit}  # , "orderBy": order_by.value}
-        if name:
-            params["name"] = name if isinstance(name, list) else [name]
-        #     params["exactMatch"] = str(exact_match).lower()
-        # if start_key:  # pragma: no cover
-        #     params["startKey"] = start_key
-
-        while True:
-            response = self.session.get(self.base_path, params=params)
-            teams_data = response.json().get("Items", [])
-            if not teams_data or teams_data == []:
-                break
-            for t in teams_data:
-                this_team = Team(**t)
-                yield this_team
-            start_key = response.json().get("lastKey")
-            if not start_key:
-                break
-            params["startKey"] = start_key
-
-    def list(
-        self,
-        # *,
-        # order_by: OrderBy = OrderBy.DESCENDING,
-        name: str | list[str] = None,
-        # exact_match: bool = True
-    ) -> Iterator[Team]:
-        """Lists the available Teams
-
-        Parameters
-        ----------
-        params : dict, optional
-            _description_, by default {}
-
-        Returns
-        -------
-        List
-            List of available Roles
-        """
-        return self._list_generator(name=name)
+        url = f"{self.base_path}/{id}"
+        response = self.session.get(url)
+        return Team(**response.json())
 
     def create(self, *, team: Team) -> Team:
         """ """
@@ -151,8 +59,56 @@ class TeamsCollection(BaseCollection):
         )
         return Team(**response.json())
 
-    def delete(self, *, team_id: str) -> bool:
-        """ """
-        url = f"{self.base_path}/{team_id}"
+    def update(self, *, team: Team) -> Team:
+        existing = self.get_by_id(id=team.id)
+        payload = self._generate_patch_payload(
+            existing=existing,
+            updated=team,
+            stringify_values=True,
+        )
+
+        path = f"{self.base_path}/{team.id}"
+        self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
+
+        return self.get_by_id(id=team.id)
+
+    def delete(self, *, id: str) -> None:
+        url = f"{self.base_path}/{id}"
         self.session.delete(url)
-        return True
+
+    def list(
+        self,
+        *,
+        limit: int = 100,
+        start_key: str | None = None,
+        names: str | list[str] | None = None,
+    ) -> Iterator[Team]:
+        """Lists the available Teams
+
+        Returns
+        -------
+        Iterator[Team]
+            Iterator of Team resources.
+        """
+
+        def deserialize(items: list[dict]) -> Iterator[Team]:
+            for item in items:
+                id = item["albertId"]
+                try:
+                    yield self.get_by_id(id=id)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error fetching custom template {id}: {e}")
+
+        params = {
+            "limit": limit,
+            "name": names if isinstance(names, str) else names,
+            "startKey": start_key,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=deserialize,
+        )
