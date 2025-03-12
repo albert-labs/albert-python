@@ -6,7 +6,7 @@ from albert.resources.base import BaseEntityLink, BaseResource
 
 
 class LinkCategory(str, Enum):
-    MENTION = "metion"
+    MENTION = "mention"
     LINKED_TASK = "linkedTask"
     SYNTHESIS = "synthesis"
     LINKED_INVENTORY = "linkedInventory"
