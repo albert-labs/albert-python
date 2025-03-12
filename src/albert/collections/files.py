@@ -47,7 +47,7 @@ class FileCollection(BaseCollection):
         namespace : FileNamespace
             The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
         generic : bool, optional
-            _description_, by default False
+            Filter by if this is a public (True) or private (False) file, by default False
 
         Returns
         -------
@@ -83,11 +83,13 @@ class FileCollection(BaseCollection):
             The version of the file, by default None
         category : FileCategory | None, optional
             The file category (E.g., SDS, OTHER), by default None
+        generic : bool, optional
+            Specifies a public (True) or private (False) file, by default None
 
         Returns
         -------
         str
-            _description_
+            The signed download URL for the file.
         """
         params = {
             "name": name,
@@ -108,7 +110,6 @@ class FileCollection(BaseCollection):
         name: str,
         namespace: FileNamespace,
         content_type: str,
-        generic: bool = False,
         category: FileCategory | None = None,
     ) -> str:
         """Get a signed upload URL for a file.
@@ -127,9 +128,11 @@ class FileCollection(BaseCollection):
         Returns
         -------
         str
-            _description_
+            The signed upload URL for the file.
         """
-        params = {"generic": json.dumps(generic)}
+        params = {
+            "generic": "false"
+        }  # uploading generic files is dangerous so we are blocking this behavior in the SDK
 
         post_body = SignURLPOST(
             files=[
@@ -155,7 +158,6 @@ class FileCollection(BaseCollection):
         name: str,
         namespace: FileNamespace,
         content_type: str,
-        generic: bool = False,
         category: FileCategory | None = None,
     ) -> None:
         """Sign and upload a file to Albert.
@@ -172,12 +174,15 @@ class FileCollection(BaseCollection):
             The content type of the file
         category : FileCategory | None, optional
             The category of the file (E.g., SDS, OTHER), by default None
+
+        Returns
+        -------
+        None
         """
         upload_url = self.get_signed_upload_url(
             name=name,
             namespace=namespace,
             content_type=content_type,
-            generic=generic,
             category=category,
         )
         requests.put(upload_url, data=data, headers={"Content-Type": content_type})
