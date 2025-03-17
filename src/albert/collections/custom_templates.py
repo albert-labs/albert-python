@@ -81,3 +81,33 @@ class CustomTemplatesCollection(BaseCollection):
             params=params,
             deserialize=deserialize,
         )
+
+    def update(self, *, custom_template: CustomTemplate) -> CustomTemplate:
+        """Update a CustomTemplate item.
+
+        Parameters
+        ----------
+        custom_template : CustomTemplate
+            The updated CustomTemplate item. The ID must be set and match the Template you want to update.
+
+        Returns
+        -------
+        CustomTemplate
+            The updated CustomTemplate item as registered in Albert.
+        """
+        # fetch current object state
+        current_object = self.get_by_id(id=custom_template.id)
+
+        # generate the patch payload
+        payload = self._generate_patch_payload(
+            existing=current_object,
+            updated=custom_template,
+            generate_metadata_diff=False,
+            stringify_values=False,
+        )
+
+        # run patch
+        url = f"{self.base_path}"
+        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
+        updated_ctp = self.get_by_id(id=custom_template.id)
+        return updated_ctp
