@@ -45,7 +45,7 @@ class Operator(str, Enum):
 class ValueValidation(BaseAlbertModel):
     # We may want to abstract this out if we end up reusing on Data Templates
     datatype: DataType = Field(...)
-    value: str | None = Field(default=None)
+    value: str | list[dict] | None = Field(default=None)
     min: str | None = Field(default=None)
     max: str | None = Field(default=None)
     operator: Operator | None = Field(default=None)
