@@ -81,7 +81,7 @@ jobs:
           command: |
             uv publish --publish-url $ALBERT_PYPI_URL --username $UV_INDEX_ALBERT_USERNAME \
               --password $UV_INDEX_ALBERT_PASSWORD
-    
+
   deploy_docs:
     executor:
       name: python/default
@@ -117,24 +117,27 @@ jobs:
       - attach_workspace:
           at: /home/circleci
       - run:
-          name: Check is PR
-          command: |
-            if [[ -z ${CIRCLE_PULL_REQUEST} ]]; then
-              echo "Not a PR, exiting job"
-              circleci-agent step halt
-            fi
-      - run:
           name: Validate version bump
           command: |
-            GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
-            BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
+            if [[ -z ${CIRCLE_PULL_REQUEST} ]]; then
+              echo "Not a PR, assuming base branch is main"
+              BASE_BRANCH="main"
+            else
+              GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
+              BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
+              if [[ -z ${BASE_BRANCH} ]]; then
+                echo "Could not determine base branch from PR, defaulting to main"
+                BASE_BRANCH="main"
+              fi
+            fi
+
             if [[ $BASE_BRANCH == "main" ]]; then
               echo "Validating version bump for PR into '${BASE_BRANCH}'"
-              python scripts/validate_version_bump.py --base $BASE_BRANCH
+              python scripts/validate_version_bump.py --base origin/${BASE_BRANCH}
             else
               echo "Skipping version bump check for non-production base branch '${BASE_BRANCH}'"
             fi
-  
+
 workflows:
   main:
     jobs:
@@ -151,6 +154,9 @@ workflows:
           context: ds-dev
           requires:
             - Setup
+          filters:
+            branches:
+              ignore: ["main"]
       - snyk_app_scan:
           name: Snyk App Scan
           context: dev
@@ -172,5 +178,3 @@ workflows:
           filters:
             branches:
               only: ["main"]
-
-              
