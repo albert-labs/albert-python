@@ -4,7 +4,6 @@ from typing import Any
 from pydantic import Field
 
 from albert.resources.base import BaseResource
-from albert.utils.types import BaseAlbertModel
 
 
 class BTInsightCategory(str, Enum):
@@ -29,11 +28,6 @@ class BTInsightPayloadType(str, Enum):
     ALBERTO = "Alberto"
 
 
-class BTInsightRegistry(BaseAlbertModel):
-    build_logs: dict[str, Any] | None = Field(default=None, alias="BuildLogs")
-    metrics: dict[str, Any] | None = Field(default=None, alias="Metrics")
-
-
 class BTInsight(BaseResource, protected_namespaces=()):
     name: str
     category: BTInsightCategory
@@ -48,5 +42,5 @@ class BTInsight(BaseResource, protected_namespaces=()):
     total_time: str | None = Field(default=None, alias="totalTime")
     raw_payload: dict[str, Any] | None = Field(default=None, alias="RawPayload")
     payload_type: BTInsightPayloadType | None = Field(default=None, alias="payloadType")
-    registry: BTInsightRegistry | None = Field(default=None, alias="Registry")
+    registry: dict[str, Any] | None = Field(default=None, alias="Registry")
     content_edited: bool | None = Field(default=None, alias="contentEdited")

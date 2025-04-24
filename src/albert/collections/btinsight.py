@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
@@ -179,6 +180,29 @@ class BTInsightCollection(BaseCollection):
         )
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=insight.id)
+
+    def update_registry(self, *, id: str, updates: dict[str, Any]) -> BTInsight:
+        """Update the registry of a BTInsight.
+
+        Keys in the updates will override/insert into the existing registry.
+        Existing keys in the registry are maintained if not updated.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the BTInsight to update.
+        updates : dict[str, Any]
+            The updates to apply to the registry.
+        Returns
+        -------
+        BTInsight
+            The updated BTInsight.
+        """
+
+        ins = self.get_by_id(id=id)
+        registry = ins.registry or {}
+        registry.update(updates)
+        return self.update(insight=ins)
 
     def delete(self, *, id: str) -> None:
         """Delete a BTInsight by ID.
