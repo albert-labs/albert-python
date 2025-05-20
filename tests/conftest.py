@@ -5,7 +5,7 @@ from contextlib import suppress
 
 import pytest
 
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertEnvironment, ClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.btdataset import BTDataset
@@ -69,7 +69,7 @@ def client() -> Albert:
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
     )
     return Albert(
-        base_url="https://app.albertinvent.com",
+        environment=AlbertEnvironment.APP,
         client_credentials=credentials,
         retries=3,
     )

@@ -38,6 +38,7 @@ from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.session import AlbertSession
 from albert.utils.credentials import ClientCredentials
+from albert.utils.environment import AlbertEnvironment
 
 
 class Albert:
@@ -48,6 +49,8 @@ class Albert:
     ----------
     base_url : str, optional
         The base URL of the Albert API (default is "https://app.albertinvent.com").
+    environment: AlbertEnvironment, optional
+        The Albert environment to use for the base URL (default is "AlbertEnvironment.APP").
     token : str, optional
         The token for authentication (default is read from environment variable "ALBERT_TOKEN").
     client_credentials: ClientCredentials, optional
@@ -74,12 +77,17 @@ class Albert:
         self,
         *,
         base_url: str | None = None,
+        environment: AlbertEnvironment | None = None,
         token: str | None = None,
         client_credentials: ClientCredentials | None = None,
         retries: int | None = None,
     ):
+        if environment is not None:
+            base_url = environment.base_url
+        else:
+            base_url = base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com"
         self.session = AlbertSession(
-            base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
+            base_url=base_url,
             token=token or os.getenv("ALBERT_TOKEN"),
             client_credentials=client_credentials,
             retries=retries,

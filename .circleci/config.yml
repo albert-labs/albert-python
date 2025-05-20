@@ -160,7 +160,7 @@ workflows:
     # Only kick off workflow on release version tags
     jobs:
       - validate_release_tag:
-          name: Validate Tag
+          name: Validate Release Tag
           context: ds-dev
           filters:
             tags:
@@ -171,7 +171,7 @@ workflows:
           name: Publish to PyPI
           context: ds-dev
           requires:
-            - Validate Tag
+            - Validate Release Tag
           filters:
             tags:
               only: /^v.+$/
@@ -181,7 +181,7 @@ workflows:
           name: Deploy Docs
           context: ds-dev
           requires:
-            - Validate Tag
+            - Validate Release Tag
           filters:
             tags:
               only: /^v.+$/
