@@ -3,14 +3,36 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import AuditFields, BaseEntityLink, BaseResource, SecurityClass
+from albert.resources.base import (
+    AuditFields,
+    BaseEntityLink,
+    MetadataItem,
+    SecurityClass,
+)
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.units import Unit
 from albert.resources.users import User
+from albert.utils.patches import PatchDatum, PatchPayload
 from albert.utils.types import BaseAlbertModel
+
+
+class PGPatchDatum(PatchDatum):
+    rowId: str | None = Field(default=None)
+
+
+class PGPatchPayload(PatchPayload):
+    """A payload for a PATCH request to update a parameter group.
+
+    Attributes
+    ----------
+    data : list[PGPatchDatum]
+        The data to be updated in the parameter group.
+    """
+
+    data: list[PGPatchDatum | PatchDatum] = Field(default_factory=list)
 
 
 class PGType(str, Enum):
@@ -21,10 +43,49 @@ class PGType(str, Enum):
     PROPERTY = "property"
 
 
-class PGMetadata(BaseResource):
-    """The metadata of a parameter group"""
+class DataType(str, Enum):
+    NUMBER = "number"
+    STRING = "string"
+    ENUM = "enum"
 
-    standards: list[BaseEntityLink] = Field(alias="Standards")
+
+class Operator(str, Enum):
+    # We may want to abstract this out if we end up reusing on Data Templates
+    BETWEEN = "between"
+    LESS_THAN = "lt"
+    LESS_THAN_OR_EQUAL = "lte"
+    GREATER_THAN_OR_EQUAL = "gte"
+    GREATER_THAN = "gt"
+    EQUALS = "eq"
+
+
+class EnumValidationValue(BaseAlbertModel):
+    """Represents a value for an enum type validation.
+
+    Attributes
+    ----------
+    text : str
+        The text of the enum value.
+    id : str | None
+        The ID of the enum value. If not provided, the ID will be generated upon creation.
+    """
+
+    text: str = Field()
+
+    id: str | None = Field(default=None)
+    # read only field
+    original_text: str | None = Field(
+        default=None, exclude=True, frozen=True, alias="originalText"
+    )
+
+
+class ValueValidation(BaseAlbertModel):
+    # We may want to abstract this out if we end up reusing on Data Templates
+    datatype: DataType = Field(...)
+    value: str | list[EnumValidationValue] | None = Field(default=None)
+    min: str | None = Field(default=None)
+    max: str | None = Field(default=None)
+    operator: Operator | None = Field(default=None)
 
 
 class ParameterValue(BaseAlbertModel):
@@ -41,7 +102,7 @@ class ParameterValue(BaseAlbertModel):
     short_name : str | None
         The short name of the parameter value.
     value : str | None
-        The value of the parameter. Can be a string or an InventoryItem (if, for example, the parameter is an instrumnt choice).
+        The default value of the parameter. Can be a string or an InventoryItem (if, for example, the parameter is an instrumnt choice).
     unit : Unit | None
         The unit of measure for the provided parameter value.
     name : str
@@ -56,7 +117,8 @@ class ParameterValue(BaseAlbertModel):
     short_name: str | None = Field(alias="shortName", default=None)
     value: str | SerializeAsEntityLink[InventoryItem] | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
-    added: AuditFields | None = Field(alias="Added", default=None)
+    added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
+    validation: list[ValueValidation] | None = Field(default=None)
 
     # Read-only fields
     name: str | None = Field(default=None, exclude=True, frozen=True)
@@ -64,8 +126,11 @@ class ParameterValue(BaseAlbertModel):
 
     @field_validator("value", mode="before")
     @classmethod
-    def validate_empty_value_dict(cls, value: Any) -> Any:
-        if isinstance(value, dict) and not value:
+    def validate_parameter_value(cls, value: Any) -> Any:
+        # Bug in ParameterGroups sometimes returns incorrect JSON from batch endpoint
+        # Set to None if value is a dict but no ID field
+        # Reference: https://linear.app/albert-invent/issue/IN-10
+        if isinstance(value, dict) and "id" not in value:
             return None
         return value
 
@@ -83,13 +148,15 @@ class ParameterValue(BaseAlbertModel):
 
 
 class ParameterGroup(BaseTaggedEntity):
+    """Use 'Standards' key in metadata to store standards"""
+
     name: str
-    type: PGType
+    type: PGType | None = Field(default=None)
     id: str | None = Field(None, alias="albertId")
     description: str | None = Field(default=None)
     security_class: SecurityClass = Field(default=SecurityClass.RESTRICTED, alias="class")
     acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="ACL")
-    metadata: PGMetadata | None = Field(alias="Metadata", default=None)
+    metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
     parameters: list[ParameterValue] = Field(default_factory=list, alias="Parameters")
 
     # Read-only fields

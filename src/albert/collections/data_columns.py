@@ -2,16 +2,18 @@ import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
+from albert.exceptions import AlbertHTTPError
 from albert.resources.data_columns import DataColumn
 from albert.session import AlbertSession
+from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class DataColumnCollection(BaseCollection):
-    """A collection for interacting with Data Columns in Albert."""
+    """DataColumnCollection is a collection class for managing DataColumn entities in the Albert platform."""
 
     _api_version = "v3"
-    _updatable_attributes = {"name"}
+    _updatable_attributes = {"name", "metadata"}
 
     def __init__(self, *, session: AlbertSession):
         """Initialize the DataColumnCollection with the provided session."""
@@ -58,13 +60,13 @@ class DataColumnCollection(BaseCollection):
     def list(
         self,
         *,
-        limit: int = 100,
         order_by: OrderBy = OrderBy.DESCENDING,
         ids: str | list[str] | None = None,
         name: str | list[str] | None = None,
         exact_match: bool | None = None,
         default: bool | None = None,
         start_key: str | None = None,
+        limit: int = 100,
     ) -> Iterator[DataColumn]:
         """
         Lists data column entities with optional filters.
@@ -85,8 +87,17 @@ class DataColumnCollection(BaseCollection):
         Returns
         -------
         Iterator[DataColumn]
-            An iterator of DataColumns.
+            An iterator of DataColumns matching the provided criteria.
         """
+
+        def deserialize(items: list[dict]) -> Iterator[DataColumn]:
+            for item in items:
+                id = item["albertId"]
+                try:
+                    yield self.get_by_id(id=id)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error fetching Data Column '{id}': {e}")
+
         params = {
             "limit": limit,
             "orderBy": order_by.value,
@@ -101,7 +112,7 @@ class DataColumnCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            deserialize=lambda items: [DataColumn(**item) for item in items],
+            deserialize=deserialize,
         )
 
     def create(self, *, data_column: DataColumn) -> DataColumn:
@@ -138,26 +149,57 @@ class DataColumnCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
+    def _is_metadata_item_list(
+        self, *, existing_object: DataColumn, updated_object: DataColumn, metadata_field: str
+    ):
+        if not metadata_field.startswith("Metadata."):
+            return False
+        else:
+            metadata_field = metadata_field.split(".")[1]
+        if existing_object.metadata is None:
+            existing_object.metadata = {}
+        if updated_object.metadata is None:
+            updated_object.metadata = {}
+        existing = existing_object.metadata.get(metadata_field, None)
+        updated = updated_object.metadata.get(metadata_field, None)
+        return isinstance(existing, list) or isinstance(updated, list)
+
     def update(self, *, data_column: DataColumn) -> DataColumn:
-        """
-        Update a data column entity.
+        """Update a data column entity.
 
         Parameters
         ----------
         data_column : DataColumn
-            The data column object to update.
+            The updated data column object. The ID must be set and match an existing data column.
 
         Returns
         -------
         DataColumn
-            The updated data column object.
+            The updated data column object as registered in Albert.
         """
-        patch_payload = self._generate_patch_payload(
-            existing=self.get_by_id(data_column.id),
+        existing = self.get_by_id(id=data_column.id)
+        payload = self._generate_patch_payload(
+            existing=existing,
             updated=data_column,
         )
-        self.session.patch(
-            f"self.base_path/{data_column.id}",
-            json=patch_payload.model_dump(mode="json", by_alias=True),
-        )
+        payload_dump = payload.model_dump(mode="json", by_alias=True)
+        for i, change in enumerate(payload_dump["data"]):
+            if not self._is_metadata_item_list(
+                existing_object=existing,
+                updated_object=data_column,
+                metadata_field=change["attribute"],
+            ):
+                change["operation"] = "update"
+                if "newValue" in change and change["newValue"] is None:
+                    del change["newValue"]
+                if "oldValue" in change and change["oldValue"] is None:
+                    del change["oldValue"]
+                payload_dump["data"][i] = change
+        if len(payload_dump["data"]) == 0:
+            return data_column
+        for e in payload_dump["data"]:
+            self.session.patch(
+                f"{self.base_path}/{data_column.id}",
+                json={"data": [e]},
+            )
         return self.get_by_id(id=data_column.id)

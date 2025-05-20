@@ -8,6 +8,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CustomFieldCollection(BaseCollection):
+    """CustomFieldCollection is a collection class for managing CustomField entities in the Albert platform."""
+
     _updatable_attributes = {
         "display_name",
         "searchable",
@@ -33,11 +35,37 @@ class CustomFieldCollection(BaseCollection):
         self.base_path = f"/api/{CustomFieldCollection._api_version}/customfields"
 
     def get_by_id(self, *, id: str) -> CustomField:
+        """Get a CustomField item by its ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the CustomField item.
+
+        Returns
+        -------
+        CustomField
+            The CustomField item.
+        """
         response = self.session.get(f"{self.base_path}/{id}")
         return CustomField(**response.json())
 
-    def get_by_name(self, *, name: str) -> CustomField | None:
-        for custom_field in self.list(name=name):
+    def get_by_name(self, *, name: str, service: ServiceType | None = None) -> CustomField | None:
+        """Get a CustomField item by its name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the CustomField item.
+        service : ServiceType | None, optional
+            The service the field relates to, by default None
+
+        Returns
+        -------
+        CustomField | None
+            The CustomField item, or None if not found.
+        """
+        for custom_field in self.list(name=name, service=service):
             if custom_field.name.lower() == name.lower():
                 return custom_field
         return None
@@ -50,6 +78,24 @@ class CustomFieldCollection(BaseCollection):
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
     ) -> Iterator[CustomField]:
+        """Searches for CustomField items based on the provided parameters.
+
+        Parameters
+        ----------
+        name : str | None, optional
+            The name of the field, by default None
+        service : ServiceType | None, optional
+            The related service the field is in, by default None
+        lookup_column : bool | None, optional
+            Whether the field relates to a lookup column, by default None
+        lookup_row : bool | None, optional
+            Whether the field relates to a lookup row, by default None
+
+        Yields
+        ------
+        Iterator[CustomField]
+            Returns an iterator of CustomField items matching the search criteria.
+        """
         params = {
             "name": name,
             "service": service if service else None,
@@ -65,6 +111,18 @@ class CustomFieldCollection(BaseCollection):
         )
 
     def create(self, *, custom_field: CustomField) -> CustomField:
+        """Create a new CustomField item.
+
+        Parameters
+        ----------
+        custom_field : CustomField
+            The CustomField item to create.
+
+        Returns
+        -------
+        CustomField
+            The created CustomField item with its ID.
+        """
         response = self.session.post(
             self.base_path,
             json=custom_field.model_dump(by_alias=True, exclude_none=True, mode="json"),
@@ -72,8 +130,17 @@ class CustomFieldCollection(BaseCollection):
         return CustomField(**response.json())
 
     def update(self, *, custom_field: CustomField) -> CustomField:
-        """
-        Update a CustomField item.
+        """Update a CustomField item.
+
+        Parameters
+        ----------
+        custom_field : CustomField
+            The updated CustomField item. The ID must be set and match the Field you want to update.
+
+        Returns
+        -------
+        CustomField
+            The updated CustomField item as registered in Albert.
         """
         # fetch current object state
         current_object = self.get_by_id(id=custom_field.id)
@@ -87,9 +154,18 @@ class CustomFieldCollection(BaseCollection):
         )
 
         for patch in payload.data:
-            if patch.attribute in ("hidden", "search") and patch.operation == "add":
+            if (
+                patch.attribute in ("hidden", "search", "lkpColumn", "lkpRow")
+                and patch.operation == "add"
+            ):
                 patch.operation = "update"
                 patch.old_value = False
+            if (
+                patch.attribute in ("entityCategory")
+                and patch.operation == "add"
+                and isinstance(patch.new_value, list)
+            ):
+                patch.new_value = patch.new_value[0]
 
         # run patch
         url = f"{self.base_path}/{custom_field.id}"

@@ -36,12 +36,11 @@ class BaseCollection:
             existing_metadata = {}
         if updated_metadata is None:
             updated_metadata = {}
-
         data = []
         for key, value in existing_metadata.items():
             attribute = f"Metadata.{key}"
             if key not in updated_metadata:
-                if isinstance(value, str):
+                if isinstance(value, str | int | float):
                     data.append(
                         PatchDatum(
                             attribute=attribute,
@@ -67,7 +66,7 @@ class BaseCollection:
                         )
                     )
             elif value != updated_metadata[key]:
-                if isinstance(value, str):
+                if isinstance(updated_metadata[key], str | int | float):
                     data.append(
                         PatchDatum(
                             attribute=attribute,
@@ -76,8 +75,8 @@ class BaseCollection:
                             new_value=updated_metadata[key],
                         )
                     )
-                elif isinstance(value, list):
-                    existing_id = {v.id for v in value}
+                elif isinstance(updated_metadata[key], list):
+                    existing_id = {v.id for v in value} if isinstance(value, list) else {value.id}
                     updated_id = {v.id for v in updated_metadata[key]}
                     to_add = updated_id - existing_id
                     to_remove = existing_id - updated_id
@@ -110,7 +109,7 @@ class BaseCollection:
         for key, value in updated_metadata.items():
             attribute = f"Metadata.{key}"
             if key not in existing_metadata:
-                if isinstance(value, str):
+                if isinstance(value, str | int | float):
                     data.append(
                         PatchDatum(
                             attribute=attribute,
@@ -154,6 +153,13 @@ class BaseCollection:
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)
             new_value = getattr(updated, attribute, None)
+            # Sometimes None and empty lists/dicts are serilized/deserilized to the same value, but wont look the same here
+            if old_value is None and (new_value == [] or new_value == {}):
+                # Avoid updating None to an empty list
+                new_value = None
+            elif (old_value == [] or old_value == {}) and new_value is None:
+                # Avoid updating an empty list to None
+                old_value = None
             if attribute == "metadata" and generate_metadata_diff:
                 data.extend(
                     self._generate_metadata_diff(
@@ -187,5 +193,4 @@ class BaseCollection:
                             new_value=new_value,
                         )
                     )
-
         return PatchPayload(data=data)

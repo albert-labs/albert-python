@@ -1,6 +1,7 @@
 from collections.abc import Callable, Iterable, Iterator
 from enum import Enum
 from typing import Any, TypeVar
+from urllib.parse import quote_plus
 
 from albert.exceptions import AlbertException
 from albert.session import AlbertSession
@@ -41,11 +42,15 @@ class AlbertPaginator(Iterator[ItemType]):
         params = params or {}
         self.params = {k: v for k, v in params.items() if v is not None}
 
+        if "startKey" in self.params:
+            self.params["startKey"] = quote_plus(self.params["startKey"])
+
         self._iterator = self._create_iterator()
 
     def _create_iterator(self) -> Iterator[ItemType]:
         while True:
             response = self.session.get(self.path, params=self.params)
+
             data = response.json()
 
             items = data.get("Items", [])
@@ -76,7 +81,7 @@ class AlbertPaginator(Iterator[ItemType]):
                 last_key = data.get("lastKey")
                 if not last_key:
                     return False
-                self.params["startKey"] = last_key
+                self.params["startKey"] = quote_plus(last_key)
             case mode:
                 raise AlbertException(f"Unknown pagination mode {mode}.")
         return True

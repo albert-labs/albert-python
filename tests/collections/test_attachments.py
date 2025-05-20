@@ -27,3 +27,18 @@ def test_load_file_to_inventories(
         assert attachment.id not in second_attachment_ids
     else:
         assert True  # It being None is also fine/ prooves the delete
+
+
+def test_upload_and_attach_file_as_note(
+    client: Albert, static_image_file: FileInfo, seeded_inventory
+):
+    task = seeded_inventory[0]
+    with open("tests/data/dontpanic.jpg", "rb") as file:
+        file_data = file.read()
+        note = client.attachments.upload_and_attach_file_as_note(
+            parent_id=task.id,
+            file_name=static_image_file.name,
+            file_data=file_data,
+            note_text="This is a test note",
+        )
+    assert isinstance(note, Note)

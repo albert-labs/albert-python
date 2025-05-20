@@ -6,12 +6,28 @@ from pydantic import Field, field_validator, model_validator
 from albert.collections.cas import Cas
 from albert.collections.companies import Company
 from albert.resources.acls import ACL
-from albert.resources.base import MetadataItem, SecurityClass, Status
+from albert.resources.base import MetadataItem, SecurityClass
+from albert.resources.identifiers import InventoryId
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.tags import Tag
 from albert.utils.types import BaseAlbertModel
+
+ALL_MERGE_MODULES = [
+    "PRICING",
+    "NOTES",
+    "SDS",
+    "PD",
+    "BD",
+    "LOT",
+    "CAS",
+    "TAS",
+    "WFL",
+    "PRG",
+    "PTD",
+]
+"""All modules selectable for inventory merge."""
 
 
 class InventoryCategory(str, Enum):
@@ -173,6 +189,9 @@ class InventoryItem(BaseTaggedEntity):
     formula_id: str | None = Field(default=None, alias="formulaId", exclude=True, frozen=True)
     symbols: list[dict] | None = Field(default=None, alias="Symbols", exclude=True, frozen=True)
     un_number: str | None = Field(default=None, alias="unNumber", exclude=True, frozen=True)
+    recent_atachment_id: str | None = Field(
+        default=None, alias="recentAttachmentId", exclude=True, frozen=True
+    )
 
     @field_validator("company", mode="before")
     @classmethod
@@ -238,9 +257,9 @@ class InventorySpecList(BaseAlbertModel):
 # and see if this is unique to the search endpoint or a
 # common resource
 class InventorySearchPictogramItem(BaseAlbertModel):
-    name: str
     id: str
-    status: Status
+    name: str
+    status: str | None = Field(default=None)
 
 
 # This class is very similar to the UnNumber class,
@@ -264,7 +283,12 @@ class InventorySearchItem(BaseAlbertModel):
     lots: list[dict[str, Any]] = Field(default_factory=list)
     tags: list[Tag] = Field(default_factory=list)
     pictogram: list[InventorySearchPictogramItem] = Field(default_factory=list)
-    inventory_on_hand: float = Field(
-        default=0.0, alias="inventoryOnHand"
-    )  # missing element implies none on hand
+    # missing element implies none on hand
+    inventory_on_hand: float = Field(default=0.0, alias="inventoryOnHand")
     sds: InventorySearchSDSItem | None = Field(default=None, alias="SDS")
+
+
+class MergeInventory(BaseAlbertModel):
+    parent_id: InventoryId = Field(alias="parentId")
+    child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
+    modules: list[str] | None = Field(default=None)

@@ -5,7 +5,7 @@ from albert.session import AlbertSession
 
 class SubstanceCollection(BaseCollection):
     """
-    SubstanceCollection is a class for managing substances within the Albert framework.
+    SubstanceCollection is a collection class for managing Substance entities in the Albert platform.
 
     Parameters
     ----------
@@ -32,6 +32,20 @@ class SubstanceCollection(BaseCollection):
         self.base_path = f"/api/{SubstanceCollection._api_version}/substances"
 
     def get_by_ids(self, *, cas_ids: list[str], region: str = "US") -> list[SubstanceInfo]:
+        """Get substances by their CAS IDs.
+
+        Parameters
+        ----------
+        cas_ids : list[str]
+            A list of CAS IDs to retrieve substances for.
+        region : str, optional
+            The region to filter the subastance by, by default "US"
+
+        Returns
+        -------
+        list[SubstanceInfo]
+            A list of substances with the given CAS IDs.
+        """
         url = f"{self.base_path}"
         response = self.session.get(url, params={"casIDs": ",".join(cas_ids), "region": region})
         return SubstanceResponse.model_validate(response.json()).substances

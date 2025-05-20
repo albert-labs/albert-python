@@ -9,6 +9,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LocationCollection(BaseCollection):
+    """LocationCollection is a collection class for managing Location entities in the Albert platform."""
+
     _updatable_attributes = {"latitude", "longitude", "address", "country", "name"}
     _api_version = "v3"
 
@@ -27,12 +29,29 @@ class LocationCollection(BaseCollection):
     def list(
         self,
         *,
-        limit: int = 50,
         name: str | list[str] | None = None,
         country: str | None = None,
-        start_key: str | None = None,
         exact_match: bool = False,
+        limit: int = 50,
+        start_key: str | None = None,
     ) -> Iterator[Location]:
+        """Searches for locations matching the provided criteria.
+
+        Parameters
+        ----------
+        name : str | list[str] | None, optional
+            The name or names of locations to search for, by default None
+        country : str | None, optional
+            The country code of the country to filter the locations , by default None
+        exact_match : bool, optional
+            Whether to return exact matches only, by default False
+
+
+        Yields
+        ------
+        Iterator[Location]
+            An iterator of Location objects matching the search criteria.
+        """
         params = {"limit": limit, "startKey": start_key, "country": country}
         if name:
             params["name"] = [name] if isinstance(name, str) else name
@@ -64,6 +83,18 @@ class LocationCollection(BaseCollection):
         return Location(**response.json())
 
     def update(self, *, location: Location) -> Location:
+        """Update a Location entity.
+
+        Parameters
+        ----------
+        location : Location
+            The Location object to update. The ID of the Location object must be provided.
+
+        Returns
+        -------
+        Location
+            The updated Location object as returned by the server.
+        """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=location.id)
         # Generate the PATCH payload
@@ -76,7 +107,19 @@ class LocationCollection(BaseCollection):
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=location.id)
 
-    def location_exists(self, *, location: Location):
+    def location_exists(self, *, location: Location) -> Location | None:
+        """Determines if a location, with the same name, exists in the collection.
+
+        Parameters
+        ----------
+        location : Location
+            The Location object to check
+
+        Returns
+        -------
+        Location | None
+            The existing registered Location object if found, otherwise None.
+        """
         hits = self.list(name=location.name)
         if hits:
             for hit in hits:

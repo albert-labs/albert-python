@@ -1,31 +1,24 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@2.1.1
-  snyk: snyk/snyk@1.1.2
+  python: circleci/python@3.1.0
+  snyk: snyk/snyk@2.3.0
 
-jobs:
-  setup:
-    executor:
-      name: python/default
-      tag: "3.10.15"
+commands:
+  install_uv:
     steps:
-      - checkout
       - run:
           name: Install uv
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
-      - persist_to_workspace:
-          root: /home/circleci
-          paths:
-            - "*"
 
+jobs:
   snyk_app_scan:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - attach_workspace:
-          at: /home/circleci
+      - checkout
+      - install_uv
       - run:
           name: Export dependencies
           command: |
@@ -34,7 +27,7 @@ jobs:
             uv pip compile requirements_lock.txt > requirements.txt
             uv pip install --system -r requirements.txt
       - snyk/scan:
-          fail-on-issues: false
+          fail-on-issues: true
           monitor-on-build: true
           severity-threshold: high
           token-variable: SNYK_TOKEN
@@ -44,8 +37,8 @@ jobs:
       name: python/default
       tag: "3.10.15"
     steps:
-      - attach_workspace:
-          at: /home/circleci
+      - checkout
+      - install_uv
       - run:
           name: Install dependencies
           command: uv sync
@@ -66,13 +59,51 @@ jobs:
           command: |
             uv run pytest
 
+  validate_version_bump:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - checkout
+      - run:
+          name: Validate version bump
+          command: |
+            if [[ -z ${CIRCLE_PULL_REQUEST} ]]; then
+              echo "Not a PR, assuming base branch is main"
+              BASE_BRANCH="main"
+            else
+              GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
+              BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
+              if [[ -z ${BASE_BRANCH} ]]; then
+                echo "Could not determine base branch from PR, defaulting to main"
+                BASE_BRANCH="main"
+              fi
+            fi
+
+            if [[ $BASE_BRANCH == "main" ]]; then
+              echo "Validating version bump for PR into '${BASE_BRANCH}'"
+              python scripts/validate_version_bump.py --base origin/${BASE_BRANCH}
+            else
+              echo "Skipping version bump check for non-production base branch '${BASE_BRANCH}'"
+            fi
+
+  validate_release_tag:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - checkout
+      - run:
+          name: Validate release tag
+          command: python scripts/validate_release_tag.py --tag ${CIRCLE_TAG}
+
   publish:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - attach_workspace:
-          at: /home/circleci
+      - checkout
+      - install_uv
       - run:
           name: Build package
           command: uv build
@@ -82,58 +113,77 @@ jobs:
             uv publish --publish-url $ALBERT_PYPI_URL --username $UV_INDEX_ALBERT_USERNAME \
               --password $UV_INDEX_ALBERT_PASSWORD
 
-  validate_version_bump:
+  deploy_docs:
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - attach_workspace:
-          at: /home/circleci
+      - checkout
+      - install_uv
       - run:
-          name: Check is PR
-          command: |
-            if [[ -z ${CIRCLE_PULL_REQUEST} ]]; then
-              echo "Not a PR, exiting job"
-              circleci-agent step halt
-            fi
+          name: Install dependencies
+          command: uv sync
       - run:
-          name: Validate version bump
+          name: Build Documentation
           command: |
-            GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
-            BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
-            if [[ $BASE_BRANCH == "main" ]]; then
-              echo "Validating version bump for PR into '${BASE_BRANCH}'"
-              python scripts/validate_version_bump.py --base $BASE_BRANCH
-            else
-              echo "Skipping version bump check for non-production base branch '${BASE_BRANCH}'"
-            fi
+            uv run mkdocs build --clean
+      - run:
+          name: Deploy to GitHub Pages
+          command: |
+            git config --global user.email "circleci@users.noreply.github.com"
+            git config --global user.name "CircleCI"
+            git clone --branch gh-pages --single-branch https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git gh-pages
+            rm -rf gh-pages/*
+            cp -r site/* gh-pages/
+            cd gh-pages
+            git add .
+            git commit -m "Auto-update documentation [skip ci]" || echo "No changes to commit"
+            git push origin gh-pages
 
 workflows:
   main:
     jobs:
-      - setup:
-          name: Setup
-          context: ds-dev
-      - test:
-          name: Test
-          context: ds-dev
-          requires:
-            - Setup
-      - validate_version_bump:
-          name: Validate Version Bump
-          context: ds-dev
-          requires:
-            - Setup
       - snyk_app_scan:
           name: Snyk App Scan
           context: dev
-          requires:
-            - Setup
-      - publish:
-          name: Publish
+      - test:
+          name: Test
           context: ds-dev
-          requires:
-            - Setup
+      - validate_version_bump:
+          name: Validate Version Bump
+          context: ds-dev
           filters:
             branches:
-              only: ["main"]
+              ignore: ["main"]
+
+  release:
+    # Only kick off workflow on release version tags
+    jobs:
+      - validate_release_tag:
+          name: Validate Tag
+          context: ds-dev
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/
+      - publish:
+          name: Publish to PyPI
+          context: ds-dev
+          requires:
+            - Validate Tag
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/
+      - deploy_docs:
+          name: Deploy Docs
+          context: ds-dev
+          requires:
+            - Validate Tag
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/

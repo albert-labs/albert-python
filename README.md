@@ -1,17 +1,22 @@
-# Albert SDK
-The Albert SDK provides a comprehensive and easy-to-use interface for interacting with the Albert API. The SDK is designed to simplify the process of working with various resources such as inventories, projects, companies, and tags by providing Resource Collections and Resource Models.
+# Albert Python SDK
+Albert Python is the official Albert Invent Software Development Kit (SDK) for Python
+that provides a comprehensive and easy-to-use interface for interacting with the Albert Platform. 
+The SDK allows Python developers to write software that interacts with various platform resources, 
+such as inventories, projects, companies, tags, and many more.
+You can find the latest, most up-to-date documentation
+on the supported resources and usage patterns here (TODO: link to docs).
 
 > [!WARNING]
-> The Albert SDK is still in the early phases of development. As such, patterns may change, and methods may not work as expected. Do not use this package unless you are comfortable with these limitations.
+> Albert Python is still in the early phases of development. As such, patterns may change, and methods may not work as expected. Do not use this package unless you are comfortable with these limitations.
 
 ## Installation
 
-TODO: Add installation instructions from PyPI once published
+TODO: Add installation instructions from public PyPI once published
 
-For developers, please see the [contributing guide](CONTRIBUTING.mD) for local installation instructions.
+For developers, please see the [contributing guide](CONTRIBUTING.md) for local installation instructions.
 
 ## Overview
-The SDK is built around two main concepts:
+Albert Python is built around two main concepts:
 
 1. *Resource Models*: Represent individual entities like InventoryItem, Project, Company, and Tag. These are all controlled using Pydantic.
 
@@ -25,7 +30,7 @@ Resource Collections act as managers for Resource Models. They provide methods f
 
 ## Usage
 ### Initialization
-To use the SDK, you need to initialize the Albert client with your base URL and either a bearer token (which will expire) or client credientals, which will enable automatic token refresh.
+To use Albert Python, you need to initialize the Albert client with your base URL and either a bearer token (which will expire) or client credientals, which will enable automatic token refresh.
 
 ```python
 from albert import Albert, ClientCredentials

@@ -9,6 +9,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CustomTemplatesCollection(BaseCollection):
+    """CustomTemplatesCollection is a collection class for managing CustomTemplate entities in the Albert platform."""
+
     # _updatable_attributes = {"symbol", "synonyms", "category"}
     _api_version = "v3"
 
@@ -44,10 +46,24 @@ class CustomTemplatesCollection(BaseCollection):
     def list(
         self,
         *,
+        text: str | None = None,
         limit: int = 50,
         offset: int = 0,
-        text: str | None = None,
     ) -> Iterator[CustomTemplate]:
+        """Searches for custom templates matching the provided criteria.
+
+        Parameters
+        ----------
+        text : str | None, optional
+            The text to search for, by default None
+
+
+        Yields
+        ------
+        Iterator[CustomTemplate]
+            An iterator of CustomTemplate items matching the search criteria.
+        """
+
         def deserialize(items: list[dict]) -> Iterator[CustomTemplate]:
             for item in items:
                 id = item["albertId"]

@@ -1,6 +1,7 @@
 import os
 
 from albert.collections.attachments import AttachmentCollection
+from albert.collections.batch_data import BatchDataCollection
 from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
 from albert.collections.btmodel import BTModelCollection, BTModelSessionCollection
@@ -16,6 +17,7 @@ from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
 from albert.collections.lots import LotCollection
+from albert.collections.notebooks import NotebookCollection
 from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
@@ -36,7 +38,7 @@ from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
 from albert.session import AlbertSession
-from albert.utils.client_credentials import ClientCredentials
+from albert.utils.credentials import ClientCredentials
 
 
 class Albert:
@@ -141,6 +143,10 @@ class Albert:
         return ListsCollection(session=self.session)
 
     @property
+    def notebooks(self) -> NotebookCollection:
+        return NotebookCollection(session=self.session)
+
+    @property
     def notes(self) -> NotesCollection:
         return NotesCollection(session=self.session)
 
@@ -226,3 +232,7 @@ class Albert:
     @property
     def links(self) -> LinksCollection:
         return LinksCollection(session=self.session)
+
+    @property
+    def batch_data(self) -> BatchDataCollection:
+        return BatchDataCollection(session=self.session)

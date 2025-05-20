@@ -7,32 +7,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ProjectCollection(BaseCollection):
-    """
-    ProjectCollection is a collection class for managing project entities.
-
-    Parameters
-    ----------
-    session : AlbertSession
-        The Albert session instance.
-
-    Attributes
-    ----------
-    base_path : str
-        The base URL for project API requests.
-
-    Methods
-    -------
-    create(project: Project) -> Optional[str]
-        Creates a new project.
-    get_by_id(project_id: str) -> Optional[dict]
-        Retrieves a project by its ID.
-    update(project_id: str, patch_data: dict) -> bool
-        Updates a project by its ID.
-    delete(project_id: str) -> bool
-        Deletes a project by its ID.
-    list(name: Optional[List[str]], category: Optional[str], order_by: OrderBy, exact_match: bool) -> Generator
-        Lists projects with optional filters.
-    """
+    """ProjectCollection is a collection class for managing Project entities in the Albert platform."""
 
     _api_version = "v3"
     _updatable_attributes = {"description", "grid", "metadata", "state"}
@@ -88,8 +63,17 @@ class ProjectCollection(BaseCollection):
         return Project(**response.json())
 
     def update(self, *, project: Project) -> Project:
-        """
-        TO DO: This needs some more custom patch logic
+        """Update a project.
+
+        Parameters
+        ----------
+        project : Project
+            The updated project object.
+
+        Returns
+        -------
+        Project
+            The updated project object as returned by the server.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
@@ -118,10 +102,7 @@ class ProjectCollection(BaseCollection):
     def list(
         self,
         *,
-        limit: int = 50,
         text: str = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-        sort_by: str = None,
         status: list[str] = None,
         market_segment: list[str] = None,
         application: list[str] = None,
@@ -137,20 +118,17 @@ class ProjectCollection(BaseCollection):
         linked_to: str = None,
         my_projects: bool = None,
         my_role: list[str] = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str = None,
+        limit: int = 50,
     ) -> Iterator[Project]:
         """
         List projects with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of items to retrieve per request (default is 50).
         text : str, optional
             Search any test in the project.
-        order_by : OrderBy, optional
-            The order in which to retrieve items (default is OrderBy.DESCENDING).
-        sort_by : str, optional
-            The field to sort by.
         status : list[str], optional
             The status filter for the projects.
         market_segment : list[str], optional
@@ -181,6 +159,10 @@ class ProjectCollection(BaseCollection):
             Return Projects owned by you.
         my_role : list[str], optional
             Filter Projects to ones which you have a specific role in.
+        order_by : OrderBy, optional
+            The order in which to retrieve items (default is OrderBy.DESCENDING).
+        sort_by : str, optional
+            The field to sort by.
 
         Returns
         ------

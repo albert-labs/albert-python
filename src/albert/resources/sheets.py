@@ -43,6 +43,7 @@ class CellType(str, Enum):
     LKP = "LKP"
     FOR = "FOR"
     EXTINV = "EXTINV"
+    BTI = "BTI"
 
 
 class DesignType(str, Enum):
@@ -156,6 +157,7 @@ class Design(BaseSessionResource):
     _rows: list["Row"] | None = PrivateAttr(default=None)
     _columns: list["Column"] | None = PrivateAttr(default=None)
     _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # noqa
+    _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
     def _grid_to_cell_df(self, *, grid_response):
         all_rows = []
@@ -175,9 +177,19 @@ class Design(BaseSessionResource):
                 c["inventory_id"] = c.get("id", None)
                 this_cell = Cell(**c)
                 col_id = c["colId"]
-                name = c.get("name", None)
-                row[f"{col_id}#{name}"] = this_cell
+                inv_id = c.get("id", None)
+                if inv_id is not None and not inv_id.startswith("INV"):
+                    inv_id = "INV" + inv_id
+
+                name = c.get("name", inv_id)
+                if inv_id is None:
+                    inv_id = name
+                row[f"{col_id}#{inv_id}"] = this_cell
             all_rows.append(row)
+        for i, state in enumerate(grid_response["Formulas"]):
+            if state.get("state", None) is None or state["state"].get("pinned", None) is None:
+                self._leftmost_pinned_column = grid_response["Formulas"][i - 1]["colId"]
+                break
         return pd.DataFrame.from_records(all_rows, index=all_index)
 
     @property
@@ -197,14 +209,19 @@ class Design(BaseSessionResource):
             return []
         first_row = grid_response["Items"][0]
         for v in first_row["Values"]:
+            inv_id = v.get("id", None)
+            if inv_id is not None and not inv_id.startswith("INV"):
+                inv_id = "INV" + inv_id
+            if inv_id is None:
+                inv_id = v.get("name", None)
             columns.append(
                 Column(
                     colId=v["colId"],
-                    name=v.get("name", None),
+                    name=inv_id,
                     type=v["type"],
                     session=self.session,
                     sheet=self.sheet,
-                    invetory_id=v.get("id", None),
+                    inventory_id=inv_id,
                 )
             )
         return columns
@@ -285,6 +302,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     designs: list[Design] = Field(alias="Designs")
     project_id: str
     _grid: pd.DataFrame = PrivateAttr(default=None)
+    _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def set_session(self):
@@ -339,6 +357,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 design._columns = None
         else:
             raise NotImplementedError("grid is a read-only property")
+
+    @property
+    def leftmost_pinned_column(self):
+        """The leftmost pinned column in the sheet"""
+        if self._leftmost_pinned_column is None:
+            self._leftmost_pinned_column = self.app_design._leftmost_pinned_column
+
+        return self._leftmost_pinned_column
 
     @property
     def columns(self) -> list["Column"]:
@@ -492,7 +518,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position: dict | None = None,
     ) -> list["Column"]:
         if starting_position is None:
-            starting_position = {"reference_id": "COL5", "position": "rightOf"}
+            starting_position = {
+                "reference_id": self.leftmost_pinned_column,
+                "position": "rightOf",
+            }
         sheet_id = self.id
 
         endpoint = f"/api/v3/worksheet/sheet/{sheet_id}/columns"
@@ -515,7 +544,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     "position": starting_position["position"],
                 }
             )
-
         response = self.session.post(endpoint, json=payload)
 
         self.grid = None
@@ -760,7 +788,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
     def add_blank_column(self, *, name: str, position: dict = None):
         if position is None:
-            position = {"reference_id": "COL5", "position": "rightOf"}
+            position = {"reference_id": self.leftmost_pinned_column, "position": "rightOf"}
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [
             {
@@ -770,6 +798,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "position": position["position"],
             }
         ]
+
         response = self.session.post(endpoint, json=payload)
 
         data = response.json()
@@ -816,6 +845,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         else:
             matching_series = self._find_column(column_id=column_id, column_name=column_name)
             first_item = matching_series.iloc[0]
+            inv_id = first_item.inventory_id
+            if inv_id is not None and not inv_id.startswith("INV"):
+                inv_id = "INV" + inv_id
             return Column(
                 name=first_item.name,
                 colId=first_item.column_id,
@@ -854,6 +886,8 @@ class Column(BaseSessionResource):  # noqa:F811
 
     @property
     def df_name(self):
+        if self.inventory_id is not None:
+            return f"{self.column_id}#{self.inventory_id}"
         return f"{self.column_id}#{self.name}"
 
     @property

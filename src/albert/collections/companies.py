@@ -11,32 +11,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 class CompanyCollection(BaseCollection):
     """
-    CompanyCollection is a collection class for managing company entities.
-
-    Parameters
-    ----------
-    session : AlbertSession
-        The Albert session instance.
-
-    Attributes
-    ----------
-    base_path : str
-        The base URL for company API requests.
-
-    Methods
-    -------
-    list(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
-        Lists company entities with optional filters.
-    get_company_id(company_name, exact_match=False)
-        Retrieves the ID of a company by its name.
-    company_exists(name, exact_match=True)
-        Checks if a company exists by its name.
-    get_by_id(id)
-        Retrieves a company by its ID.
-    create(company, check_if_exists=True)
-        Creates a new company entity.
-    rename_company(old_name, new_name)
-        Renames an existing company entity.
+    CompanyCollection is a collection class for managing Company entities in the Albert platform.
     """
 
     _updatable_attributes = {"name"}
@@ -178,6 +153,13 @@ class CompanyCollection(BaseCollection):
         return this_company
 
     def delete(self, *, id: str) -> None:
+        """Deletes a company entity.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the company to delete.
+        """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
@@ -194,8 +176,8 @@ class CompanyCollection(BaseCollection):
 
         Returns
         -------
-        Optional[Company]
-            The renamed Company object if successful, None otherwise.
+        Company
+            The renamed Company object
         """
         company = self.get_by_name(name=old_name, exact_match=True)
         if not company:
@@ -219,6 +201,18 @@ class CompanyCollection(BaseCollection):
         return updated_company
 
     def update(self, *, company: Company) -> Company:
+        """Update a Company entity. The id of the company must be provided.
+
+        Parameters
+        ----------
+        company : Company
+            The updated Company object.
+
+        Returns
+        -------
+        Company
+            The updated Company object as registered in Albert.
+        """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)
 

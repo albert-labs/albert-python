@@ -51,8 +51,7 @@ class Interval(BaseAlbertModel):
 
 
 class IntervalCombination(BaseAlbertModel):
-    """
-    A class representing the interval combinations of on a workflow.
+    """A class representing the interval combinations of on a workflow.
     This is returned by the workflow endpoint when at least one parameter
     in the workflow has been intervalized.
 
@@ -111,7 +110,7 @@ class ParameterSetpoint(BaseAlbertModel):
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")
     category: ParameterCategory | None = Field(default=None)
     short_name: str | None = Field(default=None, alias="shortName")
-    name: str | None = Field(default=None)
+    name: str | None = Field(default=None, exclude=True)
     row_id: RowId | None = Field(default=None, alias="rowId")
 
     def model_post_init(self, __context) -> None:

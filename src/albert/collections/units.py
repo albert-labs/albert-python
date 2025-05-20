@@ -10,34 +10,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 class UnitCollection(BaseCollection):
     """
-    UnitCollection is a collection class for managing unit entities.
-
-    Parameters
-    ----------
-    session : AlbertSession
-        The Albert session instance.
-
-    Attributes
-    ----------
-    base_path : str
-        The base URL for unit API requests.
-
-    Methods
-    -------
-    create(unit) -> Unit
-        Creates a new unit entity.
-    get_by_id(unit_id) -> Unit
-        Retrieves a unit by its ID.
-    update(unit_id, patch_data) -> bool
-        Updates a unit entity by its ID.
-    delete(unit_id) -> bool
-        Deletes a unit by its ID.
-    list(limit=50, name=None, category=None, order_by=OrderBy.DESCENDING, exact_match=False, start_key=None) -> List[Unit]
-        Lists unit entities with optional filters.
-    get_by_name(name, exact_match=False) -> Unit
-        Retrieves a unit by its name.
-    unit_exists(name, exact_match=True) -> bool
-        Checks if a unit exists by its name.
+    UnitCollection is a collection class for managing Unit entities in the Albert platform.
     """
 
     _updatable_attributes = {"symbol", "synonyms", "category"}

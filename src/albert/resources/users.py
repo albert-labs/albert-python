@@ -5,6 +5,7 @@ from pydantic import EmailStr, Field
 from albert.collections.locations import Location
 from albert.collections.roles import Role
 from albert.resources.base import BaseResource, MetadataItem
+from albert.resources.identifiers import UserId
 from albert.resources.serialization import SerializeAsEntityLink
 
 
@@ -41,7 +42,7 @@ class User(BaseResource):
     """
 
     name: str
-    id: str | None = Field(None, alias="albertId")
+    id: UserId | None = Field(None, alias="albertId")
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
     email: EmailStr = Field(default=None, alias="email")
     roles: list[SerializeAsEntityLink[Role]] = Field(
@@ -49,3 +50,13 @@ class User(BaseResource):
     )
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+
+    def to_note_mention(self) -> str:
+        """Convert the user to a note mention string.
+
+        Returns
+        -------
+        str
+            The note mention string.
+        """
+        return f"@{self.name}#{self.id}#"

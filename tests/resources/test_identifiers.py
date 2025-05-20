@@ -24,6 +24,7 @@ from albert.resources.identifiers import (
     ensure_task_id,
     ensure_unit_id,
     ensure_workflow_id,
+    ensure_worksheet_id,
 )
 
 
@@ -44,6 +45,7 @@ from albert.resources.identifiers import (
         (ensure_paramter_group_id, "PRG", "", "ParameterGroupId cannot be empty"),
         (ensure_unit_id, "UNI", "", "UnitId cannot be empty"),
         (ensure_workflow_id, "WFL", "", "WorkflowId cannot be empty"),
+        (ensure_worksheet_id, "WKS", "", "WorksheetId cannot be empty"),
     ],
 )
 def test_ensure_id_functions(

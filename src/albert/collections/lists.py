@@ -7,6 +7,9 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ListsCollection(BaseCollection):
+    """ListsCollection is a collection class for managing ListItem entities in the Albert platform."""
+
+    _updatable_attributes = {"name"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -37,13 +40,12 @@ class ListsCollection(BaseCollection):
         ----------
         limit : int, optional
             The maximum number of list entities to return.
-        order_by : OrderBy, optional
-            The order in which to return list entities.
-        name : str, optional
-            The name of the list entity to retrieve.
-        exact_match : bool, optional
-            Whether to perform an exact match on the list name.
-
+        names : list[str], optional
+            A list of names of the list entity to retrieve.
+        category : ListItemCategory, optional
+            The category of the list entity to retrieve.
+        list_type : str, optional
+            The type of list entity to retrieve.
         Returns
         ------
         Iterator[ListItem]
@@ -118,7 +120,46 @@ class ListsCollection(BaseCollection):
         self.session.delete(url)
 
     def get_matching_item(self, *, name: str, list_type: str) -> ListItem | None:
+        """Get a list item by name and list type.
+
+        Parameters
+        ----------
+        name : str
+            The name of it item to retrieve.
+        list_type : str
+            The type of list (can be the name of the custom field)
+
+        Returns
+        -------
+        ListItem | None
+            A list item with the provided name and list type, or None if not found.
+        """
         for list_item in self.list(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():
                 return list_item
         return None
+
+    def update(self, *, list_item=ListItem) -> ListItem:
+        """Update a list item.
+
+        Parameters
+        ----------
+        list_item : ListItem
+            The list item to update.
+
+        Returns
+        -------
+        ListItem
+            The updated list item.
+        """
+        existing = self.get_by_id(id=list_item.id)
+        patches = self._generate_patch_payload(
+            existing=existing, updated=list_item, generate_metadata_diff=False
+        )
+        if len(patches.data) == 0:
+            return existing
+        self.session.patch(
+            url=f"{self.base_path}/{list_item.id}",
+            json=patches.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return self.get_by_id(id=list_item.id)

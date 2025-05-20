@@ -8,6 +8,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CasCollection(BaseCollection):
+    "CasCollection is a collection class for managing Cas entities on the Albert Platform."
+
     _updatable_attributes = {"notes", "description", "smiles"}
     _api_version = "v3"
 
@@ -37,13 +39,13 @@ class CasCollection(BaseCollection):
 
         Parameters
         ----------
-        limit : int, optional
+        limit : int | None, optional
             The maximum number of CAS entities to return, by default 50.
-        start_key : Optional[str], optional
+        start_key : str | None, optional
             The primary key of the first item that this operation will evaluate.
-        number : Optional[str], optional
+        number : str | None, optional
             Fetches list of CAS by CAS number.
-        id : Optional[str], optional
+        id : str | None, optional
             Fetches list of CAS using the CAS Albert ID.
         order_by : OrderBy, optional
             The order by which to sort the results, by default OrderBy.DESCENDING.
@@ -192,6 +194,18 @@ class CasCollection(BaseCollection):
         self.session.delete(url)
 
     def update(self, *, updated_object: Cas) -> Cas:
+        """Updates a CAS entity. The updated object must have the same ID as the object you want to update.
+
+        Parameters
+        ----------
+        updated_object : Cas
+            The Updated Cas object.
+
+        Returns
+        -------
+        Cas
+            The updated Cas object as it appears in Albert
+        """
         # Fetch the current object state from the server or database
         existing_cas = self.get_by_id(id=updated_object.id)
 

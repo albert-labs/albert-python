@@ -5,12 +5,14 @@ from pydantic import Field, model_validator
 
 from albert.resources.acls import ACL
 from albert.resources.base import BaseEntityLink, BaseResource, MetadataItem
+from albert.resources.identifiers import NotebookId
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tasks import TaskSource
 from albert.resources.users import User
 
 
@@ -34,13 +36,21 @@ class TemplateCategory(str, Enum):
     QC_BATCH = "BatchWithQC"
 
 
-class GeneralData(BaseTaggedEntity):
-    category: Literal[TemplateCategory.GENERAL] = TemplateCategory.GENERAL
-
-
 class Priority(str, Enum):
     LOW = "Low"
     HIGH = "High"
+
+
+class GeneralData(BaseTaggedEntity):
+    category: Literal[TemplateCategory.GENERAL] = TemplateCategory.GENERAL
+    name: str | None = Field(default=None)
+    project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
+    location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
+    assigned_to: SerializeAsEntityLink[User] | None = Field(alias="AssignedTo", default=None)
+    notebook_id: NotebookId | None = Field(alias="notebookId", default=None)
+    priority: Priority | None = Field(default=None)
+    sources: list[TaskSource] | None = Field(alias="Sources", default=None)
+    parent_id: str | None = Field(alias="parentId", default=None)
 
 
 class JobStatus(str, Enum):

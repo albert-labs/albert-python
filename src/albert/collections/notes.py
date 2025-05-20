@@ -5,6 +5,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class NotesCollection(BaseCollection):
+    """NotesCollection is a collection class for managing Note entities in the Albert platform."""
+
     _updatable_attributes = {"note", "parent_id"}
     _api_version = "v3"
 
@@ -18,8 +20,6 @@ class NotesCollection(BaseCollection):
 
         Parameters
         ----------
-        parent_id : str
-            The parent ID of the note.
         note : str
             The note content.
 
@@ -51,6 +51,18 @@ class NotesCollection(BaseCollection):
         return Note(**response.json())
 
     def update(self, *, note: Note) -> Note:
+        """Updates a note.
+
+        Parameters
+        ----------
+        note : Note
+            The note to update. The note must have an ID.
+
+        Returns
+        -------
+        Note
+            The updated note as returned by the server.
+        """
         patch = self._generate_patch_payload(
             existing=self.get_by_id(id=note.id), updated=note, generate_metadata_diff=False
         )

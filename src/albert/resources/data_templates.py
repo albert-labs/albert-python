@@ -24,7 +24,7 @@ class DataColumnValue(BaseAlbertModel):
     hidden: bool = False
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     calculation: str | None = None
-    column_sequence: str | None = Field(default=None, alias="sequence")
+    column_sequence: str | None = Field(default=None, alias="sequence", exclude=True)
 
     @model_validator(mode="after")
     def check_for_id(self):

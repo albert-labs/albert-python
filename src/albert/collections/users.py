@@ -11,6 +11,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UserCollection(BaseCollection):
+    """UserCollection is a collection class for managing User entities in the Albert platform."""
+
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "email", "metadata"}
 
@@ -119,6 +121,18 @@ class UserCollection(BaseCollection):
         return User(**response.json())
 
     def update(self, *, user: User) -> User:
+        """Update a User entity.
+
+        Parameters
+        ----------
+        user : User
+            The updated User entity.
+
+        Returns
+        -------
+        User
+            The updated User entity as returned by the server.
+        """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)
 

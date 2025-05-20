@@ -12,7 +12,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 class TagCollection(BaseCollection):
     """
-    TagCollection is a collection class for managing tag entities.
+    TagCollection is a collection class for managing Tag entities in the Albert platform.
 
     Parameters
     ----------
@@ -34,6 +34,8 @@ class TagCollection(BaseCollection):
         Creates a new tag entity.
     get_by_id(tag_id) -> Tag
         Retrieves a tag by its ID.
+    get_by_ids(tag_ids) -> list[Tag]
+        Retrieve a list of tags by their IDs.
     get_by_tag(tag, exact_match=True) -> Tag
         Retrieves a tag by its name.
     delete(tag_id) -> bool
@@ -55,48 +57,6 @@ class TagCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TagCollection._api_version}/tags"
-
-    def list(
-        self,
-        *,
-        limit: int = 50,
-        order_by: OrderBy = OrderBy.DESCENDING,
-        name: str | list[str] | None = None,
-        exact_match: bool = True,
-        start_key: str | None = None,
-    ) -> Iterator[Tag]:
-        """
-        Lists Tag entities with optional filters.
-
-        Parameters
-        ----------
-        limit : int, optional
-            The maximum number of tags to return, by default 50.
-        order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        name : Union[str, None], optional
-            The name of the tag to filter by, by default None.
-        exact_match : bool, optional
-            Whether to match the name exactly, by default True.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
-
-        Returns
-        -------
-        Iterator[Tag]
-            An iterator of Tag objects.
-        """
-        params = {"limit": limit, "orderBy": order_by.value, "startKey": start_key}
-        if name:
-            params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = json.dumps(exact_match)
-        return AlbertPaginator(
-            mode=PaginationMode.KEY,
-            path=self.base_path,
-            session=self.session,
-            params=params,
-            deserialize=lambda items: [Tag(**item) for item in items],
-        )
 
     def tag_exists(self, *, tag: str, exact_match: bool = True) -> bool:
         """
@@ -159,6 +119,15 @@ class TagCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return Tag(**response.json())
+
+    def get_by_ids(self, *, ids: list[str]) -> list[Tag]:
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
+        return [
+            Tag(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()
+        ]
 
     def get_by_tag(self, *, tag: str, exact_match: bool = True) -> Tag | None:
         """
@@ -232,3 +201,45 @@ class TagCollection(BaseCollection):
         ]
         self.session.patch(self.base_path, json=payload)
         return self.get_by_id(id=tag_id)
+
+    def list(
+        self,
+        *,
+        limit: int = 50,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        name: str | list[str] | None = None,
+        exact_match: bool = True,
+        start_key: str | None = None,
+    ) -> Iterator[Tag]:
+        """
+        Lists Tag entities with optional filters.
+
+        Parameters
+        ----------
+        limit : int, optional
+            The maximum number of tags to return, by default 50.
+        order_by : OrderBy, optional
+            The order by which to sort the results, by default OrderBy.DESCENDING.
+        name : Union[str, None], optional
+            The name of the tag to filter by, by default None.
+        exact_match : bool, optional
+            Whether to match the name exactly, by default True.
+        start_key : Optional[str], optional
+            The starting point for the next set of results, by default None.
+
+        Returns
+        -------
+        Iterator[Tag]
+            An iterator of Tag objects.
+        """
+        params = {"limit": limit, "orderBy": order_by.value, "startKey": start_key}
+        if name:
+            params["name"] = [name] if isinstance(name, str) else name
+            params["exactMatch"] = json.dumps(exact_match)
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=lambda items: [Tag(**item) for item in items],
+        )

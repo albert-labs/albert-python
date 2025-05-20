@@ -6,7 +6,7 @@ from contextlib import suppress
 import jwt
 import pytest
 
-from albert import Albert
+from albert import Albert, ClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.btdataset import BTDataset
@@ -21,6 +21,7 @@ from albert.resources.files import FileCategory, FileInfo, FileNamespace
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
+from albert.resources.lots import Lot
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
@@ -32,7 +33,6 @@ from albert.resources.units import Unit
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
 from albert.resources.worksheets import Worksheet
-from albert.utils.client_credentials import ClientCredentials
 from tests.seeding import (
     generate_cas_seeds,
     generate_company_seeds,
@@ -45,6 +45,8 @@ from tests.seeding import (
     generate_location_seeds,
     generate_lot_seeds,
     generate_note_seeds,
+    generate_notebook_block_seeds,
+    generate_notebook_seeds,
     generate_parameter_group_seeds,
     generate_parameter_seeds,
     generate_pricing_seeds,
@@ -114,7 +116,7 @@ def static_sds_file(client: Albert) -> FileInfo:
 
 @pytest.fixture(scope="session")
 def static_user(client: Albert) -> User:
-    # Users cannot be deleted, so we just pull the SDK client user for testing
+    # Users cannot be deleted, so we just pull the SDK Bot user for testing
     # Do not write to/modify this resource since it is shared across all test runs
     claims = jwt.decode(client.session._access_token, options={"verify_signature": False})
     user_id = claims["id"]
@@ -143,7 +145,7 @@ def static_custom_fields(client: Albert) -> list[CustomField]:
             registered_cf = client.custom_fields.create(custom_field=cf)
         except BadRequestError as e:
             # If it's already registered, this will raise a BadRequestError
-            registered_cf = client.custom_fields.get_by_name(name=cf.name)
+            registered_cf = client.custom_fields.get_by_name(name=cf.name, service=cf.service)
             if registered_cf is None:  # If it was something else, raise the error
                 raise e
         seeded.append(registered_cf)
@@ -369,9 +371,7 @@ def seeded_worksheet(client: Albert, seeded_projects: list[Project]) -> Workshee
     except NotFoundError:
         wksht = collection.setup_worksheet(project_id=seeded_projects[0].id)
     if wksht.sheets is None or wksht.sheets == []:
-        wksht = collection.setup_new_worksheet_blank(
-            project_id=seeded_projects[0].id, sheet_name="test"
-        )
+        wksht = collection.add_sheet(project_id=seeded_projects[0].id, sheet_name="test")
     else:
         for s in wksht.sheets:
             if not s.name.lower().startswith("test"):
@@ -435,6 +435,8 @@ def seeded_parameter_groups(
     seeded_tags,
     seeded_units,
     static_consumeable_parameter: Parameter,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
 ) -> Iterator[list[ParameterGroup]]:
     seeded = []
     for parameter_group in generate_parameter_group_seeds(
@@ -443,6 +445,8 @@ def seeded_parameter_groups(
         seeded_tags=seeded_tags,
         seeded_units=seeded_units,
         static_consumeable_parameter=static_consumeable_parameter,
+        static_custom_fields=static_custom_fields,
+        static_lists=static_lists,
     ):
         created_parameter_group = client.parameter_groups.create(parameter_group=parameter_group)
         seeded.append(created_parameter_group)
@@ -464,7 +468,7 @@ def seeded_lots(
     seeded_inventory,
     seeded_storage_locations,
     seeded_locations,
-):
+) -> Iterator[list[Lot]]:
     seeded = []
     all_lots = generate_lot_seeds(
         seeded_inventory=seeded_inventory,
@@ -476,6 +480,26 @@ def seeded_lots(
     for lot in seeded:
         with suppress(NotFoundError):
             client.lots.delete(id=lot.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_notebooks(
+    client: Albert,
+    seed_prefix: str,
+    seeded_projects,
+):
+    seeded = []
+    all_notebooks = generate_notebook_seeds(
+        seed_prefix=seed_prefix, seeded_projects=seeded_projects
+    )
+    for nb in all_notebooks:
+        seed = client.notebooks.create(notebook=nb)
+        seed.blocks = generate_notebook_block_seeds()  # generate each iteration for new block ids
+        seeded.append(client.notebooks.update_block_content(notebook=seed))
+    yield seeded
+    for notebook in seeded:
+        with suppress(NotFoundError):
+            client.notebooks.delete(id=notebook.id)
 
 
 @pytest.fixture(scope="session")
@@ -564,6 +588,8 @@ def seeded_tasks(
     seeded_data_templates,
     seeded_workflows,
     seeded_products,
+    static_lists: list[ListItem],
+    static_custom_fields: list[CustomField],
 ):
     seeded = []
     all_tasks = generate_task_seeds(
@@ -576,6 +602,8 @@ def seeded_tasks(
         seeded_data_templates=seeded_data_templates,
         seeded_workflows=seeded_workflows,
         seeded_products=seeded_products,
+        static_lists=static_lists,
+        static_custom_fields=static_custom_fields,
     )
     for t in all_tasks:
         seeded.append(client.tasks.create(task=t))

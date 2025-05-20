@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from typing import List  # noqa: UP035 `list` is defined in this collection, so need to use `List`
 
 from albert.collections.base import BaseCollection
 from albert.resources.links import Link, LinkCategory
@@ -8,6 +7,8 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LinksCollection(BaseCollection):
+    """LinksCollection is a collection class for managing Link entities in the Albert platform."""
+
     _api_version = "v3"
     _updatable_attributes = {}  # No updatable attributes for links
 
@@ -22,6 +23,26 @@ class LinksCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LinksCollection._api_version}/links"
+
+    def create(self, *, links: list[Link]) -> list[Link]:
+        """
+        Creates a new link entity.
+
+        Parameters
+        ----------
+        links : list[Link]
+            List of Link entities to create.
+
+        Returns
+        -------
+        Link
+            The created link entity.
+        """
+        response = self.session.post(
+            self.base_path,
+            json=[l.model_dump(by_alias=True, exclude_none=True, mode="json") for l in links],
+        )
+        return [Link(**l) for l in response.json()]
 
     def list(
         self,
@@ -65,7 +86,7 @@ class LinksCollection(BaseCollection):
 
         Parameters
         ----------
-        link_id : str
+        id : str
             The ID of the link entity to retrieve.
 
         Returns
@@ -76,26 +97,6 @@ class LinksCollection(BaseCollection):
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
         return Link(**response.json())
-
-    def create(self, *, links: List[Link]) -> List[Link]:  # noqa: UP006 `list` is defined in this collection, so need to use `List`
-        """
-        Creates a new link entity.
-
-        Parameters
-        ----------
-        link : Link
-            The link entity to create.
-
-        Returns
-        -------
-        Link
-            The created link entity.
-        """
-        response = self.session.post(
-            self.base_path,
-            json=[l.model_dump(by_alias=True, exclude_none=True, mode="json") for l in links],
-        )
-        return [Link(**l) for l in response.json()]
 
     def delete(self, *, id: str) -> None:
         """

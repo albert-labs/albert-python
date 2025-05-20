@@ -44,6 +44,7 @@ def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
     new_col = seeded_sheet.add_formulation(
         formulation_name=f"{seed_prefix} - My cool formulation base",
         components=components_updated,
+        enforce_order=True,
     )
     assert isinstance(new_col, Column)
 
@@ -59,7 +60,7 @@ def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
 
 def test_recolor_column(seeded_sheet: Sheet):
     for col in seeded_sheet.columns:
-        if col.type == "Formula":
+        if col.type == CellType.LKP:
             col.recolor_cells(color=CellColor.RED)
             for c in col.cells:
                 assert c.color == CellColor.RED
@@ -69,7 +70,6 @@ def test_property_reads(seeded_sheet: Sheet):
     for col in seeded_sheet.columns:
         if col.type == "Formula":
             break
-
     for c in col.cells:
         assert isinstance(c, Cell)
 
@@ -79,6 +79,14 @@ def test_property_reads(seeded_sheet: Sheet):
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]
+
+
+def test_recolor_rows(seeded_sheet: Sheet):
+    for row in seeded_sheet.rows:
+        if row.type == CellType.BLANK:
+            row.recolor_cells(color=CellColor.RED)
+            for c in row.cells:
+                assert c.color == CellColor.RED
 
 
 def test_add_and_remove_blank_rows(seeded_sheet: Sheet):

@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Literal
 
+import pandas as pd
 from pydantic import Field, field_validator, model_validator
 
 from albert.resources.base import BaseAlbertModel, BaseResource
@@ -10,6 +11,7 @@ from albert.resources.identifiers import (
     DataTemplateId,
     InventoryId,
     ParameterGroupId,
+    ParameterId,
     ProjectId,
     PropertyDataId,
     TaskId,
@@ -50,6 +52,7 @@ class PropertyValue(BaseAlbertModel):
     calculation: str | None = Field(default=None)
     numeric_value: float | None = Field(default=None, alias="valueNumeric")
     string_value: str | None = Field(default=None, alias="valueString")
+    value: str | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | dict = Field(default_factory=dict, alias="Unit")
     property_data: PropertyData | None = Field(default=None, alias="PropertyData")
     data_column_unique_id: str | None = Field(default=None, alias="dataColumnUniqueId")
@@ -102,10 +105,10 @@ class InventoryInformation(BaseAlbertModel):
 
 class CheckPropertyData(BaseResource):
     block_id: str | None = Field(default=None, alias="blockId")
-    interval_id: str | None = Field(default=None, alias="intervalId")
+    interval_id: str | None = Field(default=None, alias="interval")
     inventory_id: str | None = Field(default=None, alias="inventoryId")
     lot_id: str | None = Field(default=None, alias="lotId")
-    data_exists: bool | None = Field(default=None, alias="dataExists")
+    data_exists: bool | None = Field(default=None, alias="dataExist")
     message: str | None = Field(default=None)
 
 
@@ -133,6 +136,52 @@ class TaskPropertyData(BaseResource):
     )
     data: list[DataInterval] = Field(alias="Data", frozen=True, exclude=True)
     block_id: str | None = Field(alias="blockId", default=None)
+
+
+class BulkPropertyDataColumn(BaseAlbertModel):
+    """A Simple Data Structure representing all the rows of data in a block's data column."""
+
+    data_column_name: str = Field(
+        default=None, description="The name of the data column (case sensitive)."
+    )
+    data_series: list[str] = Field(
+        default_factory=list,
+        description="The values, in order of row number, for the data column.",
+    )
+
+
+class BulkPropertyData(BaseAlbertModel):
+    """A Simple Data Structure representing all the columns of data in a block's data column."""
+
+    columns: list[BulkPropertyDataColumn] = Field(
+        default_factory=list,
+        description="The columns of data in the block's data column.",
+    )
+
+    @classmethod
+    def from_dataframe(cls, df: pd.DataFrame) -> "BulkPropertyData":
+        """
+        Converts a DataFrame to a BulkPropertyData object.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The DataFrame to convert.
+
+        Returns
+        -------
+        BulkPropertyData
+            The BulkPropertyData object that represents the data in the DataFrame.
+        """
+        # Convert all the values to strings, since all albert values are string typed in Albert
+        df = df.fillna("").astype(str)
+        columns = []
+        for column in df.columns:
+            data_column = BulkPropertyDataColumn(
+                data_column_name=column, data_series=df[column].tolist()
+            )
+            columns.append(data_column)
+        return BulkPropertyData(columns=columns)
 
 
 ########################## Supporting POST Classes ##########################
@@ -174,17 +223,50 @@ class InventoryDataColumn(BaseAlbertModel):
 
 
 class TaskPropertyCreate(BaseResource):
-    entity: Literal[DataEntity.TASK] = Field(default=DataEntity.TASK)
+    """
+    Represents a task property to be created.
+
+    This class is used to create new task properties. Users can use the `Workflowe.get_interval_id`
+    method to find the correct interval given the names and setpoints of the parameters.
+
+
+    Notes
+    -----
+    - Users can use `Workflow.get_interval_id(parameter_values={"name1":"value1", "name2":"value2"})`
+      to find the correct interval given the names and setpoints of the parameters.
+    - Leave `trial_number` blank to create a new row/trial.
+    - `visible_trial_number` can be used to set the relative row number, allowing you to pass multiple rows of data at once.
+    """
+
+    entity: Literal[DataEntity.TASK] = Field(
+        default=DataEntity.TASK,
+        description="The entity type, which is always `DataEntity.TASK` for task properties.",
+    )
     interval_combination: str = Field(
         alias="intervalCombination",
         examples=["default", "ROW4XROW2", "ROW2"],
         default="default",
+        description="The interval combination, which can be found using `Workflow.get_interval_id`.",
     )
-    data_column: TaskDataColumn = Field(..., alias="DataColumns")
-    value: str | None = Field(default=None)
-    visible_trial_number: int | None = Field(alias="visibleTrialNo", default=None)
-    trial_number: int = Field(alias="trialNo", default=None)
-    data_template: SerializeAsEntityLink[DataTemplate] = Field(..., alias="DataTemplate")
+    data_column: TaskDataColumn = Field(
+        ..., alias="DataColumns", description="The data column associated with the task property."
+    )
+    value: str | None = Field(default=None, description="The value of the task property.")
+    trial_number: int = Field(
+        alias="trialNo",
+        default=None,
+        description="The trial number/ row number. Leave blank to create a new row/trial.",
+    )
+    data_template: SerializeAsEntityLink[DataTemplate] = Field(
+        ...,
+        alias="DataTemplate",
+        description="The data template associated with the task property.",
+    )
+    visible_trial_number: int | None = Field(
+        alias="visibleTrialNo",
+        default=None,
+        description="Can be used to set the relative row number, allowing you to pass multiple rows of data at once.",
+    )
 
     @model_validator(mode="after")
     def set_visible_trial_number(self) -> "TaskPropertyCreate":
@@ -200,7 +282,7 @@ class TaskPropertyCreate(BaseResource):
 
 
 class PropertyDataPatchDatum(PatchDatum):
-    property_column_id: DataColumnId = Field(alias="id")
+    property_column_id: DataColumnId | PropertyDataId = Field(alias="id")
 
 
 class InventoryPropertyDataCreate(BaseResource):
@@ -217,12 +299,12 @@ class InventoryPropertyDataCreate(BaseResource):
 
 class WorkflowItem(BaseAlbertModel):
     name: str
-    id: WorkflowId
-    value: str
-    parameter_group_id: ParameterGroupId = Field(..., alias="parameterGroupId")
-    value_numeric: float | None = Field(None, alias="valueNumeric")
-    unit_name: str | None = Field(None, alias="unitName")
-    unit_id: UnitId | None = Field(None, alias="unitId")
+    id: ParameterId
+    value: str | None = Field(default=None)
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    value_numeric: float | None = Field(default=None, alias="valueNumeric")
+    unit_name: str | None = Field(default=None, alias="unitName")
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
 
 
 class PropertyDataResult(BaseAlbertModel):
@@ -236,16 +318,16 @@ class PropertyDataResult(BaseAlbertModel):
 
 
 class PropertyDataSearchItem(BaseAlbertModel):
-    workflow: list[WorkflowItem]
-    data_template_id: DataTemplateId = Field(..., alias="dataTemplateId")
-    workflow_name: str | None = Field(None, alias="workflowName")
-    parent_id: TaskId = Field(..., alias="parentId")
-    data_template_name: str = Field(..., alias="dataTemplateName")
-    result: PropertyDataResult
-    created_by: str = Field(..., alias="createdBy")
-    inventory_id: InventoryId = Field(..., alias="inventoryId")
     id: PropertyDataId
     category: str
+    workflow: list[WorkflowItem]
+    result: PropertyDataResult
+    data_template_id: DataTemplateId = Field(..., alias="dataTemplateId")
+    workflow_name: str | None = Field(default=None, alias="workflowName")
+    parent_id: TaskId | InventoryId = Field(..., alias="parentId")
+    data_template_name: str = Field(..., alias="dataTemplateName")
+    created_by: str = Field(..., alias="createdBy")
+    inventory_id: InventoryId = Field(..., alias="inventoryId")
     project_id: ProjectId = Field(..., alias="projectId")
     workflow_id: WorkflowId = Field(..., alias="workflowId")
-    task_id: TaskId = Field(..., alias="taskId")
+    task_id: TaskId | None = Field(default=None, alias="taskId")

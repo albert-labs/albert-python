@@ -8,10 +8,30 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LotCollection(BaseCollection):
+    """LotCollection is a collection class for managing Lot entities in the Albert platform."""
+
     _api_version = "v3"
-    _updatable_attributes = {"metadata"}
+    _updatable_attributes = {
+        "metadata",
+        "storage_location",
+        "manufacturer_lot_number",
+        "expiration_date",
+        "initial_quantity",
+        "inventory_on_hand",
+        "cost",
+        "status",
+        "pack_size",
+        "barcode_id",
+    }
 
     def __init__(self, *, session: AlbertSession):
+        """A collection for interacting with Lots in Albert.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            An Albert session instance.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
 
@@ -27,16 +47,47 @@ class LotCollection(BaseCollection):
         return all_lots
 
     def get_by_id(self, *, id: str) -> Lot:
+        """Get a lot by its ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the lot to get.
+
+        Returns
+        -------
+        Lot
+            The lot with the provided ID.
+        """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return Lot(**response.json())
 
     def get_by_ids(self, *, ids: list[str]) -> list[Lot]:
+        """Get a list of lots by their IDs.
+
+        Parameters
+        ----------
+        ids : list[str]
+            A list of lot IDs to get.
+
+        Returns
+        -------
+        list[Lot]
+            A list of lots with the provided IDs.
+        """
         url = f"{self.base_path}/ids"
         response = self.session.get(url, params={"id": ids})
         return [Lot(**lot) for lot in response.json()["Items"]]
 
     def delete(self, *, id: str) -> None:
+        """Delete a lot by its ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the lot to delete.
+        """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
 
@@ -80,7 +131,7 @@ class LotCollection(BaseCollection):
         begins_with : bool, optional
             Determines if barcodeId begins with a certain value, by default False.
 
-        Returns
+        Yields
         -------
         Iterator[Lot]
             An iterator of Lot objects.
@@ -104,3 +155,24 @@ class LotCollection(BaseCollection):
             params=params,
             deserialize=lambda items: [Lot(**item) for item in items],
         )
+
+    def update(self, *, lot: Lot) -> Lot:
+        """Update a lot.
+
+        Parameters
+        ----------
+        lot : Lot
+            The updated lot object.
+
+        Returns
+        -------
+        Lot
+            The updated lot object as returned by the server.
+        """
+        existing_lot = self.get_by_id(id=lot.id)
+        patch_data = self._generate_patch_payload(existing=existing_lot, updated=lot)
+        url = f"{self.base_path}/{lot.id}"
+
+        self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
+
+        return self.get_by_id(id=lot.id)

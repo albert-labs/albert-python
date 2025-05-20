@@ -28,6 +28,10 @@ def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):
     assert dc.name == name
     assert dc.id == seeded_data_columns[0].id
 
+    chaos_name = "JHByu8gt43278hixvy87H&*(#BIuyvd)"
+    dc = client.data_columns.get_by_name(name=chaos_name)
+    assert dc is None
+
 
 def test_get_by_id(client: Albert, seeded_data_columns: list[DataColumn]):
     dc = client.data_columns.get_by_id(id=seeded_data_columns[0].id)
@@ -44,3 +48,12 @@ def test_advanced_list(client: Albert, seeded_data_columns: list[DataColumn]):
         name="chaos tags 126485% HELLO WORLD!!!!", exact_match=True
     )
     assert next(adv_list_no_match, None) == None
+
+
+def test_update(client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str):
+    dc = seeded_data_columns[0]
+    new_name = f"{seed_prefix}-new name"
+    dc.name = new_name
+    updated_dc = client.data_columns.update(data_column=dc)
+    assert updated_dc.name == new_name
+    assert updated_dc.id == dc.id

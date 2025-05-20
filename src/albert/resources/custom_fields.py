@@ -23,6 +23,8 @@ class ServiceType(str, Enum):
     USERS = "users"
     PARAMETERS = "parameters"
     DATA_COLUMNS = "datacolumns"
+    DATA_TEMPLATES = "datatemplates"
+    PARAMETER_GROUPS = "parametergroups"
 
 
 class FieldCategory(str, Enum):
@@ -111,15 +113,6 @@ class CustomField(BaseResource):
             raise ValueError("Category must be set for list fields")
         if self.lookup_column is not None and self.service != ServiceType.INVENTORIES:
             raise ValueError("Lookup column is only allowed for inventories")
-        if self.lookup_row is not None and (
-            self.service != ServiceType.INVENTORIES
-            or (
-                self.service == ServiceType.INVENTORIES
-                and (
-                    self.entity_categories is not None
-                    and EntityCategory.FORMULAS not in self.entity_categories
-                )
-            )
-        ):
+        if self.lookup_row is not None and self.service != ServiceType.INVENTORIES:
             raise ValueError("Lookup row is only allowed for formulas in inventories")
         return self

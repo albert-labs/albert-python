@@ -14,7 +14,7 @@ class ListItemCategory(str, Enum):
 
 
 class ListItem(BaseResource):
-    """_summary_
+    """An item in a list.
 
     Attributes
     ----------

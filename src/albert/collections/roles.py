@@ -4,6 +4,8 @@ from albert.session import AlbertSession
 
 
 class RoleCollection(BaseCollection):
+    """RoleCollection is a collection class for managing Role entities in the Albert platform."""
+
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -18,7 +20,6 @@ class RoleCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{RoleCollection._api_version}/acl/roles"
 
-    # TODO: move from params to kwargs
     def list(self, *, params: dict | None = None) -> list[Role]:
         """Lists the available Roles
 

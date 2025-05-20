@@ -23,6 +23,8 @@ class BaseTaggedEntity(BaseResource):
     @model_validator(mode="before")  # must happen before to keep type validation
     @classmethod
     def convert_tags(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(data, dict):
+            return data
         tags = data.get("tags")
         if not tags:
             tags = data.get("Tags")

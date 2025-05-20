@@ -1,0 +1,92 @@
+site_name: "Albert Python SDK Docs"
+theme:
+  name: "material"
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            members: true
+            show_submodules: true
+            docstring_style: numpy
+            extensions:
+              - griffe_pydantic:
+                  schema: true
+            annotations_path: brief
+            # members_order: source #this does it in order of the file, ABC by default
+            filters: 
+              - "!^_"
+            docstring_options:
+              ignore_init_summary: true
+            merge_init_into_class: true
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            show_if_no_docstring: true
+            summary:
+              attributes: false
+              functions: true
+              modules: false #I'm not sure what this one does, honestly
+          import:
+            - url: https://docs.python.org/3/objects.inv
+              domains: [py, std]
+          rendering:
+            show_docstring_attributes: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - SDK Reference:
+    - Albert Client: albert.md
+    - Attachments: attachments.md
+    - Batch Data: batch_data.md
+    - Breakthrough:
+      - Breakthrough Datasets: btdataset.md
+      - Breakthrough Insights: btinsight.md
+      - Breakthrough Model: btmodel.md
+    - Cas: cas.md
+    - Companies: companies.md
+    - Custom Fields: custom_fields.md
+    - Custom Templates: custom_templates.md
+    - Data Columns: data_columns.md
+    - Data Templates: data_templates.md
+    - Files: files.md
+    - Inventory: inventory.md
+    - Links: links.md
+    - Lists: lists.md
+    - Locations: locations.md
+    - Lots: lots.md
+    - Notebooks: notebooks.md
+    - Notes: notes.md
+    - Parameter Groups: parameter_groups.md
+    - Parameters: parameters.md
+    - Pricings: pricings.md
+    - Product Design: product_design.md
+    - Projects: projects.md
+    - Property Data: property_data.md
+    - Reports: reports.md
+    - Roles: roles.md
+    - Storage Locations: storage_locations.md
+    - Substances: substances.md
+    - Tags: tags.md
+    - Tasks: tasks.md
+    - UN Numbers: un_numbers.md
+    - Units: units.md
+    - Users: users.md
+    - Workflows: workflows.md
+    - Worksheets:
+      - Worksheets: worksheets.md
+      - Sheets: sheets.md
+

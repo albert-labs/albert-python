@@ -1,20 +1,22 @@
 import logging
 from collections.abc import Iterator
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, validate_call
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
-from albert.resources.acls import AccessControlLevel
 from albert.resources.facet import FacetItem
+from albert.resources.identifiers import InventoryId, ProjectId, SearchProjectId, WorksheetId
 from albert.resources.inventory import (
+    ALL_MERGE_MODULES,
     InventoryCategory,
     InventoryItem,
     InventorySearchItem,
     InventorySpec,
     InventorySpecList,
+    MergeInventory,
 )
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
@@ -24,32 +26,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class InventoryCollection(BaseCollection):
-    """
-    InventoryCollection is a collection class for managing inventory items.
-
-    Parameters
-    ----------
-    session : Albert
-        The Albert session instance.
-
-    Attributes
-    ----------
-    base_path : str
-        The base URL for inventory API requests.
-
-    Methods
-    -------
-    create(inventory_item: InventoryItem, avoid_duplicates: bool = True) -> InventoryItem
-        Creates a new inventory item.
-    get_by_id(inventory_id: str) -> Optional[InventoryItem]
-        Retrieves an inventory item by its ID.
-    update(inventory_id: str, patch_data: dict) -> bool
-        Updates an inventory item by its ID.
-    delete(inventory_id: str) -> bool
-        Deletes an inventory item by its ID.
-    list(limit: int, start_key: Optional[str], name: Optional[List[str]], category: Optional[str], order_by: OrderBy, exact_match: bool) -> Optional[List[InventoryItem]]
-        Lists inventory items with optional filters.
-    """
+    """InventoryCollection is a collection class for managing Inventory Item entities in the Albert platform."""
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -62,8 +39,61 @@ class InventoryCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
+        """
+        InventoryCollection is a collection class for managing inventory items.
+
+        Parameters
+        ----------
+        session : Albert
+            The Albert session instance.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
+
+    def merge(
+        self,
+        *,
+        parent_id: InventoryId,
+        child_id: InventoryId | list[InventoryId],
+        modules: list[str] | None = None,
+    ) -> None:
+        """
+        Merge one or multiple child inventory into a parent inventory item.
+
+        Parameters
+        ----------
+        parent_id : InventoryId
+            The ID of the parent inventory item.
+        child_id : InventoryId | list[InventoryId]
+            The ID(s) of the child inventory item(s).
+        modules : list[str], optional
+            The merge modules to use (default is all).
+
+        Returns
+        -------
+        None
+        """
+
+        # assume "all" modules if not specified explicitly
+        modules = modules if modules is not None else ALL_MERGE_MODULES
+
+        # define merge endpoint
+        url = f"{self.base_path}/merge"
+
+        if isinstance(child_id, list):
+            child_inventories = [{"id": i} for i in child_id]
+        else:
+            child_inventories = [{"id": child_id}]
+
+        # define payload using the class
+        payload = MergeInventory(
+            parent_id=parent_id,
+            child_inventories=child_inventories,
+            modules=modules,
+        )
+
+        # post request
+        self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
     def inventory_exists(self, *, inventory_item: InventoryItem) -> bool:
         """
@@ -160,13 +190,14 @@ class InventoryCollection(BaseCollection):
         )
         return InventoryItem(**response.json())
 
-    def get_by_id(self, *, id: str) -> InventoryItem:
+    @validate_call
+    def get_by_id(self, *, id: InventoryId) -> InventoryItem:
         """
         Retrieve an inventory item by its ID.
 
         Parameters
         ----------
-        id : str
+        id : InventoryId
             The ID of the inventory item.
 
         Returns
@@ -174,19 +205,18 @@ class InventoryCollection(BaseCollection):
         InventoryItem
             The retrieved inventory item.
         """
-        if not id.startswith("INV"):
-            id = "INV" + id
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return InventoryItem(**response.json())
 
-    def get_by_ids(self, *, ids: list[str]) -> list[InventoryItem]:
+    @validate_call
+    def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
         """
         Retrieve an set of inventory items by their IDs.
 
         Parameters
         ----------
-        ids : str
+        ids : list[InventoryId]
             The list of IDs of the inventory items.
 
         Returns
@@ -195,7 +225,6 @@ class InventoryCollection(BaseCollection):
             The retrieved inventory items.
         """
         url = f"{self.base_path}/ids"
-        ids = [x if x.startswith("INV") else f"INV{x}" for x in ids]
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
         return [
             InventoryItem(**item)
@@ -203,9 +232,21 @@ class InventoryCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def get_specs(self, *, ids: list[str]) -> list[InventorySpecList]:
+    @validate_call
+    def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
+        """Get the specs for a list of inventory items.
+
+        Parameters
+        ----------
+        ids : list[InventoryId]
+            List of Inventory IDs to get the specs for.
+
+        Returns
+        -------
+        list[InventorySpecList]
+            A list of InventorySpecList objects, each containing the specs for an inventory item.
+        """
         url = f"{self.base_path}/specs"
-        ids = [x if x.startswith("INV") else f"INV{x}" for x in ids]
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
         ta = TypeAdapter(InventorySpecList)
         return [
@@ -214,10 +255,11 @@ class InventoryCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
+    @validate_call
     def add_specs(
         self,
         *,
-        inventory_id: str,
+        inventory_id: InventoryId,
         specs: InventorySpec | list[InventorySpec],
     ) -> InventorySpecList:
         """Add inventory specs to the inventory item.
@@ -227,7 +269,7 @@ class InventoryCollection(BaseCollection):
 
         Parameters
         ----------
-        inventory_id : str
+        inventory_id : InventoryId
             The Albert ID of the inventory item to add the specs to
         specs : list[InventorySpec]
             List of InventorySpec objects to add to the inventory item,
@@ -239,8 +281,6 @@ class InventoryCollection(BaseCollection):
         InventorySpecList
             The list of InventorySpecs attached to the InventoryItem.
         """
-        if not inventory_id.startswith("INV"):
-            inventory_id = f"INV{inventory_id}"
         if isinstance(specs, InventorySpec):
             specs = [specs]
         response = self.session.put(
@@ -249,25 +289,25 @@ class InventoryCollection(BaseCollection):
         )
         return InventorySpecList(**response.json())
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: InventoryId) -> None:
         """
         Delete an inventory item by its ID.
 
         Parameters
         ----------
-        id : str
+        id : InventoryId
             The ID of the inventory item.
 
         Returns
         -------
         None
         """
-        if isinstance(id, InventoryItem):
-            id = id.id
-        id = id if id.startswith("INV") else "INV" + id
+
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
+    @validate_call
     def _prepare_parameters(
         self,
         *,
@@ -280,10 +320,10 @@ class InventoryCollection(BaseCollection):
         sort_by: str | None = None,
         location: list[Location] | Location | None = None,
         storage_location: list[StorageLocation] | StorageLocation | None = None,
-        project_id: str | None = None,
-        sheet_id: str | None = None,
+        project_id: SearchProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | None = None,
-        lot_owner: list[User] | None = None,
+        lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
     ):
         if isinstance(cas, Cas):
@@ -300,8 +340,6 @@ class InventoryCollection(BaseCollection):
             location = [location]
         if isinstance(storage_location, StorageLocation):
             storage_location = [storage_location]
-        if project_id is not None and project_id.startswith("PRO"):
-            project_id = project_id[3:]  # this search doesnt use the prefix
 
         params = {
             "limit": limit,
@@ -324,6 +362,7 @@ class InventoryCollection(BaseCollection):
 
         return params
 
+    @validate_call
     def get_all_facets(
         self,
         *,
@@ -331,13 +370,13 @@ class InventoryCollection(BaseCollection):
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
-        location: list[Location] | None = None,
-        storage_location: list[StorageLocation] | None = None,
-        project_id: str | None = None,
-        sheet_id: str | None = None,
-        created_by: list[User] = None,
-        lot_owner: list[User] = None,
-        tags: list[str] = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        project_id: ProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | User | None = None,
+        tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
         """
@@ -366,6 +405,7 @@ class InventoryCollection(BaseCollection):
         )
         return [FacetItem.model_validate(x) for x in response.json()["Facets"]]
 
+    @validate_call
     def get_facet_by_name(
         self,
         name: str | list[str],
@@ -374,13 +414,13 @@ class InventoryCollection(BaseCollection):
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
-        location: list[Location] | None = None,
-        storage_location: list[StorageLocation] | None = None,
-        project_id: str | None = None,
-        sheet_id: str | None = None,
-        created_by: list[User] = None,
-        lot_owner: list[User] = None,
-        tags: list[str] = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        project_id: ProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | User | None = None,
+        tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
         """
@@ -412,6 +452,7 @@ class InventoryCollection(BaseCollection):
 
         return filtered_facets
 
+    @validate_call
     def search(
         self,
         *,
@@ -420,13 +461,13 @@ class InventoryCollection(BaseCollection):
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
-        location: list[Location] | None = None,
-        storage_location: list[StorageLocation] | None = None,
-        project_id: str | None = None,
-        sheet_id: str | None = None,
-        created_by: list[User] = None,
-        lot_owner: list[User] = None,
-        tags: list[str] = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        project_id: ProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | User | None = None,
+        tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> Iterator[InventorySearchItem]:
         """
@@ -462,6 +503,7 @@ class InventoryCollection(BaseCollection):
             deserialize=deserialize,
         )
 
+    @validate_call
     def list(
         self,
         *,
@@ -472,13 +514,13 @@ class InventoryCollection(BaseCollection):
         company: list[Company] | Company | None = None,
         order: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = "createdAt",
-        location: list[Location] | None = None,
-        storage_location: list[StorageLocation] | None = None,
-        project_id: str | None = None,
-        sheet_id: str | None = None,
-        created_by: list[User] = None,
-        lot_owner: list[User] = None,
-        tags: list[str] = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        project_id: ProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | User | None = None,
+        tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> Iterator[InventoryItem]:
         """
@@ -526,9 +568,11 @@ class InventoryCollection(BaseCollection):
         def deserialize(items: list[dict]) -> list[InventoryItem]:
             return self.get_by_ids(ids=[x["albertId"] for x in items])
 
+        search_text = text if (text is None or len(text) < 50) else text[0:50]
+
         params = self._prepare_parameters(
             limit=limit,
-            text=text,
+            text=search_text,
             cas=cas,
             category=category,
             company=company,
@@ -734,34 +778,46 @@ class InventoryCollection(BaseCollection):
                                 )
 
             elif attribute == "acls":
-                new_val_dump = [
-                    x.model_dump(by_alias=True)
-                    for x in new_value
-                    if x.fgc
-                    in [
-                        AccessControlLevel.INVENTORY_OWNER,
-                        AccessControlLevel.INVENTORY_VIEWER,
-                    ]
-                ]
-                if new_val_dump == []:
-                    continue
-                if old_value and new_value and new_value != old_value:
+                existing_ids = [x.id for x in existing.acls]
+                new_ids = [x.id for x in updated.acls]
+                to_add = set(new_ids) - set(existing_ids)
+                to_del = set(existing_ids) - set(new_ids)
+                to_update = set(existing_ids).intersection(new_ids)
+                if len(to_add) > 0:
                     payload["data"].append(
                         {
-                            "operation": "update",
                             "attribute": "ACL",
-                            "oldValue": [x.model_dump(by_alias=True) for x in old_value],
-                            "newValue": new_val_dump,
-                        }
-                    )
-                elif new_value:
-                    payload["data"].append(
-                        {
                             "operation": "add",
-                            "attribute": "ACL",
-                            "newValue": new_val_dump,
-                        }
+                            "newValue": [
+                                x.model_dump(by_alias=True) for x in updated.acls if x.id in to_add
+                            ],
+                        },
                     )
+                if len(to_del) > 0:
+                    payload["data"].append(
+                        {
+                            "attribute": "ACL",
+                            "operation": "delete",
+                            "oldValue": [
+                                x.model_dump(by_alias=True)
+                                for x in existing.acls
+                                if x.id in to_del
+                            ],
+                        },
+                    )
+                for acl_id in to_update:
+                    existing_fgc = [x.fgc for x in existing.acls if x.id == acl_id][0]
+                    updated_fgc = [x.fgc for x in updated.acls if x.id == acl_id][0]
+                    if existing_fgc != updated_fgc:
+                        payload["data"].append(
+                            {
+                                "attribute": "fgc",
+                                "id": acl_id,
+                                "operation": "update",
+                                "oldValue": existing_fgc.value,
+                                "newValue": updated_fgc.value,
+                            },
+                        )
 
             elif attribute == "tags":
                 if (old_value is None or old_value == []) and new_value is not None:

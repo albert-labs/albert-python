@@ -15,6 +15,8 @@ from albert.session import AlbertSession
 
 
 class FileCollection(BaseCollection):
+    """FileCollection is a collection class for managing File entities in the Albert platform."""
+
     _api_version: str = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -36,6 +38,22 @@ class FileCollection(BaseCollection):
         namespace: FileNamespace,
         generic: bool = False,
     ) -> FileInfo:
+        """Gets a file by name and namespace.
+
+        Parameters
+        ----------
+        name : str
+            The Name of the file
+        namespace : FileNamespace
+            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+        generic : bool, optional
+            _description_, by default False
+
+        Returns
+        -------
+        FileInfo
+            The file information related to the matching file.
+        """
         params = {
             "name": name,
             "namespace": namespace,
@@ -53,6 +71,24 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> str:
+        """Get a signed download URL for a file.
+
+        Parameters
+        ----------
+        name : str
+            The Name of the file
+        namespace : FileNamespace
+            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+        version_id : str | None, optional
+            The version of the file, by default None
+        category : FileCategory | None, optional
+            The file category (E.g., SDS, OTHER), by default None
+
+        Returns
+        -------
+        str
+            _description_
+        """
         params = {
             "name": name,
             "namespace": namespace,
@@ -75,6 +111,24 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> str:
+        """Get a signed upload URL for a file.
+
+        Parameters
+        ----------
+        name : str
+            The Name of the file
+        namespace : FileNamespace
+            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+        content_type : str
+            The content type of the file
+        category : FileCategory | None, optional
+            The File category (E.g., SDS, OTHER), by default None
+
+        Returns
+        -------
+        str
+            _description_
+        """
         params = {"generic": json.dumps(generic)}
 
         post_body = SignURLPOST(
@@ -104,6 +158,21 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> None:
+        """Sign and upload a file to Albert.
+
+        Parameters
+        ----------
+        data : IO
+            The file data
+        name : str
+            The name of the file
+        namespace : FileNamespace
+            The File Namespace (e.g., AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+        content_type : str
+            The content type of the file
+        category : FileCategory | None, optional
+            The category of the file (E.g., SDS, OTHER), by default None
+        """
         upload_url = self.get_signed_upload_url(
             name=name,
             namespace=namespace,

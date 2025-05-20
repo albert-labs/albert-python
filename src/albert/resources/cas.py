@@ -1,8 +1,6 @@
 from enum import Enum
 
-from pydantic import Field
-
-from albert.resources.base import BaseResource
+from pydantic import BaseModel, Field
 
 
 class CasCategory(str, Enum):
@@ -16,67 +14,38 @@ class CasCategory(str, Enum):
     CL_INVENTORY_UPLOAD = "CL_Inventory Upload"
 
 
-class Hazard(BaseResource):
-    sub_category: str = Field(None, alias="subCategory")
-    h_code: str = Field(None, alias="hCode")
-    category: str | float | None = None
-    hazard_class: str | None = Field(None, alias="class")
-    h_code_text: str = Field(None, alias="hCodeText")
+class Hazard(BaseModel):
+    """Represents a chemical hazard."""
+
+    sub_category: str | None = Field(None, alias="subCategory", description="Hazard subcategory")
+    h_code: str | None = Field(None, alias="hCode", description="Hazard code")
+    category: str | float | None = Field(None, description="Hazard category")
+    hazard_class: str | None = Field(None, alias="class", description="Hazard classification")
+    h_code_text: str | None = Field(None, alias="hCodeText", description="Hazard code text")
 
 
-class Cas(BaseResource):
-    """
-    Cas is a Pydantic model representing a CAS entity.
+class Cas(BaseModel):
+    """Represents a CAS entity."""
 
-    Attributes
-    ----------
-    number : str
-        The CAS number.
-    name : str | None
-        Name of the CAS.
-    description : str | None
-        The description or name of the CAS.
-    notes : str | None
-        Notes of the CAS.
-    category : CasCategory | None
-        The category of the CAS.
-    smiles : str | None
-        CAS SMILES notation.
-    inchi_key : str | None
-        InChIKey of the CAS.
-    iupac_name : str | None
-        IUPAC name of the CAS.
-    id : str | None
-        The AlbertID of the CAS.
-    hazards : List[Hazard] | None
-        Hazards associated with the CAS.
-    wgk : str | None
-        German Water Hazard Class (WGK) number.
-    ec_number : str | None
-        European Community (EC) number.
-    type : str | None
-        Type of the CAS.
-    classificationType : str | None
-        Classification type of the CAS.
-    order : str | None
-        CAS order.
-    """
-
-    number: str
-    name: str | None = None
-    description: str | None = None
-    notes: str | None = None
-    category: CasCategory | None = None  # To better define in docstrings
-    smiles: str | None = Field(None, alias="casSmiles")
-    inchi_key: str | None = Field(None, alias="inchiKey")
-    iupac_name: str | None = Field(None, alias="iUpacName")
-    id: str | None = Field(None, alias="albertId")
-    hazards: list[Hazard] | None = None
-    wgk: str | None = None
-    ec_number: str | None = Field(None, alias="ecListNo")
-    type: str | None = None
-    classification_type: str | None = Field(None, alias="classificationType")
-    order: str | None = None
+    number: str = Field(..., description="The CAS number.")
+    name: str | None = Field(None, description="Name of the CAS.")
+    description: str | None = Field(None, description="The description or name of the CAS.")
+    notes: str | None = Field(None, description="Notes related to the CAS.")
+    category: CasCategory | None = Field(None, description="The category of the CAS.")
+    smiles: str | None = Field(None, alias="casSmiles", description="CAS SMILES notation.")
+    inchi_key: str | None = Field(None, alias="inchiKey", description="InChIKey of the CAS.")
+    iupac_name: str | None = Field(None, alias="iUpacName", description="IUPAC name of the CAS.")
+    id: str | None = Field(None, alias="albertId", description="The AlbertID of the CAS.")
+    hazards: list[Hazard] | None = Field(None, description="Hazards associated with the CAS.")
+    wgk: str | None = Field(None, description="German Water Hazard Class (WGK) number.")
+    ec_number: str | None = Field(
+        None, alias="ecListNo", description="European Community (EC) number."
+    )
+    type: str | None = Field(None, description="Type of the CAS.")
+    classification_type: str | None = Field(
+        None, alias="classificationType", description="Classification type of the CAS."
+    )
+    order: str | None = Field(None, description="CAS order.")
 
     @classmethod
     def from_string(cls, *, number: str) -> "Cas":

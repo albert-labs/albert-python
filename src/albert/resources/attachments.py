@@ -27,6 +27,9 @@ class Attachment(BaseResource):
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
     signed_url_v2: str | None = Field(default=None, alias="signedURLV2", exclude=True, frozen=True)
+    metadata: dict[str, str] | None = Field(
+        default=None, alias="Metadata", exclude=True, frozen=True
+    )
 
 
 # TO DO: Script and SDS attachment

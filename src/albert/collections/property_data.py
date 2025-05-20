@@ -1,12 +1,18 @@
 import re
 from collections.abc import Iterator
+from contextlib import suppress
 
+import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.collections.tasks import TaskCollection
+from albert.exceptions import NotFoundError
+from albert.resources.base import BaseEntityLink
 from albert.resources.identifiers import (
     BlockId,
+    DataColumnId,
+    DataTemplateId,
     IntervalId,
     InventoryId,
     LotId,
@@ -16,6 +22,7 @@ from albert.resources.identifiers import (
     UserId,
 )
 from albert.resources.property_data import (
+    BulkPropertyData,
     CheckPropertyData,
     DataEntity,
     InventoryDataColumn,
@@ -24,6 +31,7 @@ from albert.resources.property_data import (
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
     PropertyValue,
+    TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
     Trial,
@@ -36,6 +44,8 @@ from albert.utils.patches import PatchOperation
 
 
 class PropertyDataCollection(BaseCollection):
+    """PropertyDataCollection is a collection class for managing Property Data entities in the Albert platform."""
+
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -56,7 +66,18 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
-        """Returns all the properties of an inventory item."""
+        """Returns all the properties of an inventory item.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory item to retrieve properties for.
+
+        Returns
+        -------
+        InventoryPropertyData
+            The properties of the inventory item.
+        """
         params = {"entity": "inventory", "id": [inventory_id]}
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
@@ -66,6 +87,20 @@ class PropertyDataCollection(BaseCollection):
     def add_properties_to_inventory(
         self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
+        """Add new properties to an inventory item.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory item to add properties to.
+        properties : list[InventoryDataColumn]
+            The properties to add.
+
+        Returns
+        -------
+        list[InventoryPropertyDataCreate]
+            The registered properties.
+        """
         returned = []
         for p in properties:
             # Can only add one at a time.
@@ -85,11 +120,33 @@ class PropertyDataCollection(BaseCollection):
     def update_property_on_inventory(
         self, *, inventory_id: InventoryId, property_data: InventoryDataColumn
     ) -> InventoryPropertyData:
+        """Update a property on an inventory item.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory item to update the property on.
+        property_data : InventoryDataColumn
+            The updated property data.
+
+        Returns
+        -------
+        InventoryPropertyData
+            The updated property data as returned by the server.
+        """
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
         for p in existing_properties.custom_property_data:
             if p.data_column.data_column_id == property_data.data_column_id:
-                existing_value = p.data_column.property_data.value
+                existing_value = (
+                    p.data_column.property_data.value
+                    if p.data_column.property_data.value is not None
+                    else p.data_column.property_data.string_value
+                    if p.data_column.property_data.string_value is not None
+                    else str(p.data_column.property_data.numeric_value)
+                    if p.data_column.property_data.numeric_value is not None
+                    else None
+                )
                 existing_id = p.data_column.property_data.id
                 break
         if existing_value is not None:
@@ -127,6 +184,24 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
     ) -> TaskPropertyData:
+        """Returns all the properties within a Property Task block for a specific inventory item.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory.
+        task_id : TaskId
+            The Property task ID.
+        block_id : BlockId
+            The Block ID of the block to retrieve properties for.
+        lot_id : LotId | None, optional
+            The specific Lot of the inventory Item to retrieve lots for, by default None
+
+        Returns
+        -------
+        TaskPropertyData
+            The properties of the inventory item within the block.
+        """
         params = {
             "entity": "task",
             "blockId": block_id,
@@ -142,6 +217,18 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def check_for_task_data(self, *, task_id: TaskId) -> list[CheckPropertyData]:
+        """Checks if a task has data.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task to check for data.
+
+        Returns
+        -------
+        list[CheckPropertyData]
+            A list of CheckPropertyData objects representing the data status of each block + inventory item of the task.
+        """
         task_info = self._get_task_from_id(id=task_id)
 
         params = {
@@ -158,6 +245,22 @@ class PropertyDataCollection(BaseCollection):
     def check_block_interval_for_data(
         self, *, block_id: BlockId, task_id: TaskId, interval_id: IntervalId
     ) -> CheckPropertyData:
+        """Check if a specific block interval has data.
+
+        Parameters
+        ----------
+        block_id : BlockId
+            The ID of the block.
+        task_id : TaskId
+            The ID of the task.
+        interval_id : IntervalId
+            The ID of the interval.
+
+        Returns
+        -------
+        CheckPropertyData
+            _description_
+        """
         params = {
             "entity": "block",
             "action": "checkdata",
@@ -171,6 +274,18 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def get_all_task_properties(self, *, task_id: TaskId) -> list[TaskPropertyData]:
+        """Returns all the properties for a specific task.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task to retrieve properties for.
+
+        Returns
+        -------
+        list[TaskPropertyData]
+            A list of TaskPropertyData objects representing the properties within the task.
+        """
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
         for combo_info in task_data_info:
@@ -188,8 +303,22 @@ class PropertyDataCollection(BaseCollection):
     @validate_call
     def update_property_on_task(
         self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
-    ):
-        if len(patch_payload) >= 0:
+    ) -> list[TaskPropertyData]:
+        """Updates a specific property on a task.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        patch_payload : list[PropertyDataPatchDatum]
+            The specific patch to make to update the property.
+
+        Returns
+        -------
+        list[TaskPropertyData]
+            A list of TaskPropertyData objects representing the properties within the task.
+        """
+        if len(patch_payload) > 0:
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
                 json=[
@@ -209,6 +338,32 @@ class PropertyDataCollection(BaseCollection):
         lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
     ):
+        """
+        Add new task properties for a given task.
+
+        This method only works for new values. If a trial number is provided in the TaskPropertyCreate,
+        it must relate to an existing trial. New trials must be added with no trial number provided.
+        Do not try to create multiple new trials in one call as this will lead to unexpected behavior.
+        Build out new trials in a loop if many new trials are needed.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory.
+        task_id : TaskId
+            The ID of the task.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId, optional
+            The ID of the lot, by default None.
+        properties : list[TaskPropertyCreate]
+            A list of TaskPropertyCreate objects representing the properties to add.
+
+        Returns
+        -------
+        list[TaskPropertyData]
+            The newly created task properties.
+        """
         params = {
             "blockId": block_id,
             "inventoryId": inventory_id,
@@ -237,6 +392,281 @@ class PropertyDataCollection(BaseCollection):
         else:
             return self.get_all_task_properties(task_id=task_id)
 
+    @validate_call
+    def update_or_create_task_properties(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+        properties: list[TaskPropertyCreate],
+    ) -> list[TaskPropertyData]:
+        """
+        Update or create task properties for a given task.
+
+        If a trial number is provided in the TaskPropertyCreate, it must relate to an existing trial.
+        New trials must be added with no trial number provided. Do not try to create multiple new trials
+        in one call as this will lead to unexpected behavior. Build out new trials in a loop if many new
+        trials are needed.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory.
+        task_id : TaskId
+            The ID of the task.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId, optional
+            The ID of the lot, by default None.
+        properties : list[TaskPropertyCreate]
+            A list of TaskPropertyCreate objects representing the properties to update or create.
+
+        Returns
+        -------
+        list[TaskPropertyData]
+            The updated or newly created task properties.
+
+        """
+        existing_data_rows = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        update_patches, new_values = self._form_existing_row_value_patches(
+            existing_data_rows=existing_data_rows, properties=properties
+        )
+
+        calculated_patches = self._form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows, properties=properties
+        )
+        all_patches = update_patches + calculated_patches
+        if len(new_values) > 0:
+            self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+            return self.add_properties_to_task(
+                inventory_id=inventory_id,
+                task_id=task_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                properties=new_values,
+            )
+        else:
+            return self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+
+    def bulk_load_task_properties(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        property_data: BulkPropertyData,
+        interval="default",
+        lot_id: LotId = None,
+    ) -> list[TaskPropertyData]:
+        """
+        Bulk load task properties for a given task. WARNING: This will overwrite any existing properties!
+        BulkPropertyData column names must exactly match the names of the data columns (Case Sensitive).
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The ID of the inventory.
+        task_id : TaskId
+            The ID of the task.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId, optional
+            The ID of the lot, by default None.
+        interval : str, optional
+            The interval to use for the properties, by default "default". Can be obtained using Workflow.get_interval_id().
+        property_data : BulkPropertyData
+            A list of columnwise data containing all your rows of data for a single interval. Can be created using BulkPropertyData.from_dataframe().
+
+        Returns
+        -------
+        list[TaskPropertyData]
+            The updated or newly created task properties.
+
+        Example
+        -------
+
+        ```python
+        from albert.resources.property_data import BulkPropertyData
+
+        data = BulkPropertyData.from_dataframe(df=my_dataframe)
+        res = client.property_data.bulk_load_task_properties(
+            block_id="BLK1",
+            inventory_id="INVEXP102748-042",
+            property_data=data,
+            task_id="TASFOR291760",
+        )
+
+        [TaskPropertyData(id="TASFOR291760", ...)]
+        ```
+        """
+        property_df = pd.DataFrame(
+            {x.data_column_name: x.data_series for x in property_data.columns}
+        )
+
+        def _get_column_map(dataframe: pd.DataFrame, property_data: TaskPropertyData):
+            data_col_info = property_data.data[0].trials[0].data_columns  # PropertyValue
+            column_map = {}
+            for col in dataframe.columns:
+                column = [x for x in data_col_info if x.name == col]
+                if len(column) == 1:
+                    column_map[col] = column[0]
+                else:
+                    raise ValueError(
+                        f"Column '{col}' not found in block data columns or multiple matches found."
+                    )
+            return column_map
+
+        def _df_to_task_prop_create_list(
+            dataframe: pd.DataFrame,
+            column_map: dict[str, PropertyValue],
+            data_template_id: DataTemplateId,
+        ) -> list[TaskPropertyCreate]:
+            task_prop_create_list = []
+            for i, row in dataframe.iterrows():
+                for col_name, col_info in column_map.items():
+                    if col_name not in dataframe.columns:
+                        raise ValueError(f"Column '{col_name}' not found in DataFrame.")
+
+                    task_prop_create = TaskPropertyCreate(
+                        data_column=TaskDataColumn(
+                            data_column_id=col_info.id,
+                            column_sequence=col_info.sequence,
+                        ),
+                        value=str(row[col_name]),
+                        visible_trial_number=i + 1,
+                        interval_combination=interval,
+                        data_template=BaseEntityLink(id=data_template_id),
+                    )
+                    task_prop_create_list.append(task_prop_create)
+            return task_prop_create_list
+
+        task_prop_data = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        column_map = _get_column_map(property_df, task_prop_data)
+        all_task_prop_create = _df_to_task_prop_create_list(
+            dataframe=property_df,
+            column_map=column_map,
+            data_template_id=task_prop_data.data_template.id,
+        )
+        with suppress(NotFoundError):
+            # This is expected if the task is new and has no data yet.
+            self.bulk_delete_task_data(
+                task_id=task_id,
+                block_id=block_id,
+                inventory_id=inventory_id,
+                lot_id=lot_id,
+                interval_id=interval,
+            )
+        return self.add_properties_to_task(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=all_task_prop_create,
+        )
+
+    def bulk_delete_task_data(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        inventory_id: InventoryId,
+        lot_id: LotId | None = None,
+        interval_id=None,
+    ) -> None:
+        """
+        Bulk delete task data for a given task.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        block_id : BlockId
+            The ID of the block.
+        inventory_id : InventoryId
+            The ID of the inventory.
+        lot_id : LotId, optional
+            The ID of the lot, by default None.
+        interval_id : IntervalId, optional
+            The ID of the interval, by default None. If provided, will delete data for this specific interval.
+
+        Returns
+        -------
+        None
+        """
+        params = {
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+            "intervalRow": interval_id if interval_id != "default" else None,
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        self.session.delete(f"{self.base_path}/{task_id}", params=params)
+
+    ################### Methods to support Updated Row Value patches #################
+
+    def _form_existing_row_value_patches(
+        self, *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
+    ):
+        patches = []
+        new_properties = []
+
+        for prop in properties:
+            if prop.trial_number is None:
+                new_properties.append(prop)
+                continue
+
+            prop_patches = self._process_property(prop, existing_data_rows)
+            if prop_patches:
+                patches.extend(prop_patches)
+            else:
+                new_properties.append(prop)
+        return patches, new_properties
+
+    def _process_property(
+        self, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
+    ) -> list | None:
+        for interval in existing_data_rows.data:
+            if interval.interval_combination != prop.interval_combination:
+                continue
+
+            for trial in interval.trials:
+                if trial.trial_number != prop.trial_number:
+                    continue
+
+                trial_patches = self._process_trial(trial, prop)
+                if trial_patches:
+                    return trial_patches
+
+        return None
+
+    def _process_trial(self, trial: Trial, prop: TaskPropertyCreate) -> list | None:
+        for data_column in trial.data_columns:
+            if (
+                data_column.data_column_unique_id
+                == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
+                and data_column.property_data is not None
+            ):
+                if data_column.property_data.value == prop.value:
+                    # No need to update this value
+                    return None
+                return [
+                    PropertyDataPatchDatum(
+                        id=data_column.property_data.id,
+                        operation=PatchOperation.UPDATE,
+                        attribute="value",
+                        new_value=prop.value,
+                        old_value=data_column.property_data.value,
+                    )
+                ]
+
+        return None
+
     ################### Methods to support calculated value patches ##################
 
     def _form_calculated_task_property_patches(
@@ -260,9 +690,9 @@ class PropertyDataCollection(BaseCollection):
                 trial_number=posted_prop.trial_number,
                 interval_combination=posted_prop.interval_combination,
             )
-
-            these_patches = self._generate_data_patch_payload(trial=on_platform_row)
-            patches.extend(these_patches)
+            if on_platform_row is not None:
+                these_patches = self._generate_data_patch_payload(trial=on_platform_row)
+                patches.extend(these_patches)
             covered_interval_trials.add(this_interval_trial)
         return patches
 
@@ -298,6 +728,9 @@ class PropertyDataCollection(BaseCollection):
             # Replace column names with their numeric values in the calculation string
             for col, value in column_values.items():
                 calculation = calculation.replace(col, str(value))
+                calculation = calculation.replace(
+                    "^", "**"
+                )  # Replace '^' with '**' for exponentiation
             # Evaluate the resulting expression
             return eval(calculation)
         except Exception as e:
@@ -332,8 +765,8 @@ class PropertyDataCollection(BaseCollection):
                                 old_value=None,
                             )
                         )
-                    elif (
-                        column.property_data.value != recalculated_value
+                    elif str(column.property_data.value) != str(
+                        recalculated_value
                     ):  # Existing value differs
                         patch_data.append(
                             PropertyDataPatchDatum(
@@ -361,6 +794,8 @@ class PropertyDataCollection(BaseCollection):
         inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
         project_ids: list[SearchProjectId] | SearchProjectId | None = None,
         lot_ids: list[LotId] | LotId | None = None,
+        data_template_ids: DataTemplateId | list[DataTemplateId] | None = None,
+        data_column_ids: DataColumnId | list[DataColumnId] | None = None,
         # Data structure filters
         category: list[DataEntity] | DataEntity | None = None,
         data_templates: list[str] | str | None = None,
@@ -397,6 +832,10 @@ class PropertyDataCollection(BaseCollection):
             Filter by project IDs.
         lot_ids : LotIdType or list of LotIdType, optional
             Filter by lot IDs.
+        data_template_ids : DataTemplateId or list of DataTemplateId, optional
+            Filter by data template IDs.
+        data_column_ids: DataColumnId or list of DataColumnId, optional
+            Filter by data column IDs.
         category : DataEntity or list of DataEntity, optional
             Filter by data entity categories.
         data_templates : str or list of str (exact match), optional
@@ -433,6 +872,10 @@ class PropertyDataCollection(BaseCollection):
             project_ids = [project_ids]
         if isinstance(lot_ids, str):
             lot_ids = [lot_ids]
+        if isinstance(data_template_ids, str):
+            data_template_ids = [data_template_ids]
+        if isinstance(data_column_ids, str):
+            data_column_ids = [data_column_ids]
         if isinstance(category, DataEntity):
             category = [category]
         if isinstance(data_templates, str):
@@ -460,19 +903,19 @@ class PropertyDataCollection(BaseCollection):
             "text": text,
             "order": order.value if order is not None else None,
             "sortBy": sort_by,
-            "inventoryIds": [str(x) for x in inventory_ids] if inventory_ids is not None else None,
-            "projectIds": [str(x) for x in project_ids] if project_ids is not None else None,
-            "lotIds": [str(x) for x in lot_ids] if lot_ids is not None else None,
+            "inventoryIds": inventory_ids if inventory_ids is not None else None,
+            "projectIds": project_ids if project_ids is not None else None,
+            "lotIds": lot_ids if lot_ids is not None else None,
+            "dataTemplateId": data_template_ids if data_template_ids is not None else None,
+            "dataColumnId": data_column_ids if data_column_ids is not None else None,
             "category": [c.value for c in category] if category is not None else None,
             "dataTemplates": data_templates,
             "dataColumns": data_columns,
             "parameters": parameters,
             "parameterGroup": parameter_group,
             "unit": unit,
-            "createdBy": [str(x) for x in created_by] if created_by is not None else None,
-            "taskCreatedBy": [str(x) for x in task_created_by]
-            if task_created_by is not None
-            else None,
+            "createdBy": created_by if created_by is not None else None,
+            "taskCreatedBy": task_created_by if task_created_by is not None else None,
             "returnFields": return_fields,
             "returnFacets": return_facets,
         }

@@ -30,8 +30,15 @@ class BTInsightPayloadType(str, Enum):
 
 
 class BTInsightRegistry(BaseAlbertModel):
+    """Registry for the BTInsight.
+
+    Registry contains result metadata for the BTInsight.
+    Additional attributes can be added to the registry as needed.
+    """
+
     build_logs: dict[str, Any] | None = Field(default=None, alias="BuildLogs")
     metrics: dict[str, Any] | None = Field(default=None, alias="Metrics")
+    settings: dict[str, Any] | None = Field(default=None, alias="Settings")
 
 
 class BTInsight(BaseResource, protected_namespaces=()):

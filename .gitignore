@@ -83,3 +83,6 @@ uv.lock
 
 # Jupyter
 dev.ipynb
+
+# Rendered Docs 
+site/

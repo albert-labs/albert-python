@@ -1,18 +1,10 @@
 import argparse
-import re
 import sys
 from os import popen
 from pathlib import Path
 
 from packaging import version
-
-
-def extract_version(file_content: str) -> str:
-    match = re.search(r'__version__\s*=\s*[\'"]([^\'"]+)[\'"]', file_content)
-    if match:
-        return match.group(1)
-    else:
-        raise ValueError(f"Version string not found in file\n{file_content}")
+from validate_release_tag import extract_version
 
 
 def is_version_bump(new_version: str, old_version: str) -> bool:

@@ -1,10 +1,12 @@
+from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter
 
 from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
 from albert.resources.data_templates import DataTemplate
+from albert.resources.identifiers import InventoryId, LotId
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.serialization import SerializeAsEntityLink
@@ -42,6 +44,10 @@ class TaskPriority(str, Enum):
     LOW = "Low"
 
 
+class HistoryEntity(str, Enum):
+    WORKFLOW = "workflow"
+
+
 class Target(BaseAlbertModel):
     data_column_unique_id: str | None = Field(alias="dataColumnUniqueId", default=None)
     value: str | None = Field(default=None)
@@ -50,6 +56,23 @@ class Target(BaseAlbertModel):
 class DataTemplateAndTargets(BaseAlbertModel):
     id: str
     targets: list[Target]
+
+
+class Standard(BaseAlbertModel):
+    id: str = Field(frozen=True)
+    standard_id: str | None = Field(alias="standardId", frozen=True, default=None)
+    name: str | None = Field(default=None, frozen=True)
+    standard_organization: str | None = Field(
+        alias="standardOrganization", default=None, frozen=True
+    )
+
+
+class BlockDataTemplateInfo(BaseAlbertModel):
+    id: str = Field(alias="id")
+    name: str
+    full_name: str | None = Field(alias="fullName", default=None)
+    standards: Standard | None = Field(default=None, alias="Standards")
+    targets: list[Target] | None = Field(default=None, alias="Targets")
 
 
 class TaskState(str, Enum):
@@ -70,28 +93,30 @@ class InventoryInformation(BaseAlbertModel):
         The inventory id of the item to be used in the task.
     lot_id : str, optional
         The lot id of the item to be used in the task. Reccomended for Property and General tasks.
-    batch_size : float, optional
+    batch_size : float, Required for Batch tasks, otherwise optional.
         The batch size to make of the related InventoryItem. Required for Batch tasks.
     selected_lot : bool, read only
         Whether the lot is selected for the task. Default is None.
     """
 
-    inventory_id: str = Field(alias="id")
-    lot_id: str | None = Field(alias="lotId", default=None)
+    inventory_id: InventoryId = Field(alias="id")
+    lot_id: LotId | None = Field(alias="lotId", default=None)
     inv_lot_unique_id: str | None = Field(alias="invLotUniqueId", default=None)
     batch_size: float | None = Field(alias="batchSize", default=None)
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
     barcode_id: str | None = Field(alias="barcodeId", default=None)
     quantity_used: float | None = Field(alias="quantityUsed", default=None)
-    selected_lot: bool | None = Field(alias="selectedLot", default=None)
+    selected_lot: bool | None = Field(alias="selectedLot", default=None, exclude=True)
 
 
 class Block(BaseAlbertModel):
     id: str | None = Field(default=None)
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
-    data_template: list[SerializeAsEntityLink[DataTemplate]] | DataTemplateAndTargets = Field(
-        alias="Datatemplate", min_length=1, max_length=1
-    )
+    data_template: (
+        list[BlockDataTemplateInfo]
+        | DataTemplateAndTargets
+        | list[SerializeAsEntityLink[DataTemplate]]
+    ) = Field(alias="Datatemplate", min_length=1, max_length=1)
     parameter_quantity_used: dict | None = Field(
         alias="parameterQuantityUsed", default=None, exclude=True
     )
@@ -128,7 +153,7 @@ class BaseTask(BaseTaggedEntity):
     name: str
     category: TaskCategory
     parent_id: str | None = Field(alias="parentId", default=None)
-    metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
     sources: list[TaskSource] | None = Field(default_factory=list, alias="Sources")
     inventory_information: list[InventoryInformation] = Field(alias="Inventories", default=None)
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
@@ -150,6 +175,54 @@ class BaseTask(BaseTaggedEntity):
 
 
 class PropertyTask(BaseTask):
+    """
+    Represents a batch task.
+
+    This class is used to create and manage batch tasks. It includes the base task attributes
+    and additional attributes specific to batch tasks.
+
+    Attributes
+    ----------
+    name : str
+        The name of the batch task.
+    inventory_information : list[InventoryInformation]
+        Information about the inventory associated with the batch task.
+    location : SerializeAsEntityLink[Location]
+        The location where the batch task is performed.
+    parent_id : str
+        The ID of the parent project.
+    blocks : list[Block]
+        A list of blocks associated with the batch task.
+    id : str, optional
+        The ID of the batch task, by default None.
+
+    metadata : dict[str, MetadataItem], optional
+        Metadata associated with the batch task, by default an empty dictionary.
+    due_date : str, optional
+        The due date of the batch task. YYY-MM-DD format, by default None.
+    notes : str, optional
+        Notes associated with the batch task, by default None.
+    priority : TaskPriority, optional
+        The priority of the batch task, by default None.
+    assigned_to : SerializeAsEntityLink[User], optional
+        The user assigned to the batch task, by default None.
+
+    state : TaskState, optional
+        The state of the batch task, by default None.
+    sources : list[TaskSource], optional
+        A list of sources associated with the batch task, by default an empty list.
+    security_class : SecurityClass, optional
+        The security class of the batch task, by default None.
+    start_date : str, read only
+        The start date of the batch task, by default None.
+    claimed_date : str, read only
+        The claimed date of the batch task, by default None.
+    completed_date : str, read only
+        The completed date of the batch task, by default None.
+    closed_date : str, read only
+        The closed date of the batch task, by default None.
+    """
+
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
     blocks: list[Block] | None = Field(alias="Blocks", default=None)
     qc_task: bool | None = Field(alias="qcTask", default=None)
@@ -158,6 +231,68 @@ class PropertyTask(BaseTask):
 
 
 class BatchTask(BaseTask):
+    """
+    Represents a batch task.
+
+    This class is used to create and manage batch tasks. It includes the base task attributes
+    and additional attributes specific to batch tasks.
+
+    Attributes
+    ----------
+    name : str
+        The name of the batch task.
+    inventory_information : list[InventoryInformation]
+        Information about the inventory associated with the batch task.
+    location : SerializeAsEntityLink[Location]
+        The location where the batch task is performed.
+    parent_id : str
+        The ID of the parent project.
+    id : str, optional
+        The ID of the batch task, by default None.
+
+    batch_size_unit : str, optional
+        The unit of measurement for the batch size, by default None.
+    metadata : dict[str, MetadataItem], optional
+        Metadata associated with the batch task, by default an empty dictionary.
+    workflows : list[SerializeAsEntityLink[Workflow]], optional
+        A list of workflows associated with the batch task, by default None.
+    due_date : str, optional
+        The due date of the batch task. YYY-MM-DD format, by default None.
+    notes : str, optional
+        Notes associated with the batch task, by default None.
+    priority : TaskPriority, optional
+        The priority of the batch task, by default None.
+    project : SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]], optional
+        The project(s) associated with the batch task, by default None.
+    assigned_to : SerializeAsEntityLink[User], optional
+        The user assigned to the batch task, by default None.
+
+    state : TaskState, optional
+        The state of the batch task, by default None.
+    sources : list[TaskSource], optional
+        A list of sources associated with the batch task, by default an empty list.
+    security_class : SecurityClass, optional
+        The security class of the batch task, by default None.
+    pass_fail : bool, optional
+        Whether the batch task is pass/fail, by default None.
+    start_date : str, read only
+        The start date of the batch task, by default None.
+    claimed_date : str, read only
+        The claimed date of the batch task, by default None.
+    completed_date : str, read only
+        The completed date of the batch task, by default None.
+    closed_date : str, read only
+        The closed date of the batch task, by default None.
+    qc_task : bool, optional
+        Whether the batch task is a QC task, by default None.
+    batch_task_id : str, optional
+        The ID of the batch task, by default None.
+    target : str, optional
+        The target of the batch task, by default None.
+    qc_task_data : list[QCTaskData], optional
+        A list of QC task data associated with the batch task, by default None.
+    """
+
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
     batch_size_unit: BatchSizeUnit | None = Field(alias="batchSizeUnit", default=None)
     qc_task: bool | None = Field(alias="qcTask", default=None)
@@ -176,3 +311,16 @@ class GeneralTask(BaseTask):
 
 TaskUnion = Annotated[PropertyTask | BatchTask | GeneralTask, Field(..., discriminator="category")]
 TaskAdapter = TypeAdapter(TaskUnion)
+
+
+class TaskHistoryEvent(BaseAlbertModel):
+    state: str
+    action: str
+    action_at: datetime = Field(alias="actionAt")
+    user: SerializeAsEntityLink[User] = Field(alias="User")
+    old_value: Any | None = Field(default=None, alias="oldValue")
+    new_value: Any | None = Field(default=None, alias="newValue")
+
+
+class TaskHistory(BaseAlbertModel):
+    items: list[TaskHistoryEvent] = Field(alias="Items")

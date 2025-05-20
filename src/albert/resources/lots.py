@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 
 from albert.collections.inventory import InventoryCategory
 from albert.resources.base import BaseResource, MetadataItem
+from albert.resources.identifiers import InventoryId, LotId
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.storage_locations import StorageLocation
@@ -24,9 +25,9 @@ class Lot(BaseResource):
 
     Attributes
     ----------
-    id : str | None
+    id : LotId | None
         The Albert ID of the lot. Set when the lot is retrieved from Albert.
-    inventory_id : str
+    inventory_id : InventoryId
         The Albert ID of the inventory item associated with the lot.
     task_id : str | None
         The Albert ID of the task associated with the creation of lot. Optional.
@@ -62,10 +63,9 @@ class Lot(BaseResource):
         The barcode ID of the lot. Read-only.
     """
 
-    id: str | None = Field(None, alias="albertId")
-    inventory_id: str = Field(alias="parentId")
+    id: LotId | None = Field(None, alias="albertId")
+    inventory_id: InventoryId = Field(alias="parentId")
     task_id: str | None = Field(default=None, alias="taskId")
-    notes: str | None = Field(default=None)
     expiration_date: str | None = Field(None, alias="expirationDate")
     manufacturer_lot_number: str | None = Field(None, alias="manufacturerLotNumber")
     storage_location: SerializeAsEntityLink[StorageLocation] | None = Field(
@@ -74,8 +74,8 @@ class Lot(BaseResource):
     pack_size: str | None = Field(None, alias="packSize")
     initial_quantity: NonNegativeFloat | None = Field(default=None, alias="initialQuantity")
     cost: NonNegativeFloat | None = Field(default=None)
-    inventory_on_hand: NonNegativeFloat = Field(alias="inventoryOnHand")
-    owner: list[SerializeAsEntityLink[User]] | None = Field(default=None)
+    inventory_on_hand: float = Field(alias="inventoryOnHand")
+    owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="Owner")
     lot_number: str | None = Field(None, alias="lotNumber")
     external_barcode_id: str | None = Field(None, alias="externalBarcodeId")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
@@ -105,7 +105,7 @@ class Lot(BaseResource):
         exclude=True,
         frozen=True,
     )
-    barcode_id: str | None = Field(default=None, alias="barcodeId", exclude=True, frozen=True)
+    barcode_id: str | None = Field(default=None, alias="barcodeId")
 
     @field_validator("has_notes", mode="before")
     def validate_has_notes(cls, value: Any) -> Any:
