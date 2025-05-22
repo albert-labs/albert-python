@@ -60,6 +60,7 @@ from tests.seeding import (
     generate_unit_seeds,
     generate_workflow_seeds,
 )
+from tests.utils.fake_session import FakeAlbertSession
 
 
 @pytest.fixture(scope="session")
@@ -73,6 +74,14 @@ def client() -> Albert:
         client_credentials=credentials,
         retries=3,
     )
+
+
+@pytest.fixture
+def fake_client() -> Albert:
+    """Fixture to provide a fake session for testing."""
+    client = Albert(base_url="https://fake.albertinvent.com", token="fake-token")
+    client.session = FakeAlbertSession()  # Replace the session with our fake one
+    return client
 
 
 @pytest.fixture(scope="session")

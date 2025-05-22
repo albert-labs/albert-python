@@ -20,7 +20,7 @@ class Role(BaseResource):
         The tenant ID of the role.
     """
 
-    id: str = Field(alias="albertId")
+    id: str | None = Field(default=None, alias="albertId")
     name: str
     policies: list[Any] | None = Field(default=None)
     tenant: str
