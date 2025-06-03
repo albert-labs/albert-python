@@ -88,8 +88,8 @@ class BatchDataCollection(BaseCollection):
         ----------
         task_id : str
             The ID of the task to update.
-        patch : BatchValuePatchPayload
-            The patch payload containing the data to update.
+        patches : list[BatchValuePatchPayload]
+            The patch payloads containing the data to update.
 
         Returns
         -------

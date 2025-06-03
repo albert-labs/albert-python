@@ -7,7 +7,40 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ListsCollection(BaseCollection):
-    """ListsCollection is a collection class for managing ListItem entities in the Albert platform."""
+    """ListsCollection is a collection class for managing ListItem entities in the Albert platform.
+
+    Example
+    -------
+
+    ```python
+    stages = [
+        "1. Discovery",
+        "2. Concept Validation",
+        "3. Proof of Concept",
+        "4. Prototype Development",
+        "5. Preliminary Evaluation",
+        "6. Feasibility Study",
+        "7. Optimization",
+        "8. Scale-Up",
+        "9. Regulatory Assessment",
+    ]
+    # Initialize the Albert client
+    client = Albert()
+
+    # Get the custom field this list is associated with
+    stage_gate_field = client.custom_fields.get_by_id(id="CF123")
+
+    # Create the list items
+    for s in stages:
+        item = ListItem(
+            name=s,
+            category=stage_gate_field.category,
+            list_type=stage_gate_field.name,
+        )
+
+        client.lists.create(list_item=item)
+    ```
+    """
 
     _updatable_attributes = {"name"}
     _api_version = "v3"

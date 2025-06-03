@@ -5,7 +5,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import albert
-from albert.exceptions import handle_http_error
+from albert.exceptions import handle_http_errors
 from albert.utils.credentials import ClientCredentials, TokenManager
 
 
@@ -59,6 +59,7 @@ class AlbertSession(requests.Session):
             connect=retries,
             backoff_factor=0.3,
             status_forcelist=(500, 502, 503, 504, 403),
+            raise_on_status=False,
         )
         adapter = HTTPAdapter(max_retries=retry)
         self.mount("http://", adapter)
@@ -74,6 +75,7 @@ class AlbertSession(requests.Session):
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
         self.headers["Authorization"] = f"Bearer {self._access_token}"
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
-        response = super().request(method, full_url, *args, **kwargs)
-        handle_http_error(response)
-        return response
+        with handle_http_errors():
+            response = super().request(method, full_url, *args, **kwargs)
+            response.raise_for_status()
+            return response

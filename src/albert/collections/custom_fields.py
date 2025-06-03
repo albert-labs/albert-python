@@ -8,7 +8,53 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CustomFieldCollection(BaseCollection):
-    """CustomFieldCollection is a collection class for managing CustomField entities in the Albert platform."""
+    """
+    CustomFieldCollection is a collection class for managing CustomField entities in the Albert platform.
+
+    This collection provides methods to create, update, retrieve, and list custom fields.
+    CustomFields allow you to store custom metadata on a `Project`, `InventoryItem`, `User`, `BaseTask` (Tasks), and `Lot`.
+
+    The `FieldType` used determines the shape of the metadata field's value.
+    If the `FieldType` is `LIST`, then the `FieldCategory` defines the ACL needed to add new allowed items to the given list:
+
+    - `FieldCategory.USER_DEFINED`: allows general users to add items
+    - `FieldCategory.BUSINESS_DEFINED`: only admins can add new items to the list
+
+    Example
+    --------
+
+    ```python
+    # Creating some custom fields
+    from albert import Albert
+    from albert.resources.custom_fields import CustomField, FieldCategory, FieldType, ServiceType
+    from albert.resources.lists import ListItem
+    from albert.resources.project import Project
+
+    # Initialize the Albert client
+    client = Albert()
+
+    # Define the custom fields
+    stage_gate_field = CustomField(
+        name="stage_gate_status",
+        display_name="Stage Gate",
+        field_type=FieldType.LIST,
+        service=ServiceType.PROJECTS,
+        min=1,
+        max=1,
+        category=FieldCategory.BUSINESS_DEFINED  # Defined by the business
+    )
+    justification_field = CustomField(
+        name="justification",
+        display_name="Project Justification",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+    )
+
+    # Create the custom fields
+    client.custom_fields.create(custom_field=stage_gate_field)
+    client.custom_fields.create(custom_field=justification_field)
+    ```
+    """
 
     _updatable_attributes = {
         "display_name",

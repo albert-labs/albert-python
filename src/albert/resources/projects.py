@@ -56,7 +56,7 @@ class Project(BaseResource):
         The locations associated with the project. Optional.
     project_class : ProjectClass
         The class of the project. Defaults to PRIVATE.
-    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         The metadata of the project. Optional. Metadata allowed values can be found using the Custom Fields API.
     prefix : str | None
         The prefix of the project. Optional.

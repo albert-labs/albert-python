@@ -1,8 +1,17 @@
 site_name: "Albert Python SDK Docs"
+site_url: https://docs.developer.albertinvent.com/albert-python/
+extra:
+  base_path: /albert-python/
+use_directory_urls: true
 theme:
   name: "material"
+  font:
+    text: Poppins
+  logo: assets/Wordmark_White.png
+  favicon: assets/Vector_Favicon_Blue.svg
 
 markdown_extensions:
+  - admonition
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -39,6 +48,13 @@ plugins:
               attributes: false
               functions: true
               modules: false #I'm not sure what this one does, honestly
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_root_full_path: true
+            heading_level: 2
+            show_bases: true
+
           import:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
@@ -46,8 +62,7 @@ plugins:
             show_docstring_attributes: true
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
+  - Getting Started: index.md
   - SDK Reference:
     - Albert Client: albert.md
     - Attachments: attachments.md

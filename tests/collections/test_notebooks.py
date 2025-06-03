@@ -50,26 +50,28 @@ def test_update(client: Albert, seeded_notebook: Notebook):
     assert updated_notebook.name == notebook.name
 
 
-def test_update_block_content(client: Albert, seeded_notebook: Notebook):
-    notebook = seeded_notebook.model_copy()
-    marker = list(notebook.blocks)
+def test_update_block_content_with_reorder(client: Albert, seeded_notebook: Notebook):
+    marker = list(seeded_notebook.blocks)
     marker[0] = ParagraphBlock(content=ParagraphContent(text="Converted block."))  # Replace block
     marker = marker[::-1]  # reverse blocks
     marker = marker[3:]  # remove some blocks
-    notebook.blocks = marker
+    seeded_notebook.blocks = marker
 
-    updated_notebook = client.notebooks.update_block_content(notebook=notebook)
-    for updated, existing in zip(updated_notebook.blocks, notebook.blocks, strict=True):
+    updated_notebook = client.notebooks.update_block_content(notebook=seeded_notebook)
+    for updated, existing in zip(updated_notebook.blocks, seeded_notebook.blocks, strict=True):
         assert updated.id == existing.id
         assert updated.content == existing.content
 
+
+def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: Notebook):
     # Ensure we can enter blocks with None Fields
-    notebook = seeded_notebook.model_copy()
     header_block = HeaderBlock(content=HeaderContent(level=1, text=None))
-    notebook.blocks.append(header_block)
-    updated_notebook = client.notebooks.update_block_content(notebook=notebook)
+    seeded_notebook.blocks.append(header_block)
+    updated_notebook = client.notebooks.update_block_content(notebook=seeded_notebook)
     assert updated_notebook.blocks[-1].content.text is None
 
+
+def test_update_block_content_raises_exception(client: Albert, seeded_notebook: Notebook):
     # Try to change the type of a notebook block
     notebook = seeded_notebook.model_copy()
     header_block = HeaderBlock(content=HeaderContent(level=1, text="Header block"))

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL
-from albert.resources.base import BaseAlbertModel, BaseEntityLink, BaseResource
+from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
 from albert.resources.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
 
 
@@ -200,7 +200,7 @@ class ListBlock(BaseBlock):
 
 class NotebookLink(BaseAlbertModel):
     id: LinkId | None = Field(default=None)
-    child: BaseEntityLink = Field(..., alias="Child")
+    child: EntityLink = Field(..., alias="Child")
 
 
 _NotebookBlockUnion = (

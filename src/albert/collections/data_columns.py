@@ -39,7 +39,7 @@ class DataColumnCollection(BaseCollection):
                 return dc
         return None
 
-    def get_by_id(self, *, id) -> DataColumn | None:
+    def get_by_id(self, *, id) -> DataColumn:
         """
         Get a data column by its ID.
 
@@ -67,6 +67,7 @@ class DataColumnCollection(BaseCollection):
         default: bool | None = None,
         start_key: str | None = None,
         limit: int = 100,
+        return_full: bool = True,
     ) -> Iterator[DataColumn]:
         """
         Lists data column entities with optional filters.
@@ -83,6 +84,8 @@ class DataColumnCollection(BaseCollection):
             Whether to match the name exactly, by default True.
         default : bool, optional
             Whether to return only default columns, by default None.
+        return_full : bool, optional
+            Whether to make additional API call to fetch the full object, by default True
 
         Returns
         -------
@@ -91,12 +94,15 @@ class DataColumnCollection(BaseCollection):
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching Data Column '{id}': {e}")
+            if return_full:
+                for item in items:
+                    id = item["albertId"]
+                    try:
+                        yield self.get_by_id(id=id)
+                    except AlbertHTTPError as e:
+                        logger.warning(f"Error fetching Data Column '{id}': {e}")
+            else:
+                yield from (DataColumn(**item) for item in items)
 
         params = {
             "limit": limit,

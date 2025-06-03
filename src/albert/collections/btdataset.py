@@ -1,6 +1,9 @@
+from collections.abc import Iterator
+
 from albert.collections.base import BaseCollection
 from albert.resources.btdataset import BTDataset
 from albert.session import AlbertSession
+from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class BTDatasetCollection(BaseCollection):
@@ -19,7 +22,7 @@ class BTDatasetCollection(BaseCollection):
     """
 
     _api_version = "v3"
-    _updatable_attributes = {"name", "key", "file_name"}
+    _updatable_attributes = {"name", "key", "file_name", "references"}
 
     def __init__(self, *, session: AlbertSession):
         """
@@ -93,3 +96,62 @@ class BTDatasetCollection(BaseCollection):
         )
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=dataset.id)
+
+    def delete(self, *, id: str) -> None:
+        """Delete a BTDataset by ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the BTDataset to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")
+
+    def list(
+        self,
+        *,
+        limit: int = 100,
+        name: str | None = None,
+        start_key: str | None = None,
+        created_by: str | None = None,
+    ) -> Iterator[BTDataset]:
+        """List items in the BTInsight collection.
+
+        Parameters
+        ----------
+        limit : int, optional
+            Number of items to return per page, default 100
+        name : str, optional
+            Name of the dataset to filter by, default None
+        start_key : str, optional
+            The starting key for pagination, default None
+        created_by : str, optional
+            The user who created the dataset, default None
+
+        Returns
+        -------
+        Iterator[BTDataset]
+            An iterator of elements returned by the BTDataset listing.
+        """
+
+        def deserialize(items: list[dict]) -> Iterator[BTDataset]:
+            yield from [BTDataset(**item) for item in items]
+
+        params = {
+            "limit": limit,
+            "startKey": start_key,
+            "createdBy": created_by,
+            "name": name,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            deserialize=deserialize,
+        )

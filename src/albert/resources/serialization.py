@@ -2,10 +2,10 @@ from typing import Annotated, TypeVar
 
 from pydantic import PlainSerializer
 
-from albert.resources.base import BaseEntityLink, BaseResource
+from albert.resources.base import BaseResource, EntityLink
 
 
-def convert_to_entity_link(value: BaseResource | BaseEntityLink) -> BaseEntityLink:
+def convert_to_entity_link(value: BaseResource | EntityLink) -> EntityLink:
     if isinstance(value, BaseResource):
         return value.to_entity_link()
     return value
@@ -14,7 +14,7 @@ def convert_to_entity_link(value: BaseResource | BaseEntityLink) -> BaseEntityLi
 EntityType = TypeVar("EntityType", bound=BaseResource)
 
 SerializeAsEntityLink = Annotated[
-    EntityType | BaseEntityLink,
+    EntityType | EntityLink,
     PlainSerializer(convert_to_entity_link),
 ]
-"""Type representing a union of `EntityType | BaseEntityLink` that is serialized as a link."""
+"""Type representing a union of `EntityType | EntityLink` that is serialized as a link."""

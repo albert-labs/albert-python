@@ -53,7 +53,7 @@ class Lot(BaseResource):
         The lot number of the lot. Optional.
     external_barcode_id : str | None
         The external barcode ID of the lot. Optional.
-    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         The metadata of the lot. Optional. Metadata allowed values can be found using the Custom Fields API.
     has_notes : bool
         Whether the lot has notes. Read-only.

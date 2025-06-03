@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Iterator
 
+import jwt
+
 from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
 from albert.resources.base import Status
@@ -27,6 +29,18 @@ class UserCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{UserCollection._api_version}/users"
+
+    def get_current_user(self) -> User:
+        """
+        Retrieves the current authenticated user.
+
+        Returns
+        -------
+        User
+            The current User object.
+        """
+        claims = jwt.decode(self.session._access_token, options={"verify_signature": False})
+        return self.get_by_id(id=claims["id"])
 
     def get_by_id(self, *, id: str) -> User:
         """

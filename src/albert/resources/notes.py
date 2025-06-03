@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from albert.resources.base import BaseEntityLink, BaseResource
+from albert.resources.base import BaseResource, EntityLink
 
 
 class Note(BaseResource):
@@ -11,6 +11,6 @@ class Note(BaseResource):
     parent_id: str = Field(..., alias="parentId")
     note: str
     id: str | None = Field(default=None, alias="albertId")
-    attachments: list[BaseEntityLink] | None = Field(
+    attachments: list[EntityLink] | None = Field(
         default=None, exclude=True, frozen=True, alias="Attachments"
     )

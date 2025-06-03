@@ -47,3 +47,10 @@ def test_update(client: Albert, seeded_parameters: list[Parameter]):
     p.name = updated_name
     updated = client.parameters.update(parameter=p)
     assert updated.name == updated_name
+
+
+def test_list_partial(client: Albert, seeded_parameters: list[Parameter]):
+    ids = [x.id for x in seeded_parameters]
+    fetched_items = list(client.parameters.list(ids=ids, return_full=False))
+    assert len(fetched_items) == len(ids)
+    assert {x.id for x in fetched_items} == set(ids)

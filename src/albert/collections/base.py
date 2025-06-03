@@ -169,7 +169,7 @@ class BaseCollection:
                 )
             else:
                 # Get the serialization alias name for the attribute, if it exists
-                alias = existing.model_fields[attribute].alias or attribute
+                alias = existing.__class__.model_fields[attribute].alias or attribute
 
                 if old_value is None and new_value is not None:
                     # Add new attribute

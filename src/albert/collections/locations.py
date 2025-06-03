@@ -29,6 +29,7 @@ class LocationCollection(BaseCollection):
     def list(
         self,
         *,
+        ids: list[str] | None = None,
         name: str | list[str] | None = None,
         country: str | None = None,
         exact_match: bool = False,
@@ -39,6 +40,9 @@ class LocationCollection(BaseCollection):
 
         Parameters
         ----------
+        ids: list[str] | None, optional
+            The list of IDs to filter the locations, by default None.
+            Max length is 100.
         name : str | list[str] | None, optional
             The name or names of locations to search for, by default None
         country : str | None, optional
@@ -46,13 +50,14 @@ class LocationCollection(BaseCollection):
         exact_match : bool, optional
             Whether to return exact matches only, by default False
 
-
         Yields
         ------
         Iterator[Location]
             An iterator of Location objects matching the search criteria.
         """
         params = {"limit": limit, "startKey": start_key, "country": country}
+        if ids:
+            params["id"] = ids
         if name:
             params["name"] = [name] if isinstance(name, str) else name
             params["exactMatch"] = json.dumps(exact_match)

@@ -36,7 +36,7 @@ class User(BaseResource):
         The roles of the user.
     user_class : UserClass
         The ACL class level of the user.
-    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
 
 
     """

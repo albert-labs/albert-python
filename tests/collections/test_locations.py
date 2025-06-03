@@ -35,6 +35,14 @@ def test_get_by_id(client: Albert, seeded_locations: list[Location]):
     assert fetched_location.name == seeded_location.name
 
 
+def test_list_by_ids(client: Albert, seeded_locations: list[Location]):
+    ids = [loc.id for loc in seeded_locations]
+    listed_locations = list(client.locations.list(ids=ids))
+
+    assert len(listed_locations) == len(seeded_locations)
+    assert {x.id for x in listed_locations} == {x.id for x in seeded_locations}
+
+
 def test_create_location(caplog, client: Albert, seeded_locations: list[Location]):
     # Create a new location and check if it's created properly
 

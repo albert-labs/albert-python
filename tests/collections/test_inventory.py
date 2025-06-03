@@ -115,9 +115,9 @@ def test_inventory_update(client: Albert, seed_prefix: str):
     )
     created = client.inventory.create(inventory_item=ii)
 
-    # Give time for the DB to sync - somewhere between 1 and 3 seconds is needed
+    # Give time for the DB to sync - somewhere between 1 and 4 seconds is needed
     # for this test to work
-    time.sleep(3)
+    time.sleep(4)
 
     assert client.inventory.inventory_exists(inventory_item=created)
     d = "testing SDK CRUD"

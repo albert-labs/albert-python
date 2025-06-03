@@ -2,7 +2,7 @@ import pytest
 
 from albert.albert import Albert
 from albert.exceptions import NotFoundError
-from albert.resources.base import BaseEntityLink
+from albert.resources.base import EntityLink
 from albert.resources.projects import Project
 
 
@@ -44,7 +44,7 @@ def test_create_project(client: Albert, seeded_locations):
     # Create a new project
     new_project = Project(
         description="A basic development project.",
-        locations=[BaseEntityLink(id=seeded_locations[0].id)],
+        locations=[EntityLink(id=seeded_locations[0].id)],
     )
 
     created_project = client.projects.create(project=new_project)
@@ -67,7 +67,7 @@ def test_delete_project(client: Albert, seeded_locations):
     new_project = Project(
         description="Project to Delete",
         # acls=[],
-        locations=[BaseEntityLink(id=seeded_locations[1].id)],
+        locations=[EntityLink(id=seeded_locations[1].id)],
     )
 
     created_project = client.projects.create(project=new_project)

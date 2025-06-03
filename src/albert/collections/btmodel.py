@@ -50,6 +50,20 @@ class BTModelSessionCollection(BaseCollection):
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=model_session.id)
 
+    def delete(self, *, id: str) -> None:
+        """Delete a BTModelSession by ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the BTModelSession to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")
+
 
 class BTModelCollection(BaseCollection):
     """
@@ -97,3 +111,17 @@ class BTModelCollection(BaseCollection):
         )
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=model.id)
+
+    def delete(self, *, id: str) -> None:
+        """Delete a BTModel by ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the BTModel to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")

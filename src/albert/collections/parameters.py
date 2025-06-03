@@ -89,6 +89,7 @@ class ParameterCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
         limit: int = 50,
+        return_full: bool = True,
     ) -> Iterator[Parameter]:
         """Lists parameters that match the provided criteria.
 
@@ -102,6 +103,8 @@ class ParameterCollection(BaseCollection):
             Whether to match the name exactly, by default False
         order_by : OrderBy, optional
             The order in which to return results, by default OrderBy.DESCENDING
+        return_full : bool, optional
+            Whether to make additional API call to fetch the full object, by default True
 
         Yields
         ------
@@ -110,12 +113,15 @@ class ParameterCollection(BaseCollection):
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching Parameter '{id}': {e}")
+            if return_full:
+                for item in items:
+                    id = item["albertId"]
+                    try:
+                        yield self.get_by_id(id=id)
+                    except AlbertHTTPError as e:
+                        logger.warning(f"Error fetching Parameter '{id}': {e}")
+            else:
+                yield from (Parameter(**item) for item in items)
 
         params = {"limit": limit, "orderBy": order_by, "parameters": ids, "startKey": start_key}
         if names:

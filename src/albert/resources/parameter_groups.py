@@ -5,7 +5,7 @@ from pydantic import Field, field_validator, model_validator
 
 from albert.resources.base import (
     AuditFields,
-    BaseEntityLink,
+    EntityLink,
     MetadataItem,
     SecurityClass,
 )
@@ -161,4 +161,4 @@ class ParameterGroup(BaseTaggedEntity):
 
     # Read-only fields
     verified: bool = Field(default=False, exclude=True, frozen=True)
-    documents: list[BaseEntityLink] = Field(default_factory=list, exclude=True, frozen=True)
+    documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)

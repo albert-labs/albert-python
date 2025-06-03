@@ -53,7 +53,7 @@ class NotebookCollection(BaseCollection):
 
         Parameters
         ----------
-        id : str
+        parent_id : str
             The ID of the parent ID, e.g. task.
 
         Returns
@@ -158,7 +158,9 @@ class NotebookCollection(BaseCollection):
 
         Parameters
         ----------
-        id : str
+        notebook_id : str
+            The ID of the Notebook to which the Block belongs.
+        block_id : str
             The ID of the Notebook Block to retrieve.
 
         Returns

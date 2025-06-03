@@ -73,7 +73,7 @@ jobs:
               BASE_BRANCH="main"
             else
               GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
-              BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
+              BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_PYTHON}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
               if [[ -z ${BASE_BRANCH} ]]; then
                 echo "Could not determine base branch from PR, defaulting to main"
                 BASE_BRANCH="main"
@@ -108,10 +108,9 @@ jobs:
           name: Build package
           command: uv build
       - run:
-          name: Publish package
+          name: Publish to PyPI
           command: |
-            uv publish --publish-url $ALBERT_PYPI_URL --username $UV_INDEX_ALBERT_USERNAME \
-              --password $UV_INDEX_ALBERT_PASSWORD
+            uv publish --token $PYPI_TOKEN_ALBERT_PYTHON
 
   deploy_docs:
     executor:
@@ -133,11 +132,15 @@ jobs:
             git config --global user.email "circleci@users.noreply.github.com"
             git config --global user.name "CircleCI"
             git clone --branch gh-pages --single-branch https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git gh-pages
-            rm -rf gh-pages/*
-            cp -r site/* gh-pages/
+
+            mkdir -p gh-pages/albert-python
+            rm -rf gh-pages/albert-python/*
+            cp -r site/* gh-pages/albert-python/
+            echo "" > gh-pages/index.html
+
             cd gh-pages
             git add .
-            git commit -m "Auto-update documentation [skip ci]" || echo "No changes to commit"
+            git commit -m "Auto-update documentation to /albert-python [skip ci]" || echo "No changes to commit"
             git push origin gh-pages
 
 workflows:
@@ -148,10 +151,10 @@ workflows:
           context: dev
       - test:
           name: Test
-          context: ds-dev
+          context: dev
       - validate_version_bump:
           name: Validate Version Bump
-          context: ds-dev
+          context: dev
           filters:
             branches:
               ignore: ["main"]
@@ -160,8 +163,8 @@ workflows:
     # Only kick off workflow on release version tags
     jobs:
       - validate_release_tag:
-          name: Validate Tag
-          context: ds-dev
+          name: Validate Release Tag
+          context: dev
           filters:
             tags:
               only: /^v.+$/
@@ -169,9 +172,9 @@ workflows:
               ignore: /.*/
       - publish:
           name: Publish to PyPI
-          context: ds-dev
+          context: dev
           requires:
-            - Validate Tag
+            - Validate Release Tag
           filters:
             tags:
               only: /^v.+$/
@@ -179,9 +182,9 @@ workflows:
               ignore: /.*/
       - deploy_docs:
           name: Deploy Docs
-          context: ds-dev
+          context: dev
           requires:
-            - Validate Tag
+            - Validate Release Tag
           filters:
             tags:
               only: /^v.+$/

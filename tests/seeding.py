@@ -1,6 +1,9 @@
 from uuid import uuid4
 
-from albert.resources.base import BaseEntityLink, SecurityClass
+from albert.resources.base import EntityLink, SecurityClass
+from albert.resources.btdataset import BTDataset
+from albert.resources.btinsight import BTInsight, BTInsightCategory
+from albert.resources.btmodel import BTModel, BTModelCategory, BTModelSession, BTModelState
 from albert.resources.cas import Cas, CasCategory
 from albert.resources.companies import Company
 from albert.resources.custom_fields import (
@@ -279,26 +282,26 @@ def generate_storage_location_seeds(seeded_locations: list[Location]) -> list[St
         # Basic storage location with required fields
         StorageLocation(
             name=seeded_locations[0].name,
-            location=BaseEntityLink(id=seeded_locations[0].id),
+            location=EntityLink(id=seeded_locations[0].id),
             address="123 Warehouse St, New York, NY",
         ),
         # Storage location with full fields including optional country
         StorageLocation(
             name=seeded_locations[1].name,
-            location=BaseEntityLink(id=seeded_locations[1].id),
+            location=EntityLink(id=seeded_locations[1].id),
             address="123 Storage St, San Francisco, CA",
             country="US",
         ),
         # Storage location with required fields but without the country
         StorageLocation(
             name=seeded_locations[2].name,
-            location=BaseEntityLink(id=seeded_locations[0].id),
+            location=EntityLink(id=seeded_locations[0].id),
             address="10 Storage Lane, Paris",
         ),
         # Another storage location with all fields
         StorageLocation(
             name=seeded_locations[3].name,
-            location=BaseEntityLink(id=seeded_locations[1].id),
+            location=EntityLink(id=seeded_locations[1].id),
             address="Test Storage Facility, London",
             country="GB",
         ),
@@ -324,13 +327,13 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         # Project with basic metadata and public classification
         Project(
             description=f"{seed_prefix} - A basic development project.",
-            locations=[BaseEntityLink(id=seeded_locations[0].id)],
+            locations=[EntityLink(id=seeded_locations[0].id)],
             project_class=ProjectClass.PRIVATE,
         ),
         # Project with shared classification and advanced metadata
         Project(
             description=f"{seed_prefix} - A public research project focused on new materials.",
-            locations=[BaseEntityLink(id=seeded_locations[1].id)],
+            locations=[EntityLink(id=seeded_locations[1].id)],
             project_class=ProjectClass.PUBLIC,
             grid=GridDefault.WKS,
         ),
@@ -338,8 +341,8 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         Project(
             description=f"{seed_prefix} - A private production project",
             locations=[
-                BaseEntityLink(id=seeded_locations[0].id),
-                BaseEntityLink(id=seeded_locations[1].id),
+                EntityLink(id=seeded_locations[0].id),
+                EntityLink(id=seeded_locations[1].id),
             ],
             project_class=ProjectClass.PRIVATE,
         ),
@@ -430,12 +433,12 @@ def generate_data_column_seeds(seed_prefix: str, seeded_units: list[Unit]) -> li
         # Basic data column with required fields
         DataColumn(
             name=f"{seed_prefix} - only unit 1",
-            unit=BaseEntityLink(id=seeded_units[0].id),
+            unit=EntityLink(id=seeded_units[0].id),
         ),
         # Data column with full fields including optional calculation
         DataColumn(
             name=f"{seed_prefix} - unit and calculation",
-            unit=BaseEntityLink(id=seeded_units[1].id),
+            unit=EntityLink(id=seeded_units[1].id),
             calculation="Pressure = Force / Area",
         ),
         # Data column with required fields but without the calculation
@@ -464,7 +467,7 @@ def generate_data_template_seeds(
                 DataColumnValue(
                     data_column=seeded_data_columns[0],
                     value="25.0",
-                    unit=BaseEntityLink(id=seeded_units[0].id),
+                    unit=EntityLink(id=seeded_units[0].id),
                 )
             ],
         ),
@@ -719,42 +722,42 @@ def generate_lot_seeds(
         # Basic Lot with metadata and default status
         Lot(
             inventory_id=seeded_inventory[0].id,
-            storage_location=BaseEntityLink(id=seeded_storage_locations[0].id),
+            storage_location=EntityLink(id=seeded_storage_locations[0].id),
             initial_quantity=100.0,
             cost=50.0,
             inventory_on_hand=90.0,
             lot_number="LOT001",
             expiration_date="2025-12-31",
             manufacturer_lot_number="MLN12345",
-            location=BaseEntityLink(id=seeded_locations[1].id),
+            location=EntityLink(id=seeded_locations[1].id),
             notes="This is a test lot with default status.",
             external_barcode_id=str(uuid4()),
         ),
         # Lot with active status and no metadata
         Lot(
             inventory_id=seeded_inventory[0].id,
-            storage_location=BaseEntityLink(id=seeded_storage_locations[1].id),
+            storage_location=EntityLink(id=seeded_storage_locations[1].id),
             initial_quantity=500.0,
             cost=200.0,
             inventory_on_hand=400.0,
             lot_number="LOT002",
             expiration_date="2026-01-31",
             manufacturer_lot_number="MLN67890",
-            location=BaseEntityLink(id=seeded_locations[0].id),
+            location=EntityLink(id=seeded_locations[0].id),
             notes="This is an active lot with no metadata.",
             external_barcode_id=str(uuid4()),
         ),
         # Lot with quarantined status and full metadata
         Lot(
             inventory_id=seeded_inventory[1].id,
-            storage_location=BaseEntityLink(id=seeded_storage_locations[1].id),
+            storage_location=EntityLink(id=seeded_storage_locations[1].id),
             initial_quantity=1000.0,
             cost=750.0,
             inventory_on_hand=1000.0,
             lot_number="LOT003",
             expiration_date="2024-11-30",
             manufacturer_lot_number="MLN112233",
-            location=BaseEntityLink(id=seeded_locations[1].id),
+            location=EntityLink(id=seeded_locations[1].id),
             notes="This lot is quarantined due to quality issues.",
             external_barcode_id=str(uuid4()),
         ),
@@ -1138,3 +1141,40 @@ def generate_link_seeds(seeded_tasks: list[BaseTask]):
             )
         )
     return links
+
+
+def generate_btdataset_seed(seed_prefix: str) -> BTDataset:
+    return BTDataset(
+        name=f"{seed_prefix} - Test BT Dataset",
+    )
+
+
+def generate_btmodelsession_seed(seed_prefix: str, seeded_btdataset: BTDataset) -> BTModelSession:
+    return BTModelSession(
+        name=f"{seed_prefix} - Test BT Model Session",
+        category=BTModelCategory.ALBERT_MODEL,
+        dataset_id=seeded_btdataset.id,
+    )
+
+
+def generate_btmodel_seed(seed_prefix: str, seeded_btdataset: BTDataset) -> BTModel:
+    return BTModel(
+        name=f"{seed_prefix} - Test BT Model",
+        target=["output1", "output2"],
+        state=BTModelState.QUEUED,
+        dataset_id=seeded_btdataset.id,
+    )
+
+
+def generate_btinsight_seed(
+    seed_prefix: str,
+    seeded_btdataset: BTDataset,
+    seeded_btmodelsession: BTModelSession,
+) -> BTInsight:
+    return BTInsight(
+        name=f"{seed_prefix} - Test BT Insight",
+        dataset_id=seeded_btdataset.id,
+        model_session_id=seeded_btmodelsession.id,
+        category=BTInsightCategory.CUSTOM_OPTIMIZER,
+        metadata={},
+    )

@@ -1,7 +1,7 @@
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
 from albert.exceptions import AlbertException
-from albert.resources.base import BaseAlbertModel, BaseEntityLink, BaseResource
+from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
 from albert.resources.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
@@ -89,8 +89,8 @@ class ParameterSetpoint(BaseAlbertModel):
         The parameter to set the setpoint on. Provide either a parameter or a parameter_id.
     parameter_id : ParameterId
         The id of the parameter. Provide either a parameter or a parameter_id.
-    value : str | BaseEntityLink
-        The value of the setpoint. If the parameter is a InventoryItem, provide the BaseEntityLink of the InventoryItem.
+    value : str | EntityLink
+        The value of the setpoint. If the parameter is a InventoryItem, provide the EntityLink of the InventoryItem.
     unit : Unit
         The unit of the setpoint.
     intervals : list[Interval]
@@ -104,7 +104,7 @@ class ParameterSetpoint(BaseAlbertModel):
     """
 
     parameter: Parameter | None = Field(exclude=True, default=None)
-    value: str | BaseEntityLink | None = Field(default=None)
+    value: str | EntityLink | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     parameter_id: ParameterId | None = Field(alias="id", default=None)
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")

@@ -1,3 +1,6 @@
+import contextlib
+from collections.abc import Iterator
+
 import requests
 
 from albert.utils.logging import logger
@@ -90,12 +93,13 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             raise ValueError(f"No HTTP error class for status code {status_code}")
 
 
-def handle_http_error(response: requests.Response) -> None:
+@contextlib.contextmanager
+def handle_http_errors() -> Iterator[None]:
     try:
-        response.raise_for_status()
+        yield
     except requests.HTTPError as e:
-        error_cls = _get_http_error_cls(response.status_code)
-        albert_error = error_cls(response)
+        error_cls = _get_http_error_cls(e.response.status_code)
+        albert_error = error_cls(e.response)
         # TODO: Enable debug logging via requests directly
         logger.debug("Albert HTTP Error", albert_error)
         raise albert_error from e

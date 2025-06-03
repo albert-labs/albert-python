@@ -8,7 +8,7 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection, OrderBy
 from albert.collections.tasks import TaskCollection
 from albert.exceptions import NotFoundError
-from albert.resources.base import BaseEntityLink
+from albert.resources.base import EntityLink
 from albert.resources.identifiers import (
     BlockId,
     DataColumnId,
@@ -539,7 +539,7 @@ class PropertyDataCollection(BaseCollection):
                         value=str(row[col_name]),
                         visible_trial_number=i + 1,
                         interval_combination=interval,
-                        data_template=BaseEntityLink(id=data_template_id),
+                        data_template=EntityLink(id=data_template_id),
                     )
                     task_prop_create_list.append(task_prop_create)
             return task_prop_create_list

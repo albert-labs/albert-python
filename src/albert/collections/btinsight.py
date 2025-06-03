@@ -24,7 +24,6 @@ class BTInsightCollection(BaseCollection):
     """
 
     _api_version = "v3"
-    # name, state, Metadata, outputKey, startTime, endTime, totalTime, RawPayload, contentEdited, payloadType, Registry'
     _updatable_attributes = {
         "name",
         "state",

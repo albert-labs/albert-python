@@ -39,7 +39,7 @@ def test_advanced_units_list(client: Albert, seeded_units: list[Unit]):
     _list_asserts(adv_short_list)
 
 
-def test_get_unit_by(client: Albert, seeded_units: list[Unit]):
+def test_get_unit(client: Albert, seeded_units: list[Unit]):
     test_unit = seeded_units[0]
     unit = client.units.get_by_name(name=test_unit.name)
     assert isinstance(unit, Unit)
@@ -47,6 +47,12 @@ def test_get_unit_by(client: Albert, seeded_units: list[Unit]):
     by_id = client.units.get_by_id(id=unit.id)
     assert isinstance(by_id, Unit)
     assert by_id.name.lower() == test_unit.name.lower()
+
+
+def test_bulk_get(client: Albert, seeded_units: list[Unit]):
+    fetched_units = client.units.get_by_ids(ids=[u.id for u in seeded_units])
+    assert len(fetched_units) == len(seeded_units)
+    assert {u.id for u in fetched_units} == {u.id for u in seeded_units}
 
 
 def test_unit_exists(client: Albert, seeded_units: list[Unit]):

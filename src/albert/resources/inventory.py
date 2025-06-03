@@ -158,7 +158,7 @@ class InventoryItem(BaseTaggedEntity):
         An alias for the InventoryItem. Optional.
     cas : list[CasAmount] | None
         The CAS numbers associated with the InventoryItem. This is how a compositional breakdown can be provided. Optional.
-    metadata : dict[str, str | list[BaseEntityLink] | BaseEntityLink] | None
+    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Metadata associated with the InventoryItem. Optional. Allowed metadata fields can be found in the CustomFields documentation.
     project_id : str | None
         The project ID associated with the InventoryItem. Read Only. Required for Formulas.

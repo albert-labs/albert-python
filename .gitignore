@@ -78,9 +78,6 @@ venv.bak/
 # Poetry
 poetry.lock
 
-# uv
-uv.lock
-
 # Jupyter
 dev.ipynb
 

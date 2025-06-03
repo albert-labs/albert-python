@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, model_validator
 
 from albert.resources.acls import ACL
-from albert.resources.base import BaseEntityLink, BaseResource, MetadataItem
+from albert.resources.base import BaseResource, EntityLink, MetadataItem
 from albert.resources.identifiers import NotebookId
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
@@ -16,13 +16,13 @@ from albert.resources.tasks import TaskSource
 from albert.resources.users import User
 
 
-class DataTemplateInventory(BaseEntityLink):
+class DataTemplateInventory(EntityLink):
     batch_size: float | None = Field(default=None, alias="batchSize")
-    sheet: list[Sheet | BaseEntityLink] | None = Field(default=None)
+    sheet: list[Sheet | EntityLink] | None = Field(default=None)
     category: InventoryCategory | None = Field(default=None)
 
 
-class DesignLink(BaseEntityLink):
+class DesignLink(EntityLink):
     type: DesignType
 
 
@@ -83,7 +83,7 @@ class Workflow(BaseResource):
 # TODO: once DTs are done allow a list of DTs with the correct field_serializer
 class Block(BaseTaggedEntity):
     workflow: list[Workflow] = Field(default=None, alias="Workflow")
-    datatemplate: list[BaseEntityLink] | None = Field(default=None, alias="Datatemplate")
+    datatemplate: list[EntityLink] | None = Field(default=None, alias="Datatemplate")
 
 
 # TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
@@ -91,7 +91,7 @@ class QCBatchData(BaseTaggedEntity):
     category: Literal[TemplateCategory.QC_BATCH] = TemplateCategory.QC_BATCH
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
-    workflow: list[BaseEntityLink] = Field(default=None, alias="Workflow")
+    workflow: list[EntityLink] = Field(default=None, alias="Workflow")
     location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
     batch_size_unit: str = Field(alias="batchSizeUnit", default=None)
     priority: Priority  # enum?!
@@ -108,7 +108,7 @@ class BatchData(BaseTaggedEntity):
     batch_size_unit: str = Field(alias="batchSizeUnit", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     priority: Priority  # enum?!
-    workflow: list[BaseEntityLink] = Field(default=None, alias="Workflow")
+    workflow: list[EntityLink] = Field(default=None, alias="Workflow")
 
 
 class PropertyData(BaseTaggedEntity):
@@ -127,7 +127,7 @@ class SheetData(BaseTaggedEntity):
     category: Literal[TemplateCategory.SHEET] = TemplateCategory.SHEET
     designs: list[DesignLink] = Field(default=None, alias="Designs")
     formula_info: list = Field(default_factory=list, alias="FormulaInfo")
-    task_rows: list[BaseEntityLink] = Field(default_factory=list, alias="TaskRows")
+    task_rows: list[EntityLink] = Field(default_factory=list, alias="TaskRows")
 
 
 class NotebookData(BaseTaggedEntity):
@@ -177,7 +177,7 @@ class CustomTemplate(BaseTaggedEntity):
         The Albert ID of the template. Set when the template is retrieved from Albert.
     category : TemplateCategory
         The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
-    metadata : Dict[str, str | List[BaseEntityLink] | BaseEntityLink] | None
+    metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
         The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
     data : CustomTemplateData | None
         The data of the template.

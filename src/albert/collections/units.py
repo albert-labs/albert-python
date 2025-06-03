@@ -73,6 +73,28 @@ class UnitCollection(BaseCollection):
         this_unit = Unit(**response.json())
         return this_unit
 
+    def get_by_ids(self, *, ids: list[str]) -> list[Unit]:
+        """
+        Retrieves a set of units by their IDs
+
+        Parameters
+        ----------
+        ids : list[str]
+            The IDs of the units to retrieve.
+
+        Returns
+        -------
+        list[Unit]
+            The Unit objects
+        """
+        url = f"{self.base_path}/ids"
+        batches = [ids[i : i + 500] for i in range(0, len(ids), 500)]
+        return [
+            Unit(**item)
+            for batch in batches
+            for item in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
+
     def update(self, *, unit: Unit) -> Unit:
         """
         Updates a unit entity by its ID.
