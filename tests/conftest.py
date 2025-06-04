@@ -547,7 +547,7 @@ def seeded_products(
         )
     return [
         x
-        for x in client.inventory.list(
+        for x in client.inventory.get_all(
             category=InventoryCategory.FORMULAS,
             text=product_name_prefix,
         )

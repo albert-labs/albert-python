@@ -25,7 +25,7 @@ Albert Python is built around two main concepts:
 Resource Models represent the data structure of individual resources. They encapsulate the attributes and behaviors of a single resource. For example, an `InventoryItem` has attributes like `name`, `description`, `category`, and `tags`.
 
 ### Resource Collections
-Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the `InventoryCollection` class has methods like create, `get_by_id()`, `list()`, `update()`, and `delete()`. `list()` methods generally accept parameters to narrow the query to use it like a search.
+Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the `InventoryCollection` class has methods like create, `get_by_id()`, `get_all()`, `search()`, `update()`, and `delete()`. `search()` returns lightweight records for performance, while `get_all()` hydrates each item.
 
 ## Usage
 ### Initialization
@@ -79,15 +79,19 @@ new_inventory = InventoryItem(
 created_inventory = client.inventory.create(inventory_item=new_inventory)
 
 # List all inventory items
-all_inventories = client.inventory.list()
+all_inventories = client.inventory.get_all()
 
 # Fetch an inventory item by ID
 inventory_id = "INV1"
 inventory_item = client.inventory.get_by_id(inventory_id=inventory_id)
 
 # Search an inventory item by name
-inventory_item = inventory_collection.list(name="Acetone")
+inventory_item = inventory_collection.search(text="Acetone")
 ```
+
+!!! warning
+    ``search()`` is optimized for performance and returns partial objects.
+    Use ``get_all()`` or ``get_by_ids()`` when full details are required.
 
 ## EntityLink / SerializeAsEntityLink
 
