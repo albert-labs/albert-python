@@ -126,7 +126,7 @@ class InventoryCollection(BaseCollection):
         Union[InventoryItem, None]
             The matching inventory item or None if not found.
         """
-        hits = self.list(text=inventory_item.name, company=[inventory_item.company])
+        hits = self.get_all(text=inventory_item.name, company=[inventory_item.company])
         inv_company = (
             inventory_item.company.name
             if isinstance(inventory_item.company, Company)
@@ -212,7 +212,7 @@ class InventoryCollection(BaseCollection):
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
         """
-        Retrieve an set of inventory items by their IDs.
+        Retrieve a set of inventory items by their IDs.
 
         Parameters
         ----------
@@ -473,7 +473,10 @@ class InventoryCollection(BaseCollection):
         """
         Get a list of inventory items that match the search criteria and
         return the raw search records. These are not full inventory item
-        objects, but are special short documents intended for fast summary results
+        objects, but are special short documents intended for fast summary results.
+
+        ⚠️ ``search()`` returns partial results. Use :meth:`get_all` or
+        :meth:`get_by_ids` when full details are needed.
         """
 
         def deserialize(items: list[dict]):
@@ -504,7 +507,7 @@ class InventoryCollection(BaseCollection):
         )
 
     @validate_call
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -524,7 +527,11 @@ class InventoryCollection(BaseCollection):
         match_all_conditions: bool = False,
     ) -> Iterator[InventoryItem]:
         """
-        List inventory items with optional filters.
+        Retrieve hydrated inventory items with optional filters.
+
+        This method hydrates the results using ``get_by_ids`` for convenience.
+        Use :meth:`search` for improved performance when you only need summary
+        fields.
 
         Parameters
         ----------
