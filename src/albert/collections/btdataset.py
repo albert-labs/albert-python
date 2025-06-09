@@ -111,7 +111,7 @@ class BTDatasetCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
