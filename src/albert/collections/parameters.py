@@ -89,7 +89,7 @@ class ParameterCollection(BaseCollection):
         limit: int = 50,
     ) -> Iterator[Parameter]:
         """
-        Retrieve hydrated Parameter items with optional filters.
+        Retrieve all Parameter items with optional filters.
 
         Parameters
         ----------
