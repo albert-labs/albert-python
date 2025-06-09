@@ -3,10 +3,8 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection, OrderBy
-from albert.exceptions import AlbertHTTPError
 from albert.resources.parameters import Parameter
 from albert.session import AlbertSession
-from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
@@ -57,7 +55,7 @@ class ParameterCollection(BaseCollection):
         Parameter
             Returns the created parameter or the existing parameter if it already exists.
         """
-        match = next(self.list(names=parameter.name, exact_match=True), None)
+        match = next(self.get_all(names=parameter.name, exact_match=True), None)
         if match is not None:
             logging.warning(
                 f"Parameter with name {parameter.name} already exists. Returning existing parameter."
@@ -80,7 +78,7 @@ class ParameterCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def get_all(
         self,
         *,
         ids: list[str] | None = None,
@@ -89,9 +87,9 @@ class ParameterCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
         limit: int = 50,
-        return_full: bool = True,
     ) -> Iterator[Parameter]:
-        """Lists parameters that match the provided criteria.
+        """
+        Retrieve hydrated Parameter items with optional filters.
 
         Parameters
         ----------
@@ -103,8 +101,6 @@ class ParameterCollection(BaseCollection):
             Whether to match the name exactly, by default False
         order_by : OrderBy, optional
             The order in which to return results, by default OrderBy.DESCENDING
-        return_full : bool, optional
-            Whether to make additional API call to fetch the full object, by default True
 
         Yields
         ------
@@ -113,15 +109,7 @@ class ParameterCollection(BaseCollection):
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
-            if return_full:
-                for item in items:
-                    id = item["albertId"]
-                    try:
-                        yield self.get_by_id(id=id)
-                    except AlbertHTTPError as e:
-                        logger.warning(f"Error fetching Parameter '{id}': {e}")
-            else:
-                yield from (Parameter(**item) for item in items)
+            yield from (Parameter(**item) for item in items)
 
         params = {"limit": limit, "orderBy": order_by, "parameters": ids, "startKey": start_key}
         if names:
