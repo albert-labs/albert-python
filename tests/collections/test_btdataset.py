@@ -8,8 +8,8 @@ def test_get_by_id(client: Albert, seeded_btdataset: BTDataset):
     assert fetched_dataset.id == seeded_btdataset.id
 
 
-def test_list_by_user(client: Albert, static_user: User):
-    dataset = next(client.btdatasets.list(created_by=static_user.id), None)
+def test_get_all_by_user(client: Albert, static_user: User):
+    dataset = next(client.btdatasets.get_all(created_by=static_user.id), None)
     assert dataset is not None
     assert dataset.created.by == static_user.id
 
