@@ -110,7 +110,7 @@ class TaskState(str, Enum):
     CLOSED = "Closed"
 
 
-class InventoryInformation(BaseAlbertModel):
+class TaskInventoryInformation(BaseAlbertModel):
     """Represents the Inventory information needed for a task. For a Batch task, inventory_id and batch_size are required.
     For Property and general tasks, inventory_id and lot_id is recomended is required.
 
@@ -182,7 +182,9 @@ class BaseTask(BaseTaggedResource):
     parent_id: str | None = Field(alias="parentId", default=None)
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
     sources: list[TaskSource] | None = Field(default_factory=list, alias="Sources")
-    inventory_information: list[InventoryInformation] = Field(alias="Inventories", default=None)
+    inventory_information: list[TaskInventoryInformation] = Field(
+        alias="Inventories", default=None
+    )
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
     priority: TaskPriority | None = Field(default=None)
     security_class: SecurityClass | None = Field(alias="class", default=None)
@@ -216,7 +218,7 @@ class PropertyTask(BaseTask):
     ----------
     name : str
         The name of the batch task.
-    inventory_information : list[InventoryInformation]
+    inventory_information : list[TaskInventoryInformation]
         Information about the inventory associated with the batch task.
     location : SerializeAsEntityLink[Location]
         The location where the batch task is performed.
@@ -272,7 +274,7 @@ class BatchTask(BaseTask):
     ----------
     name : str
         The name of the batch task.
-    inventory_information : list[InventoryInformation]
+    inventory_information : list[TaskInventoryInformation]
         Information about the inventory associated with the batch task.
     location : SerializeAsEntityLink[Location]
         The location where the batch task is performed.
