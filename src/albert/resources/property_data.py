@@ -95,7 +95,7 @@ class CustomData(BaseAlbertModel):
     data_column: CustomInventoryDataColumn = Field(alias="DataColumn")
 
 
-class InventoryInformation(BaseAlbertModel):
+class PropertyDataInventoryInformation(BaseAlbertModel):
     inventory_id: str | None = Field(alias="id", default=None)
     lot_id: str | None = Field(alias="lotId", default=None)
 
@@ -123,7 +123,7 @@ class TaskPropertyData(BaseResource):
     entity: Literal[DataEntity.TASK] = DataEntity.TASK
     parent_id: str = Field(..., alias="parentId")
     task_id: str | None = Field(default=None, alias="id")
-    inventory: InventoryInformation | None = Field(default=None, alias="Inventory")
+    inventory: PropertyDataInventoryInformation | None = Field(default=None, alias="Inventory")
     category: DataEntity | None = Field(default=None)
     initial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
         default=None, alias="InitialWorkflow"
