@@ -84,7 +84,7 @@ class WorkflowCollection(BaseCollection):
         ]
 
     def list(self, limit: int = 50) -> Iterator[Workflow]:
-        """List all workflows. Unlikly to be used in production.
+        """List all workflows. Unlikely to be used in production.
 
         Parameters
         ----------

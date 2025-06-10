@@ -69,9 +69,9 @@ from albert.resources.tasks import (
     BatchTask,
     Block,
     GeneralTask,
-    InventoryInformation,
     PropertyTask,
     TaskCategory,
+    TaskInventoryInformation,
     TaskPriority,
 )
 from albert.resources.units import Unit, UnitCategory
@@ -1243,7 +1243,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - Property Task 1",
             category=TaskCategory.PROPERTY,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[0].id,
                     lot_id=seeded_lots[0].id,
                 )
@@ -1266,7 +1266,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - Property Task 2",
             category=TaskCategory.PROPERTY,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[1].id,
                     lot_id=(
                         [l for l in seeded_lots if l.inventory_id == seeded_inventory[1].id][0].id
@@ -1288,7 +1288,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - General Task with metadata",
             category=TaskCategory.GENERAL,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[2].id,
                 )
             ],
@@ -1304,7 +1304,7 @@ def generate_task_seeds(
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.KILOGRAMS,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_products[2].id,
                     batch_size=100.0,
                 )
@@ -1324,7 +1324,7 @@ def generate_task_seeds(
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.GRAMS,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_products[1].id,
                     batch_size=250.0,
                 )
