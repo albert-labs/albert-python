@@ -8,7 +8,7 @@ from albert.exceptions import AlbertHTTPError
 from albert.resources.cas import Cas
 
 
-def _list_asserts(returned_list):
+def _get_all_asserts(returned_list):
     found = False
     for i, c in enumerate(returned_list):
         if i == 30:
@@ -22,9 +22,9 @@ def _list_asserts(returned_list):
     assert found
 
 
-def test_simple_cas_list(client: Albert):
-    simple_list = client.cas_numbers.list()
-    _list_asserts(simple_list)
+def test_simple_cas_get_all(client: Albert):
+    simple_list = client.cas_numbers.get_all()
+    _get_all_asserts(simple_list)
 
 
 def test_cas_not_found(client: Albert):
@@ -32,19 +32,19 @@ def test_cas_not_found(client: Albert):
         client.cas_numbers.get_by_id(id="foo bar")
 
 
-def test_advanced_cas_list(client: Albert, seeded_cas: list[Cas]):
+def test_advanced_cas_get_all(client: Albert, seeded_cas: list[Cas]):
     number = seeded_cas[0].number
-    adv_list = client.cas_numbers.list(number=number, order_by=OrderBy.DESCENDING)
+    adv_list = client.cas_numbers.get_all(number=number, order_by=OrderBy.DESCENDING)
     adv_list = list(adv_list)
-    _list_asserts(adv_list)
+    _get_all_asserts(adv_list)
 
     assert adv_list[0].number == number
 
-    adv_list2 = client.cas_numbers.list(id=seeded_cas[0].id)
-    _list_asserts(adv_list2)
+    adv_list2 = client.cas_numbers.get_all(id=seeded_cas[0].id)
+    _get_all_asserts(adv_list2)
 
-    small_page = client.cas_numbers.list(limit=2)
-    _list_asserts(small_page)
+    small_page = client.cas_numbers.get_all(limit=2)
+    _get_all_asserts(small_page)
 
 
 def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
