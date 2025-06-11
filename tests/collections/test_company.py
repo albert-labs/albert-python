@@ -5,7 +5,7 @@ from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
 
-def _list_asserts(returned_list):
+def _get_all_asserts(returned_list):
     found = False
     for i, c in enumerate(returned_list):
         if i == 100:
@@ -19,20 +19,20 @@ def _list_asserts(returned_list):
 
 
 def test_simple_company_list(client: Albert):
-    simple_list = client.companies.list()
-    _list_asserts(simple_list)
+    simple_list = client.companies.get_all()
+    _get_all_asserts(simple_list)
 
 
 def test_advanced_company_list(client: Albert, seeded_companies: list[Company]):
     name = seeded_companies[1].name
-    adv_list = client.companies.list(name=name, exact_match=True)
+    adv_list = client.companies.get_all(name=name, exact_match=True)
     adv_list = list(adv_list)
     for c in adv_list:
         assert name.lower() in c.name.lower()
-    _list_asserts(adv_list)
+    _get_all_asserts(adv_list)
 
-    list_small_batch = client.companies.list(limit=2)
-    _list_asserts(list_small_batch)
+    list_small_batch = client.companies.get_all(limit=2)
+    _get_all_asserts(list_small_batch)
 
 
 def test_company_get_by(client: Albert, seeded_companies: list[Company]):
