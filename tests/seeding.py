@@ -879,7 +879,7 @@ def generate_workflow_seeds(
                             ),  # make sure setting from a parameter works
                             value="12.2",
                             unit=seeded_parameter_groups[2].parameters[1].unit,
-                            categoty=ParameterCategory.NORMAL,
+                            category=ParameterCategory.NORMAL,
                         ),
                         ParameterSetpoint(
                             parameter_id=seeded_parameter_groups[2].parameters[0].id,
