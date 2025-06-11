@@ -29,7 +29,7 @@ class CompanyCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CompanyCollection._api_version}/companies"
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 50,
@@ -38,7 +38,7 @@ class CompanyCollection(BaseCollection):
         start_key: str | None = None,
     ) -> Iterator[Company]:
         """
-        Lists company entities with optional filters.
+        Get all company entities with optional filters.
 
         Parameters
         ----------
@@ -121,7 +121,7 @@ class CompanyCollection(BaseCollection):
         Company
             The Company object if found, None otherwise.
         """
-        found = self.list(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match)
         return next(found, None)
 
     def create(self, *, company: str | Company, check_if_exists: bool = True) -> Company:
