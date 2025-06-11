@@ -28,7 +28,7 @@ class CustomFieldCollection(BaseCollection):
     from albert import Albert
     from albert.resources.custom_fields import CustomField, FieldCategory, FieldType, ServiceType
     from albert.resources.lists import ListItem
-    from albert.resources.project import Project
+    from albert.resources.projects import Project
 
     # Initialize the Albert client
     client = Albert()
@@ -74,7 +74,7 @@ class CustomFieldCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         """
-        Initializes the CasCollection with the provided session.
+        Initializes the CustomFieldCollection with the provided session.
 
         Parameters
         ----------
@@ -115,12 +115,12 @@ class CustomFieldCollection(BaseCollection):
         CustomField | None
             The CustomField item, or None if not found.
         """
-        for custom_field in self.list(name=name, service=service):
+        for custom_field in self.get_all(name=name, service=service):
             if custom_field.name.lower() == name.lower():
                 return custom_field
         return None
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | None = None,
@@ -128,7 +128,7 @@ class CustomFieldCollection(BaseCollection):
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
     ) -> Iterator[CustomField]:
-        """Searches for CustomField items based on the provided parameters.
+        """Get all CustomField entities with optional filters.
 
         Parameters
         ----------
@@ -144,11 +144,11 @@ class CustomFieldCollection(BaseCollection):
         Yields
         ------
         Iterator[CustomField]
-            Returns an iterator of CustomField items matching the search criteria.
+            Returns an iterator of CustomField entities matching the search criteria.
         """
         params = {
             "name": name,
-            "service": service if service else None,
+            "service": service,
             "lookupColumn": json.dumps(lookup_column) if lookup_column is not None else None,
             "lookupRow": json.dumps(lookup_row) if lookup_row is not None else None,
         }
