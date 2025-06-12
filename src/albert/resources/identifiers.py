@@ -4,8 +4,10 @@ from pydantic import AfterValidator
 
 _ALBERT_PREFIXES = {
     "BlockId": "BLK",
+    "CustomFieldId": "CTF",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "EntityType": "ETT",
     "InventoryId": "INV",
     "LinkId": "LNK",
     "LotId": "LOT",
@@ -72,6 +74,20 @@ def ensure_block_id(id: str) -> str:
 
 
 BlockId = Annotated[str, AfterValidator(ensure_block_id)]
+
+
+def ensure_custom_field_id(id: str) -> str:
+    return _ensure_albert_id(id, "CustomFieldId")
+
+
+CustomFieldId = Annotated[str, AfterValidator(ensure_custom_field_id)]
+
+
+def ensure_entity_type_id(id: str) -> str:
+    return _ensure_albert_id(id, "EntityType")
+
+
+EntityTypeId = Annotated[str, AfterValidator(ensure_entity_type_id)]
 
 
 def ensure_inventory_id(id: str) -> str:
