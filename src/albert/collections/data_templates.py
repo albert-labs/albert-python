@@ -4,7 +4,7 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import DataColumnValue, DataTemplate, DataTemplateSearchItem
 from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import PGPatchPayload
 from albert.session import AlbertSession
@@ -109,7 +109,7 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate | None
             The matching data template object or None if not found.
         """
-        hits = list(self.list(name=name))
+        hits = list(self.get_all(name=name))
         for h in hits:
             if h.name.lower() == name.lower():
                 return h
@@ -143,7 +143,7 @@ class DataTemplateCollection(BaseCollection):
         )
         return self.get_by_id(id=data_template_id)
 
-    def list(
+    def search(
         self,
         *,
         name: str | None = None,
@@ -151,9 +151,11 @@ class DataTemplateCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         limit: int = 100,
         offset: int = 0,
-    ) -> Iterator[DataTemplate]:
+    ) -> Iterator[DataTemplateSearchItem]:
         """
-        Lists data template entities with optional filters.
+        Searches for data templates matching the provided criteria.
+        ⚠️ This method returns partial (unhydrated) search results for performance.
+        To retrieve fully detailed objects, use :meth:`get_all` instead.
 
         Parameters
         ----------
@@ -166,19 +168,9 @@ class DataTemplateCollection(BaseCollection):
 
         Returns
         -------
-        Iterator[DataTemplate]
-            An iterator of DataTemplate objects matching the provided criteria.
+        Iterator[DataTemplateSearchItem]
+            An iterator of DataTemplateSearchItem objects matching the provided criteria.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[DataTemplate]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching parameter group {id}: {e}")
-            # get by ids is not currently returning metadata correctly, so temp fixing this
-            # return self.get_by_ids(ids=[x["albertId"] for x in items])
 
         params = {
             "limit": limit,
@@ -192,7 +184,7 @@ class DataTemplateCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=deserialize,
+            deserialize=lambda items: [DataTemplateSearchItem.model_validate(x) for x in items],
             params=params,
         )
 
@@ -251,3 +243,26 @@ class DataTemplateCollection(BaseCollection):
             The ID of the data template to delete.
         """
         self.session.delete(f"{self.base_path}/{id}")
+
+    def get_all(
+        self,
+        *,
+        name: str | None = None,
+        user_id: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Iterator[DataTemplate]:
+        """Retrieve fully hydrated DataTemplate objects with optional filters.
+
+        This method uses `get_by_id` to hydrate the results for convenience.
+        Use :meth:`search` for better performance.
+        """
+
+        for item in self.search(
+            name=name, user_id=user_id, order_by=order_by, limit=limit, offset=offset
+        ):
+            try:
+                yield self.get_by_id(id=item.id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error hydrating data template {id}: {e}")
