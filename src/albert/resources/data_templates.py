@@ -61,3 +61,24 @@ class DataTemplate(BaseTaggedResource):
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+
+
+class LocalizedNames(BaseAlbertModel):
+    de: str | None = None
+    ja: str | None = None
+    zh: str | None = None
+    es: str | None = None
+
+
+class DataTemplateSearchItemDataColumn(BaseAlbertModel):
+    id: str
+    name: str | None = None
+    localized_names: LocalizedNames = Field(alias="localizedNames")
+
+
+class DataTemplateSearchItem(BaseAlbertModel):
+    id: str = Field(alias="albertId")
+    name: str
+    data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
+        alias="dataColumns", default=None
+    )
