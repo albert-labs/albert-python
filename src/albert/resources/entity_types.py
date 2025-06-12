@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from pydantic import Field
 
@@ -36,7 +37,7 @@ class EntityServiceType(str, Enum):
     TASKS = "tasks"
 
 
-class EntityType(str, Enum):
+class EntityTypeType(str, Enum):
     """Types of entity types. Used to determine if an entity type is custom or system.
 
     Attributes
@@ -66,7 +67,7 @@ class FieldSection(str, Enum):
     BOTTOM = "bottom"
 
 
-class EntityCustomFields(BaseAlbertModel):
+class EntityCustomField(BaseAlbertModel):
     """Custom fields associated with an entity type.
 
     Attributes
@@ -85,6 +86,7 @@ class EntityCustomFields(BaseAlbertModel):
     section: FieldSection
     hidden: bool
     default: str | float | EntityLink | None = None
+    required: bool | None = None
 
 
 class EntityTypeStandardFieldVisibility(BaseAlbertModel):
@@ -164,15 +166,16 @@ class EntityType(BaseResource):
         Whether the template is locked. If True, users cannot edit the template.
     """
 
-    id: EntityTypeId = Field(alias="albertId")
+    id: EntityTypeId | None = Field(alias="albertId", default=None)
     category: EntityCategory
     custom_category: str = Field(max_length=100, min_length=1, alias="customCategory")
     label: str
     service: EntityServiceType
-    type: EntityType = Field(default=EntityType.CUSTOM)
+    type: EntityTypeType = Field(default=EntityTypeType.CUSTOM)
     prefix: str = Field(max_length=3)
-    standard_field_visibility: EntityTypeStandardFieldVisibility = Field(
-        alias="standardFieldVisibility"
+    custom_fields: list[EntityCustomField] | None = Field(default=None, alias="customFields")
+    standard_field_visibility: EntityTypeStandardFieldVisibility | None = Field(
+        alias="standardFieldVisibility", default=None
     )
     template_based: bool | None = Field(alias="templateBased", default=None)
     locked_template: bool | None = Field(alias="lockedTemplate", default=None)
@@ -193,6 +196,12 @@ class EntityTypeOptionType(str, Enum):
     LIST = "list"
 
 
+class EntityLinkOption(EntityLink):
+    """Allowed options for Field Options expect a different (de)serilization than the base EntityLink. This class handles that scenario."""
+
+    id: str = Field(alias="albertId")
+
+
 class EntityTypeFieldOptions(BaseAlbertModel):
     """Options for a field in an entity type.
 
@@ -204,8 +213,17 @@ class EntityTypeFieldOptions(BaseAlbertModel):
         The possible values for this option.
     """
 
-    option_type: EntityTypeOptionType = Field(alias="optionType")
-    values: list[str | EntityLink] | None = None
+    option_type: EntityTypeOptionType = Field(alias="type")
+    values: list[str | EntityLinkOption | EntityLink] | None = None
+
+    # on init, if the values are EntityLink, convert them to EntityLinkOption
+    def __init__(self, **data: Any):
+        if "values" in data and isinstance(data["values"], list):
+            data["values"] = [
+                EntityLinkOption(id=v.id, name=v.name) if isinstance(v, EntityLink) else v
+                for v in data["values"]
+            ]
+        super().__init__(**data)
 
 
 class EntityTypeRuleAction(BaseAlbertModel):
@@ -214,7 +232,7 @@ class EntityTypeRuleAction(BaseAlbertModel):
     Attributes
     ----------
     target_field : str
-        The field that this action affects.
+        The name of the field that this action affects.
     hidden : bool | None, optional
         Whether the field should be hidden.
     required : bool | None, optional
@@ -272,6 +290,6 @@ class EntityTypeRule(BaseResource):
         The triggers that activate this rule.
     """
 
-    id: RuleId = Field(alias="albertId")
+    id: RuleId | None = Field(default=None)
     custom_field_id: CustomFieldId = Field(alias="customFieldId")
     trigger: EntityTypeRuleTrigger = Field(alias="trigger")

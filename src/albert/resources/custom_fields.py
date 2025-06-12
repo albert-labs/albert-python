@@ -88,6 +88,8 @@ class CustomField(BaseResource):
         The maximum value of the custom field, optional. Defaults to None.
     entity_categories : list[EntityCategory] | None
         The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
+    custom_entity_categories : list[str] | None
+        The custom entity categories of the custom field, optional. Defaults to None. These should be the names of the entity types that the custom field is associated with.
     ui_components : list[UIComponent] | None
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
     """
@@ -105,14 +107,16 @@ class CustomField(BaseResource):
     min: int | None = Field(default=None)
     max: int | None = Field(default=None)
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
+    custom_entity_categories: list[str] | None = Field(default=None, alias="customEntityCategory")
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
+    required: bool | None = Field(default=None, alias="required")
+    editable: bool | None = Field(default=None, alias="editable")
+    multiselect: bool | None = Field(default=None, alias="multiselect")
+    pattern: str | None = Field(default=None, alias="pattern")
+    default: str | None = Field(default=None, alias="default")
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
         if self.field_type == FieldType.LIST and self.category is None:
             raise ValueError("Category must be set for list fields")
-        if self.lookup_column is not None and self.service != ServiceType.INVENTORIES:
-            raise ValueError("Lookup column is only allowed for inventories")
-        if self.lookup_row is not None and self.service != ServiceType.INVENTORIES:
-            raise ValueError("Lookup row is only allowed for formulas in inventories")
         return self

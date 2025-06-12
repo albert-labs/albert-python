@@ -1,7 +1,6 @@
 from collections.abc import Iterator
 
-from albert.collections.base import OrderBy
-from albert.resources.base import AlbertCollection
+from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.entity_types import EntityServiceType, EntityType, EntityTypeRule
 from albert.resources.identifiers import EntityTypeId
 from albert.session import AlbertSession
@@ -9,7 +8,7 @@ from albert.utils.pagination import AlbertPaginator, PaginationMode
 from albert.utils.patch_types import PatchDatum, PatchOperation
 
 
-class EntityTypeCollection(AlbertCollection[EntityTypeId, EntityType]):
+class EntityTypeCollection(BaseCollection):
     """A collection of entity types in the Albert system.
 
     Attributes
@@ -19,11 +18,11 @@ class EntityTypeCollection(AlbertCollection[EntityTypeId, EntityType]):
     _api_version = "v3"
     _updatable_attributes = {
         "label",
-        "templateBased",
-        "lockedTemplate",
-        "customFields",
-        "standardFieldVisibility",
-        "searchQueryString",
+        "template_based",
+        "locked_template",
+        "custom_fields",
+        "standard_field_visibility",
+        "search_query_string",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -194,10 +193,8 @@ class EntityTypeCollection(AlbertCollection[EntityTypeId, EntityType]):
         response = self.session.get(f"{self.base_path}/rules/{id}")
         return [EntityTypeRule(**rule) for rule in response.json()]
 
-    def create_or_update_rules(
-        self, *, id: EntityTypeId, rules: list[EntityTypeRule]
-    ) -> list[EntityTypeRule]:
-        """Update the rules for an entity type.
+    def set_rules(self, *, id: EntityTypeId, rules: list[EntityTypeRule]) -> list[EntityTypeRule]:
+        """Create or update the rules for an entity type.
 
         Parameters
         ----------
@@ -205,8 +202,16 @@ class EntityTypeCollection(AlbertCollection[EntityTypeId, EntityType]):
             The ID of the entity type to update the rules for.
         rules : list[EntityTypeRule]
             The rules to update.
+
+        Returns
+        -------
+        list[EntityTypeRule]
+            The updated rules.
         """
-        response = self.session.put(f"{self.base_path}/rules/{id}", json=rules)
+        response = self.session.put(
+            f"{self.base_path}/rules/{id}",
+            json=[rule.model_dump(exclude_none=True, by_alias=True) for rule in rules],
+        )
         return [EntityTypeRule(**rule) for rule in response.json()]
 
     def delete_rules(self, *, id: EntityTypeId) -> None:

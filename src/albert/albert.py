@@ -11,6 +11,7 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.inventory import InventoryCollection
 from albert.collections.links import LinksCollection
@@ -237,3 +238,7 @@ class Albert:
     @property
     def batch_data(self) -> BatchDataCollection:
         return BatchDataCollection(session=self.session)
+
+    @property
+    def entity_types(self) -> EntityTypeCollection:
+        return EntityTypeCollection(session=self.session)

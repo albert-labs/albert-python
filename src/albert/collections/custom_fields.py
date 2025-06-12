@@ -65,6 +65,11 @@ class CustomFieldCollection(BaseCollection):
         "min",
         "max",
         "entity_categories",
+        "custom_entity_categories",
+        "required",
+        "editable",
+        "multiselect",
+        "pattern",
     }
     _api_version = "v3"
 
