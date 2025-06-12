@@ -13,6 +13,7 @@ class Status(str, Enum):
 
     ACTIVE = "active"
     INACTIVE = "inactive"
+    QUEUED = "queued"
 
 
 class SecurityClass(str, Enum):

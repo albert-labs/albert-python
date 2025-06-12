@@ -16,6 +16,7 @@ class AccessControlLevel(str, Enum):
     INVENTORY_OWNER = "InventoryOwner"
     INVENTORY_VIEWER = "InventoryViewer"
     CUSTOM_TEMPLATE_OWNER = "CustomTemplateOwner"
+    CUSTOM_TEMPLATE_VIEWER = "CustomTemplateViewer"
 
 
 class ACL(BaseAlbertModel):
