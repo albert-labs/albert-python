@@ -18,12 +18,12 @@ def _get_all_asserts(returned_list):
     assert found
 
 
-def test_simple_company_list(client: Albert):
+def test_simple_company_get_all(client: Albert):
     simple_list = client.companies.get_all()
     _get_all_asserts(simple_list)
 
 
-def test_advanced_company_list(client: Albert, seeded_companies: list[Company]):
+def test_advanced_company_get_all(client: Albert, seeded_companies: list[Company]):
     name = seeded_companies[1].name
     adv_list = client.companies.get_all(name=name, exact_match=True)
     adv_list = list(adv_list)

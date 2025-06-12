@@ -475,8 +475,8 @@ class InventoryCollection(BaseCollection):
         return the raw search records. These are not full inventory item
         objects, but are special short documents intended for fast summary results.
 
-        ⚠️ ``search()`` returns partial results. Use :meth:`get_all` or
-        :meth:`get_by_ids` when full details are needed.
+        ⚠️ This method returns partial (unhydrated) search results for performance.
+        To retrieve fully detailed objects, use :meth:`get_all` or :meth:`get_by_ids`.
         """
 
         def deserialize(items: list[dict]):
