@@ -17,6 +17,7 @@ _ALBERT_PREFIXES = {
     "ProjectId": "PRO",
     "PropertyDataId": "PTD",
     "RowId": "ROW",
+    "RuleId": "RUL",
     "SynthesisId": "SYN",
     "TagId": "TAG",
     "TaskId": "TAS",
@@ -88,6 +89,13 @@ def ensure_entity_type_id(id: str) -> str:
 
 
 EntityTypeId = Annotated[str, AfterValidator(ensure_entity_type_id)]
+
+
+def ensure_rule_id(id: str) -> str:
+    return _ensure_albert_id(id, "RuleId")
+
+
+RuleId = Annotated[str, AfterValidator(ensure_rule_id)]
 
 
 def ensure_inventory_id(id: str) -> str:

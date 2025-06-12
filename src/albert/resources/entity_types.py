@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import Field
 
 from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import CustomFieldId, EntityTypeId
+from albert.resources.identifiers import CustomFieldId, EntityTypeId, RuleId
 
 
 class EntityCategory(str, Enum):
@@ -57,3 +57,36 @@ class EntityType(BaseResource):
     )
     template_based: bool | None = Field(alias="templateBased", default=None)
     locked_template: bool | None = Field(alias="lockedTemplate", default=None)
+
+
+class EntityTypeOptionType(str, Enum):
+    STRING = "string"
+    LIST = "list"
+
+
+class EntityTypeFieldOptions(BaseAlbertModel):
+    option_type: EntityTypeOptionType = Field(alias="optionType")
+    values: list[str | EntityLink] | None = None
+
+
+class EntityTypeRuleAction(BaseAlbertModel):
+    target_field: str
+    hidden: bool | None = None
+    required: bool | None = None
+    default: str | float | EntityLink | None = None
+    options: EntityTypeFieldOptions | None = None
+
+
+class EntityTypeRuleTriggerCase(BaseAlbertModel):
+    value: str
+    actions: list[EntityTypeRuleAction]
+
+
+class EntityTypeRuleTrigger(BaseAlbertModel):
+    cases: list[EntityTypeRuleTriggerCase]
+
+
+class EntityTypeRule(BaseResource):
+    id: RuleId = Field(alias="albertId")
+    custom_field_id: CustomFieldId = Field(alias="customFieldId")
+    trigger: EntityTypeRuleTrigger = Field(alias="trigger")
