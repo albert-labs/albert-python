@@ -1,0 +1,12 @@
+# .coveragerc
+[run]
+branch = True
+source = src/albert
+
+[report]
+show_missing = True
+fail_under = 90
+skip_covered = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
