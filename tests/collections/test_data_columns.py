@@ -2,7 +2,7 @@ from albert import Albert
 from albert.resources.data_columns import DataColumn
 
 
-def _list_asserts(returned_list, limit=100):
+def _assert_data_column_items(returned_list, limit=100):
     found = False
     for i, u in enumerate(returned_list):
         found = True
@@ -17,9 +17,9 @@ def _list_asserts(returned_list, limit=100):
     assert found
 
 
-def test_basic_list(client: Albert, seeded_data_columns: list[DataColumn]):
-    data_columns = client.data_columns.list()
-    _list_asserts(data_columns)
+def test_basic_get_all(client: Albert, seeded_data_columns: list[DataColumn]):
+    data_columns = client.data_columns.get_all()
+    _assert_data_column_items(data_columns)
 
 
 def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):
@@ -42,10 +42,10 @@ def test_get_by_id(client: Albert, seeded_data_columns: list[DataColumn]):
 
 def test_advanced_list(client: Albert, seeded_data_columns: list[DataColumn]):
     name = seeded_data_columns[0].name
-    adv_list = client.data_columns.list(name=name, exact_match=False)
-    _list_asserts(adv_list)
+    adv_list = client.data_columns.get_all(name=name, exact_match=False)
+    _assert_data_column_items(adv_list)
 
-    adv_list_no_match = client.data_columns.list(
+    adv_list_no_match = client.data_columns.get_all(
         name="chaos tags 126485% HELLO WORLD!!!!", exact_match=True
     )
     assert next(adv_list_no_match, None) == None
@@ -62,6 +62,6 @@ def test_update(client: Albert, seeded_data_columns: list[DataColumn], seed_pref
 
 def test_list_partial(client: Albert, seeded_data_columns: list[DataColumn]):
     ids = [x.id for x in seeded_data_columns]
-    fetched_items = list(client.data_columns.list(ids=ids, return_full=False))
+    fetched_items = list(client.data_columns.get_all(ids=ids))
     assert len(fetched_items) == len(ids)
     assert {x.id for x in fetched_items} == set(ids)
