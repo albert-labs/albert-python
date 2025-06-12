@@ -1,7 +1,7 @@
 from albert.resources.lists import ListItem
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.tasks import BaseTask
-from albert.utils.patches import PatchDatum, PatchOperation, PatchPayload
+from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 def test_exclude_unset_default():
@@ -47,7 +47,7 @@ def change_metadata(
         elif isinstance(v, list):
             used_ids = [x.id for x in v]
             new_list = [x for x in static_lists if x.id not in used_ids and x.list_type == k]
-            new_metadata[k] = new_list
+            new_metadata[k] = [x.to_entity_link() for x in new_list]
 
     return new_metadata
 

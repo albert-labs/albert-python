@@ -61,6 +61,7 @@ from tests.seeding import (
     generate_unit_seeds,
     generate_workflow_seeds,
 )
+from tests.utils.fake_session import FakeAlbertSession
 
 
 @pytest.fixture(scope="session")
@@ -74,6 +75,15 @@ def client() -> Albert:
         client_credentials=credentials,
         retries=3,
     )
+
+
+@pytest.fixture
+def fake_client() -> Albert:
+    """Fixture to provide a fake session for testing."""
+    client = Albert(
+        base_url="https://fake.albertinvent.com", token="fake-token", session=FakeAlbertSession()
+    )
+    return client
 
 
 @pytest.fixture(scope="session")
@@ -323,6 +333,7 @@ def seeded_data_templates(
     static_user: User,
     seeded_data_columns: list[DataColumn],
     seeded_units: list[Unit],
+    seeded_tags: list[Tag],
 ) -> Iterator[list[DataTemplate]]:
     seeded = []
     for data_template in generate_data_template_seeds(
@@ -330,6 +341,7 @@ def seeded_data_templates(
         seed_prefix=seed_prefix,
         seeded_data_columns=seeded_data_columns,
         seeded_units=seeded_units,
+        seeded_tags=seeded_tags,
     ):
         dt = client.data_templates.create(data_template=data_template)
         seeded.append(dt)

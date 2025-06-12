@@ -224,13 +224,13 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The retrieved inventory items.
         """
-        url = f"{self.base_path}/ids"
-        batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
-        return [
-            InventoryItem(**item)
-            for batch in batches
-            for item in self.session.get(url, params={"id": batch}).json()["Items"]
-        ]
+        batch_size = 250
+        batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
+        inventory = []
+        for batch in batches:
+            response = self.session.get(f"{self.base_path}/ids", params={"id": batch})
+            inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
+        return inventory
 
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
@@ -569,7 +569,6 @@ class InventoryCollection(BaseCollection):
             return self.get_by_ids(ids=[x["albertId"] for x in items])
 
         search_text = text if (text is None or len(text) < 50) else text[0:50]
-
         params = self._prepare_parameters(
             limit=limit,
             text=search_text,

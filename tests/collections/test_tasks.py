@@ -22,7 +22,7 @@ def test_update(client: Albert, seeded_tasks, seed_prefix: str, static_lists: li
     new_name = f"{seed_prefix}-new name"
     task.name = new_name
     new_metadata = change_metadata(
-        task.metadata, static_lists=seeded_tasks, seed_prefix=seed_prefix
+        task.metadata, static_lists=static_lists, seed_prefix=seed_prefix
     )
     task.metadata = new_metadata
     updated_task = client.tasks.update(task=task)

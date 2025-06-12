@@ -40,7 +40,7 @@ from albert.resources.tasks import PropertyTask
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patches import PatchOperation
+from albert.utils.patch_types import PatchOperation
 
 
 class PropertyDataCollection(BaseCollection):

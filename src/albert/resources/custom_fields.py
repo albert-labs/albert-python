@@ -106,13 +106,13 @@ class CustomField(BaseResource):
     max: int | None = Field(default=None)
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
+    required: bool | None = Field(default=None)
+    multiselect: bool | None = Field(default=None)
+    pattern: str | None = Field(default=None)
+    default: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
         if self.field_type == FieldType.LIST and self.category is None:
             raise ValueError("Category must be set for list fields")
-        if self.lookup_column is not None and self.service != ServiceType.INVENTORIES:
-            raise ValueError("Lookup column is only allowed for inventories")
-        if self.lookup_row is not None and self.service != ServiceType.INVENTORIES:
-            raise ValueError("Lookup row is only allowed for formulas in inventories")
         return self

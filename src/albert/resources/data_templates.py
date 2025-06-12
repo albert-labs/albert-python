@@ -2,6 +2,9 @@ from pydantic import Field, model_validator
 
 from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
 from albert.resources.data_columns import DataColumn
+from albert.resources.parameter_groups import (
+    ValueValidation,
+)
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.units import Unit
@@ -25,6 +28,7 @@ class DataColumnValue(BaseAlbertModel):
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     calculation: str | None = None
     column_sequence: str | None = Field(default=None, alias="sequence", exclude=True)
+    validation: list[ValueValidation] | None = Field(default_factory=list)
 
     @model_validator(mode="after")
     def check_for_id(self):

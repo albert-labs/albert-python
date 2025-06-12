@@ -18,6 +18,9 @@ jobs:
       tag: "3.10.15"
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
       - install_uv
       - run:
           name: Export dependencies
@@ -118,6 +121,9 @@ jobs:
       tag: "3.10.15"
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
       - install_uv
       - run:
           name: Install dependencies
@@ -131,7 +137,7 @@ jobs:
           command: |
             git config --global user.email "circleci@users.noreply.github.com"
             git config --global user.name "CircleCI"
-            git clone --branch gh-pages --single-branch https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git gh-pages
+            git clone --branch gh-pages --single-branch git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git gh-pages
 
             mkdir -p gh-pages/albert-python
             rm -rf gh-pages/albert-python/*

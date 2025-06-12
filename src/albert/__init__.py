@@ -3,4 +3,4 @@ from albert.utils.credentials import ClientCredentials
 
 __all__ = ["Albert", "ClientCredentials"]
 
-__version__ = "0.11.8"
+__version__ = "0.13.1"

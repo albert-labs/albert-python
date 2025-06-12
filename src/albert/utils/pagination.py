@@ -50,7 +50,6 @@ class AlbertPaginator(Iterator[ItemType]):
     def _create_iterator(self) -> Iterator[ItemType]:
         while True:
             response = self.session.get(self.path, params=self.params)
-
             data = response.json()
 
             items = data.get("Items", [])

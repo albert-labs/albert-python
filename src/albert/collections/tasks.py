@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterator
 
 from pydantic import validate_call
@@ -18,10 +20,12 @@ from albert.resources.tasks import (
     TaskAdapter,
     TaskCategory,
     TaskHistory,
+    TaskPatchPayload,
 )
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
+from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 class TaskCollection(BaseCollection):
@@ -334,7 +338,75 @@ class TaskCollection(BaseCollection):
             params=params,
         )
 
-    def _generate_adv_patch_payload(self, *, updated: BaseTask) -> dict:
+    def _is_metadata_item_list(
+        self,
+        *,
+        existing_object: BaseTask,
+        updated_object: BaseTask,
+        metadata_field: str,
+    ) -> bool:
+        """Return True if the metadata field is list-typed on either object."""
+
+        if not metadata_field.startswith("Metadata."):
+            return False
+
+        metadata_field = metadata_field.split(".")[1]
+
+        if existing_object.metadata is None:
+            existing_object.metadata = {}
+        if updated_object.metadata is None:
+            updated_object.metadata = {}
+
+        existing = existing_object.metadata.get(metadata_field, None)
+        updated = updated_object.metadata.get(metadata_field, None)
+
+        return isinstance(existing, list) or isinstance(updated, list)
+
+    def _generate_patch_payload(
+        self,
+        *,
+        existing: BaseTask,
+        updated: BaseTask,
+    ) -> tuple[PatchPayload, dict[str, list[str]]]:
+        """Generate patch payload and capture metadata list updates."""
+
+        base_payload = super()._generate_patch_payload(
+            existing=existing,
+            updated=updated,
+        )
+
+        new_data: list[PatchDatum] = []
+        list_metadata_updates: dict[str, list[str]] = {}
+
+        for datum in base_payload.data:
+            if self._is_metadata_item_list(
+                existing_object=existing,
+                updated_object=updated,
+                metadata_field=datum.attribute,
+            ):
+                key = datum.attribute.split(".", 1)[1]
+                updated_list = updated.metadata.get(key) or []
+                list_values: list[str] = [
+                    item.id if hasattr(item, "id") else item for item in updated_list
+                ]
+
+                list_metadata_updates[datum.attribute] = list_values
+                continue
+
+            new_data.append(
+                PatchDatum(
+                    operation=datum.operation,
+                    attribute=datum.attribute,
+                    new_value=datum.new_value,
+                    old_value=datum.old_value,
+                )
+            )
+
+        return TaskPatchPayload(data=new_data, id=existing.id), list_metadata_updates
+
+    def _generate_adv_patch_payload(
+        self, *, updated: BaseTask, existing: BaseTask
+    ) -> tuple[dict, dict[str, list[str]]]:
         """Generate a patch payload for updating a task.
 
         Parameters
@@ -346,17 +418,15 @@ class TaskCollection(BaseCollection):
 
         Returns
         -------
-        dict
-            The patch payload for updating the task.
+        tuple[dict, dict[str, list[str]]]
+            The patch payload for updating the task and metadata list updates.
         """
         _updatable_attributes_special = {"inventory_information"}
-        existing = self.get_by_id(id=updated.id)
-        patch_payload_obj = self._generate_patch_payload(
+        base_payload, list_metadata_updates = self._generate_patch_payload(
             existing=existing,
             updated=updated,
         )
-        patch_payload = patch_payload_obj.model_dump(mode="json", by_alias=True)
-        patch_payload["id"] = updated.id
+        patch_payload = base_payload.model_dump(mode="json", by_alias=True)
 
         for attribute in _updatable_attributes_special:
             old_value = getattr(existing, attribute)
@@ -373,7 +443,7 @@ class TaskCollection(BaseCollection):
                 if len(inv_to_remove) > 0:
                     patch_payload["data"].append(
                         {
-                            "operation": "delete",
+                            "operation": PatchOperation.DELETE,
                             "attribute": "inventory",
                             "oldValue": inv_to_remove,
                         }
@@ -387,13 +457,13 @@ class TaskCollection(BaseCollection):
                 if len(inv_to_add) > 0:
                     patch_payload["data"].append(
                         {
-                            "operation": "add",
+                            "operation": PatchOperation.ADD,
                             "attribute": "inventory",
                             "newValue": inv_to_add,
                         }
                     )
 
-        return [patch_payload]
+        return patch_payload, list_metadata_updates
 
     def update(self, *, task: BaseTask) -> BaseTask:
         """Update a task.
@@ -408,14 +478,52 @@ class TaskCollection(BaseCollection):
         BaseTask
             The updated Task object as it exists in the Albert platform.
         """
-        patch_payload = self._generate_adv_patch_payload(updated=task)
-        if len(patch_payload[0]["data"]) == 0:
+        existing = self.get_by_id(id=task.id)
+        patch_payload, list_metadata_updates = self._generate_adv_patch_payload(
+            updated=task, existing=existing
+        )
+        patch_operations = patch_payload.get("data", [])
+
+        if len(patch_operations) == 0 and len(list_metadata_updates) == 0:
             logger.info(f"Task {task.id} is already up to date")
             return task
-        self.session.patch(
-            url=f"{self.base_path}/{task.id}",
-            json=patch_payload,
-        )
+        path = f"{self.base_path}/{task.id}"
+
+        for datum in patch_operations:
+            patch_payload = TaskPatchPayload(data=[datum], id=task.id)
+            self.session.patch(
+                url=path,
+                json=[patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True)],
+            )
+
+        # For metadata list field updates, we clear, then update
+        # since duplicate attribute values are not allowed in single patch request.
+        for attribute, values in list_metadata_updates.items():
+            entity_links = existing.metadata.get(attribute.split(".")[1])
+            old_values = [item.id if hasattr(item, "id") else item for item in entity_links]
+            clear_datum = PatchDatum(
+                operation=PatchOperation.DELETE, attribute=attribute, oldValue=old_values
+            )
+            clear_payload = TaskPatchPayload(data=[clear_datum], id=task.id)
+            self.session.patch(
+                url=path,
+                json=[clear_payload.model_dump(mode="json", by_alias=True, exclude_none=True)],
+            )
+            if values:
+                update_datum = PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute=attribute,
+                    newValue=values,
+                    oldValue=[],
+                )
+
+                update_payload = TaskPatchPayload(data=[update_datum], id=task.id)
+                self.session.patch(
+                    url=path,
+                    json=[
+                        update_payload.model_dump(mode="json", by_alias=True, exclude_none=False)
+                    ],
+                )
         return self.get_by_id(id=task.id)
 
     def get_history(

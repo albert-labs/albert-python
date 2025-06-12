@@ -99,7 +99,7 @@ class ChecklistBlock(BaseBlock):
 
 
 class AttachesContent(BaseAlbertModel):
-    title: str
+    title: str | None = Field(default=None)
     namespace: str = Field(default="result")
     file_key: str | None = Field(default=None, alias="fileKey", exclude=True, frozen=True)
     format: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
@@ -112,7 +112,7 @@ class AttachesBlock(BaseBlock):
 
 
 class ImageContent(BaseAlbertModel):
-    title: str
+    title: str | None = Field(default=None)
     namespace: str = Field(default="result")
     stretched: bool = Field(default=False)
     with_background: bool = Field(default=False, alias="withBackground")

@@ -22,7 +22,7 @@ from albert.resources.lots import Lot
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
-from albert.utils.patches import PatchDatum
+from albert.utils.patch_types import PatchDatum
 
 ########################## Supporting GET Classes ##########################
 

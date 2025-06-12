@@ -56,6 +56,11 @@ class Albert:
         Client credentials can be read from the environment by `ClientCredentials.from_env()`.
     retries : int, optional
         The maximum number of retries for failed requests (default is None).
+    session : AlbertSession, optional
+        An optional preconfigured session to use for API requests. If not provided,
+        a default session is created using the other parameters or environment variables.
+        When supplied, ``base_url``,
+        ``token`` and ``client_credentials`` are ignored.
 
     Attributes
     ----------
@@ -78,8 +83,9 @@ class Albert:
         token: str | None = None,
         client_credentials: ClientCredentials | None = None,
         retries: int | None = None,
+        session: AlbertSession | None = None,
     ):
-        self.session = AlbertSession(
+        self.session = session or AlbertSession(
             base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
             client_credentials=client_credentials,

@@ -13,6 +13,7 @@ from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedEntity
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
+from albert.utils.patch_types import PatchPayload
 
 
 class TaskCategory(str, Enum):
@@ -46,6 +47,32 @@ class TaskPriority(str, Enum):
 
 class HistoryEntity(str, Enum):
     WORKFLOW = "workflow"
+
+
+class IntervalId(BaseAlbertModel):
+    id: str
+
+
+class BlockLevelInventoryInformation(BaseAlbertModel):
+    id: str
+    lot_id: str | None = Field(default=None, alias="lotId")
+    inv_lot_unique_id: str | None = Field(default=None, alias="invLotUniqueId")
+
+
+class BlockState(BaseAlbertModel):
+    id: str = Field(description="The ID of the block.")
+    expanded: bool | None = Field(default=None, alias="expand")
+    intervals: list[IntervalId] | None = Field(
+        default=None,
+        alias="Interval",
+        description="The IDs of the interval (e.g., id: ROW2XROW4)",
+    )
+    inventory: list[BlockLevelInventoryInformation] | None = Field(default=None, alias="Inventory")
+
+
+class PageState(BaseAlbertModel):
+    left_panel_expanded: bool | None = Field(default=None, alias="leftPanelExpand")
+    blocks: list[BlockState] | None = Field(default=None, alias="Block")
 
 
 class Target(BaseAlbertModel):
@@ -172,6 +199,10 @@ class BaseTask(BaseTaggedEntity):
         default=None, alias="Project"
     )
     assigned_to: SerializeAsEntityLink[User] | None = Field(default=None, alias="AssignedTo")
+    page_state: PageState | None = Field(
+        alias="PageState",
+        default=None,
+    )
 
 
 class PropertyTask(BaseTask):
@@ -324,3 +355,15 @@ class TaskHistoryEvent(BaseAlbertModel):
 
 class TaskHistory(BaseAlbertModel):
     items: list[TaskHistoryEvent] = Field(alias="Items")
+
+
+class TaskPatchPayload(PatchPayload):
+    """A payload for a PATCH request to update a Task.
+
+    Attributes
+    ----------
+    id:  str
+        The id of the Task to be updated.
+    """
+
+    id: str

@@ -6,7 +6,7 @@ from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.identifiers import InventoryId
 from albert.resources.pricings import InventoryPricings, Pricing
 from albert.session import AlbertSession
-from albert.utils.patches import PatchDatum, PatchOperation, PatchPayload
+from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 class PricingBy(str, Enum):

@@ -1,12 +1,26 @@
 from collections.abc import Iterator
 
+from pydantic import Field
+
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.identifiers import DataTemplateId
+from albert.resources.parameter_groups import PGPatchPayload
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
+from albert.utils.patch_types import GeneralPatchDatum
+from albert.utils.patches import (
+    _split_patch_types_for_params_and_data_cols,
+)
+
+
+class DCPatchDatum(PGPatchPayload):
+    data: list[GeneralPatchDatum] = Field(
+        default_factory=list,
+        description="The data to be updated in the data column.",
+    )
 
 
 class DataTemplateCollection(BaseCollection):
@@ -32,6 +46,13 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The registered DataTemplate object with an ID.
         """
+        # Preprocess data_column_values to set validation to None if it is an empty list
+        # Handle a bug in the API where validation is an empty list
+        # https://support.albertinvent.com/hc/en-us/requests/9177
+        for column_value in data_template.data_column_values:
+            if isinstance(column_value.validation, list) and len(column_value.validation) == 0:
+                column_value.validation = None
+
         response = self.session.post(
             self.base_path,
             json=data_template.model_dump(mode="json", by_alias=True, exclude_none=True),
@@ -188,108 +209,38 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The Updated DataTemplate object.
         """
+
         existing = self.get_by_id(id=data_template.id)
         base_payload = self._generate_patch_payload(existing=existing, updated=data_template)
-        payload = base_payload.model_dump(mode="json", by_alias=True)
-        _updatable_attributes_special = {"tags", "data_column_values"}
-        for attribute in _updatable_attributes_special:
-            old_value = getattr(existing, attribute)
-            new_value = getattr(data_template, attribute)
-            if attribute == "tags":
-                if (old_value is None or old_value == []) and new_value is not None:
-                    for t in new_value:
-                        payload["data"].append(
-                            {
-                                "operation": "add",
-                                "attribute": "tagId",
-                                "newValue": t.id,  # This will be a CasAmount Object,
-                                "entityId": t.id,
-                            }
-                        )
-                else:
-                    if old_value is None:  # pragma: no cover
-                        old_value = []
-                    if new_value is None:  # pragma: no cover
-                        new_value = []
-                    old_set = {obj.id for obj in old_value}
-                    new_set = {obj.id for obj in new_value}
 
-                    # Find what's in set 1 but not in set 2
-                    to_del = old_set - new_set
+        path = f"{self.base_path}/{existing.id}"
+        # Handle special updates mainly for complex validations
+        special_patches, special_enum_patches, new_param_patches = (
+            _split_patch_types_for_params_and_data_cols(existing=existing, updated=data_template)
+        )
+        payload = DCPatchDatum(data=base_payload.data)
 
-                    # Find what's in set 2 but not in set 1
-                    to_add = new_set - old_set
+        payload.data.extend(special_patches)
 
-                    for id in to_add:
-                        payload["data"].append(
-                            {
-                                "operation": "add",
-                                "attribute": "tagId",
-                                "newValue": id,
-                            }
-                        )
-                    for id in to_del:
-                        payload["data"].append(
-                            {
-                                "operation": "delete",
-                                "attribute": "tagId",
-                                "oldValue": id,
-                            }
-                        )
-            elif attribute == "data_column_values":
-                # Do the update by column
-                to_remove = set([x.data_column_id for x in old_value]) - set(
-                    [x.data_column_id for x in new_value]
-                )
-                to_add = set([x.data_column_id for x in new_value]) - set(
-                    [x.data_column_id for x in old_value]
-                )
-                to_update = set([x.data_column_id for x in new_value]) & set(
-                    [x.data_column_id for x in old_value]
-                )
-                if len(to_remove) > 0:
-                    logger.error(
-                        "Data Columns cannot be Removed from a Data Template. Set to hidden instead and retry."
-                    )
-                if len(to_add) > 0:
-                    new_dcs = [x for x in new_value if x.data_column_id in to_add]
-                    self.add_data_columns(data_template_id=data_template.id, data_columns=new_dcs)
-                for dc_id in to_update:
-                    actions = []
-                    old_dc_val = next(x for x in old_value if x.data_column_id == dc_id)
-                    new_dc_val = next(x for x in new_value if x.data_column_id == dc_id)
-                    # do hidden last because it can change the column sequence.
-                    if old_dc_val.unit != new_dc_val.unit:
-                        payload["data"].append(
-                            {
-                                "operation": "update",
-                                "attribute": "unit",
-                                "newValue": new_dc_val.unit.id,
-                                "oldValue": old_dc_val.unit.id,
-                                "colId": old_dc_val.column_sequence,
-                            }
-                        )
-                    if old_dc_val.hidden != new_dc_val.hidden:
-                        actions.append(
-                            {
-                                "operation": "update",
-                                "attribute": "hidden",
-                                "newValue": new_dc_val.hidden,
-                                "oldValue": old_dc_val.hidden,
-                            }
-                        )
-                    if len(actions) > 0:
-                        payload["data"].append(
-                            {
-                                "actions": actions,
-                                "attribute": "datacolumn",
-                                "colId": old_dc_val.column_sequence,
-                            }
-                        )
-        if len(payload["data"]) > 0:
-            url = f"{self.base_path}/{existing.id}"
-            self.session.patch(url, json=payload)
-        return self.get_by_id(id=existing.id)  # always do this in case columns were added
+        # handle adding new data columns
+        if len(new_param_patches) > 0:
+            self.session.put(
+                f"{self.base_path}/{existing.id}/datacolumns",
+                json={"DataColumns": new_param_patches},
+            )
+        # Handle special enum update data columns
+        for sequence, enum_patches in special_enum_patches.items():
+            if len(enum_patches) == 0:
+                continue
+
+            enum_path = f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums"
+            self.session.put(enum_path, json=enum_patches)
+
+        if len(payload.data) > 0:
+            self.session.patch(
+                path, json=payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+            )
+        return self.get_by_id(id=data_template.id)
 
     def delete(self, *, id: str) -> None:
         """Deletes a data template by its ID.

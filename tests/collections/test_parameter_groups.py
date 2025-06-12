@@ -2,7 +2,15 @@ import pytest
 
 from albert.albert import Albert
 from albert.exceptions import BadRequestError
-from albert.resources.parameter_groups import ParameterGroup
+from albert.resources.base import EntityLink
+from albert.resources.parameter_groups import (
+    DataType,
+    EnumValidationValue,
+    ParameterGroup,
+    ValueValidation,
+)
+from albert.resources.tags import Tag
+from albert.resources.units import Unit
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
 
 
@@ -56,7 +64,6 @@ def test_dupe_raises_error(client: Albert, seeded_parameter_groups: list[Paramet
         client.parameter_groups.create(parameter_group=pg)
 
 
-@pytest.mark.xfail(reason="TODO: Somethign broken w/ patching. FIX ASAP")
 def test_update(
     client: Albert,
     seeded_parameter_groups: list[ParameterGroup],
@@ -78,3 +85,118 @@ def test_update(
 
     # check metadata updates
     make_metadata_update_assertions(new_metadata, updated_pg)
+
+
+def test_update_tags(
+    client: Albert, seeded_parameter_groups: list[ParameterGroup], seeded_tags: list[Tag]
+):
+    pg = seeded_parameter_groups[0]
+    original_tags = [x.id for x in pg.tags]
+
+    new_tag = [x for x in seeded_tags if x.id not in original_tags][0]
+    pg.tags.append(new_tag)
+
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+    assert updated_pg is not None
+    assert new_tag.id in [x.id for x in updated_pg.tags]
+    assert len(updated_pg.tags) == len(original_tags) + 1
+
+
+def test_update_validations(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    pg = [x for x in seeded_parameter_groups if "Numbers Parameter Group" in x.name][0]
+    param = pg.parameters[0]  # Parameter with number validation
+
+    assert param.validation[0].datatype == DataType.NUMBER
+    assert param.validation[0].min == "0"
+    assert param.validation[0].max == "100"
+
+    # Update validation
+    param.validation[0] = ValueValidation(datatype=DataType.STRING)
+    param.value = "Updated Value"
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    assert updated_pg is not None
+    updated_param = updated_pg.parameters[0]
+    assert updated_param.validation[0].datatype == DataType.STRING
+    assert updated_param.value == "Updated Value"
+
+
+def test_enum_validation_creation(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    param = pg.parameters[2]  # Parameter with enum validation
+
+    assert param.validation[0].datatype == DataType.ENUM
+    assert len(param.validation[0].value) == 2
+    assert param.validation[0].value[0].text == "Option1"
+    assert param.validation[0].value[1].text == "Option2"
+
+
+def test_enum_validation_addition(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    param = pg.parameters[2]  # Parameter with enum validation
+
+    # Add a new enum value
+    param.validation[0].value.append(EnumValidationValue(id="3", text="Option3"))
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    assert updated_pg is not None
+    updated_param = updated_pg.parameters[2]
+    assert len(updated_param.validation[0].value) == 3
+    assert "Option3" in [x.text for x in updated_param.validation[0].value]
+
+
+def test_enum_validation_removal(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    param = pg.parameters[2]  # Parameter with enum validation
+
+    initial_enum_count = len(param.validation[0].value)
+
+    # Remove an enum value
+    param.validation[0].value.pop(1)  # Remove "Option2"
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    assert updated_pg is not None
+    updated_param = updated_pg.parameters[2]
+    assert len(updated_param.validation[0].value) == initial_enum_count - 1
+    assert updated_param.validation[0].value[0].text == "Option1"
+
+
+def test_enum_validation_update(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    param = pg.parameters[2]  # Parameter with enum validation
+
+    old_options = [x.text for x in param.validation[0].value]
+
+    # Replace the entire enum validation
+    param.validation[0].value = [
+        EnumValidationValue(text="NewOption1"),
+        EnumValidationValue(text="NewOption2"),
+    ]
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    assert updated_pg is not None
+    updated_param = updated_pg.parameters[2]
+    assert len(updated_param.validation[0].value) == 2
+    new_options = [x.text for x in updated_param.validation[0].value]
+    assert "NewOption1" in new_options
+    assert "NewOption2" in new_options
+    for old in old_options:
+        assert old not in new_options
+
+
+def test_update_units(
+    client: Albert, seeded_parameter_groups: list[ParameterGroup], seeded_units: list[Unit]
+):
+    pg = [x for x in seeded_parameter_groups if "Numbers Parameter Group" in x.name][0]
+    param = pg.parameters[0]  # Parameter with number validation and unit
+    original_unit = param.unit
+
+    # Update unit
+    new_unit = seeded_units[2]
+    param.unit = EntityLink(id=new_unit.id)
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    assert updated_pg is not None
+    updated_param = updated_pg.parameters[0]
+    assert updated_param.unit.id == new_unit.id
+    assert updated_param.unit.id != original_unit.id
