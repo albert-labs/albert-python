@@ -1,29 +1,48 @@
+from collections.abc import Iterator
+
 from albert import Albert
 from albert.resources.base import EntityLink
-from albert.resources.data_templates import DataTemplate
+from albert.resources.data_templates import (
+    DataTemplate,
+    DataTemplateSearchItem,
+)
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 
 
-def _list_asserts(returned_list, limit=100):
+def assert_template_items(
+    list_iterator: Iterator[DataTemplate | DataTemplateSearchItem],
+    expected_type: type,
+):
+    """Assert all items and their data are of expected types."""
+    assert isinstance(list_iterator, Iterator), "Expected an Iterator"
+
     found = False
-    for i, u in enumerate(returned_list):
-        found = True
-        # just check the first 100
-        if i == limit:
+    for i, item in enumerate(list_iterator):
+        if i == 50:
             break
 
-        assert isinstance(u, DataTemplate)
-        assert isinstance(u.name, str)
-        assert isinstance(u.id, str)
-        assert u.id.startswith("DAT")
-    assert found
+        assert isinstance(item, expected_type), (
+            f"Expected {expected_type.__name__}, got {type(item).__name__}"
+        )
+        assert isinstance(item, expected_type)
+        assert isinstance(item.name, str)
+        assert isinstance(item.id, str)
+        assert item.id.startswith("DAT")
+        found = True
+
+    assert found, f"No {expected_type.__name__} items found in iterator"
 
 
-def test_basic_list(client: Albert, seeded_data_templates: list[DataTemplate]):
-    data_templates = client.data_templates.list()
-    _list_asserts(data_templates)
+def test_basic_get_all(client: Albert, seeded_data_templates: list[DataTemplate]):
+    data_templates = client.data_templates.get_all()
+    assert_template_items(data_templates, DataTemplate)
+
+
+def test_basic_search(client: Albert, seeded_data_templates: list[DataTemplate]):
+    data_templates = client.data_templates.search()
+    assert_template_items(data_templates, DataTemplateSearchItem)
 
 
 def test_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
@@ -54,10 +73,10 @@ def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
 
 def test_advanced_list(client: Albert, seeded_data_templates: list[DataTemplate]):
     name = seeded_data_templates[0].name
-    adv_list = client.data_templates.list(name=name)
-    _list_asserts(adv_list)
+    adv_list = client.data_templates.get_all(name=name)
+    assert_template_items(adv_list, DataTemplate)
 
-    adv_list_no_match = client.data_templates.list(name="FAKEFAKEFAKEFAKEFAKEFAKE")
+    adv_list_no_match = client.data_templates.get_all(name="FAKEFAKEFAKEFAKEFAKEFAKE")
     assert next(adv_list_no_match, None) == None
 
 

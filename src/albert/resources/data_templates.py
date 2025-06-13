@@ -54,3 +54,24 @@ class DataTemplate(BaseTaggedEntity):
     users_with_access: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
     data_column_values: list[DataColumnValue] | None = Field(alias="DataColumns", default=None)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+
+
+class LocalizedNames(BaseAlbertModel):
+    de: str | None = None
+    ja: str | None = None
+    zh: str | None = None
+    es: str | None = None
+
+
+class DataTemplateSearchItemDataColumn(BaseAlbertModel):
+    id: str
+    name: str | None = None
+    localized_names: LocalizedNames = Field(alias="localizedNames")
+
+
+class DataTemplateSearchItem(BaseAlbertModel):
+    id: str = Field(alias="albertId")
+    name: str
+    data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
+        alias="dataColumns", default=None
+    )

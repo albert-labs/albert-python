@@ -3,7 +3,7 @@ from albert.resources.custom_fields import CustomField, FieldType
 from albert.resources.lists import ListItem
 
 
-def _list_asserts(list_items: list[ListItem]):
+def assert_list_items(list_items: list[ListItem]):
     found = False
     for l in list_items:
         assert isinstance(l, ListItem)
@@ -13,20 +13,20 @@ def _list_asserts(list_items: list[ListItem]):
     assert found
 
 
-def test_basic_list(
+def test_basic_get_all(
     client: Albert, static_lists: list[ListItem], static_custom_fields: list[CustomField]
 ):
     list_custom_fields = [x for x in static_custom_fields if x.field_type == FieldType.LIST]
 
-    list_items = client.lists.list(list_type=list_custom_fields[0].name)
-    _list_asserts(list_items)
+    list_items = client.lists.get_all(list_type=list_custom_fields[0].name)
+    assert_list_items(list_items)
 
 
-def test_advanced_list(client: Albert, static_lists: list[ListItem]):
+def test_advanced_get_all(client: Albert, static_lists: list[ListItem]):
     first_name = static_lists[0].name
     first_type = static_lists[0].list_type
-    list_items = client.lists.list(names=[first_name], list_type=first_type)
-    _list_asserts(list_items)
+    list_items = client.lists.get_all(names=[first_name], list_type=first_type)
+    assert_list_items(list_items)
 
 
 def test_get_by_id(client: Albert, static_lists: list[ListItem]):
