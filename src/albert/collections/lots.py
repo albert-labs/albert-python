@@ -91,7 +91,7 @@ class LotCollection(BaseCollection):
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -106,7 +106,7 @@ class LotCollection(BaseCollection):
         begins_with: bool = False,
     ) -> Iterator[Lot]:
         """
-        Lists Lot entities with optional filters.
+        Get all Lot entities with optional filters.
 
         Parameters
         ----------
@@ -134,7 +134,7 @@ class LotCollection(BaseCollection):
         Yields
         -------
         Iterator[Lot]
-            An iterator of Lot objects.
+            An iterator of Lot entities.
         """
         params = {
             "limit": limit,
@@ -167,7 +167,7 @@ class LotCollection(BaseCollection):
         Returns
         -------
         Lot
-            The updated lot object as returned by the server.
+            The updated Lot entity as returned by the server.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_patch_payload(existing=existing_lot, updated=lot)
