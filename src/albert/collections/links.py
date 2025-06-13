@@ -44,7 +44,7 @@ class LinksCollection(BaseCollection):
         )
         return [Link(**l) for l in response.json()]
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -53,7 +53,7 @@ class LinksCollection(BaseCollection):
         id: str | None = None,
     ) -> Iterator[Link]:
         """
-        Generates a list of link entities with optional filters.
+        Get all link entities with optional filters.
 
         Parameters
         ----------
