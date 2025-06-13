@@ -141,7 +141,7 @@ def static_roles(client: Albert) -> list[Role]:
 
 @pytest.fixture(scope="session")
 def static_consumeable_parameter(client: Albert) -> Parameter:
-    consumeables = client.parameters.list(names="Consumables")
+    consumeables = client.parameters.get_all(names="Consumables")
     for c in consumeables:
         if c.name == "Consumables":
             return c
@@ -549,7 +549,7 @@ def seeded_products(
         )
     return [
         x
-        for x in client.inventory.list(
+        for x in client.inventory.get_all(
             category=InventoryCategory.FORMULAS,
             text=product_name_prefix,
         )

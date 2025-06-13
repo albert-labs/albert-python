@@ -33,7 +33,7 @@ def _list_asserts(returned_list):
 
 
 def test_simple_inventory_list(client: Albert, seeded_inventory):
-    inventory = client.inventory.list()
+    inventory = client.inventory.get_all()
     _list_asserts(inventory)
 
 
@@ -42,7 +42,7 @@ def test_advanced_inventory_list(
 ):
     test_inv_item = seeded_inventory[1]
     matching_cas = [x for x in seeded_cas if x.id in test_inv_item.cas[0].id][0]
-    inventory = client.inventory.list(
+    inventory = client.inventory.get_all(
         text=test_inv_item.name,
         category=InventoryCategory.CONSUMABLES,
         cas=matching_cas,
@@ -60,7 +60,7 @@ def test_match_all_conditions(
 ):
     # First test is using OR between conditions
     # this should return our 3 test items
-    inventory = client.inventory.list(
+    inventory = client.inventory.get_all(
         tags=[seeded_tags[0].tag, seeded_tags[1].tag],
     )
 
@@ -69,7 +69,7 @@ def test_match_all_conditions(
             assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
     # This one tests using AND conditions and will return only
     # one item that has both seeded tags
-    inventory = client.inventory.list(
+    inventory = client.inventory.get_all(
         tags=[seeded_tags[0].tag, seeded_tags[1].tag],
         match_all_conditions=True,
     )
