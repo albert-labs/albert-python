@@ -53,6 +53,7 @@ class DesignType(str, Enum):
     APPS = "apps"
     PRODUCTS = "products"
     RESULTS = "results"
+    PROCESS = "process"
 
 
 class Cell(BaseResource):
