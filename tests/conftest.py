@@ -57,6 +57,7 @@ from tests.seeding import (
     generate_storage_location_seeds,
     generate_tag_seeds,
     generate_task_seeds,
+    generate_teams_seeds,
     generate_unit_seeds,
     generate_workflow_seeds,
 )
@@ -507,6 +508,18 @@ def seeded_pricings(client: Albert, seed_prefix: str, seeded_inventory, seeded_l
 
 
 @pytest.fixture(scope="session")
+def seeded_teams(client: Albert):
+    seeded = []  # init list
+    all_teams = generate_teams_seeds()  # get list of teams from "seeding.py"
+    for t in all_teams:
+        seeded.append(client.teams.create(team=t))  # create all teams -> "setup"
+    yield seeded
+    for t in seeded:
+        with suppress(NotFoundError):
+            client.teams.delete(team_id=t.id)  # delete all teams -> "cleanup"
+
+
+@pytest.fixture(scope="session")
 def seeded_workflows(
     client: Albert,
     seed_prefix: str,
@@ -589,6 +602,7 @@ def seeded_tasks(
     for t in all_tasks:
         seeded.append(client.tasks.create(task=t))
     yield seeded
+    # workflows cannot be deleted
     for t in seeded:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=t.id)

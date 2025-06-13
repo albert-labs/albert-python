@@ -31,6 +31,7 @@ from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
 from albert.collections.tags import TagCollection
 from albert.collections.tasks import TaskCollection
+from albert.collections.teams import TeamsCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
@@ -202,6 +203,10 @@ class Albert:
     @property
     def pricings(self) -> PricingCollection:
         return PricingCollection(session=self.session)
+
+    @property
+    def teams(self) -> TeamsCollection:
+        return TeamsCollection(session=self.session)
 
     @property
     def files(self) -> FileCollection:
