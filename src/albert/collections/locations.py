@@ -26,7 +26,7 @@ class LocationCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{LocationCollection._api_version}/locations"
 
-    def list(
+    def get_all(
         self,
         *,
         ids: list[str] | None = None,
@@ -36,7 +36,7 @@ class LocationCollection(BaseCollection):
         limit: int = 50,
         start_key: str | None = None,
     ) -> Iterator[Location]:
-        """Searches for locations matching the provided criteria.
+        """Get all Location entities matching the provided criteria.
 
         Parameters
         ----------
@@ -53,7 +53,7 @@ class LocationCollection(BaseCollection):
         Yields
         ------
         Iterator[Location]
-            An iterator of Location objects matching the search criteria.
+            An iterator of Location entities matching the search criteria.
         """
         params = {"limit": limit, "startKey": start_key, "country": country}
         if ids:
@@ -93,12 +93,12 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         location : Location
-            The Location object to update. The ID of the Location object must be provided.
+            The Location entity to update. The ID of the Location entity must be provided.
 
         Returns
         -------
         Location
-            The updated Location object as returned by the server.
+            The updated Location entity as returned by the server.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=location.id)
@@ -118,14 +118,14 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         location : Location
-            The Location object to check
+            The Location entity to check
 
         Returns
         -------
         Location | None
-            The existing registered Location object if found, otherwise None.
+            The existing registered Location entity if found, otherwise None.
         """
-        hits = self.list(name=location.name)
+        hits = self.get_all(name=location.name)
         if hits:
             for hit in hits:
                 if hit and hit.name.lower() == location.name.lower():
@@ -139,12 +139,12 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         location : Location
-            The Location object to create.
+            The Location entity to create.
 
         Returns
         -------
         Location
-            The created Location object.
+            The created Location entity.
         """
         exists = self.location_exists(location=location)
         if exists:
@@ -165,7 +165,7 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         id : Str
-            The id of the Location object to delete.
+            The id of the Location entity to delete.
 
         Returns
         -------
