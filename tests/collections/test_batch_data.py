@@ -43,7 +43,7 @@ def test_update_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
     col_id = [x for x in existing_batch_data.rows[0].values if x.type == "INV"][0].col_id
     inv_id = [x for x in existing_batch_data.rows[0].values if x.type == "INV"][0].id
     value = [x for x in existing_batch_data.rows[0].values if x.type == "INV"][0].value
-    lot = next(client.lots.list(parent_id=inv_id))
+    lot = next(client.lots.get_all(parent_id=inv_id))
     patch = BatchValuePatchPayload(
         lotId=lot.id,
         id=BatchValueId(col_id=col_id, row_id=row_id),
