@@ -200,6 +200,7 @@ class EntityLinkOption(EntityLink):
     """Allowed options for Field Options expect a different (de)serilization than the base EntityLink. This class handles that scenario."""
 
     id: str = Field(alias="albertId")
+    name: str | None = Field(default=None, exclude=False)
 
 
 class EntityTypeFieldOptions(BaseAlbertModel):
