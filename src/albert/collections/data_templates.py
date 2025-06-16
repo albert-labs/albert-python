@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from itertools import islice
 
 from pydantic import Field
 
@@ -466,16 +467,28 @@ class DataTemplateCollection(BaseCollection):
         limit: int = 100,
         offset: int = 0,
     ) -> Iterator[DataTemplate]:
-        """Retrieve fully hydrated DataTemplate objects with optional filters.
+        """
+        Retrieve fully hydrated DataTemplate objects with optional filters.
+        Uses `get_by_ids` in batches to hydrate the results for convenience.
 
-        This method uses `get_by_id` to hydrate the results for convenience.
         Use :meth:`search` for better performance.
         """
 
-        for item in self.search(
-            name=name, user_id=user_id, order_by=order_by, limit=limit, offset=offset
-        ):
+        def batched(iterable, size):
+            """Yield lists of up to `size` IDs from an iterable of objects with an `id` attribute."""
+
+            it = (item.id for item in iterable)
+            while batch := list(islice(it, size)):
+                yield batch
+
+        id_batches = batched(
+            self.search(name=name, user_id=user_id, order_by=order_by, limit=limit, offset=offset),
+            limit,  # batch size
+        )
+
+        for batch in id_batches:
             try:
-                yield self.get_by_id(id=item.id)
+                hydrated_templates = self.get_by_ids(ids=batch)
+                yield from hydrated_templates
             except AlbertHTTPError as e:
-                logger.warning(f"Error hydrating data template {id}: {e}")
+                logger.warning(f"Error hydrating batch {batch}: {e}")
