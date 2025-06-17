@@ -2,7 +2,8 @@ import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.parameters import Parameter
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode

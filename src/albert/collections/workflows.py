@@ -83,8 +83,8 @@ class WorkflowCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def list(self, limit: int = 50) -> Iterator[Workflow]:
-        """List all workflows. Unlikely to be used in production.
+    def get_all(self, limit: int = 50) -> Iterator[Workflow]:
+        """Get all workflows. Unlikely to be used in production.
 
         Parameters
         ----------

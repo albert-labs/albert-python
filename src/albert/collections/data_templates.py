@@ -3,8 +3,9 @@ from itertools import islice
 
 from pydantic import Field
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
+from albert.resources.base import OrderBy
 from albert.resources.data_templates import DataColumnValue, DataTemplate, DataTemplateSearchItem
 from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import PGPatchPayload
@@ -153,10 +154,10 @@ class DataTemplateCollection(BaseCollection):
         limit: int = 100,
         offset: int = 0,
     ) -> Iterator[DataTemplateSearchItem]:
-        """
-        Searches for data templates matching the provided criteria.
-        ⚠️ This method returns partial (unhydrated) search results for performance.
-        To retrieve fully detailed objects, use :meth:`get_all` instead.
+        """Search for DataTemplate matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
@@ -254,11 +255,10 @@ class DataTemplateCollection(BaseCollection):
         limit: int = 100,
         offset: int = 0,
     ) -> Iterator[DataTemplate]:
-        """
-        Retrieve fully hydrated DataTemplate objects with optional filters.
-        Uses `get_by_ids` in batches to hydrate the results for convenience.
+        """Retrieve fully hydrated DataTemplate entities with optional filters.
 
-        Use :meth:`search` for better performance.
+        This method returns complete entity data using `get_by_ids`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
         """
 
         def batched(iterable, size):

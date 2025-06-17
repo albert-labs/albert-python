@@ -95,7 +95,7 @@ from albert.resources.base import EntityLink
 
 client = Albert()
 
-my_location = next(client.locations.list(name="My Location")
+my_location = next(client.locations.get_all(name="My Location")
 
 p = Project(
     description="Example project",
@@ -174,7 +174,7 @@ for s in stages:
 
 p = Project(
     description="Example project",
-    locations=[next(client.locations.list(name="My Location"))],
+    locations=[next(client.locations.get_all(name="My Location"))],
     metadata = {
         stage_gate_field.name: [client.lists.get_matching_item(list_type=stage_gate_field.name, name = stages[0]).to_entity_link()],
         justification_field.name: "To show an example of using custom fields."

@@ -1,6 +1,6 @@
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
+from albert.resources.base import BaseAlbertModel, LocalizedNames, MetadataItem, SecurityClass
 from albert.resources.data_columns import DataColumn
 from albert.resources.parameter_groups import (
     ValueValidation,
@@ -54,13 +54,6 @@ class DataTemplate(BaseTaggedEntity):
     users_with_access: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
     data_column_values: list[DataColumnValue] | None = Field(alias="DataColumns", default=None)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
-
-
-class LocalizedNames(BaseAlbertModel):
-    de: str | None = None
-    ja: str | None = None
-    zh: str | None = None
-    es: str | None = None
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
