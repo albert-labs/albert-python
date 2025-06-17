@@ -3,8 +3,8 @@ import uuid
 import pytest
 
 from albert.albert import Albert
-from albert.collections.base import OrderBy
 from albert.exceptions import AlbertHTTPError
+from albert.resources.base import OrderBy
 from albert.resources.cas import Cas
 
 

@@ -104,7 +104,7 @@ from albert.resources.base import EntityLink
 
 client = Albert()
 
-my_location = next(client.locations.list(name="My Location")
+my_location = next(client.locations.get_all(name="My Location")
 
 p = Project(
     description="Example project",

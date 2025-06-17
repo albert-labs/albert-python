@@ -5,10 +5,10 @@ from contextlib import suppress
 import pandas as pd
 from pydantic import validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.collections.tasks import TaskCollection
 from albert.exceptions import NotFoundError
-from albert.resources.base import EntityLink
+from albert.resources.base import EntityLink, OrderBy
 from albert.resources.identifiers import (
     BlockId,
     DataColumnId,

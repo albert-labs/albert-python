@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
+from albert.resources.base import OrderBy
 from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
+    ParameterGroupSearchItem,
     PGPatchDatum,
     PGPatchPayload,
     PGType,
@@ -234,7 +236,7 @@ class ParameterGroupCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def list(
+    def search(
         self,
         *,
         text: str | None = None,
@@ -242,7 +244,7 @@ class ParameterGroupCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         limit: int = 25,
         offset: int | None = None,
-    ) -> Iterator[ParameterGroup]:
+    ) -> Iterator[ParameterGroupSearchItem]:
         """Search for Parameter Groups matching the given criteria.
 
         Parameters
@@ -260,16 +262,6 @@ class ParameterGroupCollection(BaseCollection):
             An iterator of Parameter Groups matching the given criteria.
         """
 
-        def deserialize(items: list[dict]) -> Iterator[ParameterGroup]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:  # pragma: no cover
-                    logger.warning(f"Error fetching parameter group {id}: {e}")
-            # Currently, the API is not returning metadata for the list_by_ids endpoint, so we need to fetch individually until that is fixed
-            # return self.get_by_ids(ids=[x["albertId"] for x in items])
-
         params = {
             "limit": limit,
             "offset": offset,
@@ -283,8 +275,50 @@ class ParameterGroupCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=deserialize,
+            deserialize=lambda items: [ParameterGroupSearchItem(**item) for item in items],
         )
+
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        types: PGType | list[PGType] | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        limit: int = 25,
+        offset: int | None = None,
+    ) -> Iterator[ParameterGroup]:
+        """Search and hydrate all Parameter Groups matching the given criteria.
+
+        Parameters
+        ----------
+        text : str | None, optional
+            Text to search for, by default None.
+        types : PGType | list[PGType] | None, optional
+            Filter the returned Parameter Groups by Type, by default None.
+        order_by : OrderBy, optional
+            The order in which to return results, by default OrderBy.DESCENDING.
+        limit : int, optional
+            Page size for each search request, by default 25.
+        offset : int | None, optional
+            Offset to start from, by default None.
+
+        Yields
+        ------
+        Iterator[ParameterGroup]
+            An iterator of fully hydrated Parameter Groups.
+        """
+        for item in self.search(
+            text=text,
+            types=types,
+            order_by=order_by,
+            limit=limit,
+            offset=offset,
+        ):
+            try:
+                # Currently, the API is not returning Metadata, Tags, Documents, and ACL for the get_by_ids endpoint, so we need to fetch individually until that is fixed
+                yield self.get_by_id(id=item.id)
+            except AlbertHTTPError as e:  # pragma: no cover
+                logger.warning(f"Error fetching parameter group {item.id}: {e}")
 
     def delete(self, *, id: str) -> None:
         """Delete a parameter group by its ID.
@@ -330,7 +364,8 @@ class ParameterGroupCollection(BaseCollection):
         ParameterGroup | None
             The parameter group with the given name, or None if not found.
         """
-        matches = self.list(text=name)
+        matches = self.get_all(text=name)
+        # TODO: optimize with explicit hydrate() after self.search()
         for m in matches:
             if m.name.lower() == name.lower():
                 return m

@@ -1,4 +1,5 @@
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.notes import Note
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -83,9 +84,9 @@ class NotesCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
-    def list(self, *, parent_id: str, order_by: OrderBy = OrderBy.DESCENDING) -> list[Note]:
+    def get_all(self, *, parent_id: str, order_by: OrderBy = OrderBy.DESCENDING) -> list[Note]:
         """
-        Lists notes by their parent ID.
+        Get all notes by their parent ID.
 
         Parameters
         ----------

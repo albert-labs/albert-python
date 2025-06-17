@@ -50,10 +50,10 @@ class CustomTemplatesCollection(BaseCollection):
         limit: int = 50,
         offset: int = 0,
     ) -> Iterator[CustomTemplateSearchItem]:
-        """Searches for custom templates matching the provided criteria.
+        """Search for CustomTemplate matching the provided criteria.
 
-        ⚠️ This method returns partial (unhydrated) search results for performance.
-        To retrieve fully detailed objects, use :meth:`get_all` instead.
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
@@ -63,8 +63,8 @@ class CustomTemplatesCollection(BaseCollection):
 
         Yields
         ------
-        Iterator[CustomTemplate]
-            An iterator of CustomTemplate items matching the search criteria.
+        Iterator[CustomTemplateSearchItem]
+            An iterator of CustomTemplateSearchItem items matching the search criteria.
         """
 
         params = {"limit": limit, "offset": offset, "text": text}
@@ -84,10 +84,10 @@ class CustomTemplatesCollection(BaseCollection):
         limit: int = 50,
         offset: int = 0,
     ) -> Iterator[CustomTemplate]:
-        """Retrieve fully hydrated CustomTemplate objects with optional filters.
+        """Retrieve fully hydrated CustomTemplate entities with optional filters.
 
-        This method uses `get_by_id` to hydrate the results for convenience.
-        Use :meth:`search` for better performance.
+        This method returns complete entity data using `get_by_id`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
         """
 
         for item in self.search(text=text, limit=limit, offset=offset):

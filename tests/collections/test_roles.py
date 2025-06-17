@@ -4,7 +4,7 @@ from albert.albert import Albert
 from albert.resources.roles import Role
 
 
-def _list_asserts(list_items: list[Role]):
+def assert_role_items(list_items: list[Role]):
     found = False
     for l in list_items:
         assert isinstance(l, Role)
@@ -14,8 +14,8 @@ def _list_asserts(list_items: list[Role]):
     assert found
 
 
-def test_list_roles(client: Albert, static_roles: list[Role]):
-    _list_asserts(client.roles.list())
+def test_get_all_roles(client: Albert, static_roles: list[Role]):
+    assert_role_items(client.roles.get_all())
 
 
 def test_get_role(client: Albert, static_roles: list[Role]):
