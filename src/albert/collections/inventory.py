@@ -3,15 +3,17 @@ from collections.abc import Iterator
 
 from pydantic import TypeAdapter, validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
+from albert.resources.base import OrderBy
 from albert.resources.facet import FacetItem
 from albert.resources.identifiers import InventoryId, ProjectId, SearchProjectId, WorksheetId
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
+    InventoryFilterParams,
     InventoryItem,
     InventorySearchItem,
     InventorySpec,
@@ -126,7 +128,12 @@ class InventoryCollection(BaseCollection):
         Union[InventoryItem, None]
             The matching inventory item or None if not found.
         """
-        hits = self.get_all(text=inventory_item.name, company=[inventory_item.company])
+
+        hits = self.get_all(
+            params=InventoryFilterParams(
+                text=inventory_item.name, company=[inventory_item.company]
+            )
+        )
         inv_company = (
             inventory_item.company.name
             if isinstance(inventory_item.company, Company)
@@ -454,150 +461,81 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def search(
-        self,
-        *,
-        limit: int = 100,
-        text: str | None = None,
-        cas: list[Cas] | Cas | None = None,
-        category: list[InventoryCategory] | InventoryCategory | None = None,
-        company: list[Company] | Company | None = None,
-        location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
-        project_id: ProjectId | None = None,
-        sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
-        lot_owner: list[User] | User | None = None,
-        tags: list[str] | None = None,
-        match_all_conditions: bool = False,
+        self, *, params: InventoryFilterParams | None = None
     ) -> Iterator[InventorySearchItem]:
-        """
-        Get a list of inventory items that match the search criteria and
-        return the raw search records. These are not full inventory item
-        objects, but are special short documents intended for fast summary results.
+        """Search for Inventory matching the provided criteria.
 
-        ⚠️ This method returns partial (unhydrated) search results for performance.
-        To retrieve fully detailed objects, use :meth:`get_all` or :meth:`get_by_ids`.
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
         """
+        params = params or InventoryFilterParams()
+        query_params = self._prepare_parameters(
+            limit=params.limit,
+            text=params.text,
+            cas=params.cas,
+            category=params.category,
+            company=params.company,
+            location=params.location,
+            storage_location=params.storage_location,
+            project_id=params.project_id,
+            sheet_id=params.sheet_id,
+            created_by=params.created_by,
+            lot_owner=params.lot_owner,
+            tags=params.tags,
+        )
 
         def deserialize(items: list[dict]):
             return [InventorySearchItem.model_validate(x) for x in items]
 
-        params = self._prepare_parameters(
-            limit=limit,
-            text=text,
-            cas=cas,
-            category=category,
-            company=company,
-            location=location,
-            storage_location=storage_location,
-            project_id=project_id,
-            sheet_id=sheet_id,
-            created_by=created_by,
-            lot_owner=lot_owner,
-            tags=tags,
-        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
+            if params.match_all_conditions
             else f"{self.base_path}/search",
-            params=params,
+            params=query_params,
             session=self.session,
             deserialize=deserialize,
         )
 
     @validate_call
-    def get_all(
-        self,
-        *,
-        limit: int = 100,
-        text: str | None = None,
-        cas: list[Cas] | Cas | None = None,
-        category: list[InventoryCategory] | InventoryCategory | None = None,
-        company: list[Company] | Company | None = None,
-        order: OrderBy = OrderBy.DESCENDING,
-        sort_by: str | None = "createdAt",
-        location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
-        project_id: ProjectId | None = None,
-        sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
-        lot_owner: list[User] | User | None = None,
-        tags: list[str] | None = None,
-        match_all_conditions: bool = False,
-    ) -> Iterator[InventoryItem]:
+    def get_all(self, *, params: InventoryFilterParams | None = None) -> Iterator[InventoryItem]:
         """
-        Retrieve hydrated inventory items with optional filters.
+        Retrieve fully hydrated InventoryItem entities with optional filters.
 
-        This method hydrates the results using ``get_by_ids`` for convenience.
-        Use :meth:`search` for improved performance when you only need summary
-        fields.
-
-        Parameters
-        ----------
-        limit : int, optional
-            Maximum number of items to return (default is 100)
-        text : str, optional
-            Text to search for in inventory names and descriptions
-        cas : list[Cas] | Cas | None, optional
-            Filter by CAS number(s)
-        category : list[InventoryCategory] | InventoryCategory | None, optional
-            Filter by inventory category/categories
-        company : list[Company] | Company | None, optional
-            Filter by manufacturing company/companies
-        order : OrderBy, optional
-            Sort order, either ASCENDING or DESCENDING (default is DESCENDING)
-        sort_by : str, optional
-            Field to sort by (default is "createdAt")
-        location : list[Location] | None, optional
-            Filter by location(s)
-        storage_location : list[StorageLocation] | None, optional
-            Filter by storage location(s)
-        project_id : str, optional
-            Filter by project ID
-        sheet_id : str, optional
-            Filter by sheet ID
-        created_by : list[User], optional
-            Filter by creator(s)
-        lot_owner : list[User], optional
-            Filter by lot owner(s)
-        tags : list[str], optional
-            Filter by tag(s)
-        match_all_conditions : bool, optional
-            Whether to match all conditions (default is False -- e.g. OR between conditions)
-
-        Returns
-        -------
-        Iterator[InventoryItem]
-            An iterator over the matching inventory items
+        This method returns complete entity data using `get_by_ids`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
         """
+        params = params or InventoryFilterParams()
 
         def deserialize(items: list[dict]) -> list[InventoryItem]:
             return self.get_by_ids(ids=[x["albertId"] for x in items])
 
-        search_text = text if (text is None or len(text) < 50) else text[0:50]
-        params = self._prepare_parameters(
-            limit=limit,
-            text=search_text,
-            cas=cas,
-            category=category,
-            company=company,
-            order=order,
-            sort_by=sort_by,
-            location=location,
-            storage_location=storage_location,
-            project_id=project_id,
-            sheet_id=sheet_id,
-            created_by=created_by,
-            lot_owner=lot_owner,
-            tags=tags,
+        search_text = (
+            params.text if (params.text is None or len(params.text) < 50) else params.text[0:50]
         )
+        query_params = self._prepare_parameters(
+            limit=params.limit,
+            text=search_text,
+            cas=params.cas,
+            category=params.category,
+            company=params.company,
+            order=params.order,
+            sort_by=params.sort_by,
+            location=params.location,
+            storage_location=params.storage_location,
+            project_id=params.project_id,
+            sheet_id=params.sheet_id,
+            created_by=params.created_by,
+            lot_owner=params.lot_owner,
+            tags=params.tags,
+        )
+
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
+            if params.match_all_conditions
             else f"{self.base_path}/search",
-            params=params,
+            params=query_params,
             session=self.session,
             deserialize=deserialize,
         )

@@ -1,9 +1,9 @@
 from albert.albert import Albert
-from albert.collections.base import OrderBy
+from albert.resources.base import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 
-def _list_asserts(returned_list):
+def assert_unit_items(returned_list):
     found = False
     for i, u in enumerate(returned_list):
         if i == 100:
@@ -16,14 +16,14 @@ def _list_asserts(returned_list):
     assert found
 
 
-def test_simple_units_list(client: Albert):
-    simple_list = client.units.list()
-    _list_asserts(simple_list)
+def test_simple_units_get_all(client: Albert):
+    simple_list = client.units.get_all()
+    assert_unit_items(simple_list)
 
 
-def test_advanced_units_list(client: Albert, seeded_units: list[Unit]):
+def test_advanced_units_get_all(client: Albert, seeded_units: list[Unit]):
     test_unit = seeded_units[1]
-    adv_list = client.units.list(
+    adv_list = client.units.get_all(
         name=test_unit.name,
         category=test_unit.category,
         order_by=OrderBy.ASCENDING,
@@ -33,10 +33,10 @@ def test_advanced_units_list(client: Albert, seeded_units: list[Unit]):
     adv_list = list(adv_list)
     for u in adv_list:
         assert test_unit.name.lower() in u.name.lower()
-    _list_asserts(adv_list)
+    assert_unit_items(adv_list)
 
-    adv_short_list = client.units.list(limit=2)
-    _list_asserts(adv_short_list)
+    adv_short_list = client.units.get_all(limit=2)
+    assert_unit_items(adv_short_list)
 
 
 def test_get_unit(client: Albert, seeded_units: list[Unit]):

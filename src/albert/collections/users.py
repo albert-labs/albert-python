@@ -5,7 +5,7 @@ import jwt
 from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
 from albert.resources.base import Status
-from albert.resources.users import User
+from albert.resources.users import User, UserFilterParams, UserFilterType, UserSearchItem
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -59,47 +59,88 @@ class UserCollection(BaseCollection):
         response = self.session.get(url)
         return User(**response.json())
 
-    def list(
-        self,
-        *,
-        limit: int = 50,
-        offset: int | None = None,
-        text: str | None = None,
-        status: Status | None = None,
-        search_fields: str | None = None,
-    ) -> Iterator[User]:
-        """Lists Users based on criteria
+    def search(self, *, params: UserFilterParams | None = None) -> Iterator[User]:
+        """
+        Searches for Users matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) search results for performance.
+        To retrieve fully detailed objects, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        text : Optional[str], optional
-            text to search against, by default None
+        params : UserFilterParams, optional
+            Structured search filters for user listing.
 
         Returns
         -------
-        Generator
-            Generator of matching Users or None
+        Iterator[User]
+            An iterator of partial User entities.
         """
 
-        def deserialize(items: list[dict]) -> Iterator[User]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching user '{id}': {e}")
-
-        params = {
-            "limit": limit,
-            "offset": offset,
-            "status": status,
-            "text": text,
-            "searchFields": search_fields,
-        }
+        params = params or UserFilterParams()
+        query_params = params.model_dump(exclude_none=True, by_alias=True)
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
+            session=self.session,
+            params=query_params,
+            deserialize=lambda items: [UserSearchItem(**item) for item in items],
+        )
+
+    def get_all(
+        self,
+        *,
+        limit: int = 100,
+        status: Status | None = None,
+        type: UserFilterType | None = None,
+        id: list[str] | None = None,
+        start_key: str | None = None,
+    ) -> Iterator[User]:
+        """
+        Retrieve fully hydrated User entities with optional filters.
+
+        This method uses `get_by_id` to hydrate the results for convenience.
+        Use :meth:`search` for better performance.
+
+        Parameters
+        ----------
+        limit : int
+            Max results per page.
+        status : Status, optional
+            Filter by user status.
+        type : UserFilterType
+            Attribute name to filter by (e.g., 'role').
+        id : list[str], optional
+            Values of the attribute to filter on.
+        start_key : Optional[str], optional
+            The starting point for the next set of results, by default None.
+
+        Returns
+        -------
+        Iterator[User]
+            Fully hydrated User entities.
+        """
+        params = {
+            "limit": limit,
+            "status": status,
+            "type": type.value if type else None,
+            "id": id,
+            "startKey": start_key,
+        }
+
+        def deserialize(items: list[dict]) -> Iterator[User]:
+            for item in items:
+                user_id = item.get("albertId")
+                if user_id:
+                    try:
+                        yield self.get_by_id(id=user_id)
+                    except AlbertHTTPError as e:
+                        logger.warning(f"Error fetching user '{user_id}': {e}")
+
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
             session=self.session,
             params=params,
             deserialize=deserialize,

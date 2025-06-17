@@ -1,6 +1,7 @@
 from pydantic import validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.batch_data import BatchData, BatchDataType, BatchValuePatchPayload
 from albert.resources.identifiers import TaskId
 from albert.session import AlbertSession

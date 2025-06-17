@@ -1,10 +1,6 @@
 from pydantic import Field, model_validator
 
-from albert.resources.base import (
-    BaseAlbertModel,
-    MetadataItem,
-    SecurityClass,
-)
+from albert.resources.base import BaseAlbertModel, LocalizedNames, MetadataItem, SecurityClass
 from albert.resources.data_columns import DataColumn
 from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import ParameterValue, ValueValidation
@@ -61,13 +57,6 @@ class DataTemplate(BaseTaggedResource):
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
-
-
-class LocalizedNames(BaseAlbertModel):
-    de: str | None = None
-    ja: str | None = None
-    zh: str | None = None
-    es: str | None = None
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):

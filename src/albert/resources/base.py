@@ -8,6 +8,11 @@ from albert.session import AlbertSession
 from albert.utils.types import BaseAlbertModel
 
 
+class OrderBy(str, Enum):
+    DESCENDING = "desc"
+    ASCENDING = "asc"
+
+
 class Status(str, Enum):
     """The status of a resource"""
 
@@ -94,3 +99,10 @@ class BaseSessionResource(BaseResource):
 
 
 MetadataItem = float | int | str | EntityLink | list[EntityLink] | None
+
+
+class LocalizedNames(BaseAlbertModel):
+    de: str | None = None
+    ja: str | None = None
+    zh: str | None = None
+    es: str | None = None
