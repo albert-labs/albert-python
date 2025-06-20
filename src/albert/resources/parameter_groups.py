@@ -12,23 +12,10 @@ from albert.resources.base import (
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.serialization import SerializeAsEntityLink
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.utils.patch_types import PatchDatum, PatchPayload, PGPatchDatum
 from albert.utils.types import BaseAlbertModel
-
-
-class PGPatchPayload(PatchPayload):
-    """A payload for a PATCH request to update a parameter group.
-
-    Attributes
-    ----------
-    data : list[PGPatchDatum]
-        The data to be updated in the parameter group.
-    """
-
-    data: list[PGPatchDatum | PatchDatum] = Field(default_factory=list)
 
 
 class PGType(str, Enum):
@@ -114,11 +101,17 @@ class ParameterValue(BaseAlbertModel):
     value: str | SerializeAsEntityLink[InventoryItem] | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
     added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
-    validation: list[ValueValidation] = Field(default_factory=list)
+    validation: list[ValueValidation] | None = Field(default_factory=list)
 
     # Read-only fields
     name: str | None = Field(default=None, exclude=True, frozen=True)
     sequence: str | None = Field(default=None, exclude=True, frozen=True)
+    original_short_name: str | None = Field(
+        default=None, alias="originalShortName", frozen=True, exclude=True
+    )
+    original_name: str | None = Field(
+        default=None, alias="originalName", frozen=True, exclude=True
+    )
 
     @field_validator("value", mode="before")
     @classmethod
@@ -143,7 +136,7 @@ class ParameterValue(BaseAlbertModel):
         return self
 
 
-class ParameterGroup(BaseTaggedEntity):
+class ParameterGroup(BaseTaggedResource):
     """Use 'Standards' key in metadata to store standards"""
 
     name: str
