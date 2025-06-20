@@ -5,9 +5,8 @@ from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 
 from albert.collections.inventory import InventoryCategory
 from albert.resources.common.identifiers import InventoryId, LotId
-from albert.resources.common.models import BaseResource, MetadataItem
+from albert.resources.common.models import BaseResource, MetadataItem, SerializeAsEntityLink
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
 

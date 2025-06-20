@@ -11,14 +11,14 @@ from albert.resources.common.models import (
     EntityLink,
     MetadataItem,
     SecurityClass,
+    SerializeAsEntityLink,
     Status,
 )
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.sheets import DesignType, Sheet
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tags import BaseTaggedEntity
 from albert.resources.tasks import TaskSource
 from albert.resources.users import User, UserClass
 

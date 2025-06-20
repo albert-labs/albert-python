@@ -7,8 +7,13 @@ from albert.collections.locations import Location
 from albert.collections.roles import Role
 from albert.core.base_model import BaseAlbertModel
 from albert.resources.common.identifiers import UserId
-from albert.resources.common.models import BaseResource, MetadataItem, OrderBy, Status
-from albert.resources.serialization import SerializeAsEntityLink
+from albert.resources.common.models import (
+    BaseResource,
+    MetadataItem,
+    OrderBy,
+    SerializeAsEntityLink,
+    Status,
+)
 
 
 class UserClass(str, Enum):

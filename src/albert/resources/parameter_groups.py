@@ -10,12 +10,12 @@ from albert.resources.common.models import (
     LocalizedNames,
     MetadataItem,
     SecurityClass,
+    SerializeAsEntityLink,
 )
 from albert.resources.common.patch import PatchDatum, PatchPayload, PGPatchDatum
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
-from albert.resources.serialization import SerializeAsEntityLink
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tags import BaseTaggedEntity
 from albert.resources.units import Unit
 from albert.resources.users import User
 

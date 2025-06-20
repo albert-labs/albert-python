@@ -16,11 +16,10 @@ from albert.resources.common.identifiers import (
     UnitId,
     WorkflowId,
 )
-from albert.resources.common.models import BaseAlbertModel, BaseResource
+from albert.resources.common.models import BaseAlbertModel, BaseResource, SerializeAsEntityLink
 from albert.resources.common.patch import PatchDatum
 from albert.resources.data_templates import DataTemplate
 from albert.resources.lots import Lot
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
