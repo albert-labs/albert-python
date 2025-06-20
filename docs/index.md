@@ -34,7 +34,7 @@ To use Albert Python, you need to initialize the Albert client with your base UR
 ```python
 import os
 
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertClientCredentials
 
 # Initialize the client using a JWT token
 client = Albert(
@@ -46,7 +46,7 @@ client = Albert(
 # Initalize using an API key from environment
 
 client = Albert(
-    client_credentials=ClientCredentials.from_env(
+    client_credentials=AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID",
         client_secret_env="ALBERT_CLIENT_SECRET",
     )
