@@ -1,6 +1,6 @@
 import pytest
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 

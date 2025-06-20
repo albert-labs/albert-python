@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import AliasChoices, Field
 
-from albert.resources.base import BaseResource
+from albert.resources.common.models import BaseResource
 
 
 class TagEntity(str, Enum):

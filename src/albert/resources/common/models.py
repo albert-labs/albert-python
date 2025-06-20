@@ -3,9 +3,9 @@ from enum import Enum
 
 from pydantic import Field, PrivateAttr
 
+from albert.core.base_model import BaseAlbertModel
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
-from albert.session import AlbertSession
-from albert.utils.types import BaseAlbertModel
 
 
 class OrderBy(str, Enum):
@@ -18,7 +18,6 @@ class Status(str, Enum):
 
     ACTIVE = "active"
     INACTIVE = "inactive"
-    QUEUED = "queued"
 
 
 class SecurityClass(str, Enum):
@@ -98,11 +97,4 @@ class BaseSessionResource(BaseResource):
         return self._session
 
 
-MetadataItem = float | int | str | EntityLink | list[EntityLink] | None
-
-
-class LocalizedNames(BaseAlbertModel):
-    de: str | None = None
-    ja: str | None = None
-    zh: str | None = None
-    es: str | None = None
+MetadataItem = float | int | str | EntityLink | list[EntityLink]

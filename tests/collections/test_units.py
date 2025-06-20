@@ -1,5 +1,5 @@
-from albert.albert import Albert
-from albert.resources.base import OrderBy
+from albert.core.client import Albert
+from albert.resources.common.models import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 

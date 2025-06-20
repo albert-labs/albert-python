@@ -5,8 +5,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import albert
+from albert.core.auth.credentials import AlbertClientCredentials, TokenManager
 from albert.exceptions import handle_http_errors
-from albert.utils.credentials import AlbertClientCredentials, TokenManager
 
 
 class AlbertSession(requests.Session):

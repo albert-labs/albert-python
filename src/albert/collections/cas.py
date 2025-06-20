@@ -2,10 +2,10 @@ import re
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.resources.base import OrderBy
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.cas import Cas
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
+from albert.resources.common.models import OrderBy
 
 
 class CasCollection(BaseCollection):

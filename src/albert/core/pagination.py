@@ -3,8 +3,8 @@ from enum import Enum
 from typing import Any, TypeVar
 from urllib.parse import quote_plus
 
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
-from albert.session import AlbertSession
 
 ItemType = TypeVar("ItemType")
 

@@ -3,9 +3,9 @@ from typing import Literal
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.resources.identifiers import InventoryId
+from albert.core.session import AlbertSession
+from albert.resources.common.identifiers import InventoryId
 from albert.resources.product_design import UnpackedProductDesign
-from albert.session import AlbertSession
 
 
 class ProductDesignCollection(BaseCollection):

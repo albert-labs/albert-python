@@ -3,16 +3,16 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
+from albert.core.base_model import BaseAlbertModel
 from albert.resources.acls import ACL, AccessControlLevel
-from albert.resources.base import (
-    BaseAlbertModel,
+from albert.resources.common.identifiers import NotebookId
+from albert.resources.common.models import (
     BaseResource,
     EntityLink,
     MetadataItem,
     SecurityClass,
     Status,
 )
-from albert.resources.identifiers import NotebookId
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project

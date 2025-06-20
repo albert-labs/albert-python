@@ -2,15 +2,15 @@ import time
 
 import pytest
 
-from albert.albert import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.core.client import Albert
 from albert.exceptions import BadRequestError
-from albert.resources.base import SecurityClass
 from albert.resources.cas import Cas
+from albert.resources.common.identifiers import ensure_inventory_id
+from albert.resources.common.models import SecurityClass
 from albert.resources.companies import Company
 from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
-from albert.resources.identifiers import ensure_inventory_id
 from albert.resources.inventory import (
     CasAmount,
     InventoryFilterParams,

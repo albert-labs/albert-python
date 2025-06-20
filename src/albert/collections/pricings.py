@@ -3,11 +3,11 @@ from enum import Enum
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.resources.base import OrderBy
-from albert.resources.identifiers import InventoryId
+from albert.core.session import AlbertSession
+from albert.resources.common.identifiers import InventoryId
+from albert.resources.common.models import OrderBy
+from albert.resources.common.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.pricings import InventoryPricings, Pricing
-from albert.session import AlbertSession
-from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 class PricingBy(str, Enum):

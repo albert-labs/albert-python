@@ -2,10 +2,10 @@ import uuid
 
 import pytest
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import OrderBy
 from albert.resources.cas import Cas
+from albert.resources.common.models import OrderBy
 
 
 def _get_all_asserts(returned_list):

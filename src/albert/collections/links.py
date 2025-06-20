@@ -1,9 +1,9 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.links import Link, LinkCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LinksCollection(BaseCollection):

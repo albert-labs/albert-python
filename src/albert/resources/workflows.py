@@ -1,8 +1,8 @@
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
 from albert.exceptions import AlbertException
-from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
+from albert.resources.common.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
+from albert.resources.common.models import BaseAlbertModel, BaseResource, EntityLink
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.serialization import SerializeAsEntityLink

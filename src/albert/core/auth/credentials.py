@@ -6,8 +6,8 @@ from urllib.parse import urljoin
 import requests
 from pydantic import SecretStr
 
+from albert.core.base_model import BaseAlbertModel
 from albert.exceptions import handle_http_errors
-from albert.utils.types import BaseAlbertModel
 
 
 class AlbertClientCredentials(BaseAlbertModel):

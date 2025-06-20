@@ -36,8 +36,8 @@ from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
-from albert.session import AlbertSession
-from albert.utils.credentials import AlbertClientCredentials
+from albert.core.auth.credentials import AlbertClientCredentials
+from albert.core.session import AlbertSession
 
 
 class Albert:

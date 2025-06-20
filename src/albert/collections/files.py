@@ -4,6 +4,7 @@ from typing import IO
 import requests
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.resources.files import (
     FileCategory,
     FileInfo,
@@ -11,7 +12,6 @@ from albert.resources.files import (
     SignURLPOST,
     SignURLPOSTFile,
 )
-from albert.session import AlbertSession
 
 
 class FileCollection(BaseCollection):

@@ -3,12 +3,12 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
-from albert.resources.base import OrderBy
+from albert.resources.common.models import OrderBy
 from albert.resources.tags import Tag
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class TagCollection(BaseCollection):

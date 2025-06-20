@@ -2,8 +2,8 @@ import os
 import webbrowser
 from urllib.parse import urlencode
 
-from albert.utils.auth._listener import start_local_http_server
-from albert.utils.credentials import OAuthTokenInfo
+from albert.core.auth._listener import start_local_http_server
+from albert.core.auth.credentials import OAuthTokenInfo
 
 
 class AlbertOAuthClient:

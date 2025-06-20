@@ -1,12 +1,12 @@
 from copy import deepcopy
 
+from albert.resources.common.patch import GeneralPatchDatum, PGPatchDatum
 from albert.resources.data_templates import DataTemplate
 from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
     ValueValidation,
 )
-from albert.utils.patch_types import GeneralPatchDatum, PGPatchDatum
 
 
 def _split_patch_types_for_params_and_data_cols(

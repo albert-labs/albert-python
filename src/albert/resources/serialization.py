@@ -2,7 +2,7 @@ from typing import Annotated, TypeVar
 
 from pydantic import PlainSerializer
 
-from albert.resources.base import BaseResource, EntityLink
+from albert.resources.common.models import BaseResource, EntityLink
 
 
 def convert_to_entity_link(value: BaseResource | EntityLink) -> EntityLink:

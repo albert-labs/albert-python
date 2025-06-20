@@ -1,4 +1,4 @@
-from albert.resources.base import BaseResource, EntityLink
+from albert.resources.common.models import BaseResource, EntityLink
 from albert.resources.serialization import SerializeAsEntityLink
 
 

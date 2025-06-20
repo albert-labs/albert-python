@@ -1,8 +1,8 @@
 import json
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.resources.substance import SubstanceInfo, SubstanceResponse
-from albert.session import AlbertSession
 
 
 class SubstanceCollection(BaseCollection):

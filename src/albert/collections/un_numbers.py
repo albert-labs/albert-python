@@ -2,9 +2,9 @@ import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.un_numbers import UnNumber
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnNumberCollection(BaseCollection):

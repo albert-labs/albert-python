@@ -1,7 +1,8 @@
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseAlbertModel, LocalizedNames, MetadataItem, SecurityClass
+from albert.resources.common.models import BaseAlbertModel, MetadataItem, SecurityClass
 from albert.resources.data_columns import DataColumn
+from albert.resources.data_templates import LocalizedNames
 from albert.resources.parameter_groups import (
     ValueValidation,
 )

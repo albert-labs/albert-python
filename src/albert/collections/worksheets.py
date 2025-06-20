@@ -1,7 +1,7 @@
 from albert.collections.base import BaseCollection
-from albert.resources.identifiers import ProjectId
+from albert.core.session import AlbertSession
+from albert.resources.common.identifiers import ProjectId
 from albert.resources.worksheets import Worksheet
-from albert.session import AlbertSession
 
 
 class WorksheetCollection(BaseCollection):
