@@ -2,7 +2,8 @@ import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.units import Unit, UnitCategory
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -133,7 +134,7 @@ class UnitCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -145,7 +146,7 @@ class UnitCollection(BaseCollection):
         verified: bool | None = None,
     ) -> Iterator[Unit]:
         """
-        Lists unit entities with optional filters.
+        Get all unit entities with optional filters.
 
         Parameters
         ----------
@@ -200,7 +201,7 @@ class UnitCollection(BaseCollection):
         Optional[Unit]
             The Unit object if found, None otherwise.
         """
-        found = self.list(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match)
         return next(found, None)
 
     def unit_exists(self, *, name: str, exact_match: bool = True) -> bool:

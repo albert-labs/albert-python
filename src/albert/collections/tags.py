@@ -2,8 +2,9 @@ import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertException
+from albert.resources.base import OrderBy
 from albert.resources.tags import Tag
 from albert.session import AlbertSession
 from albert.utils.logging import logger
@@ -26,7 +27,7 @@ class TagCollection(BaseCollection):
 
     Methods
     -------
-    list(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
+    get_all(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
         Lists tag entities with optional filters.
     tag_exists(tag, exact_match=True) -> bool
         Checks if a tag exists by its name.
@@ -36,7 +37,7 @@ class TagCollection(BaseCollection):
         Retrieves a tag by its ID.
     get_by_ids(tag_ids) -> list[Tag]
         Retrieve a list of tags by their IDs.
-    get_by_tag(tag, exact_match=True) -> Tag
+    get_by_name(name, exact_match=True) -> Tag
         Retrieves a tag by its name.
     delete(tag_id) -> bool
         Deletes a tag by its ID.
@@ -75,7 +76,7 @@ class TagCollection(BaseCollection):
             True if the tag exists, False otherwise.
         """
 
-        return self.get_by_tag(tag=tag, exact_match=exact_match) is not None
+        return self.get_by_name(name=tag, exact_match=exact_match) is not None
 
     def create(self, *, tag: str | Tag) -> Tag:
         """
@@ -89,11 +90,11 @@ class TagCollection(BaseCollection):
         Returns
         -------
         Tag
-            The created Tag object or the existing Tag object of it already exists.
+            The created Tag object or the existing Tag object if it already exists.
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
-        hit = self.get_by_tag(tag=tag.tag, exact_match=True)
+        hit = self.get_by_name(name=tag.tag, exact_match=True)
         if hit is not None:
             logging.warning(f"Tag {hit.tag} already exists with id {hit.id}")
             return hit
@@ -129,13 +130,13 @@ class TagCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
-    def get_by_tag(self, *, tag: str, exact_match: bool = True) -> Tag | None:
+    def get_by_name(self, *, name: str, exact_match: bool = True) -> Tag | None:
         """
-        Retrieves a tag by its name of None if not found.
+        Retrieves a tag by its name or None if not found.
 
         Parameters
         ----------
-        tag : str
+        name : str
             The name of the tag to retrieve.
         exact_match : bool, optional
             Whether to match the name exactly, by default True.
@@ -145,7 +146,7 @@ class TagCollection(BaseCollection):
         Tag
             The Tag object if found, None otherwise.
         """
-        found = self.list(name=tag, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match)
         return next(found, None)
 
     def delete(self, *, id: str) -> None:
@@ -180,7 +181,7 @@ class TagCollection(BaseCollection):
         Tag
             The renamed Tag.
         """
-        found_tag = self.get_by_tag(tag=old_name, exact_match=True)
+        found_tag = self.get_by_name(name=old_name, exact_match=True)
         if not found_tag:
             msg = f'Tag "{old_name}" not found.'
             logger.error(msg)
@@ -202,7 +203,7 @@ class TagCollection(BaseCollection):
         self.session.patch(self.base_path, json=payload)
         return self.get_by_id(id=tag_id)
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 50,
@@ -212,7 +213,7 @@ class TagCollection(BaseCollection):
         start_key: str | None = None,
     ) -> Iterator[Tag]:
         """
-        Lists Tag entities with optional filters.
+        Get all Tag entities with optional filters.
 
         Parameters
         ----------

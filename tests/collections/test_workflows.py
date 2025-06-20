@@ -5,7 +5,7 @@ from albert.resources.workflows import Workflow
 
 
 def test_basic_list(client: Albert, seeded_workflows: list[Workflow]):
-    for x in itertools.islice(client.workflows.list(), 10):
+    for x in itertools.islice(client.workflows.get_all(), 10):
         assert isinstance(x, Workflow)
 
 

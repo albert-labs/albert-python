@@ -1,7 +1,8 @@
 import re
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.cas import Cas
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -25,7 +26,7 @@ class CasCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 50,
@@ -35,7 +36,7 @@ class CasCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
     ) -> Iterator[Cas]:
         """
-        Lists CAS entities with optional filters.
+        Get all CAS entities with optional filters.
 
         Parameters
         ----------
@@ -170,7 +171,7 @@ class CasCollection(BaseCollection):
         Optional[Cas]
             The Cas object if found, None otherwise.
         """
-        found = self.list(number=number)
+        found = self.get_all(number=number)
         if exact_match:
             for f in found:
                 if self._clean_cas_number(f.number) == self._clean_cas_number(number):

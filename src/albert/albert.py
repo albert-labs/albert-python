@@ -176,7 +176,7 @@ class Albert:
         return TaskCollection(session=self.session)
 
     @property
-    def templates(self) -> CustomTemplatesCollection:
+    def custom_templates(self) -> CustomTemplatesCollection:
         return CustomTemplatesCollection(session=self.session)
 
     @property

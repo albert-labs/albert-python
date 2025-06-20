@@ -1,13 +1,6 @@
-from enum import Enum
-
 from albert.resources.base import BaseResource, MetadataItem
 from albert.session import AlbertSession
 from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
-
-
-class OrderBy(str, Enum):
-    DESCENDING = "desc"
-    ASCENDING = "asc"
 
 
 class BaseCollection:

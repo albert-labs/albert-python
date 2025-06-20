@@ -1,13 +1,25 @@
+import itertools
+
 from albert import Albert
 from albert.resources.lists import ListItem
-from albert.resources.tasks import BaseTask, PropertyTask
+from albert.resources.tasks import BaseTask, PropertyTask, TaskSearchItem
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
 
 
-def test_task_list(client: Albert, seeded_tasks):
-    tasks = client.tasks.list()
-    for task in tasks:
+def test_task_search(client: Albert, seeded_tasks):
+    for task in itertools.islice(client.tasks.search(), 10):
+        assert isinstance(task, TaskSearchItem)
+        assert isinstance(task.id, str) and task.id
+        assert isinstance(task.name, str) and task.name
+        assert isinstance(task.category, str) and task.category
+
+
+def test_task_get_all(client: Albert, seeded_tasks):
+    for task in itertools.islice(client.tasks.get_all(), 10):
         assert isinstance(task, BaseTask)
+        assert isinstance(task.id, str) and task.id
+        assert isinstance(task.name, str) and task.name
+        assert isinstance(task.category, str) and task.category
 
 
 def test_get_by_id(client: Albert, seeded_tasks):

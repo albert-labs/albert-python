@@ -2,7 +2,8 @@ from enum import Enum
 
 from pydantic import validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.resources.base import OrderBy
 from albert.resources.identifiers import InventoryId
 from albert.resources.pricings import InventoryPricings, Pricing
 from albert.session import AlbertSession

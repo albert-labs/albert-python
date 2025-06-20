@@ -53,8 +53,8 @@ class RoleCollection(BaseCollection):
         )
         return Role(**response.json())
 
-    def list(self, *, params: dict | None = None) -> list[Role]:
-        """Lists the available Roles
+    def get_all(self, *, params: dict | None = None) -> list[Role]:
+        """Get all the available Roles
 
         Parameters
         ----------

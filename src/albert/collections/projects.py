@@ -1,8 +1,10 @@
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.resources.projects import Project
+from albert.collections.base import BaseCollection
+from albert.exceptions import AlbertHTTPError
+from albert.resources.projects import Project, ProjectFilterParams
 from albert.session import AlbertSession
+from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
@@ -99,101 +101,80 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
-        self,
-        *,
-        text: str = None,
-        status: list[str] = None,
-        market_segment: list[str] = None,
-        application: list[str] = None,
-        technology: list[str] = None,
-        created_by: list[str] = None,
-        location: list[str] = None,
-        from_created_at: str = None,
-        to_created_at: str = None,
-        facet_field: str = None,
-        facet_text: str = None,
-        contains_field: list[str] = None,
-        contains_text: list[str] = None,
-        linked_to: str = None,
-        my_projects: bool = None,
-        my_role: list[str] = None,
-        order_by: OrderBy = OrderBy.DESCENDING,
-        sort_by: str = None,
-        limit: int = 50,
-    ) -> Iterator[Project]:
-        """
-        List projects with optional filters.
+    def search(self, *, params: ProjectFilterParams | None = None) -> Iterator[Project]:
+        """Search for Project matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        text : str, optional
-            Search any test in the project.
-        status : list[str], optional
-            The status filter for the projects.
-        market_segment : list[str], optional
-            The market segment filter for the projects.
-        application : list[str], optional
-            The application filter for the projects.
-        technology : list[str], optional
-            The technology filter for the projects.
-        created_by : list[str], optional
-            The name of the user who created the project.
-        location : list[str], optional
-            The location filter for the projects.
-        from_created_at : str, optional
-            The start date filter for the projects.
-        to_created_at : str, optional
-            The end date filter for the projects.
-        facet_field : str, optional
-            The facet field for the projects.
-        facet_text : str, optional
-            The facet text for the projects.
-        contains_field : list[str], optional
-            To power project facets search
-        contains_text : list[str], optional
-            To power project facets search
-        linked_to : str, optional
-            To pass text for linked to dropdown search in Task creation flow.
-        my_projects : bool, optional
-            Return Projects owned by you.
-        my_role : list[str], optional
-            Filter Projects to ones which you have a specific role in.
-        order_by : OrderBy, optional
-            The order in which to retrieve items (default is OrderBy.DESCENDING).
-        sort_by : str, optional
-            The field to sort by.
+        params : ProjectFilterParams, optional
+            Structured query parameters to filter, sort, and paginate projects.
 
         Returns
-        ------
+        -------
         Iterator[Project]
             An iterator of Project resources.
         """
-        params = {
-            "limit": limit,
-            "order": order_by.value,
-            "text": text,
-            "sortBy": sort_by,
-            "status": status,
-            "marketSegment": market_segment,
-            "application": application,
-            "technology": technology,
-            "createdBy": created_by,
-            "location": location,
-            "fromCreatedAt": from_created_at,
-            "toCreatedAt": to_created_at,
-            "facetField": facet_field,
-            "facetText": facet_text,
-            "containsField": contains_field,
-            "containsText": contains_text,
-            "linkedTo": linked_to,
-            "myProjects": my_projects,
-            "myRole": my_role,
+        params = params or ProjectFilterParams()
+
+        query_params = {
+            "limit": params.limit,
+            "order": params.order_by.value,
+            "text": params.text,
+            "sortBy": params.sort_by,
+            "status": params.status,
+            "marketSegment": params.market_segment,
+            "application": params.application,
+            "technology": params.technology,
+            "createdBy": params.created_by,
+            "location": params.location,
+            "fromCreatedAt": params.from_created_at,
+            "toCreatedAt": params.to_created_at,
+            "facetField": params.facet_field,
+            "facetText": params.facet_text,
+            "containsField": params.contains_field,
+            "containsText": params.contains_text,
+            "linkedTo": params.linked_to,
+            "myProjects": params.my_projects,
+            "myRole": params.my_role,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
+            params=query_params,
             deserialize=lambda items: [Project(**item) for item in items],
         )
+
+    def get_all(self, *, params: ProjectFilterParams | None = None) -> Iterator[Project]:
+        """Retrieve fully hydrated Project entities with optional filters.
+
+        This method returns complete entity data using `get_by_id`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+
+        Parameters
+        ----------
+        params : ProjectFilterParams, optional
+            Structured query parameters to filter, sort, and paginate projects.
+
+        Returns
+        -------
+        Iterator[Project]
+            An iterator of fully hydrated Project entities.
+        """
+        params = params or ProjectFilterParams()
+
+        for project in self.search(params=params):
+            project_id = getattr(project, "albertId", None) or getattr(project, "id", None)
+            if not project_id:
+                continue
+
+            id = project_id if project_id.startswith("PRO") else f"PRO{project_id}"
+
+            try:
+                yield self.get_by_id(id=id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error fetching project details {id}: {e}")
