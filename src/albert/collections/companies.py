@@ -66,7 +66,7 @@ class CompanyCollection(BaseCollection):
             deserialize=lambda items: [Company(**item) for item in items],
         )
 
-    def company_exists(self, *, name: str, exact_match: bool = True) -> bool:
+    def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
         Checks if a company exists by its name.
 

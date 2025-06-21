@@ -115,6 +115,7 @@ SerializeAsEntityLink = Annotated[
 ]
 """Type representing a union of `EntityType | EntityLink` that is serialized as a link."""
 
+
 class LocalizedNames(BaseAlbertModel):
     de: str | None = None
     ja: str | None = None

@@ -204,7 +204,7 @@ class UnitCollection(BaseCollection):
         found = self.get_all(name=name, exact_match=exact_match)
         return next(found, None)
 
-    def unit_exists(self, *, name: str, exact_match: bool = True) -> bool:
+    def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
         Checks if a unit exists by its name.
 

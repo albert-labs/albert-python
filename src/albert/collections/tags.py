@@ -29,7 +29,7 @@ class TagCollection(BaseCollection):
     -------
     get_all(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
         Lists tag entities with optional filters.
-    tag_exists(tag, exact_match=True) -> bool
+    exists(tag, exact_match=True) -> bool
         Checks if a tag exists by its name.
     create(tag) -> Tag
         Creates a new tag entity.
@@ -59,7 +59,7 @@ class TagCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{TagCollection._api_version}/tags"
 
-    def tag_exists(self, *, tag: str, exact_match: bool = True) -> bool:
+    def exists(self, *, tag: str, exact_match: bool = True) -> bool:
         """
         Checks if a tag exists by its name.
 

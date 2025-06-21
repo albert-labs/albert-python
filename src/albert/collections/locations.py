@@ -112,7 +112,7 @@ class LocationCollection(BaseCollection):
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=location.id)
 
-    def location_exists(self, *, location: Location) -> Location | None:
+    def exists(self, *, location: Location) -> Location | None:
         """Determines if a location, with the same name, exists in the collection.
 
         Parameters
@@ -146,7 +146,7 @@ class LocationCollection(BaseCollection):
         Location
             The created Location entity.
         """
-        exists = self.location_exists(location=location)
+        exists = self.exists(location=location)
         if exists:
             logging.warning(
                 f"Location with name {location.name} matches an existing location. Returning the existing Location."

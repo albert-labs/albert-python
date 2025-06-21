@@ -102,7 +102,7 @@ class InventoryCollection(BaseCollection):
         # post request
         self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
-    def inventory_exists(self, *, inventory_item: InventoryItem) -> bool:
+    def exists(self, *, inventory_item: InventoryItem) -> bool:
         """
         Check if an inventory item exists.
 

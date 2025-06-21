@@ -71,7 +71,7 @@ class CasCollection(BaseCollection):
             deserialize=lambda items: [Cas(**item) for item in items],
         )
 
-    def cas_exists(self, *, number: str, exact_match: bool = True) -> bool:
+    def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
         Checks if a CAS exists by its number.
 
