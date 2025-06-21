@@ -1,6 +1,7 @@
 from pydantic import TypeAdapter
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.notebooks import (
     Notebook,
@@ -11,7 +12,6 @@ from albert.resources.notebooks import (
     PutBlockPayload,
     PutOperation,
 )
-from albert.session import AlbertSession
 
 
 class NotebookCollection(BaseCollection):

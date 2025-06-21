@@ -3,7 +3,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.utils.types import BaseAlbertModel
+from albert.core.base_model import BaseAlbertModel
 
 
 class FileNamespace(str, Enum):

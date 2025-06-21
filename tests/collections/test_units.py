@@ -1,5 +1,5 @@
-from albert.albert import Albert
-from albert.resources.base import OrderBy
+from albert.core.client import Albert
+from albert.resources.common.models import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 
@@ -57,8 +57,8 @@ def test_bulk_get(client: Albert, seeded_units: list[Unit]):
 
 def test_unit_exists(client: Albert, seeded_units: list[Unit]):
     test_unit = seeded_units[2]
-    assert client.units.unit_exists(name=test_unit.name)
-    assert not client.units.unit_exists(
+    assert client.units.exists(name=test_unit.name)
+    assert not client.units.exists(
         name="totally nonesense unit no one should be using!662378393278932y5r"
     )
 
@@ -82,7 +82,7 @@ def test_unit_crud(client: Albert):
     assert updated_unit.symbol == "y"
 
     client.units.delete(id=updated_unit.id)
-    assert not client.units.unit_exists(name=updated_unit.name)
+    assert not client.units.exists(name=updated_unit.name)
 
 
 def test_create_unit(caplog, seeded_units: list[Unit], client: Albert):

@@ -4,10 +4,10 @@ from typing import ForwardRef, Union
 import pandas as pd
 from pydantic import Field, PrivateAttr, model_validator
 
+from albert.core.base_model import BaseAlbertModel
 from albert.exceptions import AlbertException
-from albert.resources.base import BaseResource, BaseSessionResource
+from albert.resources.common.models import BaseResource, BaseSessionResource
 from albert.resources.inventory import InventoryItem
-from albert.utils.types import BaseAlbertModel
 
 # Define forward references
 Row = ForwardRef("Row")

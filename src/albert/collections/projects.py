@@ -1,11 +1,11 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import Project, ProjectFilterParams
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ProjectCollection(BaseCollection):

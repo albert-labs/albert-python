@@ -1,11 +1,12 @@
 from datetime import datetime
 from enum import Enum
+from typing import Annotated, TypeVar
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PlainSerializer, PrivateAttr
 
+from albert.core.base_model import BaseAlbertModel
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
-from albert.session import AlbertSession
-from albert.utils.types import BaseAlbertModel
 
 
 class OrderBy(str, Enum):
@@ -18,7 +19,6 @@ class Status(str, Enum):
 
     ACTIVE = "active"
     INACTIVE = "inactive"
-    QUEUED = "queued"
 
 
 class SecurityClass(str, Enum):
@@ -98,7 +98,22 @@ class BaseSessionResource(BaseResource):
         return self._session
 
 
-MetadataItem = float | int | str | EntityLink | list[EntityLink] | None
+MetadataItem = float | int | str | EntityLink | list[EntityLink]
+
+
+def convert_to_entity_link(value: BaseResource | EntityLink) -> EntityLink:
+    if isinstance(value, BaseResource):
+        return value.to_entity_link()
+    return value
+
+
+EntityType = TypeVar("EntityType", bound=BaseResource)
+
+SerializeAsEntityLink = Annotated[
+    EntityType | EntityLink,
+    PlainSerializer(convert_to_entity_link),
+]
+"""Type representing a union of `EntityType | EntityLink` that is serialized as a link."""
 
 
 class LocalizedNames(BaseAlbertModel):

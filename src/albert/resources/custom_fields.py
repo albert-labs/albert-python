@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseResource
+from albert.resources.common.models import BaseResource
 
 
 class FieldType(str, Enum):
