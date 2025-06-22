@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.resources.lots import Lot
 from tests.seeding import generate_lot_seeds
 

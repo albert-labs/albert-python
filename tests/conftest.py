@@ -5,7 +5,7 @@ from contextlib import suppress
 
 import pytest
 
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.btdataset import BTDataset
@@ -65,7 +65,7 @@ from tests.utils.fake_session import FakeAlbertSession
 
 @pytest.fixture(scope="session")
 def client() -> Albert:
-    credentials = ClientCredentials.from_env(
+    credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
     )

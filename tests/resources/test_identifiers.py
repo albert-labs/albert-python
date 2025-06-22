@@ -3,7 +3,7 @@ from collections.abc import Callable
 import pytest
 from pydantic import validate_call
 
-from albert.resources.identifiers import (
+from albert.resources.common.identifiers import (
     InventoryId,
     TagId,
     UserId,

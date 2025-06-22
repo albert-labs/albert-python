@@ -3,21 +3,21 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import (
+from albert.core.base_model import BaseAlbertModel
+from albert.resources.common.models import (
     AuditFields,
     EntityLink,
     LocalizedNames,
     MetadataItem,
     SecurityClass,
+    SerializeAsEntityLink,
 )
+from albert.resources.common.patch import PatchDatum, PatchPayload, PGPatchDatum
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
-from albert.resources.serialization import SerializeAsEntityLink
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tags import BaseTaggedEntity
 from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.utils.patch_types import PatchDatum, PatchPayload, PGPatchDatum
-from albert.utils.types import BaseAlbertModel
 
 
 class PGPatchPayload(PatchPayload):

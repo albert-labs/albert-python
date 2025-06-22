@@ -1,6 +1,6 @@
 import uuid
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.resources.parameters import Parameter
 
 

@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.resources.custom_templates import (
     CustomTemplate,
     CustomTemplateSearchItem,

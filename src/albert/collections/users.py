@@ -4,12 +4,12 @@ from collections.abc import Iterator
 import jwt
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import Status
+from albert.resources.common.models import Status
 from albert.resources.users import User, UserFilterParams, UserFilterType, UserSearchItem
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UserCollection(BaseCollection):

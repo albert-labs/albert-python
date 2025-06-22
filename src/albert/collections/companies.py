@@ -2,11 +2,11 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CompanyCollection(BaseCollection):
@@ -66,7 +66,7 @@ class CompanyCollection(BaseCollection):
             deserialize=lambda items: [Company(**item) for item in items],
         )
 
-    def company_exists(self, *, name: str, exact_match: bool = True) -> bool:
+    def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
         Checks if a company exists by its name.
 

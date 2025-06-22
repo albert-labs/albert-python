@@ -3,13 +3,13 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import EntityLink
+from albert.resources.common.models import EntityLink
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class StorageLocationsCollection(BaseCollection):

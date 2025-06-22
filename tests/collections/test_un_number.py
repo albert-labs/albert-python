@@ -1,5 +1,5 @@
-from albert.albert import Albert
 from albert.collections.un_numbers import UnNumber
+from albert.core.client import Albert
 
 
 def assert_un_number_items(returned_list):

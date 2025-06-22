@@ -2,9 +2,9 @@ import itertools
 
 import pytest
 
-from albert.albert import Albert
+from albert.core.client import Albert
 from albert.exceptions import BadRequestError
-from albert.resources.base import EntityLink
+from albert.resources.common.models import EntityLink
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,

@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL
-from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
+from albert.resources.common.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
+from albert.resources.common.models import BaseAlbertModel, BaseResource, EntityLink
 
 
 class ListBlockStyle(str, Enum):
