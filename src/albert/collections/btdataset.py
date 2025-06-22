@@ -3,10 +3,10 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.models.identifiers import BTDatasetId
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.btdataset import BTDataset
-from albert.resources.identifiers import BTDatasetId
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class BTDatasetCollection(BaseCollection):

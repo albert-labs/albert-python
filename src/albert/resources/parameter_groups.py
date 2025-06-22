@@ -3,20 +3,15 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import (
-    AuditFields,
-    EntityLink,
-    LocalizedNames,
-    MetadataItem,
-    SecurityClass,
-)
+from albert.core.base import BaseAlbertModel
+from albert.core.models.common import AuditFields, EntityLink, LocalizedNames
+from albert.core.models.enums import SecurityClass
+from albert.core.models.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.utils.types import BaseAlbertModel
 
 
 class PGType(str, Enum):

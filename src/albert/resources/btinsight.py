@@ -3,9 +3,14 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
-from albert.resources.identifiers import BTDatasetId, BTInsightId, BTModelId, BTModelSessionId
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
+from albert.core.models.common import BaseResource
+from albert.core.models.identifiers import (
+    BTDatasetId,
+    BTInsightId,
+    BTModelId,
+    BTModelSessionId,
+)
 
 
 class BTInsightCategory(str, Enum):

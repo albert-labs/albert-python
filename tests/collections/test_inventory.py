@@ -2,15 +2,15 @@ import time
 
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.core.models.enums import SecurityClass
+from albert.core.models.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
-from albert.resources.base import SecurityClass
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
-from albert.resources.identifiers import ensure_inventory_id
 from albert.resources.inventory import (
     CasAmount,
     InventoryFilterParams,
@@ -129,7 +129,7 @@ def test_inventory_update(client: Albert, seed_prefix: str):
     # for this test to work
     time.sleep(4)
 
-    assert client.inventory.inventory_exists(inventory_item=created)
+    assert client.inventory.exists(inventory_item=created)
     d = "testing SDK CRUD"
     created.description = d
 
@@ -138,7 +138,7 @@ def test_inventory_update(client: Albert, seed_prefix: str):
     assert updated.id == created.id
 
     client.inventory.delete(id=created.id)
-    assert not client.inventory.inventory_exists(inventory_item=created)
+    assert not client.inventory.exists(inventory_item=created)
 
 
 def test_collection_blocks_formulation(client: Albert, seeded_projects):
@@ -156,7 +156,7 @@ def test_collection_blocks_formulation(client: Albert, seeded_projects):
 
         # delete the collection block in case it was created
         client.inventory.delete(r)
-        assert not client.inventory.inventory_exists(r.id)
+        assert not client.inventory.exists(r.id)
 
 
 def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):

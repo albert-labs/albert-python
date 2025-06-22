@@ -3,10 +3,10 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.resources.base import OrderBy
+from albert.core.models.enums import OrderBy
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.parameters import Parameter
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ParameterCollection(BaseCollection):

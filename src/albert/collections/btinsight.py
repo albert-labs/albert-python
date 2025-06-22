@@ -3,11 +3,11 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.resources.base import OrderBy
+from albert.core.models.enums import OrderBy
+from albert.core.models.identifiers import BTInsightId
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
-from albert.resources.identifiers import BTInsightId
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class BTInsightCollection(BaseCollection):

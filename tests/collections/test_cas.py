@@ -2,9 +2,9 @@ import uuid
 
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
+from albert.core.models.enums import OrderBy
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import OrderBy
 from albert.resources.cas import Cas
 
 
@@ -50,10 +50,10 @@ def test_advanced_cas_get_all(client: Albert, seeded_cas: list[Cas]):
 def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
     # Check if CAS exists for a seeded CAS number
     cas_number = seeded_cas[0].number
-    assert client.cas_numbers.cas_exists(number=cas_number)
+    assert client.cas_numbers.exists(number=cas_number)
 
     # Check if CAS does not exist for a non-existent CAS number
-    assert not client.cas_numbers.cas_exists(number=f"{uuid.uuid4()}")
+    assert not client.cas_numbers.exists(number=f"{uuid.uuid4()}")
 
 
 def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):

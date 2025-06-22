@@ -36,8 +36,8 @@ from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
-from albert.session import AlbertSession
-from albert.utils.credentials import ClientCredentials
+from albert.core.auth.credentials import AlbertClientCredentials
+from albert.core.session import AlbertSession
 
 
 class Albert:
@@ -50,9 +50,9 @@ class Albert:
         The base URL of the Albert API (default is "https://app.albertinvent.com").
     token : str, optional
         The token for authentication (default is read from environment variable "ALBERT_TOKEN").
-    client_credentials: ClientCredentials, optional
+    client_credentials: AlbertClientCredentials, optional
         The client credentials for programmatic authentication.
-        Client credentials can be read from the environment by `ClientCredentials.from_env()`.
+        Client credentials can be read from the environment by `AlbertClientCredentials.from_env()`.
     retries : int, optional
         The maximum number of retries for failed requests (default is None).
     session : AlbertSession, optional
@@ -80,14 +80,16 @@ class Albert:
         *,
         base_url: str | None = None,
         token: str | None = None,
-        client_credentials: ClientCredentials | None = None,
+        client_credentials: AlbertClientCredentials | None = None,
         retries: int | None = None,
         session: AlbertSession | None = None,
     ):
         self.session = session or AlbertSession(
-            base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
+            base_url=base_url.rstrip("/")
+            or os.getenv("ALBERT_BASE_URL")
+            or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
-            client_credentials=client_credentials or ClientCredentials.from_env(),
+            client_credentials=client_credentials or AlbertClientCredentials.from_env(),
             retries=retries,
         )
 

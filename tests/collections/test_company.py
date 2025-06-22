@@ -1,6 +1,6 @@
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
@@ -63,6 +63,6 @@ def test_company_crud(client: Albert, seeded_companies: list[Company]):
     assert renamed_company.id == company.id
 
     client.companies.delete(id=company.id)
-    assert not client.companies.company_exists(name=company_name)
+    assert not client.companies.exists(name=company_name)
     with pytest.raises(AlbertException):
         client.companies.rename(old_name=company_name, new_name="nope")

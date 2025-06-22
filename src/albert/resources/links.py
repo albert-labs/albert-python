@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLink
+from albert.core.models.common import BaseResource, EntityLink
 
 
 class LinkCategory(str, Enum):

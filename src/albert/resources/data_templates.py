@@ -1,10 +1,14 @@
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseAlbertModel, LocalizedNames, MetadataItem, SecurityClass
+from albert.core.base import (
+    BaseAlbertModel,
+)
+from albert.core.models.common import LocalizedNames
+from albert.core.models.enums import SecurityClass
+from albert.core.models.identifiers import DataTemplateId
+from albert.core.models.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.data_columns import DataColumn
-from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import ParameterValue, ValueValidation
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User

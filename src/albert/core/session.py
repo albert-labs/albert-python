@@ -5,8 +5,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import albert
+from albert.core.auth.credentials import AlbertClientCredentials, TokenManager
 from albert.exceptions import handle_http_errors
-from albert.utils.credentials import ClientCredentials, TokenManager
 
 
 class AlbertSession(requests.Session):
@@ -19,7 +19,7 @@ class AlbertSession(requests.Session):
         The base URL to prefix to all requests. (e.g., "https://sandbox.albertinvent.com")
     retries : int
         The number of retries for failed requests. Defaults to 3.
-    client_credentials : ClientCredentials | None
+    client_credentials : AlbertClientCredentials | None
         The client credentials for programmatic authentication. Optional if token is provided.
     token : str | None
         The JWT token for authentication. Optional if client credentials are provided.
@@ -30,7 +30,7 @@ class AlbertSession(requests.Session):
         *,
         base_url: str,
         token: str | None = None,
-        client_credentials: ClientCredentials | None = None,
+        client_credentials: AlbertClientCredentials | None = None,
         retries: int | None = None,
     ):
         super().__init__()

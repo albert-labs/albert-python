@@ -3,12 +3,12 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.models.enums import OrderBy
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
-from albert.resources.base import OrderBy
 from albert.resources.tags import Tag
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class TagCollection(BaseCollection):
@@ -29,7 +29,7 @@ class TagCollection(BaseCollection):
     -------
     get_all(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
         Lists tag entities with optional filters.
-    tag_exists(tag, exact_match=True) -> bool
+    exists(tag, exact_match=True) -> bool
         Checks if a tag exists by its name.
     create(tag) -> Tag
         Creates a new tag entity.
@@ -59,7 +59,7 @@ class TagCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{TagCollection._api_version}/tags"
 
-    def tag_exists(self, *, tag: str, exact_match: bool = True) -> bool:
+    def exists(self, *, tag: str, exact_match: bool = True) -> bool:
         """
         Checks if a tag exists by its name.
 

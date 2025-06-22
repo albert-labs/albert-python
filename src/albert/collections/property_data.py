@@ -7,9 +7,10 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.tasks import TaskCollection
-from albert.exceptions import NotFoundError
-from albert.resources.base import EntityLink, OrderBy
-from albert.resources.identifiers import (
+from albert.core.logging import logger
+from albert.core.models.common import EntityLink
+from albert.core.models.enums import OrderBy
+from albert.core.models.identifiers import (
     BlockId,
     DataColumnId,
     DataTemplateId,
@@ -21,6 +22,10 @@ from albert.resources.identifiers import (
     TaskId,
     UserId,
 )
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.exceptions import NotFoundError
+from albert.resources.common.patch import PatchOperation
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
@@ -37,10 +42,6 @@ from albert.resources.property_data import (
     Trial,
 )
 from albert.resources.tasks import PropertyTask
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import PatchOperation
 
 
 class PropertyDataCollection(BaseCollection):

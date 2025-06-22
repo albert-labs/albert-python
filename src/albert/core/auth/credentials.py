@@ -1,16 +1,16 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Union
+from typing import Literal
 from urllib.parse import urljoin
 
 import requests
 from pydantic import SecretStr
 
+from albert.core.base import BaseAlbertModel
 from albert.exceptions import handle_http_errors
-from albert.utils.types import BaseAlbertModel
 
 
-class ClientCredentials(BaseAlbertModel):
+class AlbertClientCredentials(BaseAlbertModel):
     """Client authentication credentials for the Albert API."""
 
     id: str
@@ -22,8 +22,8 @@ class ClientCredentials(BaseAlbertModel):
         *,
         client_id_env: str = "ALBERT_CLIENT_ID",
         client_secret_env: str = "ALBERT_CLIENT_SECRET",
-    ) -> Union["ClientCredentials", None]:
-        """Read `ClientCredentials` from the environment.
+    ) -> "AlbertClientCredentials":
+        """Read `AlbertClientCredentials` from the environment.
 
         Returns None if the `client_id_env` and `client_secret_env` environment variables
         are not defined.
@@ -39,7 +39,7 @@ class ClientCredentials(BaseAlbertModel):
 
         Returns
         -------
-        ClientCredentials | None
+        AlbertClientCredentials | None
             The client credentials obtained from the environment, if present.
         """
         client_id = os.getenv(client_id_env)
@@ -66,16 +66,17 @@ class TokenManager:
     """Helper to manage refreshing an access token from OAuth endpoint."""
 
     oauth_token_path: str = "/api/v3/login/oauth/token"
+    refresh_token_path: str = "/api/v3/login/refresh"
 
-    def __init__(self, base_url: str, client_credentials: ClientCredentials):
+    def __init__(self, base_url: str, client_credentials: AlbertClientCredentials):
         self.oauth_token_url = urljoin(base_url, self.oauth_token_path)
+        self.refresh_token_url = urljoin(base_url, self.refresh_token_path)
         self.client_credentials = client_credentials
 
         self._token_info: OAuthTokenInfo | None = None
         self._refresh_time: datetime | None = None
 
-    def _refresh_token(self) -> str:
-        # TODO: Implement using refresh_token once it is working
+    def _create_token_with_client_credentials(self) -> None:
         payload = CreateOAuthToken(
             client_id=self.client_credentials.id,
             client_secret=self.client_credentials.secret.get_secret_value(),
@@ -94,6 +95,25 @@ class TokenManager:
             - timedelta(minutes=1)  # Buffer to avoid token expiration
         )
 
+    def _refresh_token_with_refresh_token(self) -> bool:
+        if self._token_info is None or not self._token_info.refresh_token:
+            return False
+
+        payload = {"refreshtoken": self._token_info.refresh_token}
+        with handle_http_errors():
+            response = requests.post(
+                self.refresh_token_url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+        self._token_info = OAuthTokenInfo(**response.json())
+        self._refresh_time = (
+            datetime.now(timezone.utc)
+            + timedelta(seconds=self._token_info.expires_in)
+            - timedelta(minutes=1)  # Buffer to avoid token expiration
+        )
+
     def _requires_refresh(self) -> bool:
         return (
             self._token_info is None
@@ -102,6 +122,9 @@ class TokenManager:
         )
 
     def get_access_token(self) -> str:
+        # TODO: enable when refresh token works
+        # if self._requires_refresh() and not self._refresh_token_with_refresh_token():
         if self._requires_refresh():
-            self._refresh_token()
+            self._create_token_with_client_credentials()
+
         return self._token_info.access_token

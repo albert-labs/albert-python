@@ -2,9 +2,9 @@ import uuid
 
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
+from albert.core.models.enums import OrderBy
 from albert.exceptions import AlbertException
-from albert.resources.base import OrderBy
 from albert.resources.tags import Tag
 
 
@@ -64,8 +64,8 @@ def test_get_tag_by(client: Albert, seeded_tags: list[Tag]):
 
 
 def test_tag_exists(client: Albert, seeded_tags: list[Tag]):
-    assert client.tags.tag_exists(tag=seeded_tags[1].tag)
-    assert not client.tags.tag_exists(
+    assert client.tags.exists(tag=seeded_tags[1].tag)
+    assert not client.tags.exists(
         tag="Nonesense tag no one would ever make!893y58932y58923", exact_match=True
     )
 

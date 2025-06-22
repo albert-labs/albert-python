@@ -1,6 +1,6 @@
-from albert.albert import Albert
-from albert.utils.credentials import ClientCredentials
+from albert.client import Albert
+from albert.core.auth.credentials import AlbertClientCredentials
 
-__all__ = ["Albert", "ClientCredentials"]
+__all__ = ["Albert", "AlbertClientCredentials"]
 
-__version__ = "0.14.0"
+__version__ = "1.0.0"

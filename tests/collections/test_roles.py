@@ -1,6 +1,6 @@
 import json
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.roles import Role
 
 

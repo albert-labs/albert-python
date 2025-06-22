@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
 
 
 class FacetType(str, Enum):

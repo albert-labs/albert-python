@@ -2,7 +2,8 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource, MetadataItem
+from albert.core.models.common import BaseResource
+from albert.core.models.types import MetadataItem
 
 
 class ParameterCategory(str, Enum):
