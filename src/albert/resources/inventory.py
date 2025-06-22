@@ -5,16 +5,18 @@ from pydantic import Field, field_validator, model_validator
 
 from albert.collections.cas import Cas
 from albert.collections.companies import Company
+from albert.core.base import BaseAlbertModel
+from albert.core.models.enums import (
+    OrderBy,
+    SecurityClass,
+)
+from albert.core.models.identifiers import InventoryId, ProjectId, WorksheetId
+from albert.core.models.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.acls import ACL
-from albert.resources.base import MetadataItem, OrderBy, SecurityClass
-from albert.resources.identifiers import InventoryId, ProjectId, WorksheetId
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.storage_locations import StorageLocation
-from albert.resources.tagged_base import BaseTaggedEntity
-from albert.resources.tags import Tag
+from albert.resources.tags import BaseTaggedEntity, Tag
 from albert.resources.users import User
-from albert.utils.types import BaseAlbertModel
 
 ALL_MERGE_MODULES = [
     "PRICING",

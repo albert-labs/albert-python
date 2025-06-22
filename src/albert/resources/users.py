@@ -5,10 +5,13 @@ from pydantic import EmailStr, Field
 
 from albert.collections.locations import Location
 from albert.collections.roles import Role
-from albert.resources.base import BaseResource, MetadataItem, OrderBy, Status
-from albert.resources.identifiers import UserId
-from albert.resources.serialization import SerializeAsEntityLink
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import (
+    BaseAlbertModel,
+)
+from albert.core.models.common import BaseResource
+from albert.core.models.enums import OrderBy, Status
+from albert.core.models.identifiers import UserId
+from albert.core.models.types import MetadataItem, SerializeAsEntityLink
 
 
 class UserClass(str, Enum):

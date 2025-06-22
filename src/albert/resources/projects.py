@@ -2,10 +2,13 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
+from albert.core.models.common import (
+    BaseResource,
+)
+from albert.core.models.enums import OrderBy
+from albert.core.models.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.acls import ACL
-from albert.resources.base import BaseResource, MetadataItem, OrderBy
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
 
 
 class ProjectClass(str, Enum):

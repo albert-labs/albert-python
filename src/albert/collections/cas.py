@@ -2,10 +2,10 @@ import re
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.resources.base import OrderBy
+from albert.core.models.enums import OrderBy
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.cas import Cas
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CasCollection(BaseCollection):
@@ -71,7 +71,7 @@ class CasCollection(BaseCollection):
             deserialize=lambda items: [Cas(**item) for item in items],
         )
 
-    def cas_exists(self, *, number: str, exact_match: bool = True) -> bool:
+    def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
         Checks if a CAS exists by its number.
 

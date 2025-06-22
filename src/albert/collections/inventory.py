@@ -7,9 +7,16 @@ from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
-from albert.resources.base import OrderBy
+from albert.core.models.enums import OrderBy
+from albert.core.models.identifiers import (
+    InventoryId,
+    ProjectId,
+    SearchProjectId,
+    WorksheetId,
+)
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.facet import FacetItem
-from albert.resources.identifiers import InventoryId, ProjectId, SearchProjectId, WorksheetId
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
@@ -23,8 +30,6 @@ from albert.resources.inventory import (
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class InventoryCollection(BaseCollection):
@@ -97,7 +102,7 @@ class InventoryCollection(BaseCollection):
         # post request
         self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
-    def inventory_exists(self, *, inventory_item: InventoryItem) -> bool:
+    def exists(self, *, inventory_item: InventoryItem) -> bool:
         """
         Check if an inventory item exists.
 

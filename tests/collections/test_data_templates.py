@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 from albert import Albert
-from albert.resources.base import EntityLink
+from albert.core.models.common import EntityLink
 from albert.resources.data_templates import (
     DataTemplate,
     DataTemplateSearchItem,

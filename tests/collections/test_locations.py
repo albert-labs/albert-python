@@ -1,6 +1,6 @@
 import uuid
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.locations import Location
 
 
@@ -88,7 +88,7 @@ def test_update_location(client: Albert, seeded_locations: list[Location]):
 def test_location_exists(client: Albert, seeded_locations):
     # Check if the first seeded location exists
     seeded_location = seeded_locations[1]
-    exists = client.locations.location_exists(location=seeded_location)
+    exists = client.locations.exists(location=seeded_location)
 
     assert exists is not None
     assert isinstance(exists, Location)
@@ -101,5 +101,5 @@ def test_delete_location(client: Albert, seeded_locations: list[Location]):
     client.locations.delete(id=seeded_locations[2].id)
 
     # Ensure it no longer exists
-    does_exist = client.locations.location_exists(location=seeded_locations[2])
+    does_exist = client.locations.exists(location=seeded_locations[2])
     assert does_exist is None

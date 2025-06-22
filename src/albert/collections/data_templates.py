@@ -4,16 +4,16 @@ from itertools import islice
 from pydantic import Field
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.models.enums import OrderBy
+from albert.core.models.identifiers import DataTemplateId
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import OrderBy
+from albert.resources.common.patch import GeneralPatchDatum
 from albert.resources.data_templates import DataColumnValue, DataTemplate, DataTemplateSearchItem
-from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import PGPatchPayload
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import GeneralPatchDatum
-from albert.utils.patches import (
+from albert.utils._patch_utils import (
     _split_patch_types_for_params_and_data_cols,
 )
 

@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.core.models.common import BaseResource
 
 
 class AttachmentCategory(str, Enum):

@@ -2,9 +2,9 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLink
-from albert.resources.identifiers import BTDatasetId
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
+from albert.core.models.common import BaseResource, EntityLink
+from albert.core.models.identifiers import BTDatasetId
 
 
 class BTDatasetReferences(BaseAlbertModel):

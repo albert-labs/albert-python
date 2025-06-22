@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
 
 
 class PatchOperation(str, Enum):

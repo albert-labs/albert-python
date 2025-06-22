@@ -4,9 +4,9 @@ from typing import Literal
 import pandas as pd
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import BaseAlbertModel, BaseResource
-from albert.resources.data_templates import DataTemplate
-from albert.resources.identifiers import (
+from albert.core.base import BaseAlbertModel
+from albert.core.models.common import BaseResource
+from albert.core.models.identifiers import (
     DataColumnId,
     DataTemplateId,
     InventoryId,
@@ -18,11 +18,12 @@ from albert.resources.identifiers import (
     UnitId,
     WorkflowId,
 )
+from albert.core.models.types import SerializeAsEntityLink
+from albert.resources.common.patch import PatchDatum
+from albert.resources.data_templates import DataTemplate
 from albert.resources.lots import Lot
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
-from albert.utils.patch_types import PatchDatum
 
 ########################## Supporting GET Classes ##########################
 

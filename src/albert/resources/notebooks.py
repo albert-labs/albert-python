@@ -7,10 +7,11 @@ from typing import Annotated, Any, Literal
 from pandas import DataFrame
 from pydantic import BaseModel, Field, model_validator
 
+from albert.core.base import BaseAlbertModel
+from albert.core.models.common import BaseResource, EntityLink
+from albert.core.models.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL
-from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
 
 
 class ListBlockStyle(str, Enum):

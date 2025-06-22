@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 
 from albert import Albert
-from albert.resources.base import Status
+from albert.core.models.enums import Status
 from albert.resources.users import User, UserFilterParams, UserSearchItem
 
 

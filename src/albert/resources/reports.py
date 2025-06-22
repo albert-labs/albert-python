@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.core.models.common import BaseResource
 
 ReportItem = dict[str, Any] | list[dict[str, Any]] | None
 

@@ -6,14 +6,18 @@ from pydantic import validate_call
 from requests.exceptions import RetryError
 
 from albert.collections.base import BaseCollection
-from albert.exceptions import AlbertHTTPError
-from albert.resources.base import OrderBy
-from albert.resources.identifiers import (
+from albert.core.logging import logger
+from albert.core.models.enums import OrderBy
+from albert.core.models.identifiers import (
     BlockId,
     DataTemplateId,
     TaskId,
     WorkflowId,
 )
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.exceptions import AlbertHTTPError
+from albert.resources.common.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
@@ -26,10 +30,6 @@ from albert.resources.tasks import (
     TaskPatchPayload,
     TaskSearchItem,
 )
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 class TaskCollection(BaseCollection):
