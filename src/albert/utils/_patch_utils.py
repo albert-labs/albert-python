@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from albert.resources.common.patch import GeneralPatchDatum, PGPatchDatum
+from albert.core.models.patch import GeneralPatchDatum, PGPatchDatum
 from albert.resources.data_templates import DataTemplate
 from albert.resources.parameter_groups import (
     EnumValidationValue,

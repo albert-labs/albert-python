@@ -4,13 +4,11 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter
 
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.enums import OrderBy, SecurityClass
 from albert.core.models.identifiers import InventoryId, LotId
+from albert.core.models.patch import PatchPayload
 from albert.core.models.types import MetadataItem, SerializeAsEntityLink
-from albert.resources.common.patch import PatchPayload
 from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
 from albert.resources.projects import Project

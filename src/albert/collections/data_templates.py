@@ -7,10 +7,10 @@ from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.models.enums import OrderBy
 from albert.core.models.identifiers import DataTemplateId
+from albert.core.models.patch import GeneralPatchDatum
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.common.patch import GeneralPatchDatum
 from albert.resources.data_templates import DataColumnValue, DataTemplate, DataTemplateSearchItem
 from albert.resources.parameter_groups import PGPatchPayload
 from albert.utils._patch_utils import (

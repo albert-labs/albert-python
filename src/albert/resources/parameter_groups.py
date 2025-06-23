@@ -10,8 +10,8 @@ from albert.core.models.common import (
     LocalizedNames,
 )
 from albert.core.models.enums import SecurityClass
+from albert.core.models.patch import PatchDatum, PatchPayload, PGPatchDatum
 from albert.core.models.types import MetadataItem, SerializeAsEntityLink
-from albert.resources.common.patch import PatchDatum, PatchPayload, PGPatchDatum
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.tags import BaseTaggedEntity

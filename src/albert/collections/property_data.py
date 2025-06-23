@@ -22,10 +22,10 @@ from albert.core.models.identifiers import (
     TaskId,
     UserId,
 )
+from albert.core.models.patch import PatchOperation
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.exceptions import NotFoundError
-from albert.resources.common.patch import PatchOperation
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,

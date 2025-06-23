@@ -5,9 +5,7 @@ from pydantic import EmailStr, Field
 
 from albert.collections.locations import Location
 from albert.collections.roles import Role
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.common import BaseResource
 from albert.core.models.enums import OrderBy, Status
 from albert.core.models.identifiers import UserId
