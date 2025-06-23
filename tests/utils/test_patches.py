@@ -1,4 +1,4 @@
-from albert.resources.common.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.lists import ListItem
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.tasks import BaseTask

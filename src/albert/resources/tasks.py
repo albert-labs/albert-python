@@ -4,9 +4,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter
 
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.enums import OrderBy, SecurityClass
 from albert.core.models.identifiers import InventoryId, LotId
 from albert.core.models.patch import PatchPayload

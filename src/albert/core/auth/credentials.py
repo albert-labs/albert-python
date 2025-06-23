@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -22,7 +24,7 @@ class AlbertClientCredentials(BaseAlbertModel):
         *,
         client_id_env: str = "ALBERT_CLIENT_ID",
         client_secret_env: str = "ALBERT_CLIENT_SECRET",
-    ) -> "AlbertClientCredentials":
+    ) -> AlbertClientCredentials | None:
         """Read `AlbertClientCredentials` from the environment.
 
         Returns None if the `client_id_env` and `client_secret_env` environment variables
@@ -95,25 +97,6 @@ class TokenManager:
             - timedelta(minutes=1)  # Buffer to avoid token expiration
         )
 
-    def _refresh_token_with_refresh_token(self) -> bool:
-        if self._token_info is None or not self._token_info.refresh_token:
-            return False
-
-        payload = {"refreshtoken": self._token_info.refresh_token}
-        with handle_http_errors():
-            response = requests.post(
-                self.refresh_token_url,
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            response.raise_for_status()
-        self._token_info = OAuthTokenInfo(**response.json())
-        self._refresh_time = (
-            datetime.now(timezone.utc)
-            + timedelta(seconds=self._token_info.expires_in)
-            - timedelta(minutes=1)  # Buffer to avoid token expiration
-        )
-
     def _requires_refresh(self) -> bool:
         return (
             self._token_info is None
@@ -122,8 +105,6 @@ class TokenManager:
         )
 
     def get_access_token(self) -> str:
-        # TODO: enable when refresh token works
-        # if self._requires_refresh() and not self._refresh_token_with_refresh_token():
         if self._requires_refresh():
             self._create_token_with_client_credentials()
 

@@ -14,10 +14,10 @@ from albert.core.models.identifiers import (
     TaskId,
     WorkflowId,
 )
+from albert.core.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.common.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,

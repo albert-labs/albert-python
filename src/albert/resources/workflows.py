@@ -1,8 +1,6 @@
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.common import BaseResource, EntityLink
 from albert.core.models.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
 from albert.core.models.types import SerializeAsEntityLink

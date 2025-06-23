@@ -1,8 +1,6 @@
 from pydantic import Field, model_validator
 
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.common import LocalizedNames
 from albert.core.models.enums import SecurityClass
 from albert.core.models.identifiers import DataTemplateId

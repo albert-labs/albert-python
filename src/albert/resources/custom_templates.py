@@ -3,9 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
-from albert.core.base import (
-    BaseAlbertModel,
-)
+from albert.core.base import BaseAlbertModel
 from albert.core.models.common import BaseResource, EntityLink
 from albert.core.models.enums import SecurityClass, Status
 from albert.core.models.identifiers import NotebookId
