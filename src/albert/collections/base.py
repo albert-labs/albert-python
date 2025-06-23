@@ -1,3 +1,5 @@
+from deprecated import deprecated
+
 from albert.core.session import AlbertSession
 from albert.resources.common.models import BaseResource, MetadataItem
 from albert.resources.common.patch import PatchDatum, PatchOperation, PatchPayload
@@ -187,3 +189,13 @@ class BaseCollection:
                         )
                     )
         return PatchPayload(data=data)
+
+    @deprecated(
+        "The 'list' method is deprecated and no longer supported. Use 'get_all(params=...)' or 'search(...)' instead.",
+        version="1.0.0",
+    )
+    def list(self, **kwargs):
+        raise NotImplementedError(
+            "The 'list' method is deprecated and has been disabled. "
+            "Use 'get_all(params=...)' or 'search(...)' instead."
+        )
