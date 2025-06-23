@@ -3,7 +3,7 @@ from uuid import uuid4
 from albert.resources.base import EntityLink, SecurityClass
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight, BTInsightCategory
-from albert.resources.btmodel import BTModel, BTModelCategory, BTModelSession, BTModelState
+from albert.resources.btmodel import BTModel, BTModelSession, BTModelSessionCategory, BTModelState
 from albert.resources.cas import Cas, CasCategory
 from albert.resources.companies import Company
 from albert.resources.custom_fields import (
@@ -468,6 +468,7 @@ def generate_data_template_seeds(
     seeded_data_columns: list[DataColumn],
     seeded_units: list[Unit],
     seeded_tags: list[Tag],
+    seeded_parameters: list[Parameter],
 ) -> list[DataTemplate]:
     """
     Generates a list of DataTemplate seed objects for testing with enhanced complexity.
@@ -631,6 +632,96 @@ def generate_data_template_seeds(
                     unit=EntityLink(id=seeded_units[1].id),
                 ),
             ],
+        ),
+        # Data Template with parameters (for PATCH /parameters testing)
+        DataTemplate(
+            name=f"{seed_prefix} - Parameters Data Template",
+            description="A data template with parameters for testing PATCH /parameters.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    value="42.0",
+                    unit=EntityLink(id=seeded_units[0].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="0",
+                            max="100",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                )
+            ],
+            parameter_values=[
+                ParameterValue(
+                    id=seeded_parameters[
+                        0
+                    ].id,  # Replace with a valid seeded Parameter id if available
+                    name="Test Parameter",
+                    value="123.45",
+                    unit=EntityLink(id=seeded_units[0].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="0",
+                            max="200",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                )
+            ],
+            tags=[seeded_tags[0]],
+        ),
+        # Data Template with ENUM validations on both a data column and a parameter
+        DataTemplate(
+            name=f"{seed_prefix} - Enum Validation Data Template With Parameter",
+            description="A data template with ENUM validations on both a data column and a parameter.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[1],
+                    value="OptionA",
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.ENUM,
+                            value=[
+                                EnumValidationValue(text="OptionA"),
+                                EnumValidationValue(text="OptionB"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+            parameter_values=[
+                ParameterValue(
+                    id=seeded_parameters[2].id,
+                    name="Enum Parameter",
+                    value="ParamOption1",
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.ENUM,
+                            value=[
+                                EnumValidationValue(text="ParamOption1"),
+                                EnumValidationValue(text="ParamOption2"),
+                            ],
+                        )
+                    ],
+                ),
+                ParameterValue(
+                    id=seeded_parameters[3].id,
+                    name="Enum Parameter two",
+                    value="ParamOption1-1",
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.ENUM,
+                            value=[
+                                EnumValidationValue(text="ParamOption1-1"),
+                                EnumValidationValue(text="ParamOption1-2"),
+                            ],
+                        )
+                    ],
+                ),
+            ],
+            tags=[seeded_tags[1]],
         ),
     ]
 
@@ -1377,7 +1468,7 @@ def generate_btdataset_seed(seed_prefix: str) -> BTDataset:
 def generate_btmodelsession_seed(seed_prefix: str, seeded_btdataset: BTDataset) -> BTModelSession:
     return BTModelSession(
         name=f"{seed_prefix} - Test BT Model Session",
-        category=BTModelCategory.ALBERT_MODEL,
+        category=BTModelSessionCategory.ALBERT_MODEL,
         dataset_id=seeded_btdataset.id,
     )
 
@@ -1394,7 +1485,7 @@ def generate_btmodel_seed(seed_prefix: str, seeded_btdataset: BTDataset) -> BTMo
 def generate_btinsight_seed(
     seed_prefix: str,
     seeded_btdataset: BTDataset,
-    seeded_btmodelsession: BTModelSession,
+    seeded_btmodelsession: BTModel,
 ) -> BTInsight:
     return BTInsight(
         name=f"{seed_prefix} - Test BT Insight",

@@ -10,7 +10,7 @@ from albert.resources.identifiers import InventoryId, LotId
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.serialization import SerializeAsEntityLink
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
 from albert.utils.patch_types import PatchPayload
@@ -54,13 +54,13 @@ class IntervalId(BaseAlbertModel):
 
 
 class BlockLevelInventoryInformation(BaseAlbertModel):
-    id: str | None = Field(default=None)
+    id: str
     lot_id: str | None = Field(default=None, alias="lotId")
     inv_lot_unique_id: str | None = Field(default=None, alias="invLotUniqueId")
 
 
 class BlockState(BaseAlbertModel):
-    id: str | None = Field(default=None, description="The ID of the block.")
+    id: str = Field(description="The ID of the block.")
     expanded: bool | None = Field(default=None, alias="expand")
     intervals: list[IntervalId] | None = Field(
         default=None,
@@ -173,7 +173,7 @@ class QCTaskData(BaseAlbertModel):
     workflows: list[QCWorkflowTargets] | None = Field(alias="Workflows", default=None)
 
 
-class BaseTask(BaseTaggedEntity):
+class BaseTask(BaseTaggedResource):
     """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
 
     id: str | None = Field(alias="albertId", default=None)

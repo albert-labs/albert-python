@@ -5,17 +5,13 @@ from collections.abc import Iterator
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
-    EnumValidationValue,
     ParameterGroup,
-    PGPatchDatum,
-    PGPatchPayload,
     PGType,
 )
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import PatchOperation
-from albert.utils.patches import _split_patch_types_for_params_and_data_cols
+from albert.utils.patches import generate_parameter_group_patches
 
 
 class ParameterGroupCollection(BaseCollection):
@@ -35,178 +31,6 @@ class ParameterGroupCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ParameterGroupCollection._api_version}/parametergroups"
-
-    def _handle_special_update_parameters(
-        self,
-        *,
-        existing: ParameterGroup,
-        updated: ParameterGroup,
-    ) -> tuple[list[dict], dict]:
-        """Handle special update parameters.
-
-        Parameters
-        ----------
-        existing : ParameterGroup
-            The existing parameter group.
-        updated : ParameterGroup
-            The updated parameter group.
-
-        Returns
-        -------
-        tuple[list[dict], dict, list[dict]]
-            The payload for the special update parameters.
-        """
-        _special_update_attributes = {"parameters"}
-        new_patches = []
-        enum_patches = {}
-        new_param_patches = []
-        for attr in _special_update_attributes:
-            if attr == "parameters":
-                # Handle the special case of updating parameters
-                existing_params = [x.sequence for x in existing.parameters]
-                updated_params = [x.sequence for x in updated.parameters]
-
-                to_add = [x for x in updated.parameters if x.sequence not in existing_params]
-                to_delete = set(existing_params) - set(updated_params)
-                to_update = set(existing_params) & set(updated_params)
-                # Add new parameters
-                new_param_patches = [
-                    x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in to_add
-                ]
-                # Delete removed parameters
-                for sequence in to_delete:
-                    if sequence not in enum_patches:
-                        enum_patches[sequence] = []
-                    new_patches.append(
-                        PGPatchDatum(operation="delete", attribute="parameters", oldValue=sequence)
-                    )
-                # Update existing parameters
-                for sequence in to_update:
-                    if sequence not in enum_patches:
-                        enum_patches[sequence] = []
-                    existing_param_value = [
-                        x for x in existing.parameters if x.sequence == sequence
-                    ][0]
-                    updated_param_value = [
-                        x for x in updated.parameters if x.sequence == sequence
-                    ][0]
-
-                    if (
-                        existing_param_value.validation != updated_param_value.validation
-                        and updated_param_value.validation is not None
-                        and isinstance(updated_param_value.validation[0].value, list)
-                    ):
-                        existing_enums = (
-                            []
-                            if existing_param_value.validation is None
-                            or not isinstance(existing_param_value.validation[0].value, list)
-                            else existing_param_value.validation[0].value
-                        )
-                        updated_enums = (
-                            []
-                            if updated_param_value.validation is None
-                            else updated_param_value.validation[0].value
-                        )
-
-                        existing_enum_names = [
-                            x.text for x in existing_enums if isinstance(x, EnumValidationValue)
-                        ]
-                        updated_enum_names = [
-                            x.text for x in updated_enums if isinstance(x, EnumValidationValue)
-                        ]
-                        new_enums_names = set(updated_enum_names) - set(existing_enum_names)
-                        deleted_enum_names = set(existing_enum_names) - set(updated_enum_names)
-                        for new_enum_name in new_enums_names:
-                            enum_patches[sequence].append(
-                                {
-                                    "operation": "add",
-                                    "text": new_enum_name,
-                                }
-                            )
-                        for deleted_enum in deleted_enum_names:
-                            deleted_enum = [x for x in existing_enums if x.text == deleted_enum][0]
-                            enum_patches[sequence].append(
-                                {
-                                    "operation": "delete",
-                                    "id": deleted_enum.id,
-                                }
-                            )
-
-                    elif existing_param_value.validation != updated_param_value.validation:
-                        new_patches.append(
-                            PGPatchDatum(
-                                operation=PatchOperation.UPDATE,
-                                attribute="validation",
-                                newValue=[
-                                    x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                                    for x in updated_param_value.validation
-                                ]
-                                if updated_param_value.validation is not None
-                                else [],
-                                rowId=existing_param_value.sequence,
-                            )
-                        )
-                    if existing_param_value.unit != updated_param_value.unit:
-                        if existing_param_value.unit is None:
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.ADD,
-                                    attribute="unitId",
-                                    newValue=updated_param_value.unit.id,
-                                    rowId=existing_param_value.sequence,
-                                )
-                            )
-                        elif updated_param_value.unit is None:
-                            # For some reason, our backend blocks this, but I think it's best to let the backend error raise to make this clear to the user
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.DELETE,
-                                    attribute="unitId",
-                                    oldValue=existing_param_value.unit.id,
-                                    rowId=existing_param_value.sequence,
-                                )
-                            )
-                        elif existing_param_value.unit.id != updated_param_value.unit.id:
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.UPDATE,
-                                    attribute="unitId",
-                                    oldValue=existing_param_value.unit.id,
-                                    newValue=updated_param_value.unit.id,
-                                    rowId=existing_param_value.sequence,
-                                )
-                            )
-                    if existing_param_value.value != updated_param_value.value:
-                        if existing_param_value.value is None:
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.ADD,
-                                    attribute="value",
-                                    newValue=updated_param_value.value,
-                                    rowId=updated_param_value.sequence,
-                                )
-                            )
-
-                        elif updated_param_value.value is None:
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.DELETE,
-                                    attribute="value",
-                                    oldValue=existing_param_value.value,
-                                    rowId=existing_param_value.sequence,
-                                )
-                            )
-                        else:
-                            new_patches.append(
-                                PGPatchDatum(
-                                    operation=PatchOperation.UPDATE,
-                                    attribute="value",
-                                    oldValue=existing_param_value.value,
-                                    newValue=updated_param_value.value,
-                                    rowId=existing_param_value.sequence,
-                                )
-                            )
-        return (new_patches, enum_patches, new_param_patches)
 
     def get_by_id(self, *, id: str) -> ParameterGroup:
         """Get a parameter group by its ID.
@@ -352,118 +176,43 @@ class ParameterGroupCollection(BaseCollection):
         existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"
 
-        base_payload, list_metadata_updates = self._generate_patch_payload(
-            existing=existing,
-            updated=parameter_group,
+        base_payload = self._generate_patch_payload(
+            existing=existing, updated=parameter_group, generate_metadata_diff=True
         )
 
-        # Handle special update parameters
-        special_patches, special_enum_patches, new_param_patches = (
-            _split_patch_types_for_params_and_data_cols(existing=existing, updated=parameter_group)
+        general_patches, new_parameter_values, enum_patches = generate_parameter_group_patches(
+            initial_patches=base_payload,
+            updated_parameter_group=parameter_group,
+            existing_parameter_group=existing,
         )
 
-        patch_operations = list(base_payload.data) + special_patches
-
-        for datum in patch_operations:
-            patch_payload = PGPatchPayload(data=[datum])
-            self.session.patch(
-                path, json=patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True)
-            )
-
-        # For metadata list field updates, we clear, then update
-        # since duplicate attribute values are not allowed in single patch request.
-        for attribute, values in list_metadata_updates.items():
-            clear_payload = PGPatchPayload(
-                data=[PGPatchDatum(operation="update", attribute=attribute, newValue=None)]
-            )
-            self.session.patch(
-                path, json=clear_payload.model_dump(mode="json", by_alias=True, exclude_none=True)
-            )
-            if values:
-                update_payload = PGPatchPayload(
-                    data=[PGPatchDatum(operation="update", attribute=attribute, newValue=values)]
-                )
-                self.session.patch(
-                    path,
-                    json=update_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
-                )
-
-        # handle adding new parameters
-        if len(new_param_patches) > 0:
+        # add new parameters
+        new_param_url = f"{self.base_path}/{parameter_group.id}/parameters"
+        if len(new_parameter_values) > 0:
             self.session.put(
-                f"{self.base_path}/{existing.id}/parameters",
-                json={"Parameters": new_param_patches},
+                url=new_param_url,
+                json=[
+                    x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for x in new_parameter_values
+                ],
             )
-        # Handle special enum update parameters
-        for sequence, enum_patches in special_enum_patches.items():
-            if len(enum_patches) == 0:
+        new_param_sequences = [x.sequence for x in new_parameter_values]
+        # handle enum updates
+        for sequence, ep in enum_patches.items():
+            if sequence in new_param_sequences:
+                # we don't need to handle enum updates for new parameters
                 continue
-            enum_path = f"{self.base_path}/{existing.id}/parameters/{sequence}/enums"
-            self.session.put(enum_path, json=enum_patches)
-        return self.get_by_id(id=parameter_group.id)
-
-    def _is_metadata_item_list(
-        self,
-        *,
-        existing_object: ParameterGroup,
-        updated_object: ParameterGroup,
-        metadata_field: str,
-    ) -> bool:
-        """Return True if the metadata field is a list type on either object."""
-
-        if not metadata_field.startswith("Metadata."):
-            return False
-
-        metadata_field = metadata_field.split(".")[1]
-
-        if existing_object.metadata is None:
-            existing_object.metadata = {}
-        if updated_object.metadata is None:
-            updated_object.metadata = {}
-
-        existing = existing_object.metadata.get(metadata_field, None)
-        updated = updated_object.metadata.get(metadata_field, None)
-
-        return isinstance(existing, list) or isinstance(updated, list)
-
-    def _generate_patch_payload(
-        self,
-        *,
-        existing: ParameterGroup,
-        updated: ParameterGroup,
-    ) -> tuple[PGPatchPayload, dict[str, list[str]]]:
-        """Generate a patch payload and capture metadata list updates."""
-
-        base_payload = super()._generate_patch_payload(
-            existing=existing,
-            updated=updated,
-        )
-
-        new_data: list[PGPatchDatum] = []
-        list_metadata_updates: dict[str, list[str]] = {}
-
-        for datum in base_payload.data:
-            if self._is_metadata_item_list(
-                existing_object=existing,
-                updated_object=updated,
-                metadata_field=datum.attribute,
-            ):
-                key = datum.attribute.split(".", 1)[1]
-                updated_list = updated.metadata.get(key) or []
-                list_values: list[str] = [
-                    item.id if hasattr(item, "id") else item for item in updated_list
-                ]
-
-                list_metadata_updates[datum.attribute] = list_values
-                continue
-
-            new_data.append(
-                PGPatchDatum(
-                    operation=datum.operation,
-                    attribute=datum.attribute,
-                    newValue=datum.new_value,
-                    oldValue=datum.old_value,
+            if len(ep) > 0:
+                enum_url = f"{self.base_path}/{parameter_group.id}/parameters/{sequence}/enums"
+                self.session.put(
+                    url=enum_url,
+                    json=ep,
                 )
+        if len(general_patches.data) > 0:
+            # patch the general patches
+            self.session.patch(
+                url=path,
+                json=general_patches.model_dump(mode="json", by_alias=True, exclude_none=True),
             )
 
-        return PGPatchPayload(data=new_data), list_metadata_updates
+        return self.get_by_id(id=parameter_group.id)

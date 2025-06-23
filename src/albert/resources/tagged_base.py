@@ -8,9 +8,9 @@ from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tags import Tag
 
 
-class BaseTaggedEntity(BaseResource):
+class BaseTaggedResource(BaseResource):
     """
-    BaseTaggedEntity is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
+    BaseTaggedResource is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
 
     Attributes
     ----------

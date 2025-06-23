@@ -88,7 +88,7 @@ class Albert:
         self.session = session or AlbertSession(
             base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
-            client_credentials=client_credentials,
+            client_credentials=client_credentials or ClientCredentials.from_env(),
             retries=retries,
         )
 
@@ -220,8 +220,9 @@ class Albert:
     def btmodelsessions(self) -> BTModelSessionCollection:
         return BTModelSessionCollection(session=self.session)
 
-    def btmodels(self, *, parent_id: str) -> BTModelCollection:
-        return BTModelCollection(session=self.session, parent_id=parent_id)
+    @property
+    def btmodels(self) -> BTModelCollection:
+        return BTModelCollection(session=self.session)
 
     @property
     def btinsights(self) -> BTInsightCollection:

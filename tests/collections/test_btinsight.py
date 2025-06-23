@@ -7,8 +7,8 @@ def test_get_by_id(client: Albert, seeded_btinsight: BTInsight):
     assert fetched_insight.id == seeded_btinsight.id
 
 
-def test_list_by_category(client: Albert, seeded_btinsight: BTInsight):
-    ins = next(client.btinsights.list(category=BTInsightCategory.CUSTOM_OPTIMIZER), None)
+def test_search_by_category(client: Albert, seeded_btinsight: BTInsight):
+    ins = next(client.btinsights.search(category=BTInsightCategory.CUSTOM_OPTIMIZER), None)
     assert ins is not None
     assert ins.category == BTInsightCategory.CUSTOM_OPTIMIZER
 

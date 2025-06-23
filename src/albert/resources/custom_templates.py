@@ -11,7 +11,7 @@ from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.sheets import DesignType, Sheet
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tasks import TaskSource
 from albert.resources.users import User
 
@@ -41,7 +41,7 @@ class Priority(str, Enum):
     HIGH = "High"
 
 
-class GeneralData(BaseTaggedEntity):
+class GeneralData(BaseTaggedResource):
     category: Literal[TemplateCategory.GENERAL] = TemplateCategory.GENERAL
     name: str | None = Field(default=None)
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
@@ -81,13 +81,13 @@ class Workflow(BaseResource):
 
 
 # TODO: once DTs are done allow a list of DTs with the correct field_serializer
-class Block(BaseTaggedEntity):
+class Block(BaseTaggedResource):
     workflow: list[Workflow] = Field(default=None, alias="Workflow")
     datatemplate: list[EntityLink] | None = Field(default=None, alias="Datatemplate")
 
 
 # TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
-class QCBatchData(BaseTaggedEntity):
+class QCBatchData(BaseTaggedResource):
     category: Literal[TemplateCategory.QC_BATCH] = TemplateCategory.QC_BATCH
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
@@ -98,7 +98,7 @@ class QCBatchData(BaseTaggedEntity):
     name: str | None = Field(default=None)
 
 
-class BatchData(BaseTaggedEntity):
+class BatchData(BaseTaggedResource):
     # To Do once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
     name: str | None = Field(default=None)
     category: Literal[TemplateCategory.BATCH] = TemplateCategory.BATCH
@@ -111,7 +111,7 @@ class BatchData(BaseTaggedEntity):
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
 
 
-class PropertyData(BaseTaggedEntity):
+class PropertyData(BaseTaggedResource):
     category: Literal[TemplateCategory.PROPERTY] = TemplateCategory.PROPERTY
     name: str | None = Field(default=None)
     blocks: list[Block] = Field(default_factory=list, alias="Blocks")  # Needs to be it's own class
@@ -123,14 +123,14 @@ class PropertyData(BaseTaggedEntity):
     due_date: str | None = Field(alias="dueDate", default=None)
 
 
-class SheetData(BaseTaggedEntity):
+class SheetData(BaseTaggedResource):
     category: Literal[TemplateCategory.SHEET] = TemplateCategory.SHEET
     designs: list[DesignLink] = Field(default=None, alias="Designs")
     formula_info: list = Field(default_factory=list, alias="FormulaInfo")
     task_rows: list[EntityLink] = Field(default_factory=list, alias="TaskRows")
 
 
-class NotebookData(BaseTaggedEntity):
+class NotebookData(BaseTaggedResource):
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
@@ -166,7 +166,7 @@ class TemplateACL(BaseResource):
     acl_class: str = Field(alias="class")
 
 
-class CustomTemplate(BaseTaggedEntity):
+class CustomTemplate(BaseTaggedResource):
     """A custom template entity.
 
     Attributes

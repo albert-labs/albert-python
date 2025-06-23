@@ -1,10 +1,11 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection, OrderBy
-from albert.exceptions import AlbertHTTPError
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
+from albert.resources.identifiers import BTInsightId
 from albert.session import AlbertSession
-from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
@@ -50,6 +51,7 @@ class BTInsightCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{BTInsightCollection._api_version}/btinsight"
 
+    @validate_call
     def create(self, *, insight: BTInsight) -> BTInsight:
         """
         Create a new BTInsight.
@@ -70,13 +72,14 @@ class BTInsightCollection(BaseCollection):
         )
         return BTInsight(**response.json())
 
-    def get_by_id(self, *, id: str) -> BTInsight:
+    @validate_call
+    def get_by_id(self, *, id: BTInsightId) -> BTInsight:
         """
         Get a BTInsight by ID.
 
         Parameters
         ----------
-        id : str
+        id : BTInsightId
             The Albert ID of the insight.
 
         Returns
@@ -87,7 +90,8 @@ class BTInsightCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{id}")
         return BTInsight(**response.json())
 
-    def list(
+    @validate_call
+    def search(
         self,
         *,
         limit: int = 100,
@@ -99,7 +103,7 @@ class BTInsightCollection(BaseCollection):
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
     ) -> Iterator[BTInsight]:
-        """List items in the BTInsight collection.
+        """Search for items in the BTInsight collection.
 
         Parameters
         ----------
@@ -125,15 +129,6 @@ class BTInsightCollection(BaseCollection):
         Iterator[BTInsight]
             An iterator of elements returned by the BTInsight search query.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[BTInsight]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching insight '{id}': {e}")
-
         params = {
             "limit": limit,
             "offset": offset,
@@ -154,9 +149,10 @@ class BTInsightCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=deserialize,
+            deserialize=lambda items: [BTInsight(**item) for item in items],
         )
 
+    @validate_call
     def update(self, *, insight: BTInsight) -> BTInsight:
         """Update a BTInsight.
 
@@ -179,7 +175,8 @@ class BTInsightCollection(BaseCollection):
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=insight.id)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: BTInsightId) -> None:
         """Delete a BTInsight by ID.
 
         Parameters

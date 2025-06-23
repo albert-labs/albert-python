@@ -20,6 +20,18 @@ def test_update(client: Albert, static_custom_fields: list[CustomField]):
     # Just set hidden = True to test the update call, even though the value may not be changing
     cf = static_custom_fields[0].model_copy()
     original_lookup_column = cf.lookup_column
+    # original_required = cf.required
+    # original_multiselect = cf.multiselect
+    # original_pattern = cf.pattern
+    # original_default = cf.default
     cf.lookup_column = not cf.lookup_column
+    # cf.required = not cf.required
+    # cf.multiselect = not cf.multiselect
+    # cf.pattern = "test"
+    # cf.default = "test"
     cf = client.custom_fields.update(custom_field=cf)
     assert original_lookup_column != cf.lookup_column
+    # assert original_required != cf.required
+    # assert original_multiselect != cf.multiselect
+    # assert original_pattern != cf.pattern
+    # assert original_default != cf.default

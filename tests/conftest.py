@@ -333,6 +333,7 @@ def seeded_data_templates(
     seeded_data_columns: list[DataColumn],
     seeded_units: list[Unit],
     seeded_tags: list[Tag],
+    seeded_parameters: list[Parameter],
 ) -> Iterator[list[DataTemplate]]:
     seeded = []
     for data_template in generate_data_template_seeds(
@@ -341,6 +342,7 @@ def seeded_data_templates(
         seeded_data_columns=seeded_data_columns,
         seeded_units=seeded_units,
         seeded_tags=seeded_tags,
+        seeded_parameters=seeded_parameters,
     ):
         dt = client.data_templates.create(data_template=data_template)
         seeded.append(dt)
@@ -626,8 +628,7 @@ def seeded_btdataset(client: Albert, seed_prefix: str) -> Iterator[BTDataset]:
     dataset = generate_btdataset_seed(seed_prefix)
     dataset = client.btdatasets.create(dataset=dataset)
     yield dataset
-    with suppress(ForbiddenError):  # TODO: Remove once ACL is fixed
-        client.btdatasets.delete(id=dataset.id)
+    client.btdatasets.delete(id=dataset.id)
 
 
 @pytest.fixture(scope="session")
@@ -639,8 +640,7 @@ def seeded_btmodelsession(
     model_session = generate_btmodelsession_seed(seed_prefix, seeded_btdataset)
     model_session = client.btmodelsessions.create(model_session=model_session)
     yield model_session
-    with suppress(ForbiddenError):  # TODO: Remove once ACL is fixed
-        client.btmodelsessions.delete(id=model_session.id)
+    client.btmodelsessions.delete(id=model_session.id)
 
 
 @pytest.fixture(scope="session")
@@ -651,10 +651,9 @@ def seeded_btmodel(
     seeded_btmodelsession: BTModelSession,
 ) -> Iterator[BTModel]:
     model = generate_btmodel_seed(seed_prefix, seeded_btdataset)
-    model = client.btmodels(parent_id=seeded_btmodelsession.id).create(model=model)
+    model = client.btmodels.create(model=model, parent_id=seeded_btmodelsession.id)
     yield model
-    with suppress(ForbiddenError):  # TODO: Remove once ACL is fixed
-        client.btmodels(parent_id=seeded_btmodelsession.id).delete(id=model.id)
+    client.btmodels.delete(id=model.id, parent_id=seeded_btmodelsession.id)
 
 
 @pytest.fixture(scope="session")
@@ -662,11 +661,10 @@ def seeded_btinsight(
     client: Albert,
     seed_prefix: str,
     seeded_btdataset: BTDataset,
-    seeded_btmodelsession: BTModelSession,
+    seeded_btmodelsession: BTModel,
 ) -> Iterator[BTInsight]:
     ins = generate_btinsight_seed(seed_prefix, seeded_btdataset, seeded_btmodelsession)
     ins = client.btinsights.create(insight=ins)
     time.sleep(3.0)
     yield ins
-    with suppress(ForbiddenError):  # TODO: Remove once ACL is fixed
-        client.btinsights.delete(id=ins.id)
+    client.btinsights.delete(id=ins.id)

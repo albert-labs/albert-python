@@ -4,15 +4,15 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
 from albert.resources.identifiers import DataTemplateId
-from albert.resources.parameter_groups import PGPatchPayload
+from albert.resources.parameter_groups import DataType, EnumValidationValue
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import GeneralPatchDatum
+from albert.utils.patch_types import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.utils.patches import (
-    _split_patch_types_for_params_and_data_cols,
+    generate_data_template_patches,
 )
 
 
@@ -52,12 +52,113 @@ class DataTemplateCollection(BaseCollection):
         for column_value in data_template.data_column_values:
             if isinstance(column_value.validation, list) and len(column_value.validation) == 0:
                 column_value.validation = None
-
+        # remove them on the initial post
+        parameter_values = data_template.parameter_values
+        data_template.parameter_values = None
         response = self.session.post(
             self.base_path,
             json=data_template.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
-        return DataTemplate(**response.json())
+        dt = DataTemplate(**response.json())
+        dt.parameter_values = parameter_values
+        if data_template.parameter_values is None or len(data_template.parameter_values) == 0:
+            return dt
+        else:
+            return self.add_parameters(
+                data_template_id=dt.id, parameters=data_template.parameter_values
+            )
+
+    def _add_param_enums(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        new_parameters: list[ParameterValue],
+    ):
+        """Adds enum values to a parameter."""
+
+        data_template = self.get_by_id(id=data_template_id)
+        existing_parameters = data_template.parameter_values
+
+        for parameter in new_parameters:
+            this_sequence = next(
+                (
+                    p.sequence
+                    for p in existing_parameters
+                    if p.id == parameter.id and p.short_name == parameter.short_name
+                ),
+                None,
+            )
+            enum_patches = []
+            if (
+                parameter.validation
+                and len(parameter.validation) > 0
+                and isinstance(parameter.validation[0].value, list)
+            ):
+                existing_validation = (
+                    [x for x in existing_parameters if x.sequence == parameter.sequence]
+                    if existing_parameters
+                    else []
+                )
+                existing_enums = (
+                    [
+                        x
+                        for x in existing_validation[0].validation[0].value
+                        if isinstance(x, EnumValidationValue) and x.id is not None
+                    ]
+                    if (
+                        existing_validation
+                        and len(existing_validation) > 0
+                        and existing_validation[0].validation
+                        and len(existing_validation[0].validation) > 0
+                        and existing_validation[0].validation[0].value
+                        and isinstance(existing_validation[0].validation[0].value, list)
+                    )
+                    else []
+                )
+                updated_enums = (
+                    [
+                        x
+                        for x in parameter.validation[0].value
+                        if isinstance(x, EnumValidationValue)
+                    ]
+                    if parameter.validation[0].value
+                    else []
+                )
+
+                deleted_enums = [
+                    x for x in existing_enums if x.id not in [y.id for y in updated_enums]
+                ]
+
+                new_enums = [
+                    x for x in updated_enums if x.id not in [y.id for y in existing_enums]
+                ]
+
+                matching_enums = [
+                    x for x in updated_enums if x.id in [y.id for y in existing_enums]
+                ]
+
+                for new_enum in new_enums:
+                    enum_patches.append({"operation": "add", "text": new_enum.text})
+                for deleted_enum in deleted_enums:
+                    enum_patches.append({"operation": "delete", "id": deleted_enum.id})
+                for matching_enum in matching_enums:
+                    if (
+                        matching_enum.text
+                        != [x for x in existing_enums if x.id == matching_enum.id][0].text
+                    ):
+                        enum_patches.append(
+                            {
+                                "operation": "update",
+                                "id": matching_enum.id,
+                                "text": matching_enum.text,
+                            }
+                        )
+
+                if len(enum_patches) > 0:
+                    self.session.put(
+                        f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
+                        json=enum_patches,
+                    )
 
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
@@ -116,7 +217,7 @@ class DataTemplateCollection(BaseCollection):
         return None
 
     def add_data_columns(
-        self, *, data_template_id: str, data_columns: list[DataColumnValue]
+        self, *, data_template_id: DataTemplateId, data_columns: list[DataColumnValue]
     ) -> DataTemplate:
         """Adds data columns to a data template.
 
@@ -132,6 +233,21 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated DataTemplate object.
         """
+        # if there are enum values, we need to add them as an allowed enum
+        for column in data_columns:
+            if (
+                column.validation
+                and len(column.validation) > 0
+                and isinstance(column.validation[0].value, list)
+            ):
+                for enum_value in column.validation[0].value:
+                    self.session.put(
+                        f"{self.base_path}/{data_template_id}/datacolumns/{column.sequence}/enums",
+                        json=[
+                            enum_value.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        ],
+                    )
+
         payload = {
             "DataColumns": [
                 x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in data_columns
@@ -142,6 +258,64 @@ class DataTemplateCollection(BaseCollection):
             json=payload,
         )
         return self.get_by_id(id=data_template_id)
+
+    def add_parameters(
+        self, *, data_template_id: DataTemplateId, parameters: list[ParameterValue]
+    ) -> DataTemplate:
+        """Adds parameters to a data template.
+
+        Parameters
+        ----------
+        data_template_id : str
+            The ID of the data template to add the columns to.
+        parameters : list[ParameterValue]
+            The list of ParameterValue objects to add to the data template.
+
+        Returns
+        -------
+        DataTemplate
+            The updated DataTemplate object.
+        """
+        # make sure the parameter values have a default validaion of string type.
+        initial_enum_values = {}  # use index to track the enum values
+        if parameters is None or len(parameters) == 0:
+            return self.get_by_id(id=data_template_id)
+        for i, param in enumerate(parameters):
+            if (
+                param.validation
+                and len(param.validation) > 0
+                and param.validation[0].datatype == DataType.ENUM
+            ):
+                initial_enum_values[i] = param.validation[0].value
+                param.validation[0].value = None
+                param.validation[0].datatype = DataType.STRING
+
+        payload = {
+            "Parameters": [
+                x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in parameters
+            ]
+        }
+        # if there are enum values, we need to add them as an allowed enum
+        response = self.session.put(
+            f"{self.base_path}/{data_template_id}/parameters",
+            json=payload,
+        )
+        returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
+        for i, param in enumerate(returned_parameters):
+            if i in initial_enum_values:
+                param.validation[0].value = initial_enum_values[i]
+                param.validation[0].datatype = DataType.ENUM
+        self._add_param_enums(
+            data_template_id=data_template_id,
+            new_parameters=returned_parameters,
+        )
+        dt_with_params = self.get_by_id(id=data_template_id)
+        for i, param in enumerate(dt_with_params.parameter_values):
+            if i in initial_enum_values:
+                param.validation[0].value = initial_enum_values[i]
+                param.validation[0].datatype = DataType.ENUM
+
+        return self.update(data_template=dt_with_params)
 
     def list(
         self,
@@ -211,38 +385,74 @@ class DataTemplateCollection(BaseCollection):
         """
 
         existing = self.get_by_id(id=data_template.id)
+
         base_payload = self._generate_patch_payload(existing=existing, updated=data_template)
 
         path = f"{self.base_path}/{existing.id}"
-        # Handle special updates mainly for complex validations
-        special_patches, special_enum_patches, new_param_patches = (
-            _split_patch_types_for_params_and_data_cols(existing=existing, updated=data_template)
+        (
+            general_patches,
+            new_data_columns,
+            data_column_enum_patches,
+            new_parameters,
+            parameter_enum_patches,
+            parameter_patches,
+        ) = generate_data_template_patches(
+            initial_patches=base_payload,
+            updated_data_template=data_template,
+            existing_data_template=existing,
         )
-        payload = DCPatchDatum(data=base_payload.data)
 
-        payload.data.extend(special_patches)
-
-        # handle adding new data columns
-        if len(new_param_patches) > 0:
+        if len(new_data_columns) > 0:
             self.session.put(
                 f"{self.base_path}/{existing.id}/datacolumns",
-                json={"DataColumns": new_param_patches},
+                json={
+                    "DataColumns": [
+                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for x in new_data_columns
+                    ],
+                },
             )
-        # Handle special enum update data columns
-        for sequence, enum_patches in special_enum_patches.items():
-            if len(enum_patches) == 0:
-                continue
-
-            enum_path = f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums"
-            self.session.put(enum_path, json=enum_patches)
-
-        if len(payload.data) > 0:
+        if len(data_column_enum_patches) > 0:
+            for sequence, enum_patches in data_column_enum_patches.items():
+                if len(enum_patches) == 0:
+                    continue
+                self.session.put(
+                    f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
+                    json=enum_patches,  # these are simple dicts for now
+                )
+        if len(new_parameters) > 0:
+            self.session.put(
+                f"{self.base_path}/{existing.id}/parameters",
+                json={
+                    "Parameters": [
+                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for x in new_parameters
+                    ],
+                },
+            )
+        if len(parameter_enum_patches) > 0:
+            for sequence, enum_patches in parameter_enum_patches.items():
+                if len(enum_patches) == 0:
+                    continue
+                self.session.put(
+                    f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
+                    json=enum_patches,  # these are simple dicts for now
+                )
+        if len(parameter_patches) > 0:
+            payload = PGPatchPayload(data=parameter_patches)
             self.session.patch(
-                path, json=payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+                path + "/parameters",
+                json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+            )
+        if len(general_patches.data) > 0:
+            payload = GeneralPatchPayload(data=general_patches.data)
+            self.session.patch(
+                path,
+                json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
             )
         return self.get_by_id(id=data_template.id)
 
-    def delete(self, *, id: str) -> None:
+    def delete(self, *, id: DataTemplateId) -> None:
         """Deletes a data template by its ID.
 
         Parameters

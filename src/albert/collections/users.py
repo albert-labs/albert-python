@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterator
 
 import jwt
@@ -119,14 +118,6 @@ class UserCollection(BaseCollection):
         User
             The created User
         """
-
-        hits = self.list(text=user.email)
-        for u in hits:
-            if u.email == user.email:
-                logging.warning(
-                    f"User with email {user.email} already exists. Returning existing user."
-                )
-                return u
 
         response = self.session.post(
             self.base_path,

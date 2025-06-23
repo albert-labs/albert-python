@@ -1,7 +1,10 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.resources.btdataset import BTDataset
+from albert.resources.identifiers import BTDatasetId
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
@@ -36,6 +39,7 @@ class BTDatasetCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{BTDatasetCollection._api_version}/btdataset"
 
+    @validate_call
     def create(self, *, dataset: BTDataset) -> BTDataset:
         """
         Create a new BTDataset.
@@ -56,13 +60,14 @@ class BTDatasetCollection(BaseCollection):
         )
         return BTDataset(**response.json())
 
-    def get_by_id(self, *, id: str) -> BTDataset:
+    @validate_call
+    def get_by_id(self, *, id: BTDatasetId) -> BTDataset:
         """
         Get a BTDataset by ID.
 
         Parameters
         ----------
-        id : str
+        id : BTDatasetId
             The Albert ID of the BTDataset.
 
         Returns
@@ -73,6 +78,7 @@ class BTDatasetCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{id}")
         return BTDataset(**response.json())
 
+    @validate_call
     def update(self, *, dataset: BTDataset) -> BTDataset:
         """
         Update a BTDataset.
@@ -97,12 +103,13 @@ class BTDatasetCollection(BaseCollection):
         self.session.patch(path, json=payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=dataset.id)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: BTDatasetId) -> None:
         """Delete a BTDataset by ID.
 
         Parameters
         ----------
-        id : str
+        id : BTDatasetId
             The ID of the BTDataset to delete.
 
         Returns
@@ -111,7 +118,8 @@ class BTDatasetCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
-    def list(
+    @validate_call
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -119,7 +127,7 @@ class BTDatasetCollection(BaseCollection):
         start_key: str | None = None,
         created_by: str | None = None,
     ) -> Iterator[BTDataset]:
-        """List items in the BTInsight collection.
+        """Get all items from the BTDataset collection.
 
         Parameters
         ----------
@@ -137,21 +145,16 @@ class BTDatasetCollection(BaseCollection):
         Iterator[BTDataset]
             An iterator of elements returned by the BTDataset listing.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[BTDataset]:
-            yield from [BTDataset(**item) for item in items]
-
         params = {
             "limit": limit,
             "startKey": start_key,
             "createdBy": created_by,
             "name": name,
         }
-
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
-            deserialize=deserialize,
+            deserialize=lambda items: [BTDataset(**item) for item in items],
         )

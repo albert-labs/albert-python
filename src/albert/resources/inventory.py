@@ -10,7 +10,7 @@ from albert.resources.base import MetadataItem, SecurityClass
 from albert.resources.identifiers import InventoryId
 from albert.resources.locations import Location
 from albert.resources.serialization import SerializeAsEntityLink
-from albert.resources.tagged_base import BaseTaggedEntity
+from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
 from albert.utils.types import BaseAlbertModel
 
@@ -126,7 +126,7 @@ class InventoryMinimum(BaseAlbertModel):
         return self
 
 
-class InventoryItem(BaseTaggedEntity):
+class InventoryItem(BaseTaggedResource):
     """An InventoryItem is a Pydantic model representing an item in the inventory. Can be a raw material, consumable, equipment, or formula.
     Note: Formulas should be registered via the Worksheet collection / Sheet resource.
 

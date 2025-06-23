@@ -93,4 +93,4 @@ class BaseSessionResource(BaseResource):
         return self._session
 
 
-MetadataItem = float | int | str | EntityLink | list[EntityLink]
+MetadataItem = float | int | str | EntityLink | list[EntityLink] | None

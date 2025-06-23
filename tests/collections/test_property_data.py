@@ -110,7 +110,7 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
                     data_template=data_template,
                     data_column=TaskDataColumn(
                         data_column_id=data_template.data_column_values[0].data_column_id,
-                        column_sequence=data_template.data_column_values[0].column_sequence,
+                        column_sequence=data_template.data_column_values[0].sequence,
                     ),
                     value=str(pvalues.pop()),
                     interval_combination=interval_id,
