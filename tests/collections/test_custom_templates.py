@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from itertools import islice
 
 from albert.client import Albert
 from albert.resources.custom_templates import (
@@ -54,3 +55,15 @@ def test_search(client: Albert):
         expected_type=CustomTemplateSearchItem,
         expected_data_type=CustomTemplateSearchItemData,
     )
+
+
+def test_hydrate_custom_template(client: Albert):
+    custom_templates = list(islice(client.custom_templates.search(), 5))
+    assert custom_templates, "Expected at least one custom_template in search results"
+
+    for custom_template in custom_templates:
+        hydrated = custom_template.hydrate()
+
+        # identity checks
+        assert hydrated.id == custom_template.id
+        assert hydrated.name == custom_template.name

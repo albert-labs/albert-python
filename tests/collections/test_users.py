@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from itertools import islice
 
 from albert import Albert
 from albert.core.shared.enums import Status
@@ -67,3 +68,28 @@ def test_user_get(client: Albert, static_user: User):
     user_from_get = client.users.get_by_id(id=first_hit.id)
     assert user_from_get.id == first_hit.id
     assert isinstance(user_from_get, User)
+
+
+def test_hydrate_user(client: Albert):
+    users = list(islice(client.users.search(), 5))
+    assert users, "Expected at least one user in search results"
+
+    for user in users:
+        hydrated = user.hydrate()
+
+        # identity checks
+        assert hydrated.id == user.id
+        assert hydrated.name == user.name
+        assert hydrated.email == user.email
+
+        # location check
+        if user.location_id and hydrated.location:
+            assert hydrated.location.id == user.location_id
+        if user.location and hydrated.location:
+            assert hydrated.location.name == user.location
+
+        # role consistency
+        if user.roles and hydrated.roles:
+            for search_role, full_role in zip(user.roles, hydrated.roles, strict=False):
+                assert search_role.roleId == full_role.id
+                assert search_role.roleName == full_role.name

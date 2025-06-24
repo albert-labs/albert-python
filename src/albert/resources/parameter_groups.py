@@ -7,6 +7,7 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models import AuditFields, EntityLink, LocalizedNames
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.tagged_base import BaseTaggedResource
@@ -155,7 +156,7 @@ class ParameterSearchItemParameter(BaseAlbertModel):
     localized_names: LocalizedNames = Field(alias="localizedNames")
 
 
-class ParameterGroupSearchItem(BaseAlbertModel):
+class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     """Lightweight representation of a ParameterGroup returned from unhydrated search()."""
 
     name: str

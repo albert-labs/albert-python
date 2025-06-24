@@ -1,4 +1,5 @@
 import time
+from itertools import islice
 
 import pytest
 
@@ -55,6 +56,18 @@ def test_advanced_inventory_list(
         if i == 10:  # just check the first 10 for speed
             break
         assert "ethanol" in x.name.lower()
+
+
+def test_hydrate_inventory_item(client: Albert):
+    inventory_items = list(islice(client.inventory.search(), 5))
+    assert inventory_items, "Expected at least one inventory_item in search results"
+
+    for inventory_item in inventory_items:
+        hydrated = inventory_item.hydrate()
+
+        # identity checks
+        assert hydrated.id == f"INV{inventory_item.id}"
+        assert hydrated.name == inventory_item.name
 
 
 def test_match_all_conditions(

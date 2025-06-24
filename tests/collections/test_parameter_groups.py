@@ -1,4 +1,4 @@
-import itertools
+from itertools import islice
 
 import pytest
 
@@ -18,7 +18,7 @@ from albert.resources.units import Unit
 
 def assert_pg_items(returned_list, type: ParameterGroupSearchItem | ParameterGroup):
     found = False
-    for pg in itertools.islice(returned_list, 10):
+    for pg in islice(returned_list, 10):
         assert isinstance(pg, type)
         assert isinstance(pg.id, str) and pg.id
         assert isinstance(pg.name, str) and pg.name
@@ -59,6 +59,18 @@ def test_advanced_list(client: Albert, seeded_parameter_groups: list[ParameterGr
         text=[seeded_parameter_groups[0].name], types=[seeded_parameter_groups[0].type]
     )
     assert_pg_items(list_response, ParameterGroupSearchItem)
+
+
+def test_hydrate_pg(client: Albert):
+    pgs = list(islice(client.parameter_groups.search(), 5))
+    assert pgs, "Expected at least one pg in search results"
+
+    for pg in pgs:
+        hydrated = pg.hydrate()
+
+        # identity checks
+        assert hydrated.id == pg.id
+        assert hydrated.name == pg.name
 
 
 def test_dupe_raises_error(client: Albert, seeded_parameter_groups: list[ParameterGroup]):

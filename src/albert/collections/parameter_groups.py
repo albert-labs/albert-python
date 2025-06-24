@@ -99,7 +99,9 @@ class ParameterGroupCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=lambda items: [ParameterGroupSearchItem(**item) for item in items],
+            deserialize=lambda items: [
+                ParameterGroupSearchItem(**item)._bind_collection(self) for item in items
+            ],
         )
 
     def get_all(

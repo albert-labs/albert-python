@@ -74,7 +74,9 @@ class CustomTemplatesCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=lambda items: [CustomTemplateSearchItem.model_validate(x) for x in items],
+            deserialize=lambda items: [
+                CustomTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
         )
 
     def get_all(

@@ -8,6 +8,7 @@ from albert.core.shared.enums import SecurityClass, Status
 from albert.core.shared.identifiers import NotebookId
 from albert.core.shared.models import BaseResource, EntityLink
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
@@ -235,7 +236,7 @@ class CustomTemplateSearchItemTeam(BaseAlbertModel):
     fgc: AccessControlLevel | None = Field(default=None)
 
 
-class CustomTemplateSearchItem(BaseAlbertModel):
+class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     name: str
     id: str = Field(alias="albertId")
     created_by_name: str = Field(..., alias="createdByName")

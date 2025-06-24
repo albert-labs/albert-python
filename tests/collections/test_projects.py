@@ -1,17 +1,21 @@
+from itertools import islice
+
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.models import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.projects import Project, ProjectFilterParams
+from albert.resources.projects import Project, ProjectFilterParams, ProjectSearchItem
 
 
-def assert_project_items(returned_list, limit=50):
+def assert_project_items(
+    returned_list: list, entity_type: Project | ProjectSearchItem = Project, limit=50
+):
     found = False
     for i, project in enumerate(returned_list):
         if i == limit:  # Limit to checking first 50 projects
             break
-        assert isinstance(project, Project)
+        assert isinstance(project, entity_type)
         assert isinstance(project.description, str)
         assert isinstance(project.id, str)
         assert project.id is not None
@@ -26,15 +30,27 @@ def test_get_all_projects(client: Albert):
 
 def test_search_projects(client: Albert):
     project_list = client.projects.search()
-    assert_project_items(project_list)
+    assert_project_items(project_list, ProjectSearchItem)
 
     params = ProjectFilterParams(limit=5)
     short_lists = client.projects.search(params=params)
-    assert_project_items(short_lists, limit=7)
+    assert_project_items(short_lists, ProjectSearchItem, limit=7)
 
     params = ProjectFilterParams(limit=2, status=["Active"])
     advanced_list = client.projects.search(params=params)
-    assert_project_items(advanced_list, limit=2)
+    assert_project_items(advanced_list, ProjectSearchItem, limit=2)
+
+
+def test_hydrate_project(client: Albert):
+    projects = list(islice(client.projects.search(), 5))
+    assert projects, "Expected at least one project in search results"
+
+    for project in projects:
+        hydrated = project.hydrate()
+
+        # identity checks
+        assert hydrated.id == project.id
+        assert hydrated.description == project.description
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):

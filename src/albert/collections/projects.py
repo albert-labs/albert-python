@@ -5,7 +5,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.projects import Project, ProjectFilterParams
+from albert.resources.projects import Project, ProjectFilterParams, ProjectSearchItem
 
 
 class ProjectCollection(BaseCollection):
@@ -101,7 +101,7 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def search(self, *, params: ProjectFilterParams | None = None) -> Iterator[Project]:
+    def search(self, *, params: ProjectFilterParams | None = None) -> Iterator[ProjectSearchItem]:
         """Search for Project matching the provided criteria.
 
         ⚠️ This method returns partial (unhydrated) entities to optimize performance.
@@ -146,7 +146,9 @@ class ProjectCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=query_params,
-            deserialize=lambda items: [Project(**item) for item in items],
+            deserialize=lambda items: [
+                ProjectSearchItem(**item)._bind_collection(self) for item in items
+            ],
         )
 
     def get_all(self, *, params: ProjectFilterParams | None = None) -> Iterator[Project]:
