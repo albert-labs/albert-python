@@ -3,8 +3,8 @@ from typing import Literal
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.core.models.identifiers import InventoryId
 from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import InventoryId
 from albert.resources.product_design import UnpackedProductDesign
 
 

@@ -7,15 +7,15 @@ from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
-from albert.core.models.enums import OrderBy
-from albert.core.models.identifiers import (
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import (
     InventoryId,
     ProjectId,
     SearchProjectId,
     WorksheetId,
 )
-from albert.core.pagination import AlbertPaginator, PaginationMode
-from albert.core.session import AlbertSession
 from albert.resources.facet import FacetItem
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,

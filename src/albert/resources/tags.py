@@ -4,8 +4,8 @@ from typing import Any
 from pydantic import AliasChoices, Field, model_validator
 
 from albert.core.logging import logger
-from albert.core.models.common import BaseResource
-from albert.core.models.types import SerializeAsEntityLink
+from albert.core.shared.models import BaseResource
+from albert.core.shared.types import SerializeAsEntityLink
 
 
 class TagEntity(str, Enum):

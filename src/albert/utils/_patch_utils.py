@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from albert.core.models.patch import (
+from albert.core.shared.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
     PatchDatum,

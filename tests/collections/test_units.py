@@ -1,5 +1,5 @@
 from albert.client import Albert
-from albert.core.models.enums import OrderBy
+from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 

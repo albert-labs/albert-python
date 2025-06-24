@@ -4,8 +4,8 @@ import pytest
 
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
-from albert.core.models.enums import SecurityClass
-from albert.core.models.identifiers import ensure_inventory_id
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company

@@ -5,7 +5,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource, BaseSessionResource
+from albert.core.shared.models import BaseResource, BaseSessionResource
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryItem
 

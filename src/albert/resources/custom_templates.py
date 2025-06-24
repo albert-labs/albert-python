@@ -4,10 +4,10 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource, EntityLink
-from albert.core.models.enums import SecurityClass, Status
-from albert.core.models.identifiers import NotebookId
-from albert.core.models.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.enums import SecurityClass, Status
+from albert.core.shared.identifiers import NotebookId
+from albert.core.shared.models import BaseResource, EntityLink
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location

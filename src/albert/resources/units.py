@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.core.models.common import BaseResource
+from albert.core.shared.models import BaseResource
 
 
 class UnitCategory(str, Enum):

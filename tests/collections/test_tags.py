@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from albert.client import Albert
-from albert.core.models.enums import OrderBy
+from albert.core.shared.enums import OrderBy
 from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
 

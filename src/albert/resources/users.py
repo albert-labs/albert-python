@@ -6,10 +6,10 @@ from pydantic import EmailStr, Field
 from albert.collections.locations import Location
 from albert.collections.roles import Role
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource
-from albert.core.models.enums import OrderBy, Status
-from albert.core.models.identifiers import UserId
-from albert.core.models.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.enums import OrderBy, Status
+from albert.core.shared.identifiers import UserId
+from albert.core.shared.models import BaseResource
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 
 
 class UserClass(str, Enum):

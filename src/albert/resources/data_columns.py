@@ -1,7 +1,7 @@
 from pydantic import Field
 
-from albert.core.models.common import BaseResource
-from albert.core.models.types import MetadataItem
+from albert.core.shared.models import BaseResource
+from albert.core.shared.types import MetadataItem
 
 
 class DataColumn(BaseResource):

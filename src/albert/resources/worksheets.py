@@ -1,6 +1,6 @@
 from pydantic import Field, model_validator
 
-from albert.core.models.common import BaseSessionResource
+from albert.core.shared.models import BaseSessionResource
 from albert.resources.sheets import Sheet
 
 

@@ -1,5 +1,5 @@
-from albert.core.models.common import BaseResource, EntityLink
-from albert.core.models.types import SerializeAsEntityLink
+from albert.core.shared.models import BaseResource, EntityLink
+from albert.core.shared.types import SerializeAsEntityLink
 
 
 class FakeEntity(BaseResource):

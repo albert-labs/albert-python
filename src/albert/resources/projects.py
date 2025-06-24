@@ -2,11 +2,11 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
-from albert.core.models.common import (
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.models import (
     BaseResource,
 )
-from albert.core.models.enums import OrderBy
-from albert.core.models.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.acls import ACL
 from albert.resources.locations import Location
 

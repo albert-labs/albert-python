@@ -3,10 +3,10 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.core.models.enums import OrderBy
-from albert.core.models.identifiers import BTInsightId
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import BTInsightId
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
 
 

@@ -5,10 +5,10 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, TypeAdapter
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.enums import OrderBy, SecurityClass
-from albert.core.models.identifiers import InventoryId, LotId
-from albert.core.models.patch import PatchPayload
-from albert.core.models.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.enums import OrderBy, SecurityClass
+from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.patch import PatchPayload
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
 from albert.resources.projects import Project

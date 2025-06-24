@@ -2,7 +2,7 @@ from typing import Annotated, TypeVar
 
 from pydantic import PlainSerializer
 
-from albert.core.models.common import BaseResource, EntityLink
+from albert.core.shared.models import BaseResource, EntityLink
 
 EntityType = TypeVar("EntityType", bound=BaseResource)
 MetadataItem = float | int | str | EntityLink | list[EntityLink]

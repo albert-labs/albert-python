@@ -1,7 +1,7 @@
 import pytest
 
 from albert.client import Albert
-from albert.core.models.common import EntityLink
+from albert.core.shared.models import EntityLink
 from albert.exceptions import NotFoundError
 from albert.resources.projects import Project, ProjectFilterParams
 

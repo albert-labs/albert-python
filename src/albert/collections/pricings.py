@@ -3,10 +3,10 @@ from enum import Enum
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.core.models.enums import OrderBy
-from albert.core.models.identifiers import InventoryId
-from albert.core.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.pricings import InventoryPricings, Pricing
 
 

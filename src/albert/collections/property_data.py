@@ -8,9 +8,10 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.collections.tasks import TaskCollection
 from albert.core.logging import logger
-from albert.core.models.common import EntityLink
-from albert.core.models.enums import OrderBy
-from albert.core.models.identifiers import (
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import (
     BlockId,
     DataColumnId,
     DataTemplateId,
@@ -22,9 +23,8 @@ from albert.core.models.identifiers import (
     TaskId,
     UserId,
 )
-from albert.core.models.patch import PatchOperation
-from albert.core.pagination import AlbertPaginator, PaginationMode
-from albert.core.session import AlbertSession
+from albert.core.shared.models import EntityLink
+from albert.core.shared.patch import PatchOperation
 from albert.exceptions import NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,

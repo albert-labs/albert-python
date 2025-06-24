@@ -3,9 +3,9 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.core.models.identifiers import BTDatasetId
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import BTDatasetId
 from albert.resources.btdataset import BTDataset
 
 

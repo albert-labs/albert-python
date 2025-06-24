@@ -1,7 +1,7 @@
-from albert.core.models.common import BaseResource
-from albert.core.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.core.models.types import MetadataItem
 from albert.core.session import AlbertSession
+from albert.core.shared.models import BaseResource
+from albert.core.shared.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.shared.types import MetadataItem
 
 
 class BaseCollection:

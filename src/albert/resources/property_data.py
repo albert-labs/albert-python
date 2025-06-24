@@ -5,8 +5,7 @@ import pandas as pd
 from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource
-from albert.core.models.identifiers import (
+from albert.core.shared.identifiers import (
     DataColumnId,
     DataTemplateId,
     InventoryId,
@@ -18,8 +17,9 @@ from albert.core.models.identifiers import (
     UnitId,
     WorkflowId,
 )
-from albert.core.models.patch import PatchDatum
-from albert.core.models.types import SerializeAsEntityLink
+from albert.core.shared.models import BaseResource
+from albert.core.shared.patch import PatchDatum
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.resources.data_templates import DataTemplate
 from albert.resources.lots import Lot
 from albert.resources.units import Unit

@@ -3,8 +3,8 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource, EntityLink
-from albert.core.models.identifiers import BTDatasetId
+from albert.core.shared.identifiers import BTDatasetId
+from albert.core.shared.models import BaseResource, EntityLink
 
 
 class BTDatasetReferences(BaseAlbertModel):

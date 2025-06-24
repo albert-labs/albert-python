@@ -4,8 +4,8 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource
-from albert.core.models.identifiers import BTDatasetId, BTModelId, BTModelSessionId
+from albert.core.shared.identifiers import BTDatasetId, BTModelId, BTModelSessionId
+from albert.core.shared.models import BaseResource
 
 
 class BTModelSessionCategory(str, Enum):

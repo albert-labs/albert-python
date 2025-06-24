@@ -4,9 +4,9 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.models.common import EntityLink
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
+from albert.core.shared.models import EntityLink
 from albert.exceptions import AlbertHTTPError
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation

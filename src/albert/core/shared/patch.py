@@ -24,10 +24,6 @@ class PatchDatum(BaseAlbertModel):
         return super().model_dump(**kwargs)
 
 
-class PGPatchDatum(PatchDatum):
-    rowId: str | None = Field(default=None)
-
-
 class DTPatchDatum(PatchDatum):
     colId: str | None = Field(default=None)
 
@@ -41,16 +37,8 @@ class PatchPayload(BaseAlbertModel):
         return super().model_dump(**kwargs)
 
 
-class PGPatchPayload(PatchPayload):
-    """A payload for a PATCH request to update a parameter group.
-
-    Attributes
-    ----------
-    data : list[PGPatchDatum]
-        The data to be updated in the parameter group.
-    """
-
-    data: list[PGPatchDatum | PatchDatum] = Field(default_factory=list)
+class PGPatchDatum(PatchDatum):
+    rowId: str | None = Field(default=None)
 
 
 class GeneralPatchDatum(PGPatchDatum):
@@ -63,3 +51,15 @@ class GeneralPatchPayload(PatchPayload):
     data: list[PGPatchDatum | DTPatchDatum | GeneralPatchDatum | PatchDatum] = Field(
         default_factory=list
     )
+
+
+class PGPatchPayload(PatchPayload):
+    """A payload for a PATCH request to update a parameter group.
+
+    Attributes
+    ----------
+    data : list[PGPatchDatum]
+        The data to be updated in the parameter group.
+    """
+
+    data: list[PGPatchDatum | PatchDatum] = Field(default_factory=list)

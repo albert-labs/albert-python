@@ -4,9 +4,9 @@ from typing import Any
 from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 
 from albert.collections.inventory import InventoryCategory
-from albert.core.models.common import BaseResource
-from albert.core.models.identifiers import InventoryId, LotId
-from albert.core.models.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.models import BaseResource
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User

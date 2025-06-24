@@ -2,9 +2,9 @@ import re
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.core.models.enums import OrderBy
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
 from albert.resources.cas import Cas
 
 

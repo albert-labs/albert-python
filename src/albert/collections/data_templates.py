@@ -5,11 +5,11 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.models.enums import OrderBy
-from albert.core.models.identifiers import DataTemplateId
-from albert.core.models.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
     DataColumnValue,

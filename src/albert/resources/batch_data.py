@@ -3,9 +3,9 @@ from enum import Enum
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
-from albert.core.models.common import BaseResource
-from albert.core.models.enums import Status
-from albert.core.models.identifiers import TaskId
+from albert.core.shared.enums import Status
+from albert.core.shared.identifiers import TaskId
+from albert.core.shared.models import BaseResource
 
 
 class BatchValuePatchDatum(BaseAlbertModel):

@@ -1,6 +1,6 @@
 from albert.collections.base import BaseCollection
-from albert.core.models.identifiers import ProjectId
 from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import ProjectId
 from albert.resources.worksheets import Worksheet
 
 
