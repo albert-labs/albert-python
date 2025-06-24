@@ -165,5 +165,3 @@ class ParameterGroupSearchItem(BaseAlbertModel):
     parameters: list[ParameterSearchItemParameter] = Field(
         default_factory=list, alias="parameters"
     )
-
-
