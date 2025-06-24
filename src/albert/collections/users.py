@@ -59,7 +59,7 @@ class UserCollection(BaseCollection):
         response = self.session.get(url)
         return User(**response.json())
 
-    def search(self, *, params: UserFilterParams | None = None) -> Iterator[User]:
+    def search(self, *, params: UserFilterParams | None = None) -> Iterator[UserSearchItem]:
         """
         Searches for Users matching the provided criteria.
 
@@ -85,7 +85,9 @@ class UserCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=query_params,
-            deserialize=lambda items: [UserSearchItem(**item) for item in items],
+            deserialize=lambda items: [
+                UserSearchItem(**item)._bind_collection(self) for item in items
+            ],
         )
 
     def get_all(

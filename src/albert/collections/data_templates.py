@@ -363,7 +363,9 @@ class DataTemplateCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=lambda items: [DataTemplateSearchItem.model_validate(x) for x in items],
+            deserialize=lambda items: [
+                DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
             params=params,
         )
 

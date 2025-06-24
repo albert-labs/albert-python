@@ -7,6 +7,7 @@ from albert.core.shared.models import (
     BaseResource,
 )
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.locations import Location
 
@@ -104,6 +105,18 @@ class Project(BaseResource):
         """Somehow, some statuses are capitalized in the API response. This ensures they are always lowercase."""
         if isinstance(value, str):
             return value.lower()
+        return value
+
+
+class ProjectSearchItem(BaseModel, HydrationMixin[Project]):
+    id: str | None = Field(None, alias="albertId")
+    description: str = Field(min_length=1, max_length=2000)
+    status: str | None = Field(default=None, exclude=True, frozen=True)
+
+    @field_validator("id", mode="before")
+    def normalize_id(cls, value: str | None) -> str | None:
+        if value and not value.startswith("PRO"):
+            return f"PRO{value}"
         return value
 
 

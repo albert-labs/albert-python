@@ -2,13 +2,14 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, TypeAdapter, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import OrderBy, SecurityClass
 from albert.core.shared.identifiers import InventoryId, LotId
 from albert.core.shared.patch import PatchPayload
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
 from albert.resources.projects import Project
@@ -466,7 +467,7 @@ class TaskSearchWorkflow(BaseAlbertModel):
     category: str
 
 
-class TaskSearchItem(BaseAlbertModel):
+class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     """Lightweight representation of a Task returned from unhydrated search()."""
 
     id: str = Field(alias="albertId")
@@ -492,3 +493,9 @@ class TaskSearchItem(BaseAlbertModel):
     project_id: list[str] | None = Field(default=None, alias="projectId")
     is_qc_task: bool | None = Field(default=None, alias="isQCTask")
     parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")
+
+    @field_validator("id", mode="before")
+    def normalize_id(cls, value: str | None) -> str | None:
+        if value and not value.startswith("TAS"):
+            return f"TAS{value}"
+        return value

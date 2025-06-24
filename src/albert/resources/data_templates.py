@@ -5,6 +5,7 @@ from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import DataTemplateId
 from albert.core.shared.models import LocalizedNames
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
 from albert.resources.parameter_groups import ParameterValue, ValueValidation
 from albert.resources.tagged_base import BaseTaggedResource
@@ -67,7 +68,7 @@ class DataTemplateSearchItemDataColumn(BaseAlbertModel):
     localized_names: LocalizedNames = Field(alias="localizedNames")
 
 
-class DataTemplateSearchItem(BaseAlbertModel):
+class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
     id: str = Field(alias="albertId")
     name: str
     data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(

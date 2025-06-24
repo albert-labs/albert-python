@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from itertools import islice
 
 from albert import Albert
 from albert.core.shared.models import EntityLink
@@ -339,3 +340,15 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert "ParamOption3" in updated_param_enum_texts
     assert "ParamOption2-Updated" in updated_param_enum_texts
     assert updated_param.value == "ParamOption3"
+
+
+def test_hydrate_data_template(client: Albert):
+    data_templates = list(islice(client.data_templates.search(), 10))
+    assert data_templates, "Expected at least one data_template in search results"
+
+    for data_template in data_templates:
+        hydrated = data_template.hydrate()
+
+        # identity checks
+        assert hydrated.id == data_template.id
+        assert hydrated.name == data_template.name

@@ -3,13 +3,14 @@ from enum import Enum
 
 from pydantic import EmailStr, Field
 
-from albert.collections.locations import Location
-from albert.collections.roles import Role
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import OrderBy, Status
 from albert.core.shared.identifiers import UserId
 from albert.core.shared.models import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
+from albert.resources.locations import Location
+from albert.resources.roles import Role
 
 
 class UserClass(str, Enum):
@@ -72,7 +73,7 @@ class UserSearchRoleItem(BaseAlbertModel):
     roleName: str
 
 
-class UserSearchItem(BaseAlbertModel):
+class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
     """Partial user entity as returned by the search."""
 
     name: str

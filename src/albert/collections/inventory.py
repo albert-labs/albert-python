@@ -490,7 +490,7 @@ class InventoryCollection(BaseCollection):
         )
 
         def deserialize(items: list[dict]):
-            return [InventorySearchItem.model_validate(x) for x in items]
+            return [InventorySearchItem.model_validate(x)._bind_collection(self) for x in items]
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

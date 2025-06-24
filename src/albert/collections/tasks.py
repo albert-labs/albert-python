@@ -234,7 +234,7 @@ class TaskCollection(BaseCollection):
         response = self.session.get(url)
         return TaskAdapter.validate_python(response.json())
 
-    def search(self, *, params: TaskFilterParams | None = None) -> Iterator[BaseTask]:
+    def search(self, *, params: TaskFilterParams | None = None) -> Iterator[TaskSearchItem]:
         """Search for Task matching the provided criteria.
 
         ⚠️ This method returns partial (unhydrated) entities to optimize performance.
@@ -277,7 +277,9 @@ class TaskCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=lambda items: [TaskSearchItem(**item) for item in items],
+            deserialize=lambda items: [
+                TaskSearchItem(**item)._bind_collection(self) for item in items
+            ],
             params=query_params,
         )
 

@@ -3,16 +3,14 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.collections.cas import Cas
-from albert.collections.companies import Company
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.enums import (
-    OrderBy,
-    SecurityClass,
-)
+from albert.core.shared.enums import OrderBy, SecurityClass
 from albert.core.shared.identifiers import InventoryId, ProjectId, WorksheetId
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
+from albert.resources.cas import Cas
+from albert.resources.companies import Company
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tagged_base import BaseTaggedResource
@@ -279,7 +277,7 @@ class InventorySearchSDSItem(BaseAlbertModel):
     un_classification: str | None = Field(default=None, alias="unClassification")
 
 
-class InventorySearchItem(BaseAlbertModel):
+class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
     id: str = Field(alias="albertId")
     name: str = Field(default="")
     description: str = Field(default="")
