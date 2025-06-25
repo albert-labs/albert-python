@@ -179,6 +179,9 @@ class EntityType(BaseResource):
     )
     template_based: bool | None = Field(alias="templateBased", default=None)
     locked_template: bool | None = Field(alias="lockedTemplate", default=None)
+    search_query_string: EntityTypeSearchQueryStrings | None = Field(
+        alias="searchQueryString", default=None
+    )
 
 
 class EntityTypeOptionType(str, Enum):
@@ -244,11 +247,18 @@ class EntityTypeRuleAction(BaseAlbertModel):
         Available options for the field.
     """
 
-    target_field: str
+    target_field_name: str = Field(alias="target_field")
+    target_field_id: CustomFieldId | None = None
     hidden: bool | None = None
     required: bool | None = None
-    default: str | float | EntityLink | None = None
+    default: str | float | EntityLinkOption | EntityLink | None = None
     options: EntityTypeFieldOptions | None = None
+
+    # if an entity link is provided, convert it to an entity link option
+    def __init__(self, **data: Any):
+        if "default" in data and isinstance(data["default"], EntityLink):
+            data["default"] = EntityLinkOption(id=data["default"].id, name=data["default"].name)
+        super().__init__(**data)
 
 
 class EntityTypeRuleTriggerCase(BaseAlbertModel):
@@ -286,7 +296,7 @@ class EntityTypeRule(BaseResource):
     id : RuleId
         The unique identifier for the rule.
     custom_field_id : CustomFieldId
-        The ID of the custom field this rule listens to.
+        The ID of the custom field this rule listens to/ triggers on.
     trigger : EntityTypeRuleTrigger
         The triggers that activate this rule.
     """

@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import Field, model_validator
 
 from albert.resources.base import BaseResource
+from albert.resources.entity_types import EntityLinkOption
 
 
 class FieldType(str, Enum):
@@ -113,7 +114,9 @@ class CustomField(BaseResource):
     editable: bool | None = Field(default=None, alias="editable")
     multiselect: bool | None = Field(default=None, alias="multiselect")
     pattern: str | None = Field(default=None, alias="pattern")
-    default: str | None = Field(default=None, alias="default")
+    default: str | EntityLinkOption | float | dict[any, any] | None = Field(
+        default=None, alias="default"
+    )
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":

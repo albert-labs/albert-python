@@ -76,7 +76,10 @@ class EntityTypeCollection(BaseCollection):
         )
         patch.data.extend(special_patches)
 
-        self.session.patch(f"{self.base_path}/{updated_entity_type.id}", json=patch.model_dump())
+        self.session.patch(
+            f"{self.base_path}/{updated_entity_type.id}",
+            json=patch.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
         return self.get_by_id(id=updated_entity_type.id)
 
     def _generate_special_attribute_patches(
@@ -104,35 +107,52 @@ class EntityTypeCollection(BaseCollection):
         patches = []
 
         # Handle custom fields updates
-        if updated.custom_fields is not None:
-            for i, new_field in enumerate(updated.custom_fields):
-                if i < len(existing.custom_fields):
-                    old_field = existing.custom_fields[i]
-                    # Get all fields from the model, including their aliases
-                    field_info = new_field.model_fields
-                    for field_name, field in field_info.items():
-                        new_value = getattr(new_field, field_name)
-                        old_value = getattr(old_field, field_name)
-                        if new_value != old_value:
-                            # Use the field's alias if available, otherwise use the field name
-                            attr_name = field.alias or field_name
-                            patches.append(
-                                PatchDatum(
-                                    operation=PatchOperation.UPDATE,
-                                    attribute=f"customFields[{i}].{attr_name}",
-                                    new_value=new_value,
-                                    old_value=old_value,
-                                )
-                            )
-                else:
-                    # New field added
-                    patches.append(
-                        PatchDatum(
-                            operation=PatchOperation.ADD,
-                            attribute=f"customFields[{i}]",
-                            new_value=new_field.model_dump(by_alias=True),
-                        )
-                    )
+        # if updated.custom_fields is not None:
+        #     for i, new_field in enumerate(updated.custom_fields):
+        #         if i < len(existing.custom_fields):
+        #             old_field = existing.custom_fields[i]
+        #             # Get all fields from the model, including their aliases
+        #             field_info = new_field.model_fields
+        #             for field_name, field in field_info.items():
+        #                 new_value = getattr(new_field, field_name)
+        #                 old_value = getattr(old_field, field_name)
+        #                 if new_value != old_value:
+        #                     # Use the field's alias if available, otherwise use the field name
+        #                     attr_name = field.alias or field_name
+        #                     patches.append(
+        #                         PatchDatum(
+        #                             operation=PatchOperation.UPDATE,
+        #                             attribute=f"customFields[{i}].{attr_name}",
+        #                             new_value=new_value,
+        #                             old_value=old_value,
+        #                         )
+        #                     )
+        #         else:
+        #             # New field added
+        #             patches.append(
+        #                 PatchDatum(
+        #                     operation=PatchOperation.ADD,
+        #                     attribute=f"customFields[{i}]",
+        #                     new_value=new_field.model_dump(by_alias=True),
+        #                 )
+        #             )
+        if updated.custom_fields is not None and existing.custom_fields is not None:
+            patches.append(
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="customFields",
+                    new_value=[x.model_dump(by_alias=True) for x in updated.custom_fields],
+                    old_value=[x.model_dump(by_alias=True) for x in existing.custom_fields],
+                )
+            )
+        if updated.custom_fields is not None and existing.custom_fields is None:
+            patches.append(
+                PatchDatum(
+                    operation=PatchOperation.ADD,
+                    attribute="customFields",
+                    new_value=[x.model_dump(by_alias=True) for x in updated.custom_fields],
+                )
+            )
 
         # Handle standard field visibility updates
         if updated.standard_field_visibility is not None:
