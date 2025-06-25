@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import PrivateAttr
-from typing_extensions import Self  # Python 3.10 fallback
+from typing_extensions import Self  # available in `typing` from Python 3.11
 
 from albert.exceptions import AlbertException
 
@@ -22,9 +22,9 @@ class HydrationMixin(Generic[T]):
 
     def hydrate(self) -> T:
         if not self._collection:
-            raise RuntimeError("No collection is bound to this object.")
+            raise RuntimeError("No collection is bound to this resource.")
         if not hasattr(self._collection, "get_by_id"):
-            raise AlbertException("This entity does not support hydration.")
+            raise AlbertException("This resource does not support hydration.")
         if not hasattr(self, "id") or self.id is None:
-            raise ValueError("Entity must have a non-null `id` to hydrate.")
+            raise ValueError("Resource must have a non-null `id` to hydrate.")
         return self._collection.get_by_id(id=self.id)
