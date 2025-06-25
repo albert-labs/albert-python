@@ -5,7 +5,8 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 import albert
-from albert.core.auth.credentials import AlbertClientCredentials, TokenManager
+from albert.core.auth.credentials import AlbertClientCredentials
+from albert.core.auth.sso import AlbertSSOClient
 from albert.exceptions import handle_http_errors
 
 
@@ -16,13 +17,14 @@ class AlbertSession(requests.Session):
     Parameters
     ----------
     base_url : str
-        The base URL to prefix to all requests. (e.g., "https://sandbox.albertinvent.com")
-    retries : int
-        The number of retries for failed requests. Defaults to 3.
-    client_credentials : AlbertClientCredentials | None
-        The client credentials for programmatic authentication. Optional if token is provided.
-    token : str | None
-        The JWT token for authentication. Optional if client credentials are provided.
+        The base URL to prefix to all relative request paths (e.g., "https://app.albertinvent.com").
+    token : str | None, optional
+        A static JWT token for authentication. Ignored if `auth_manager` is provided.
+    auth_manager : AlbertClientCredentials | AlbertSSOClient, optional
+        An authentication manager used to dynamically fetch and refresh tokens.
+        If provided, it overrides `token`.
+    retries : int, optional
+        The number of automatic retries on failed requests (default is 3).
     """
 
     def __init__(
@@ -30,7 +32,7 @@ class AlbertSession(requests.Session):
         *,
         base_url: str,
         token: str | None = None,
-        client_credentials: AlbertClientCredentials | None = None,
+        auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
     ):
         super().__init__()
@@ -43,13 +45,11 @@ class AlbertSession(requests.Session):
             }
         )
 
-        if token is None and client_credentials is None:
-            raise ValueError("Either client credentials or token must be specified.")
+        if token is None and auth_manager is None:
+            raise ValueError("Either `token` or `auth_manager` must be specified.")
 
+        self._auth_manager = auth_manager
         self._provided_token = token
-        self._token_manager = (
-            TokenManager(base_url, client_credentials) if client_credentials is not None else None
-        )
 
         # Set up retry logic
         retries = retries if retries is not None else 3
@@ -68,8 +68,8 @@ class AlbertSession(requests.Session):
     @property
     def _access_token(self) -> str | None:
         """Get the access token from the token manager or provided token."""
-        if self._token_manager is not None:
-            return self._token_manager.get_access_token()
+        if self._auth_manager is not None:
+            return self._auth_manager.get_access_token()
         return self._provided_token
 
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
