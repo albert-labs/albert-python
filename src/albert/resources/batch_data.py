@@ -32,7 +32,6 @@ class BatchDataType(str, Enum):
 
 
 class BatchDataValue(BaseAlbertModel):
-    # TODO: Once SignatureOverrideMeta removed, use BaseAlbertModel instead of BaseModel
     id: str | None = Field(default=None)
     col_id: str | None = Field(default=None, alias="colId")
     type: str | None = Field(default=None)
@@ -44,7 +43,6 @@ class BatchDataValue(BaseAlbertModel):
 
 
 class BatchDataRow(BaseAlbertModel):
-    # TODO: Once SignatureOverrideMeta removed, use BaseAlbertModel instead of BaseModel
     id: str | None = Field(default=None)
     row_id: str | None = Field(default=None, alias="rowId")
     type: str | None = Field(default=None)
