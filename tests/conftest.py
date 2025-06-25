@@ -68,10 +68,11 @@ def client() -> Albert:
     credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+        base_url_env="ALBERT_BASE_URL",
     )
     return Albert(
         base_url="https://app.albertinvent.com",
-        client_credentials=credentials,
+        auth_manager=credentials,
         retries=3,
     )
 

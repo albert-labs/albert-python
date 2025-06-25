@@ -6,82 +6,101 @@ from typing import Literal
 from urllib.parse import urljoin
 
 import requests
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 
+from albert.core.auth._manager import AuthManager, OAuthTokenInfo
 from albert.core.base import BaseAlbertModel
 from albert.exceptions import handle_http_errors
 
 
-class AlbertClientCredentials(BaseAlbertModel):
-    """Client authentication credentials for the Albert API."""
+class AlbertClientCredentials(BaseAlbertModel, AuthManager):
+    """
+    Client credentials manager for programmatic OAuth2 access to the Albert API.
+
+    This class implements the OAuth2 Client Credentials flow, allowing automated
+    systems (non-interactive) to authenticate securely using a client ID and secret.
+
+    Attributes
+    ----------
+    id : str
+        The client ID used for authentication.
+    secret : SecretStr
+        The client secret used for authentication.
+    base_url : str
+        The base URL of the Albert API.
+
+    Usage
+    -----
+    >>> creds = AlbertClientCredentials(
+    ...     id="your-client-id",
+    ...     secret=SecretStr("your-client-secret"),
+    ...     base_url="https://app.albertinvent.com",
+    ... )
+    >>> client = Albert(auth_manager=creds)
+    >>> client.roles.get_all()
+    """
 
     id: str
     secret: SecretStr
+    base_url: str = Field(
+        default_factory=lambda: (
+            os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com"
+        ).rstrip("/")
+    )
+
+    @property
+    def oauth_token_url(self) -> str:
+        """Return the full URL to the OAuth token endpoint."""
+        oauth_token_path: str = "/api/v3/login/oauth/token"
+        return urljoin(self.base_url, oauth_token_path)
 
     @classmethod
     def from_env(
         cls,
+        base_url_env: str = "ALBERT_BASE_URL",
         *,
         client_id_env: str = "ALBERT_CLIENT_ID",
         client_secret_env: str = "ALBERT_CLIENT_SECRET",
     ) -> AlbertClientCredentials | None:
-        """Read `AlbertClientCredentials` from the environment.
+        """
+        Create `AlbertClientCredentials` from environment variables.
 
-        Returns None if the `client_id_env` and `client_secret_env` environment variables
-        are not defined.
+        Returns None if any of the required environment variables are missing.
 
         Parameters
         ----------
+        base_url_env : str
+            Name of the environment variable containing the base URL
+            (defaults to "ALBERT_BASE_URL").
         client_id_env : str
             Name of the environment variable containing the client ID
-            (defaults to "ALBERT_CLIENT_ID")
+            (defaults to "ALBERT_CLIENT_ID").
         client_secret_env : str
             Name of the environment variable containing the client secret
-            (defaults to "ALBERT_CLIENT_SECRET")
+            (defaults to "ALBERT_CLIENT_SECRET").
 
         Returns
         -------
         AlbertClientCredentials | None
-            The client credentials obtained from the environment, if present.
+            The credentials instance if all environment variables are present;
+            otherwise, None.
         """
         client_id = os.getenv(client_id_env)
         client_secret = os.getenv(client_secret_env)
-        if client_id is not None and client_secret is not None:
-            return cls(id=client_id, secret=client_secret)
+        base_url = os.getenv(base_url_env)
 
+        if client_id and client_secret and base_url:
+            return cls(
+                id=client_id,
+                secret=SecretStr(client_secret),
+                base_url=base_url,
+            )
 
-class CreateOAuthToken(BaseAlbertModel):
-    grant_type: Literal["client_credentials"] = "client_credentials"
-    client_id: str
-    client_secret: str
-
-
-class OAuthTokenInfo(BaseAlbertModel):
-    issued_token_type: str
-    token_type: str
-    access_token: str
-    refresh_token: str
-    expires_in: int
-
-
-class TokenManager:
-    """Helper to manage refreshing an access token from OAuth endpoint."""
-
-    oauth_token_path: str = "/api/v3/login/oauth/token"
-    refresh_token_path: str = "/api/v3/login/refresh"
-
-    def __init__(self, base_url: str, client_credentials: AlbertClientCredentials):
-        self.oauth_token_url = urljoin(base_url, self.oauth_token_path)
-        self.refresh_token_url = urljoin(base_url, self.refresh_token_path)
-        self.client_credentials = client_credentials
-
-        self._token_info: OAuthTokenInfo | None = None
-        self._refresh_time: datetime | None = None
-
-    def _create_token_with_client_credentials(self) -> None:
+    def _request_access_token(self) -> None:
+        """Request and store a new access token using client credentials."""
         payload = CreateOAuthToken(
-            client_id=self.client_credentials.id,
-            client_secret=self.client_credentials.secret.get_secret_value(),
+            client_id=self.id,
+            client_secret=self.secret.get_secret_value(),
         )
         with handle_http_errors():
             response = requests.post(
@@ -97,15 +116,14 @@ class TokenManager:
             - timedelta(minutes=1)  # Buffer to avoid token expiration
         )
 
-    def _requires_refresh(self) -> bool:
-        return (
-            self._token_info is None
-            or self._refresh_time is None
-            or datetime.now(timezone.utc) > self._refresh_time
-        )
-
     def get_access_token(self) -> str:
+        """Return a valid access token, refreshing it if needed."""
         if self._requires_refresh():
-            self._create_token_with_client_credentials()
-
+            self._request_access_token()
         return self._token_info.access_token
+
+
+class CreateOAuthToken(BaseAlbertModel):
+    grant_type: Literal["client_credentials"] = "client_credentials"
+    client_id: str
+    client_secret: str
