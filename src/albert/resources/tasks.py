@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter, field_validator
+from pydantic import Field, TypeAdapter
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import OrderBy, SecurityClass
@@ -493,4 +493,3 @@ class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     project_id: list[str] | None = Field(default=None, alias="projectId")
     is_qc_task: bool | None = Field(default=None, alias="isQCTask")
     parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")
-

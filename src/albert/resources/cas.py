@@ -1,7 +1,9 @@
 from enum import Enum
 
-from pydantic import BaseAlbertModel, Field
+from pydantic import Field
+
 from albert.core.base import BaseAlbertModel
+
 
 class CasCategory(str, Enum):
     USER = "User"
