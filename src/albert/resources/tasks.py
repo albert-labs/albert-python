@@ -6,7 +6,7 @@ from pydantic import Field, TypeAdapter, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import OrderBy, SecurityClass
-from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.identifiers import InventoryId, LotId, TaskId
 from albert.core.shared.patch import PatchPayload
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -470,7 +470,7 @@ class TaskSearchWorkflow(BaseAlbertModel):
 class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     """Lightweight representation of a Task returned from unhydrated search()."""
 
-    id: str = Field(alias="albertId")
+    id: TaskId = Field(alias="albertId")
     name: str
     category: str
     priority: str | None = None
@@ -494,8 +494,3 @@ class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     is_qc_task: bool | None = Field(default=None, alias="isQCTask")
     parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")
 
-    @field_validator("id", mode="before")
-    def normalize_id(cls, value: str | None) -> str | None:
-        if value and not value.startswith("TAS"):
-            return f"TAS{value}"
-        return value

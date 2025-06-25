@@ -1,11 +1,11 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
+from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import OrderBy
-from albert.core.shared.models import (
-    BaseResource,
-)
+from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.models import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
@@ -30,7 +30,7 @@ class State(str, Enum):
     CLOSED_ARCHIVED = "Closed - Archived"
 
 
-class TaskConfig(BaseModel):
+class TaskConfig(BaseAlbertModel):
     """The task configuration for a project"""
 
     datatemplateId: str | None = None
@@ -89,7 +89,7 @@ class Project(BaseResource):
         alias="appEngg",
         description="Inventory Ids to be added as application engineering",
     )
-    id: str | None = Field(None, alias="albertId")
+    id: ProjectId | None = Field(None, alias="albertId")
     acl: list[ACL] | None = Field(default_factory=list, alias="ACL")
     old_api_params: dict | None = None
     task_config: list[TaskConfig] | None = Field(default_factory=list)
@@ -108,19 +108,13 @@ class Project(BaseResource):
         return value
 
 
-class ProjectSearchItem(BaseModel, HydrationMixin[Project]):
-    id: str | None = Field(None, alias="albertId")
+class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
+    id: ProjectId | None = Field(None, alias="albertId")
     description: str = Field(min_length=1, max_length=2000)
     status: str | None = Field(default=None, exclude=True, frozen=True)
 
-    @field_validator("id", mode="before")
-    def normalize_id(cls, value: str | None) -> str | None:
-        if value and not value.startswith("PRO"):
-            return f"PRO{value}"
-        return value
 
-
-class ProjectFilterParams(BaseModel):
+class ProjectFilterParams(BaseAlbertModel):
     """
     Filtering and query parameters for retrieving Projects via `search()` or `get_all()`.
 
