@@ -59,6 +59,29 @@ For VSCode users, there is also base workspace settings defined in `.vscode/sett
 automatic fomatting and import sorting on-save using the
 [Ruff for VSCode](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) extension.
 
+## Commit Guidelines
+
+We use the [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```text
+type(scope)!: summary
+```
+
+* `type`: one of `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`
+* `scope`: optional, a module or feature name (e.g., `auth`, `session`)
+* `!`: optional, indicates a **breaking change**
+* `summary`: short and clear — think “when applied, the SDK will…”
+
+### Examples
+
+```text
+feat(auth): support token refresh  
+fix!: remove deprecated param handling  
+docs: clarify local dev setup
+```
+
+This keeps commit history readable and enables changelog automation.
+
 ## Documentation
 
 ### Using Numpy-Style Docstrings
@@ -106,7 +129,7 @@ To add coverage for a new microservice, you can add a page by doing the followin
  1. in the `docs/` folder make a new markdown file following the pattern of the others.
     For example:
 
-    ```
+    ```md
     # cas.md
 
     ::: albert.collections.cas
@@ -132,9 +155,9 @@ uv run mkdocs serve
 
 #### 3. Open <http://127.0.0.1:8000/> (or specified address) in your browser and navigate through the docs to confirm that
 
-- All references and links are resolving correctly.
-- Docstrings are properly formatted.
-- No missing or broken sections exist.
+* All references and links are resolving correctly.
+* Docstrings are properly formatted.
+* No missing or broken sections exist.
 
 ### Deploying Documentation
 
@@ -145,9 +168,9 @@ The documentation is automatically built and deployed to GitHub Pages when a pul
 1. A PR is merged into main.
 2. CircleCI runs the deploy_docs job, which:
 
-    - Builds the latest version of the documentation using mkdocs build --clean.
-    - Pushes the built docs to the gh-pages branch.
-    - GitHub Pages automatically serves the latest docs
+    * Builds the latest version of the documentation using mkdocs build --clean.
+    * Pushes the built docs to the gh-pages branch.
+    * GitHub Pages automatically serves the latest docs
 
 #### Manually Triggering a Docs Deployment
 
@@ -171,7 +194,7 @@ git push origin gh-pages
 
 The release will automatically trigger the CircleCI workflow to:
 
-- Build and publish the package to PyPI
-- Build and deploy the documentation
+* Build and publish the package to PyPI
+* Build and deploy the documentation
 
 Note: Only designated Albert team members have permissions to create releases.
