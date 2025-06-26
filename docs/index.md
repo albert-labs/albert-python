@@ -74,7 +74,7 @@ client = Albert.from_sso(
 ```
 
 !!! note
-You **must** call `sso.authenticate()` before using the client. This method launches a local HTTP server and opens the default browser for login.
+    You **must** call `sso.authenticate()` before using the client. This method launches a local HTTP server and opens the default browser for login.
 
 ---
 
@@ -142,8 +142,8 @@ client = Albert.from_token(
 )
 ```
 
-!!! note
-This method does not support auto-refresh and should be avoided for production use.
+!!! warning
+    This method does not support auto-refresh and should be avoided for production use.
 
 ---
 
@@ -157,7 +157,10 @@ You can interact with inventory items using the `InventoryCollection` class. Her
 from albert import Albert
 from albert.resources.inventory import InventoryItem, InventoryCategory, UnitCategory
 
-client = Albert()
+client = Albert(
+    base_url="https://app.albertinvent.com",
+    token="your.jwt.token"
+)
 
 # Create a new inventory item
 new_inventory = InventoryItem(
