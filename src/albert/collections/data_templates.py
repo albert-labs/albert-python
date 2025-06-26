@@ -1,11 +1,11 @@
 from collections.abc import Iterator
 
-from pydantic import Field
+from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
-from albert.resources.identifiers import DataTemplateId
+from albert.resources.identifiers import DataTemplateId, UserId
 from albert.resources.parameter_groups import DataType, EnumValidationValue
 from albert.session import AlbertSession
 from albert.utils.logging import logger
@@ -68,6 +68,7 @@ class DataTemplateCollection(BaseCollection):
                 data_template_id=dt.id, parameters=data_template.parameter_values
             )
 
+    @validate_call
     def _add_param_enums(
         self,
         *,
@@ -160,6 +161,7 @@ class DataTemplateCollection(BaseCollection):
                         json=enum_patches,
                     )
 
+    @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
 
@@ -216,6 +218,7 @@ class DataTemplateCollection(BaseCollection):
                 return h
         return None
 
+    @validate_call
     def add_data_columns(
         self, *, data_template_id: DataTemplateId, data_columns: list[DataColumnValue]
     ) -> DataTemplate:
@@ -259,6 +262,7 @@ class DataTemplateCollection(BaseCollection):
         )
         return self.get_by_id(id=data_template_id)
 
+    @validate_call
     def add_parameters(
         self, *, data_template_id: DataTemplateId, parameters: list[ParameterValue]
     ) -> DataTemplate:
@@ -317,11 +321,12 @@ class DataTemplateCollection(BaseCollection):
 
         return self.update(data_template=dt_with_params)
 
+    @validate_call
     def list(
         self,
         *,
         name: str | None = None,
-        user_id: str | None = None,
+        user_id: UserId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         limit: int = 100,
         offset: int = 0,
@@ -452,6 +457,7 @@ class DataTemplateCollection(BaseCollection):
             )
         return self.get_by_id(id=data_template.id)
 
+    @validate_call
     def delete(self, *, id: DataTemplateId) -> None:
         """Deletes a data template by its ID.
 
