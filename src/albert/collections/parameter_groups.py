@@ -13,7 +13,7 @@ from albert.resources.parameter_groups import (
     ParameterGroupSearchItem,
     PGType,
 )
-from albert.utils._patch_utils import generate_parameter_group_patches
+from albert.utils._patch import generate_parameter_group_patches
 
 
 class ParameterGroupCollection(BaseCollection):
