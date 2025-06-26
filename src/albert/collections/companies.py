@@ -1,9 +1,12 @@
 import logging
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
+from albert.resources.identifiers import CompanyId
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -85,7 +88,8 @@ class CompanyCollection(BaseCollection):
         companies = self.get_by_name(name=name, exact_match=exact_match)
         return bool(companies)
 
-    def get_by_id(self, *, id: str) -> Company:
+    @validate_call
+    def get_by_id(self, *, id: CompanyId) -> Company:
         """
         Get a company by its ID.
 
@@ -152,7 +156,8 @@ class CompanyCollection(BaseCollection):
         this_company = Company(**response.json())
         return this_company
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: CompanyId) -> None:
         """Deletes a company entity.
 
         Parameters
