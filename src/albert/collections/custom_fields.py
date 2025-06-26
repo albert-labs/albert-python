@@ -1,8 +1,11 @@
 import json
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.resources.custom_fields import CustomField, ServiceType
+from albert.resources.identifiers import CustomFieldId
 from albert.session import AlbertSession
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
@@ -84,7 +87,8 @@ class CustomFieldCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomFieldCollection._api_version}/customfields"
 
-    def get_by_id(self, *, id: str) -> CustomField:
+    @validate_call
+    def get_by_id(self, *, id: CustomFieldId) -> CustomField:
         """Get a CustomField item by its ID.
 
         Parameters
