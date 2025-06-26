@@ -11,6 +11,7 @@ _ALBERT_PREFIXES = {
     "CasId": "CAS",
     "CompanyId": "CMP",
     "CustomFieldId": "CTF",
+    "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
     "EntityTypeId": "ETT",
@@ -183,6 +184,13 @@ def ensure_custom_field_id(id: str) -> str:
 
 
 CustomFieldId = Annotated[str, AfterValidator(ensure_custom_field_id)]
+
+
+def ensure_custom_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "CustomTemplateId")
+
+
+CustomTemplateId = Annotated[str, AfterValidator(ensure_custom_template_id)]
 
 
 def ensure_entity_type_id(id: str) -> str:
