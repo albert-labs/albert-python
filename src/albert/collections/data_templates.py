@@ -18,7 +18,7 @@ from albert.resources.data_templates import (
     ParameterValue,
 )
 from albert.resources.parameter_groups import DataType, EnumValidationValue
-from albert.utils._patch_utils import generate_data_template_patches
+from albert.utils._patch import generate_data_template_patches
 
 
 class DCPatchDatum(PGPatchPayload):
