@@ -1,5 +1,6 @@
-import contextlib
 import socket
+from collections.abc import Generator
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -7,17 +8,16 @@ LOCALHOST = "127.0.0.1"
 DEFAULT_PORTS_TO_TRY = 100
 
 
-def _find_open_port(start: int, stop: int | None = None) -> int | None:
+def _find_open_port(*, start: int, stop: int | None = None) -> int | None:
     stop = stop or start + DEFAULT_PORTS_TO_TRY
     for port in range(start, stop):
-        with contextlib.closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            try:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.bind((LOCALHOST, port))
                 sock.listen(1)
-            except OSError:
-                continue
-            else:
                 return port
+        except OSError:
+            continue
     return None
 
 
@@ -50,17 +50,24 @@ class RequestHandler(BaseHTTPRequestHandler):
         pass
 
 
-def start_local_http_server(
+@contextmanager
+def local_http_server(
+    *,
     minimum_port: int = 5000,
     maximum_port: int | None = None,
     handler: type[BaseHTTPRequestHandler] = RequestHandler,
-) -> tuple[HTTPServer, str]:
-    port = _find_open_port(minimum_port, maximum_port)
+) -> Generator[tuple[HTTPServer, int], None, None]:
+    port = _find_open_port(start=minimum_port, stop=maximum_port)
     if port is None:
         raise RuntimeError(
             f"No open port found in range {minimum_port}-{minimum_port + DEFAULT_PORTS_TO_TRY}"
         )
+
     server = HTTPServer((LOCALHOST, port), handler)
     server.allow_reuse_address = True
     server.token = None
-    return server, port
+
+    try:
+        yield server, port
+    finally:
+        server.server_close()

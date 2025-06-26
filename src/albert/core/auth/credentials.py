@@ -11,6 +11,7 @@ from pydantic import Field, SecretStr
 from albert.core.auth._manager import AuthManager, OAuthTokenInfo
 from albert.core.base import BaseAlbertModel
 from albert.exceptions import handle_http_errors
+from albert.utils._auth import default_albert_base_url
 
 
 class AlbertClientCredentials(BaseAlbertModel, AuthManager):
@@ -42,11 +43,7 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
 
     id: str
     secret: SecretStr
-    base_url: str = Field(
-        default_factory=lambda: (
-            os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com"
-        ).rstrip("/")
-    )
+    base_url: str = Field(default_factory=default_albert_base_url)
 
     @property
     def oauth_token_url(self) -> str:
@@ -57,8 +54,8 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
     @classmethod
     def from_env(
         cls,
-        base_url_env: str = "ALBERT_BASE_URL",
         *,
+        base_url_env: str = "ALBERT_BASE_URL",
         client_id_env: str = "ALBERT_CLIENT_ID",
         client_secret_env: str = "ALBERT_CLIENT_SECRET",
     ) -> AlbertClientCredentials | None:

@@ -1,4 +1,3 @@
-import os
 import webbrowser
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode, urljoin
@@ -6,10 +5,11 @@ from urllib.parse import urlencode, urljoin
 import requests
 from pydantic import Field
 
-from albert.core.auth._listener import start_local_http_server
+from albert.core.auth._listener import local_http_server
 from albert.core.auth._manager import AuthManager, OAuthTokenInfo
 from albert.core.base import BaseAlbertModel
 from albert.exceptions import handle_http_errors
+from albert.utils._auth import default_albert_base_url
 
 
 class AlbertSSOClient(BaseAlbertModel, AuthManager):
@@ -39,11 +39,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
     >>> client.roles.get_all()
     """
 
-    base_url: str = Field(
-        default_factory=lambda: (
-            os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com"
-        ).rstrip("/")
-    )
+    base_url: str = Field(default_factory=default_albert_base_url)
     email: str
 
     def authenticate(
@@ -74,25 +70,16 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         OAuthTokenInfo
             The initial token info containing the refresh token.
         """
-        server, port = start_local_http_server(
-            minimum_port=minimum_port, maximum_port=maximum_port
-        )
-        raw = {
-            "source": "sdk",
-            "email": self.email,
-            "port": port,
-            "tenantId": tenant_id,
-        }
+        with local_http_server(minimum_port=minimum_port, maximum_port=maximum_port) as (
+            server,
+            port,
+        ):
+            login_url = self._build_login_url(port=port, tenant_id=tenant_id)
+            webbrowser.open(login_url)
 
-        params = {k: value for k, value in raw.items() if value is not None}
-        sso_login_url = f"{self.base_url}/api/v3/login?{urlencode(params)}"
-        webbrowser.open(sso_login_url)
-
-        # Block here until one request arrives at localhost:port/?token=…
-        server.handle_request()
-
-        refresh_token = server.token
-        server.server_close()
+            # Block here until one request arrives at localhost:port/?token=…
+            server.handle_request()
+            refresh_token = server.token
 
         self._token_info = OAuthTokenInfo(refresh_token=refresh_token)
         return self._token_info
@@ -128,3 +115,17 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         if self._requires_refresh():
             self._request_access_token()
         return self._token_info.access_token
+
+    def _build_login_url(self, *, port: int, tenant_id: str) -> str:
+        """Build sso login URL."""
+        path = "/api/v3/login"
+        raw = {
+            "source": "sdk",
+            "email": self.email,
+            "port": port,
+            "tenantId": tenant_id,
+        }
+
+        params = {k: value for k, value in raw.items() if value is not None}
+        query = urlencode(params)
+        return f"{urljoin(self.base_url, path)}?{query}"
