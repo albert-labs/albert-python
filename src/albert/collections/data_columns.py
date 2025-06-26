@@ -1,9 +1,12 @@
 import json
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_columns import DataColumn
+from albert.resources.identifiers import DataColumnId
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -39,7 +42,8 @@ class DataColumnCollection(BaseCollection):
                 return dc
         return None
 
-    def get_by_id(self, *, id) -> DataColumn:
+    @validate_call
+    def get_by_id(self, *, id: DataColumnId) -> DataColumn:
         """
         Get a data column by its ID.
 
@@ -57,11 +61,12 @@ class DataColumnCollection(BaseCollection):
         dc = DataColumn(**response.json())
         return dc
 
+    @validate_call
     def list(
         self,
         *,
         order_by: OrderBy = OrderBy.DESCENDING,
-        ids: str | list[str] | None = None,
+        ids: DataColumnId | list[DataColumnId] | None = None,
         name: str | list[str] | None = None,
         exact_match: bool | None = None,
         default: bool | None = None,
@@ -140,7 +145,8 @@ class DataColumnCollection(BaseCollection):
 
         return DataColumn(**response.json()[0])
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: DataColumnId) -> None:
         """
         Delete a data column entity.
 
@@ -170,6 +176,7 @@ class DataColumnCollection(BaseCollection):
         updated = updated_object.metadata.get(metadata_field, None)
         return isinstance(existing, list) or isinstance(updated, list)
 
+    @validate_call
     def update(self, *, data_column: DataColumn) -> DataColumn:
         """Update a data column entity.
 
