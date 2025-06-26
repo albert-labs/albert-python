@@ -106,16 +106,16 @@ class Albert:
         )
 
     @classmethod
-    def from_token(cls, base_url: str, token: str) -> Albert:
+    def from_token(cls, *, base_url: str, token: str) -> Albert:
         """Create an Albert client using a static token for authentication."""
         return cls(base_url=base_url, token=token)
 
     @classmethod
     def from_sso(
         cls,
+        *,
         base_url: str,
         email: str,
-        *,
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
@@ -128,6 +128,7 @@ class Albert:
     @classmethod
     def from_client_credentials(
         cls,
+        *,
         base_url: str,
         client_id: str,
         client_secret: str,
