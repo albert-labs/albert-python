@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import Field, model_validator
 
 from albert.resources.base import (
@@ -60,4 +62,4 @@ class DataTemplate(BaseTaggedResource):
     deleted_parameters: list[ParameterValue] | None = Field(
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
-    metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+    metadata: dict[str, MetadataItem | Any] | None = Field(default=None, alias="Metadata")
