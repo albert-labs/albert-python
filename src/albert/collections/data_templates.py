@@ -4,6 +4,7 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
+from albert.resources.base import EntityLink
 from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
 from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import DataType, EnumValidationValue
@@ -296,9 +297,7 @@ class DataTemplateCollection(BaseCollection):
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
             if param.unit is not None:
-                param.unit.name = (
-                    None  # remove the name of the unit as this is readonly on the API
-                )
+                param.unit = EntityLink(id=param.unit.id)
 
         payload = {
             "Parameters": [
