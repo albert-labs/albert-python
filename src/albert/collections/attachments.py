@@ -70,7 +70,7 @@ class AttachmentCollection(BaseCollection):
         self.session.delete(f"{self.base_path}/{id}")
 
     def upload_and_attach_file_as_note(
-        self, parent_id: str, file_data: IO, note_text: str = "", file_name: str = ""
+        self, *, parent_id: str, file_data: IO, note_text: str = "", file_name: str = ""
     ) -> Note:
         """Uploads a file and attaches it to a new note. A user can be tagged in the note_text string by using f-string and the User.to_note_mention() method.
         This allows for easy tagging and referencing of users within notes. example: f"Hello {tagged_user.to_note_mention()}!"

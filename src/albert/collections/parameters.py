@@ -3,9 +3,9 @@ import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.parameters import Parameter
 
 

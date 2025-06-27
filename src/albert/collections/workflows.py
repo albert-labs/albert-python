@@ -1,9 +1,12 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.resources.workflows import Workflow
+from albert.core.shared.enums import PaginationMode
+from albert.resources.workflows import Workflow, WorkflowFilterParams
 
 
 class WorkflowCollection(BaseCollection):
@@ -83,28 +86,31 @@ class WorkflowCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def get_all(self, limit: int = 50) -> Iterator[Workflow]:
+    @validate_call
+    def get_all(self, *, params: WorkflowFilterParams | None = None) -> Iterator[Workflow]:
         """Get all workflows. Unlikely to be used in production.
 
         Parameters
         ----------
-        limit : int, optional
-            The number of workflows to return, by default 50.
+        params : WorkflowFilterParams, optional
+            Pagination parameters. If not provided, defaults to page size of 50.
 
         Yields
         ------
         Iterator[Workflow]
             An iterator of Workflow objects.
         """
+        params = params or WorkflowFilterParams(page_size=50)
 
         def deserialize(items: list[dict]) -> list[Workflow]:
             return self.get_by_ids(ids=[x["albertId"] for x in items])
 
-        params = {"limit": limit}
         return AlbertPaginator(
-            mode=PaginationMode.KEY,
+            mode=PaginationMode(params.mode),
             path=self.base_path,
-            params=params,
+            params=params.dict(by_alias=True, exclude_none=True),
             session=self.session,
+            page_size=params.page_size,
+            max_items=params.max_items,
             deserialize=deserialize,
         )

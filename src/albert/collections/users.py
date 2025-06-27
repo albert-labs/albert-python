@@ -4,9 +4,9 @@ import jwt
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import Status
+from albert.core.shared.enums import PaginationMode, Status
 from albert.exceptions import AlbertHTTPError
 from albert.resources.users import User, UserFilterParams, UserFilterType, UserSearchItem
 

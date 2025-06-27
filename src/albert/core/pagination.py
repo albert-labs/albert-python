@@ -1,17 +1,13 @@
 from collections.abc import Callable, Iterable, Iterator
-from enum import Enum
+from itertools import islice
 from typing import Any, TypeVar
 from urllib.parse import quote_plus
 
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
 
 ItemType = TypeVar("ItemType")
-
-
-class PaginationMode(str, Enum):
-    OFFSET = "offset"
-    KEY = "key"
 
 
 class AlbertPaginator(Iterator[ItemType]):
@@ -33,17 +29,22 @@ class AlbertPaginator(Iterator[ItemType]):
         session: AlbertSession,
         deserialize: Callable[[Iterable[dict]], Iterable[ItemType]],
         params: dict[str, str] | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ):
         self.path = path
         self.mode = mode
         self.session = session
         self.deserialize = deserialize
+        self.page_size = page_size
+        self.max_items = max_items
 
         params = params or {}
         self.params = {k: v for k, v in params.items() if v is not None}
 
         if "startKey" in self.params:
             self.params["startKey"] = quote_plus(self.params["startKey"])
+        self.params["limit"] = self.page_size
 
         self._iterator = self._create_iterator()
 
@@ -51,25 +52,20 @@ class AlbertPaginator(Iterator[ItemType]):
         while True:
             response = self.session.get(self.path, params=self.params)
             data = response.json()
-
             items = data.get("Items", [])
             item_count = len(items)
-
-            # Return if no items
-            if item_count == 0:
+            if not items:
                 return
 
             yield from self.deserialize(items)
 
-            # Return if under limit
-            if "limit" in self.params and item_count < self.params["limit"]:
+            if item_count < self.page_size:
                 return
 
-            keep_going = self._update_params(data, item_count)
-            if not keep_going:
+            if not self._update_params(data=data, count=item_count):
                 return
 
-    def _update_params(self, data: dict[str, Any], count: int) -> bool:
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
         match self.mode:
             case PaginationMode.OFFSET:
                 offset = data.get("offset")
@@ -86,7 +82,11 @@ class AlbertPaginator(Iterator[ItemType]):
         return True
 
     def __iter__(self) -> Iterator[ItemType]:
-        return self
+        return (
+            islice(self._iterator, self.max_items)
+            if self.max_items is not None
+            else self._iterator
+        )
 
     def __next__(self) -> ItemType:
         return next(self._iterator)

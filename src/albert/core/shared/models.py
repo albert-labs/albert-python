@@ -1,11 +1,44 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field, PrivateAttr
 
 from albert.core.base import BaseAlbertModel
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import Status
+from albert.core.shared.enums import PaginationMode, Status
 from albert.exceptions import AlbertException
+
+
+class BasePaginationParams(BaseAlbertModel):
+    page_size: int = Field(
+        100,
+        ge=1,
+        le=100,
+        description="Number of items to fetch per API call. Controls the per-page size.",
+    )
+    max_items: int | None = Field(
+        default=None,
+        description="Total number of items to return. Models the `limit` in the API. If None, all items are fetched.",
+    )
+
+
+class KeyPaginationParams(BasePaginationParams):
+    mode: Literal[PaginationMode.KEY] = Field(
+        default=PaginationMode.KEY,
+        description="Pagination mode. Always 'key' for key-based pagination.",
+    )
+    start_key: str | None = Field(
+        default=None,
+        description="Key to start fetching from. Use the `lastKey` from a previous response.",
+    )
+
+
+class OffsetPaginationParams(BasePaginationParams):
+    mode: Literal[PaginationMode.OFFSET] = Field(
+        default=PaginationMode.OFFSET,
+        description="Pagination mode. Always 'offset' for offset-based pagination.",
+    )
+    offset: int = Field(default=0, ge=0, description="Index of the first item to return.")
 
 
 class AuditFields(BaseAlbertModel):
