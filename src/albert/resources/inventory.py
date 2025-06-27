@@ -3,16 +3,19 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.collections.cas import Cas
-from albert.collections.companies import Company
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import OrderBy, SecurityClass
+from albert.core.shared.identifiers import InventoryId, ProjectId, WorksheetId
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
-from albert.resources.base import MetadataItem, SecurityClass
-from albert.resources.identifiers import InventoryId
+from albert.resources.cas import Cas
+from albert.resources.companies import Company
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
+from albert.resources.storage_locations import StorageLocation
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
-from albert.utils.types import BaseAlbertModel
+from albert.resources.users import User
 
 ALL_MERGE_MODULES = [
     "PRICING",
@@ -274,7 +277,7 @@ class InventorySearchSDSItem(BaseAlbertModel):
     un_classification: str | None = Field(default=None, alias="unClassification")
 
 
-class InventorySearchItem(BaseAlbertModel):
+class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
     id: str = Field(alias="albertId")
     name: str = Field(default="")
     description: str = Field(default="")
@@ -292,3 +295,23 @@ class MergeInventory(BaseAlbertModel):
     parent_id: InventoryId = Field(alias="parentId")
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
     modules: list[str] | None = Field(default=None)
+
+
+class InventoryFilterParams(BaseAlbertModel):
+    """Structured filters for inventory search and retrieval."""
+
+    limit: int = Field(default=100, ge=1, le=1000)
+    text: str | None = None
+    cas: list[Cas] | Cas | None = None
+    category: list[InventoryCategory] | InventoryCategory | None = None
+    company: list[Company] | Company | None = None
+    location: list[Location] | Location | None = None
+    storage_location: list[StorageLocation] | StorageLocation | None = None
+    project_id: ProjectId | None = None
+    sheet_id: WorksheetId | None = None
+    created_by: list[User] | User | None = None
+    lot_owner: list[User] | User | None = None
+    tags: list[str] | None = None
+    match_all_conditions: bool = False  # path selection logic
+    order: OrderBy = OrderBy.DESCENDING
+    sort_by: str | None = "createdAt"

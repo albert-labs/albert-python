@@ -1,9 +1,9 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.workflows import Workflow
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class WorkflowCollection(BaseCollection):
@@ -83,8 +83,8 @@ class WorkflowCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def list(self, limit: int = 50) -> Iterator[Workflow]:
-        """List all workflows. Unlikly to be used in production.
+    def get_all(self, limit: int = 50) -> Iterator[Workflow]:
+        """Get all workflows. Unlikely to be used in production.
 
         Parameters
         ----------

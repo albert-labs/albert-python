@@ -1,4 +1,4 @@
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.custom_fields import CustomField
 
 

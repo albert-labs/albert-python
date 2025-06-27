@@ -2,9 +2,9 @@ import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.un_numbers import UnNumber
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnNumberCollection(BaseCollection):
@@ -64,10 +64,10 @@ class UnNumberCollection(BaseCollection):
         UnNumber | None
             The corresponding UN Number or None if not found
         """
-        found = self.list(exact_match=True, name=name)
+        found = self.get_all(exact_match=True, name=name)
         return next(found, None)
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | None = None,
@@ -75,7 +75,7 @@ class UnNumberCollection(BaseCollection):
         limit: int = 50,
         start_key: str | None = None,
     ) -> Iterator[UnNumber]:
-        """List UN Numbers matching the provided criteria.
+        """Get all UN Numbers matching the provided criteria.
 
         Parameters
         ----------

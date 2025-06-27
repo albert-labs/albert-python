@@ -1,18 +1,20 @@
 import time
+from itertools import islice
 
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
-from albert.resources.base import SecurityClass
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
-from albert.resources.identifiers import ensure_inventory_id
 from albert.resources.inventory import (
     CasAmount,
+    InventoryFilterParams,
     InventoryItem,
     InventorySpec,
     InventorySpecValue,
@@ -23,7 +25,7 @@ from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
 
-def _list_asserts(returned_list):
+def assert_inventory_items(returned_list):
     for i, u in enumerate(returned_list):
         if i == 50:
             break
@@ -33,8 +35,8 @@ def _list_asserts(returned_list):
 
 
 def test_simple_inventory_list(client: Albert, seeded_inventory):
-    inventory = client.inventory.list()
-    _list_asserts(inventory)
+    inventory = client.inventory.get_all()
+    assert_inventory_items(inventory)
 
 
 def test_advanced_inventory_list(
@@ -42,17 +44,30 @@ def test_advanced_inventory_list(
 ):
     test_inv_item = seeded_inventory[1]
     matching_cas = [x for x in seeded_cas if x.id in test_inv_item.cas[0].id][0]
-    inventory = client.inventory.list(
+    params = InventoryFilterParams(
         text=test_inv_item.name,
         category=InventoryCategory.CONSUMABLES,
         cas=matching_cas,
         company=test_inv_item.company,
     )
-    _list_asserts(inventory)
+    inventory = client.inventory.get_all(params=params)
+    assert_inventory_items(inventory)
     for i, x in enumerate(inventory):
         if i == 10:  # just check the first 10 for speed
             break
         assert "ethanol" in x.name.lower()
+
+
+def test_hydrate_inventory_item(client: Albert):
+    inventory_items = list(islice(client.inventory.search(), 5))
+    assert inventory_items, "Expected at least one inventory_item in search results"
+
+    for inventory_item in inventory_items:
+        hydrated = inventory_item.hydrate()
+
+        # identity checks
+        assert hydrated.id == f"INV{inventory_item.id}"
+        assert hydrated.name == inventory_item.name
 
 
 def test_match_all_conditions(
@@ -60,19 +75,21 @@ def test_match_all_conditions(
 ):
     # First test is using OR between conditions
     # this should return our 3 test items
-    inventory = client.inventory.list(
+    params = InventoryFilterParams(
         tags=[seeded_tags[0].tag, seeded_tags[1].tag],
     )
+    inventory = client.inventory.get_all(params=params)
 
     for x in inventory:
         for tag in x.tags:
             assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
-    # This one tests using AND conditions and will return only
-    # one item that has both seeded tags
-    inventory = client.inventory.list(
-        tags=[seeded_tags[0].tag, seeded_tags[1].tag],
-        match_all_conditions=True,
-    )
+        # This one tests using AND conditions and will return only
+        # one item that has both seeded tags
+        params = InventoryFilterParams(
+            tags=[seeded_tags[0].tag, seeded_tags[1].tag],
+            match_all_conditions=True,
+        )
+    inventory = client.inventory.get_all(params=params)
     for x in inventory:
         assert len(x.tags) >= 2
         for tag in x.tags:
@@ -125,7 +142,7 @@ def test_inventory_update(client: Albert, seed_prefix: str):
     # for this test to work
     time.sleep(4)
 
-    assert client.inventory.inventory_exists(inventory_item=created)
+    assert client.inventory.exists(inventory_item=created)
     d = "testing SDK CRUD"
     created.description = d
 
@@ -134,7 +151,7 @@ def test_inventory_update(client: Albert, seed_prefix: str):
     assert updated.id == created.id
 
     client.inventory.delete(id=created.id)
-    assert not client.inventory.inventory_exists(inventory_item=created)
+    assert not client.inventory.exists(inventory_item=created)
 
 
 def test_collection_blocks_formulation(client: Albert, seeded_projects):
@@ -152,7 +169,7 @@ def test_collection_blocks_formulation(client: Albert, seeded_projects):
 
         # delete the collection block in case it was created
         client.inventory.delete(r)
-        assert not client.inventory.inventory_exists(r.id)
+        assert not client.inventory.exists(r.id)
 
 
 def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):
@@ -358,9 +375,10 @@ def test_get_facet_by_name(client: Albert):
 def test_get_search_records(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):
-    res = client.inventory.search(
+    params = InventoryFilterParams(
         tags=[x.tag for x in seeded_tags[:2]], match_all_conditions=True, limit=100
     )
+    res = client.inventory.search(params=params)
     c = 0
     for x in res:
         assert ensure_inventory_id(x.id) in [y.id for y in seeded_inventory]

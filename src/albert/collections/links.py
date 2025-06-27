@@ -1,9 +1,9 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.links import Link, LinkCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LinksCollection(BaseCollection):
@@ -44,7 +44,7 @@ class LinksCollection(BaseCollection):
         )
         return [Link(**l) for l in response.json()]
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -53,7 +53,7 @@ class LinksCollection(BaseCollection):
         id: str | None = None,
     ) -> Iterator[Link]:
         """
-        Generates a list of link entities with optional filters.
+        Get all link entities with optional filters.
 
         Parameters
         ----------

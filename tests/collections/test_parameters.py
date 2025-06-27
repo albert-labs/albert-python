@@ -1,10 +1,10 @@
 import uuid
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.parameters import Parameter
 
 
-def _list_asserts(returned_list):
+def _get_all_asserts(returned_list):
     found = False
     for i, u in enumerate(returned_list):
         if i == 50:
@@ -15,13 +15,13 @@ def _list_asserts(returned_list):
 
 
 def test_basics(client: Albert, seeded_parameters: list[Parameter]):
-    list_response = client.parameters.list()
-    _list_asserts(list_response)
+    response = client.parameters.get_all()
+    _get_all_asserts(response)
 
 
-def test_advanced_list(client: Albert, seeded_parameters: list[Parameter]):
-    list_response = client.parameters.list(names=[seeded_parameters[0].name])
-    _list_asserts(list_response)
+def test_advanced_get_all(client: Albert, seeded_parameters: list[Parameter]):
+    response = client.parameters.get_all(names=[seeded_parameters[0].name])
+    _get_all_asserts(response)
 
 
 def test_get(client: Albert, seeded_parameters: list[Parameter]):
@@ -49,8 +49,8 @@ def test_update(client: Albert, seeded_parameters: list[Parameter]):
     assert updated.name == updated_name
 
 
-def test_list_partial(client: Albert, seeded_parameters: list[Parameter]):
+def test_get_all_by_ids(client: Albert, seeded_parameters: list[Parameter]):
     ids = [x.id for x in seeded_parameters]
-    fetched_items = list(client.parameters.list(ids=ids, return_full=False))
+    fetched_items = list(client.parameters.get_all(ids=ids))
     assert len(fetched_items) == len(ids)
     assert {x.id for x in fetched_items} == set(ids)

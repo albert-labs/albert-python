@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.lots import Lot
 from tests.seeding import generate_lot_seeds
 
@@ -24,7 +24,7 @@ def seeded_lot(
     client.lots.delete(id=seeded.id)
 
 
-def _list_asserts(returned_list):
+def assert_lot_items(returned_list):
     found = False
     for i, c in enumerate(returned_list):
         if i == 100:
@@ -36,12 +36,12 @@ def _list_asserts(returned_list):
     assert found
 
 
-def test_simple_lot_list(
+def test_simple_lot_get_all(
     client: Albert,
     seeded_lots,  # PUT on lots currently broken, so we can't seed lots
 ):
-    simple_list = client.lots.list()
-    _list_asserts(simple_list)
+    response = client.lots.get_all()
+    assert_lot_items(response)
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):

@@ -4,6 +4,7 @@ from typing import IO
 import requests
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.resources.files import (
     FileCategory,
     FileInfo,
@@ -11,7 +12,6 @@ from albert.resources.files import (
     SignURLPOST,
     SignURLPOSTFile,
 )
-from albert.session import AlbertSession
 
 
 class FileCollection(BaseCollection):
@@ -21,7 +21,7 @@ class FileCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         """
-        Initialize the FileCllection with the provided session.
+        Initialize the FileCollection with the provided session.
 
         Parameters
         ----------
@@ -47,7 +47,7 @@ class FileCollection(BaseCollection):
         namespace : FileNamespace
             The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
         generic : bool, optional
-            _description_, by default False
+            TODO: _description_, by default False
 
         Returns
         -------
@@ -87,7 +87,7 @@ class FileCollection(BaseCollection):
         Returns
         -------
         str
-            _description_
+            S3 signed URL.
         """
         params = {
             "name": name,
@@ -127,7 +127,7 @@ class FileCollection(BaseCollection):
         Returns
         -------
         str
-            _description_
+            S3 signed URL.
         """
         params = {"generic": json.dumps(generic)}
 

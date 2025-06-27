@@ -1,9 +1,9 @@
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import BTModelId, BTModelSessionId
 from albert.resources.btmodel import BTModel, BTModelSession
-from albert.resources.identifiers import BTModelId, BTModelSessionId
-from albert.session import AlbertSession
 
 
 class BTModelSessionCollection(BaseCollection):

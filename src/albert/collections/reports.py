@@ -1,8 +1,8 @@
 from typing import Any
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.resources.reports import ReportInfo
-from albert.session import AlbertSession
 
 
 class ReportCollection(BaseCollection):

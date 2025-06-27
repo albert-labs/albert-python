@@ -2,13 +2,13 @@ import uuid
 
 import pytest
 
-from albert.albert import Albert
-from albert.collections.base import OrderBy
+from albert.client import Albert
+from albert.core.shared.enums import OrderBy
 from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
 
 
-def _list_asserts(returned_list, limit=100):
+def assert_tag_items(returned_list, limit=100):
     found = False
     for i, u in enumerate(returned_list):
         found = True
@@ -23,37 +23,37 @@ def _list_asserts(returned_list, limit=100):
     assert found
 
 
-def test_simple_tags_list(client: Albert):
-    simple_list = client.tags.list()
+def test_simple_tags_get_all(client: Albert):
+    simple_list = client.tags.get_all()
     simple_list = list(simple_list)
-    _list_asserts(simple_list)
+    assert_tag_items(simple_list)
 
 
-def test_advanced_tags_list(client: Albert, seeded_tags: list[Tag]):
+def test_advanced_tags_get_all(client: Albert, seeded_tags: list[Tag]):
     name = seeded_tags[0].tag
-    adv_list = client.tags.list(
+    adv_list = client.tags.get_all(
         name=name,
         exact_match=True,
         order_by=OrderBy.ASCENDING,
     )
     adv_list = list(adv_list)
-    _list_asserts(adv_list)
+    assert_tag_items(adv_list)
 
-    adv_list_no_match = client.tags.list(
+    adv_list_no_match = client.tags.get_all(
         name="chaos tags 126485% HELLO WORLD!!!!",
         exact_match=True,
         order_by=OrderBy.ASCENDING,
     )
     assert next(adv_list_no_match, None) == None
 
-    tag_short_list = client.tags.list(limit=3)
-    _list_asserts(tag_short_list, limit=5)
+    tag_short_list = client.tags.get_all(limit=3)
+    assert_tag_items(tag_short_list, limit=5)
 
 
 def test_get_tag_by(client: Albert, seeded_tags: list[Tag]):
     tag_test_str = seeded_tags[2].tag
 
-    tag = client.tags.get_by_tag(tag=tag_test_str, exact_match=True)
+    tag = client.tags.get_by_name(name=tag_test_str, exact_match=True)
 
     assert isinstance(tag, Tag)
     assert tag.tag.lower() == tag_test_str.lower()
@@ -64,8 +64,8 @@ def test_get_tag_by(client: Albert, seeded_tags: list[Tag]):
 
 
 def test_tag_exists(client: Albert, seeded_tags: list[Tag]):
-    assert client.tags.tag_exists(tag=seeded_tags[1].tag)
-    assert not client.tags.tag_exists(
+    assert client.tags.exists(tag=seeded_tags[1].tag)
+    assert not client.tags.exists(
         tag="Nonesense tag no one would ever make!893y58932y58923", exact_match=True
     )
 

@@ -3,7 +3,7 @@ from collections.abc import Iterator
 
 import requests
 
-from albert.utils.logging import logger
+from albert.core.logging import logger
 
 
 class AlbertException(Exception):

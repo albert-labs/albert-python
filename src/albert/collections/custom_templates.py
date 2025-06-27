@@ -1,11 +1,11 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertHTTPError
-from albert.resources.custom_templates import CustomTemplate
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
+from albert.resources.custom_templates import CustomTemplate, CustomTemplateSearchItem
 
 
 class CustomTemplatesCollection(BaseCollection):
@@ -43,14 +43,17 @@ class CustomTemplatesCollection(BaseCollection):
         response = self.session.get(url)
         return CustomTemplate(**response.json())
 
-    def list(
+    def search(
         self,
         *,
         text: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Iterator[CustomTemplate]:
-        """Searches for custom templates matching the provided criteria.
+    ) -> Iterator[CustomTemplateSearchItem]:
+        """Search for CustomTemplate matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
@@ -60,17 +63,9 @@ class CustomTemplatesCollection(BaseCollection):
 
         Yields
         ------
-        Iterator[CustomTemplate]
-            An iterator of CustomTemplate items matching the search criteria.
+        Iterator[CustomTemplateSearchItem]
+            An iterator of CustomTemplateSearchItem items matching the search criteria.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[CustomTemplate]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching custom template {id}: {e}")
 
         params = {"limit": limit, "offset": offset, "text": text}
 
@@ -79,5 +74,26 @@ class CustomTemplatesCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=deserialize,
+            deserialize=lambda items: [
+                CustomTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
         )
+
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Iterator[CustomTemplate]:
+        """Retrieve fully hydrated CustomTemplate entities with optional filters.
+
+        This method returns complete entity data using `get_by_id`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        """
+
+        for item in self.search(text=text, limit=limit, offset=offset):
+            try:
+                yield self.get_by_id(id=item.id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error hydrating custom template {id}: {e}")

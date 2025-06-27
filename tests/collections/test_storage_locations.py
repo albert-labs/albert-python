@@ -5,7 +5,7 @@ from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 
 
-def _list_asserts(returned_list):
+def assert_storage_location_items(returned_list):
     found = False
     for i, u in enumerate(returned_list):
         if i == 50:
@@ -15,28 +15,28 @@ def _list_asserts(returned_list):
     assert found
 
 
-def test_basic_lists(client: Albert):
-    list_response = client.storage_locations.list()
-    _list_asserts(list_response)
+def test_basic_get_all(client: Albert):
+    list_response = client.storage_locations.get_all()
+    assert_storage_location_items(list_response)
 
 
-def test_advanced_list(
+def test_advanced_get_all(
     client: Albert,
     seeded_storage_locations: list[StorageLocation],
     seeded_locations: list[Location],
 ):
-    list_response = client.storage_locations.list(
+    list_response = client.storage_locations.get_all(
         name=[seeded_storage_locations[0].name], exact_match=True
     )
 
     list_response = list(list_response)
-    _list_asserts(list_response)
+    assert_storage_location_items(list_response)
     for sl in list_response:
         assert sl.name == seeded_locations[0].name
 
-    list_response = client.storage_locations.list(location=seeded_locations[0])
+    list_response = client.storage_locations.get_all(location=seeded_locations[0])
     list_response = list(list_response)
-    _list_asserts(list_response)
+    assert_storage_location_items(list_response)
 
     seeded_location_ids = {x.location.id for x in seeded_storage_locations}
     for sl in list_response:
@@ -44,8 +44,8 @@ def test_advanced_list(
 
 
 def test_pagination(client: Albert, seeded_storage_locations: list[StorageLocation]):
-    list_response = client.storage_locations.list(limit=2)
-    _list_asserts(list_response)
+    list_response = client.storage_locations.get_all(limit=2)
+    assert_storage_location_items(list_response)
 
 
 def test_avoids_dupes(caplog, client: Albert, seeded_storage_locations: list[StorageLocation]):
