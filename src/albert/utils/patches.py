@@ -356,6 +356,7 @@ def generate_enum_patches(
 def generate_parameter_patches(
     initial_parameters: list[ParameterValue] | None,
     updated_parameters: list[ParameterValue] | None,
+    parameter_attribute_name: str = "parameter",
 ) -> tuple[list[PGPatchDatum], list[ParameterValue], dict[str, list[dict]]]:
     """Generate patches for a parameter."""
     parameter_patches = []
@@ -376,9 +377,19 @@ def generate_parameter_patches(
         x for x in updated_parameters if x.sequence in [y.sequence for y in initial_parameters]
     ]
 
-    for del_param in deleted_parameters:
+    # for del_param in deleted_parameters:
+    #     parameter_patches.append(
+    #         PGPatchDatum(
+    #             operation="delete", attribute=parameter_attribute_name, oldValue=del_param.sequence
+    #         )
+    #     )
+    if len(deleted_parameters) > 0:
         parameter_patches.append(
-            PGPatchDatum(operation="delete", attribute="parameter", oldValue=del_param.sequence)
+            PGPatchDatum(
+                operation="delete",
+                attribute=parameter_attribute_name,
+                oldValue=[x.sequence for x in deleted_parameters],
+            )
         )
     for updated_param in updated_parameters:
         existing_param = next(
@@ -463,6 +474,7 @@ def generate_data_template_patches(
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_data_template.parameter_values,
         updated_parameters=updated_data_template.parameter_values,
+        parameter_attribute_name="parameters",
     )
 
     return (
@@ -485,6 +497,7 @@ def generate_parameter_group_patches(
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_parameter_group.parameters,
         updated_parameters=updated_parameter_group.parameters,
+        parameter_attribute_name="parameter",
     )
     tag_patches = handle_tags(
         existing_tags=existing_parameter_group.tags,

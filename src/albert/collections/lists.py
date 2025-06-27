@@ -92,7 +92,7 @@ class ListsCollection(BaseCollection):
             "listType": list_type,
         }
         return AlbertPaginator(
-            mode=PaginationMode.KEY,
+            mode=PaginationMode.OFFSET,
             path=self.base_path,
             session=self.session,
             params=params,

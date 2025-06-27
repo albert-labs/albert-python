@@ -46,9 +46,8 @@ def test_company_get_by(client: Albert, seeded_companies: list[Company]):
     assert company_by_id.name == test_name
 
 
-def test_company_crud(client: Albert, seeded_companies: list[Company]):
-    company = seeded_companies[0].model_copy()
-    company_name = "Some company name"
+def test_company_crud(client: Albert, seed_prefix: str):
+    company_name = f"{seed_prefix} company name"
     company = Company(name=company_name)
 
     company = client.companies.create(company=company)
@@ -56,7 +55,7 @@ def test_company_crud(client: Albert, seeded_companies: list[Company]):
     assert company.id is not None
     assert company.name == company_name
 
-    new_company_name = "A new company name"
+    new_company_name = f"{seed_prefix} new company name"
     renamed_company = client.companies.rename(old_name=company_name, new_name=new_company_name)
     assert isinstance(renamed_company, Company)
     assert renamed_company.name == new_company_name

@@ -49,9 +49,15 @@ class DataTemplateCollection(BaseCollection):
         # Preprocess data_column_values to set validation to None if it is an empty list
         # Handle a bug in the API where validation is an empty list
         # https://support.albertinvent.com/hc/en-us/requests/9177
-        for column_value in data_template.data_column_values:
-            if isinstance(column_value.validation, list) and len(column_value.validation) == 0:
-                column_value.validation = None
+        if (
+            isinstance(data_template.data_column_values, list)
+            and len(data_template.data_column_values) == 0
+        ):
+            data_template.data_column_values = None
+        if data_template.data_column_values is not None:
+            for column_value in data_template.data_column_values:
+                if isinstance(column_value.validation, list) and len(column_value.validation) == 0:
+                    column_value.validation = None
         # remove them on the initial post
         parameter_values = data_template.parameter_values
         data_template.parameter_values = None
