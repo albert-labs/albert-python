@@ -295,6 +295,10 @@ class DataTemplateCollection(BaseCollection):
                 initial_enum_values[i] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
+            if param.unit is not None:
+                param.unit.name = (
+                    None  # remove the name of the unit as this is readonly on the API
+                )
 
         payload = {
             "Parameters": [
