@@ -2,8 +2,9 @@ import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.resources.custom_fields import CustomField, ServiceType
 
 

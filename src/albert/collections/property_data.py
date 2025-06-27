@@ -8,9 +8,9 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.collections.tasks import TaskCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataColumnId,
