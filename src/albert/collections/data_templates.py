@@ -430,6 +430,9 @@ class DataTemplateCollection(BaseCollection):
                     json=enum_patches,  # these are simple dicts for now
                 )
         if len(new_parameters) > 0:
+            for p in new_parameters:
+                if p.unit is not None:
+                    p.unit = EntityLink(id=p.unit.id)
             self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
