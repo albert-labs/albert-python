@@ -1,8 +1,11 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.exceptions import AlbertHTTPError
 from albert.resources.custom_templates import CustomTemplate
+from albert.resources.identifiers import CustomTemplateId
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
@@ -26,7 +29,8 @@ class CustomTemplatesCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomTemplatesCollection._api_version}/customtemplates"
 
-    def get_by_id(self, *, id) -> CustomTemplate:
+    @validate_call
+    def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a Custom Template by ID
 
         Parameters

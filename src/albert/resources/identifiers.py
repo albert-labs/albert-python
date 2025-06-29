@@ -8,7 +8,10 @@ _ALBERT_PREFIXES = {
     "BTDatasetId": "DST",
     "BTModelId": "MDL",
     "BTModelSessionId": "MDS",
+    "CasId": "CAS",
+    "CompanyId": "CMP",
     "CustomFieldId": "CTF",
+    "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
     "EntityTypeId": "ETT",
@@ -162,11 +165,32 @@ def ensure_paramter_group_id(id: str) -> str:
 ParameterGroupId = Annotated[str, AfterValidator(ensure_paramter_group_id)]
 
 
+def ensure_cas_id(id: str) -> str:
+    return _ensure_albert_id(id, "CasId")
+
+
+CasId = Annotated[str, AfterValidator(ensure_cas_id)]
+
+
+def ensure_company_id(id: str) -> str:
+    return _ensure_albert_id(id, "CompanyId")
+
+
+CompanyId = Annotated[str, AfterValidator(ensure_company_id)]
+
+
 def ensure_custom_field_id(id: str) -> str:
     return _ensure_albert_id(id, "CustomFieldId")
 
 
 CustomFieldId = Annotated[str, AfterValidator(ensure_custom_field_id)]
+
+
+def ensure_custom_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "CustomTemplateId")
+
+
+CustomTemplateId = Annotated[str, AfterValidator(ensure_custom_template_id)]
 
 
 def ensure_entity_type_id(id: str) -> str:
