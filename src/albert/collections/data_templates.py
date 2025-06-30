@@ -433,8 +433,9 @@ class DataTemplateCollection(BaseCollection):
             for p in new_parameters:
                 if p.unit is not None:
                     p.unit = EntityLink(id=p.unit.id)
-            if p.validation == DataType.ENUM:
-                p.validation = None  # catch this later in the patches
+            for p in new_parameters:
+                if p.validation[0].datatype == DataType.ENUM:
+                    p.validation[0].value = None  # catch this later in the patches
             self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
