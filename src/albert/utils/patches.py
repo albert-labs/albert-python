@@ -340,9 +340,6 @@ def generate_enum_patches(
     existing_names = existing_enum_lookup.keys()
 
     logger.warning(f"Existing Enum Names: {existing_names}")
-    for enum in existing_enum:  # handle cases where it's just a missing ID
-        if str(enum.text) in existing_names:
-            enum.id = existing_enum_lookup[str(enum.text)].id
 
     existing_enum_ids = [x.id for x in existing_enum if x.id is not None]
 
@@ -359,6 +356,9 @@ def generate_enum_patches(
     ]
 
     for new_enum in new_enums:
+        if new_enum.text in existing_names:
+            logger.warning(f"Skipping new enum {new_enum.text} because it already exists")
+            continue
         enum_patches.append({"operation": "add", "text": new_enum.text})
     for deleted_enum in deleted_enums:
         enum_patches.append({"operation": "delete", "id": deleted_enum.id})
