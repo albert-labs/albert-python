@@ -296,11 +296,44 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#initialization" class="md-nav__link">
+  <a href="#authentication" class="md-nav__link">
     <span class="md-ellipsis">
-      Initialization
+      Authentication
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sso-browser-based-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔐 SSO (Browser-Based Login)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-credentials-programmatic-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔑 Client Credentials (Programmatic Access)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-based-auth-for-testing-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Token-Based Auth (For Testing Only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1440,11 +1473,44 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#initialization" class="md-nav__link">
+  <a href="#authentication" class="md-nav__link">
     <span class="md-ellipsis">
-      Initialization
+      Authentication
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sso-browser-based-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔐 SSO (Browser-Based Login)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-credentials-programmatic-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔑 Client Credentials (Programmatic Access)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-based-auth-for-testing-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      🧪 Token-Based Auth (For Testing Only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -1525,91 +1591,160 @@
 <h3 id="resource-models">Resource Models</h3>
 <p>Resource Models represent the data structure of individual resources. They encapsulate the attributes and behaviors of a single resource. For example, an <code>InventoryItem</code> has attributes like <code>name</code>, <code>description</code>, <code>category</code>, and <code>tags</code>.</p>
 <h3 id="resource-collections">Resource Collections</h3>
-<p>Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the <code>InventoryCollection</code> class has methods like create, <code>get_by_id()</code>, <code>list()</code>, <code>update()</code>, and <code>delete()</code>. <code>list()</code> methods generally accept parameters to narrow the query to use it like a search.</p>
+<p>Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the <code>InventoryCollection</code> class has methods like <code>create()</code>, <code>get_by_id()</code>, <code>get_all()</code>, <code>search()</code>, <code>update()</code>, and <code>delete()</code>. <code>search()</code> returns lightweight records for performance, while <code>get_all()</code> hydrates each item.</p>
 <h2 id="usage">Usage</h2>
-<h3 id="initialization">Initialization</h3>
-<p>To use Albert Python, you need to initialize the Albert client with your base URL and either a bearer token (which will expire) or client credientals, which will enable automatic token refresh.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<h3 id="authentication">Authentication</h3>
+<p>Albert Python SDK supports three authentication methods:</p>
+<ul>
+<li><strong>Single Sign-On (SSO)</strong> via browser-based OAuth2</li>
+<li><strong>Client Credentials</strong> using a client ID and secret</li>
+<li><strong>Static Token</strong> using a pre-generated token (via the <code>ALBERT_TOKEN</code> environment variable)</li>
+</ul>
+<p>Static token-based authentication is suitable for temporary or testing purposes and does not support token refresh.</p>
+<p>These modes are supported via the <code>auth_manager</code> or <code>token</code> argument to the <code>Albert</code> client.</p>
+<hr />
+<h4 id="sso-browser-based-login">🔐 SSO (Browser-Based Login)</h4>
+<p>This is the recommended method for users authenticating interactively. It opens a browser window to authenticate using your email address and automatically manages tokens. The SSO client uses a local redirect server to complete the flow.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span><span class="p">,</span> <span class="n">AlbertSSOClient</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span><span class="p">,</span> <span class="n">ClientCredentials</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Initialize the client using a JWT token</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com/&quot;</span><span class="p">,</span> <span class="c1"># example value</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">token</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;ALBERT_TOKEN&quot;</span><span class="p">)</span> <span class="c1"># example value</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">sso</span> <span class="o">=</span> <span class="n">AlbertSSOClient</span><span class="p">(</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">email</span><span class="o">=</span><span class="s2">&quot;your-name@albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">)</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># IMPORTANT: You must call authenticate() to complete the login flow</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">sso</span><span class="o">.</span><span class="n">authenticate</span><span class="p">()</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1"># Initalize using an API key from environment</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">client_credentials</span><span class="o">=</span><span class="n">ClientCredentials</span><span class="o">.</span><span class="n">from_env</span><span class="p">(</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>        <span class="n">client_id_env</span><span class="o">=</span><span class="s2">&quot;ALBERT_CLIENT_ID&quot;</span><span class="p">,</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        <span class="n">client_secret_env</span><span class="o">=</span><span class="s2">&quot;ALBERT_CLIENT_SECRET&quot;</span><span class="p">,</span>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="p">)</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="p">)</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="c1">#  By default, if environment variables `ALBERT_CLIENT_ID` and `ALBERT_CLIENT_SECRET` are set, you can simply do:</span>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span> <span class="n">auth_manager</span><span class="o">=</span><span class="n">sso</span><span class="p">)</span>
 </span></code></pre></div>
+<p>Alternatively, you can use the helper constructor:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_sso</span><span class="p">(</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">email</span><span class="o">=</span><span class="s2">&quot;your-name@albertinvent.com&quot;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You <strong>must</strong> call <code>sso.authenticate()</code> before using the client. This method launches a local HTTP server and opens the default browser for login.</p>
+</div>
+<hr />
+<h4 id="client-credentials-programmatic-access">🔑 Client Credentials (Programmatic Access)</h4>
+<p>This method implements the OAuth2 Client Credentials flow and is suitable for non-interactive usage, like backend services or automation scripts. It manages token acquisition and refresh automatically via the <code>AlbertClientCredentials</code> class.</p>
+<p>This method is ideal for server-to-server or CI/CD scenarios. You can authenticate using a client ID and secret, and the SDK will manage token fetching and refresh automatically.</p>
+<p>You can use the helper constructor:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span><span class="p">,</span> <span class="n">AlbertClientCredentials</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">(</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">client_id</span><span class="o">=</span><span class="s2">&quot;your-client-id&quot;</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">client_secret</span><span class="o">=</span><span class="s2">&quot;your-client-secret&quot;</span><span class="p">,</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>Or load credentials from environment,</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">creds</span> <span class="o">=</span> <span class="n">AlbertClientCredentials</span><span class="o">.</span><span class="n">from_env</span><span class="p">()</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span><span class="n">auth_manager</span><span class="o">=</span><span class="n">creds</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Or explicitly:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecretStr</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">creds</span> <span class="o">=</span> <span class="n">AlbertClientCredentials</span><span class="p">(</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nb">id</span><span class="o">=</span><span class="s2">&quot;your-client-id&quot;</span><span class="p">,</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">secret</span><span class="o">=</span><span class="n">SecretStr</span><span class="p">(</span><span class="s2">&quot;your-client-secret&quot;</span><span class="p">),</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="p">)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span><span class="n">auth_manager</span><span class="o">=</span><span class="n">creds</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Environment variables:</p>
+<ul>
+<li><code>ALBERT_CLIENT_ID</code></li>
+<li><code>ALBERT_CLIENT_SECRET</code></li>
+<li><code>ALBERT_BASE_URL</code> (optional; defaults to <code>https://app.albertinvent.com</code></li>
+</ul>
+<hr />
+<h4 id="token-based-auth-for-testing-only">🧪 Token-Based Auth (For Testing Only)</h4>
+<p>You can still use a static token (e.g., copied from browser dev tools or passed via env) for one-off access:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Static token (direct)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Or using the helper</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="p">)</span>
+</span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This method does not support auto-refresh and should be avoided for production use.</p>
+</div>
+<hr />
 <h2 id="working-with-resource-collections-and-models">Working with Resource Collections and Models</h2>
 <h3 id="example-inventory-collection">Example: Inventory Collection</h3>
 <p>You can interact with inventory items using the <code>InventoryCollection</code> class. Here is an example of how to create a new inventory item, list all inventory items, and fetch an inventory item by its ID.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryItem</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="p">,</span> <span class="n">UnitCategory</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># Create a new inventory item</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">InventoryItem</span><span class="p">(</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Goggles&quot;</span><span class="p">,</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Safety Equipment&quot;</span><span class="p">,</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">category</span><span class="o">=</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span><span class="p">,</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="n">unit_category</span><span class="o">=</span><span class="n">UnitCategory</span><span class="o">.</span><span class="n">UNITS</span><span class="p">,</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;safety&quot;</span><span class="p">,</span> <span class="s2">&quot;equipment&quot;</span><span class="p">],</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">company</span><span class="o">=</span><span class="s2">&quot;Company ABC&quot;</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="p">)</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="n">created_inventory</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">inventory_item</span><span class="o">=</span><span class="n">new_inventory</span><span class="p">)</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="c1"># List all inventory items</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="n">all_inventories</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="c1"># Fetch an inventory item by ID</span>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="n">inventory_id</span> <span class="o">=</span> <span class="s2">&quot;INV1&quot;</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="n">inventory_id</span><span class="p">)</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="c1"># Search an inventory item by name</span>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">inventory_collection</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Acetone&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryItem</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="p">,</span> <span class="n">UnitCategory</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">(</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="p">)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># Create a new inventory item</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">InventoryItem</span><span class="p">(</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Goggles&quot;</span><span class="p">,</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Safety Equipment&quot;</span><span class="p">,</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">category</span><span class="o">=</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span><span class="p">,</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>    <span class="n">unit_category</span><span class="o">=</span><span class="n">UnitCategory</span><span class="o">.</span><span class="n">UNITS</span><span class="p">,</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;safety&quot;</span><span class="p">,</span> <span class="s2">&quot;equipment&quot;</span><span class="p">],</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="n">company</span><span class="o">=</span><span class="s2">&quot;Company ABC&quot;</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="p">)</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="n">created_inventory</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">inventory_item</span><span class="o">=</span><span class="n">new_inventory</span><span class="p">)</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="c1"># List all inventory items</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="n">all_inventories</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_all</span><span class="p">()</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="c1"># Fetch an inventory item by ID</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="n">inventory_id</span> <span class="o">=</span> <span class="s2">&quot;INV1&quot;</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="n">inventory_id</span><span class="p">)</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="c1"># Search an inventory item by name</span>
+</span><span id="__span-7-28"><a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">inventory_collection</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Acetone&quot;</span><span class="p">)</span>
 </span></code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code>search()</code> is optimized for performance and returns partial objects.
+Use <code>get_all()</code> or <code>get_by_ids()</code> when full details are required.</p>
+</div>
 <h2 id="entitylink-serializeasentitylink">EntityLink / SerializeAsEntityLink</h2>
 <p>We introduced the concept of a <code>EntityLink</code> to represent the foreign key references you can find around the Albert API. Payloads to the API expect these refrences in the <code>EntityLink</code> format (e.g., <code>{"id":x}</code>). However, as a convenience, you will see some value types defined as <code>SerializeAsEntityLink</code>, and then another resource name (e.g., <code>SerializeAsEntityLink[Location]</code>). This allows a user to make that reference either to a base and link or to the actual other entity, and the SDK will handle the serialization for you! For example:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">Project</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityLink</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">my_location</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;My Location&quot;</span><span class="p">)</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="p">]</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">)</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1"># Equivalent to</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">my_location</span><span class="o">.</span><span class="n">id</span><span class="p">)]</span>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="p">)</span>
-</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="c1"># Equivalent to</span>
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="o">.</span><span class="n">to_entity_link</span><span class="p">()]</span>
-</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">Project</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityLink</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">my_location</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;My Location&quot;</span><span class="p">)</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="p">]</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="p">)</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a><span class="c1"># Equivalent to</span>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">my_location</span><span class="o">.</span><span class="n">id</span><span class="p">)]</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a><span class="p">)</span>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a><span class="c1"># Equivalent to</span>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>
+</span><span id="__span-8-23"><a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-8-24"><a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
+</span><span id="__span-8-25"><a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="o">.</span><span class="n">to_entity_link</span><span class="p">()]</span>
+</span><span id="__span-8-26"><a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a><span class="p">)</span>
 </span></code></pre></div>
 
 

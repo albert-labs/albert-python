@@ -2243,7 +2243,7 @@
 
 </h3>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">BTModelId</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Annotated" href="https://docs.python.org/3/library/typing.html#typing.Annotated">Annotated</a></span><span class="p">[</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><span title="pydantic.AfterValidator">AfterValidator</span></span><span class="p">(</span><span class="n"><span title="albert.resources.identifiers.ensure_btmodel_id">ensure_btmodel_id</span></span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><span title="pydantic.AfterValidator">AfterValidator</span></span><span class="p">(</span><span class="n"><span title="albert.core.shared.identifiers.ensure_btmodel_id">ensure_btmodel_id</span></span><span class="p">)</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">]</span>
 </span></code></pre></div>
 
@@ -2267,7 +2267,7 @@
 
 </h3>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">BTModelSessionId</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Annotated" href="https://docs.python.org/3/library/typing.html#typing.Annotated">Annotated</a></span><span class="p">[</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><span title="pydantic.AfterValidator">AfterValidator</span></span><span class="p">(</span><span class="n"><span title="albert.resources.identifiers.ensure_btmodel_session_id">ensure_btmodel_session_id</span></span><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><span title="pydantic.AfterValidator">AfterValidator</span></span><span class="p">(</span><span class="n"><span title="albert.core.shared.identifiers.ensure_btmodel_session_id">ensure_btmodel_session_id</span></span><span class="p">)</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">]</span>
 </span></code></pre></div>
 
@@ -2291,9 +2291,21 @@
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="o">*</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">base_url</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">token</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">client_credentials</span><span class="p">:</span> <span class="n"><span title="albert.utils.credentials.ClientCredentials">ClientCredentials</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">retries</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">auth_manager</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertClientCredentials
+
+
+  
+      pydantic-model
+   (albert.core.auth.credentials.AlbertClientCredentials)" href="../albert/#albert.client.AlbertClientCredentials">AlbertClientCredentials</a></span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSSOClient
+
+
+  
+      pydantic-model
+   (albert.core.auth.sso.AlbertSSOClient)" href="../albert/#albert.client.AlbertSSOClient">AlbertSSOClient</a></span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">retries</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -2324,43 +2336,11 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The base URL to prefix to all requests. (e.g., "https://sandbox.albertinvent.com")</p>
+                <p>The base URL to prefix to all relative request paths (e.g., "https://app.albertinvent.com").</p>
               </div>
             </td>
             <td>
                 <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>retries</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The number of retries for failed requests. Defaults to 3.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>client_credentials</code>
-            </td>
-            <td>
-                  <code><span title="albert.utils.credentials.ClientCredentials">ClientCredentials</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>The client credentials for programmatic authentication. Optional if token is provided.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -2372,7 +2352,50 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The JWT token for authentication. Optional if client credentials are provided.</p>
+                <p>A static JWT token for authentication. Ignored if <code>auth_manager</code> is provided.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>auth_manager</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="AlbertClientCredentials
+
+
+  
+      pydantic-model
+   (albert.core.auth.credentials.AlbertClientCredentials)" href="../albert/#albert.client.AlbertClientCredentials">AlbertClientCredentials</a> | <a class="autorefs autorefs-internal" title="AlbertSSOClient
+
+
+  
+      pydantic-model
+   (albert.core.auth.sso.AlbertSSOClient)" href="../albert/#albert.client.AlbertSSOClient">AlbertSSOClient</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An authentication manager used to dynamically fetch and refresh tokens.
+If provided, it overrides <code>token</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>retries</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The number of automatic retries on failed requests (default is 3).</p>
               </div>
             </td>
             <td>
@@ -2411,10 +2434,8 @@
 
 
                   <details class="quote">
-                    <summary>Source code in <code>src/albert/session.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
+                    <summary>Source code in <code>src/albert/core/session.py</code></summary>
+                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-30">30</a></span>
 <span class="normal"><a href="#__codelineno-0-31">31</a></span>
 <span class="normal"><a href="#__codelineno-0-32">32</a></span>
 <span class="normal"><a href="#__codelineno-0-33">33</a></span>
@@ -2450,31 +2471,29 @@
 <span class="normal"><a href="#__codelineno-0-63">63</a></span>
 <span class="normal"><a href="#__codelineno-0-64">64</a></span>
 <span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="n">client_credentials</span><span class="p">:</span> <span class="n">ClientCredentials</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="p">):</span>
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span>
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>        <span class="p">{</span>
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a>            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a>            <span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;albert-SDK V.</span><span class="si">{</span><span class="n">albert</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a>        <span class="p">}</span>
-</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a>    <span class="p">)</span>
-</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">client_credentials</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either client credentials or token must be specified.&quot;</span><span class="p">)</span>
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a>
-</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_provided_token</span> <span class="o">=</span> <span class="n">token</span>
-</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_token_manager</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a>        <span class="n">TokenManager</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">client_credentials</span><span class="p">)</span> <span class="k">if</span> <span class="n">client_credentials</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-66">66</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a>    <span class="n">base_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35"></a>    <span class="n">auth_manager</span><span class="p">:</span> <span class="n">AlbertClientCredentials</span> <span class="o">|</span> <span class="n">AlbertSSOClient</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="p">):</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">base_url</span> <span class="o">=</span> <span class="n">base_url</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a>        <span class="p">{</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a>            <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a>            <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a>            <span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;albert-SDK V.</span><span class="si">{</span><span class="n">albert</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a>        <span class="p">}</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="p">)</span>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">auth_manager</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either `token` or `auth_manager` must be specified.&quot;</span><span class="p">)</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_auth_manager</span> <span class="o">=</span> <span class="n">auth_manager</span>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_provided_token</span> <span class="o">=</span> <span class="n">token</span>
 </span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53"></a>
 </span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="c1"># Set up retry logic</span>
 </span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a>    <span class="n">retries</span> <span class="o">=</span> <span class="n">retries</span> <span class="k">if</span> <span class="n">retries</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">3</span>
@@ -2515,7 +2534,7 @@
   </span>
 
 </h4>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">base_url</span> <span class="o">=</span> <span class="n"><span title="albert.session.AlbertSession(base_url)">base_url</span></span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">base_url</span> <span class="o">=</span> <span class="n"><span title="albert.core.session.AlbertSession(base_url)">base_url</span></span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -2543,7 +2562,7 @@
 
 
             <details class="quote">
-              <summary>Source code in <code>src/albert/session.py</code></summary>
+              <summary>Source code in <code>src/albert/core/session.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-75">75</a></span>
 <span class="normal"><a href="#__codelineno-0-76">76</a></span>
 <span class="normal"><a href="#__codelineno-0-77">77</a></span>
@@ -2584,7 +2603,7 @@
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="BaseResource (albert.resources.base.BaseResource)" href="../sheets/#albert.resources.sheets.BaseResource">BaseResource</a></code></p>
+              Bases: <code><span title="albert.core.shared.models.base.BaseResource">BaseResource</span></code></p>
 
 
         <p>A single Breakthrough model.</p>
@@ -2631,7 +2650,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2653,7 +2672,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a> | None</code>
+   (albert.core.shared.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2675,7 +2694,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2859,7 +2878,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span>
+   (albert.core.shared.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(alias)">alias</span></span><span class="o">=</span><span class="s2">&quot;datasetId&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -2935,7 +2954,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -3035,7 +3054,7 @@
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(alias)">alias</span></span><span class="o">=</span><span class="s2">&quot;parentId&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -3184,7 +3203,7 @@
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BTModelCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BTModelCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -3213,7 +3232,7 @@ or a detached without a parent.</p>
                 <code>session</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
+                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3315,7 +3334,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModel (albert.resources.btmodel.BTModel)" href="#albert.collections.btmodel.BTModel">BTModel</a></span>
 </span></code></pre></div>
 
@@ -3361,7 +3380,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3467,13 +3486,13 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">parent_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModelSessionId
 
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </span></code></pre></div>
 
@@ -3503,7 +3522,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></code>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3524,7 +3543,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3618,13 +3637,13 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">parent_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModelSessionId
 
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModel (albert.resources.btmodel.BTModel)" href="#albert.collections.btmodel.BTModel">BTModel</a></span>
 </span></code></pre></div>
 
@@ -3654,7 +3673,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></code>
+   (albert.core.shared.identifiers.BTModelId)" href="#albert.collections.btmodel.BTModelId">BTModelId</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3675,7 +3694,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3776,7 +3795,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModel (albert.resources.btmodel.BTModel)" href="#albert.collections.btmodel.BTModel">BTModel</a></span>
 </span></code></pre></div>
 
@@ -3822,7 +3841,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -3944,7 +3963,7 @@ or a detached without a parent.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="BaseResource (albert.resources.base.BaseResource)" href="../sheets/#albert.resources.sheets.BaseResource">BaseResource</a></code></p>
+              Bases: <code><span title="albert.core.shared.models.base.BaseResource">BaseResource</span></code></p>
 
 
         <p>Parent session for a set of BTModels.</p>
@@ -4006,7 +4025,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4028,7 +4047,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></code>
+   (albert.core.shared.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4225,7 +4244,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(alias)">alias</span></span><span class="o">=</span><span class="s1">&#39;datasetId&#39;</span><span class="p">)</span>
+   (albert.core.shared.identifiers.BTDatasetId)" href="../btdataset/#albert.collections.btdataset.BTDatasetId">BTDatasetId</a></span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(alias)">alias</span></span><span class="o">=</span><span class="s1">&#39;datasetId&#39;</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4301,7 +4320,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4449,7 +4468,7 @@ or a detached without a parent.</p>
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BTModelSessionCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BTModelSessionCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4476,7 +4495,7 @@ or a detached without a parent.</p>
                 <code>session</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
+                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4664,7 +4683,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4693,7 +4712,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></code>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4779,7 +4798,7 @@ or a detached without a parent.</p>
 
   
       module-attribute
-   (albert.resources.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModelSession (albert.resources.btmodel.BTModelSession)" href="#albert.collections.btmodel.BTModelSession">BTModelSession</a></span>
+   (albert.core.shared.identifiers.BTModelSessionId)" href="#albert.collections.btmodel.BTModelSessionId">BTModelSessionId</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="BTModelSession (albert.resources.btmodel.BTModelSession)" href="#albert.collections.btmodel.BTModelSession">BTModelSession</a></span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4856,7 +4875,7 @@ or a detached without a parent.</p>
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BaseCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">BaseCollection</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4881,7 +4900,7 @@ or a detached without a parent.</p>
                 <code>session</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
+                  <code><a class="autorefs autorefs-internal" title="AlbertSession (albert.core.session.AlbertSession)" href="#albert.collections.btmodel.AlbertSession">AlbertSession</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -4904,9 +4923,9 @@ or a detached without a parent.</p>
 
                   <details class="quote">
                     <summary>Source code in <code>src/albert/collections/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AlbertSession</span><span class="p">):</span>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
+                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#__codelineno-0-22">22</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">AlbertSession</span><span class="p">):</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span>
 </span></code></pre></div></td></tr></table></div>
                   </details>
 
