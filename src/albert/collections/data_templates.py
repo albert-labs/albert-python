@@ -11,7 +11,12 @@ from albert.resources.parameter_groups import DataType, EnumValidationValue
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
+from albert.utils.patch_types import (
+    GeneralPatchDatum,
+    GeneralPatchPayload,
+    PGPatchDatum,
+    PGPatchPayload,
+)
 from albert.utils.patches import (
     generate_data_template_patches,
 )
@@ -393,6 +398,18 @@ class DataTemplateCollection(BaseCollection):
             The Updated DataTemplate object.
         """
 
+        def _split_parameter_dtype_and_value_patches(
+            parameter_patches: list[PGPatchDatum],
+        ) -> tuple[list[PGPatchDatum], list[PGPatchDatum]]:
+            dtype_patches = []
+            value_patches = []
+            for patch in parameter_patches:
+                if patch.attribute == "value":
+                    value_patches.append(patch)
+                else:
+                    dtype_patches.append(patch)
+            return dtype_patches, value_patches
+
         existing = self.get_by_id(id=data_template.id)
 
         base_payload = self._generate_patch_payload(existing=existing, updated=data_template)
@@ -409,6 +426,9 @@ class DataTemplateCollection(BaseCollection):
             initial_patches=base_payload,
             updated_data_template=data_template,
             existing_data_template=existing,
+        )
+        parameter_patches, parameter_value_patches = _split_parameter_dtype_and_value_patches(
+            parameter_patches
         )
 
         if len(new_data_columns) > 0:
@@ -450,6 +470,14 @@ class DataTemplateCollection(BaseCollection):
             # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
             logger.warning("ADDED NEW PARAMS. DT is now:")
             logger.warning(existing)
+
+        if len(parameter_patches) > 0:
+            payload = PGPatchPayload(data=parameter_patches)
+            self.session.patch(
+                path + "/parameters",
+                json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+            )
+        if len(parameter_patches) > 0 or len(new_parameters) > 0:
             (
                 general_patches,
                 new_data_columns,
@@ -462,6 +490,9 @@ class DataTemplateCollection(BaseCollection):
                 updated_data_template=data_template,
                 existing_data_template=existing,
             )
+            parameter_patches, parameter_value_patches = _split_parameter_dtype_and_value_patches(
+                parameter_patches
+            )
         if len(parameter_enum_patches) > 0:
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
@@ -471,8 +502,8 @@ class DataTemplateCollection(BaseCollection):
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
-        if len(parameter_patches) > 0:
-            payload = PGPatchPayload(data=parameter_patches)
+        if len(parameter_value_patches) > 0:
+            payload = PGPatchPayload(data=parameter_value_patches)
             self.session.patch(
                 path + "/parameters",
                 json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
