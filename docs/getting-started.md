@@ -1,6 +1,7 @@
 # Getting Started
 
 ## Overview
+
 The SDK is built around two main concepts:
 
 1. *Resource Models*: Represent individual entities like InventoryItem, Project, Company, and Tag. These are all controlled using Pydantic.
@@ -8,17 +9,21 @@ The SDK is built around two main concepts:
 2. *Resource Collections*: Provide methods to interact with the API endpoints related to a specific resource, such as listing, creating, updating, and deleting resources.
 
 ### Resource Models
+
 Resource Models represent the data structure of individual resources. They encapsulate the attributes and behaviors of a single resource. For example, an `InventoryItem` has attributes like `name`, `description`, `category`, and `tags`.
 
 ### Resource Collections
-Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the `InventoryCollection` class has methods like create, `get_by_id()`, `list()`, `update()`, and `delete()`. `list()` methods generally accept parameters to narrow the query to use it like a search.
+
+Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the `InventoryCollection` class has methods like create, `get_by_id()`, `get_all()`, `search()`, `update()`, and `delete()`. `search()` returns lightweight records for performance, while `get_all()` hydrates each item.
 
 ## Usage
+
 ### Initialization
+
 To use the SDK, you need to initialize the Albert client with your base URL and either a bearer token (which will expire) or client credientals, which will enable automatic token refresh.
 
 ```python
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertClientCredentials
 
 # Initialize the client using a JWT token
 client = Albert(
@@ -30,7 +35,7 @@ client = Albert(
 # Initalize using an API key from environment
 
 client = Albert(
-    client_credentials=ClientCredentials.from_env(
+    client_credentials=AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID",
         client_secret_env="ALBERT_CLIENT_SECRET",
     )
@@ -42,7 +47,9 @@ client = Albert()
 ```
 
 ## Working with Resource Collections and Models
+
 ### Example: Inventory Collection
+
 You can interact with inventory items using the InventoryCollection class. Here is an example of how to create a new inventory item, list all inventory items, and fetch an inventory item by its ID.
 
 ```python
@@ -63,15 +70,19 @@ new_inventory = InventoryItem(
 created_inventory = client.inventory.create(inventory_item=new_inventory)
 
 # List all inventory items
-all_inventories = client.inventory.list()
+all_inventories = client.inventory.get_all()
 
 # Fetch an inventory item by ID
 inventory_id = "INV1"
 inventory_item = client.inventory.get_by_id(inventory_id=inventory_id)
 
 # Search an inventory item by name
-inventory_item = inventory_collection.list(name="Acetone")
+inventory_item = inventory_collection.search(text="Acetone")
 ```
+
+!!! warning
+    ``search()`` is optimized for performance and returns partial objects.
+    Use ``get_all()`` or ``get_by_ids()`` when full details are required.
 
 ## EntityLink / SerializeAsEntityLink
 
@@ -84,7 +95,7 @@ from albert.resources.base import EntityLink
 
 client = Albert()
 
-my_location = next(client.locations.list(name="My Location")
+my_location = next(client.locations.get_all(name="My Location")
 
 p = Project(
     description="Example project",
@@ -104,6 +115,7 @@ p = Project(
 `CustomFields` allow you to store custom metadata on a `Project`, `InventoryItem`, `User`, `BaseTask` (Tasks), and `Lot`. The `FieldType` used determines the shape of the medatdata field's value. If the `FieldType` is `LIST`, then the `FieldCategory` defines the ACL needed to add new allowed items to the given list. A `FieldCategory.USER_DEFINED` allows general users to add new items to the list whereas `FieldCategory.BUSINESS_DEFINED` allows only admin users to add new allowed values.
 
 ### Creating Custom Fields
+
 ```python
 # Create some custom fields on projects
 # Let's add a stage-gate field, which is a single allowed value from a list, and an open text field for "Project Justification"
@@ -162,7 +174,7 @@ for s in stages:
 
 p = Project(
     description="Example project",
-    locations=[next(client.locations.list(name="My Location"))],
+    locations=[next(client.locations.get_all(name="My Location"))],
     metadata = {
         stage_gate_field.name: [client.lists.get_matching_item(list_type=stage_gate_field.name, name = stages[0]).to_entity_link()],
         justification_field.name: "To show an example of using custom fields."

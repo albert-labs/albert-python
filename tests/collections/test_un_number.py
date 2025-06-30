@@ -1,8 +1,8 @@
-from albert.albert import Albert
+from albert.client import Albert
 from albert.collections.un_numbers import UnNumber
 
 
-def _list_asserts(returned_list):
+def assert_un_number_items(returned_list):
     for i, u in enumerate(returned_list):
         if i == 100:
             break
@@ -13,13 +13,13 @@ def _list_asserts(returned_list):
 
 
 def test_simple_un_number_list(client: Albert):
-    simple_list = client.un_numbers.list()
-    _list_asserts(simple_list)
+    simple_list = client.un_numbers.get_all()
+    assert_un_number_items(simple_list)
 
 
 def test_advanced_un_number_list(client: Albert):
-    adv_list = client.un_numbers.list(name="56", exact_match=False)
-    _list_asserts(adv_list)
+    adv_list = client.un_numbers.get_all(name="56", exact_match=False)
+    assert_un_number_items(adv_list)
 
 
 # TO FIX! Need to have at least one UN Number loaded to the test environment.

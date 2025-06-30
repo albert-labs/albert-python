@@ -1,12 +1,11 @@
 import json
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.exceptions import AlbertHTTPError
+from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
 from albert.resources.data_columns import DataColumn
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class DataColumnCollection(BaseCollection):
@@ -34,7 +33,7 @@ class DataColumnCollection(BaseCollection):
         DataColumn | None
             The data column object on match or None
         """
-        for dc in self.list(name=name):
+        for dc in self.get_all(name=name):
             if dc.name.lower() == name.lower():
                 return dc
         return None
@@ -57,7 +56,7 @@ class DataColumnCollection(BaseCollection):
         dc = DataColumn(**response.json())
         return dc
 
-    def list(
+    def get_all(
         self,
         *,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -67,10 +66,9 @@ class DataColumnCollection(BaseCollection):
         default: bool | None = None,
         start_key: str | None = None,
         limit: int = 100,
-        return_full: bool = True,
     ) -> Iterator[DataColumn]:
         """
-        Lists data column entities with optional filters.
+        Get all data column entities with optional filters.
 
         Parameters
         ----------
@@ -84,8 +82,6 @@ class DataColumnCollection(BaseCollection):
             Whether to match the name exactly, by default True.
         default : bool, optional
             Whether to return only default columns, by default None.
-        return_full : bool, optional
-            Whether to make additional API call to fetch the full object, by default True
 
         Returns
         -------
@@ -94,15 +90,7 @@ class DataColumnCollection(BaseCollection):
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
-            if return_full:
-                for item in items:
-                    id = item["albertId"]
-                    try:
-                        yield self.get_by_id(id=id)
-                    except AlbertHTTPError as e:
-                        logger.warning(f"Error fetching Data Column '{id}': {e}")
-            else:
-                yield from (DataColumn(**item) for item in items)
+            yield from (DataColumn(**item) for item in items)
 
         params = {
             "limit": limit,

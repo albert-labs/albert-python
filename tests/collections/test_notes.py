@@ -18,9 +18,9 @@ def test_update(client: Albert, seeded_notes: list[Note]):
     assert updated_note.id == note.id
 
 
-def test_list(client: Albert, seeded_notes: list[Note]):
+def test_get_all(client: Albert, seeded_notes: list[Note]):
     seeded_parent_id = seeded_notes[0].parent_id
-    notes = client.notes.list(parent_id=seeded_parent_id)
+    notes = client.notes.get_all(parent_id=seeded_parent_id)
 
     for n in notes:
         assert n.parent_id == seeded_parent_id

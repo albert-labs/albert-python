@@ -1,15 +1,15 @@
 import json
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import EntityLink
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class StorageLocationsCollection(BaseCollection):
@@ -46,7 +46,7 @@ class StorageLocationsCollection(BaseCollection):
         response = self.session.get(path)
         return StorageLocation(**response.json())
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | list[str] | None = None,
@@ -54,8 +54,8 @@ class StorageLocationsCollection(BaseCollection):
         location: str | Location | None = None,
         start_key: str | None = None,
         limit: int = 50,
-    ) -> Generator[StorageLocation, None, None]:
-        """List storage locations with optional filtering.
+    ) -> Iterator[StorageLocation]:
+        """Get all storage locations with optional filtering.
 
         Parameters
         ----------
@@ -68,10 +68,11 @@ class StorageLocationsCollection(BaseCollection):
 
         Yields
         ------
-        Generator[StorageLocation, None, None]
-            _description_
+        Iterator[StorageLocation]
+            An iterator of StorageLocation items matching the search criteria.
         """
 
+        # Remove explicit hydration when SUP-410 is fixed
         def deserialize(items: list[dict]) -> Iterator[StorageLocation]:
             for x in items:
                 id = x["albertId"]
@@ -110,7 +111,7 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The created storage location.
         """
-        matching = self.list(
+        matching = self.get_all(
             name=storage_location.name, location=storage_location.location, exact_match=True
         )
         for m in matching:

@@ -1,28 +1,11 @@
 from datetime import datetime
-from enum import Enum
 
 from pydantic import Field, PrivateAttr
 
+from albert.core.base import BaseAlbertModel
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import Status
 from albert.exceptions import AlbertException
-from albert.session import AlbertSession
-from albert.utils.types import BaseAlbertModel
-
-
-class Status(str, Enum):
-    """The status of a resource"""
-
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
-class SecurityClass(str, Enum):
-    """The security class of a resource"""
-
-    SHARED = "shared"
-    RESTRICTED = "restricted"
-    CONFIDENTIAL = "confidential"
-    PRIVATE = "private"
-    PUBLIC = "public"
 
 
 class AuditFields(BaseAlbertModel):
@@ -40,6 +23,13 @@ class EntityLink(BaseAlbertModel):
     def to_entity_link(self) -> "EntityLink":
         # Convience method to return self, so you can call this method on objects that are already entity links
         return self
+
+
+class LocalizedNames(BaseAlbertModel):
+    de: str | None = None
+    ja: str | None = None
+    zh: str | None = None
+    es: str | None = None
 
 
 class BaseResource(BaseAlbertModel):
@@ -90,6 +80,3 @@ class BaseSessionResource(BaseResource):
     @property
     def session(self) -> AlbertSession | None:
         return self._session
-
-
-MetadataItem = float | int | str | EntityLink | list[EntityLink] | None
