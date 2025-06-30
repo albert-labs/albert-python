@@ -430,22 +430,23 @@ class DataTemplateCollection(BaseCollection):
                     json=enum_patches,  # these are simple dicts for now
                 )
         if len(new_parameters) > 0:
-            for p in new_parameters:
-                if p.unit is not None:
-                    p.unit = EntityLink(id=p.unit.id)
-            for p in new_parameters:
-                if p.validation[0].datatype == DataType.ENUM:
-                    p.validation[0].value = None  # catch this later in the patches
-                    p.value = None  # catch this later in the patches
-            self.session.put(
-                f"{self.base_path}/{existing.id}/parameters",
-                json={
-                    "Parameters": [
-                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                        for x in new_parameters
-                    ],
-                },
-            )
+            existing = self.add_parameters(data_template_id=existing.id, parameters=new_parameters)
+            # for p in new_parameters:
+            #     if p.unit is not None:
+            #         p.unit = EntityLink(id=p.unit.id)
+            # for p in new_parameters:
+            #     if p.validation[0].datatype == DataType.ENUM:
+            #         p.validation[0].value = None  # catch this later in the patches
+            #         p.value = None  # catch this later in the patches
+            # self.session.put(
+            #     f"{self.base_path}/{existing.id}/parameters",
+            #     json={
+            #         "Parameters": [
+            #             x.model_dump(mode="json", by_alias=True, exclude_none=True)
+            #             for x in new_parameters
+            #         ],
+            #     },
+            # )
             # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
             (
                 general_patches,
@@ -456,7 +457,7 @@ class DataTemplateCollection(BaseCollection):
                 parameter_patches,
             ) = generate_data_template_patches(
                 initial_patches=base_payload,
-                updated_data_template=self.get_by_id(id=data_template.id),
+                updated_data_template=data_template,
                 existing_data_template=existing,
             )
         if len(parameter_enum_patches) > 0:
