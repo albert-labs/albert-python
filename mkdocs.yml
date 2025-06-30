@@ -1,7 +1,24 @@
 site_name: "Albert Python SDK Docs"
 site_url: https://docs.developer.albertinvent.com/albert-python/
+repo_url: https://github.com/albert-labs/albert-python
 extra:
   base_path: /albert-python/
+  version:
+    provider: mike
+  analytics:
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/thumb-up-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/thumb-down-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback!
 use_directory_urls: true
 theme:
   name: "material"
@@ -9,6 +26,22 @@ theme:
     text: Poppins
   logo: assets/Wordmark_White.png
   favicon: assets/Vector_Favicon_Blue.svg
+  features:
+    - content.tabs.link               # Tabs can contain links
+    - content.code.annotate           # Annotated code blocks (tooltips)
+    - content.code.copy               # Copy-to-clipboard button for code
+    - announce.dismiss                # Dismissable banners
+    - navigation.tabs                 # Top-level nav as horizontal tabs
+    - navigation.instant              # SPA-like instant nav
+    - navigation.instant.prefetch     # Preload nearby pages
+    - navigation.instant.preview      # Hover previews of pages
+    - navigation.instant.progress     # Progress bar during nav
+    - navigation.path                 # Breadcrumb-style nav
+    - navigation.sections             # Sidebar sections
+    - navigation.top                  # Scroll-to-top button
+    - navigation.tracking             # Highlight section in sidebar
+    - search.suggest                  # Smart search suggestions
+    - toc.follow                      # Highlight TOC entry while scrolling
 
 markdown_extensions:
   - admonition
@@ -55,11 +88,14 @@ plugins:
             heading_level: 2
             show_bases: true
 
-          import:
+          inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
           rendering:
             show_docstring_attributes: true
+  - mike:
+      alias_type: symlink
+      canonical_version: latest
 
 nav:
   - Getting Started: index.md
@@ -105,3 +141,8 @@ nav:
       - Worksheets: worksheets.md
       - Sheets: sheets.md
 
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

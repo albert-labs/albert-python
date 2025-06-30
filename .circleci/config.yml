@@ -11,6 +11,46 @@ commands:
           name: Install uv
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+  deploy_docs:
+    parameters:
+      mode:
+        type: enum
+        enum: ["dev", "release"]
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
+      - install_uv
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Configure Git
+          command: |
+            git config --global user.name "CircleCI"
+            git config --global user.email "circleci@users.noreply.github.com"
+      - run:
+          name: Deploy Docs with mike
+          command: |
+            if [ "<< parameters.mode >>" = "dev" ]; then
+              echo "Deploying dev docs"
+              uv run mike deploy --push --update-aliases dev
+            elif [ "<< parameters.mode >>" = "release" ]; then
+              if [ -z "$CIRCLE_TAG" ]; then
+                echo "CIRCLE_TAG is empty. Skipping mike deploy."
+                exit 0
+              fi
+
+              if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "Stable semver tag detected. Deploying $CIRCLE_TAG with alias: latest"
+                uv run mike deploy --push --update-aliases latest "$CIRCLE_TAG"
+              else
+                echo "Non-semver release tag. Skipping docs deployment."
+                exit 0
+              fi
+            fi
+
 jobs:
   snyk_app_scan:
     executor:
@@ -116,38 +156,16 @@ jobs:
             uv publish --token $PYPI_TOKEN_ALBERT_PYTHON
 
   deploy_docs:
+    parameters:
+      mode:
+        type: enum
+        enum: ["dev", "release"]
     executor:
       name: python/default
       tag: "3.10.15"
     steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
-      - install_uv
-      - run:
-          name: Install dependencies
-          command: uv sync
-      - run:
-          name: Build Documentation
-          command: |
-            uv run mkdocs build --clean
-      - run:
-          name: Deploy to GitHub Pages
-          command: |
-            git config --global user.email "circleci@users.noreply.github.com"
-            git config --global user.name "CircleCI"
-            git clone --branch gh-pages --single-branch git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git gh-pages
-
-            mkdir -p gh-pages/albert-python
-            rm -rf gh-pages/albert-python/*
-            cp -r site/* gh-pages/albert-python/
-            echo "" > gh-pages/index.html
-
-            cd gh-pages
-            git add .
-            git commit -m "Auto-update documentation to /albert-python [skip ci]" || echo "No changes to commit"
-            git push origin gh-pages
+      - deploy_docs:
+          mode: << parameters.mode >>
 
 workflows:
   main:
@@ -164,9 +182,15 @@ workflows:
           filters:
             branches:
               ignore: ["main"]
+      - deploy_docs:
+          name: Deploy Docs On Merge to Main
+          mode: dev
+          context: dev
+          filters:
+            branches:
+              only: main
 
   release:
-    # Only kick off workflow on release version tags
     jobs:
       - validate_release_tag:
           name: Validate Release Tag
@@ -187,12 +211,13 @@ workflows:
             branches:
               ignore: /.*/
       - deploy_docs:
-          name: Deploy Docs
+          name: Deploy Docs on Github Release
+          mode: release
           context: dev
           requires:
             - Validate Release Tag
           filters:
             tags:
-              only: /^v.+$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
             branches:
               ignore: /.*/
