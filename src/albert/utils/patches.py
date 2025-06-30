@@ -333,6 +333,12 @@ def generate_enum_patches(
     enum_patches = []
     existing_enum = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
     updated_enum = [x for x in updated_enums if isinstance(x, EnumValidationValue)]
+    existing_enum_lookup = {x.text: x for x in existing_enum}
+    existing_names = existing_enum_lookup.keys()
+
+    for enum in existing_enum:  # handle cases where it's just a missing ID
+        if enum.text in existing_names:
+            enum.id = existing_enum_lookup[enum.text].id
 
     existing_enum_ids = [x.id for x in existing_enum if x.id is not None]
 
