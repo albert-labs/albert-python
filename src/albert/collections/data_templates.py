@@ -436,6 +436,7 @@ class DataTemplateCollection(BaseCollection):
             for p in new_parameters:
                 if p.validation[0].datatype == DataType.ENUM:
                     p.validation[0].value = None  # catch this later in the patches
+                    p.value = None  # catch this later in the patches
             self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
@@ -444,6 +445,19 @@ class DataTemplateCollection(BaseCollection):
                         for x in new_parameters
                     ],
                 },
+            )
+            # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
+            (
+                general_patches,
+                new_data_columns,
+                data_column_enum_patches,
+                new_parameters,
+                parameter_enum_patches,
+                parameter_patches,
+            ) = generate_data_template_patches(
+                initial_patches=base_payload,
+                updated_data_template=self.get_by_id(id=data_template.id),
+                existing_data_template=existing,
             )
         if len(parameter_enum_patches) > 0:
             for sequence, enum_patches in parameter_enum_patches.items():
