@@ -448,6 +448,8 @@ class DataTemplateCollection(BaseCollection):
             #     },
             # )
             # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
+            logger.warning("ADDED NEW PARAMS. DT is now:")
+            logger.warning(existing)
             (
                 general_patches,
                 new_data_columns,
@@ -464,6 +466,7 @@ class DataTemplateCollection(BaseCollection):
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
+                logger.warning(f"PATCHING ENUMS FOR PARAM {sequence}: {enum_patches}")
                 self.session.put(
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
