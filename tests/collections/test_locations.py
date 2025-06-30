@@ -1,10 +1,10 @@
 import uuid
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.resources.locations import Location
 
 
-def _list_asserts(returned_list):
+def assert_location_items(returned_list):
     for i, c in enumerate(returned_list):
         if i == 30:
             break
@@ -13,16 +13,16 @@ def _list_asserts(returned_list):
         assert c.id.startswith("LOC")
 
 
-def test_simple_list(client: Albert):
-    simple_loc_list = client.locations.list()
-    _list_asserts(simple_loc_list)
+def test_simple_get_all(client: Albert):
+    simple_loc_list = client.locations.get_all()
+    assert_location_items(simple_loc_list)
 
 
-def test_adv_list(client: Albert):
-    adv_list = client.locations.list(country="US")
-    _list_asserts(adv_list)
-    short_list = client.locations.list(limit=2)
-    _list_asserts(short_list)
+def test_adv_get_all(client: Albert):
+    adv_list = client.locations.get_all(country="US")
+    assert_location_items(adv_list)
+    short_list = client.locations.get_all(limit=2)
+    assert_location_items(short_list)
 
 
 def test_get_by_id(client: Albert, seeded_locations: list[Location]):
@@ -37,7 +37,7 @@ def test_get_by_id(client: Albert, seeded_locations: list[Location]):
 
 def test_list_by_ids(client: Albert, seeded_locations: list[Location]):
     ids = [loc.id for loc in seeded_locations]
-    listed_locations = list(client.locations.list(ids=ids))
+    listed_locations = list(client.locations.get_all(ids=ids))
 
     assert len(listed_locations) == len(seeded_locations)
     assert {x.id for x in listed_locations} == {x.id for x in seeded_locations}
@@ -88,7 +88,7 @@ def test_update_location(client: Albert, seeded_locations: list[Location]):
 def test_location_exists(client: Albert, seeded_locations):
     # Check if the first seeded location exists
     seeded_location = seeded_locations[1]
-    exists = client.locations.location_exists(location=seeded_location)
+    exists = client.locations.exists(location=seeded_location)
 
     assert exists is not None
     assert isinstance(exists, Location)
@@ -101,5 +101,5 @@ def test_delete_location(client: Albert, seeded_locations: list[Location]):
     client.locations.delete(id=seeded_locations[2].id)
 
     # Ensure it no longer exists
-    does_exist = client.locations.location_exists(location=seeded_locations[2])
+    does_exist = client.locations.exists(location=seeded_locations[2])
     assert does_exist is None

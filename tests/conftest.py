@@ -5,7 +5,7 @@ from contextlib import suppress
 
 import pytest
 
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.btdataset import BTDataset
@@ -17,7 +17,7 @@ from albert.resources.custom_fields import CustomField
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
-from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.inventory import InventoryCategory, InventoryFilterParams, InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import Lot
@@ -65,13 +65,14 @@ from tests.utils.fake_session import FakeAlbertSession
 
 @pytest.fixture(scope="session")
 def client() -> Albert:
-    credentials = ClientCredentials.from_env(
+    credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+        base_url_env="ALBERT_BASE_URL",
     )
     return Albert(
         base_url="https://app.albertinvent.com",
-        client_credentials=credentials,
+        auth_manager=credentials,
         retries=3,
     )
 
@@ -136,12 +137,12 @@ def static_sds_file(client: Albert) -> FileInfo:
 @pytest.fixture(scope="session")
 def static_roles(client: Albert) -> list[Role]:
     # Roles are not deleted or created. We just use the existing roles.
-    return list(client.roles.list())
+    return list(client.roles.get_all())
 
 
 @pytest.fixture(scope="session")
 def static_consumeable_parameter(client: Albert) -> Parameter:
-    consumeables = client.parameters.list(names="Consumables")
+    consumeables = client.parameters.get_all(names="Consumables")
     for c in consumeables:
         if c.name == "Consumables":
             return c
@@ -551,9 +552,11 @@ def seeded_products(
         )
     return [
         x
-        for x in client.inventory.list(
-            category=InventoryCategory.FORMULAS,
-            text=product_name_prefix,
+        for x in client.inventory.get_all(
+            params=InventoryFilterParams(
+                category=InventoryCategory.FORMULAS,
+                text=product_name_prefix,
+            )
         )
         if x.name is not None and x.name.startswith(product_name_prefix)
     ]

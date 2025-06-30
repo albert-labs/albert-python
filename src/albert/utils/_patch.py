@@ -1,5 +1,13 @@
 from copy import deepcopy
 
+from albert.core.shared.models.patch import (
+    DTPatchDatum,
+    GeneralPatchDatum,
+    PatchDatum,
+    PatchPayload,
+    PGPatchDatum,
+    PGPatchPayload,
+)
 from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.parameter_groups import (
     DataType,
@@ -8,14 +16,6 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
-from albert.utils.patch_types import (
-    DTPatchDatum,
-    GeneralPatchDatum,
-    PatchDatum,
-    PatchPayload,
-    PGPatchDatum,
-    PGPatchPayload,
-)
 
 
 def _normalize_validation(validation: list[EnumValidationValue]) -> list[EnumValidationValue]:

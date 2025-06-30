@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
 
 
 class AccessControlLevel(str, Enum):
@@ -16,6 +16,7 @@ class AccessControlLevel(str, Enum):
     INVENTORY_OWNER = "InventoryOwner"
     INVENTORY_VIEWER = "InventoryViewer"
     CUSTOM_TEMPLATE_OWNER = "CustomTemplateOwner"
+    CUSTOM_TEMPLATE_VIEWER = "CustomTemplateViewer"
 
 
 class ACL(BaseAlbertModel):
