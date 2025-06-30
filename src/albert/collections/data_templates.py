@@ -1,19 +1,24 @@
 from collections.abc import Iterator
+from itertools import islice
 
 from pydantic import Field
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.models.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.exceptions import AlbertHTTPError
-from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
-from albert.resources.identifiers import DataTemplateId
-from albert.resources.parameter_groups import DataType, EnumValidationValue
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
-from albert.utils.patches import (
-    generate_data_template_patches,
+from albert.resources.data_templates import (
+    DataColumnValue,
+    DataTemplate,
+    DataTemplateSearchItem,
+    ParameterValue,
 )
+from albert.resources.parameter_groups import DataType, EnumValidationValue
+from albert.utils._patch import generate_data_template_patches
 
 
 class DCPatchDatum(PGPatchPayload):
@@ -216,7 +221,7 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate | None
             The matching data template object or None if not found.
         """
-        hits = list(self.list(name=name))
+        hits = list(self.get_all(name=name))
         for h in hits:
             if h.name.lower() == name.lower():
                 return h
@@ -323,7 +328,7 @@ class DataTemplateCollection(BaseCollection):
 
         return self.update(data_template=dt_with_params)
 
-    def list(
+    def search(
         self,
         *,
         name: str | None = None,
@@ -331,9 +336,11 @@ class DataTemplateCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         limit: int = 100,
         offset: int = 0,
-    ) -> Iterator[DataTemplate]:
-        """
-        Lists data template entities with optional filters.
+    ) -> Iterator[DataTemplateSearchItem]:
+        """Search for DataTemplate matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
@@ -346,19 +353,9 @@ class DataTemplateCollection(BaseCollection):
 
         Returns
         -------
-        Iterator[DataTemplate]
-            An iterator of DataTemplate objects matching the provided criteria.
+        Iterator[DataTemplateSearchItem]
+            An iterator of DataTemplateSearchItem objects matching the provided criteria.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[DataTemplate]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching parameter group {id}: {e}")
-            # get by ids is not currently returning metadata correctly, so temp fixing this
-            # return self.get_by_ids(ids=[x["albertId"] for x in items])
 
         params = {
             "limit": limit,
@@ -372,7 +369,9 @@ class DataTemplateCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=deserialize,
+            deserialize=lambda items: [
+                DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
             params=params,
         )
 
@@ -467,3 +466,37 @@ class DataTemplateCollection(BaseCollection):
             The ID of the data template to delete.
         """
         self.session.delete(f"{self.base_path}/{id}")
+
+    def get_all(
+        self,
+        *,
+        name: str | None = None,
+        user_id: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Iterator[DataTemplate]:
+        """Retrieve fully hydrated DataTemplate entities with optional filters.
+
+        This method returns complete entity data using `get_by_ids`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        """
+
+        def batched(iterable, size):
+            """Yield lists of up to `size` IDs from an iterable of objects with an `id` attribute."""
+
+            it = (item.id for item in iterable)
+            while batch := list(islice(it, size)):
+                yield batch
+
+        id_batches = batched(
+            self.search(name=name, user_id=user_id, order_by=order_by, limit=limit, offset=offset),
+            limit,  # batch size
+        )
+
+        for batch in id_batches:
+            try:
+                hydrated_templates = self.get_by_ids(ids=batch)
+                yield from hydrated_templates
+            except AlbertHTTPError as e:
+                logger.warning(f"Error hydrating batch {batch}: {e}")

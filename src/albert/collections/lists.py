@@ -1,9 +1,9 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.resources.lists import ListItem, ListItemCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ListsCollection(BaseCollection):
@@ -47,7 +47,7 @@ class ListsCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         """
-        Initializes the TagCollection with the provided session.
+        Initializes the ListsCollection with the provided session.
 
         Parameters
         ----------
@@ -57,7 +57,7 @@ class ListsCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ListsCollection._api_version}/lists"
 
-    def list(
+    def get_all(
         self,
         *,
         limit: int = 100,
@@ -67,7 +67,7 @@ class ListsCollection(BaseCollection):
         start_key: str | None = None,
     ) -> Iterator[ListItem]:
         """
-        Generates a list of list entities with optional filters.
+        Get all list entities with optional filters.
 
         Parameters
         ----------
@@ -167,7 +167,7 @@ class ListsCollection(BaseCollection):
         ListItem | None
             A list item with the provided name and list type, or None if not found.
         """
-        for list_item in self.list(names=[name], list_type=list_type):
+        for list_item in self.get_all(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():
                 return list_item
         return None

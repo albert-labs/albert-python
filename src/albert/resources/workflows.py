@@ -1,11 +1,12 @@
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
+from albert.core.shared.models.base import BaseResource, EntityLink
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
-from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
 
 
@@ -94,7 +95,7 @@ class ParameterSetpoint(BaseAlbertModel):
     unit : Unit
         The unit of the setpoint.
     intervals : list[Interval]
-        The intervals of the setpoint. Either ether intervals or value + unit
+        The intervals of the setpoint. Either the intervals or value + unit
     category : ParameterCategory
         The category of the parameter. Special for InventoryItem (then use name to specify "Equipment", "Consumeable", etc), normal for all others
     short_name : str
@@ -219,9 +220,7 @@ class Workflow(BaseResource):
                                 interval_param_name=parameter_setpoint.name,
                                 interval_id=interval.row_id,
                                 interval_value=interval.value,
-                                interval_unit=None
-                                if interval.unit is None
-                                else interval.unit.name,
+                                interval_unit=interval.unit.name if interval.unit else None,
                             )
                         )
         return self

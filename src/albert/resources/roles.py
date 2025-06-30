@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.core.shared.models.base import BaseResource
 
 
 class Role(BaseResource):

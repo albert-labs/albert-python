@@ -1,24 +1,27 @@
+from itertools import islice
+
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
-from albert.resources.base import EntityLink
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
     ParameterGroup,
+    ParameterGroupSearchItem,
     ValueValidation,
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 
 
-def _list_asserts(returned_list):
+def assert_pg_items(returned_list, type: ParameterGroupSearchItem | ParameterGroup):
     found = False
-    for i, u in enumerate(returned_list):
-        if i == 50:
-            break
-        assert isinstance(u, ParameterGroup)
+    for pg in islice(returned_list, 10):
+        assert isinstance(pg, type)
+        assert isinstance(pg.id, str) and pg.id
+        assert isinstance(pg.name, str) and pg.name
         found = True
     assert found
 
@@ -42,15 +45,32 @@ def test_get_by_ids(client: Albert, seeded_parameter_groups: list[ParameterGroup
 
 
 def test_basics(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
-    list_response = client.parameter_groups.list()
-    _list_asserts(list_response)
+    list_response = client.parameter_groups.search()
+    assert_pg_items(list_response, ParameterGroupSearchItem)
+
+
+def test_get_all(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    list_response = client.parameter_groups.get_all()
+    assert_pg_items(list_response, ParameterGroup)
 
 
 def test_advanced_list(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
-    list_response = client.parameter_groups.list(
+    list_response = client.parameter_groups.search(
         text=[seeded_parameter_groups[0].name], types=[seeded_parameter_groups[0].type]
     )
-    _list_asserts(list_response)
+    assert_pg_items(list_response, ParameterGroupSearchItem)
+
+
+def test_hydrate_pg(client: Albert):
+    pgs = list(islice(client.parameter_groups.search(), 5))
+    assert pgs, "Expected at least one pg in search results"
+
+    for pg in pgs:
+        hydrated = pg.hydrate()
+
+        # identity checks
+        assert hydrated.id == pg.id
+        assert hydrated.name == pg.name
 
 
 def test_dupe_raises_error(client: Albert, seeded_parameter_groups: list[ParameterGroup]):

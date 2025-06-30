@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from albert.resources.base import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
 
 
 class CasLevelSubstance(BaseAlbertModel):

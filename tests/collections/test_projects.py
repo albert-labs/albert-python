@@ -1,17 +1,21 @@
+from itertools import islice
+
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.base import EntityLink
-from albert.resources.projects import Project
+from albert.resources.projects import Project, ProjectFilterParams, ProjectSearchItem
 
 
-def _list_asserts(returned_list, limit=50):
+def assert_project_items(
+    returned_list: list, entity_type: Project | ProjectSearchItem = Project, limit=50
+):
     found = False
     for i, project in enumerate(returned_list):
         if i == limit:  # Limit to checking first 50 projects
             break
-        assert isinstance(project, Project)
+        assert isinstance(project, entity_type)
         assert isinstance(project.description, str)
         assert isinstance(project.id, str)
         assert project.id is not None
@@ -19,15 +23,34 @@ def _list_asserts(returned_list, limit=50):
     assert found
 
 
-def test_list_projects(client: Albert):
-    project_list = client.projects.list()
-    _list_asserts(project_list)
+def test_get_all_projects(client: Albert):
+    project_list = client.projects.get_all()
+    assert_project_items(project_list)
 
-    short_lists = client.projects.list(limit=5)
-    _list_asserts(short_lists, limit=7)
 
-    advanced_list = client.projects.list(limit=5, status=["Active"])
-    _list_asserts(advanced_list, limit=2)
+def test_search_projects(client: Albert):
+    project_list = client.projects.search()
+    assert_project_items(project_list, ProjectSearchItem)
+
+    params = ProjectFilterParams(limit=5)
+    short_lists = client.projects.search(params=params)
+    assert_project_items(short_lists, ProjectSearchItem, limit=7)
+
+    params = ProjectFilterParams(limit=2, status=["Active"])
+    advanced_list = client.projects.search(params=params)
+    assert_project_items(advanced_list, ProjectSearchItem, limit=2)
+
+
+def test_hydrate_project(client: Albert):
+    projects = list(islice(client.projects.search(), 5))
+    assert projects, "Expected at least one project in search results"
+
+    for project in projects:
+        hydrated = project.hydrate()
+
+        # identity checks
+        assert hydrated.id == project.id
+        assert hydrated.description == project.description
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):
