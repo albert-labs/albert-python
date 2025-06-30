@@ -8,7 +8,7 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
-from albert.utils.logging import get_logger
+from albert.utils.logging import logger
 from albert.utils.patch_types import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -18,7 +18,7 @@ from albert.utils.patch_types import (
     PGPatchPayload,
 )
 
-logger = get_logger("INFO")
+logger.setLevel("INFO")
 
 
 def _normalize_validation(validation: list[EnumValidationValue]) -> list[EnumValidationValue]:
