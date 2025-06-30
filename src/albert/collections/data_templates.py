@@ -468,8 +468,6 @@ class DataTemplateCollection(BaseCollection):
             #     },
             # )
             # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
-            logger.warning("ADDED NEW PARAMS. DT is now:")
-            logger.warning(existing)
 
         if len(parameter_patches) > 0:
             payload = PGPatchPayload(data=parameter_patches)
@@ -478,6 +476,7 @@ class DataTemplateCollection(BaseCollection):
                 json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
             )
         if len(parameter_patches) > 0 or len(new_parameters) > 0:
+            existing = self.get_by_id(id=data_template.id)
             (
                 general_patches,
                 new_data_columns,
@@ -497,6 +496,8 @@ class DataTemplateCollection(BaseCollection):
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
+                logger.warning("Current state of the DataTemplate:")
+                logger.warning(existing)
                 logger.warning(f"PATCHING ENUMS FOR PARAM {sequence}: {enum_patches}")
                 self.session.put(
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
