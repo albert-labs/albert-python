@@ -186,6 +186,7 @@ class DataTemplateCollection(BaseCollection):
             The data template object on match or None
         """
         response = self.session.get(f"{self.base_path}/{id}")
+        logger.error(response.json())
         return DataTemplate(**response.json())
 
     def get_by_ids(self, *, ids: list[DataTemplateId]) -> list[DataTemplate]:
