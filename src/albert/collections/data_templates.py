@@ -4,19 +4,13 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import EntityLink
 from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
 from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import DataType, EnumValidationValue
 from albert.session import AlbertSession
 from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import (
-    GeneralPatchDatum,
-    GeneralPatchPayload,
-    PGPatchDatum,
-    PGPatchPayload,
-)
+from albert.utils.patch_types import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.utils.patches import (
     generate_data_template_patches,
 )
@@ -301,8 +295,6 @@ class DataTemplateCollection(BaseCollection):
                 initial_enum_values[i] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
-            if param.unit is not None:
-                param.unit = EntityLink(id=param.unit.id)
 
         payload = {
             "Parameters": [
@@ -398,24 +390,7 @@ class DataTemplateCollection(BaseCollection):
             The Updated DataTemplate object.
         """
 
-        def _split_parameter_dtype_and_value_patches(
-            parameter_patches: list[PGPatchDatum],
-        ) -> tuple[list[PGPatchDatum], list[PGPatchDatum]]:
-            dtype_patches = []
-            value_patches = []
-            for patch in parameter_patches:
-                if patch.attribute == "value":
-                    value_patches.append(patch)
-                else:
-                    dtype_patches.append(patch)
-            return dtype_patches, value_patches
-
         existing = self.get_by_id(id=data_template.id)
-
-        logger.warning("Existing DataTemplate:")
-        logger.warning(existing)
-        logger.warning("Updated DataTemplate:")
-        logger.warning(data_template)
 
         base_payload = self._generate_patch_payload(existing=existing, updated=data_template)
 
@@ -432,24 +407,6 @@ class DataTemplateCollection(BaseCollection):
             updated_data_template=data_template,
             existing_data_template=existing,
         )
-        parameter_patches, parameter_value_patches = _split_parameter_dtype_and_value_patches(
-            parameter_patches
-        )
-
-        logger.warning("generated patches")
-        logger.warning(general_patches)
-        logger.warning("new data columns")
-        logger.warning(new_data_columns)
-        logger.warning("data column enum patches")
-        logger.warning(data_column_enum_patches)
-        logger.warning("new parameters")
-        logger.warning(new_parameters)
-        logger.warning("parameter enum patches")
-        logger.warning(parameter_enum_patches)
-        logger.warning("parameter patches")
-        logger.warning(parameter_patches)
-        logger.warning("parameter value patches")
-        logger.warning(parameter_value_patches)
 
         if len(new_data_columns) > 0:
             self.session.put(
@@ -470,61 +427,25 @@ class DataTemplateCollection(BaseCollection):
                     json=enum_patches,  # these are simple dicts for now
                 )
         if len(new_parameters) > 0:
-            existing = self.add_parameters(data_template_id=existing.id, parameters=new_parameters)
-            # for p in new_parameters:
-            #     if p.unit is not None:
-            #         p.unit = EntityLink(id=p.unit.id)
-            # for p in new_parameters:
-            #     if p.validation[0].datatype == DataType.ENUM:
-            #         p.validation[0].value = None  # catch this later in the patches
-            #         p.value = None  # catch this later in the patches
-            # self.session.put(
-            #     f"{self.base_path}/{existing.id}/parameters",
-            #     json={
-            #         "Parameters": [
-            #             x.model_dump(mode="json", by_alias=True, exclude_none=True)
-            #             for x in new_parameters
-            #         ],
-            #     },
-            # )
-            # now, enum patches may need to be re-formed because existing available enums will now be available again to get a diff of
-
-        if len(parameter_patches) > 0:
-            payload = PGPatchPayload(data=parameter_patches)
-            self.session.patch(
-                path + "/parameters",
-                json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
-            )
-        if len(parameter_patches) > 0 or len(new_parameters) > 0:
-            existing = self.get_by_id(id=data_template.id)
-            (
-                general_patches,
-                new_data_columns,
-                data_column_enum_patches,
-                new_parameters,
-                parameter_enum_patches,
-                parameter_patches,
-            ) = generate_data_template_patches(
-                initial_patches=base_payload,
-                updated_data_template=data_template,
-                existing_data_template=existing,
-            )
-            parameter_patches, parameter_value_patches = _split_parameter_dtype_and_value_patches(
-                parameter_patches
+            self.session.put(
+                f"{self.base_path}/{existing.id}/parameters",
+                json={
+                    "Parameters": [
+                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for x in new_parameters
+                    ],
+                },
             )
         if len(parameter_enum_patches) > 0:
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
-                logger.warning("Current state of the DataTemplate:")
-                logger.warning(existing)
-                logger.warning(f"PATCHING ENUMS FOR PARAM {sequence}: {enum_patches}")
                 self.session.put(
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
-        if len(parameter_value_patches) > 0:
-            payload = PGPatchPayload(data=parameter_value_patches)
+        if len(parameter_patches) > 0:
+            payload = PGPatchPayload(data=parameter_patches)
             self.session.patch(
                 path + "/parameters",
                 json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),

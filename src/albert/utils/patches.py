@@ -8,7 +8,6 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
-from albert.utils.logging import logger
 from albert.utils.patch_types import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -17,8 +16,6 @@ from albert.utils.patch_types import (
     PGPatchDatum,
     PGPatchPayload,
 )
-
-logger.setLevel("INFO")
 
 
 def _normalize_validation(validation: list[EnumValidationValue]) -> list[EnumValidationValue]:
@@ -336,10 +333,6 @@ def generate_enum_patches(
     enum_patches = []
     existing_enum = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
     updated_enum = [x for x in updated_enums if isinstance(x, EnumValidationValue)]
-    existing_enum_lookup = {str(x.text): x for x in existing_enum}
-    existing_names = existing_enum_lookup.keys()
-
-    logger.warning(f"Existing Enum Names: {existing_names}")
 
     existing_enum_ids = [x.id for x in existing_enum if x.id is not None]
 
@@ -347,18 +340,9 @@ def generate_enum_patches(
 
     deleted_enums = [x for x in existing_enum if x.id is not None and x.id not in updated_enum_ids]
     new_enums = [x for x in updated_enum if x.id is None or x.id not in existing_enum_ids]
-    enums_to_update = [
-        x
-        for x in updated_enum
-        if x.id is not None
-        and x.id in existing_enum_ids
-        and x.text != existing_enum_lookup[str(x.text)].text
-    ]
+    enums_to_update = [x for x in updated_enum if x.id is not None and x.id in existing_enum_ids]
 
     for new_enum in new_enums:
-        if new_enum.text in existing_names:
-            logger.warning(f"Skipping new enum {new_enum.text} because it already exists")
-            continue
         enum_patches.append({"operation": "add", "text": new_enum.text})
     for deleted_enum in deleted_enums:
         enum_patches.append({"operation": "delete", "id": deleted_enum.id})

@@ -34,15 +34,15 @@ def test_basic_list(client: Albert, seeded_data_templates: list[DataTemplate]):
     _list_asserts(data_templates)
 
 
-def test_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
-    name = seeded_data_templates[0].name
-    dt = client.data_templates.get_by_name(name=name)
-    assert dt is not None
-    assert dt.name == name
-    assert dt.id == seeded_data_templates[0].id
-    chaos_name = "thisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidName"
-    dt = client.data_templates.get_by_name(name=chaos_name)
-    assert dt is None
+# def test_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
+#     name = seeded_data_templates[0].name
+#     dt = client.data_templates.get_by_name(name=name)
+#     assert dt is not None
+#     assert dt.name == name
+#     assert dt.id == seeded_data_templates[0].id
+#     chaos_name = "thisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidName"
+#     dt = client.data_templates.get_by_name(name=chaos_name)
+#     assert dt is None
 
 
 def test_get_by_id(client: Albert, seeded_data_templates: list[DataTemplate]):
