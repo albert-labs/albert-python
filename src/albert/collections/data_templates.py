@@ -186,7 +186,6 @@ class DataTemplateCollection(BaseCollection):
             The data template object on match or None
         """
         response = self.session.get(f"{self.base_path}/{id}")
-        logger.error(response.json())
         return DataTemplate(**response.json())
 
     def get_by_ids(self, *, ids: list[DataTemplateId]) -> list[DataTemplate]:
@@ -413,6 +412,11 @@ class DataTemplateCollection(BaseCollection):
 
         existing = self.get_by_id(id=data_template.id)
 
+        logger.warning("Existing DataTemplate:")
+        logger.warning(existing)
+        logger.warning("Updated DataTemplate:")
+        logger.warning(data_template)
+
         base_payload = self._generate_patch_payload(existing=existing, updated=data_template)
 
         path = f"{self.base_path}/{existing.id}"
@@ -431,6 +435,21 @@ class DataTemplateCollection(BaseCollection):
         parameter_patches, parameter_value_patches = _split_parameter_dtype_and_value_patches(
             parameter_patches
         )
+
+        logger.warning("generated patches")
+        logger.warning(general_patches)
+        logger.warning("new data columns")
+        logger.warning(new_data_columns)
+        logger.warning("data column enum patches")
+        logger.warning(data_column_enum_patches)
+        logger.warning("new parameters")
+        logger.warning(new_parameters)
+        logger.warning("parameter enum patches")
+        logger.warning(parameter_enum_patches)
+        logger.warning("parameter patches")
+        logger.warning(parameter_patches)
+        logger.warning("parameter value patches")
+        logger.warning(parameter_value_patches)
 
         if len(new_data_columns) > 0:
             self.session.put(
