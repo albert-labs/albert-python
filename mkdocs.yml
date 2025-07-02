@@ -27,21 +27,45 @@ theme:
   logo: assets/Wordmark_White.png
   favicon: assets/Vector_Favicon_Blue.svg
   features:
-    - content.tabs.link               # Tabs can contain links
-    - content.code.annotate           # Annotated code blocks (tooltips)
-    - content.code.copy               # Copy-to-clipboard button for code
-    - announce.dismiss                # Dismissable banners
-    - navigation.tabs                 # Top-level nav as horizontal tabs
-    - navigation.instant              # SPA-like instant nav
-    - navigation.instant.prefetch     # Preload nearby pages
-    - navigation.instant.preview      # Hover previews of pages
-    - navigation.instant.progress     # Progress bar during nav
-    - navigation.path                 # Breadcrumb-style nav
-    - navigation.sections             # Sidebar sections
-    - navigation.top                  # Scroll-to-top button
-    - navigation.tracking             # Highlight section in sidebar
-    - search.suggest                  # Smart search suggestions
-    - toc.follow                      # Highlight TOC entry while scrolling
+    - content.tabs.link # Tabs can contain links
+    - content.code.annotate # Annotated code blocks (tooltips)
+    - content.code.copy # Copy-to-clipboard button for code
+    - announce.dismiss # Dismissable banners
+    - navigation.tabs # Top-level nav as horizontal tabs
+    - navigation.instant # SPA-like instant nav
+    - navigation.instant.prefetch # Preload nearby pages
+    - navigation.instant.preview # Hover previews of pages
+    - navigation.instant.progress # Progress bar during nav
+    - navigation.path # Breadcrumb-style nav
+    - navigation.sections # Sidebar sections
+    - navigation.top # Scroll-to-top button
+    - navigation.tracking # Highlight section in sidebar
+    - search.suggest # Smart search suggestions
+    - toc.follow # Highlight TOC entry while scrolling
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: "Switch to system preference"
+      primary: "#0061FF"  # Albert Blue
+      accent: "#1D1D1F"   # Neutral text/nav accent
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: "Switch to dark mode"
+      primary: "#0061FF"
+      accent: "#1D1D1F"
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: "Switch to light mode"
+      primary: "#0047D0"  # Slightly deeper blue for better contrast
+      accent: "#FFFFFF"   # Light text accent
+
+extra_css:
+  - styles/extra.css
 
 markdown_extensions:
   - admonition
@@ -60,86 +84,83 @@ plugins:
       handlers:
         python:
           options:
-            members: true
-            show_submodules: true
-            docstring_style: numpy
-            extensions:
-              - griffe_pydantic:
-                  schema: true
-            annotations_path: brief
-            # members_order: source #this does it in order of the file, ABC by default
-            filters: 
-              - "!^_"
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
             docstring_options:
               ignore_init_summary: true
             merge_init_into_class: true
-            separate_signature: true
             show_signature_annotations: true
             signature_crossrefs: true
-            show_if_no_docstring: true
-            summary:
-              attributes: false
-              functions: true
-              modules: false #I'm not sure what this one does, honestly
-            show_source: true
+            docstring_style: numpy
             show_root_heading: true
             show_root_toc_entry: true
             show_root_full_path: true
+            show_if_no_docstring: true
+            show_labels: false
             heading_level: 2
-            show_bases: true
-
+            extensions:
+              - griffe_pydantic:
+                  schema: true
+            show_symbol_type_heading: true
+            members: true
           inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
+            - url: https://typing-extensions.readthedocs.io/en/latest/objects.inv
           rendering:
             show_docstring_attributes: true
   - mike:
       alias_type: symlink
       canonical_version: latest
+      deploy_prefix: albert-python
+
+watch:
+  - src
 
 nav:
   - Getting Started: index.md
   - SDK Reference:
-    - Albert Client: albert.md
-    - Attachments: attachments.md
-    - Batch Data: batch_data.md
-    - Breakthrough:
-      - Breakthrough Datasets: btdataset.md
-      - Breakthrough Insights: btinsight.md
-      - Breakthrough Model: btmodel.md
-    - Cas: cas.md
-    - Companies: companies.md
-    - Custom Fields: custom_fields.md
-    - Custom Templates: custom_templates.md
-    - Data Columns: data_columns.md
-    - Data Templates: data_templates.md
-    - Files: files.md
-    - Inventory: inventory.md
-    - Links: links.md
-    - Lists: lists.md
-    - Locations: locations.md
-    - Lots: lots.md
-    - Notebooks: notebooks.md
-    - Notes: notes.md
-    - Parameter Groups: parameter_groups.md
-    - Parameters: parameters.md
-    - Pricings: pricings.md
-    - Product Design: product_design.md
-    - Projects: projects.md
-    - Property Data: property_data.md
-    - Reports: reports.md
-    - Roles: roles.md
-    - Storage Locations: storage_locations.md
-    - Substances: substances.md
-    - Tags: tags.md
-    - Tasks: tasks.md
-    - UN Numbers: un_numbers.md
-    - Units: units.md
-    - Users: users.md
-    - Workflows: workflows.md
-    - Worksheets:
-      - Worksheets: worksheets.md
-      - Sheets: sheets.md
+      - Albert Client: albert.md
+      - Attachments: attachments.md
+      - Batch Data: batch_data.md
+      - Breakthrough:
+          - Breakthrough Datasets: btdataset.md
+          - Breakthrough Insights: btinsight.md
+          - Breakthrough Model: btmodel.md
+      - Cas: cas.md
+      - Companies: companies.md
+      - Custom Fields: custom_fields.md
+      - Custom Templates: custom_templates.md
+      - Data Columns: data_columns.md
+      - Data Templates: data_templates.md
+      - Files: files.md
+      - Inventory: inventory.md
+      - Links: links.md
+      - Lists: lists.md
+      - Locations: locations.md
+      - Lots: lots.md
+      - Notebooks: notebooks.md
+      - Notes: notes.md
+      - Parameter Groups: parameter_groups.md
+      - Parameters: parameters.md
+      - Pricings: pricings.md
+      - Product Design: product_design.md
+      - Projects: projects.md
+      - Property Data: property_data.md
+      - Reports: reports.md
+      - Roles: roles.md
+      - Storage Locations: storage_locations.md
+      - Substances: substances.md
+      - Tags: tags.md
+      - Tasks: tasks.md
+      - UN Numbers: un_numbers.md
+      - Units: units.md
+      - Users: users.md
+      - Workflows: workflows.md
+      - Worksheets:
+          - Worksheets: worksheets.md
+          - Sheets: sheets.md
 
 validation:
   omitted_files: warn

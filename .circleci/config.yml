@@ -47,8 +47,9 @@ commands:
               fi
 
               if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                echo "Stable semver tag detected. Deploying $CIRCLE_TAG with alias: latest"
-                uv run mike deploy --push --update-aliases latest "$CIRCLE_TAG"
+                VERSION="${CIRCLE_TAG#v}"
+                echo "Stable semver tag detected. Deploying $VERSION with alias: latest"
+                uv run mike deploy --push --update-aliases "$VERSION" latest
               else
                 echo "Non-semver release tag. Skipping docs deployment."
                 exit 0

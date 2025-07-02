@@ -37,4 +37,4 @@ projects = client.projects.list()
 
 ## Documentation
 
-[Full Documentation can be found here](https://docs.developer.albertinvent.com/albert-python)
+[Full Documentation can be found here](https://docs.developer.albertinvent.com/albert-python/latest/)
