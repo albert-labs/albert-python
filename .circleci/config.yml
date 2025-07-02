@@ -31,6 +31,10 @@ commands:
             git config --global user.name "CircleCI"
             git config --global user.email "circleci@users.noreply.github.com"
       - run:
+          name: Build Documentation
+          command: |
+            uv run mkdocs build --clean
+      - run:
           name: Deploy Docs with mike
           command: |
             if [ "<< parameters.mode >>" = "dev" ]; then
