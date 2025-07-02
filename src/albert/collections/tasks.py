@@ -242,7 +242,7 @@ class TaskCollection(BaseCollection):
         tags: list[str] | None = None,
         task_id: list[str] | None = None,
         linked_task: list[str] | None = None,
-        category: TaskCategory | None = None,
+        category: list[TaskCategory, str] | None = None,
         albert_id: list[str] | None = None,
         data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
