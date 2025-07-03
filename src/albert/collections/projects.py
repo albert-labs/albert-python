@@ -2,8 +2,9 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import Project, ProjectFilterParams, ProjectSearchItem
 

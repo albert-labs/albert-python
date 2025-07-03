@@ -7,9 +7,9 @@ from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     InventoryId,
     ProjectId,

@@ -21,3 +21,8 @@ class SecurityClass(str, Enum):
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
     PUBLIC = "public"
+
+
+class PaginationMode(str, Enum):
+    OFFSET = "offset"
+    KEY = "key"
