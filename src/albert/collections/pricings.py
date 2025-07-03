@@ -1,17 +1,10 @@
-from enum import Enum
-
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.identifiers import InventoryId
-from albert.resources.pricings import InventoryPricings, Pricing
+from albert.resources.pricings import InventoryPricings, Pricing, PricingBy
 from albert.session import AlbertSession
 from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
-
-
-class PricingBy(str, Enum):
-    LOCATION = "Location"
-    COMPANY = "Company"
 
 
 class PricingCollection(BaseCollection):

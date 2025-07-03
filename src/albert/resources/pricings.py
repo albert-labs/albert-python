@@ -79,3 +79,8 @@ class InventoryPricings(BaseAlbertModel):
 
     inventory_id: InventoryId = Field(..., alias="id")
     pricings: list[Pricing]
+
+
+class PricingBy(str, Enum):
+    LOCATION = "Location"
+    COMPANY = "Company"

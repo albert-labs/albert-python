@@ -1,1 +1,2 @@
-::: albert.albert
+::: albert.albert.Albert
+::: albert.utils.credentials.ClientCredentials

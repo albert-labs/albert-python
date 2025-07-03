@@ -1,8 +1,11 @@
 # Albert Python
 
-<div align="center">
-    <img src="assets/Wordmark_Black.png" alt="Albert Logo" style="max-width: 300px; margin-bottom: 4rem;">
+<div class="logo-wrapper">
+  <img src="assets/Wordmark_White.png" class="logo only-dark" alt="Albert Logo">
+  <img src="assets/Wordmark_Black.png" class="logo only-light" alt="Albert Logo">
 </div>
+
+
 
 ## Installation
 

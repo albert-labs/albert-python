@@ -1,0 +1,1 @@
+::: albert.resources.inventory
