@@ -4,9 +4,9 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
     ParameterGroup,
@@ -190,11 +190,10 @@ class ParameterGroupCollection(BaseCollection):
         ParameterGroup | None
             The parameter group with the given name, or None if not found.
         """
-        matches = self.get_all(text=name)
-        # TODO: optimize with explicit hydrate() after self.search()
+        matches = self.search(text=name)
         for m in matches:
             if m.name.lower() == name.lower():
-                return m
+                return m.hydrate()
         return None
 
     def update(self, *, parameter_group: ParameterGroup) -> ParameterGroup:

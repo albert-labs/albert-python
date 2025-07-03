@@ -5,9 +5,9 @@ from pydantic import Field
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import DataTemplateId
 from albert.core.shared.models.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.exceptions import AlbertHTTPError

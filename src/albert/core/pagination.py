@@ -1,17 +1,12 @@
 from collections.abc import Callable, Iterable, Iterator
-from enum import Enum
 from typing import Any, TypeVar
 from urllib.parse import quote_plus
 
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
 
 ItemType = TypeVar("ItemType")
-
-
-class PaginationMode(str, Enum):
-    OFFSET = "offset"
-    KEY = "key"
 
 
 class AlbertPaginator(Iterator[ItemType]):
