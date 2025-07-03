@@ -2,162 +2,314 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/albert/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/attachments/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/batch_data/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/btdataset/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/btinsight/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/btmodel/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/cas/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/companies/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/custom_fields/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/custom_templates/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/data_columns/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/data_templates/</loc>
-         <lastmod>2025-07-02</lastmod>
-    </url>
-    <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/files/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/getting-started/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/inventory/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/attachments/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/links/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/base/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/lists/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/batch_data/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/locations/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/btdataset/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/lots/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/btinsight/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/notebooks/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/btmodel/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/notes/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/cas/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/parameter_groups/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/companies/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/parameters/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/custom_fields/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/pricings/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/custom_templates/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/product_design/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/data_columns/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/projects/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/data_templates/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/property_data/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/files/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/reports/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/inventory/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/roles/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/links/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/sheets/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/lists/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/storage_locations/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/locations/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/substances/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/lots/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/tags/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/notebooks/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/tasks/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/notes/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/un_numbers/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/parameter_groups/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/units/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/parameters/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/users/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/pricings/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/workflows/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/product_design/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
     <url>
-         <loc>https://docs.developer.albertinvent.com/albert-python/latest/worksheets/</loc>
-         <lastmod>2025-07-02</lastmod>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/projects/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/property_data/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/reports/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/roles/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/storage_locations/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/substances/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/tags/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/tasks/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/un_numbers/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/units/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/users/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/workflows/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/worksheets/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/attachments/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/batch_data/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/btdataset/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/btinsight/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/btmodel/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/cas/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/companies/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/custom_fields/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/custom_templates/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/data_columns/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/data_templates/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/files/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/identifiers/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/inventory/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/links/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/lists/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/locations/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/lots/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/notebooks/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/notes/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/parameter_groups/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/parameters/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/pricings/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/product_design/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/projects/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/property_data/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/reports/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/roles/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/sheets/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/storage_locations/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/substances/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/tags/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/tasks/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/un_numbers/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/units/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/users/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/workflows/</loc>
+         <lastmod>2025-07-03</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/worksheets/</loc>
+         <lastmod>2025-07-03</lastmod>
     </url>
 </urlset>
