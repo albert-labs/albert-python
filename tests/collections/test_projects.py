@@ -1,48 +1,46 @@
-from itertools import islice
-
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.projects import Project, ProjectFilterParams, ProjectSearchItem
+from albert.resources.projects import Project, ProjectSearchItem
 
 
-def assert_project_items(
-    returned_list: list, entity_type: Project | ProjectSearchItem = Project, limit=50
-):
-    found = False
-    for i, project in enumerate(returned_list):
-        if i == limit:  # Limit to checking first 50 projects
-            break
-        assert isinstance(project, entity_type)
-        assert isinstance(project.description, str)
-        assert isinstance(project.id, str)
-        assert project.id is not None
-        found = True
-    assert found
+def assert_valid_project_items(returned_list: list, entity_type: type = Project):
+    """Assert that project items are valid and correctly typed."""
+    assert returned_list, "Expected at least one project"
+    for item in returned_list[:50]:
+        assert isinstance(item, entity_type)
+        assert isinstance(item.description, str)
+        assert isinstance(item.id, str) and item.id
 
 
-def test_get_all_projects(client: Albert):
-    project_list = client.projects.get_all()
-    assert_project_items(project_list)
+def test_project_get_all(client: Albert):
+    """Test get_all returns hydrated Project items."""
+    project_list = list(client.projects.get_all(max_items=10))
+    assert_valid_project_items(project_list, Project)
 
 
-def test_search_projects(client: Albert):
-    project_list = client.projects.search()
-    assert_project_items(project_list, ProjectSearchItem)
+def test_project_search_basic(client: Albert):
+    """Test search returns ProjectSearchItem items."""
+    project_list = list(client.projects.search(max_items=10))
+    assert_valid_project_items(project_list, ProjectSearchItem)
 
-    params = ProjectFilterParams(limit=5)
-    short_lists = client.projects.search(params=params)
-    assert_project_items(short_lists, ProjectSearchItem, limit=7)
 
-    params = ProjectFilterParams(limit=2, status=["Active"])
-    advanced_list = client.projects.search(params=params)
-    assert_project_items(advanced_list, ProjectSearchItem, limit=2)
+def test_project_search_paged(client: Albert):
+    """Test search with a small page size."""
+    short_lists = list(client.projects.search(page_size=5, max_items=10))
+    assert_valid_project_items(short_lists, ProjectSearchItem)
+
+
+def test_project_search_filtered(client: Albert):
+    """Test search with status filter."""
+    advanced_list = list(client.projects.search(status=["Active"], max_items=10))
+    assert_valid_project_items(advanced_list, ProjectSearchItem)
 
 
 def test_hydrate_project(client: Albert):
-    projects = list(islice(client.projects.search(), 5))
+    projects = list(client.projects.search(max_items=5))
     assert projects, "Expected at least one project in search results"
 
     for project in projects:

@@ -1,1 +1,1 @@
-::: albert.resources.identifiers
+::: albert.core.shared.identifiers

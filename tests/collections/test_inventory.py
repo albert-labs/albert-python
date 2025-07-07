@@ -1,5 +1,4 @@
 import time
-from itertools import islice
 
 import pytest
 
@@ -14,7 +13,6 @@ from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
-    InventoryFilterParams,
     InventoryItem,
     InventorySpec,
     InventorySpecValue,
@@ -25,75 +23,83 @@ from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
 
-def assert_inventory_items(returned_list):
-    for i, u in enumerate(returned_list):
-        if i == 50:
-            break
-        assert isinstance(u, InventoryItem)
-        assert isinstance(u.name, str | None)
-        assert isinstance(u.id, str)
+def assert_valid_inventory_items(returned_list: list[InventoryItem]):
+    """Assert basic InventoryItem structure and types."""
+    assert returned_list, "Expected at least one InventoryItem"
+    for item in returned_list[:10]:
+        assert isinstance(item, InventoryItem)
+        assert isinstance(item.name, (str | None))
+        assert isinstance(item.id, str)
 
 
-def test_simple_inventory_list(client: Albert, seeded_inventory):
-    inventory = client.inventory.get_all()
-    assert_inventory_items(inventory)
+def test_inventory_get_all_with_pagination(client: Albert):
+    """Test inventory get_all respects pagination and item type."""
+    results = list(client.inventory.get_all(page_size=5, max_items=10))
+    assert len(results) <= 10
+    assert_valid_inventory_items(results)
 
 
-def test_advanced_inventory_list(
+def test_inventory_get_all_with_filters(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_cas: list[Cas]
 ):
-    test_inv_item = seeded_inventory[1]
-    matching_cas = [x for x in seeded_cas if x.id in test_inv_item.cas[0].id][0]
-    params = InventoryFilterParams(
-        text=test_inv_item.name,
-        category=InventoryCategory.CONSUMABLES,
-        cas=matching_cas,
-        company=test_inv_item.company,
+    """Test inventory get_all with filters (text, category, cas, company)."""
+    test_item = seeded_inventory[1]
+    matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
+
+    results = list(
+        client.inventory.get_all(
+            text=test_item.name,
+            category=InventoryCategory.CONSUMABLES,
+            cas=matching_cas,
+            company=test_item.company,
+            max_items=10,
+        )
     )
-    inventory = client.inventory.get_all(params=params)
-    assert_inventory_items(inventory)
-    for i, x in enumerate(inventory):
-        if i == 10:  # just check the first 10 for speed
-            break
-        assert "ethanol" in x.name.lower()
+
+    assert_valid_inventory_items(results)
+    for item in results[:10]:
+        assert test_item.name.lower() in item.name.lower()
 
 
-def test_hydrate_inventory_item(client: Albert):
-    inventory_items = list(islice(client.inventory.search(), 5))
-    assert inventory_items, "Expected at least one inventory_item in search results"
+def test_inventory_hydration_from_search(client: Albert):
+    """Test that inventory search results can be hydrated to full InventoryItem."""
+    search_results = client.inventory.search(max_items=5)
+    assert search_results, "Expected at least one inventory item in search results"
 
-    for inventory_item in inventory_items:
-        hydrated = inventory_item.hydrate()
-
-        # identity checks
-        assert hydrated.id == f"INV{inventory_item.id}"
-        assert hydrated.name == inventory_item.name
+    for partial in search_results:
+        hydrated = partial.hydrate()
+        assert hydrated.id == f"INV{partial.id}"
+        assert hydrated.name == partial.name
 
 
-def test_match_all_conditions(
+def test_inventory_get_all_match_all_conditions(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):
-    # First test is using OR between conditions
-    # this should return our 3 test items
-    params = InventoryFilterParams(
-        tags=[seeded_tags[0].tag, seeded_tags[1].tag],
-    )
-    inventory = client.inventory.get_all(params=params)
+    """Test inventory tag filtering with match_all_conditions True and False."""
+    tag_list = [seeded_tags[0].tag, seeded_tags[1].tag]
 
-    for x in inventory:
-        for tag in x.tags:
-            assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
-        # This one tests using AND conditions and will return only
-        # one item that has both seeded tags
-        params = InventoryFilterParams(
-            tags=[seeded_tags[0].tag, seeded_tags[1].tag],
-            match_all_conditions=True,
+    or_results = list(
+        client.inventory.get_all(
+            tags=tag_list,
+            match_all_conditions=False,
+            max_items=10,
         )
-    inventory = client.inventory.get_all(params=params)
-    for x in inventory:
-        assert len(x.tags) >= 2
-        for tag in x.tags:
-            assert tag.tag in [seeded_tags[0].tag, seeded_tags[1].tag]
+    )
+    assert_valid_inventory_items(or_results)
+    for item in or_results:
+        assert any(t.tag in tag_list for t in item.tags)
+
+    and_results = list(
+        client.inventory.get_all(
+            tags=tag_list,
+            match_all_conditions=True,
+            max_items=10,
+        )
+    )
+    assert_valid_inventory_items(and_results)
+    for item in and_results:
+        assert all(t.tag in tag_list for t in item.tags)
+        assert len(item.tags) >= 2
 
 
 def test_get_by_id(client: Albert, seeded_inventory):
@@ -372,15 +378,17 @@ def test_get_facet_by_name(client: Albert):
     assert facets[1].name == "Manufacturer"
 
 
-def test_get_search_records(
+def test_inventory_search_with_tags(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):
-    params = InventoryFilterParams(
-        tags=[x.tag for x in seeded_tags[:2]], match_all_conditions=True, limit=100
+    """Test inventory search with tag filters and match_all_conditions."""
+    results = client.inventory.search(
+        tags=[x.tag for x in seeded_tags[:2]],
+        match_all_conditions=True,
+        max_items=10,
     )
-    res = client.inventory.search(params=params)
-    c = 0
-    for x in res:
-        assert ensure_inventory_id(x.id) in [y.id for y in seeded_inventory]
-        c += 1
-    assert c == 1
+
+    ids = [x.id for x in seeded_inventory]
+    matches = [x for x in results if ensure_inventory_id(x.id) in ids]
+
+    assert len(matches) == 1

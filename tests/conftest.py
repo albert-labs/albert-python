@@ -17,7 +17,7 @@ from albert.resources.custom_fields import CustomField
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
-from albert.resources.inventory import InventoryCategory, InventoryFilterParams, InventoryItem
+from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import Lot
@@ -553,10 +553,8 @@ def seeded_products(
     return [
         x
         for x in client.inventory.get_all(
-            params=InventoryFilterParams(
-                category=InventoryCategory.FORMULAS,
-                text=product_name_prefix,
-            )
+            category=InventoryCategory.FORMULAS,
+            text=product_name_prefix,
         )
         if x.name is not None and x.name.startswith(product_name_prefix)
     ]

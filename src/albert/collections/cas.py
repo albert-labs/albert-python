@@ -29,45 +29,50 @@ class CasCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 50,
-        start_key: str | None = None,
         number: str | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
+        start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
         Get all CAS entities with optional filters.
 
         Parameters
         ----------
-        limit : int | None, optional
-            The maximum number of CAS entities to return, by default 50.
-        start_key : str | None, optional
-            The primary key of the first item that this operation will evaluate.
-        number : str | None, optional
-            Fetches list of CAS by CAS number.
-        id : str | None, optional
-            Fetches list of CAS using the CAS Albert ID.
+        number : str, optional
+            Filter CAS entities by CAS number.
+        id : str, optional
+            Filter CAS entities by Albert CAS ID.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
+            Sort direction (ascending or descending). Default is DESCENDING.
+        start_key : str, optional
+            The pagination key to start fetching from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Cas]
-            An iterator of Cas objects.
+            An iterator over Cas entities.
         """
         params = {
-            "limit": limit,
             "orderBy": order_by.value,
             "startKey": start_key,
             "number": number,
             "albertId": id,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Cas(**item) for item in items],
         )
 
@@ -133,8 +138,6 @@ class CasCollection(BaseCollection):
         response = self.session.get(url)
         cas = Cas(**response.json())
         return cas
-
-    import re
 
     def _clean_cas_number(self, text: str):
         """

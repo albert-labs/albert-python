@@ -19,7 +19,7 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
     Client credentials manager for programmatic OAuth2 access to the Albert API.
 
     This class implements the OAuth2 Client Credentials flow, allowing automated
-    systems (non-interactive) to authenticate securely using a client ID and secret.
+    (non-interactive) systems to authenticate securely using a client ID and secret.
 
     Attributes
     ----------
@@ -32,13 +32,15 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
 
     Usage
     -----
-    >>> creds = AlbertClientCredentials(
-    ...     id="your-client-id",
-    ...     secret=SecretStr("your-client-secret"),
-    ...     base_url="https://app.albertinvent.com",
-    ... )
-    >>> client = Albert(auth_manager=creds)
-    >>> client.roles.get_all()
+    ```
+    creds = AlbertClientCredentials(
+        id="your-client-id",
+        secret=SecretStr("your-client-secret"),
+        base_url="https://app.albertinvent.com",
+    )
+    client = Albert(auth_manager=creds)
+    client.roles.get_all()
+    ```
     """
 
     id: str

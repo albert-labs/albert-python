@@ -66,28 +66,34 @@ class ParameterGroupCollection(BaseCollection):
         text: str | None = None,
         types: PGType | list[PGType] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 25,
         offset: int | None = None,
+        page_size: int = 25,
+        max_items: int | None = None,
     ) -> Iterator[ParameterGroupSearchItem]:
-        """Search for Parameter Groups matching the given criteria.
+        """
+        Search for Parameter Groups matching the given criteria.
 
         Parameters
         ----------
-        text : str | None, optional
-            Text to search for, by default None
-        types : PGType | list[PGType] | None, optional
-            Filer the returned Parameter Groups by Type, by default None
+        text : str, optional
+            Text to search for.
+        types : PGType or list of PGType, optional
+            Filter by Parameter Group types.
         order_by : OrderBy, optional
-            The order in which to return results, by default OrderBy.DESCENDING
+            Order of results. Default is DESCENDING.
+        offset : int, optional
+            Offset to begin results from.
+        page_size : int, optional
+            Number of results per page. Default is 25.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
-        Iterator[ParameterGroup]
-            An iterator of Parameter Groups matching the given criteria.
+        Iterator[ParameterGroupSearchItem]
+            Iterator of ParameterGroupSearchItem entities, which are partial representations of Parameter Groups.
         """
-
         params = {
-            "limit": limit,
             "offset": offset,
             "order": order_by.value,
             "text": text,
@@ -99,6 +105,8 @@ class ParameterGroupCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [
                 ParameterGroupSearchItem(**item)._bind_collection(self) for item in items
             ],
@@ -110,38 +118,42 @@ class ParameterGroupCollection(BaseCollection):
         text: str | None = None,
         types: PGType | list[PGType] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 25,
         offset: int | None = None,
+        page_size: int = 25,
+        max_items: int | None = None,
     ) -> Iterator[ParameterGroup]:
-        """Search and hydrate all Parameter Groups matching the given criteria.
+        """
+        Search and hydrate all Parameter Groups matching the given criteria.
 
         Parameters
         ----------
-        text : str | None, optional
-            Text to search for, by default None.
-        types : PGType | list[PGType] | None, optional
-            Filter the returned Parameter Groups by Type, by default None.
+        text : str, optional
+            Text to search for.
+        types : PGType or list of PGType, optional
+            Filter by Parameter Group types.
         order_by : OrderBy, optional
-            The order in which to return results, by default OrderBy.DESCENDING.
-        limit : int, optional
-            Page size for each search request, by default 25.
-        offset : int | None, optional
-            Offset to start from, by default None.
+            Order of results. Default is DESCENDING.
+        offset : int, optional
+            Offset to begin results from.
+        page_size : int, optional
+            Number of results per page. Default is 25.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
         Iterator[ParameterGroup]
-            An iterator of fully hydrated Parameter Groups.
+            Iterator over Parameter Group entities.
         """
         for item in self.search(
             text=text,
             types=types,
             order_by=order_by,
-            limit=limit,
             offset=offset,
+            page_size=page_size,
+            max_items=max_items,
         ):
             try:
-                # Currently, the API is not returning Metadata, Tags, Documents, and ACL for the get_by_ids endpoint, so we need to fetch individually until that is fixed
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:  # pragma: no cover
                 logger.warning(f"Error fetching parameter group {item.id}: {e}")

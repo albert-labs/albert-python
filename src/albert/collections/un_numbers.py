@@ -73,31 +73,41 @@ class UnNumberCollection(BaseCollection):
         *,
         name: str | None = None,
         exact_match: bool = False,
-        limit: int = 50,
         start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[UnNumber]:
         """Get all UN Numbers matching the provided criteria.
 
         Parameters
         ----------
         name : str | None, optional
-            The name of the UN Number to search for, by default None
+            The name of the UN Number to search for, by default None.
         exact_match : bool, optional
-            Weather to return exact matches only, by default False
+            Whether to return exact matches only, by default False.
+        start_key : str | None, optional
+            The pagination key to continue fetching items from, by default None.
+        page_size : int, optional
+            Number of items to fetch per page, by default 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
         Iterator[UnNumber]
-            The UN Numbers matching the search criteria
+            The UN Numbers matching the search criteria.
         """
-        params = {"limit": limit, "startKey": start_key}
+        params = {"startKey": start_key}
         if name:
             params["name"] = name
             params["exactMatch"] = json.dumps(exact_match)
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [UnNumber(**item) for item in items],
         )

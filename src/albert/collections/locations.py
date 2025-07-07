@@ -34,39 +34,52 @@ class LocationCollection(BaseCollection):
         name: str | list[str] | None = None,
         country: str | None = None,
         exact_match: bool = False,
-        limit: int = 50,
         start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Location]:
-        """Get all Location entities matching the provided criteria.
+        """
+        Get all Location entities matching the provided criteria.
 
         Parameters
         ----------
-        ids: list[str] | None, optional
-            The list of IDs to filter the locations, by default None.
-            Max length is 100.
-        name : str | list[str] | None, optional
-            The name or names of locations to search for, by default None
-        country : str | None, optional
-            The country code of the country to filter the locations , by default None
+        ids : list[str], optional
+            The list of IDs to filter the locations. Max length is 100.
+        name : str or list[str], optional
+            The name or names of locations to search for.
+        country : str, optional
+            Country code to filter by.
         exact_match : bool, optional
-            Whether to return exact matches only, by default False
+            Whether to return only exact matches. Default is False.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[Location]
-            An iterator of Location entities matching the search criteria.
+            An iterator of Location entities matching the filters.
         """
-        params = {"limit": limit, "startKey": start_key, "country": country}
+        params = {
+            "startKey": start_key,
+            "country": country,
+        }
         if ids:
             params["id"] = ids
         if name:
             params["name"] = [name] if isinstance(name, str) else name
             params["exactMatch"] = json.dumps(exact_match)
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Location(**item) for item in items],
         )
 
@@ -127,10 +140,9 @@ class LocationCollection(BaseCollection):
             The existing registered Location entity if found, otherwise None.
         """
         hits = self.get_all(name=location.name)
-        if hits:
-            for hit in hits:
-                if hit and hit.name.lower() == location.name.lower():
-                    return hit
+        for hit in hits:
+            if hit and hit.name.lower() == location.name.lower():
+                return hit
         return None
 
     def create(self, *, location: Location) -> Location:

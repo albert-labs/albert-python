@@ -5,47 +5,42 @@ from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 
 
-def assert_storage_location_items(returned_list):
-    found = False
-    for i, u in enumerate(returned_list):
-        if i == 50:
-            break
+def assert_valid_storage_location_items(returned_list: list[StorageLocation]):
+    """Assert that returned items are valid StorageLocation instances."""
+    assert returned_list, "Expected at least one StorageLocation result"
+    for u in returned_list[:10]:
         assert isinstance(u, StorageLocation)
-        found = True
-    assert found
 
 
-def test_basic_get_all(client: Albert):
-    list_response = client.storage_locations.get_all()
-    assert_storage_location_items(list_response)
+def test_storage_location_get_all_with_pagination(client: Albert):
+    """Test storage location get_all with page_size for pagination."""
+    results = list(client.storage_locations.get_all(page_size=5, max_items=10))
+    assert_valid_storage_location_items(results)
+    assert len(results) <= 10
 
 
-def test_advanced_get_all(
+def test_storage_location_get_all_with_filters(
     client: Albert,
     seeded_storage_locations: list[StorageLocation],
     seeded_locations: list[Location],
 ):
-    list_response = client.storage_locations.get_all(
-        name=[seeded_storage_locations[0].name], exact_match=True
+    """Test get_all with name and location filters."""
+    name = seeded_storage_locations[0].name
+    location = seeded_locations[0]
+
+    results_by_name = list(
+        client.storage_locations.get_all(name=[name], exact_match=True, max_items=10)
     )
+    assert_valid_storage_location_items(results_by_name)
+    for sl in results_by_name:
+        assert sl.name == name
 
-    list_response = list(list_response)
-    assert_storage_location_items(list_response)
-    for sl in list_response:
-        assert sl.name == seeded_locations[0].name
-
-    list_response = client.storage_locations.get_all(location=seeded_locations[0])
-    list_response = list(list_response)
-    assert_storage_location_items(list_response)
+    results_by_location = list(client.storage_locations.get_all(location=location, max_items=10))
+    assert_valid_storage_location_items(results_by_location)
 
     seeded_location_ids = {x.location.id for x in seeded_storage_locations}
-    for sl in list_response:
+    for sl in results_by_location:
         assert sl.location.id in seeded_location_ids
-
-
-def test_pagination(client: Albert, seeded_storage_locations: list[StorageLocation]):
-    list_response = client.storage_locations.get_all(limit=2)
-    assert_storage_location_items(list_response)
 
 
 def test_avoids_dupes(caplog, client: Albert, seeded_storage_locations: list[StorageLocation]):

@@ -56,8 +56,8 @@ class ParameterCollection(BaseCollection):
         Parameter
             Returns the created parameter or the existing parameter if it already exists.
         """
-        match = next(self.get_all(names=parameter.name, exact_match=True), None)
-        if match is not None:
+        match = next(self.get_all(names=parameter.name, exact_match=True, max_items=1), None)
+        if match:
             logging.warning(
                 f"Parameter with name {parameter.name} already exists. Returning existing parameter."
             )
@@ -87,24 +87,31 @@ class ParameterCollection(BaseCollection):
         exact_match: bool = False,
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
-        limit: int = 50,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Parameter]:
         """
         Retrieve all Parameter items with optional filters.
 
         Parameters
         ----------
-        ids : list[str] | None, optional
-            A list of parameter IDs to retrieve, by default None
-        names : str | list[str], optional
-            A list of parameter names to retrieve, by default None
+        ids : list[str], optional
+            A list of parameter IDs to retrieve.
+        names : str or list[str], optional
+            One or more parameter names to filter by.
         exact_match : bool, optional
-            Whether to match the name exactly, by default False
+            Whether to require exact name matches. Default is False.
         order_by : OrderBy, optional
-            The order in which to return results, by default OrderBy.DESCENDING
+            Sort order of results. Default is DESCENDING.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to return per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[Parameter]
             An iterator of Parameters matching the given criteria.
         """
@@ -112,7 +119,11 @@ class ParameterCollection(BaseCollection):
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
             yield from (Parameter(**item) for item in items)
 
-        params = {"limit": limit, "orderBy": order_by, "parameters": ids, "startKey": start_key}
+        params = {
+            "orderBy": order_by.value,
+            "parameters": ids,
+            "startKey": start_key,
+        }
         if names:
             params["name"] = [names] if isinstance(names, str) else names
             params["exactMatch"] = json.dumps(exact_match)
@@ -122,6 +133,8 @@ class ParameterCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

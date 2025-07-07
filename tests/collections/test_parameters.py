@@ -4,24 +4,34 @@ from albert.client import Albert
 from albert.resources.parameters import Parameter
 
 
-def _get_all_asserts(returned_list):
-    found = False
-    for i, u in enumerate(returned_list):
-        if i == 50:
-            break
+def assert_valid_parameter_items(returned_list: list[Parameter]):
+    """Assert that returned items are valid Parameter objects."""
+    assert returned_list, "Expected at least one Parameter"
+    for u in returned_list[:10]:
         assert isinstance(u, Parameter)
-        found = True
-    assert found
 
 
-def test_basics(client: Albert, seeded_parameters: list[Parameter]):
-    response = client.parameters.get_all()
-    _get_all_asserts(response)
+def test_parameter_get_all_basic(client: Albert, seeded_parameters: list[Parameter]):
+    """Test basic retrieval of parameters."""
+    response = list(client.parameters.get_all(max_items=10))
+    assert_valid_parameter_items(response)
 
 
-def test_advanced_get_all(client: Albert, seeded_parameters: list[Parameter]):
-    response = client.parameters.get_all(names=[seeded_parameters[0].name])
-    _get_all_asserts(response)
+def test_parameter_get_all_with_name(client: Albert, seeded_parameters: list[Parameter]):
+    """Test get_all with name filtering."""
+    response = list(
+        client.parameters.get_all(names=seeded_parameters[0].name, exact_match=True, max_items=10)
+    )
+    assert_valid_parameter_items(response)
+
+
+def test_parameter_get_all_by_ids(client: Albert, seeded_parameters: list[Parameter]):
+    """Test get_all with a list of parameter IDs."""
+    ids = [x.id for x in seeded_parameters]
+    results = list(client.parameters.get_all(ids=ids, max_items=10))
+    assert results, "Expected at least one result"
+    assert len(results) == len(ids)
+    assert {x.id for x in results} == set(ids)
 
 
 def test_get(client: Albert, seeded_parameters: list[Parameter]):
@@ -47,10 +57,3 @@ def test_update(client: Albert, seeded_parameters: list[Parameter]):
     p.name = updated_name
     updated = client.parameters.update(parameter=p)
     assert updated.name == updated_name
-
-
-def test_get_all_by_ids(client: Albert, seeded_parameters: list[Parameter]):
-    ids = [x.id for x in seeded_parameters]
-    fetched_items = list(client.parameters.get_all(ids=ids))
-    assert len(fetched_items) == len(ids)
-    assert {x.id for x in fetched_items} == set(ids)

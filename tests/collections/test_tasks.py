@@ -1,27 +1,32 @@
-import itertools
-
 from albert import Albert
 from albert.resources.lists import ListItem
 from albert.resources.tasks import (
     BaseTask,
     PropertyTask,
     TaskCategory,
-    TaskFilterParams,
     TaskSearchItem,
 )
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
 
 
-def test_task_search(client: Albert, seeded_tasks):
-    for task in itertools.islice(client.tasks.search(), 10):
+def test_task_search_with_pagination(client: Albert, seeded_tasks):
+    """Test that task search returns unhydrated search items."""
+    search_results = list(client.tasks.search(page_size=5, max_items=10))
+    assert search_results, "Expected some TaskSearchItem results"
+
+    for task in search_results:
         assert isinstance(task, TaskSearchItem)
         assert isinstance(task.id, str) and task.id
         assert isinstance(task.name, str) and task.name
         assert isinstance(task.category, str) and task.category
 
 
-def test_task_get_all(client: Albert, seeded_tasks):
-    for task in itertools.islice(client.tasks.get_all(), 10):
+def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
+    """Test that get_all returns hydrated BaseTask objects."""
+    task_results = list(client.tasks.get_all(page_size=5, max_items=10))
+    assert task_results, "Expected some BaseTask results"
+
+    for task in task_results:
         assert isinstance(task, BaseTask)
         assert isinstance(task.id, str) and task.id
         assert isinstance(task.name, str) and task.name
@@ -29,11 +34,7 @@ def test_task_get_all(client: Albert, seeded_tasks):
 
 
 def test_hydrated_task(client: Albert):
-    tasks = list(
-        itertools.islice(
-            client.tasks.search(params=TaskFilterParams(category=TaskCategory.GENERAL)), 5
-        )
-    )
+    tasks = list(client.tasks.search(category=TaskCategory.GENERAL, max_items=5))
     assert tasks, "Expected at least one task in search results"
 
     for t in tasks:

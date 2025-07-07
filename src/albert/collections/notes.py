@@ -1,7 +1,6 @@
 from albert.collections.base import BaseCollection
-from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.enums import OrderBy
 from albert.resources.notes import Note
 
 
@@ -84,7 +83,12 @@ class NotesCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
-    def get_all(self, *, parent_id: str, order_by: OrderBy = OrderBy.DESCENDING) -> list[Note]:
+    def get_by_parent_id(
+        self,
+        *,
+        parent_id: str,
+        order_by: OrderBy = OrderBy.DESCENDING,
+    ) -> list[Note]:
         """
         Get all notes by their parent ID.
 
@@ -93,19 +97,19 @@ class NotesCollection(BaseCollection):
         parent_id : str
             The parent ID of the notes to list.
         order_by : OrderBy, optional
-            The order to list notes in, by default OrderBy.DESCENDING.
+            The order to list notes in. Default is DESCENDING.
 
         Returns
         -------
-        List[Note]
-            The list of notes.
+        list[Note]
+            A list of Note entities.
         """
-
-        params = {"parentId": parent_id, "orderBy": order_by.value}
-        return AlbertPaginator(
-            session=self.session,
-            path=self.base_path,
-            mode=PaginationMode.KEY,
+        params = {
+            "parentId": parent_id,
+            "orderBy": order_by.value,
+        }
+        response = self.session.get(
+            url=self.base_path,
             params=params,
-            deserialize=lambda items: [Note(**item) for item in items],
         )
+        return [Note(**x) for x in response.json()["Items"]]

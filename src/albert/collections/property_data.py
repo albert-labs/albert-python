@@ -1,6 +1,7 @@
 import re
 from collections.abc import Iterator
 from contextlib import suppress
+from enum import Enum
 
 import pandas as pd
 from pydantic import validate_call
@@ -228,7 +229,7 @@ class PropertyDataCollection(BaseCollection):
         Returns
         -------
         list[CheckPropertyData]
-            A list of CheckPropertyData objects representing the data status of each block + inventory item of the task.
+            A list of CheckPropertyData entities representing the data status of each block + inventory item of the task.
         """
         task_info = self._get_task_from_id(id=task_id)
 
@@ -285,7 +286,7 @@ class PropertyDataCollection(BaseCollection):
         Returns
         -------
         list[TaskPropertyData]
-            A list of TaskPropertyData objects representing the properties within the task.
+            A list of TaskPropertyData entities representing the properties within the task.
         """
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
@@ -317,7 +318,7 @@ class PropertyDataCollection(BaseCollection):
         Returns
         -------
         list[TaskPropertyData]
-            A list of TaskPropertyData objects representing the properties within the task.
+            A list of TaskPropertyData entities representing the properties within the task.
         """
         if len(patch_payload) > 0:
             self.session.patch(
@@ -358,7 +359,7 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             The ID of the lot, by default None.
         properties : list[TaskPropertyCreate]
-            A list of TaskPropertyCreate objects representing the properties to add.
+            A list of TaskPropertyCreate entities representing the properties to add.
 
         Returns
         -------
@@ -422,7 +423,7 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             The ID of the lot, by default None.
         properties : list[TaskPropertyCreate]
-            A list of TaskPropertyCreate objects representing the properties to update or create.
+            A list of TaskPropertyCreate entities representing the properties to update or create.
 
         Returns
         -------
@@ -785,7 +786,6 @@ class PropertyDataCollection(BaseCollection):
     def search(
         self,
         *,
-        limit: int = 100,
         result: str | None = None,
         text: str | None = None,
         # Sorting/pagination
@@ -811,120 +811,100 @@ class PropertyDataCollection(BaseCollection):
         # Response customization
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
+        # Pagination
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[PropertyDataSearchItem]:
-        """Search for property data with various filtering options.
+        """
+        Search for property data with various filtering options.
 
         Parameters
         ----------
-        limit : int, default=100
-            Maximum number of results to return.
         result : str, optional
-            Find results using search syntax. e.g. to find all results with viscosity < 200 at a temperature of 25 we would do
-            result=viscosity(<200)@temperature(25)
+            Query using syntax, e.g. result=viscosity(<200)@temperature(25).
         text : str, optional
-            Free text search across all searchable fields.
+            Free text search across all fields.
         order : OrderBy, optional
             Sort order (ascending/descending).
         sort_by : str, optional
             Field to sort results by.
-        inventory_ids : SearchInventoryIdType or list of SearchInventoryIdType, optional
+        inventory_ids : SearchInventoryId | list[SearchInventoryId], optional
             Filter by inventory IDs.
-        project_ids : ProjectIdType or list of ProjectIdType, optional
+        project_ids : SearchProjectId | list[SearchProjectId], optional
             Filter by project IDs.
-        lot_ids : LotIdType or list of LotIdType, optional
+        lot_ids : LotId | list[LotId], optional
             Filter by lot IDs.
-        data_template_ids : DataTemplateId or list of DataTemplateId, optional
+        data_template_ids : DataTemplateId | list[DataTemplateId], optional
             Filter by data template IDs.
-        data_column_ids: DataColumnId or list of DataColumnId, optional
+        data_column_ids : DataColumnId | list[DataColumnId], optional
             Filter by data column IDs.
-        category : DataEntity or list of DataEntity, optional
+        category : DataEntity | list[DataEntity], optional
             Filter by data entity categories.
-        data_templates : str or list of str (exact match), optional
+        data_templates : str | list[str], optional
             Filter by data template names.
-        data_columns : str or list of str (exact match), optional
-            Filter by data column names (currently non-functional).
-        parameters : str or list of str (exact match), optional
+        data_columns : str | list[str], optional
+            Filter by data column names.
+        parameters : str | list[str], optional
             Filter by parameter names.
-        parameter_group : str or list of str (exact match), optional
+        parameter_group : str | list[str], optional
             Filter by parameter group names.
-        unit : str or list of str (exact match), optional
+        unit : str | list[str], optional
             Filter by unit names.
-        created_by : UserIdType or list of UserIdType, optional
-            Filter by creator user IDs.
-        task_created_by : UserIdType or list of UserIdType, optional
-            Filter by task creator user IDs.
-        return_fields : str or list of str, optional
-            Specific fields to include in results. If None, returns all fields.
-        return_facets : str or list of str, optional
-            Specific facets to include in results.
+        created_by : UserId | list[UserId], optional
+            Filter by user IDs who created the data.
+        task_created_by : UserId | list[UserId], optional
+            Filter by user IDs who created the task.
+        return_fields : str | list[str], optional
+            Specific fields to return.
+        return_facets : str | list[str], optional
+            Specific facets to return.
+        page_size : int, optional
+            Number of items to return per page. Defaults to 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
-        dict
-            Search results matching the specified criteria.
+        Iterator[PropertyDataSearchItem]
+            An iterator of search results matching the specified filters.
         """
 
         def deserialize(items: list[dict]) -> list[PropertyDataSearchItem]:
             return [PropertyDataSearchItem.model_validate(x) for x in items]
 
-        if isinstance(inventory_ids, str):
-            inventory_ids = [inventory_ids]
-        if isinstance(project_ids, str):
-            project_ids = [project_ids]
-        if isinstance(lot_ids, str):
-            lot_ids = [lot_ids]
-        if isinstance(data_template_ids, str):
-            data_template_ids = [data_template_ids]
-        if isinstance(data_column_ids, str):
-            data_column_ids = [data_column_ids]
-        if isinstance(category, DataEntity):
-            category = [category]
-        if isinstance(data_templates, str):
-            data_templates = [data_templates]
-        if isinstance(data_columns, str):
-            data_columns = [data_columns]
-        if isinstance(parameters, str):
-            parameters = [parameters]
-        if isinstance(parameter_group, str):
-            parameter_group = [parameter_group]
-        if isinstance(unit, str):
-            unit = [unit]
-        if isinstance(created_by, str):
-            created_by = [created_by]
-        if isinstance(task_created_by, str):
-            task_created_by = [task_created_by]
-        if isinstance(return_fields, str):
-            return_fields = [return_fields]
-        if isinstance(return_facets, str):
-            return_facets = [return_facets]
+        def ensure_list(v):
+            if v is None:
+                return None
+            return [v] if isinstance(v, str | Enum) else v
 
         params = {
-            "limit": limit,
             "result": result,
             "text": text,
-            "order": order.value if order is not None else None,
+            "order": order.value if order else None,
             "sortBy": sort_by,
-            "inventoryIds": inventory_ids if inventory_ids is not None else None,
-            "projectIds": project_ids if project_ids is not None else None,
-            "lotIds": lot_ids if lot_ids is not None else None,
-            "dataTemplateId": data_template_ids if data_template_ids is not None else None,
-            "dataColumnId": data_column_ids if data_column_ids is not None else None,
-            "category": [c.value for c in category] if category is not None else None,
-            "dataTemplates": data_templates,
-            "dataColumns": data_columns,
-            "parameters": parameters,
-            "parameterGroup": parameter_group,
-            "unit": unit,
-            "createdBy": created_by if created_by is not None else None,
-            "taskCreatedBy": task_created_by if task_created_by is not None else None,
-            "returnFields": return_fields,
-            "returnFacets": return_facets,
+            "inventoryIds": ensure_list(inventory_ids),
+            "projectIds": ensure_list(project_ids),
+            "lotIds": ensure_list(lot_ids),
+            "dataTemplateId": ensure_list(data_template_ids),
+            "dataColumnId": ensure_list(data_column_ids),
+            "category": [c.value for c in ensure_list(category)] if category else None,
+            "dataTemplates": ensure_list(data_templates),
+            "dataColumns": ensure_list(data_columns),
+            "parameters": ensure_list(parameters),
+            "parameterGroup": ensure_list(parameter_group),
+            "unit": ensure_list(unit),
+            "createdBy": ensure_list(created_by),
+            "taskCreatedBy": ensure_list(task_created_by),
+            "returnFields": ensure_list(return_fields),
+            "returnFacets": ensure_list(return_facets),
         }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
-            params=params,
             session=self.session,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=deserialize,
         )

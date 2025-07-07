@@ -54,23 +54,31 @@ class StorageLocationsCollection(BaseCollection):
         exact_match: bool = False,
         location: str | Location | None = None,
         start_key: str | None = None,
-        limit: int = 50,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[StorageLocation]:
-        """Get all storage locations with optional filtering.
+        """
+        Get all storage locations with optional filtering.
 
         Parameters
         ----------
-        name : str | list[str] | None, optional
-            The name or names of the storage locations to filter by, by default None
+        name : str or list[str], optional
+            The name or names of the storage locations to filter by.
         exact_match : bool, optional
-            Whether to perform an exact match on the name, by default False
-        location : str | Location | None, optional
-            The location ID or Location object to filter by, by default None
+            Whether to perform an exact match on the name(s). Default is False.
+        location : str or Location, optional
+            A location ID or Location object to filter by.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to return per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[StorageLocation]
-            An iterator of StorageLocation items matching the search criteria.
+            An iterator over StorageLocation items matching the search criteria.
         """
 
         # Remove explicit hydration when SUP-410 is fixed
@@ -83,10 +91,12 @@ class StorageLocationsCollection(BaseCollection):
                     logger.warning(f"Error fetching storage location {id}: {e}")
 
         params = {
-            "limit": limit,
-            "locationId": location.id if isinstance(location, Location | EntityLink) else location,
+            "locationId": location.id
+            if isinstance(location, (Location | EntityLink))
+            else location,
             "startKey": start_key,
         }
+
         if name:
             params["name"] = [name] if isinstance(name, str) else name
             params["exactMatch"] = json.dumps(exact_match)
@@ -96,6 +106,8 @@ class StorageLocationsCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

@@ -128,36 +128,50 @@ class CustomFieldCollection(BaseCollection):
         service: ServiceType | None = None,
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
+        start_key: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[CustomField]:
-        """Get all CustomField entities with optional filters.
+        """
+        Get all CustomField entities with optional filters.
 
         Parameters
         ----------
-        name : str | None, optional
-            The name of the field, by default None
-        service : ServiceType | None, optional
-            The related service the field is in, by default None
-        lookup_column : bool | None, optional
-            Whether the field relates to a lookup column, by default None
-        lookup_row : bool | None, optional
-            Whether the field relates to a lookup row, by default None
+        name : str, optional
+            The name of the field.
+        service : ServiceType, optional
+            The related service the field belongs to.
+        lookup_column : bool, optional
+            Whether the field is related to a lookup column.
+        lookup_row : bool, optional
+            Whether the field is related to a lookup row.
+        start_key : str, optional
+            Pagination key to start fetching from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[CustomField]
-            Returns an iterator of CustomField entities matching the search criteria.
+            An iterator over matching CustomField entities.
         """
         params = {
             "name": name,
             "service": service,
             "lookupColumn": json.dumps(lookup_column) if lookup_column is not None else None,
             "lookupRow": json.dumps(lookup_row) if lookup_row is not None else None,
+            "startKey": start_key,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
-            params=params,
             session=self.session,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [CustomField(**item) for item in items],
         )
 

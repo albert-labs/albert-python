@@ -198,7 +198,7 @@ class DataTemplateCollection(BaseCollection):
         Returns
         -------
         list[DataTemplate]
-            A list of DataTemplate objects with the provided IDs.
+            A list of DataTemplate entities with the provided IDs.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -221,10 +221,9 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate | None
             The matching data template object or None if not found.
         """
-        hits = list(self.get_all(name=name))
-        for h in hits:
-            if h.name.lower() == name.lower():
-                return h
+        for t in self.search(name=name):
+            if t.name.lower() == name.lower():
+                return t.hydrate()
         return None
 
     def add_data_columns(
@@ -237,7 +236,7 @@ class DataTemplateCollection(BaseCollection):
         data_template_id : str
             The ID of the data template to add the columns to.
         data_columns : list[DataColumnValue]
-            The list of DataColumnValue objects to add to the data template.
+            The list of DataColumnValue entities to add to the data template.
 
         Returns
         -------
@@ -280,7 +279,7 @@ class DataTemplateCollection(BaseCollection):
         data_template_id : str
             The ID of the data template to add the columns to.
         parameters : list[ParameterValue]
-            The list of ParameterValue objects to add to the data template.
+            The list of ParameterValue entities to add to the data template.
 
         Returns
         -------
@@ -334,33 +333,39 @@ class DataTemplateCollection(BaseCollection):
         name: str | None = None,
         user_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 100,
-        offset: int = 0,
+        page_size: int = 50,
+        max_items: int | None = None,
+        offset: int | None = 0,
     ) -> Iterator[DataTemplateSearchItem]:
-        """Search for DataTemplate matching the provided criteria.
+        """
+        Search for DataTemplate matching the provided criteria.
 
         ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        To retrieve fully detailed entities, use `get_all` instead.
 
         Parameters
         ----------
-        name : Union[str, None], optional
-            The name of the data template to filter by, by default None.
+        name : str, optional
+            The name of the data template to filter by.
         user_id : str, optional
-            user_id to filter by, by default None.
+            The user ID to filter by.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
+            The order in which to sort the results. Default is DESCENDING.
+        page_size : int, optional
+            Number of results to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            The result offset to begin pagination from.
 
         Returns
         -------
         Iterator[DataTemplateSearchItem]
-            An iterator of DataTemplateSearchItem objects matching the provided criteria.
+            An iterator of matching DataTemplateSearchItem entities.
         """
-
         params = {
-            "limit": limit,
             "offset": offset,
-            "order": OrderBy(order_by).value if order_by else None,
+            "order": order_by.value,
             "text": name,
             "userId": user_id,
         }
@@ -369,10 +374,12 @@ class DataTemplateCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [
                 DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
             ],
-            params=params,
         )
 
     def update(self, *, data_template: DataTemplate) -> DataTemplate:
@@ -473,25 +480,53 @@ class DataTemplateCollection(BaseCollection):
         name: str | None = None,
         user_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 100,
-        offset: int = 0,
+        page_size: int = 50,
+        max_items: int | None = None,
+        offset: int | None = 0,
     ) -> Iterator[DataTemplate]:
-        """Retrieve fully hydrated DataTemplate entities with optional filters.
+        """
+        Retrieve fully hydrated DataTemplate entities with optional filters.
 
         This method returns complete entity data using `get_by_ids`.
-        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+
+        Parameters
+        ----------
+        name : str, optional
+            The name of the data template to filter by.
+        user_id : str, optional
+            The user ID to filter by.
+        order_by : OrderBy, optional
+            The order in which to sort results. Default is DESCENDING.
+        page_size : int, optional
+            Number of results to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            The result offset to begin pagination from.
+
+        Returns
+        -------
+        Iterator[DataTemplate]
+            An iterator over fully hydrated DataTemplate entities.
         """
 
-        def batched(iterable, size):
-            """Yield lists of up to `size` IDs from an iterable of objects with an `id` attribute."""
-
+        def batched(iterable, size: int):
+            """Yield lists of up to `size` IDs from an iterable of entities with an `id` attribute."""
             it = (item.id for item in iterable)
             while batch := list(islice(it, size)):
                 yield batch
 
         id_batches = batched(
-            self.search(name=name, user_id=user_id, order_by=order_by, limit=limit, offset=offset),
-            limit,  # batch size
+            self.search(
+                name=name,
+                user_id=user_id,
+                order_by=order_by,
+                page_size=page_size,
+                max_items=max_items,
+                offset=offset,
+            ),
+            page_size,
         )
 
         for batch in id_batches:

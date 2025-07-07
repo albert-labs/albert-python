@@ -3,30 +3,31 @@ from albert.resources.custom_fields import CustomField, FieldType
 from albert.resources.lists import ListItem
 
 
-def assert_list_items(list_items: list[ListItem]):
-    found = False
+def assert_valid_list_items(list_items: list[ListItem]):
+    """Assert that all list items are valid ListItem instances."""
+    assert list_items, "Expected at least one ListItem"
     for l in list_items:
         assert isinstance(l, ListItem)
         assert isinstance(l.name, str)
         assert isinstance(l.id, str)
-        found = True
-    assert found
 
 
-def test_basic_get_all(
+def test_list_item_get_all_basic(
     client: Albert, static_lists: list[ListItem], static_custom_fields: list[CustomField]
 ):
+    """Test list get_all using basic list_type filter."""
     list_custom_fields = [x for x in static_custom_fields if x.field_type == FieldType.LIST]
+    results = list(client.lists.get_all(list_type=list_custom_fields[0].name, max_items=10))
+    assert_valid_list_items(results)
 
-    list_items = client.lists.get_all(list_type=list_custom_fields[0].name)
-    assert_list_items(list_items)
 
-
-def test_advanced_get_all(client: Albert, static_lists: list[ListItem]):
-    first_name = static_lists[0].name
-    first_type = static_lists[0].list_type
-    list_items = client.lists.get_all(names=[first_name], list_type=first_type)
-    assert_list_items(list_items)
+def test_list_item_get_all_with_filters(client: Albert, static_lists: list[ListItem]):
+    """Test list get_all with name and list_type filters."""
+    first = static_lists[0]
+    results = list(
+        client.lists.get_all(names=[first.name], list_type=first.list_type, max_items=10)
+    )
+    assert_valid_list_items(results)
 
 
 def test_get_by_id(client: Albert, static_lists: list[ListItem]):

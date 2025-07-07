@@ -119,7 +119,7 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
         )
 
     # now search for the properties
-    _ = client.property_data.search(result=f"{property_search_string}(50-56)")
+    _ = client.property_data.search(result=f"{property_search_string}(50-56)", max_items=5)
     # Currently the search indexes are not updated automatically so we cannot use
     # the SDK entities to search against and no other entities are static enough
     # for us to use as a reliable unit test.

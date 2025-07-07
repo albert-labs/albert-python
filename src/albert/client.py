@@ -65,7 +65,7 @@ class Albert:
         Ignored if `token` is provided.
     retries : int, optional
         Maximum number of retries for failed HTTP requests.
-    session : albert.client.AlbertSession, optional
+    session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
 

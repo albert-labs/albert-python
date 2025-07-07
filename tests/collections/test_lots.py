@@ -24,24 +24,19 @@ def seeded_lot(
     client.lots.delete(id=seeded.id)
 
 
-def assert_lot_items(returned_list):
-    found = False
-    for i, c in enumerate(returned_list):
-        if i == 100:
-            break
-        found = True
+def assert_valid_lot_items(returned_list: list[Lot]):
+    """Assert all items are valid Lot objects with proper IDs."""
+    assert returned_list, "Expected at least one Lot item"
+    for c in returned_list[:10]:
         assert isinstance(c, Lot)
         assert isinstance(c.id, str)
         assert c.id.startswith("LOT")
-    assert found
 
 
-def test_simple_lot_get_all(
-    client: Albert,
-    seeded_lots,  # PUT on lots currently broken, so we can't seed lots
-):
-    response = client.lots.get_all()
-    assert_lot_items(response)
+def test_lot_get_all_basic(client: Albert, seeded_lots):
+    """Test basic usage of lots.get_all()."""
+    results = list(client.lots.get_all(max_items=10))
+    assert_valid_lot_items(results)
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):

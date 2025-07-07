@@ -1,9 +1,5 @@
 from albert import Albert
-
-# from albert.resources.attachments import Attachment
 from albert.resources.files import FileInfo
-
-# from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 
 

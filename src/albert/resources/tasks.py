@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, TypeAdapter
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.enums import OrderBy, SecurityClass
+from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import InventoryId, LotId, TaskId
 from albert.core.shared.models.patch import PatchPayload
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
@@ -371,70 +371,6 @@ class TaskPatchPayload(PatchPayload):
     """
 
     id: str
-
-
-class TaskFilterParams(BaseAlbertModel):
-    """
-    Filtering and query parameters for searching tasks.
-
-    This model centralizes all supported filters, sorting, and pagination options
-    used in task search operations.
-    """
-
-    order: OrderBy = Field(
-        default=OrderBy.DESCENDING,
-        description="The order in which to return results (asc or desc).",
-    )
-    text: str | None = Field(default=None, description="Text search across multiple task fields.")
-    sort_by: str | None = Field(
-        default=None, description="Attribute to sort tasks by (e.g., createdAt, name)."
-    )
-    tags: list[str] | None = Field(
-        default=None, description="Filter by tags associated with tasks."
-    )
-    task_id: list[str] | None = Field(default=None, description="Specific task IDs to search for.")
-    linked_task: list[str] | None = Field(
-        default=None, description="Task IDs linked to the ones being searched."
-    )
-    category: TaskCategory | None = Field(
-        default=None, description="Task category filter (e.g., Experiment, Analysis)."
-    )
-    albert_id: list[str] | None = Field(
-        default=None, description="Albert-specific task identifiers."
-    )
-    data_template: list[str] | None = Field(
-        default=None, description="Data template IDs associated with tasks."
-    )
-    assigned_to: list[str] | None = Field(
-        default=None, description="User IDs assigned to the tasks."
-    )
-    location: list[str] | None = Field(
-        default=None, description="Locations where tasks are carried out."
-    )
-    priority: list[str] | None = Field(
-        default=None, description="Priority levels for filtering tasks."
-    )
-    status: list[str] | None = Field(
-        default=None, description="Task status values (e.g., Open, Done)."
-    )
-    parameter_group: list[str] | None = Field(
-        default=None, description="Parameter Group IDs associated with tasks."
-    )
-    created_by: list[str] | None = Field(
-        default=None, description="User IDs who created the tasks."
-    )
-    project_id: str | None = Field(
-        default=None, description="ID of the parent project for filtering tasks."
-    )
-    limit: int = Field(
-        default=100,
-        ge=1,
-        le=1000,
-        description="Maximum number of results to return (default: 100).",
-    )
-    offset: int = Field(
-        default=0, ge=0, description="Number of results to skip for pagination (default: 0)."
-    )
 
 
 class TaskSearchInventory(BaseAlbertModel):

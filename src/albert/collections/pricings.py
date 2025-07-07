@@ -122,7 +122,7 @@ class PricingCollection(BaseCollection):
         Returns
         -------
         list[InventoryPricing]
-            A list of InventoryPricing objects matching the provided inventory.
+            A list of InventoryPricing entities matching the provided inventory.
         """
         params = {"id": inventory_ids}
         response = self.session.get(f"{self.base_path}/ids", params=params)

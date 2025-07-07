@@ -48,36 +48,51 @@ class LinksCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 100,
         type: str | None = None,
         category: LinkCategory | None = None,
         id: str | None = None,
+        start_key: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[Link]:
         """
         Get all link entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of link entities to return.
         type : str, optional
-            The type of the link entities to return. Allowed values are `parent`, `child`, and `all`. If type is "all" then it will fetch both parent/child record for mentioned id.
+            The type of the link entities to return. Allowed values are `parent`, `child`, and `all`.
+            If type is "all", both parent and child records for the given ID will be returned.
         category : LinkCategory, optional
             The category of the link entities to return. Allowed values are `mention`, `linkedTask`, and `synthesis`.
-        id : str
-            The ID of the link entity to return. (Use with `type` parameter)
+        id : str, optional
+            The ID of the entity to fetch links for.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
-        ------
+        -------
         Iterator[Link]
-            An iterator of Links.
+            An iterator of Link entities.
         """
-        params = {"limit": limit, "type": type, "category": category, "id": id}
+        params = {
+            "type": type,
+            "category": category,
+            "id": id,
+            "startKey": start_key,
+        }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
-            params=params,
             session=self.session,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Link(**item) for item in items],
         )
 

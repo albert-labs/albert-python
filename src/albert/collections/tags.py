@@ -146,7 +146,7 @@ class TagCollection(BaseCollection):
         Tag
             The Tag object if found, None otherwise.
         """
-        found = self.get_all(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     def delete(self, *, id: str) -> None:
@@ -206,41 +206,51 @@ class TagCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 50,
         order_by: OrderBy = OrderBy.DESCENDING,
         name: str | list[str] | None = None,
         exact_match: bool = True,
         start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Tag]:
         """
         Get all Tag entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of tags to return, by default 50.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        name : Union[str, None], optional
-            The name of the tag to filter by, by default None.
+            The order by which to sort the results. Default is DESCENDING.
+        name : str or list[str], optional
+            Filter tags by one or more names.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
+            Whether to match the name(s) exactly. Default is True.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Tag]
-            An iterator of Tag objects.
+            An iterator of Tag entities matching the filters.
         """
-        params = {"limit": limit, "orderBy": order_by.value, "startKey": start_key}
+        params = {
+            "orderBy": order_by.value,
+            "startKey": start_key,
+        }
+
         if name:
             params["name"] = [name] if isinstance(name, str) else name
             params["exactMatch"] = json.dumps(exact_match)
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Tag(**item) for item in items],
         )
