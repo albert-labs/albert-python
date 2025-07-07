@@ -138,16 +138,13 @@ class InventoryCollection(BaseCollection):
             else inventory_item.company
         )
 
-        hits = self.search(
-            text=inventory_item.name,
-            company=[inventory_item.company],
+        hits = self.get_all(
+            text=inventory_item.name, company=[inventory_item.company], max_items=100
         )
 
         for inv in hits:
-            if inv and inv.name == inventory_item.name:
-                hydrated = inv.hydrate()
-                if hydrated.company.name == inv_company:
-                    return hydrated
+            if inv and inv.name == inventory_item.name and inv.company.name == inv_company:
+                return inv
         return None
 
     def create(
@@ -336,6 +333,7 @@ class InventoryCollection(BaseCollection):
         created_by: list[User] | User | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
+        offset: int | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -368,6 +366,7 @@ class InventoryCollection(BaseCollection):
             "createdBy": [c.name for c in created_by] if created_by is not None else None,
             "sheetId": sheet_id,
             "projectId": project_id,
+            "offset": offset,
         }
 
         return params
@@ -407,6 +406,7 @@ class InventoryCollection(BaseCollection):
             tags=tags,
         )
         params["limit"] = 1
+        params = {k: v for k, v in params.items() if v is not None}
         response = self.session.get(
             url=f"{self.base_path}/llmsearch"
             if match_all_conditions
@@ -462,6 +462,7 @@ class InventoryCollection(BaseCollection):
 
         return filtered_facets
 
+    @validate_call
     def search(
         self,
         *,
@@ -478,7 +479,7 @@ class InventoryCollection(BaseCollection):
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
         order: OrderBy = OrderBy.DESCENDING,
-        sort_by: str | None = "createdAt",
+        sort_by: str | None = None,
         page_size: int = 100,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -518,7 +519,7 @@ class InventoryCollection(BaseCollection):
         order : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
-            Field to sort results by. Default is "createdAt".
+            Field to sort results by. Default is None.
         page_size : int, optional
             Number of items to fetch per page. Default is 100.
         max_items : int, optional
@@ -551,6 +552,7 @@ class InventoryCollection(BaseCollection):
             created_by=created_by,
             lot_owner=lot_owner,
             tags=tags,
+            offset=offset,
         )
 
         return AlbertPaginator(
@@ -582,7 +584,7 @@ class InventoryCollection(BaseCollection):
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
         order: OrderBy = OrderBy.DESCENDING,
-        sort_by: str | None = "createdAt",
+        sort_by: str | None = None,
         page_size: int = 100,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -622,7 +624,7 @@ class InventoryCollection(BaseCollection):
         order : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
-            Field to sort results by. Default is "createdAt".
+            Field to sort results by. Default is None.
         page_size : int, optional
             Number of items to fetch per page. Default is 100.
         max_items : int, optional
@@ -655,6 +657,7 @@ class InventoryCollection(BaseCollection):
             created_by=created_by,
             lot_owner=lot_owner,
             tags=tags,
+            offset=offset,
         )
 
         return AlbertPaginator(

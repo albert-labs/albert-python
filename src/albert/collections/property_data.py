@@ -828,35 +828,35 @@ class PropertyDataCollection(BaseCollection):
             Sort order (ascending/descending).
         sort_by : str, optional
             Field to sort results by.
-        inventory_ids : SearchInventoryId | list[SearchInventoryId], optional
+        inventory_ids : SearchInventoryId or list[SearchInventoryId], optional
             Filter by inventory IDs.
-        project_ids : SearchProjectId | list[SearchProjectId], optional
+        project_ids : SearchProjectId or list[SearchProjectId], optional
             Filter by project IDs.
-        lot_ids : LotId | list[LotId], optional
+        lot_ids : LotId or list[LotId], optional
             Filter by lot IDs.
-        data_template_ids : DataTemplateId | list[DataTemplateId], optional
+        data_template_ids : DataTemplateId or list[DataTemplateId], optional
             Filter by data template IDs.
-        data_column_ids : DataColumnId | list[DataColumnId], optional
+        data_column_ids : DataColumnId or list[DataColumnId], optional
             Filter by data column IDs.
-        category : DataEntity | list[DataEntity], optional
+        category : DataEntity or list[DataEntity], optional
             Filter by data entity categories.
-        data_templates : str | list[str], optional
+        data_templates : str or list[str], optional
             Filter by data template names.
-        data_columns : str | list[str], optional
+        data_columns : str or list[str], optional
             Filter by data column names.
-        parameters : str | list[str], optional
+        parameters : str or list[str], optional
             Filter by parameter names.
-        parameter_group : str | list[str], optional
+        parameter_group : str or list[str], optional
             Filter by parameter group names.
-        unit : str | list[str], optional
+        unit : str or list[str], optional
             Filter by unit names.
-        created_by : UserId | list[UserId], optional
+        created_by : UserId or list[UserId], optional
             Filter by user IDs who created the data.
-        task_created_by : UserId | list[UserId], optional
+        task_created_by : UserId or list[UserId], optional
             Filter by user IDs who created the task.
-        return_fields : str | list[str], optional
+        return_fields : str or list[str], optional
             Specific fields to return.
-        return_facets : str | list[str], optional
+        return_facets : str or list[str], optional
             Specific facets to return.
         page_size : int, optional
             Number of items to return per page. Defaults to 100.
