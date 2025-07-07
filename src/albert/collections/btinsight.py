@@ -95,23 +95,20 @@ class BTInsightCollection(BaseCollection):
     def search(
         self,
         *,
-        limit: int = 100,
-        offset: int | None = None,
         order_by: OrderBy | None = None,
         sort_by: str | None = None,
         text: str | None = None,
         name: str | list[str] | None = None,
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
+        offset: int | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[BTInsight]:
         """Search for items in the BTInsight collection.
 
         Parameters
         ----------
-        limit : int, optional
-            Number of items to return per page, default 100
-        offset : int | None, optional
-            Item offset to begin search at, default None
         order_by : OrderBy | None, optional
             Asc/desc ordering, default None
         sort_by : str | None
@@ -124,6 +121,12 @@ class BTInsightCollection(BaseCollection):
             BTInsight state search filter, default None
         category : BTInsightCategory | list[BTInsightCategory] | None
             BTInsight category search filter, default None
+        offset : int | None, optional
+            Item offset to begin search at, default None
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
@@ -131,7 +134,6 @@ class BTInsightCollection(BaseCollection):
             An iterator of elements returned by the BTInsight search query.
         """
         params = {
-            "limit": limit,
             "offset": offset,
             "order": OrderBy(order_by).value if order_by else None,
             "sortBy": sort_by,
@@ -150,6 +152,8 @@ class BTInsightCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [BTInsight(**item) for item in items],
         )
 

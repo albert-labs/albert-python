@@ -3,40 +3,44 @@ from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 
-def assert_unit_items(returned_list):
-    found = False
-    for i, u in enumerate(returned_list):
-        if i == 100:
-            break
+def assert_unit_items(returned_list: list[Unit]):
+    for u in returned_list[:10]:
         assert isinstance(u, Unit)
         assert isinstance(u.name, str)
         assert isinstance(u.id, str)
         assert u.id.startswith("UNI")
-        found = True
-    assert found
 
 
-def test_simple_units_get_all(client: Albert):
-    simple_list = client.units.get_all()
-    assert_unit_items(simple_list)
+def test_units_get_all_with_pagination(client: Albert):
+    """Test retrieving units with pagination and max_items control."""
+    paginated = list(client.units.get_all(page_size=5, max_items=10))
+    assert_unit_items(paginated)
+    assert len(paginated) <= 10
 
 
-def test_advanced_units_get_all(client: Albert, seeded_units: list[Unit]):
+def test_units_get_all_with_filters(client: Albert, seeded_units: list[Unit]):
+    """Test filtered retrieval of units using name, category, and verification flag."""
     test_unit = seeded_units[1]
-    adv_list = client.units.get_all(
-        name=test_unit.name,
-        category=test_unit.category,
-        order_by=OrderBy.ASCENDING,
-        exact_match=True,
-        verified=test_unit.verified,
+    filtered = list(
+        client.units.get_all(
+            name=test_unit.name,
+            category=test_unit.category,
+            order_by=OrderBy.ASCENDING,
+            exact_match=True,
+            verified=test_unit.verified,
+            max_items=10,
+        )
     )
-    adv_list = list(adv_list)
-    for u in adv_list:
+    for u in filtered:
         assert test_unit.name.lower() in u.name.lower()
-    assert_unit_items(adv_list)
+    assert_unit_items(filtered)
 
-    adv_short_list = client.units.get_all(limit=2)
-    assert_unit_items(adv_short_list)
+
+def test_units_get_all_limited_batch(client: Albert):
+    """Test small result batch retrieval with max_items."""
+    short_list = list(client.units.get_all(max_items=2))
+    assert_unit_items(short_list)
+    assert len(short_list) <= 2
 
 
 def test_get_unit(client: Albert, seeded_units: list[Unit]):

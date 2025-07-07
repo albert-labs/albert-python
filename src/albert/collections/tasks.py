@@ -25,7 +25,7 @@ from albert.resources.tasks import (
     HistoryEntity,
     PropertyTask,
     TaskAdapter,
-    TaskFilterParams,
+    TaskCategory,
     TaskHistory,
     TaskPatchPayload,
     TaskSearchItem,
@@ -234,74 +234,210 @@ class TaskCollection(BaseCollection):
         response = self.session.get(url)
         return TaskAdapter.validate_python(response.json())
 
-    def search(self, *, params: TaskFilterParams | None = None) -> Iterator[TaskSearchItem]:
-        """Search for Task matching the provided criteria.
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        tags: list[str] | None = None,
+        task_id: list[str] | None = None,
+        linked_task: list[str] | None = None,
+        category: TaskCategory | None = None,
+        albert_id: list[str] | None = None,
+        data_template: list[str] | None = None,
+        assigned_to: list[str] | None = None,
+        location: list[str] | None = None,
+        priority: list[str] | None = None,
+        status: list[str] | None = None,
+        parameter_group: list[str] | None = None,
+        created_by: list[str] | None = None,
+        project_id: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
+        offset: int = 0,
+    ) -> Iterator[TaskSearchItem]:
+        """
+        Search for Task matching the provided criteria.
 
         ⚠️ This method returns partial (unhydrated) entities to optimize performance.
         To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        params : TaskFilterParams, optional
-            Structured query parameters including filters, sort order, and pagination.
+        text : str, optional
+            Text search across multiple task fields.
+        tags : list[str], optional
+            Filter by tags associated with tasks.
+        task_id : list[str], optional
+            Specific task IDs to search for.
+        linked_task : list[str], optional
+            Task IDs linked to the ones being searched.
+        category : TaskCategory, optional
+            Task category filter (e.g., Experiment, Analysis).
+        albert_id : list[str], optional
+            Albert-specific task identifiers.
+        data_template : list[str], optional
+            Data template IDs associated with tasks.
+        assigned_to : list[str], optional
+            User IDs assigned to the tasks.
+        location : list[str], optional
+            Locations where tasks are carried out.
+        priority : list[str], optional
+            Priority levels for filtering tasks.
+        status : list[str], optional
+            Task status values (e.g., Open, Done).
+        parameter_group : list[str], optional
+            Parameter Group IDs associated with tasks.
+        created_by : list[str], optional
+            User IDs who created the tasks.
+        project_id : str, optional
+            ID of the parent project for filtering tasks.
+        order_by : OrderBy, optional
+            The order in which to return results (asc or desc), default DESCENDING.
+        sort_by : str, optional
+            Attribute to sort tasks by (e.g., createdAt, name).
+        page_size : int, optional
+            Number of items to return per page, default 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Number of results to skip for pagination, default 0.
 
-        Yields
-        ------
-        Iterator[BaseTask]
-            An iterator of matching, fully hydrated Task objects.
+        Returns
+        -------
+        Iterator[TaskSearchItem]
+            An iterator of matching, lightweight TaskSearchItem entities.
         """
-        params = params or TaskFilterParams()
-
-        query_params = {
-            "limit": params.limit,
-            "offset": params.offset,
-            "order": params.order.value,
-            "text": params.text,
-            "sortBy": params.sort_by,
-            "tags": params.tags,
-            "taskId": params.task_id,
-            "linkedTask": params.linked_task,
-            "category": params.category,
-            "albertId": params.albert_id,
-            "dataTemplate": params.data_template,
-            "assignedTo": params.assigned_to,
-            "location": params.location,
-            "priority": params.priority,
-            "status": params.status,
-            "parameterGroup": params.parameter_group,
-            "createdBy": params.created_by,
-            "projectId": params.project_id,
+        params = {
+            "offset": offset,
+            "order": order_by.value,
+            "text": text,
+            "sortBy": sort_by,
+            "tags": tags,
+            "taskId": task_id,
+            "linkedTask": linked_task,
+            "category": category,
+            "albertId": albert_id,
+            "dataTemplate": data_template,
+            "assignedTo": assigned_to,
+            "location": location,
+            "priority": priority,
+            "status": status,
+            "parameterGroup": parameter_group,
+            "createdBy": created_by,
+            "projectId": project_id,
         }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [
                 TaskSearchItem(**item)._bind_collection(self) for item in items
             ],
-            params=query_params,
         )
 
-    def get_all(self, *, params: TaskFilterParams | None = None) -> Iterator[BaseTask]:
-        """Retrieve fully hydrated Task entities with optional filters.
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        tags: list[str] | None = None,
+        task_id: list[str] | None = None,
+        linked_task: list[str] | None = None,
+        category: TaskCategory | None = None,
+        albert_id: list[str] | None = None,
+        data_template: list[str] | None = None,
+        assigned_to: list[str] | None = None,
+        location: list[str] | None = None,
+        priority: list[str] | None = None,
+        status: list[str] | None = None,
+        parameter_group: list[str] | None = None,
+        created_by: list[str] | None = None,
+        project_id: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
+        offset: int = 0,
+    ) -> Iterator[BaseTask]:
+        """
+        Retrieve fully hydrated Task entities with optional filters.
 
-        This method returns complete entity data using `get_by_id` or `get_by_ids`.
+        This method returns complete entity data using `get_by_id`.
         Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
 
         Parameters
         ----------
-        params : TaskFilterParams, optional
-            Filter and pagination options passed to the search query.
+        text : str, optional
+            Text search across multiple task fields.
+        tags : list[str], optional
+            Filter by tags associated with tasks.
+        task_id : list[str], optional
+            Specific task IDs to search for.
+        linked_task : list[str], optional
+            Task IDs linked to the ones being searched.
+        category : TaskCategory, optional
+            Task category filter (e.g., Experiment, Analysis).
+        albert_id : list[str], optional
+            Albert-specific task identifiers.
+        data_template : list[str], optional
+            Data template IDs associated with tasks.
+        assigned_to : list[str], optional
+            User IDs assigned to the tasks.
+        location : list[str], optional
+            Locations where tasks are carried out.
+        priority : list[str], optional
+            Priority levels for filtering tasks.
+        status : list[str], optional
+            Task status values (e.g., Open, Done).
+        parameter_group : list[str], optional
+            Parameter Group IDs associated with tasks.
+        created_by : list[str], optional
+            User IDs who created the tasks.
+        project_id : str, optional
+            ID of the parent project for filtering tasks.
+        order_by : OrderBy, optional
+            The order in which to return results (asc or desc), default DESCENDING.
+        sort_by : str, optional
+            Attribute to sort tasks by (e.g., createdAt, name).
+        page_size : int, optional
+            Number of items to return per page, default 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Number of results to skip for pagination, default 0.
 
         Yields
         ------
         Iterator[BaseTask]
-            A stream of fully hydrated Task objects (PropertyTask, BatchTask, or GeneralTask).
+            A stream of fully hydrated Task entities (PropertyTask, BatchTask, or GeneralTask).
         """
-        params = params or TaskFilterParams()
-
-        for task in self.search(params=params):
+        for task in self.search(
+            text=text,
+            tags=tags,
+            task_id=task_id,
+            linked_task=linked_task,
+            category=category,
+            albert_id=albert_id,
+            data_template=data_template,
+            assigned_to=assigned_to,
+            location=location,
+            priority=priority,
+            status=status,
+            parameter_group=parameter_group,
+            created_by=created_by,
+            project_id=project_id,
+            order_by=order_by,
+            sort_by=sort_by,
+            page_size=page_size,
+            max_items=max_items,
+            offset=offset,
+        ):
             task_id = getattr(task, "id", None)
             if not task_id:
                 continue
@@ -309,7 +445,7 @@ class TaskCollection(BaseCollection):
             try:
                 yield self.get_by_id(id=task_id)
             except (AlbertHTTPError, RetryError) as e:
-                logger.warning(f"Error fetching task '{id}': {e}")
+                logger.warning(f"Error fetching task '{task_id}': {e}")
 
     def _is_metadata_item_list(
         self,

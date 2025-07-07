@@ -65,7 +65,8 @@ class DataColumnCollection(BaseCollection):
         exact_match: bool | None = None,
         default: bool | None = None,
         start_key: str | None = None,
-        limit: int = 100,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[DataColumn]:
         """
         Get all data column entities with optional filters.
@@ -73,27 +74,32 @@ class DataColumnCollection(BaseCollection):
         Parameters
         ----------
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        ids: str | list[str] | None, optional
-            Data column IDs to filter the search by, default None.
-        name : Union[str, None], optional
-            The name of the tag to filter by, by default None.
+            The order in which to sort the results. Default is DESCENDING.
+        ids : str or list[str], optional
+            Filter by one or more data column IDs.
+        name : str or list[str], optional
+            Filter by name(s).
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            Whether the name filter should match exactly.
         default : bool, optional
-            Whether to return only default columns, by default None.
+            Whether to return only default columns.
+        start_key : str, optional
+            The pagination key to start from.
+        page_size : int, optional
+            Number of items to return per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[DataColumn]
-            An iterator of DataColumns matching the provided criteria.
+            An iterator over matching DataColumn entities.
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
             yield from (DataColumn(**item) for item in items)
 
         params = {
-            "limit": limit,
             "orderBy": order_by.value,
             "startKey": start_key,
             "name": [name] if isinstance(name, str) else name,
@@ -101,11 +107,14 @@ class DataColumnCollection(BaseCollection):
             "default": json.dumps(default) if default is not None else None,
             "dataColumns": [ids] if isinstance(ids, str) else ids,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

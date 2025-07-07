@@ -86,7 +86,7 @@ class UnitCollection(BaseCollection):
         Returns
         -------
         list[Unit]
-            The Unit objects
+            The Unit entities
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 500] for i in range(0, len(ids), 500)]
@@ -137,51 +137,58 @@ class UnitCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 100,
         name: str | list[str] | None = None,
         category: UnitCategory | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         exact_match: bool = False,
-        start_key: str | None = None,
         verified: bool | None = None,
+        start_key: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[Unit]:
         """
         Get all unit entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of units to return, by default 50.
-        name : Optional[str], optional
-            The name of the unit to filter by, by default None.
-        category : Optional[UnitCategory], optional
-            The category of the unit to filter by, by default None.
+        name : str | list[str] | None, optional
+            The name(s) of the unit(s) to filter by.
+        category : UnitCategory | None, optional
+            The category of the unit to filter by.
         order_by : OrderBy, optional
             The order by which to sort the results, by default OrderBy.DESCENDING.
         exact_match : bool, optional
             Whether to match the name exactly, by default False.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
+        verified : bool | None, optional
+            Whether the unit is verified, by default None.
+        start_key : str | None, optional
+            The primary key of the first item to evaluate for pagination.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Unit]
-            An iterator of Unit objects.
+            An iterator of Unit entities.
         """
         params = {
-            "limit": limit,
-            "startKey": start_key,
             "orderBy": order_by.value,
             "name": [name] if isinstance(name, str) else name,
             "exactMatch": json.dumps(exact_match),
             "verified": json.dumps(verified) if verified is not None else None,
             "category": category.value if isinstance(category, UnitCategory) else category,
+            "startKey": start_key,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Unit(**item) for item in items],
         )
 
@@ -201,7 +208,7 @@ class UnitCollection(BaseCollection):
         Optional[Unit]
             The Unit object if found, None otherwise.
         """
-        found = self.get_all(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     def exists(self, *, name: str, exact_match: bool = True) -> bool:

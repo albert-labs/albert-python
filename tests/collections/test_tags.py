@@ -8,46 +8,43 @@ from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
 
 
-def assert_tag_items(returned_list, limit=100):
-    found = False
-    for i, u in enumerate(returned_list):
-        found = True
-        # just check the first 100
-        if i == limit:
-            break
-
+def assert_valid_tag_items(returned_list: list[Tag], limit=100):
+    """Assert that returned items are valid Tag objects."""
+    assert returned_list, "Expected at least one Tag result"
+    for u in returned_list[:limit]:
         assert isinstance(u, Tag)
         assert isinstance(u.tag, str)
         assert isinstance(u.id, str)
         assert u.id.startswith("TAG")
-    assert found
 
 
-def test_simple_tags_get_all(client: Albert):
-    simple_list = client.tags.get_all()
-    simple_list = list(simple_list)
-    assert_tag_items(simple_list)
+def test_tag_get_all_with_pagination(client: Albert):
+    """Test Tag get_all paginates with page_size and max_items."""
+    results = list(client.tags.get_all(page_size=5, max_items=10))
+    assert len(results) <= 10
+    assert_valid_tag_items(results)
 
 
-def test_advanced_tags_get_all(client: Albert, seeded_tags: list[Tag]):
+def test_tag_get_all_with_filters(client: Albert, seeded_tags: list[Tag]):
+    """Test Tag get_all with name filter and exact match."""
     name = seeded_tags[0].tag
-    adv_list = client.tags.get_all(
-        name=name,
-        exact_match=True,
-        order_by=OrderBy.ASCENDING,
+    results = list(
+        client.tags.get_all(name=name, exact_match=True, order_by=OrderBy.ASCENDING, max_items=10)
     )
-    adv_list = list(adv_list)
-    assert_tag_items(adv_list)
+    assert_valid_tag_items(results)
 
-    adv_list_no_match = client.tags.get_all(
-        name="chaos tags 126485% HELLO WORLD!!!!",
-        exact_match=True,
-        order_by=OrderBy.ASCENDING,
+
+def test_tag_get_all_no_match(client: Albert):
+    """Test Tag get_all returns no results on nonsense name."""
+    no_match = list(
+        client.tags.get_all(
+            name="chaos tags 126485% HELLO WORLD!!!!",
+            exact_match=True,
+            order_by=OrderBy.ASCENDING,
+            max_items=5,
+        )
     )
-    assert next(adv_list_no_match, None) == None
-
-    tag_short_list = client.tags.get_all(limit=3)
-    assert_tag_items(tag_short_list, limit=5)
+    assert no_match == []
 
 
 def test_get_tag_by(client: Albert, seeded_tags: list[Tag]):

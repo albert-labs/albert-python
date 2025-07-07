@@ -3,7 +3,6 @@ from enum import Enum
 from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.enums import OrderBy
 from albert.core.shared.identifiers import ProjectId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
@@ -111,80 +110,3 @@ class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
     id: ProjectId | None = Field(None, alias="albertId")
     description: str = Field(min_length=1, max_length=2000)
     status: str | None = Field(default=None, exclude=True, frozen=True)
-
-
-class ProjectFilterParams(BaseAlbertModel):
-    """
-    Filtering and query parameters for retrieving Projects via `search()` or `get_all()`.
-
-    This model centralizes all supported filters, sorting, and pagination options.
-    It is used to construct query payloads for partial or fully hydrated project listings.
-    """
-
-    text: str | None = Field(
-        default=None, description="Full-text search across multiple fields of the project."
-    )
-    status: list[str] | None = Field(
-        default=None, description="List of project statuses to filter by."
-    )
-    market_segment: list[str] | None = Field(
-        default=None, description="Market segments to include in the result set."
-    )
-    application: list[str] | None = Field(
-        default=None, description="Application types associated with the projects."
-    )
-    technology: list[str] | None = Field(
-        default=None, description="Technology tags used in the projects."
-    )
-    created_by: list[str] | None = Field(
-        default=None, description="Filter projects created by specific users."
-    )
-    location: list[str] | None = Field(
-        default=None, description="Geographic or facility locations for the projects."
-    )
-    from_created_at: str | None = Field(
-        default=None,
-        description="Lower bound of project creation date (inclusive), formatted as 'YYYY-MM-DD'.",
-    )
-    to_created_at: str | None = Field(
-        default=None,
-        description="Upper bound of project creation date (inclusive), formatted as 'YYYY-MM-DD'.",
-    )
-    facet_field: str | None = Field(
-        default=None, description="Field name for facet search (e.g., status, application)."
-    )
-    facet_text: str | None = Field(
-        default=None, description="Text to match within the given facet field."
-    )
-    contains_field: list[str] | None = Field(
-        default=None,
-        description="List of fields to check for specific content (used in advanced filters).",
-    )
-    contains_text: list[str] | None = Field(
-        default=None,
-        description="Text snippets to search for within the specified `contains_field`.",
-    )
-    linked_to: str | None = Field(
-        default=None,
-        description="Optional ID or label to find projects linked to a specific entity (e.g., in Task creation).",
-    )
-    my_projects: bool | None = Field(
-        default=None, description="If True, return only projects owned by the authenticated user."
-    )
-    my_role: list[str] | None = Field(
-        default=None,
-        description="Roles the user has in projects to filter (e.g., Lead, Reviewer).",
-    )
-    order_by: OrderBy = Field(
-        default=OrderBy.DESCENDING,
-        description="Ordering of results, either ascending or descending.",
-    )
-    sort_by: str | None = Field(
-        default=None, description="Field to sort by (e.g., createdAt, updatedAt, name)."
-    )
-    limit: int = Field(
-        default=50,
-        ge=1,
-        le=1000,
-        description="Maximum number of items to return (default is 50, max is 1000).",
-    )

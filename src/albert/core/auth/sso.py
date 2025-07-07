@@ -20,7 +20,11 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
     and refresh using a local redirect server.
 
     If `base_url` is not provided, it defaults to the value of the environment
-    variable "ALBERT_BASE_URL" or "https://app.albertinvent.com".
+    variable `ALBERT_BASE_URL` or `https://app.albertinvent.com`.
+
+    !!! important
+        You **must call** `.authenticate()` before passing this client to `Albert(auth_manager=...)`
+        to ensure the token is acquired and ready for use.
 
     Attributes
     ----------
@@ -31,12 +35,14 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
 
     Usage
     -----
-    >>> oauth = AlbertOAuthClient(
-    ...     email="user@example.com",
-    ... )
-    >>> oauth.authenticate()
-    >>> client = Albert(auth_manager=oauth)
-    >>> client.roles.get_all()
+    ```
+    oauth = AlbertSSOClient(
+        email="user@example.com",
+    )
+    oauth.authenticate()
+    client = Albert(auth_manager=oauth)
+    client.roles.get_all()
+    ```
     """
 
     base_url: str = Field(default_factory=default_albert_base_url)

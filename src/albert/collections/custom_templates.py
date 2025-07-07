@@ -48,33 +48,44 @@ class CustomTemplatesCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
+        page_size: int = 50,
+        max_items: int | None = None,
+        offset: int | None = 0,
     ) -> Iterator[CustomTemplateSearchItem]:
-        """Search for CustomTemplate matching the provided criteria.
+        """
+        Search for CustomTemplate matching the provided criteria.
 
         ⚠️ This method returns partial (unhydrated) entities to optimize performance.
         To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        text : str | None, optional
-            The text to search for, by default None
+        text : str, optional
+            Text to filter search results by.
+        page_size : int, optional
+            Number of results per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Offset to begin pagination at. Default is 0.
 
-
-        Yields
-        ------
+        Returns
+        -------
         Iterator[CustomTemplateSearchItem]
-            An iterator of CustomTemplateSearchItem items matching the search criteria.
+            An iterator of CustomTemplateSearchItem items.
         """
-
-        params = {"limit": limit, "offset": offset, "text": text}
+        params = {
+            "text": text,
+            "offset": offset,
+        }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [
                 CustomTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
             ],
@@ -84,17 +95,36 @@ class CustomTemplatesCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
+        page_size: int = 50,
+        max_items: int | None = None,
+        offset: int | None = 0,
     ) -> Iterator[CustomTemplate]:
-        """Retrieve fully hydrated CustomTemplate entities with optional filters.
+        """
+        Retrieve fully hydrated CustomTemplate entities with optional filters.
 
         This method returns complete entity data using `get_by_id`.
         Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
-        """
 
-        for item in self.search(text=text, limit=limit, offset=offset):
+        Parameters
+        ----------
+        text : str, optional
+            Text filter for template name or content.
+        page_size : int, optional
+            Number of search results per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Offset for search pagination.
+
+        Returns
+        -------
+        Iterator[CustomTemplate]
+            An iterator of CustomTemplate entities.
+        """
+        for item in self.search(
+            text=text, page_size=page_size, max_items=max_items, offset=offset
+        ):
             try:
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:
-                logger.warning(f"Error hydrating custom template {id}: {e}")
+                logger.warning(f"Error hydrating custom template {item.id}: {e}")

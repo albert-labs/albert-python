@@ -4,25 +4,26 @@ from albert.client import Albert
 from albert.resources.locations import Location
 
 
-def assert_location_items(returned_list):
-    for i, c in enumerate(returned_list):
-        if i == 30:
-            break
+def assert_valid_location_items(returned_list: list[Location]):
+    """Assert that all returned items are valid Location objects."""
+    assert returned_list, "Expected at least one Location"
+    for c in returned_list[:10]:
         assert isinstance(c, Location)
         assert isinstance(c.name, str)
         assert c.id.startswith("LOC")
 
 
-def test_simple_get_all(client: Albert):
-    simple_loc_list = client.locations.get_all()
-    assert_location_items(simple_loc_list)
+def test_location_get_all_with_filters(client: Albert):
+    """Test locations.get_all() with country filter."""
+    results = list(client.locations.get_all(country="US", max_items=10))
+    assert_valid_location_items(results)
 
 
-def test_adv_get_all(client: Albert):
-    adv_list = client.locations.get_all(country="US")
-    assert_location_items(adv_list)
-    short_list = client.locations.get_all(limit=2)
-    assert_location_items(short_list)
+def test_location_get_all_with_pagination(client: Albert):
+    """Test pagination with page_size in locations.get_all()."""
+    results = list(client.locations.get_all(page_size=5, max_items=10))
+    assert_valid_location_items(results)
+    assert len(results) <= 10
 
 
 def test_get_by_id(client: Albert, seeded_locations: list[Location]):

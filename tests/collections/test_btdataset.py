@@ -9,9 +9,15 @@ def test_get_by_id(client: Albert, seeded_btdataset: BTDataset):
 
 
 def test_get_all_by_user(client: Albert, static_user: User):
-    dataset = next(client.btdatasets.get_all(created_by=static_user.id), None)
-    assert dataset is not None
-    assert dataset.created.by == static_user.id
+    results = list(client.btdatasets.get_all(created_by=static_user.id, max_items=10))
+    assert results, "No datasets returned for the user"
+    for dataset in results:
+        assert dataset.created.by == static_user.id
+
+
+def test_get_all_by_name(client: Albert, seeded_btdataset: BTDataset):
+    results = list(client.btdatasets.get_all(name=seeded_btdataset.name, max_items=10))
+    assert any(ds.id == seeded_btdataset.id for ds in results), "Expected dataset not found"
 
 
 def test_update(client: Albert, seeded_btdataset: BTDataset):

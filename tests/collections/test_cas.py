@@ -8,60 +8,65 @@ from albert.exceptions import AlbertHTTPError
 from albert.resources.cas import Cas
 
 
-def _get_all_asserts(returned_list):
-    found = False
-    for i, c in enumerate(returned_list):
-        if i == 30:
-            break
+def assert_valid_cas_items(items: list[Cas]):
+    assert items, "Expected at least one CAS result"
+    for c in items[:10]:
         assert isinstance(c, Cas)
         assert isinstance(c.number, str)
-        if c.name:
-            assert isinstance(c.name, str)
+        assert not c.name or isinstance(c.name, str)
         assert c.id.startswith("CAS")
-        found = True
-    assert found
 
 
-def test_simple_cas_get_all(client: Albert):
-    simple_list = client.cas_numbers.get_all()
-    _get_all_asserts(simple_list)
+def test_cas_get_all_with_pagination(client: Albert):
+    """Test that CAS get_all() respects pagination via max_items and page_size."""
+    simple_list = list(client.cas_numbers.get_all(page_size=5, max_items=10))
+    assert_valid_cas_items(simple_list)
+    assert len(simple_list) <= 10
+
+
+def test_cas_get_all_with_filters(client: Albert, seeded_cas: list[Cas]):
+    """Test CAS get_all() with number and id filters."""
+    number = seeded_cas[0].number
+
+    adv_list = list(
+        client.cas_numbers.get_all(
+            number=number,
+            order_by=OrderBy.DESCENDING,
+            max_items=10,
+        )
+    )
+    assert_valid_cas_items(adv_list)
+    assert adv_list[0].number == number
+
+    adv_list2 = list(
+        client.cas_numbers.get_all(
+            id=seeded_cas[0].id,
+            max_items=10,
+        )
+    )
+    assert adv_list[0].id == seeded_cas[0].id
+    assert_valid_cas_items(adv_list2)
+
+    cas_nums = [seeded_cas[0].number, seeded_cas[1].number]
+    multi_cas = client.cas_numbers.get_all(cas=cas_nums)
+    assert_valid_cas_items(multi_cas)
 
 
 def test_cas_not_found(client: Albert):
+    """Test that requesting a CAS by invalid ID raises an error."""
     with pytest.raises(AlbertHTTPError):
         client.cas_numbers.get_by_id(id="foo bar")
 
 
-def test_advanced_cas_get_all(client: Albert, seeded_cas: list[Cas]):
-    number = seeded_cas[0].number
-    adv_list = client.cas_numbers.get_all(number=number, order_by=OrderBy.DESCENDING)
-    adv_list = list(adv_list)
-    _get_all_asserts(adv_list)
-
-    assert adv_list[0].number == number
-
-    adv_list2 = client.cas_numbers.get_all(id=seeded_cas[0].id)
-    _get_all_asserts(adv_list2)
-
-    small_page = client.cas_numbers.get_all(limit=2)
-    _get_all_asserts(small_page)
-
-    cas_nums = [seeded_cas[0].number, seeded_cas[1].number]
-    multi_cas = client.cas_numbers.list(cas=cas_nums)
-    _list_asserts(multi_cas)
-
-
 def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
-    # Check if CAS exists for a seeded CAS number
+    """Test that exists() returns True for known CAS and False for unknown CAS."""
     cas_number = seeded_cas[0].number
     assert client.cas_numbers.exists(number=cas_number)
-
-    # Check if CAS does not exist for a non-existent CAS number
     assert not client.cas_numbers.exists(number=f"{uuid.uuid4()}")
 
 
 def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
-    # Update the description of a seeded CAS entry
+    """Test that updating a CAS object reflects changes."""
     cas_to_update = seeded_cas[0]
     updated_description = f"{seed_prefix} - A new description"
     cas_to_update.description = updated_description
@@ -72,6 +77,7 @@ def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
 
 
 def test_get_by_number(client: Albert, seeded_cas: list[Cas]):
+    """Test get_by_number() returns the correct CAS using exact match."""
     returned_cas = client.cas_numbers.get_by_number(number=seeded_cas[0].number, exact_match=True)
     assert returned_cas.id == seeded_cas[0].id
     assert returned_cas.number == seeded_cas[0].number

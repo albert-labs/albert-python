@@ -117,6 +117,9 @@ nav:
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
+      - Authenticaton:
+          - Albert Client Credentials: credentials.md
+          - Albert SSO Client: sso.md
       - Collections:
           - Attachments: collections/attachments.md
           - Batch Data: collections/batch_data.md

@@ -3,9 +3,8 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
@@ -33,37 +32,48 @@ class CompanyCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 50,
         name: str | list[str] = None,
         exact_match: bool = True,
         start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Company]:
         """
         Get all company entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of companies to return, by default 50.
-        name : Union[str, None], optional
-            The name of the company to filter by, by default None.
+        name : str | list[str], optional
+            The name(s) of the company to filter by.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            Whether to match the name(s) exactly. Default is True.
+        start_key : str, optional
+            Key to start paginated results from.
+        page_size : int, optional
+            Number of companies to return per page. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
-        Iterator
-            An iterator of Company objects.
+        Iterator[Company]
+            An iterator of Company entities.
         """
-        params = {"limit": limit, "dupDetection": "false", "startKey": start_key}
+        params = {
+            "dupDetection": "false",
+            "startKey": start_key,
+        }
         if name:
             params["name"] = name if isinstance(name, list) else [name]
             params["exactMatch"] = str(exact_match).lower()
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Company(**item) for item in items],
         )
 
@@ -122,7 +132,7 @@ class CompanyCollection(BaseCollection):
         Company
             The Company object if found, None otherwise.
         """
-        found = self.get_all(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     def create(self, *, company: str | Company, check_if_exists: bool = True) -> Company:

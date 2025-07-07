@@ -4,7 +4,6 @@ from enum import Enum
 from pydantic import EmailStr, Field
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.enums import OrderBy, Status
 from albert.core.shared.identifiers import UserId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
@@ -85,25 +84,3 @@ class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
     location_id: str | None = Field(None, alias="locationId")
     roles: list[UserSearchRoleItem] = Field(max_length=1, default_factory=list, alias="role")
     subscription: str | None = None
-
-
-class UserFilterParams(BaseAlbertModel):
-    """Structured filters for searching users, with API-compatible query parameter names."""
-
-    limit: int = Field(default=50, ge=1, le=1000)
-    offset: int | None = Field(default=None)
-    text: str | None = Field(default=None)
-    sort_by: str | None = Field(default=None, alias="sortBy")
-    order_by: OrderBy = Field(default=OrderBy.DESCENDING, alias="order")
-    roles: list[str] | None = None
-    teams: list[str] | None = None
-    locations: list[str] | None = None
-    status: list[Status] | None = None
-    user_id: list[str] | None = Field(default=None, alias="userId")
-    subscription: list[str] | None = None
-    search_fields: list[str] | None = Field(default=None, alias="searchFields")
-    facet_text: str | None = Field(default=None, alias="facetText")
-    facet_field: str | None = Field(default=None, alias="facetField")
-    contains_field: list[str] | None = Field(default=None, alias="containsField")
-    contains_text: list[str] | None = Field(default=None, alias="containsText")
-    mentions: bool | None = None

@@ -1,3 +1,4 @@
+import json
 from collections.abc import Iterator
 
 import jwt
@@ -6,9 +7,9 @@ from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode, Status
+from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.exceptions import AlbertHTTPError
-from albert.resources.users import User, UserFilterParams, UserFilterType, UserSearchItem
+from albert.resources.users import User, UserFilterType, UserSearchItem
 
 
 class UserCollection(BaseCollection):
@@ -59,32 +60,104 @@ class UserCollection(BaseCollection):
         response = self.session.get(url)
         return User(**response.json())
 
-    def search(self, *, params: UserFilterParams | None = None) -> Iterator[UserSearchItem]:
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        sort_by: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        roles: list[str] | None = None,
+        teams: list[str] | None = None,
+        locations: list[str] | None = None,
+        status: list[Status] | None = None,
+        user_id: list[str] | None = None,
+        subscription: list[str] | None = None,
+        search_fields: list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        mentions: bool | None = None,
+        offset: int = 0,
+        page_size: int = 50,
+        max_items: int | None = None,
+    ) -> Iterator[UserSearchItem]:
         """
-        Searches for Users matching the provided criteria.
+        Searches for users matching the provided filters.
 
         ⚠️ This method returns partial (unhydrated) search results for performance.
-        To retrieve fully detailed objects, use :meth:`get_all` instead.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        params : UserFilterParams, optional
-            Structured search filters for user listing.
+        text : str, optional
+            Free text search across multiple user fields.
+        sort_by : str, optional
+            Field to sort results by.
+        order_by : OrderBy, optional
+            Sort order, ascending or descending.
+        roles : list[str], optional
+            Filter by assigned roles.
+        teams : list[str], optional
+            Filter by teams.
+        locations : list[str], optional
+            Filter by associated location IDs.
+        status : list[Status], optional
+            Filter by user status.
+        user_id : list[str], optional
+            Filter by specific user IDs.
+        subscription : list[str], optional
+            Filter by subscription type.
+        search_fields : list[str], optional
+            Fields to apply text search across.
+        facet_text : str, optional
+            Text to search within facets.
+        facet_field : str, optional
+            Facet field to apply facet_text on.
+        contains_field : list[str], optional
+            Field names for "contains" filter logic.
+        contains_text : list[str], optional
+            Text snippets to search in "contains" fields.
+        mentions : bool, optional
+            Filter by users who are mentioned.
+        offset : int, optional
+            Number of results to skip for pagination. Default is 0.
+        page_size : int, optional
+            Number of items per page/request. Default is 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
-        Iterator[User]
-            An iterator of partial User entities.
+        Iterator[UserSearchItem]
+            An iterator of partial user results matching the criteria.
         """
-
-        params = params or UserFilterParams()
-        query_params = params.model_dump(exclude_none=True, by_alias=True)
+        params = {
+            "text": text,
+            "sortBy": sort_by,
+            "order": order_by.value,
+            "roles": roles,
+            "teams": teams,
+            "locations": locations,
+            "status": status,
+            "userId": user_id,
+            "subscription": subscription,
+            "searchFields": search_fields,
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "mentions": json.dumps(mentions) if mentions is not None else None,
+            "offset": offset,
+        }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=query_params,
+            params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [
                 UserSearchItem(**item)._bind_collection(self) for item in items
             ],
@@ -93,11 +166,12 @@ class UserCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 100,
         status: Status | None = None,
         type: UserFilterType | None = None,
         id: list[str] | None = None,
         start_key: str | None = None,
+        page_size: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[User]:
         """
         Retrieve fully hydrated User entities with optional filters.
@@ -107,24 +181,25 @@ class UserCollection(BaseCollection):
 
         Parameters
         ----------
-        limit : int
-            Max results per page.
         status : Status, optional
             Filter by user status.
-        type : UserFilterType
+        type : UserFilterType, optional
             Attribute name to filter by (e.g., 'role').
         id : list[str], optional
             Values of the attribute to filter on.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
+        start_key : str, optional
+            The starting point for the next set of results.
+        page_size : int, optional
+            Number of items per page to fetch from the API, by default 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[User]
-            Fully hydrated User entities.
+            User entities.
         """
         params = {
-            "limit": limit,
             "status": status,
             "type": type.value if type else None,
             "id": id,
@@ -145,6 +220,8 @@ class UserCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=deserialize,
         )
 
