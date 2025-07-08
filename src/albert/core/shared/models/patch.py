@@ -13,7 +13,7 @@ class PatchOperation(str, Enum):
 
 
 class PatchDatum(BaseAlbertModel):
-    operation: str
+    operation: str | None
     attribute: str
     new_value: Any | None = Field(default=None, alias="newValue")
     old_value: Any | None = Field(default=None, alias="oldValue")

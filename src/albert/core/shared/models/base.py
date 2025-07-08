@@ -11,7 +11,7 @@ from albert.exceptions import AlbertException
 class AuditFields(BaseAlbertModel):
     """The audit fields for a resource"""
 
-    by: str = Field(default=None)
+    by: str | None = Field(default=None)
     by_name: str | None = Field(default=None, alias="byName")
     at: datetime | None = Field(default=None)
 

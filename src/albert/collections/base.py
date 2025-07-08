@@ -16,7 +16,7 @@ class BaseCollection:
     """
 
     # Class property specifying updatable attributes
-    _updatable_attributes = {}
+    _updatable_attributes: dict = {}
 
     def __init__(self, *, session: AlbertSession):
         self.session = session

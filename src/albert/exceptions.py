@@ -43,7 +43,10 @@ class BadRequestError(AlbertClientError):
     @classmethod
     def _format_message(cls, response: requests.Response) -> str:
         message = super()._format_message(response)
-        message += f"\nBody:\n{response.request.body}"
+        body = response.request.body
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+        message += f"\nBody:\n{body}"
         return message
 
 

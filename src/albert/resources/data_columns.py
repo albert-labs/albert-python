@@ -9,4 +9,4 @@ class DataColumn(BaseResource):
     defalt: bool = False
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
 
-    id: str = Field(default=None, alias="albertId")
+    id: str | None = Field(default=None, alias="albertId")

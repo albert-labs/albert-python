@@ -94,6 +94,7 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
                 secret=SecretStr(client_secret),
                 base_url=base_url,
             )
+        return None
 
     def _request_access_token(self) -> None:
         """Request and store a new access token using client credentials."""

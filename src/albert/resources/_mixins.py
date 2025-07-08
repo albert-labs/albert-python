@@ -27,4 +27,6 @@ class HydrationMixin(Generic[T]):
             raise AlbertException("This resource does not support hydration.")
         if not hasattr(self, "id") or self.id is None:
             raise ValueError("Resource must have a non-null `id` to hydrate.")
-        return self._collection.get_by_id(id=self.id)
+        if hasattr(self._collection, "get_by_id"):
+            return self._collection.get_by_id(id=self.id)
+        raise AlbertException("Collection does not contain `get_by_id`.")

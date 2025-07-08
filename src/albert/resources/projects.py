@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import Status
 from albert.core.shared.identifiers import ProjectId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
@@ -95,7 +96,7 @@ class Project(BaseResource):
     grid: GridDefault | None = None
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     # Read-only fields
-    status: str | None = Field(default=None, exclude=True, frozen=True)
+    status: Status | None = Field(default=None, exclude=True, frozen=True)
     # Cannot be sent in a create POST, but can be used to from a PATCH for update.
     state: State | None = Field(default=None, exclude=True)
 

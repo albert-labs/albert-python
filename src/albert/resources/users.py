@@ -49,7 +49,7 @@ class User(BaseResource):
     name: str
     id: UserId | None = Field(None, alias="albertId")
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
-    email: EmailStr = Field(default=None, alias="email")
+    email: EmailStr | None = Field(default=None, alias="email")
     roles: list[SerializeAsEntityLink[Role]] = Field(
         max_length=1, default_factory=list, alias="Roles"
     )

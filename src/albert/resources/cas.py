@@ -30,24 +30,24 @@ class Cas(BaseAlbertModel):
     """Represents a CAS entity."""
 
     number: str = Field(..., description="The CAS number.")
-    name: str | None = Field(None, description="Name of the CAS.")
-    description: str | None = Field(None, description="The description or name of the CAS.")
-    notes: str | None = Field(None, description="Notes related to the CAS.")
-    category: CasCategory | None = Field(None, description="The category of the CAS.")
-    smiles: str | None = Field(None, alias="casSmiles", description="CAS SMILES notation.")
-    inchi_key: str | None = Field(None, alias="inchiKey", description="InChIKey of the CAS.")
-    iupac_name: str | None = Field(None, alias="iUpacName", description="IUPAC name of the CAS.")
-    id: str | None = Field(None, alias="albertId", description="The AlbertID of the CAS.")
-    hazards: list[Hazard] | None = Field(None, description="Hazards associated with the CAS.")
-    wgk: str | None = Field(None, description="German Water Hazard Class (WGK) number.")
+    name: str | None = Field(default=None, description="Name of the CAS.")
+    description: str | None = Field(default=None, description="The description or name of the CAS.")
+    notes: str | None = Field(default=None, description="Notes related to the CAS.")
+    category: CasCategory | None = Field(default=None, description="The category of the CAS.")
+    smiles: str | None = Field(default=None, alias="casSmiles", description="CAS SMILES notation.")
+    inchi_key: str | None = Field(default=None, alias="inchiKey", description="InChIKey of the CAS.")
+    iupac_name: str | None = Field(default=None, alias="iUpacName", description="IUPAC name of the CAS.")
+    id: str | None = Field(default=None, alias="albertId", description="The AlbertID of the CAS.")
+    hazards: list[Hazard] | None = Field(default=None, description="Hazards associated with the CAS.")
+    wgk: str | None = Field(default=None, description="German Water Hazard Class (WGK) number.")
     ec_number: str | None = Field(
-        None, alias="ecListNo", description="European Community (EC) number."
+        default=None, alias="ecListNo", description="European Community (EC) number."
     )
-    type: str | None = Field(None, description="Type of the CAS.")
+    type: str | None = Field(default=None, description="Type of the CAS.")
     classification_type: str | None = Field(
-        None, alias="classificationType", description="Classification type of the CAS."
+        default=None, alias="classificationType", description="Classification type of the CAS."
     )
-    order: str | None = Field(None, description="CAS order.")
+    order: str | None = Field(default=None, description="CAS order.")
 
     @classmethod
     def from_string(cls, *, number: str) -> "Cas":

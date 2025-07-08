@@ -35,12 +35,12 @@ class Tag(BaseResource):
     # different endpoints use different aliases for the fields
     # the search endpoints use the 'tag' prefix in their results.
     tag: str = Field(
-        alias=AliasChoices("name", "tagName"),
+        validation_alias=AliasChoices("name", "tagName"),
         serialization_alias="name",
     )
     id: str | None = Field(
         None,
-        alias=AliasChoices("albertId", "tagId"),
+        validation_alias=AliasChoices("albertId", "tagId"),
         serialization_alias="albertId",
     )
 
@@ -59,7 +59,7 @@ class Tag(BaseResource):
         Tag
             The Tag object created from the string.
         """
-        return cls(tag=tag)
+        return cls(tag=tag, id=None)
 
 
 class BaseTaggedEntity(BaseResource):

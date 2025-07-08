@@ -1,3 +1,4 @@
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -72,7 +73,7 @@ class AlbertSession(requests.Session):
             return self._auth_manager.get_access_token()
         return self._provided_token
 
-    def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
+    def request(self, method: str, path: str, *args: Any, **kwargs: Any) -> requests.Response:
         self.headers["Authorization"] = f"Bearer {self._access_token}"
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
         with handle_http_errors():

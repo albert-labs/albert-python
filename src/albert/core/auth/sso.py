@@ -122,7 +122,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
             self._request_access_token()
         return self._token_info.access_token
 
-    def _build_login_url(self, *, port: int, tenant_id: str) -> str:
+    def _build_login_url(self, *, port: int, tenant_id: str | None) -> str:
         """Build sso login URL."""
         path = "/api/v3/login"
         raw = {

@@ -28,7 +28,7 @@ class AlbertPaginator(Iterator[ItemType]):
         mode: PaginationMode,
         session: AlbertSession,
         deserialize: Callable[[Iterable[dict]], Iterable[ItemType]],
-        params: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
         page_size: int = 100,
         max_items: int | None = None,
     ):

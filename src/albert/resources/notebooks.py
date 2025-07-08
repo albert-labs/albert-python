@@ -96,7 +96,7 @@ class ChecklistBlock(BaseBlock):
                 return i.checked
 
         # return None if no match
-        return
+        return None
 
 
 class AttachesContent(BaseAlbertModel):
@@ -264,7 +264,7 @@ class PutBlockDatum(BaseAlbertModel):
 
     @model_validator(mode="after")
     def content_matches_type(self) -> "PutBlockDatum":
-        if self.content is None:
+        if self.content is None or self.type is None:
             return self  # skip check if there's no content
 
         content_type = allowed_notebook_contents.get(self.type)
@@ -291,7 +291,7 @@ class PutBlockPayload(BaseAlbertModel):
 
 
 class NotebookCopyACL(BaseResource):
-    fgclist: list[ACL] = Field(default=None)
+    fgclist: list[ACL] | None = Field(default=None)
     acl_class: str = Field(alias="class")
 
 

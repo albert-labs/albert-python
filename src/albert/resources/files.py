@@ -40,4 +40,4 @@ class FileInfo(BaseAlbertModel):
     namespace: FileNamespace | None = Field(default=None)
     content_type: str = Field(..., alias="contentType")
     last_modified: datetime = Field(..., alias="lastModified")
-    metadata: list[dict[str, str]] = Field(..., default_factory=list)
+    metadata: list[dict[str, str]] = Field(default_factory=list)
