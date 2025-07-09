@@ -37,6 +37,7 @@ commands:
       - run:
           name: Deploy Docs with mike
           command: |
+            git fetch origin gh-pages:gh-pages 
             if [ "<< parameters.mode >>" = "dev" ]; then
               echo "Deploying dev docs"
               uv run mike deploy --push --update-aliases dev
