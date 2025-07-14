@@ -1,3 +1,5 @@
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection, OrderBy
 from albert.resources.batch_data import BatchData, BatchDataType, BatchValuePatchPayload
 from albert.resources.identifiers import TaskId
@@ -21,6 +23,7 @@ class BatchDataCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{BatchDataCollection._api_version}/batchdata"
 
+    @validate_call
     def create_batch_data(self, *, task_id: TaskId):
         """
         Create a new batch data entry.
@@ -39,6 +42,7 @@ class BatchDataCollection(BaseCollection):
         response = self.session.post(url, json={"parentId": task_id})
         return BatchData(**response.json())
 
+    @validate_call
     def get(
         self,
         *,
@@ -78,15 +82,16 @@ class BatchDataCollection(BaseCollection):
         response = self.session.get(self.base_path, params=params)
         return BatchData(**response.json())
 
+    @validate_call
     def update_used_batch_amounts(
-        self, *, task_id: str, patches=list[BatchValuePatchPayload]
+        self, *, task_id: TaskId, patches: list[BatchValuePatchPayload]
     ) -> None:
         """
         Update the used batch amounts for a given task ID.
 
         Parameters
         ----------
-        task_id : str
+        task_id : TaskId
             The ID of the task to update.
         patches : list[BatchValuePatchPayload]
             The patch payloads containing the data to update.
