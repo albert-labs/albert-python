@@ -31,6 +31,7 @@ class CasCollection(BaseCollection):
         limit: int = 50,
         start_key: str | None = None,
         number: str | None = None,
+        cas: list[str] | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
     ) -> Iterator[Cas]:
@@ -45,6 +46,8 @@ class CasCollection(BaseCollection):
             The primary key of the first item that this operation will evaluate.
         number : str | None, optional
             Fetches list of CAS by CAS number.
+        cas : list[str] | None, optional
+            Fetches list of CAS by a list of CAS numbers.
         id : str | None, optional
             Fetches list of CAS using the CAS Albert ID.
         order_by : OrderBy, optional
@@ -60,6 +63,7 @@ class CasCollection(BaseCollection):
             "orderBy": order_by.value,
             "startKey": start_key,
             "number": number,
+            "cas": cas,
             "albertId": id,
         }
         return AlbertPaginator(

@@ -92,6 +92,9 @@ class Standard(BaseAlbertModel):
     standard_organization: str | None = Field(
         alias="standardOrganization", default=None, frozen=True
     )
+    standard_organization_id: int | None = Field(
+        alias="standardOrganizationId", default=None, frozen=True
+    )
 
 
 class BlockDataTemplateInfo(BaseAlbertModel):
@@ -120,6 +123,8 @@ class InventoryInformation(BaseAlbertModel):
         The inventory id of the item to be used in the task.
     lot_id : str, optional
         The lot id of the item to be used in the task. Reccomended for Property and General tasks.
+    lot_number : str, optional
+        The lot number of the item to be used in the task. Optional.
     batch_size : float, Required for Batch tasks, otherwise optional.
         The batch size to make of the related InventoryItem. Required for Batch tasks.
     selected_lot : bool, read only
@@ -128,6 +133,7 @@ class InventoryInformation(BaseAlbertModel):
 
     inventory_id: InventoryId = Field(alias="id")
     lot_id: LotId | None = Field(alias="lotId", default=None)
+    lot_number: str | None = Field(default=None, alias="lotNumber")
     inv_lot_unique_id: str | None = Field(alias="invLotUniqueId", default=None)
     batch_size: float | None = Field(alias="batchSize", default=None)
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)

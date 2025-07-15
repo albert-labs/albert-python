@@ -46,6 +46,10 @@ def test_advanced_cas_list(client: Albert, seeded_cas: list[Cas]):
     small_page = client.cas_numbers.list(limit=2)
     _list_asserts(small_page)
 
+    cas_nums = [seeded_cas[0].number, seeded_cas[1].number]
+    multi_cas = client.cas_numbers.list(cas=cas_nums)
+    _list_asserts(multi_cas)
+
 
 def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
     # Check if CAS exists for a seeded CAS number

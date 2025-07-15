@@ -1,7 +1,24 @@
 site_name: "Albert Python SDK Docs"
 site_url: https://docs.developer.albertinvent.com/albert-python/
+repo_url: https://github.com/albert-labs/albert-python
 extra:
   base_path: /albert-python/
+  version:
+    provider: mike
+  analytics:
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/thumb-up-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/thumb-down-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback!
 use_directory_urls: true
 theme:
   name: "material"
@@ -9,6 +26,37 @@ theme:
     text: Poppins
   logo: assets/Wordmark_White.png
   favicon: assets/Vector_Favicon_Blue.svg
+  features:
+    - content.tabs.link # Tabs can contain links
+    - content.code.annotate # Annotated code blocks (tooltips)
+    - content.code.copy # Copy-to-clipboard button for code
+    - announce.dismiss # Dismissable banners
+    - navigation.tabs # Top-level nav as horizontal tabs
+    - navigation.instant # SPA-like instant nav
+    - navigation.instant.prefetch # Preload nearby pages
+    - navigation.instant.preview # Hover previews of pages
+    - navigation.instant.progress # Progress bar during nav
+    - navigation.path # Breadcrumb-style nav
+    - navigation.sections # Sidebar sections
+    - navigation.top # Scroll-to-top button
+    - navigation.tracking # Highlight section in sidebar
+    - search.suggest # Smart search suggestions
+    - toc.follow # Highlight TOC entry while scrolling
+
+  palette:
+    - scheme: custom # light mode
+      toggle:
+        icon: material/brightness-7
+        name: "Switch to dark mode"
+      primary: custom
+    - scheme: slate # dark mode
+      toggle:
+        icon: material/brightness-4
+        name: "Switch to light mode"
+      primary: custom
+
+extra_css:
+  - styles/extra.css
 
 markdown_extensions:
   - admonition
@@ -27,81 +75,131 @@ plugins:
       handlers:
         python:
           options:
-            members: true
-            show_submodules: true
-            docstring_style: numpy
-            extensions:
-              - griffe_pydantic:
-                  schema: true
-            annotations_path: brief
-            # members_order: source #this does it in order of the file, ABC by default
-            filters: 
-              - "!^_"
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
             docstring_options:
               ignore_init_summary: true
             merge_init_into_class: true
-            separate_signature: true
             show_signature_annotations: true
             signature_crossrefs: true
-            show_if_no_docstring: true
-            summary:
-              attributes: false
-              functions: true
-              modules: false #I'm not sure what this one does, honestly
-            show_source: true
+            docstring_style: numpy
             show_root_heading: true
             show_root_toc_entry: true
-            show_root_full_path: true
+            show_if_no_docstring: true
+            show_labels: false
+            group_by_category: true
             heading_level: 2
-            show_bases: true
-
-          import:
+            summary:
+              attributes: true
+              functions: true
+              modules: true
+            extensions:
+              - griffe_pydantic:
+                  schema: true
+            show_symbol_type_heading: true
+          inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
+            - url: https://typing-extensions.readthedocs.io/en/latest/objects.inv
           rendering:
             show_docstring_attributes: true
+  - mike:
+      alias_type: symlink
+      canonical_version: latest
+      deploy_prefix: albert-python
+
+watch:
+  - src
 
 nav:
   - Getting Started: index.md
   - SDK Reference:
-    - Albert Client: albert.md
-    - Attachments: attachments.md
-    - Batch Data: batch_data.md
-    - Breakthrough:
-      - Breakthrough Datasets: btdataset.md
-      - Breakthrough Insights: btinsight.md
-      - Breakthrough Model: btmodel.md
-    - Cas: cas.md
-    - Companies: companies.md
-    - Custom Fields: custom_fields.md
-    - Custom Templates: custom_templates.md
-    - Data Columns: data_columns.md
-    - Data Templates: data_templates.md
-    - Files: files.md
-    - Inventory: inventory.md
-    - Links: links.md
-    - Lists: lists.md
-    - Locations: locations.md
-    - Lots: lots.md
-    - Notebooks: notebooks.md
-    - Notes: notes.md
-    - Parameter Groups: parameter_groups.md
-    - Parameters: parameters.md
-    - Pricings: pricings.md
-    - Product Design: product_design.md
-    - Projects: projects.md
-    - Property Data: property_data.md
-    - Reports: reports.md
-    - Roles: roles.md
-    - Storage Locations: storage_locations.md
-    - Substances: substances.md
-    - Tags: tags.md
-    - Tasks: tasks.md
-    - UN Numbers: un_numbers.md
-    - Units: units.md
-    - Users: users.md
-    - Workflows: workflows.md
-    - Worksheets:
-      - Worksheets: worksheets.md
-      - Sheets: sheets.md
+      - Clients:
+          - Albert Client: albert.md
+      - Collections:
+          - Attachments: collections/attachments.md
+          - Batch Data: collections/batch_data.md
+          - Base: collections/base.md
+          - Breakthrough:
+              - Breakthrough Datasets: collections/btdataset.md
+              - Breakthrough Insights: collections/btinsight.md
+              - Breakthrough Model: collections/btmodel.md
+          - Cas: collections/cas.md
+          - Companies: collections/companies.md
+          - Custom Fields: collections/custom_fields.md
+          - Custom Templates: collections/custom_templates.md
+          - Data Columns: collections/data_columns.md
+          - Data Templates: collections/data_templates.md
+          - Files: collections/files.md
+          - Inventory: collections/inventory.md
+          - Links: collections/links.md
+          - Lists: collections/lists.md
+          - Locations: collections/locations.md
+          - Lots: collections/lots.md
+          - Notebooks: collections/notebooks.md
+          - Notes: collections/notes.md
+          - Parameter Groups: collections/parameter_groups.md
+          - Parameters: collections/parameters.md
+          - Pricings: collections/pricings.md
+          - Product Design: collections/product_design.md
+          - Projects: collections/projects.md
+          - Property Data: collections/property_data.md
+          - Reports: collections/reports.md
+          - Roles: collections/roles.md
+          - Storage Locations: collections/storage_locations.md
+          - Substances: collections/substances.md
+          - Tags: collections/tags.md
+          - Tasks: collections/tasks.md
+          - UN Numbers: collections/un_numbers.md
+          - Units: collections/units.md
+          - Users: collections/users.md
+          - Workflows: collections/workflows.md
+          - Worksheets: collections/worksheets.md
+      - Resources:
+          - Attachments: resources/attachments.md
+          - Batch Data: resources/batch_data.md
+          - Breakthrough:
+              - Breakthrough Datasets: resources/btdataset.md
+              - Breakthrough Insights: resources/btinsight.md
+              - Breakthrough Model: resources/btmodel.md
+          - Cas: resources/cas.md
+          - Companies: resources/companies.md
+          - Custom Fields: resources/custom_fields.md
+          - Custom Templates: resources/custom_templates.md
+          - Data Columns: resources/data_columns.md
+          - Data Templates: resources/data_templates.md
+          - Files: resources/files.md
+          - Identifiers: resources/identifiers.md
+          - Inventory: resources/inventory.md
+          - Links: resources/links.md
+          - Lists: resources/lists.md
+          - Locations: resources/locations.md
+          - Lots: resources/lots.md
+          - Notebooks: resources/notebooks.md
+          - Notes: resources/notes.md
+          - Parameter Groups: resources/parameter_groups.md
+          - Parameters: resources/parameters.md
+          - Pricings: resources/pricings.md
+          - Product Design: resources/product_design.md
+          - Projects: resources/projects.md
+          - Property Data: resources/property_data.md
+          - Reports: resources/reports.md
+          - Roles: resources/roles.md
+          - Storage Locations: resources/storage_locations.md
+          - Substances: resources/substances.md
+          - Tags: resources/tags.md
+          - Tasks: resources/tasks.md
+          - UN Numbers: resources/un_numbers.md
+          - Units: resources/units.md
+          - Users: resources/users.md
+          - Workflows: resources/workflows.md
+          - Worksheets:
+              - Worksheets: resources/worksheets.md
+              - Sheets: resources/sheets.md
 
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

@@ -343,7 +343,7 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         Project(
             description=f"{seed_prefix} - A public research project focused on new materials.",
             locations=[EntityLink(id=seeded_locations[1].id)],
-            project_class=ProjectClass.PUBLIC,
+            project_class=ProjectClass.SHARED,
             grid=GridDefault.WKS,
         ),
         # Project with production category and custom ACLs

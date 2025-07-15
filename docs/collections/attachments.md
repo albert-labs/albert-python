@@ -1,0 +1,1 @@
+::: albert.collections.attachments.AttachmentCollection

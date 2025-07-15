@@ -12,7 +12,6 @@ class ProjectClass(str, Enum):
     """The ACL Class of a project"""
 
     SHARED = "shared"
-    PUBLIC = "public"
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
 
