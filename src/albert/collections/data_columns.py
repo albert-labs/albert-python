@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -103,8 +102,8 @@ class DataColumnCollection(BaseCollection):
             "orderBy": order_by.value,
             "startKey": start_key,
             "name": [name] if isinstance(name, str) else name,
-            "exactMatch": json.dumps(exact_match) if exact_match is not None else None,
-            "default": json.dumps(default) if default is not None else None,
+            "exactMatch": exact_match,
+            "default": default,
             "dataColumns": [ids] if isinstance(ids, str) else ids,
         }
 

@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -160,8 +159,8 @@ class CustomFieldCollection(BaseCollection):
         params = {
             "name": name,
             "service": service,
-            "lookupColumn": json.dumps(lookup_column) if lookup_column is not None else None,
-            "lookupRow": json.dumps(lookup_row) if lookup_row is not None else None,
+            "lookupColumn": lookup_column,
+            "lookupRow": lookup_row,
             "startKey": start_key,
         }
 

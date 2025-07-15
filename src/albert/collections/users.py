@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator
 
 import jwt
@@ -147,7 +146,7 @@ class UserCollection(BaseCollection):
             "facetField": facet_field,
             "containsField": contains_field,
             "containsText": contains_text,
-            "mentions": json.dumps(mentions) if mentions is not None else None,
+            "mentions": mentions,
             "offset": offset,
         }
 

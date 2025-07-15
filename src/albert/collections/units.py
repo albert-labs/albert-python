@@ -1,4 +1,3 @@
-import json
 import logging
 from collections.abc import Iterator
 
@@ -176,8 +175,8 @@ class UnitCollection(BaseCollection):
         params = {
             "orderBy": order_by.value,
             "name": [name] if isinstance(name, str) else name,
-            "exactMatch": json.dumps(exact_match),
-            "verified": json.dumps(verified) if verified is not None else None,
+            "exactMatch": exact_match,
+            "verified": verified,
             "category": category.value if isinstance(category, UnitCategory) else category,
             "startKey": start_key,
         }

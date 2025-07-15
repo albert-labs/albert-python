@@ -1,6 +1,6 @@
+import json
 from collections.abc import Callable, Iterable, Iterator
 from itertools import islice
-import json
 from typing import Any, TypeVar
 from urllib.parse import quote_plus
 

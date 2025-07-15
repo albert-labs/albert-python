@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -148,8 +147,8 @@ class LotCollection(BaseCollection):
             "inventoryOnHand": inventory_on_hand,
             "locationId": location_id,
             "startKey": start_key,
-            "exactMatch": json.dumps(exact_match),
-            "beginsWith": json.dumps(begins_with),
+            "exactMatch": exact_match,
+            "beginsWith": begins_with,
         }
 
         return AlbertPaginator(

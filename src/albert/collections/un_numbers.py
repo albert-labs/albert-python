@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -100,7 +99,7 @@ class UnNumberCollection(BaseCollection):
         params = {"startKey": start_key}
         if name:
             params["name"] = name
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,

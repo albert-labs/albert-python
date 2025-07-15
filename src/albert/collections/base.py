@@ -12,7 +12,6 @@ class BaseCollection:
     ----------
     session : AlbertSession
         The Albert API Session instance.
-
     """
 
     # Class property specifying updatable attributes

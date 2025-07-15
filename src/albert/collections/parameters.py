@@ -1,4 +1,3 @@
-import json
 import logging
 from collections.abc import Iterator
 
@@ -126,7 +125,7 @@ class ParameterCollection(BaseCollection):
         }
         if names:
             params["name"] = [names] if isinstance(names, str) else names
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,
