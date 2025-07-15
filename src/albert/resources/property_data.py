@@ -69,7 +69,7 @@ class Trial(BaseAlbertModel):
 class DataInterval(BaseAlbertModel):
     interval_combination: str = Field(alias="intervalCombination")
     void: bool = Field(default=False)
-    trials: list[Trial] = Field(default_factory=list, alias="Trials")
+    trials: list[Trial | None] = Field(default_factory=list, alias="Trials")
     name: str | None = Field(default=None)
 
 
@@ -177,9 +177,23 @@ class BulkPropertyData(BaseAlbertModel):
         df = df.fillna("").astype(str)
         columns = []
         for column in df.columns:
-            data_column = BulkPropertyDataColumn(
-                data_column_name=column, data_series=df[column].tolist()
-            )
+            data_series = df[column].tolist()
+            # drop any empty values only if they are at the end of the list until the first non-empty value
+            # data_series = data_series[
+            #     : data_series.index(
+            #         next(
+            #             (
+            #                 x
+            #                 for x in reversed(data_series)
+            #                 if x != "" and x != "nan" and x is not None and not pd.isna(x)
+            #             ),
+            #             None,
+            #         )
+            #     )
+            #     + 1
+            # ]
+
+            data_column = BulkPropertyDataColumn(data_column_name=column, data_series=data_series)
             columns.append(data_column)
         return BulkPropertyData(columns=columns)
 

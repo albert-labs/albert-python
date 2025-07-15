@@ -4,6 +4,7 @@ from pydantic import Field, model_validator
 
 from albert.resources.base import (
     BaseAlbertModel,
+    EntityLink,
     MetadataItem,
     SecurityClass,
 )
@@ -47,6 +48,8 @@ class DataColumnValue(BaseAlbertModel):
             raise ValueError("If both are provided, data_column_id and data_column.id must match")
         elif self.data_column_id is None:
             self.data_column_id = self.data_column.id
+        if self.unit is not None:
+            object.__setattr__(self, "unit", EntityLink(id=self.unit.id))
         return self
 
 

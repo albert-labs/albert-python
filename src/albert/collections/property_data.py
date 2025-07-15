@@ -372,12 +372,27 @@ class PropertyDataCollection(BaseCollection):
             "history": "true",
         }
         params = {k: v for k, v in params.items() if v is not None}
+        print(f"Adding {len(properties)} properties to task {task_id}")
+
+        print(
+            [
+                x.model_dump(exclude_none=True, by_alias=True, mode="json")
+                for x in properties
+                if x.value is not None and x.value != ""
+            ]
+        )
+        print(params)
         response = self.session.post(
             url=f"{self.base_path}/{task_id}",
-            json=[x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties],
+            json=[
+                x.model_dump(exclude_none=True, by_alias=True, mode="json")
+                for x in properties
+                if x.value is not None and x.value != ""
+            ],
             params=params,
         )
-
+        print(response.request.url)
+        print(response.json())
         registered_properties = [
             TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
         ]
@@ -530,7 +545,8 @@ class PropertyDataCollection(BaseCollection):
                 for col_name, col_info in column_map.items():
                     if col_name not in dataframe.columns:
                         raise ValueError(f"Column '{col_name}' not found in DataFrame.")
-
+                    if row[col_name] == "nan" or row[col_name] == "" or pd.isna(row[col_name]):
+                        continue
                     task_prop_create = TaskPropertyCreate(
                         data_column=TaskDataColumn(
                             data_column_id=col_info.id,
@@ -674,6 +690,11 @@ class PropertyDataCollection(BaseCollection):
     ):
         patches = []
         covered_interval_trials = set()
+        existing_data_rows.data[0].trials = [
+            x for x in existing_data_rows.data[0].trials if x is not None
+        ]
+        if len(existing_data_rows.data[0].trials) == 0:
+            return []
         first_row_data_column = existing_data_rows.data[0].trials[0].data_columns
         columns_used_in_calculations = self._get_all_columns_used_in_calculations(
             first_row_data_column=first_row_data_column

@@ -132,6 +132,8 @@ class ParameterValue(BaseAlbertModel):
             object.__setattr__(self, "id", self.parameter.id)
             object.__setattr__(self, "category", self.parameter.category)
             object.__setattr__(self, "name", self.parameter.name)
+        if self.unit is not None:
+            object.__setattr__(self, "unit", EntityLink(id=self.unit.id))
 
         return self
 

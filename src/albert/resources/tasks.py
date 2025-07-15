@@ -2,9 +2,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, TypeAdapter, model_validator
 
-from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
+from albert.resources.base import BaseAlbertModel, EntityLink, MetadataItem, SecurityClass
 from albert.resources.data_templates import DataTemplate
 from albert.resources.identifiers import InventoryId, LotId
 from albert.resources.locations import Location
@@ -334,6 +334,15 @@ class BatchTask(BaseTask):
     workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(
         alias="Workflow", default=None
     )  # not sure what QuantityUsed in the API docs means here.
+
+    @model_validator(mode="after")
+    def set_parameter_fields(self) -> "BatchTask":
+        if self.workflows is not None:
+            object.__setattr__(self, "workflows", [EntityLink(id=x.id) for x in self.workflows])
+        if self.location is not None:
+            object.__setattr__(self, "location", EntityLink(id=self.location.id))
+
+        return self
 
 
 class GeneralTask(BaseTask):

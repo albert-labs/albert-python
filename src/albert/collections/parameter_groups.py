@@ -191,10 +191,12 @@ class ParameterGroupCollection(BaseCollection):
         if len(new_parameter_values) > 0:
             self.session.put(
                 url=new_param_url,
-                json=[
-                    x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                    for x in new_parameter_values
-                ],
+                json={
+                    "Parameters": [
+                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for x in new_parameter_values
+                    ],
+                },
             )
         new_param_sequences = [x.sequence for x in new_parameter_values]
         # handle enum updates
