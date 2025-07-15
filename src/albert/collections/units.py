@@ -42,17 +42,33 @@ class UnitCollection(BaseCollection):
         Unit
             The created Unit object.
         """
-        hit = self.get_by_name(name=unit.name, exact_match=True)
-        if hit is not None:
-            logging.warning(
-                f"Unit with the name {hit.name} already exists. Returning the existing unit."
-            )
-            return hit
         response = self.session.post(
             self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )
-        this_unit = Unit(**response.json())
-        return this_unit
+        unit = Unit(**response.json())
+        return unit
+
+    def get_or_create(self, *, unit: Unit) -> Unit:
+        """
+        Retrieves a Unit or creates it if it does not exist.
+
+        Parameters
+        ----------
+        unit : Unit
+            The unit object to find or create.
+
+        Returns
+        -------
+        Unit
+            The existing or newly created Unit object.
+        """
+        match = self.get_by_name(name=unit.name, exact_match=True)
+        if match:
+            logging.warning(
+                f"Unit with the name {unit.name} already exists. Returning the existing unit."
+            )
+            return match
+        return self.create(unit=unit)
 
     def get_by_id(self, *, id: str) -> Unit:
         """

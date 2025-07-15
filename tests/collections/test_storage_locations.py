@@ -43,10 +43,12 @@ def test_storage_location_get_all_with_filters(
         assert sl.location.id in seeded_location_ids
 
 
-def test_avoids_dupes(caplog, client: Albert, seeded_storage_locations: list[StorageLocation]):
+def test_get_or_create_storage_location(
+    caplog, client: Albert, seeded_storage_locations: list[StorageLocation]
+):
     sl = seeded_storage_locations[0].model_copy(update={"id": None})
 
-    duped = client.storage_locations.create(storage_location=sl)
+    duped = client.storage_locations.get_or_create(storage_location=sl)
     assert (
         f"Storage location with name {sl.name} already exists, returning existing." in caplog.text
     )

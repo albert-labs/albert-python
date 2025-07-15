@@ -190,7 +190,7 @@ def static_lists(
 def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
     seeded = []
     for cas in generate_cas_seeds(seed_prefix):
-        created_cas = client.cas_numbers.create(cas=cas)
+        created_cas = client.cas_numbers.get_or_create(cas=cas)
         seeded.append(created_cas)
 
     # Avoid race condition while it populated through DBs
@@ -207,7 +207,7 @@ def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
 def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
     seeded = []
     for location in generate_location_seeds(seed_prefix):
-        created_location = client.locations.create(location=location)
+        created_location = client.locations.get_or_create(location=location)
         seeded.append(created_location)
 
     yield seeded
@@ -241,7 +241,7 @@ def seeded_projects(
 def seeded_companies(client: Albert, seed_prefix: str) -> Iterator[list[Company]]:
     seeded = []
     for company in generate_company_seeds(seed_prefix):
-        created_company = client.companies.create(company=company)
+        created_company = client.companies.get_or_create(company=company)
         seeded.append(created_company)
 
     yield seeded
@@ -259,7 +259,9 @@ def seeded_storage_locations(
 ) -> Iterator[list[Location]]:
     seeded = []
     for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
-        created_location = client.storage_locations.create(storage_location=storage_location)
+        created_location = client.storage_locations.get_or_create(
+            storage_location=storage_location
+        )
         seeded.append(created_location)
 
     yield seeded
@@ -273,7 +275,7 @@ def seeded_storage_locations(
 def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
     seeded = []
     for tag in generate_tag_seeds(seed_prefix):
-        created_tag = client.tags.create(tag=tag)
+        created_tag = client.tags.get_or_create(tag=tag)
         seeded.append(created_tag)
 
     yield seeded
@@ -287,7 +289,7 @@ def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
 def seeded_units(client: Albert, seed_prefix: str) -> Iterator[list[Unit]]:
     seeded = []
     for unit in generate_unit_seeds(seed_prefix):
-        created_unit = client.units.create(unit=unit)
+        created_unit = client.units.get_or_create(unit=unit)
         seeded.append(created_unit)
 
     # Avoid race condition while it populated through search DBs
@@ -413,7 +415,7 @@ def seeded_inventory(
 def seeded_parameters(client: Albert, seed_prefix: str) -> Iterator[list[Parameter]]:
     seeded = []
     for parameter in generate_parameter_seeds(seed_prefix):
-        created_parameter = client.parameters.create(parameter=parameter)
+        created_parameter = client.parameters.get_or_create(parameter=parameter)
         # Extra get_by_id is required to populate the category field on parameter
         seeded.append(client.parameters.get_by_id(id=created_parameter.id))
     time.sleep(1.5)

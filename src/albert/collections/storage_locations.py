@@ -123,6 +123,25 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The created storage location.
         """
+        response = self.session.post(
+            self.base_path,
+            json=storage_location.model_dump(by_alias=True, exclude_none=True, mode="json"),
+        )
+        return StorageLocation(**response.json())
+
+    def get_or_create(self, *, storage_location: StorageLocation) -> StorageLocation:
+        """Get or create a storage location.
+
+        Parameters
+        ----------
+        storage_location : StorageLocation
+            The storage location to get or create.
+
+        Returns
+        -------
+        StorageLocation
+            The existing or newly created storage location.
+        """
         matching = self.get_all(
             name=storage_location.name, location=storage_location.location, exact_match=True
         )
@@ -132,12 +151,7 @@ class StorageLocationsCollection(BaseCollection):
                     f"Storage location with name {storage_location.name} already exists, returning existing."
                 )
                 return m
-
-        path = self.base_path
-        response = self.session.post(
-            path, json=storage_location.model_dump(by_alias=True, exclude_none=True, mode="json")
-        )
-        return StorageLocation(**response.json())
+        return self.create(storage_location=storage_location)
 
     def delete(self, *, id: str) -> None:
         """Delete a storage location by its ID.

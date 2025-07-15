@@ -79,28 +79,47 @@ class TagCollection(BaseCollection):
 
     def create(self, *, tag: str | Tag) -> Tag:
         """
-        Creates a new tag entity if the given tag does not exist.
+        Creates a new tag entity.
 
         Parameters
         ----------
         tag : Union[str, Tag]
-            The tag name or Tag object to create.
+            The tag name or Tag entity to create.
 
         Returns
         -------
         Tag
-            The created Tag object or the existing Tag object if it already exists.
+            The created Tag entity.
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
-        hit = self.get_by_name(name=tag.tag, exact_match=True)
-        if hit is not None:
-            logging.warning(f"Tag {hit.tag} already exists with id {hit.id}")
-            return hit
+
         payload = {"name": tag.tag}
         response = self.session.post(self.base_path, json=payload)
         tag = Tag(**response.json())
         return tag
+
+    def get_or_create(self, *, tag: str | Tag) -> Tag:
+        """
+        Retrieves a Tag by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        tag : Union[str, Tag]
+            The tag name or Tag entity to retrieve or create.
+
+        Returns
+        -------
+        Tag
+            The existing or newly created Tag entity.
+        """
+        if isinstance(tag, str):
+            tag = Tag(tag=tag)
+        found = self.get_by_name(name=tag.tag, exact_match=True)
+        if found:
+            logging.warning(f"Tag {found.tag} already exists with id {found.id}")
+            return found
+        return self.create(tag=tag)
 
     def get_by_id(self, *, id: str) -> Tag:
         """
@@ -114,7 +133,7 @@ class TagCollection(BaseCollection):
         Returns
         -------
         Tag
-            The Tag object.
+            The Tag entity.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -143,7 +162,7 @@ class TagCollection(BaseCollection):
         Returns
         -------
         Tag
-            The Tag object if found, None otherwise.
+            The Tag entity if found, None otherwise.
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)

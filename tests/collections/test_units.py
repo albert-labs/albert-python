@@ -67,16 +67,16 @@ def test_unit_exists(client: Albert, seeded_units: list[Unit]):
     )
 
 
-def test_unit_crud(client: Albert):
+def test_unit_crud(client: Albert, seed_prefix: str):
     new_unit = Unit(
-        name="SDK Test Unit",
+        name=seed_prefix,
         symbol="x",
         synonyms=["kfnehiuow", "hbfuiewhbuewf89fy89b"],
         category=UnitCategory.MASS,
     )
     created_unit = client.units.create(unit=new_unit)
     assert isinstance(created_unit, Unit)
-    assert created_unit.name == "SDK Test Unit"
+    assert created_unit.name == seed_prefix
     assert created_unit.id is not None
 
     created_unit.symbol = "y"
@@ -89,13 +89,13 @@ def test_unit_crud(client: Albert):
     assert not client.units.exists(name=updated_unit.name)
 
 
-def test_create_unit(caplog, seeded_units: list[Unit], client: Albert):
+def test_get_or_create_unit(caplog, seeded_units: list[Unit], client: Albert):
     dupe_unit = Unit(
         name=seeded_units[0].name,
         symbol=seeded_units[0].symbol,
     )
 
-    registered = client.units.create(unit=dupe_unit)
+    registered = client.units.get_or_create(unit=dupe_unit)
     assert registered.id == seeded_units[0].id
     assert (
         f"Unit with the name {seeded_units[0].name} already exists. Returning the existing unit."

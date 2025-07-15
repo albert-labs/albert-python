@@ -115,14 +115,33 @@ class CasCollection(BaseCollection):
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
-        hit = self.get_by_number(number=cas.number, exact_match=True)
-        if hit:
-            return hit
+
+        payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        response = self.session.post(self.base_path, json=payload)
+        cas = Cas(**response.json())
+        return cas
+
+    def get_or_create(self, *, cas: str | Cas) -> Cas:
+        """
+        Retrieves a CAS by its number or creates it if it does not exist.
+
+        Parameters
+        ----------
+        cas : Union[str, Cas]
+            The CAS number or Cas object to retrieve or create.
+
+        Returns
+        -------
+        Cas
+            The Cas object if found or created.
+        """
+        if isinstance(cas, str):
+            cas = Cas(number=cas)
+        found = self.get_by_number(number=cas.number, exact_match=True)
+        if found:
+            return found
         else:
-            payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
-            response = self.session.post(self.base_path, json=payload)
-            cas = Cas(**response.json())
-            return cas
+            return self.create(cas=cas)
 
     def get_by_id(self, *, id: str) -> Cas:
         """

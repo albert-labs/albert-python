@@ -44,25 +44,32 @@ def test_list_by_ids(client: Albert, seeded_locations: list[Location]):
     assert {x.id for x in listed_locations} == {x.id for x in seeded_locations}
 
 
-def test_create_location(caplog, client: Albert, seeded_locations: list[Location]):
-    # Create a new location and check if it's created properly
-
+def test_create_location(
+    caplog, client: Albert, seed_prefix: str, seeded_locations: list[Location]
+):
+    """Test creating a new location."""
     new_location = Location(
-        name=seeded_locations[0].name,
+        name=seed_prefix,
         latitude=seeded_locations[0].latitude,
         longitude=-seeded_locations[0].longitude,
         address=seeded_locations[0].address,
     )
 
     created_location = client.locations.create(location=new_location)
+    assert isinstance(created_location, Location)
+    assert created_location.name == new_location.name
+    assert created_location.latitude == new_location.latitude
+    assert created_location.longitude == new_location.longitude
 
-    # assert it returns the existing
-    re_created = client.locations.create(location=created_location)
-    assert (
-        f"Location with name {created_location.name} matches an existing location. Returning the existing Location."
-        in caplog.text
-    )
-    assert re_created.id == seeded_locations[0].id
+
+def test_get_or_create_location(client: Albert, seeded_locations: list[Location]):
+    """Test get_or_create returns existing location."""
+    existing = client.locations.get_by_id(id=seeded_locations[0].id)
+    returned_location = client.locations.get_or_create(location=existing)
+
+    assert isinstance(returned_location, Location)
+    assert returned_location.id == existing.id
+    assert returned_location.name == existing.name
 
 
 def test_update_location(client: Albert, seeded_locations: list[Location]):

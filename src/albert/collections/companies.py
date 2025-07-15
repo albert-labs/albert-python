@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -135,7 +134,7 @@ class CompanyCollection(BaseCollection):
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
-    def create(self, *, company: str | Company, check_if_exists: bool = True) -> Company:
+    def create(self, *, company: str | Company) -> Company:
         """
         Creates a new company entity.
 
@@ -143,8 +142,6 @@ class CompanyCollection(BaseCollection):
         ----------
         company : Union[str, Company]
             The company name or Company object to create.
-        check_if_exists : bool, optional
-            Whether to check if the company already exists, by default True.
 
         Returns
         -------
@@ -153,15 +150,33 @@ class CompanyCollection(BaseCollection):
         """
         if isinstance(company, str):
             company = Company(name=company)
-        hit = self.get_by_name(name=company.name, exact_match=True)
-        if check_if_exists and hit:
-            logging.warning(f"Company {company.name} already exists with id {hit.id}.")
-            return hit
 
         payload = company.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         this_company = Company(**response.json())
         return this_company
+
+    def get_or_create(self, *, company: str | Company) -> Company:
+        """
+        Retrieves a company by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        company : Union[str, Company]
+            The company name or Company object to retrieve or create.
+
+        Returns
+        -------
+        Company
+            The Company object if found or created.
+        """
+        if isinstance(company, str):
+            company = Company(name=company)
+        found = self.get_by_name(name=company.name, exact_match=True)
+        if found:
+            return found
+        else:
+            return self.create(company=company)
 
     def delete(self, *, id: str) -> None:
         """Deletes a company entity.

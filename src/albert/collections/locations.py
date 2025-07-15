@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -158,17 +157,30 @@ class LocationCollection(BaseCollection):
         Location
             The created Location entity.
         """
-        exists = self.exists(location=location)
-        if exists:
-            logging.warning(
-                f"Location with name {location.name} matches an existing location. Returning the existing Location."
-            )
-            return exists
-
         payload = location.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
 
         return Location(**response.json())
+
+    def get_or_create(self, *, location: Location) -> Location:
+        """
+        Retrieves a Location by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        location : Location
+            The Location entity to retrieve or create.
+
+        Returns
+        -------
+        Location
+            The found or created Location entity.
+        """
+        found = self.exists(location=location)
+        if found:
+            return found
+        else:
+            return self.create(location=location)
 
     def delete(self, *, id: str) -> None:
         """

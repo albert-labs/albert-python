@@ -53,7 +53,7 @@ def test_company_crud(client: Albert, seed_prefix: str):
     company_name = f"{seed_prefix} company name"
     company = Company(name=company_name)
 
-    company = client.companies.create(company=company)
+    company = client.companies.get_or_create(company=company)
     assert isinstance(company, Company)
     assert company.id is not None
     assert company.name == company_name

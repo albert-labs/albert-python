@@ -81,3 +81,10 @@ def test_get_by_number(client: Albert, seeded_cas: list[Cas]):
     returned_cas = client.cas_numbers.get_by_number(number=seeded_cas[0].number, exact_match=True)
     assert returned_cas.id == seeded_cas[0].id
     assert returned_cas.number == seeded_cas[0].number
+
+
+def test_get_or_create_cas(client: Albert, seeded_cas: list[Cas]):
+    """Test get or create returns existing CAS."""
+    cas_number = seeded_cas[0].number
+    cas = client.cas_numbers.get_or_create(cas=cas_number)
+    assert cas.id == seeded_cas[0].id

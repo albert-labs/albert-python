@@ -84,12 +84,20 @@ def test_tag_update(client: Albert, seeded_tags: list[Tag]):
         )
 
 
-def test_returns_existing(caplog, client: Albert, seeded_tags: list[Tag]):
-    created_tag = client.tags.create(
+def test_get_or_create_tags(caplog, client: Albert, seeded_tags: list[Tag]):
+    existing = client.tags.get_or_create(
         tag=seeded_tags[0].tag
     )  # passing the string directly to test that logic
 
-    # assert it returns the existing
-    re_created = client.tags.create(tag=created_tag)
-    assert f"Tag {re_created.tag} already exists with id {re_created.id}" in caplog.text
-    assert re_created.id == seeded_tags[0].id
+    assert f"Tag {existing.tag} already exists with id {existing.id}" in caplog.text
+    assert existing.id == seeded_tags[0].id
+
+
+def test_create_tag(client: Albert):
+    """Test creating a new tag."""
+    new_tag_name = f"TEST_TAG_{uuid.uuid4()}"
+    new_tag = client.tags.create(tag=new_tag_name)
+
+    assert isinstance(new_tag, Tag)
+    assert new_tag.tag == new_tag_name
+    assert new_tag.id.startswith("TAG")

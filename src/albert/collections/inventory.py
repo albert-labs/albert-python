@@ -179,12 +179,15 @@ class InventoryCollection(BaseCollection):
         tag_collection = TagCollection(session=self.session)
         if inventory_item.tags is not None and inventory_item.tags != []:
             all_tags = [
-                tag_collection.create(tag=t) if t.id is None else t for t in inventory_item.tags
+                tag_collection.get_or_create(tag=t) if t.id is None else t
+                for t in inventory_item.tags
             ]
             inventory_item.tags = all_tags
         if inventory_item.company and inventory_item.company.id is None:
             company_collection = CompanyCollection(session=self.session)
-            inventory_item.company = company_collection.create(company=inventory_item.company)
+            inventory_item.company = company_collection.get_or_create(
+                company=inventory_item.company
+            )
         # Check to see if there is a match on name + Company already
         if avoid_duplicates:
             existing = self.get_match_or_none(inventory_item=inventory_item)

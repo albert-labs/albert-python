@@ -40,9 +40,9 @@ def test_get(client: Albert, seeded_parameters: list[Parameter]):
     assert p.name == seeded_parameters[0].name
 
 
-def test_returns_dupe(caplog, client: Albert, seeded_parameters: list[Parameter]):
+def test_get_or_create_parameters(caplog, client: Albert, seeded_parameters: list[Parameter]):
     p = seeded_parameters[0].model_copy(update={"id": None})
-    returned = client.parameters.create(parameter=p)
+    returned = client.parameters.get_or_create(parameter=p)
     assert (
         f"Parameter with name {p.name} already exists. Returning existing parameter."
         in caplog.text

@@ -53,7 +53,27 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         Parameter
-            Returns the created parameter or the existing parameter if it already exists.
+            Returns the created parameter.
+        """
+
+        response = self.session.post(
+            self.base_path,
+            json=parameter.model_dump(by_alias=True, exclude_none=True, mode="json"),
+        )
+        return Parameter(**response.json())
+
+    def get_or_create(self, *, parameter: Parameter) -> Parameter:
+        """Retrieves a Parameter or creates it if it does not exist.
+
+        Parameters
+        ----------
+        parameter : Parameter
+            The parameter to get or create.
+
+        Returns
+        -------
+        Parameter
+            The existing or newly created parameter.
         """
         match = next(self.get_all(names=parameter.name, exact_match=True, max_items=1), None)
         if match:
@@ -61,11 +81,7 @@ class ParameterCollection(BaseCollection):
                 f"Parameter with name {parameter.name} already exists. Returning existing parameter."
             )
             return match
-        response = self.session.post(
-            self.base_path,
-            json=parameter.model_dump(by_alias=True, exclude_none=True, mode="json"),
-        )
-        return Parameter(**response.json())
+        return self.create(parameter=parameter)
 
     def delete(self, *, id: str) -> None:
         """Delete a parameter by its ID.
