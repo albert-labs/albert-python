@@ -119,7 +119,7 @@ class ProjectCollection(BaseCollection):
         contains_field: list[str] | None = None,
         contains_text: list[str] | None = None,
         linked_to: str | None = None,
-        my_projects: bool | None = None,
+        my_project: bool | None = None,
         my_role: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -163,7 +163,7 @@ class ProjectCollection(BaseCollection):
             Values to search for within the `contains_field`.
         linked_to : str, optional
             Entity ID the project is linked to.
-        my_projects : bool, optional
+        my_project : bool, optional
             If True, return only projects owned by current user.
         my_role : list of str, optional
             User roles to filter by.
@@ -201,7 +201,7 @@ class ProjectCollection(BaseCollection):
             "containsField": contains_field,
             "containsText": contains_text,
             "linkedTo": linked_to,
-            "myProjects": my_projects,
+            "myProject": my_project,
             "myRole": my_role,
         }
 
@@ -234,7 +234,7 @@ class ProjectCollection(BaseCollection):
         contains_field: list[str] | None = None,
         contains_text: list[str] | None = None,
         linked_to: str | None = None,
-        my_projects: bool | None = None,
+        my_project: bool | None = None,
         my_role: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -268,7 +268,7 @@ class ProjectCollection(BaseCollection):
             contains_field=contains_field,
             contains_text=contains_text,
             linked_to=linked_to,
-            my_projects=my_projects,
+            my_project=my_project,
             my_role=my_role,
             order_by=order_by,
             sort_by=sort_by,

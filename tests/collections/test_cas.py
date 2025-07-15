@@ -48,7 +48,7 @@ def test_cas_get_all_with_filters(client: Albert, seeded_cas: list[Cas]):
     assert_valid_cas_items(adv_list2)
 
     cas_nums = [seeded_cas[0].number, seeded_cas[1].number]
-    multi_cas = client.cas_numbers.get_all(cas=cas_nums)
+    multi_cas = list(client.cas_numbers.get_all(cas=cas_nums))
     assert_valid_cas_items(multi_cas)
 
 

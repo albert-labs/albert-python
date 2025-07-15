@@ -6,9 +6,9 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
+from albert.core.shared.identifiers import AttachmentId
 from albert.resources.attachments import Attachment
 from albert.resources.files import FileCategory, FileNamespace
-from albert.resources.identifiers import AttachmentId
 from albert.resources.notes import Note
 
 

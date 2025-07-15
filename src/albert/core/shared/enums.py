@@ -20,7 +20,6 @@ class SecurityClass(str, Enum):
     RESTRICTED = "restricted"
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
-    PUBLIC = "public"
 
 
 class PaginationMode(str, Enum):

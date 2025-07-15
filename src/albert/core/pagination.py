@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable, Iterator
 from itertools import islice
+import json
 from typing import Any, TypeVar
 from urllib.parse import quote_plus
 
@@ -40,7 +41,7 @@ class AlbertPaginator(Iterator[ItemType]):
         self.max_items = max_items
 
         params = params or {}
-        self.params = {k: v for k, v in params.items() if v is not None}
+        self.params = self._encode_query_params(params)
         self._last_key: str | None = None
         if "startKey" in self.params:
             self.params["startKey"] = quote_plus(self.params["startKey"])
@@ -50,6 +51,14 @@ class AlbertPaginator(Iterator[ItemType]):
         self._iterator = (
             islice(raw_iterator, self.max_items) if self.max_items is not None else raw_iterator
         )
+
+    def _encode_query_params(self, params: dict) -> dict:
+        """Encode and clean up query parameters for the request."""
+        return {
+            k: json.dumps(v) if isinstance(v, bool) else v
+            for k, v in params.items()
+            if v is not None
+        }
 
     @property
     def last_key(self) -> str | None:

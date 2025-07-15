@@ -334,7 +334,7 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
     """
 
     return [
-        # Project with basic metadata and public classification
+        # Project with basic metadata and private classification
         Project(
             description=f"{seed_prefix} - A basic development project.",
             locations=[EntityLink(id=seeded_locations[0].id)],
