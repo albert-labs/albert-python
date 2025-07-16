@@ -1,29 +1,35 @@
-# Contributing to Albert SDK for Python
+# Contributing to Albert Python SDK
 
-## Installation for Local Development
+Thanks for your interest in contributing to the Albert Python SDK! We aim to make it as easy as possible to get started and see your changes released quickly.
 
-The package is built using the [uv](https://docs.astral.sh/uv/getting-started/installation/) build tool.
-To get started, install `uv` on your system by running
+---
 
-```bash
-# For Mac OS users
-brew install uv
-# or
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or
-pip install uv
-```
+## 🚀 Quickstart
 
-After that, the package and its dependencies can be installed
-in your local virtual environment by running
+1. **Fork** the repository on GitHub.
+2. **Clone** your fork locally:
 
-```bash
-uv sync
-```
+    ```bash
+    git clone https://github.com/your-username/albert-python.git
+    cd albert-python
+    ```
 
-Follow the documentation on the [uv website](https://docs.astral.sh/uv/concepts/projects/)
-for additional project features such as managing dependencies, managing environments,
-and configuring Python project metadata.
+3. **Run** the setup script (installs all dependencies and hooks):
+
+    ```bash
+    ./setup.sh
+    ```
+
+4. **Create** a new branch for your work:
+
+    ```bash
+    git checkout -b my-awesome-feature
+    ```
+
+5. **Make your changes**, then commit. Pre-commit hooks and linting will run automatically.
+6. **Push** your branch and open a Pull Request against `main`.
+
+Your contribution could ship in days or weeks—welcome aboard! 🚀
 
 ## Dynamic Versioning
 
@@ -35,7 +41,7 @@ and read dynamically when building distributions.
 This project uses [ruff](https://docs.astral.sh/ruff/) for both formatting and linting.
 Formatting and linting rules are enforced in the CI process.
 
-To check (or fix) your code formatting, you can run the commands
+To check (or fix) your code formatting, you can run the commands,
 
 ```bash
 # Check
@@ -106,7 +112,7 @@ To add coverage for a new microservice, you can add a page by doing the followin
  1. in the `docs/` folder make a new markdown file following the pattern of the others.
     For example:
 
-    ```
+    ```markdown
     # cas.md
 
     ::: albert.collections.cas
