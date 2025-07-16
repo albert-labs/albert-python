@@ -79,7 +79,7 @@ class BatchDataCollection(BaseCollection):
         return BatchData(**response.json())
 
     def update_used_batch_amounts(
-        self, *, task_id: str, patches=list[BatchValuePatchPayload]
+        self, *, task_id: str, patches: list[BatchValuePatchPayload]
     ) -> None:
         """
         Update the used batch amounts for a given task ID.

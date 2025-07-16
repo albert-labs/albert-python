@@ -81,5 +81,5 @@ poetry.lock
 # Jupyter
 dev.ipynb
 
-# Rendered Docs 
+# Rendered Docs
 site/
