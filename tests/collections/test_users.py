@@ -1,50 +1,81 @@
+from collections.abc import Iterator
+
 from albert import Albert
-from albert.resources.base import Status
-from albert.resources.users import User
+from albert.core.shared.enums import Status
+from albert.resources.users import User, UserSearchItem
 
 
-def _list_asserts(returned_list, limit=30):
-    found = False
-    for i, u in enumerate(returned_list):
-        found = True
-        if i == limit:
-            break
-        assert isinstance(u, User)
-        assert isinstance(u.name, str)
-        assert isinstance(u.id, str)
-        assert u.id.startswith("USR")
-    assert found  # make sure at least one was returned
+def assert_user_items(
+    users: Iterator[User | UserSearchItem],
+    expected_type: type,
+):
+    """Assert all items are of expected types."""
+    for item in users:
+        assert isinstance(item, expected_type)
+        assert isinstance(item.name, str)
+        assert isinstance(item.id, str)
+        assert item.id.startswith("USR")
 
 
-def test_simple_users_list(client: Albert):
-    simple_user_list = client.users.list()
-    _list_asserts(simple_user_list)
+def test_simple_users_get_all(client: Albert):
+    user_list = list(client.users.get_all(max_items=10))
+    assert_user_items(user_list, User)
 
 
-def test_advanced_users_list(client: Albert, static_user: User):
-    # Check something reasonable was found near the top
+def test_simple_users_search(client: Albert):
+    user_list = list(client.users.search(max_items=10))
+    assert_user_items(user_list, UserSearchItem)
+
+
+def test_advanced_users_search(client: Albert, static_user: User):
     faux_name = static_user.name.split(" ")[0]
-    adv_list = client.users.list(text=faux_name, status=Status.ACTIVE, search_fields=["name"])
-    found = False
-    for i, u in enumerate(adv_list):
-        if i == 20:
-            break
-        if static_user.name.lower() == u.name.lower():
-            found = True
-            break
+    adv_list = client.users.search(
+        text=faux_name,
+        status=[Status.ACTIVE],
+        search_fields=["name"],
+        max_items=20,
+    )
+    found = any(static_user.name.lower() == u.name.lower() for u in adv_list)
     assert found
 
-    adv_list_no_match = client.users.list(
-        text="h78frg279fbg92ubue9b80fhXBGYF&*0hnvioh", search_fields=["name"]
+    adv_list_no_match = client.users.search(
+        text="h78frg279fbg92ubue9b80fhXBGYF&*0hnvioh",
+        search_fields=["name"],
+        max_items=10,
     )
     assert next(adv_list_no_match, None) is None
 
-    short_list = client.users.list(limit=3)
-    _list_asserts(short_list, limit=5)
+    short_list = client.users.search(max_items=3)
+    assert_user_items(short_list, UserSearchItem)
 
 
 def test_user_get(client: Albert, static_user: User):
-    first_hit = next(client.users.list(text=static_user.name), None)
+    first_hit = next(client.users.search(text=static_user.name, max_items=1), None)
     user_from_get = client.users.get_by_id(id=first_hit.id)
     assert user_from_get.id == first_hit.id
     assert isinstance(user_from_get, User)
+
+
+def test_hydrate_user(client: Albert):
+    users = list(client.users.search(max_items=5))
+    assert users, "Expected at least one user in search results"
+
+    for user in users:
+        hydrated = user.hydrate()
+
+        # identity checks
+        assert hydrated.id == user.id
+        assert hydrated.name == user.name
+        assert hydrated.email == user.email
+
+        # location check
+        if user.location_id and hydrated.location:
+            assert hydrated.location.id == user.location_id
+        if user.location and hydrated.location:
+            assert hydrated.location.name == user.location
+
+        # role consistency
+        if user.roles and hydrated.roles:
+            for search_role, full_role in zip(user.roles, hydrated.roles, strict=False):
+                assert search_role.roleId == full_role.id
+                assert search_role.roleName == full_role.name

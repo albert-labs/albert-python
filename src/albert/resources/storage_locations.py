@@ -1,8 +1,8 @@
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
 
 
 class StorageLocation(BaseResource):

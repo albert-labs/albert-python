@@ -1,11 +1,9 @@
-import itertools
-
 from albert import Albert
 from albert.resources.workflows import Workflow
 
 
-def test_basic_list(client: Albert, seeded_workflows: list[Workflow]):
-    for x in itertools.islice(client.workflows.list(), 10):
+def test_workflow_get_all_with_pagination(client: Albert, seeded_workflows: list[Workflow]):
+    for x in list(client.workflows.get_all(max_items=10)):
         assert isinstance(x, Workflow)
 
 

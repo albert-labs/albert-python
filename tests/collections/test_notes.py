@@ -18,10 +18,12 @@ def test_update(client: Albert, seeded_notes: list[Note]):
     assert updated_note.id == note.id
 
 
-def test_list(client: Albert, seeded_notes: list[Note]):
-    seeded_parent_id = seeded_notes[0].parent_id
-    notes = client.notes.list(parent_id=seeded_parent_id)
+def test_note_get_by_parent_id(client: Albert, seeded_notes: list[Note]):
+    """Test that all returned notes match the given parent ID."""
+    parent_id = seeded_notes[0].parent_id
+    results = list(client.notes.get_by_parent_id(parent_id=parent_id))
 
-    for n in notes:
-        assert n.parent_id == seeded_parent_id
-        assert isinstance(n, Note)
+    assert results, "Expected at least one Note"
+    for note in results:
+        assert isinstance(note, Note)
+        assert note.parent_id == parent_id

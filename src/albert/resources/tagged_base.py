@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseResource
-from albert.resources.serialization import SerializeAsEntityLink
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.resources.tags import Tag
 
 

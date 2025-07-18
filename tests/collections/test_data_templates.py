@@ -1,7 +1,10 @@
 from albert import Albert
-from albert.resources.base import EntityLink
+from albert.core.shared.models.base import EntityLink
 from albert.resources.data_columns import DataColumn
-from albert.resources.data_templates import DataTemplate
+from albert.resources.data_templates import (
+    DataTemplate,
+    DataTemplateSearchItem,
+)
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -14,44 +17,55 @@ from albert.resources.tags import Tag
 from albert.resources.units import Unit
 
 
-def _list_asserts(returned_list, limit=10):
-    found = False
-    for i, u in enumerate(returned_list):
-        found = True
-        # just check the first 100
-        if i == limit:
-            break
-
-        assert isinstance(u, DataTemplate)
-        assert isinstance(u.name, str)
-        assert isinstance(u.id, str)
-        assert u.id.startswith("DAT")
-    assert found
-
-
-def test_basic_list(client: Albert, seeded_data_templates: list[DataTemplate]):
-    data_templates = client.data_templates.list()
-    _list_asserts(data_templates)
+def assert_valid_data_template_items(
+    items: list[DataTemplate | DataTemplateSearchItem], expected_type: type
+):
+    """Assert that returned items are valid DataTemplate or SearchItem instances."""
+    assert items, f"No {expected_type.__name__} items returned"
+    for item in items[:10]:
+        assert isinstance(item, expected_type), (
+            f"Expected {expected_type.__name__}, got {type(item).__name__}"
+        )
+        assert isinstance(item.name, str)
+        assert isinstance(item.id, str)
+        assert item.id.startswith("DAT")
 
 
-def test_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
+def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test get_all returns hydrated DataTemplate results."""
+    results = list(client.data_templates.get_all(max_items=10))
+    assert_valid_data_template_items(results, DataTemplate)
+
+
+def test_data_template_search_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test search returns partial DataTemplateSearchItem results."""
+    results = list(client.data_templates.search(max_items=10))
+    assert_valid_data_template_items(results, DataTemplateSearchItem)
+
+
+def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test get_by_name returns a hydrated match or None if not found."""
     name = seeded_data_templates[0].name
-    dt = client.data_templates.get_by_name(name=name)
-    assert dt is not None
-    assert dt.name == name
-    assert dt.id == seeded_data_templates[0].id
+    expected_id = seeded_data_templates[0].id
+
+    result = client.data_templates.get_by_name(name=name)
+    assert result is not None
+    assert result.name == name
+    assert result.id == expected_id
+
     chaos_name = "thisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidNamethisIsNotAValidName"
-    dt = client.data_templates.get_by_name(name=chaos_name)
-    assert dt is None
+    assert client.data_templates.get_by_name(name=chaos_name) is None
 
 
 def test_get_by_id(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test retrieving a data template by its ID and verifying its attributes."""
     dt = client.data_templates.get_by_id(id=seeded_data_templates[0].id)
     assert dt.name == seeded_data_templates[0].name
     assert dt.id == seeded_data_templates[0].id
 
 
 def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test retrieving multiple data templates by their IDs."""
     ids = [x.id for x in seeded_data_templates]
     dt = client.data_templates.get_by_ids(ids=ids)
     assert len(dt) == len(seeded_data_templates)
@@ -60,18 +74,10 @@ def test_get_by_ids(client: Albert, seeded_data_templates: list[DataTemplate]):
         assert d.id == seeded_data_templates[i].id
 
 
-def test_advanced_list(client: Albert, seeded_data_templates: list[DataTemplate]):
-    name = seeded_data_templates[0].name
-    adv_list = client.data_templates.list(name=name)
-    _list_asserts(adv_list)
-
-    adv_list_no_match = client.data_templates.list(name="FAKEFAKEFAKEFAKEFAKEFAKE")
-    assert next(adv_list_no_match, None) == None
-
-
 def test_update_tags(
     client: Albert, seeded_data_templates: list[DataTemplate], seeded_tags: list[Tag]
 ):
+    """Test updating tags on a data template."""
     dt = seeded_data_templates[0]  # "Data Template 1"
     original_tags = [x.tag for x in dt.tags]
 
@@ -85,6 +91,7 @@ def test_update_tags(
 
 
 def test_update_validations(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test updating validations on a data template."""
     dt = seeded_data_templates[2]
     column = [
         x
@@ -106,6 +113,7 @@ def test_update_validations(client: Albert, seeded_data_templates: list[DataTemp
 
 
 def test_enum_validation_creation(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test that enum validation can be created and contains expected values."""
     dt = seeded_data_templates[5]  # "Data Template 1"
     column = [
         x
@@ -120,6 +128,7 @@ def test_enum_validation_creation(client: Albert, seeded_data_templates: list[Da
 
 
 def test_enum_validation_addition(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test that enum validation can be added to a data template."""
     dt = seeded_data_templates[5]  # "Data Template 1"
     column = [
         x
@@ -138,6 +147,7 @@ def test_enum_validation_addition(client: Albert, seeded_data_templates: list[Da
 
 
 def test_enum_validation_update(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test that enum validation can be updated in a data template."""
     dt = seeded_data_templates[5]  # "Data Template 1"
     column = [
         x
@@ -166,6 +176,7 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
 def test_update_units(
     client: Albert, seeded_data_templates: list[DataTemplate], seeded_units: list[Unit]
 ):
+    """Test updating units on a data template."""
     dt = seeded_data_templates[3]
 
     column = [x for x in dt.data_column_values if x.unit is not None][0]  # Data column with unit
@@ -188,6 +199,7 @@ def test_update_parameters_and_data_columns(
     seeded_parameters: list[Parameter],
     seeded_data_columns: list[DataColumn],
 ):
+    """Test updating parameters and data columns in a data template."""
     # Find the Parameters Data Template
     dt = next(
         (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
@@ -265,6 +277,7 @@ def test_update_enum_validations_on_data_column_and_parameter(
     seeded_data_columns: list[DataColumn],
     seeded_parameters: list[Parameter],
 ):
+    """Test updating enum validations on a data template's data column and parameter."""
     # Find the Enum Validation Data Template
     dt = next(
         (
@@ -320,3 +333,16 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert "ParamOption3" in updated_param_enum_texts
     assert "ParamOption2-Updated" in updated_param_enum_texts
     assert updated_param.value == "ParamOption3"
+
+
+def test_hydrate_data_template(client: Albert):
+    """Test that data templates can be hydrated correctly."""
+    data_templates = client.data_templates.search(max_items=3)
+    assert data_templates, "Expected at least one data_template in search results"
+
+    for data_template in data_templates:
+        hydrated = data_template.hydrate()
+
+        # identity checks
+        assert hydrated.id == data_template.id
+        assert hydrated.name == data_template.name

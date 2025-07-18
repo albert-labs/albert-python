@@ -5,12 +5,13 @@ from enum import Enum
 from typing import Annotated, Any, Literal
 
 from pandas import DataFrame
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
+from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL
-from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
-from albert.resources.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
 
 
 class ListBlockStyle(str, Enum):
@@ -175,7 +176,7 @@ class TableBlock(BaseBlock):
         return df
 
 
-class NotebookListItem(BaseModel):
+class NotebookListItem(BaseAlbertModel):
     content: str | None
     items: list["NotebookListItem"] = Field(default_factory=list)
 

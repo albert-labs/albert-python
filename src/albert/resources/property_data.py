@@ -4,9 +4,8 @@ from typing import Literal
 import pandas as pd
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import BaseAlbertModel, BaseResource
-from albert.resources.data_templates import DataTemplate
-from albert.resources.identifiers import (
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import (
     DataColumnId,
     DataTemplateId,
     InventoryId,
@@ -18,11 +17,13 @@ from albert.resources.identifiers import (
     UnitId,
     WorkflowId,
 )
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.patch import PatchDatum
+from albert.core.shared.types import SerializeAsEntityLink
+from albert.resources.data_templates import DataTemplate
 from albert.resources.lots import Lot
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
-from albert.utils.patch_types import PatchDatum
 
 ########################## Supporting GET Classes ##########################
 
@@ -95,7 +96,7 @@ class CustomData(BaseAlbertModel):
     data_column: CustomInventoryDataColumn = Field(alias="DataColumn")
 
 
-class InventoryInformation(BaseAlbertModel):
+class PropertyDataInventoryInformation(BaseAlbertModel):
     inventory_id: str | None = Field(alias="id", default=None)
     lot_id: str | None = Field(alias="lotId", default=None)
 
@@ -123,7 +124,7 @@ class TaskPropertyData(BaseResource):
     entity: Literal[DataEntity.TASK] = DataEntity.TASK
     parent_id: str = Field(..., alias="parentId")
     task_id: str | None = Field(default=None, alias="id")
-    inventory: InventoryInformation | None = Field(default=None, alias="Inventory")
+    inventory: PropertyDataInventoryInformation | None = Field(default=None, alias="Inventory")
     category: DataEntity | None = Field(default=None)
     initial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
         default=None, alias="InitialWorkflow"

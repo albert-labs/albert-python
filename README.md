@@ -31,7 +31,7 @@ For developers, please see the [contributing guide](CONTRIBUTING.md), which incl
 from albert import Albert
 
 client = Albert()
-projects = client.projects.list()
+projects = client.projects.get_all()
 
 ```
 

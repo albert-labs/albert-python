@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from albert.utils.types import BaseAlbertModel
+from albert.core.base import BaseAlbertModel
 
 
 class ToxicityInfo(BaseAlbertModel):

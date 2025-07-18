@@ -1,10 +1,11 @@
 import re
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.cas import Cas
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CasCollection(BaseCollection):
@@ -25,56 +26,61 @@ class CasCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 50,
-        start_key: str | None = None,
         number: str | None = None,
         cas: list[str] | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
+        start_key: str | None = None,
+        page_size: int = 50,
+        max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
-        Lists CAS entities with optional filters.
+        Get all CAS entities with optional filters.
 
         Parameters
         ----------
-        limit : int | None, optional
-            The maximum number of CAS entities to return, by default 50.
-        start_key : str | None, optional
-            The primary key of the first item that this operation will evaluate.
-        number : str | None, optional
-            Fetches list of CAS by CAS number.
+        number : str, optional
+            Filter CAS entities by CAS number.
         cas : list[str] | None, optional
-            Fetches list of CAS by a list of CAS numbers.
-        id : str | None, optional
-            Fetches list of CAS using the CAS Albert ID.
+            Filter CAS entities by a list of CAS numbers.
+        id : str, optional
+            Filter CAS entities by Albert CAS ID.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
+            Sort direction (ascending or descending). Default is DESCENDING.
+        start_key : str, optional
+            The pagination key to start fetching from.
+        page_size : int, optional
+            Number of items to fetch per page. Default is 100.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Cas]
-            An iterator of Cas objects.
+            An iterator over Cas entities.
         """
         params = {
-            "limit": limit,
             "orderBy": order_by.value,
             "startKey": start_key,
             "number": number,
             "cas": cas,
             "albertId": id,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            page_size=page_size,
+            max_items=max_items,
             deserialize=lambda items: [Cas(**item) for item in items],
         )
 
-    def cas_exists(self, *, number: str, exact_match: bool = True) -> bool:
+    def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
         Checks if a CAS exists by its number.
 
@@ -109,14 +115,33 @@ class CasCollection(BaseCollection):
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
-        hit = self.get_by_number(number=cas.number, exact_match=True)
-        if hit:
-            return hit
+
+        payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        response = self.session.post(self.base_path, json=payload)
+        cas = Cas(**response.json())
+        return cas
+
+    def get_or_create(self, *, cas: str | Cas) -> Cas:
+        """
+        Retrieves a CAS by its number or creates it if it does not exist.
+
+        Parameters
+        ----------
+        cas : Union[str, Cas]
+            The CAS number or Cas object to retrieve or create.
+
+        Returns
+        -------
+        Cas
+            The Cas object if found or created.
+        """
+        if isinstance(cas, str):
+            cas = Cas(number=cas)
+        found = self.get_by_number(number=cas.number, exact_match=True)
+        if found:
+            return found
         else:
-            payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
-            response = self.session.post(self.base_path, json=payload)
-            cas = Cas(**response.json())
-            return cas
+            return self.create(cas=cas)
 
     def get_by_id(self, *, id: str) -> Cas:
         """
@@ -136,8 +161,6 @@ class CasCollection(BaseCollection):
         response = self.session.get(url)
         cas = Cas(**response.json())
         return cas
-
-    import re
 
     def _clean_cas_number(self, text: str):
         """
@@ -174,7 +197,7 @@ class CasCollection(BaseCollection):
         Optional[Cas]
             The Cas object if found, None otherwise.
         """
-        found = self.list(number=number)
+        found = self.get_all(number=number)
         if exact_match:
             for f in found:
                 if self._clean_cas_number(f.number) == self._clean_cas_number(number):

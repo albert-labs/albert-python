@@ -2,8 +2,10 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseAlbertModel, BaseResource, Status
-from albert.resources.identifiers import TaskId
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import Status
+from albert.core.shared.identifiers import TaskId
+from albert.core.shared.models.base import BaseResource
 
 
 class BatchValuePatchDatum(BaseAlbertModel):
@@ -30,7 +32,6 @@ class BatchDataType(str, Enum):
 
 
 class BatchDataValue(BaseAlbertModel):
-    # TODO: Once SignatureOverrideMeta removed, use BaseAlbertModel instead of BaseModel
     id: str | None = Field(default=None)
     col_id: str | None = Field(default=None, alias="colId")
     type: str | None = Field(default=None)
@@ -42,7 +43,6 @@ class BatchDataValue(BaseAlbertModel):
 
 
 class BatchDataRow(BaseAlbertModel):
-    # TODO: Once SignatureOverrideMeta removed, use BaseAlbertModel instead of BaseModel
     id: str | None = Field(default=None)
     row_id: str | None = Field(default=None, alias="rowId")
     type: str | None = Field(default=None)

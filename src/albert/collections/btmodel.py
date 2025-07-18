@@ -1,9 +1,9 @@
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import BTModelId, BTModelSessionId
 from albert.resources.btmodel import BTModel, BTModelSession
-from albert.resources.identifiers import BTModelId, BTModelSessionId
-from albert.session import AlbertSession
 
 
 class BTModelSessionCollection(BaseCollection):
@@ -30,6 +30,16 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def create(self, *, model_session: BTModelSession) -> BTModelSession:
+        """Create a new BTModelSession.
+        Parameters
+        ----------
+        model_session : BTModelSession
+            The BTModelSession instance to create.
+        Returns
+        -------
+        BTModelSession
+            The created BTModelSession instance.
+        """
         response = self.session.post(
             self.base_path,
             json=model_session.model_dump(mode="json", by_alias=True, exclude_none=True),
@@ -38,11 +48,34 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTModelSessionId) -> BTModelSession:
+        """Retrieve a BTModelSession by its ID.
+        Parameters
+        ----------
+        id : BTModelSessionId
+            The ID of the BTModelSession to retrieve.
+        Returns
+        -------
+        BTModelSession
+            The retrieved BTModelSession instance.
+        """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTModelSession(**response.json())
 
     @validate_call
     def update(self, *, model_session: BTModelSession) -> BTModelSession:
+        """Update an existing BTModelSession.
+
+        Parameters
+        ----------
+        model_session : BTModelSession
+            The BTModelSession instance with updated data.
+
+        Returns
+        -------
+        BTModelSession
+            The updated BTModelSession instance.
+        """
+
         path = f"{self.base_path}/{model_session.id}"
         payload = self._generate_patch_payload(
             existing=self.get_by_id(id=model_session.id),

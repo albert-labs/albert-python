@@ -5,7 +5,7 @@ from contextlib import suppress
 
 import pytest
 
-from albert import Albert, ClientCredentials
+from albert import Albert, AlbertClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.btdataset import BTDataset
@@ -65,13 +65,14 @@ from tests.utils.fake_session import FakeAlbertSession
 
 @pytest.fixture(scope="session")
 def client() -> Albert:
-    credentials = ClientCredentials.from_env(
+    credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+        base_url_env="ALBERT_BASE_URL",
     )
     return Albert(
         base_url="https://app.albertinvent.com",
-        client_credentials=credentials,
+        auth_manager=credentials,
         retries=3,
     )
 
@@ -136,12 +137,12 @@ def static_sds_file(client: Albert) -> FileInfo:
 @pytest.fixture(scope="session")
 def static_roles(client: Albert) -> list[Role]:
     # Roles are not deleted or created. We just use the existing roles.
-    return list(client.roles.list())
+    return list(client.roles.get_all())
 
 
 @pytest.fixture(scope="session")
 def static_consumeable_parameter(client: Albert) -> Parameter:
-    consumeables = client.parameters.list(names="Consumables")
+    consumeables = client.parameters.get_all(names="Consumables")
     for c in consumeables:
         if c.name == "Consumables":
             return c
@@ -189,7 +190,7 @@ def static_lists(
 def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
     seeded = []
     for cas in generate_cas_seeds(seed_prefix):
-        created_cas = client.cas_numbers.create(cas=cas)
+        created_cas = client.cas_numbers.get_or_create(cas=cas)
         seeded.append(created_cas)
 
     # Avoid race condition while it populated through DBs
@@ -206,7 +207,7 @@ def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
 def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
     seeded = []
     for location in generate_location_seeds(seed_prefix):
-        created_location = client.locations.create(location=location)
+        created_location = client.locations.get_or_create(location=location)
         seeded.append(created_location)
 
     yield seeded
@@ -240,7 +241,7 @@ def seeded_projects(
 def seeded_companies(client: Albert, seed_prefix: str) -> Iterator[list[Company]]:
     seeded = []
     for company in generate_company_seeds(seed_prefix):
-        created_company = client.companies.create(company=company)
+        created_company = client.companies.get_or_create(company=company)
         seeded.append(created_company)
 
     yield seeded
@@ -258,7 +259,9 @@ def seeded_storage_locations(
 ) -> Iterator[list[Location]]:
     seeded = []
     for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
-        created_location = client.storage_locations.create(storage_location=storage_location)
+        created_location = client.storage_locations.get_or_create(
+            storage_location=storage_location
+        )
         seeded.append(created_location)
 
     yield seeded
@@ -272,7 +275,7 @@ def seeded_storage_locations(
 def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
     seeded = []
     for tag in generate_tag_seeds(seed_prefix):
-        created_tag = client.tags.create(tag=tag)
+        created_tag = client.tags.get_or_create(tag=tag)
         seeded.append(created_tag)
 
     yield seeded
@@ -286,7 +289,7 @@ def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
 def seeded_units(client: Albert, seed_prefix: str) -> Iterator[list[Unit]]:
     seeded = []
     for unit in generate_unit_seeds(seed_prefix):
-        created_unit = client.units.create(unit=unit)
+        created_unit = client.units.get_or_create(unit=unit)
         seeded.append(created_unit)
 
     # Avoid race condition while it populated through search DBs
@@ -412,7 +415,7 @@ def seeded_inventory(
 def seeded_parameters(client: Albert, seed_prefix: str) -> Iterator[list[Parameter]]:
     seeded = []
     for parameter in generate_parameter_seeds(seed_prefix):
-        created_parameter = client.parameters.create(parameter=parameter)
+        created_parameter = client.parameters.get_or_create(parameter=parameter)
         # Extra get_by_id is required to populate the category field on parameter
         seeded.append(client.parameters.get_by_id(id=created_parameter.id))
     time.sleep(1.5)
@@ -551,7 +554,7 @@ def seeded_products(
         )
     return [
         x
-        for x in client.inventory.list(
+        for x in client.inventory.get_all(
             category=InventoryCategory.FORMULAS,
             text=product_name_prefix,
         )

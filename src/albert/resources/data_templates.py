@@ -1,14 +1,13 @@
 from pydantic import Field, model_validator
 
-from albert.resources.base import (
-    BaseAlbertModel,
-    MetadataItem,
-    SecurityClass,
-)
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.models.base import LocalizedNames
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
-from albert.resources.identifiers import DataTemplateId
 from albert.resources.parameter_groups import ParameterValue, ValueValidation
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User
@@ -61,3 +60,17 @@ class DataTemplate(BaseTaggedResource):
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+
+
+class DataTemplateSearchItemDataColumn(BaseAlbertModel):
+    id: str
+    name: str | None = None
+    localized_names: LocalizedNames = Field(alias="localizedNames")
+
+
+class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
+    id: str = Field(alias="albertId")
+    name: str
+    data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
+        alias="dataColumns", default=None
+    )

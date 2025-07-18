@@ -2,12 +2,12 @@ from enum import Enum
 
 from pydantic import Field
 
-from albert.resources.base import BaseResource
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.types import SerializeAsEntityLink
 from albert.resources.companies import Company
-from albert.resources.identifiers import InventoryId
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
-from albert.utils.types import BaseAlbertModel
 
 
 class LeadTimeUnit(str, Enum):
