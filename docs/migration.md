@@ -1,7 +1,9 @@
 # Migration Guide: Alpha → v1.0.0
 
-Albert v1.0.0 introduces a number of changes to the API, including some breaking changes.
-This guide provides details highlighting the most important changes to help you migrate your code to v1.0.0
+Albert `v1.0.0` introduces a number of changes to the API, including some breaking changes.
+This guide provides details highlighting the most important changes to help you migrate your code.
+
+If you run into any issues, please open a [GitHub issue](https://github.com/albert-labs/albert-python/issues) and use the `bug v1` label. This helps us track problems more efficiently and keep improving the library.
 
 ## Changes to Authentication
 
@@ -21,15 +23,15 @@ This guide provides details highlighting the most important changes to help you 
 
 1. **SSO (browser-based login) — new feature**
 
-   ```python
-   from albert import Albert
+    ```python
+    from albert import Albert
 
-   # v1.0.0 SSO helper opens a browser for authentication
-   client = Albert.from_sso(
+    # v1.0.0 SSO helper opens a browser for authentication
+    client = Albert.from_sso(
         email="yourname@albertinvent.com",
         base_url="https://app.albertinvent.com"
-   )
-   ```
+    )
+    ```
 
 2. **Client Credentials (service-to-service)**
 
@@ -127,6 +129,34 @@ Use `create()` only when you are confident the entity does not already exist.
 + company_exists = client.companies.exists(name="ACME", exact_match=True)
 ```
 
+### Deprecation of `list()` methods
+
+**What changed:**
+
+* Deprecated all `list()` methods across collections in favor of two new patterns:
+  * `get_all()` returns **detailed** (hydrated) resource entities.
+  * `search()` returns **partial** (unhydrated) entities optimized for performance.
+* Added support for `.hydrate()` on search results to convert partial resources into fully populated ones.
+
+**How to migrate:**
+
+```diff
+- project_list = list(client.projects.list())
++ project_list = list(client.projects.get_all(max_items=10))
+
+- project_matches = list(client.projects.list(status="Active"))
++ project_matches = list(client.projects.search(status="Active", max_items=10))
+```
+
+**Optional:** Hydrate individual items from `search()` results:
+
+```python
+project = list(client.projects.search(max_items=1))[0]
+project_full = project.hydrate()
+```
+
+---
+
 ### Pagination behavior change
 
 **What changed:**
@@ -164,34 +194,6 @@ search_results = list(client.projects.search(status="Active", max_items=20))
 
 ---
 
-### Deprecation of `list()` methods
-
-**What changed:**
-
-* Deprecated all `list()` methods across collections in favor of two new patterns:
-  * `get_all()` returns **detailed (hydrated)** resource objects.
-  * `search()` returns **partial** (unhydrated) entities optimized for performance.
-* Added support for `.hydrate()` on search results to convert partial resources into fully populated ones.
-
-**How to migrate:**
-
-```diff
-- project_list = list(client.projects.list())
-+ project_list = list(client.projects.get_all(max_items=10))
-
-- project_matches = list(client.projects.list(status="Active"))
-+ project_matches = list(client.projects.search(status="Active", max_items=10))
-```
-
-**Optional:** Hydrate individual items from `search()` results:
-
-```python
-project = client.projects.search(max_items=1)[0]
-project_full = project.hydrate()
-```
-
----
-
 ## Changes to Resources
 
 ### Renamed `InventoryInformation` model
@@ -223,7 +225,7 @@ project_full = project.hydrate()
 
 ```python
 # Perform a search (returns partial/unhydrated resources)
-project_stub = client.projects.search(max_items=1)[0]
+project_stub = list(client.projects.search(max_items=1))[0]
 
 # Hydrate it to get full project details
 full_project = project_stub.hydrate()
@@ -233,5 +235,19 @@ print(full_project.description)
 ```
 
 **Notes:**
+
 * `hydrate()` requires the resource to have a valid `id` and a bound collection.
 * Only collections that implement `get_by_id(id=...)` support hydration.
+
+### Renamed `templates` module to `custom_templates`
+
+**What changed:**
+
+The `templates` module is now `custom_templates`.
+
+**How to use:**
+
+```diff
+- client.templates.get_by_id(id="xxx")
++ client.custom_templates.get_by_id(id="xxx")
+```

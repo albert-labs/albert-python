@@ -11,16 +11,13 @@ such as inventories, projects, companies, tags, and many more.
 You can find the latest, most up-to-date documentation
 on the supported resources and usage patterns [here](https://docs.developer.albertinvent.com/albert-python).
 
-> [!WARNING]
-> Albert Python is still in late alpha. As such, patterns may change, and methods may not work as expected. Do not use this package unless you are comfortable with these limitations.
-
 ## Installation
 
 `pip install albert`
 
 This installs the latest stable release from [PyPI](https://pypi.org/project/albert/).
 
-### Developer Installation
+### Contribution
 
 For developers, please see the [contributing guide](CONTRIBUTING.md), which includes setup instructions, testing, and linting guidelines.
 
@@ -30,7 +27,11 @@ For developers, please see the [contributing guide](CONTRIBUTING.md), which incl
 
 from albert import Albert
 
-client = Albert()
+client = Albert.from_client_credentials(
+    base_url="https://app.albertinvent.com",
+    client_id=YOUR_CLIENT_ID,
+    client_secret=YOUR_CLIENT_SECRET
+)
 projects = client.projects.get_all()
 
 ```
