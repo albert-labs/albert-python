@@ -783,7 +783,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             raise AlbertException("You cannot add rows to the results design")
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
-        endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
+        endpoint = f"/api/v3/worksheet/design/{self.get_design_id(design=design)}/rows"
 
         payload = [
             {
