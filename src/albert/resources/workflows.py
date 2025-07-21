@@ -4,7 +4,6 @@ from albert.exceptions import AlbertException
 from albert.resources.base import BaseAlbertModel, BaseResource, EntityLink
 from albert.resources.identifiers import (
     IntervalId,
-    ParameterGroupId,
     RowId,
 )
 from albert.resources.parameter_groups import ParameterGroup
@@ -163,7 +162,7 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     """
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
-    parameter_group_id: ParameterGroupId | None = Field(alias="id", default=None)
+    parameter_group_id: str | None = Field(alias="id", default=None)
     parameter_group_name: str | None = Field(alias="name", default=None, frozen=True, exclude=True)
     parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
 
