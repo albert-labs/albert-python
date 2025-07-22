@@ -67,12 +67,10 @@ class DataTemplateCollection(BaseCollection):
         )
         dt = DataTemplate(**response.json())
         dt.parameter_values = parameter_values
-        if data_template.parameter_values is None or len(data_template.parameter_values) == 0:
+        if parameter_values is None or len(parameter_values) == 0:
             return dt
         else:
-            return self.add_parameters(
-                data_template_id=dt.id, parameters=data_template.parameter_values
-            )
+            return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
 
     def _add_param_enums(
         self,
@@ -315,13 +313,13 @@ class DataTemplateCollection(BaseCollection):
             data_template_id=data_template_id,
             new_parameters=returned_parameters,
         )
-        dt_with_params = self.get_by_id(id=data_template_id)
-        for i, param in enumerate(dt_with_params.parameter_values):
-            if i in initial_enum_values:
-                param.validation[0].value = initial_enum_values[i]
-                param.validation[0].datatype = DataType.ENUM
+        # dt_with_params = self.get_by_id(id=data_template_id)
+        # for i, param in enumerate(dt_with_params.parameter_values):
+        #     if i in initial_enum_values:
+        #         param.validation[0].value = initial_enum_values[i]
+        #         param.validation[0].datatype = DataType.ENUM
 
-        return self.update(data_template=dt_with_params)
+        return self.get_by_id(id=data_template_id)
 
     def list(
         self,
