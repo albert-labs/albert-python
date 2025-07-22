@@ -80,7 +80,7 @@ class AlbertPaginator(Iterator[ItemType]):
 
             yield from self.deserialize(items)
 
-            if item_count < self.page_size:
+            if self.page_size is not None and item_count < self.page_size:
                 return
 
             if not self._update_params(data=data, count=item_count):
