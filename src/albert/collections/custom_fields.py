@@ -4,7 +4,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
-from albert.resources.custom_fields import CustomField, ServiceType
+from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 
 
 class CustomFieldCollection(BaseCollection):
@@ -124,6 +124,7 @@ class CustomFieldCollection(BaseCollection):
         self,
         *,
         name: str | None = None,
+        type: FieldType = None,
         service: ServiceType | None = None,
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
@@ -138,6 +139,8 @@ class CustomFieldCollection(BaseCollection):
         ----------
         name : str, optional
             The name of the field.
+        type: FieldType, optional
+            The type of the custom field.
         service : ServiceType, optional
             The related service the field belongs to.
         lookup_column : bool, optional
@@ -158,6 +161,7 @@ class CustomFieldCollection(BaseCollection):
         """
         params = {
             "name": name,
+            "type": type,
             "service": service,
             "lookupColumn": lookup_column,
             "lookupRow": lookup_row,
