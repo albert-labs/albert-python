@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.developer.albertinvent.com/albert-python/latest/changelog/">
+        <link rel="canonical" href="https://docs.developer.albertinvent.com/albert-python/latest/CONTRIBUTING/">
       
       
+        <link rel="prev" href="../migration/">
+      
+      
+        <link rel="next" href="../CHANGELOG/">
       
       
       <link rel="icon" href="../assets/Vector_Favicon_Blue.svg">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Changelog - Albert Python SDK Docs</title>
+        <title>Contributing - Albert Python SDK Docs</title>
       
     
     
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#changelog" class="md-skip">
+        <a href="#contributing-to-albert-python-sdk" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Changelog
+              Contributing
             
           </span>
         </div>
@@ -224,10 +228,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href=".." class="md-tabs__link">
           
   
@@ -318,26 +324,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
             
   
   
@@ -350,7 +361,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             Getting Started
@@ -453,10 +464,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../CONTRIBUTING/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -467,6 +500,209 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quickstart" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚀 Quickstart
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic Versioning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Style
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commit-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      Commit Guidelines
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commit Guidelines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-numpy-style-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Numpy-Style Docstrings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Numpy-Style Docstrings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding New Classes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-documentation-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Documentation Locally
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Documentation Locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-dependencies-if-not-already-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Install dependencies (if not already installed)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-build-and-serve-the-documentation-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Build and serve the documentation locally
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-open-http1270018000-or-specified-address-in-your-browser-and-navigate-through-the-docs-to-confirm-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Open http://127.0.0.1:8000/ (or specified address) in your browser and navigate through the docs to confirm that
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploying-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploying Documentation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manually-triggering-a-docs-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manually Triggering a Docs Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Release
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2776,37 +3012,46 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#unreleased" class="md-nav__link">
+  <a href="#quickstart" class="md-nav__link">
     <span class="md-ellipsis">
-      [Unreleased]
+      🚀 Quickstart
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#100-2025-07-21" class="md-nav__link">
+  <a href="#dynamic-versioning" class="md-nav__link">
     <span class="md-ellipsis">
-      [1.0.0] - 2025-07-21
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="[1.0.0] - 2025-07-21">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#added" class="md-nav__link">
-    <span class="md-ellipsis">
-      Added
+      Dynamic Versioning
     </span>
   </a>
   
 </li>
+      
+        <li class="md-nav__item">
+  <a href="#code-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Style
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commit-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      Commit Guidelines
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commit Guidelines">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#changed" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
-      Changed
+      Examples
     </span>
   </a>
   
@@ -2814,6 +3059,138 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-numpy-style-docstrings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Numpy-Style Docstrings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Numpy-Style Docstrings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding New Classes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-documentation-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Documentation Locally
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Documentation Locally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-install-dependencies-if-not-already-installed" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Install dependencies (if not already installed)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-build-and-serve-the-documentation-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Build and serve the documentation locally
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-open-http1270018000-or-specified-address-in-your-browser-and-navigate-through-the-docs-to-confirm-that" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Open http://127.0.0.1:8000/ (or specified address) in your browser and navigate through the docs to confirm that
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploying-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploying Documentation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manually-triggering-a-docs-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manually Triggering a Docs Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Release
+    </span>
+  </a>
   
 </li>
       
@@ -2836,38 +3213,171 @@
   
 
 
-<h1 id="changelog">Changelog</h1>
-<p>All notable changes to this project will be documented in this file.</p>
-<p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>,
-and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
-<h2 id="unreleased">[Unreleased]</h2>
-<h2 id="100-2025-07-21">[1.0.0] - 2025-07-21</h2>
-<h3 id="added">Added</h3>
+<h1 id="contributing-to-albert-python-sdk">Contributing to Albert Python SDK</h1>
+<p>Thanks for your interest in contributing to the Albert Python SDK! We aim to make it as easy as possible to get started and see your changes released quickly.</p>
+<hr />
+<h2 id="quickstart">🚀 Quickstart</h2>
+<ol>
+<li><strong>Fork</strong> the repository on GitHub.</li>
+<li>
+<p><strong>Clone</strong> your fork locally:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-username/albert-python.git
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>albert-python
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>Run</strong> the setup script (installs all dependencies and hooks):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>./setup.sh
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>Create</strong> a new branch for your work:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>my-awesome-feature
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>Make your changes</strong>, then commit. Pre-commit hooks and linting will run automatically.</p>
+</li>
+<li><strong>Push</strong> your branch and open a Pull Request against <code>main</code>.</li>
+</ol>
+<p>Your contribution could ship in days or weeks—welcome aboard! 🚀</p>
+<h2 id="dynamic-versioning">Dynamic Versioning</h2>
+<p>The package version is defined in the <code>src/albert/__init__.py</code> file
+and read dynamically when building distributions.</p>
+<h2 id="code-style">Code Style</h2>
+<p>This project uses <a href="https://docs.astral.sh/ruff/">ruff</a> for both formatting and linting.
+Formatting and linting rules are enforced in the CI process.</p>
+<p>To check (or fix) your code formatting, you can run the commands,</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Check</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>.<span class="w"> </span>--check
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Fix</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>.
+</span></code></pre></div>
+<p>To check (or fix) your code linting, you can run the commands</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Check</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Fix</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.<span class="w"> </span>--fix
+</span></code></pre></div>
+<p>For VSCode users, there is also base workspace settings defined in <code>.vscode/settings.json</code> that enable
+automatic fomatting and import sorting on-save using the
+<a href="https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff">Ruff for VSCode</a> extension.</p>
+<h2 id="commit-guidelines">Commit Guidelines</h2>
+<p>We use the <a href="https://www.conventionalcommits.org/">Conventional Commits</a> format:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>type(scope)!: summary
+</span></code></pre></div>
 <ul>
-<li>Unified AuthManager system:</li>
-<li>SSO via <code>AlbertSSOClient</code> and <code>Albert.from_sso(...)</code></li>
-<li>Client Credentials via <code>AlbertClientCredentials</code> and <code>Albert.from_client_credentials(...)</code></li>
-<li>Static Token via <code>Albert.from_token(...)</code> or <code>ALBERT_TOKEN</code> environment variable</li>
-<li><code>max_items</code> and <code>page_size</code> parameters added to all <code>get_all()</code> and <code>search()</code> methods for consistent, iterator-friendly pagination</li>
-<li>Support for <code>resource.hydrate()</code> to upgrade partial search results into fully hydrated resources</li>
-<li>Introduced <code>get_or_create(...)</code> method for safe idempotent creation</li>
+<li><code>type</code>: one of <code>feat</code>, <code>fix</code>, <code>refactor</code>, <code>chore</code>, <code>docs</code>, <code>test</code>, <code>style</code>, <code>build</code>, <code>ci</code>, <code>perf</code>, <code>revert</code></li>
+<li><code>scope</code>: optional, a module or feature name (e.g., <code>auth</code>, <code>session</code>)</li>
+<li><code>!</code>: optional, indicates a <strong>breaking change</strong></li>
+<li><code>summary</code>: short and clear — think “when applied, the SDK will…”</li>
 </ul>
-<h3 id="changed">Changed</h3>
+<h3 id="examples">Examples</h3>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>feat(auth): support token refresh
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>fix!: remove deprecated param handling
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>docs: clarify local dev setup
+</span></code></pre></div>
+<p>This keeps commit history readable and enables changelog automation.</p>
+<h2 id="documentation">Documentation</h2>
+<h3 id="using-numpy-style-docstrings">Using Numpy-Style Docstrings</h3>
+<p>All <strong>public methods and classes</strong> in this repository should follow the <strong>Numpy-style docstring format</strong>. This ensures consistency and compatibility with <code>mkdocstrings</code> for automated documentation generation.</p>
+<h4 id="example">Example</h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Cas</span><span class="p">:</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="sd">    Represents a CAS entity.</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="sd">    Attributes</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="sd">    ----------</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="sd">    number : str</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="sd">        The CAS number.</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="sd">    name : str, optional</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="sd">        The name of the CAS.</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">from_string</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">number</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Cas&quot;</span><span class="p">:</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="sd">        Creates a Cas object from a string.</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="sd">        Parameters</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="sd">        ----------</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="sd">        number : str</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="sd">            The CAS number.</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="sd">        Returns</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="sd">        -------</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="sd">        Cas</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="sd">            The Cas object created from the string.</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">number</span><span class="o">=</span><span class="n">number</span><span class="p">)</span>
+</span></code></pre></div>
+<p>When contributing new classes or methods, ensure <em>all public members</em> have properly formatted Numpy-style docstrings.</p>
+<h3 id="adding-new-classes">Adding New Classes</h3>
+<p>To add coverage for a new microservice, you can add a page by doing the following:</p>
+<ol>
+<li>
+<p>in the <code>docs/</code> folder make a new markdown file following the pattern of the others.
+    For example:</p>
+<div class="language-markdown highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="gh"># cas.md</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>::: albert.collections.cas
+</span></code></pre></div>
+</li>
+<li>
+<p>In <code>mkdocs.yml</code> add a link to the <code>nav</code> section (Alphabetically Sorted) following the existing pattern.</p>
+</li>
+</ol>
+<h3 id="testing-documentation-locally">Testing Documentation Locally</h3>
+<p>Before pushing documentation changes, verify that everything is rendering correctly.</p>
+<h4 id="1-install-dependencies-if-not-already-installed">1. Install dependencies (if not already installed)</h4>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>uv<span class="w"> </span>sync
+</span></code></pre></div>
+<h4 id="2-build-and-serve-the-documentation-locally">2. Build and serve the documentation locally</h4>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>serve
+</span></code></pre></div>
+<h4 id="3-open-http1270018000-or-specified-address-in-your-browser-and-navigate-through-the-docs-to-confirm-that">3. Open <a href="http://127.0.0.1:8000/">http://127.0.0.1:8000/</a> (or specified address) in your browser and navigate through the docs to confirm that</h4>
 <ul>
-<li>Deprecated <code>client_credentials</code> and <code>token</code> parameters in <code>Albert(...)</code>, replaced by <code>auth_manager</code></li>
-<li><code>create()</code> methods no longer perform existence checks and now raise an error if the entity already exists</li>
-<li>Deprecated all <code>list()</code> methods in favor of:</li>
-<li><code>get_all()</code> for detailed (hydrated) resources</li>
-<li><code>search()</code> for partial (unhydrated) resources</li>
-<li>Renamed <code>BatchDataCollection.get()</code> → <code>get_by_id()</code></li>
-<li>Renamed <code>NotesCollection.list()</code> → <code>get_by_parent_id()</code></li>
-<li>Renamed <code>tags.get_by_tag()</code> → <code>get_by_name()</code></li>
-<li>Renamed all <code>collection.collection_exists()</code> → <code>collection.exists()</code></li>
-<li>Renamed <code>InventoryInformation</code> model to:</li>
-<li><code>TaskInventoryInformation</code></li>
-<li><code>PropertyDataInventoryInformation</code></li>
-<li>Renamed <code>templates</code> module to <code>custom_templates</code></li>
+<li>All references and links are resolving correctly.</li>
+<li>Docstrings are properly formatted.</li>
+<li>No missing or broken sections exist.</li>
 </ul>
+<h3 id="deploying-documentation">Deploying Documentation</h3>
+<p>The documentation is automatically built and deployed to GitHub Pages when a pull request is merged into main.</p>
+<h4 id="how-it-works">How It Works</h4>
+<ol>
+<li>A PR is merged into main.</li>
+<li>
+<p>CircleCI runs the deploy_docs job, which:</p>
+<ul>
+<li>Builds the latest version of the documentation using mkdocs build --clean.</li>
+<li>Pushes the built docs to the gh-pages branch.</li>
+<li>GitHub Pages automatically serves the latest docs</li>
+</ul>
+</li>
+</ol>
+<h4 id="manually-triggering-a-docs-deployment">Manually Triggering a Docs Deployment</h4>
+<p>If needed, you can manually re-deploy the docs by running:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>main
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>git<span class="w"> </span>pull<span class="w"> </span>origin<span class="w"> </span>main
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--clean
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>gh-pages
+</span></code></pre></div>
+<h2 id="creating-a-release">Creating a Release</h2>
+<ol>
+<li>Ensure the version in <code>src/albert/__init__.py</code> is updated to the desired release version</li>
+<li>Go to the <strong>Releases</strong> section of the repository</li>
+<li>Click <strong>"Draft a new release"</strong></li>
+<li>Create a new tag matching the version in <code>__init__.py</code> (e.g., if <code>__init__.py</code> has <code>__version__ = "0.3.0"</code>, use tag <code>v0.3.0</code>)</li>
+<li>Click <strong>"Generate release notes"</strong> and review/edit as needed</li>
+<li>Publish the release</li>
+</ol>
+<p>The release will automatically trigger the CircleCI workflow to:</p>
+<ul>
+<li>Build and publish the package to PyPI</li>
+<li>Build and deploy the documentation</li>
+</ul>
+<p>Note: Only designated Albert team members have permissions to create releases.</p>
 
 
 
