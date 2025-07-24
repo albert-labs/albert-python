@@ -16,6 +16,7 @@ from albert.core.shared.identifiers import (
     TaskId,
     WorkflowId,
 )
+from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
 from albert.exceptions import AlbertHTTPError
 from albert.resources.tasks import (
@@ -42,7 +43,6 @@ class TaskCollection(BaseCollection):
         "priority",
         "state",
         "tags",
-        "assigned_to",
         "due_date",
     }
 
@@ -503,7 +503,14 @@ class TaskCollection(BaseCollection):
         TaskPatchPayload
              The patch payload for updating the task
         """
-        _updatable_attributes_special = {"inventory_information"}
+        _updatable_attributes_special = {
+            "inventory_information",
+            "assigned_to",
+        }
+        if updated.assigned_to is not None:
+            updated.assigned_to = EntityLinkWithName(
+                id=updated.assigned_to.id, name=updated.assigned_to.name
+            )
         base_payload = self._generate_task_patch_payload(
             existing=existing,
             updated=updated,
@@ -512,6 +519,42 @@ class TaskCollection(BaseCollection):
         for attribute in _updatable_attributes_special:
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
+
+            if attribute == "assigned_to":
+                if new_value == old_value or (
+                    new_value and old_value and new_value.id == old_value.id
+                ):
+                    continue
+                if old_value is None:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.ADD,
+                            "attribute": "AssignedTo",
+                            "newValue": new_value,
+                        }
+                    )
+                    continue
+
+                if new_value is None:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.DELETE,
+                            "attribute": "AssignedTo",
+                            "oldValue": old_value,
+                        }
+                    )
+                    continue
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.UPDATE,
+                        "attribute": "AssignedTo",
+                        "oldValue": EntityLink(
+                            id=old_value.id
+                        ),  # can't include name with the old value or you get an error
+                        "newValue": new_value,
+                    }
+                )
+
             if attribute == "inventory_information":
                 existing_unique = {f"{x.inventory_id}#{x.lot_id}": x for x in old_value}
                 updated_unique = {f"{x.inventory_id}#{x.lot_id}": x for x in new_value}
@@ -564,8 +607,6 @@ class TaskCollection(BaseCollection):
             The updated Task object as it exists in the Albert platform.
         """
         existing = self.get_by_id(id=task.id)
-        if task.assigned_to is not None:
-            task.assigned_to = task.assigned_to.to_entity_link()
         patch_payload = self._generate_adv_patch_payload(updated=task, existing=existing)
 
         if len(patch_payload.data) == 0:
