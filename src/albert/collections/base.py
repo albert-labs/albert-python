@@ -88,25 +88,19 @@ class BaseCollection:
                             )
                         )
                     elif len(to_add) > 0:
-                        data.extend(
-                            [
-                                PatchDatum(
-                                    attribute=attribute, operation=PatchOperation.ADD, new_value=a
-                                )
-                                for a in to_add
-                            ]
+                        data.append(
+                            PatchDatum(
+                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
+                            )
                         )
 
                     elif len(to_remove) > 0:
-                        data.extend(
-                            [
-                                PatchDatum(
-                                    attribute=attribute,
-                                    operation=PatchOperation.DELETE,
-                                    old_value=r,
-                                )
-                                for r in to_remove
-                            ]
+                        data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.DELETE,
+                                old_value=to_remove,
+                            )
                         )
 
                 else:
