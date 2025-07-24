@@ -25,6 +25,12 @@ class EntityLink(BaseAlbertModel):
         return self
 
 
+class EntityLinkWithName(EntityLink):
+    """EntityLink that includes the name field in serialization."""
+
+    name: str | None = Field(default=None, exclude=False)
+
+
 class LocalizedNames(BaseAlbertModel):
     de: str | None = None
     ja: str | None = None

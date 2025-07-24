@@ -8,7 +8,11 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import InventoryId, LotId, TaskId
 from albert.core.shared.models.patch import PatchPayload
-from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.core.shared.types import (
+    MetadataItem,
+    SerializeAsEntityLink,
+    SerializeAsEntityLinkWithName,
+)
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
@@ -208,7 +212,9 @@ class BaseTask(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
     )
-    assigned_to: SerializeAsEntityLink[User] | None = Field(default=None, alias="AssignedTo")
+    assigned_to: SerializeAsEntityLinkWithName[User] | None = Field(
+        default=None, alias="AssignedTo"
+    )
     page_state: PageState | None = Field(
         alias="PageState",
         default=None,
