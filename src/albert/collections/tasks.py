@@ -16,7 +16,7 @@ from albert.core.shared.identifiers import (
     TaskId,
     WorkflowId,
 )
-from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.shared.models.patch import PatchOperation
 from albert.exceptions import AlbertHTTPError
 from albert.resources.tasks import (
     BaseTask,
@@ -471,100 +471,76 @@ class TaskCollection(BaseCollection):
 
         return isinstance(existing, list) or isinstance(updated, list)
 
-    def _generate_patch_payload(
+    def _generate_task_patch_payload(
         self,
         *,
         existing: BaseTask,
         updated: BaseTask,
-    ) -> tuple[PatchPayload, dict[str, list[str]]]:
+    ) -> TaskPatchPayload:
         """Generate patch payload and capture metadata list updates."""
 
         base_payload = super()._generate_patch_payload(
             existing=existing,
             updated=updated,
+            generate_metadata_diff=True,
         )
-
-        new_data: list[PatchDatum] = []
-        list_metadata_updates: dict[str, list[str]] = {}
-
-        for datum in base_payload.data:
-            if self._is_metadata_item_list(
-                existing_object=existing,
-                updated_object=updated,
-                metadata_field=datum.attribute,
-            ):
-                key = datum.attribute.split(".", 1)[1]
-                updated_list = updated.metadata.get(key) or []
-                list_values: list[str] = [
-                    item.id if hasattr(item, "id") else item for item in updated_list
-                ]
-
-                list_metadata_updates[datum.attribute] = list_values
-                continue
-
-            new_data.append(
-                PatchDatum(
-                    operation=datum.operation,
-                    attribute=datum.attribute,
-                    new_value=datum.new_value,
-                    old_value=datum.old_value,
-                )
-            )
-
-        return TaskPatchPayload(data=new_data, id=existing.id), list_metadata_updates
+        return TaskPatchPayload(data=base_payload.data, id=existing.id)
 
     def _generate_adv_patch_payload(
         self, *, updated: BaseTask, existing: BaseTask
-    ) -> tuple[dict, dict[str, list[str]]]:
+    ) -> TaskPatchPayload:
         """Generate a patch payload for updating a task.
 
-        Parameters
-        ----------
-        existing : BaseTask
-            The existing Task object.
-        updated : BaseTask
-            The updated Task object.
+         Parameters
+         ----------
+         existing : BaseTask
+             The existing Task object.
+         updated : BaseTask
+             The updated Task object.
 
-        Returns
-        -------
-        tuple[dict, dict[str, list[str]]]
-            The patch payload for updating the task and metadata list updates.
+         Returns
+         -------
+        TaskPatchPayload
+             The patch payload for updating the task
         """
         _updatable_attributes_special = {"inventory_information"}
-        base_payload, list_metadata_updates = self._generate_patch_payload(
+        base_payload = self._generate_task_patch_payload(
             existing=existing,
             updated=updated,
         )
-        patch_payload = base_payload.model_dump(mode="json", by_alias=True)
 
         for attribute in _updatable_attributes_special:
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
             if attribute == "inventory_information":
-                existing_unique = [f"{x.inventory_id}#{x.lot_id}" for x in old_value]
-                updated_unique = [f"{x.inventory_id}#{x.lot_id}" for x in new_value]
-                inv_to_remove = []
-                for i, inv in enumerate(existing_unique):
-                    if inv not in updated_unique:
-                        inv_to_remove.append(
-                            old_value[i].model_dump(mode="json", by_alias=True, exclude_none=True)
-                        )
-                if len(inv_to_remove) > 0:
-                    patch_payload["data"].append(
+                existing_unique = {f"{x.inventory_id}#{x.lot_id}": x for x in old_value}
+                updated_unique = {f"{x.inventory_id}#{x.lot_id}": x for x in new_value}
+
+                # Find items to remove (in existing but not in updated)
+                inv_to_remove = [
+                    item.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for key, item in existing_unique.items()
+                    if key not in updated_unique
+                ]
+
+                # Find items to add (in updated but not in existing)
+                inv_to_add = [
+                    item.model_dump(mode="json", by_alias=True, exclude_none=True)
+                    for key, item in updated_unique.items()
+                    if key not in existing_unique
+                ]
+
+                if inv_to_remove:
+                    base_payload.data.append(
                         {
                             "operation": PatchOperation.DELETE,
                             "attribute": "inventory",
                             "oldValue": inv_to_remove,
                         }
                     )
-                inv_to_add = []
-                for i, inv in enumerate(updated_unique):
-                    if inv not in existing_unique:
-                        inv_to_add.append(
-                            new_value[i].model_dump(mode="json", by_alias=True, exclude_none=True)
-                        )
-                if len(inv_to_add) > 0:
-                    patch_payload["data"].append(
+
+                if inv_to_add:
+                    base_payload.data.append(
                         {
                             "operation": PatchOperation.ADD,
                             "attribute": "inventory",
@@ -572,7 +548,7 @@ class TaskCollection(BaseCollection):
                         }
                     )
 
-        return patch_payload, list_metadata_updates
+        return base_payload
 
     def update(self, *, task: BaseTask) -> BaseTask:
         """Update a task.
@@ -588,51 +564,22 @@ class TaskCollection(BaseCollection):
             The updated Task object as it exists in the Albert platform.
         """
         existing = self.get_by_id(id=task.id)
-        patch_payload, list_metadata_updates = self._generate_adv_patch_payload(
-            updated=task, existing=existing
-        )
-        patch_operations = patch_payload.get("data", [])
+        if task.assigned_to is not None:
+            task.assigned_to = task.assigned_to.to_entity_link()
+        patch_payload = self._generate_adv_patch_payload(updated=task, existing=existing)
 
-        if len(patch_operations) == 0 and len(list_metadata_updates) == 0:
+        if len(patch_payload.data) == 0:
             logger.info(f"Task {task.id} is already up to date")
             return task
         path = f"{self.base_path}/{task.id}"
 
-        for datum in patch_operations:
+        for datum in patch_payload.data:
             patch_payload = TaskPatchPayload(data=[datum], id=task.id)
             self.session.patch(
                 url=path,
                 json=[patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True)],
             )
 
-        # For metadata list field updates, we clear, then update
-        # since duplicate attribute values are not allowed in single patch request.
-        for attribute, values in list_metadata_updates.items():
-            entity_links = existing.metadata.get(attribute.split(".")[1])
-            old_values = [item.id if hasattr(item, "id") else item for item in entity_links]
-            clear_datum = PatchDatum(
-                operation=PatchOperation.DELETE, attribute=attribute, oldValue=old_values
-            )
-            clear_payload = TaskPatchPayload(data=[clear_datum], id=task.id)
-            self.session.patch(
-                url=path,
-                json=[clear_payload.model_dump(mode="json", by_alias=True, exclude_none=True)],
-            )
-            if values:
-                update_datum = PatchDatum(
-                    operation=PatchOperation.UPDATE,
-                    attribute=attribute,
-                    newValue=values,
-                    oldValue=[],
-                )
-
-                update_payload = TaskPatchPayload(data=[update_datum], id=task.id)
-                self.session.patch(
-                    url=path,
-                    json=[
-                        update_payload.model_dump(mode="json", by_alias=True, exclude_none=False)
-                    ],
-                )
         return self.get_by_id(id=task.id)
 
     def get_history(

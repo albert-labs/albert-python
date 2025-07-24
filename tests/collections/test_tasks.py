@@ -55,17 +55,30 @@ def test_get_by_id(client: Albert, seeded_tasks):
     assert task.name == seeded_tasks[0].name
 
 
-def test_update(client: Albert, seeded_tasks, seed_prefix: str, static_lists: list[ListItem]):
+def test_update(
+    client: Albert,
+    seeded_tasks,
+    seed_prefix: str,
+    static_lists: list[ListItem],
+):
     task = [x for x in seeded_tasks if "metadata" in x.name.lower()][0]
     new_name = f"{seed_prefix}-new name"
     task.name = new_name
     new_metadata = change_metadata(
         task.metadata, static_lists=static_lists, seed_prefix=seed_prefix
     )
+    users = list(client.users.get_all(max_items=10))
+    new_assigned_to = (
+        users[0]
+        if task.assigned_to is None
+        else [x for x in users if x.id != task.assigned_to.id][0]
+    )
+    task.assigned_to = new_assigned_to
     task.metadata = new_metadata
     updated_task = client.tasks.update(task=task)
     assert updated_task.name == new_name
     assert updated_task.id == task.id
+    assert updated_task.assigned_to.id == new_assigned_to.id
     # check metadata updates
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 
