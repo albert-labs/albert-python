@@ -2192,6 +2192,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#albert.resources.custom_fields.ServiceType.CAS" class="md-nav__link">
+    <span class="md-ellipsis">
+      CAS
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3464,6 +3473,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#albert.resources.custom_fields.ServiceType.CAS" class="md-nav__link">
+    <span class="md-ellipsis">
+      CAS
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4131,6 +4149,16 @@
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.custom_fields.ServiceType.CAS">CAS</a></code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -4299,6 +4327,24 @@
 
 </h4>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">PARAMETER_GROUPS</span> <span class="o">=</span> <span class="s1">&#39;parametergroups&#39;</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.custom_fields.ServiceType.CAS" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">CAS</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">CAS</span> <span class="o">=</span> <span class="s1">&#39;cas&#39;</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5413,15 +5459,15 @@
 
             <details class="quote">
               <summary>Source code in <code>src/albert/resources/custom_fields.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-114">114</a></span>
-<span class="normal"><a href="#__codelineno-0-115">115</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-115">115</a></span>
 <span class="normal"><a href="#__codelineno-0-116">116</a></span>
 <span class="normal"><a href="#__codelineno-0-117">117</a></span>
-<span class="normal"><a href="#__codelineno-0-118">118</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-114"><a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
-</span><span id="__span-0-115"><a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="k">def</span><span class="w"> </span><span class="nf">confirm_field_compatability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CustomField&quot;</span><span class="p">:</span>
-</span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_type</span> <span class="o">==</span> <span class="n">FieldType</span><span class="o">.</span><span class="n">LIST</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Category must be set for list fields&quot;</span><span class="p">)</span>
-</span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-118">118</a></span>
+<span class="normal"><a href="#__codelineno-0-119">119</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-115"><a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+</span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="k">def</span><span class="w"> </span><span class="nf">confirm_field_compatability</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CustomField&quot;</span><span class="p">:</span>
+</span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">field_type</span> <span class="o">==</span> <span class="n">FieldType</span><span class="o">.</span><span class="n">LIST</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Category must be set for list fields&quot;</span><span class="p">)</span>
+</span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

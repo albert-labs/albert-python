@@ -5003,10 +5003,9 @@ refinement of a search.</p>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">match_all_conditions</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">order</span><span class="p">:</span> <span class="n"><span title="albert.core.shared.enums.OrderBy">OrderBy</span></span> <span class="o">=</span> <span class="n"><span title="albert.core.shared.enums.OrderBy.DESCENDING">DESCENDING</span></span><span class="p">,</span>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/inventory/#albert.resources.inventory.InventorySearchItem">InventorySearchItem</a></span><span class="p">]</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/inventory/#albert.resources.inventory.InventorySearchItem">InventorySearchItem</a></span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5253,22 +5252,6 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>page_size</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of items to fetch per page. Default is 100.</p>
-              </div>
-            </td>
-            <td>
-                  <code>100</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>max_items</code>
             </td>
             <td>
@@ -5427,11 +5410,7 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 <span class="normal"><a href="#__codelineno-0-564">564</a></span>
 <span class="normal"><a href="#__codelineno-0-565">565</a></span>
 <span class="normal"><a href="#__codelineno-0-566">566</a></span>
-<span class="normal"><a href="#__codelineno-0-567">567</a></span>
-<span class="normal"><a href="#__codelineno-0-568">568</a></span>
-<span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span>
-<span class="normal"><a href="#__codelineno-0-571">571</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-468"><a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="nd">@validate_call</span>
+<span class="normal"><a href="#__codelineno-0-567">567</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-468"><a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="nd">@validate_call</span>
 </span><span id="__span-0-469"><a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span>
 </span><span id="__span-0-470"><a id="__codelineno-0-470" name="__codelineno-0-470"></a>    <span class="bp">self</span><span class="p">,</span>
 </span><span id="__span-0-471"><a id="__codelineno-0-471" name="__codelineno-0-471"></a>    <span class="o">*</span><span class="p">,</span>
@@ -5449,92 +5428,88 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 </span><span id="__span-0-483"><a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="n">match_all_conditions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-484"><a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
 </span><span id="__span-0-485"><a id="__codelineno-0-485" name="__codelineno-0-485"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-486"><a id="__codelineno-0-486" name="__codelineno-0-486"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-487"><a id="__codelineno-0-487" name="__codelineno-0-487"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-488"><a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-489"><a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">InventorySearchItem</span><span class="p">]:</span>
-</span><span id="__span-0-490"><a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-491"><a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">    Search for Inventory items matching the provided criteria.</span>
-</span><span id="__span-0-492"><a id="__codelineno-0-492" name="__codelineno-0-492"></a>
-</span><span id="__span-0-493"><a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">    ⚠️ This method returns partial (unhydrated) entities to optimize performance.</span>
-</span><span id="__span-0-494"><a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">    To retrieve fully detailed entities, use :meth:`get_all` instead.</span>
-</span><span id="__span-0-495"><a id="__codelineno-0-495" name="__codelineno-0-495"></a>
-</span><span id="__span-0-496"><a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-497"><a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-498"><a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">    text : str, optional</span>
-</span><span id="__span-0-499"><a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">        Search text for full-text matching.</span>
-</span><span id="__span-0-500"><a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">    cas : Cas or list[Cas], optional</span>
-</span><span id="__span-0-501"><a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">        Filter by CAS numbers.</span>
-</span><span id="__span-0-502"><a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">    category : InventoryCategory or list[InventoryCategory], optional</span>
-</span><span id="__span-0-503"><a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="sd">        Filter by item category.</span>
-</span><span id="__span-0-504"><a id="__codelineno-0-504" name="__codelineno-0-504"></a><span class="sd">    company : Company or list[Company], optional</span>
-</span><span id="__span-0-505"><a id="__codelineno-0-505" name="__codelineno-0-505"></a><span class="sd">        Filter by associated company.</span>
-</span><span id="__span-0-506"><a id="__codelineno-0-506" name="__codelineno-0-506"></a><span class="sd">    location : Location or list[Location], optional</span>
-</span><span id="__span-0-507"><a id="__codelineno-0-507" name="__codelineno-0-507"></a><span class="sd">        Filter by location.</span>
-</span><span id="__span-0-508"><a id="__codelineno-0-508" name="__codelineno-0-508"></a><span class="sd">    storage_location : StorageLocation or list[StorageLocation], optional</span>
-</span><span id="__span-0-509"><a id="__codelineno-0-509" name="__codelineno-0-509"></a><span class="sd">        Filter by storage location.</span>
-</span><span id="__span-0-510"><a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">    project_id : str, optional</span>
-</span><span id="__span-0-511"><a id="__codelineno-0-511" name="__codelineno-0-511"></a><span class="sd">        Filter by project ID (formulas).</span>
-</span><span id="__span-0-512"><a id="__codelineno-0-512" name="__codelineno-0-512"></a><span class="sd">    sheet_id : str, optional</span>
-</span><span id="__span-0-513"><a id="__codelineno-0-513" name="__codelineno-0-513"></a><span class="sd">        Filter by worksheet ID.</span>
-</span><span id="__span-0-514"><a id="__codelineno-0-514" name="__codelineno-0-514"></a><span class="sd">    created_by : User or list[User], optional</span>
-</span><span id="__span-0-515"><a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="sd">        Filter by creator(s).</span>
-</span><span id="__span-0-516"><a id="__codelineno-0-516" name="__codelineno-0-516"></a><span class="sd">    lot_owner : User or list[User], optional</span>
-</span><span id="__span-0-517"><a id="__codelineno-0-517" name="__codelineno-0-517"></a><span class="sd">        Filter by lot owner(s).</span>
-</span><span id="__span-0-518"><a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">    tags : list[str], optional</span>
-</span><span id="__span-0-519"><a id="__codelineno-0-519" name="__codelineno-0-519"></a><span class="sd">        Filter by tag name(s).</span>
-</span><span id="__span-0-520"><a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="sd">    match_all_conditions : bool, optional</span>
-</span><span id="__span-0-521"><a id="__codelineno-0-521" name="__codelineno-0-521"></a><span class="sd">        Whether to match all filters (AND logic). Default is False.</span>
-</span><span id="__span-0-522"><a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">    order : OrderBy, optional</span>
-</span><span id="__span-0-523"><a id="__codelineno-0-523" name="__codelineno-0-523"></a><span class="sd">        Sort order. Default is DESCENDING.</span>
-</span><span id="__span-0-524"><a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">    sort_by : str, optional</span>
-</span><span id="__span-0-525"><a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">        Field to sort results by. Default is None.</span>
-</span><span id="__span-0-526"><a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">    page_size : int, optional</span>
-</span><span id="__span-0-527"><a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="sd">        Number of items to fetch per page. Default is 100.</span>
-</span><span id="__span-0-528"><a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">    max_items : int, optional</span>
-</span><span id="__span-0-529"><a id="__codelineno-0-529" name="__codelineno-0-529"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
-</span><span id="__span-0-530"><a id="__codelineno-0-530" name="__codelineno-0-530"></a><span class="sd">    offset : int, optional</span>
-</span><span id="__span-0-531"><a id="__codelineno-0-531" name="__codelineno-0-531"></a><span class="sd">        Offset for pagination. Default is 0.</span>
-</span><span id="__span-0-532"><a id="__codelineno-0-532" name="__codelineno-0-532"></a>
-</span><span id="__span-0-533"><a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-534"><a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">    -------</span>
-</span><span id="__span-0-535"><a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">    Iterator[InventorySearchItem]</span>
-</span><span id="__span-0-536"><a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">        An iterator over partial (unhydrated) InventorySearchItem results.</span>
-</span><span id="__span-0-537"><a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-486"><a id="__codelineno-0-486" name="__codelineno-0-486"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-487"><a id="__codelineno-0-487" name="__codelineno-0-487"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-488"><a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">InventorySearchItem</span><span class="p">]:</span>
+</span><span id="__span-0-489"><a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-490"><a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">    Search for Inventory items matching the provided criteria.</span>
+</span><span id="__span-0-491"><a id="__codelineno-0-491" name="__codelineno-0-491"></a>
+</span><span id="__span-0-492"><a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">    ⚠️ This method returns partial (unhydrated) entities to optimize performance.</span>
+</span><span id="__span-0-493"><a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">    To retrieve fully detailed entities, use :meth:`get_all` instead.</span>
+</span><span id="__span-0-494"><a id="__codelineno-0-494" name="__codelineno-0-494"></a>
+</span><span id="__span-0-495"><a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-496"><a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-497"><a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">    text : str, optional</span>
+</span><span id="__span-0-498"><a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">        Search text for full-text matching.</span>
+</span><span id="__span-0-499"><a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">    cas : Cas or list[Cas], optional</span>
+</span><span id="__span-0-500"><a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        Filter by CAS numbers.</span>
+</span><span id="__span-0-501"><a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">    category : InventoryCategory or list[InventoryCategory], optional</span>
+</span><span id="__span-0-502"><a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">        Filter by item category.</span>
+</span><span id="__span-0-503"><a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="sd">    company : Company or list[Company], optional</span>
+</span><span id="__span-0-504"><a id="__codelineno-0-504" name="__codelineno-0-504"></a><span class="sd">        Filter by associated company.</span>
+</span><span id="__span-0-505"><a id="__codelineno-0-505" name="__codelineno-0-505"></a><span class="sd">    location : Location or list[Location], optional</span>
+</span><span id="__span-0-506"><a id="__codelineno-0-506" name="__codelineno-0-506"></a><span class="sd">        Filter by location.</span>
+</span><span id="__span-0-507"><a id="__codelineno-0-507" name="__codelineno-0-507"></a><span class="sd">    storage_location : StorageLocation or list[StorageLocation], optional</span>
+</span><span id="__span-0-508"><a id="__codelineno-0-508" name="__codelineno-0-508"></a><span class="sd">        Filter by storage location.</span>
+</span><span id="__span-0-509"><a id="__codelineno-0-509" name="__codelineno-0-509"></a><span class="sd">    project_id : str, optional</span>
+</span><span id="__span-0-510"><a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">        Filter by project ID (formulas).</span>
+</span><span id="__span-0-511"><a id="__codelineno-0-511" name="__codelineno-0-511"></a><span class="sd">    sheet_id : str, optional</span>
+</span><span id="__span-0-512"><a id="__codelineno-0-512" name="__codelineno-0-512"></a><span class="sd">        Filter by worksheet ID.</span>
+</span><span id="__span-0-513"><a id="__codelineno-0-513" name="__codelineno-0-513"></a><span class="sd">    created_by : User or list[User], optional</span>
+</span><span id="__span-0-514"><a id="__codelineno-0-514" name="__codelineno-0-514"></a><span class="sd">        Filter by creator(s).</span>
+</span><span id="__span-0-515"><a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="sd">    lot_owner : User or list[User], optional</span>
+</span><span id="__span-0-516"><a id="__codelineno-0-516" name="__codelineno-0-516"></a><span class="sd">        Filter by lot owner(s).</span>
+</span><span id="__span-0-517"><a id="__codelineno-0-517" name="__codelineno-0-517"></a><span class="sd">    tags : list[str], optional</span>
+</span><span id="__span-0-518"><a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">        Filter by tag name(s).</span>
+</span><span id="__span-0-519"><a id="__codelineno-0-519" name="__codelineno-0-519"></a><span class="sd">    match_all_conditions : bool, optional</span>
+</span><span id="__span-0-520"><a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="sd">        Whether to match all filters (AND logic). Default is False.</span>
+</span><span id="__span-0-521"><a id="__codelineno-0-521" name="__codelineno-0-521"></a><span class="sd">    order : OrderBy, optional</span>
+</span><span id="__span-0-522"><a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">        Sort order. Default is DESCENDING.</span>
+</span><span id="__span-0-523"><a id="__codelineno-0-523" name="__codelineno-0-523"></a><span class="sd">    sort_by : str, optional</span>
+</span><span id="__span-0-524"><a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">        Field to sort results by. Default is None.</span>
+</span><span id="__span-0-525"><a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">    max_items : int, optional</span>
+</span><span id="__span-0-526"><a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
+</span><span id="__span-0-527"><a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="sd">    offset : int, optional</span>
+</span><span id="__span-0-528"><a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">        Offset for pagination. Default is 0.</span>
+</span><span id="__span-0-529"><a id="__codelineno-0-529" name="__codelineno-0-529"></a>
+</span><span id="__span-0-530"><a id="__codelineno-0-530" name="__codelineno-0-530"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-531"><a id="__codelineno-0-531" name="__codelineno-0-531"></a><span class="sd">    -------</span>
+</span><span id="__span-0-532"><a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="sd">    Iterator[InventorySearchItem]</span>
+</span><span id="__span-0-533"><a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="sd">        An iterator over partial (unhydrated) InventorySearchItem results.</span>
+</span><span id="__span-0-534"><a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-535"><a id="__codelineno-0-535" name="__codelineno-0-535"></a>
+</span><span id="__span-0-536"><a id="__codelineno-0-536" name="__codelineno-0-536"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]):</span>
+</span><span id="__span-0-537"><a id="__codelineno-0-537" name="__codelineno-0-537"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">InventorySearchItem</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">_bind_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
 </span><span id="__span-0-538"><a id="__codelineno-0-538" name="__codelineno-0-538"></a>
-</span><span id="__span-0-539"><a id="__codelineno-0-539" name="__codelineno-0-539"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]):</span>
-</span><span id="__span-0-540"><a id="__codelineno-0-540" name="__codelineno-0-540"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">InventorySearchItem</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">_bind_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
-</span><span id="__span-0-541"><a id="__codelineno-0-541" name="__codelineno-0-541"></a>
-</span><span id="__span-0-542"><a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="n">search_text</span> <span class="o">=</span> <span class="n">text</span> <span class="k">if</span> <span class="p">(</span><span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="k">else</span> <span class="n">text</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span>
-</span><span id="__span-0-543"><a id="__codelineno-0-543" name="__codelineno-0-543"></a>
-</span><span id="__span-0-544"><a id="__codelineno-0-544" name="__codelineno-0-544"></a>    <span class="n">query_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_parameters</span><span class="p">(</span>
-</span><span id="__span-0-545"><a id="__codelineno-0-545" name="__codelineno-0-545"></a>        <span class="n">text</span><span class="o">=</span><span class="n">search_text</span><span class="p">,</span>
-</span><span id="__span-0-546"><a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="n">cas</span><span class="o">=</span><span class="n">cas</span><span class="p">,</span>
-</span><span id="__span-0-547"><a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
-</span><span id="__span-0-548"><a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">company</span><span class="o">=</span><span class="n">company</span><span class="p">,</span>
-</span><span id="__span-0-549"><a id="__codelineno-0-549" name="__codelineno-0-549"></a>        <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
-</span><span id="__span-0-550"><a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
-</span><span id="__span-0-551"><a id="__codelineno-0-551" name="__codelineno-0-551"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
-</span><span id="__span-0-552"><a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="n">storage_location</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
-</span><span id="__span-0-553"><a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
-</span><span id="__span-0-554"><a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="n">sheet_id</span><span class="o">=</span><span class="n">sheet_id</span><span class="p">,</span>
-</span><span id="__span-0-555"><a id="__codelineno-0-555" name="__codelineno-0-555"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
-</span><span id="__span-0-556"><a id="__codelineno-0-556" name="__codelineno-0-556"></a>        <span class="n">lot_owner</span><span class="o">=</span><span class="n">lot_owner</span><span class="p">,</span>
-</span><span id="__span-0-557"><a id="__codelineno-0-557" name="__codelineno-0-557"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
-</span><span id="__span-0-558"><a id="__codelineno-0-558" name="__codelineno-0-558"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
-</span><span id="__span-0-559"><a id="__codelineno-0-559" name="__codelineno-0-559"></a>    <span class="p">)</span>
-</span><span id="__span-0-560"><a id="__codelineno-0-560" name="__codelineno-0-560"></a>
-</span><span id="__span-0-561"><a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
-</span><span id="__span-0-562"><a id="__codelineno-0-562" name="__codelineno-0-562"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
-</span><span id="__span-0-563"><a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/llmsearch&quot;</span>
-</span><span id="__span-0-564"><a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="k">if</span> <span class="n">match_all_conditions</span>
-</span><span id="__span-0-565"><a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
-</span><span id="__span-0-566"><a id="__codelineno-0-566" name="__codelineno-0-566"></a>        <span class="n">params</span><span class="o">=</span><span class="n">query_params</span><span class="p">,</span>
-</span><span id="__span-0-567"><a id="__codelineno-0-567" name="__codelineno-0-567"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
-</span><span id="__span-0-568"><a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="n">page_size</span><span class="o">=</span><span class="n">page_size</span><span class="p">,</span>
-</span><span id="__span-0-569"><a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-570"><a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
-</span><span id="__span-0-571"><a id="__codelineno-0-571" name="__codelineno-0-571"></a>    <span class="p">)</span>
+</span><span id="__span-0-539"><a id="__codelineno-0-539" name="__codelineno-0-539"></a>    <span class="n">search_text</span> <span class="o">=</span> <span class="n">text</span> <span class="k">if</span> <span class="p">(</span><span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="k">else</span> <span class="n">text</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span>
+</span><span id="__span-0-540"><a id="__codelineno-0-540" name="__codelineno-0-540"></a>
+</span><span id="__span-0-541"><a id="__codelineno-0-541" name="__codelineno-0-541"></a>    <span class="n">query_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_parameters</span><span class="p">(</span>
+</span><span id="__span-0-542"><a id="__codelineno-0-542" name="__codelineno-0-542"></a>        <span class="n">text</span><span class="o">=</span><span class="n">search_text</span><span class="p">,</span>
+</span><span id="__span-0-543"><a id="__codelineno-0-543" name="__codelineno-0-543"></a>        <span class="n">cas</span><span class="o">=</span><span class="n">cas</span><span class="p">,</span>
+</span><span id="__span-0-544"><a id="__codelineno-0-544" name="__codelineno-0-544"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
+</span><span id="__span-0-545"><a id="__codelineno-0-545" name="__codelineno-0-545"></a>        <span class="n">company</span><span class="o">=</span><span class="n">company</span><span class="p">,</span>
+</span><span id="__span-0-546"><a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+</span><span id="__span-0-547"><a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
+</span><span id="__span-0-548"><a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+</span><span id="__span-0-549"><a id="__codelineno-0-549" name="__codelineno-0-549"></a>        <span class="n">storage_location</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
+</span><span id="__span-0-550"><a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
+</span><span id="__span-0-551"><a id="__codelineno-0-551" name="__codelineno-0-551"></a>        <span class="n">sheet_id</span><span class="o">=</span><span class="n">sheet_id</span><span class="p">,</span>
+</span><span id="__span-0-552"><a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
+</span><span id="__span-0-553"><a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="n">lot_owner</span><span class="o">=</span><span class="n">lot_owner</span><span class="p">,</span>
+</span><span id="__span-0-554"><a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+</span><span id="__span-0-555"><a id="__codelineno-0-555" name="__codelineno-0-555"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+</span><span id="__span-0-556"><a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="p">)</span>
+</span><span id="__span-0-557"><a id="__codelineno-0-557" name="__codelineno-0-557"></a>
+</span><span id="__span-0-558"><a id="__codelineno-0-558" name="__codelineno-0-558"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
+</span><span id="__span-0-559"><a id="__codelineno-0-559" name="__codelineno-0-559"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
+</span><span id="__span-0-560"><a id="__codelineno-0-560" name="__codelineno-0-560"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/llmsearch&quot;</span>
+</span><span id="__span-0-561"><a id="__codelineno-0-561" name="__codelineno-0-561"></a>        <span class="k">if</span> <span class="n">match_all_conditions</span>
+</span><span id="__span-0-562"><a id="__codelineno-0-562" name="__codelineno-0-562"></a>        <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
+</span><span id="__span-0-563"><a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="n">params</span><span class="o">=</span><span class="n">query_params</span><span class="p">,</span>
+</span><span id="__span-0-564"><a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+</span><span id="__span-0-565"><a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-566"><a id="__codelineno-0-566" name="__codelineno-0-566"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
+</span><span id="__span-0-567"><a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5569,10 +5544,9 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">match_all_conditions</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">order</span><span class="p">:</span> <span class="n"><span title="albert.core.shared.enums.OrderBy">OrderBy</span></span> <span class="o">=</span> <span class="n"><span title="albert.core.shared.enums.OrderBy.DESCENDING">DESCENDING</span></span><span class="p">,</span>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/inventory/#albert.resources.inventory.InventoryItem">InventoryItem</a></span><span class="p">]</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/inventory/#albert.resources.inventory.InventoryItem">InventoryItem</a></span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5819,22 +5793,6 @@ Use <code>search()</code> for faster retrieval when you only need lightweight, p
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>page_size</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of items to fetch per page. Default is 100.</p>
-              </div>
-            </td>
-            <td>
-                  <code>100</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>max_items</code>
             </td>
             <td>
@@ -5894,7 +5852,11 @@ Use <code>search()</code> for faster retrieval when you only need lightweight, p
 
             <details class="quote">
               <summary>Source code in <code>src/albert/collections/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-573">573</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-569">569</a></span>
+<span class="normal"><a href="#__codelineno-0-570">570</a></span>
+<span class="normal"><a href="#__codelineno-0-571">571</a></span>
+<span class="normal"><a href="#__codelineno-0-572">572</a></span>
+<span class="normal"><a href="#__codelineno-0-573">573</a></span>
 <span class="normal"><a href="#__codelineno-0-574">574</a></span>
 <span class="normal"><a href="#__codelineno-0-575">575</a></span>
 <span class="normal"><a href="#__codelineno-0-576">576</a></span>
@@ -5989,118 +5951,106 @@ Use <code>search()</code> for faster retrieval when you only need lightweight, p
 <span class="normal"><a href="#__codelineno-0-665">665</a></span>
 <span class="normal"><a href="#__codelineno-0-666">666</a></span>
 <span class="normal"><a href="#__codelineno-0-667">667</a></span>
-<span class="normal"><a href="#__codelineno-0-668">668</a></span>
-<span class="normal"><a href="#__codelineno-0-669">669</a></span>
-<span class="normal"><a href="#__codelineno-0-670">670</a></span>
-<span class="normal"><a href="#__codelineno-0-671">671</a></span>
-<span class="normal"><a href="#__codelineno-0-672">672</a></span>
-<span class="normal"><a href="#__codelineno-0-673">673</a></span>
-<span class="normal"><a href="#__codelineno-0-674">674</a></span>
-<span class="normal"><a href="#__codelineno-0-675">675</a></span>
-<span class="normal"><a href="#__codelineno-0-676">676</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-573"><a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="nd">@validate_call</span>
-</span><span id="__span-0-574"><a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all</span><span class="p">(</span>
-</span><span id="__span-0-575"><a id="__codelineno-0-575" name="__codelineno-0-575"></a>    <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-576"><a id="__codelineno-0-576" name="__codelineno-0-576"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-577"><a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-578"><a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="n">cas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Cas</span><span class="p">]</span> <span class="o">|</span> <span class="n">Cas</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-579"><a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="n">category</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryCategory</span><span class="p">]</span> <span class="o">|</span> <span class="n">InventoryCategory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="n">company</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Company</span><span class="p">]</span> <span class="o">|</span> <span class="n">Company</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-581"><a id="__codelineno-0-581" name="__codelineno-0-581"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Location</span><span class="p">]</span> <span class="o">|</span> <span class="n">Location</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-582"><a id="__codelineno-0-582" name="__codelineno-0-582"></a>    <span class="n">storage_location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">StorageLocation</span><span class="p">]</span> <span class="o">|</span> <span class="n">StorageLocation</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-583"><a id="__codelineno-0-583" name="__codelineno-0-583"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="n">ProjectId</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-584"><a id="__codelineno-0-584" name="__codelineno-0-584"></a>    <span class="n">sheet_id</span><span class="p">:</span> <span class="n">WorksheetId</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-585"><a id="__codelineno-0-585" name="__codelineno-0-585"></a>    <span class="n">created_by</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">|</span> <span class="n">User</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-586"><a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="n">lot_owner</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">|</span> <span class="n">User</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-587"><a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-588"><a id="__codelineno-0-588" name="__codelineno-0-588"></a>    <span class="n">match_all_conditions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-589"><a id="__codelineno-0-589" name="__codelineno-0-589"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
-</span><span id="__span-0-590"><a id="__codelineno-0-590" name="__codelineno-0-590"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
-</span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Retrieve fully hydrated InventoryItem entities with optional filters.</span>
-</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a>
-</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    This method returns complete entity data using `get_by_ids`.</span>
-</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">    Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.</span>
-</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a>
-</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-603"><a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">    text : str, optional</span>
-</span><span id="__span-0-604"><a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">        Search text for full-text matching.</span>
-</span><span id="__span-0-605"><a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">    cas : Cas or list[Cas], optional</span>
-</span><span id="__span-0-606"><a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        Filter by CAS numbers.</span>
-</span><span id="__span-0-607"><a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">    category : InventoryCategory or list[InventoryCategory], optional</span>
-</span><span id="__span-0-608"><a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">        Filter by item category.</span>
-</span><span id="__span-0-609"><a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">    company : Company or list[Company], optional</span>
-</span><span id="__span-0-610"><a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">        Filter by associated company.</span>
-</span><span id="__span-0-611"><a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">    location : Location or list[Location], optional</span>
-</span><span id="__span-0-612"><a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        Filter by location.</span>
-</span><span id="__span-0-613"><a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">    storage_location : StorageLocation or list[StorageLocation], optional</span>
-</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        Filter by storage location.</span>
-</span><span id="__span-0-615"><a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">    project_id : str, optional</span>
-</span><span id="__span-0-616"><a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">        Filter by project ID (formulas).</span>
-</span><span id="__span-0-617"><a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">    sheet_id : str, optional</span>
-</span><span id="__span-0-618"><a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">        Filter by worksheet ID.</span>
-</span><span id="__span-0-619"><a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">    created_by : User or list[User], optional</span>
-</span><span id="__span-0-620"><a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">        Filter by creator(s).</span>
-</span><span id="__span-0-621"><a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">    lot_owner : User or list[User], optional</span>
-</span><span id="__span-0-622"><a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        Filter by lot owner(s).</span>
-</span><span id="__span-0-623"><a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">    tags : list[str], optional</span>
-</span><span id="__span-0-624"><a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">        Filter by tag name(s).</span>
-</span><span id="__span-0-625"><a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">    match_all_conditions : bool, optional</span>
-</span><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">        Whether to match all filters (AND logic). Default is False.</span>
-</span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">    order : OrderBy, optional</span>
-</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">        Sort order. Default is DESCENDING.</span>
-</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">    sort_by : str, optional</span>
-</span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        Field to sort results by. Default is None.</span>
-</span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">    page_size : int, optional</span>
-</span><span id="__span-0-632"><a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">        Number of items to fetch per page. Default is 100.</span>
-</span><span id="__span-0-633"><a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">    max_items : int, optional</span>
-</span><span id="__span-0-634"><a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
-</span><span id="__span-0-635"><a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    offset : int, optional</span>
-</span><span id="__span-0-636"><a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">        Offset for pagination. Default is 0.</span>
-</span><span id="__span-0-637"><a id="__codelineno-0-637" name="__codelineno-0-637"></a>
-</span><span id="__span-0-638"><a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-639"><a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    -------</span>
-</span><span id="__span-0-640"><a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    Iterator[InventoryItem]</span>
-</span><span id="__span-0-641"><a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        An iterator over fully hydrated InventoryItem entities.</span>
-</span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-643"><a id="__codelineno-0-643" name="__codelineno-0-643"></a>
-</span><span id="__span-0-644"><a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
-</span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;albertId&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">])</span>
-</span><span id="__span-0-646"><a id="__codelineno-0-646" name="__codelineno-0-646"></a>
-</span><span id="__span-0-647"><a id="__codelineno-0-647" name="__codelineno-0-647"></a>    <span class="n">search_text</span> <span class="o">=</span> <span class="n">text</span> <span class="k">if</span> <span class="p">(</span><span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="k">else</span> <span class="n">text</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span>
-</span><span id="__span-0-648"><a id="__codelineno-0-648" name="__codelineno-0-648"></a>
-</span><span id="__span-0-649"><a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="n">query_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_parameters</span><span class="p">(</span>
-</span><span id="__span-0-650"><a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">text</span><span class="o">=</span><span class="n">search_text</span><span class="p">,</span>
-</span><span id="__span-0-651"><a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="n">cas</span><span class="o">=</span><span class="n">cas</span><span class="p">,</span>
-</span><span id="__span-0-652"><a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
-</span><span id="__span-0-653"><a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">company</span><span class="o">=</span><span class="n">company</span><span class="p">,</span>
-</span><span id="__span-0-654"><a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
-</span><span id="__span-0-655"><a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
-</span><span id="__span-0-656"><a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
-</span><span id="__span-0-657"><a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">storage_location</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
-</span><span id="__span-0-658"><a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
-</span><span id="__span-0-659"><a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="n">sheet_id</span><span class="o">=</span><span class="n">sheet_id</span><span class="p">,</span>
-</span><span id="__span-0-660"><a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
-</span><span id="__span-0-661"><a id="__codelineno-0-661" name="__codelineno-0-661"></a>        <span class="n">lot_owner</span><span class="o">=</span><span class="n">lot_owner</span><span class="p">,</span>
-</span><span id="__span-0-662"><a id="__codelineno-0-662" name="__codelineno-0-662"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
-</span><span id="__span-0-663"><a id="__codelineno-0-663" name="__codelineno-0-663"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
-</span><span id="__span-0-664"><a id="__codelineno-0-664" name="__codelineno-0-664"></a>    <span class="p">)</span>
-</span><span id="__span-0-665"><a id="__codelineno-0-665" name="__codelineno-0-665"></a>
-</span><span id="__span-0-666"><a id="__codelineno-0-666" name="__codelineno-0-666"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
-</span><span id="__span-0-667"><a id="__codelineno-0-667" name="__codelineno-0-667"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
-</span><span id="__span-0-668"><a id="__codelineno-0-668" name="__codelineno-0-668"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/llmsearch&quot;</span>
-</span><span id="__span-0-669"><a id="__codelineno-0-669" name="__codelineno-0-669"></a>        <span class="k">if</span> <span class="n">match_all_conditions</span>
-</span><span id="__span-0-670"><a id="__codelineno-0-670" name="__codelineno-0-670"></a>        <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
-</span><span id="__span-0-671"><a id="__codelineno-0-671" name="__codelineno-0-671"></a>        <span class="n">params</span><span class="o">=</span><span class="n">query_params</span><span class="p">,</span>
-</span><span id="__span-0-672"><a id="__codelineno-0-672" name="__codelineno-0-672"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
-</span><span id="__span-0-673"><a id="__codelineno-0-673" name="__codelineno-0-673"></a>        <span class="n">page_size</span><span class="o">=</span><span class="n">page_size</span><span class="p">,</span>
-</span><span id="__span-0-674"><a id="__codelineno-0-674" name="__codelineno-0-674"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-675"><a id="__codelineno-0-675" name="__codelineno-0-675"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
-</span><span id="__span-0-676"><a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-668">668</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-569"><a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="nd">@validate_call</span>
+</span><span id="__span-0-570"><a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all</span><span class="p">(</span>
+</span><span id="__span-0-571"><a id="__codelineno-0-571" name="__codelineno-0-571"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-572"><a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-573"><a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-574"><a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="n">cas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Cas</span><span class="p">]</span> <span class="o">|</span> <span class="n">Cas</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-575"><a id="__codelineno-0-575" name="__codelineno-0-575"></a>    <span class="n">category</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryCategory</span><span class="p">]</span> <span class="o">|</span> <span class="n">InventoryCategory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-576"><a id="__codelineno-0-576" name="__codelineno-0-576"></a>    <span class="n">company</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Company</span><span class="p">]</span> <span class="o">|</span> <span class="n">Company</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-577"><a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Location</span><span class="p">]</span> <span class="o">|</span> <span class="n">Location</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-578"><a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="n">storage_location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">StorageLocation</span><span class="p">]</span> <span class="o">|</span> <span class="n">StorageLocation</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-579"><a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="n">ProjectId</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="n">sheet_id</span><span class="p">:</span> <span class="n">WorksheetId</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-581"><a id="__codelineno-0-581" name="__codelineno-0-581"></a>    <span class="n">created_by</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">|</span> <span class="n">User</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-582"><a id="__codelineno-0-582" name="__codelineno-0-582"></a>    <span class="n">lot_owner</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">User</span><span class="p">]</span> <span class="o">|</span> <span class="n">User</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-583"><a id="__codelineno-0-583" name="__codelineno-0-583"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-584"><a id="__codelineno-0-584" name="__codelineno-0-584"></a>    <span class="n">match_all_conditions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-585"><a id="__codelineno-0-585" name="__codelineno-0-585"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
+</span><span id="__span-0-586"><a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-587"><a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-588"><a id="__codelineno-0-588" name="__codelineno-0-588"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-589"><a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
+</span><span id="__span-0-590"><a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Retrieve fully hydrated InventoryItem entities with optional filters.</span>
+</span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a>
+</span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">    This method returns complete entity data using `get_by_ids`.</span>
+</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">    Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.</span>
+</span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a>
+</span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    text : str, optional</span>
+</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">        Search text for full-text matching.</span>
+</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    cas : Cas or list[Cas], optional</span>
+</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        Filter by CAS numbers.</span>
+</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    category : InventoryCategory or list[InventoryCategory], optional</span>
+</span><span id="__span-0-603"><a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">        Filter by item category.</span>
+</span><span id="__span-0-604"><a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">    company : Company or list[Company], optional</span>
+</span><span id="__span-0-605"><a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">        Filter by associated company.</span>
+</span><span id="__span-0-606"><a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">    location : Location or list[Location], optional</span>
+</span><span id="__span-0-607"><a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        Filter by location.</span>
+</span><span id="__span-0-608"><a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">    storage_location : StorageLocation or list[StorageLocation], optional</span>
+</span><span id="__span-0-609"><a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">        Filter by storage location.</span>
+</span><span id="__span-0-610"><a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">    project_id : str, optional</span>
+</span><span id="__span-0-611"><a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        Filter by project ID (formulas).</span>
+</span><span id="__span-0-612"><a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">    sheet_id : str, optional</span>
+</span><span id="__span-0-613"><a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">        Filter by worksheet ID.</span>
+</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">    created_by : User or list[User], optional</span>
+</span><span id="__span-0-615"><a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">        Filter by creator(s).</span>
+</span><span id="__span-0-616"><a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">    lot_owner : User or list[User], optional</span>
+</span><span id="__span-0-617"><a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">        Filter by lot owner(s).</span>
+</span><span id="__span-0-618"><a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">    tags : list[str], optional</span>
+</span><span id="__span-0-619"><a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">        Filter by tag name(s).</span>
+</span><span id="__span-0-620"><a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">    match_all_conditions : bool, optional</span>
+</span><span id="__span-0-621"><a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        Whether to match all filters (AND logic). Default is False.</span>
+</span><span id="__span-0-622"><a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    order : OrderBy, optional</span>
+</span><span id="__span-0-623"><a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">        Sort order. Default is DESCENDING.</span>
+</span><span id="__span-0-624"><a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    sort_by : str, optional</span>
+</span><span id="__span-0-625"><a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">        Field to sort results by. Default is None.</span>
+</span><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    max_items : int, optional</span>
+</span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
+</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    offset : int, optional</span>
+</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">        Offset for pagination. Default is 0.</span>
+</span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630"></a>
+</span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-632"><a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">    -------</span>
+</span><span id="__span-0-633"><a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">    Iterator[InventoryItem]</span>
+</span><span id="__span-0-634"><a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">        An iterator over fully hydrated InventoryItem entities.</span>
+</span><span id="__span-0-635"><a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-636"><a id="__codelineno-0-636" name="__codelineno-0-636"></a>
+</span><span id="__span-0-637"><a id="__codelineno-0-637" name="__codelineno-0-637"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
+</span><span id="__span-0-638"><a id="__codelineno-0-638" name="__codelineno-0-638"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;albertId&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">])</span>
+</span><span id="__span-0-639"><a id="__codelineno-0-639" name="__codelineno-0-639"></a>
+</span><span id="__span-0-640"><a id="__codelineno-0-640" name="__codelineno-0-640"></a>    <span class="n">search_text</span> <span class="o">=</span> <span class="n">text</span> <span class="k">if</span> <span class="p">(</span><span class="n">text</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span> <span class="k">else</span> <span class="n">text</span><span class="p">[:</span><span class="mi">50</span><span class="p">]</span>
+</span><span id="__span-0-641"><a id="__codelineno-0-641" name="__codelineno-0-641"></a>
+</span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="n">query_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_parameters</span><span class="p">(</span>
+</span><span id="__span-0-643"><a id="__codelineno-0-643" name="__codelineno-0-643"></a>        <span class="n">text</span><span class="o">=</span><span class="n">search_text</span><span class="p">,</span>
+</span><span id="__span-0-644"><a id="__codelineno-0-644" name="__codelineno-0-644"></a>        <span class="n">cas</span><span class="o">=</span><span class="n">cas</span><span class="p">,</span>
+</span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
+</span><span id="__span-0-646"><a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="n">company</span><span class="o">=</span><span class="n">company</span><span class="p">,</span>
+</span><span id="__span-0-647"><a id="__codelineno-0-647" name="__codelineno-0-647"></a>        <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+</span><span id="__span-0-648"><a id="__codelineno-0-648" name="__codelineno-0-648"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
+</span><span id="__span-0-649"><a id="__codelineno-0-649" name="__codelineno-0-649"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+</span><span id="__span-0-650"><a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">storage_location</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
+</span><span id="__span-0-651"><a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
+</span><span id="__span-0-652"><a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="n">sheet_id</span><span class="o">=</span><span class="n">sheet_id</span><span class="p">,</span>
+</span><span id="__span-0-653"><a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
+</span><span id="__span-0-654"><a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">lot_owner</span><span class="o">=</span><span class="n">lot_owner</span><span class="p">,</span>
+</span><span id="__span-0-655"><a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+</span><span id="__span-0-656"><a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+</span><span id="__span-0-657"><a id="__codelineno-0-657" name="__codelineno-0-657"></a>    <span class="p">)</span>
+</span><span id="__span-0-658"><a id="__codelineno-0-658" name="__codelineno-0-658"></a>
+</span><span id="__span-0-659"><a id="__codelineno-0-659" name="__codelineno-0-659"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
+</span><span id="__span-0-660"><a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
+</span><span id="__span-0-661"><a id="__codelineno-0-661" name="__codelineno-0-661"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/llmsearch&quot;</span>
+</span><span id="__span-0-662"><a id="__codelineno-0-662" name="__codelineno-0-662"></a>        <span class="k">if</span> <span class="n">match_all_conditions</span>
+</span><span id="__span-0-663"><a id="__codelineno-0-663" name="__codelineno-0-663"></a>        <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
+</span><span id="__span-0-664"><a id="__codelineno-0-664" name="__codelineno-0-664"></a>        <span class="n">params</span><span class="o">=</span><span class="n">query_params</span><span class="p">,</span>
+</span><span id="__span-0-665"><a id="__codelineno-0-665" name="__codelineno-0-665"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+</span><span id="__span-0-666"><a id="__codelineno-0-666" name="__codelineno-0-666"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-667"><a id="__codelineno-0-667" name="__codelineno-0-667"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
+</span><span id="__span-0-668"><a id="__codelineno-0-668" name="__codelineno-0-668"></a>    <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6179,7 +6129,15 @@ Use <code>search()</code> for faster retrieval when you only need lightweight, p
 
             <details class="quote">
               <summary>Source code in <code>src/albert/collections/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-966">966</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-958">958</a></span>
+<span class="normal"><a href="#__codelineno-0-959">959</a></span>
+<span class="normal"><a href="#__codelineno-0-960">960</a></span>
+<span class="normal"><a href="#__codelineno-0-961">961</a></span>
+<span class="normal"><a href="#__codelineno-0-962">962</a></span>
+<span class="normal"><a href="#__codelineno-0-963">963</a></span>
+<span class="normal"><a href="#__codelineno-0-964">964</a></span>
+<span class="normal"><a href="#__codelineno-0-965">965</a></span>
+<span class="normal"><a href="#__codelineno-0-966">966</a></span>
 <span class="normal"><a href="#__codelineno-0-967">967</a></span>
 <span class="normal"><a href="#__codelineno-0-968">968</a></span>
 <span class="normal"><a href="#__codelineno-0-969">969</a></span>
@@ -6200,44 +6158,36 @@ Use <code>search()</code> for faster retrieval when you only need lightweight, p
 <span class="normal"><a href="#__codelineno-0-984">984</a></span>
 <span class="normal"><a href="#__codelineno-0-985">985</a></span>
 <span class="normal"><a href="#__codelineno-0-986">986</a></span>
-<span class="normal"><a href="#__codelineno-0-987">987</a></span>
-<span class="normal"><a href="#__codelineno-0-988">988</a></span>
-<span class="normal"><a href="#__codelineno-0-989">989</a></span>
-<span class="normal"><a href="#__codelineno-0-990">990</a></span>
-<span class="normal"><a href="#__codelineno-0-991">991</a></span>
-<span class="normal"><a href="#__codelineno-0-992">992</a></span>
-<span class="normal"><a href="#__codelineno-0-993">993</a></span>
-<span class="normal"><a href="#__codelineno-0-994">994</a></span>
-<span class="normal"><a href="#__codelineno-0-995">995</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-966"><a id="__codelineno-0-966" name="__codelineno-0-966"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_item</span><span class="p">:</span> <span class="n">InventoryItem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
-</span><span id="__span-0-967"><a id="__codelineno-0-967" name="__codelineno-0-967"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-968"><a id="__codelineno-0-968" name="__codelineno-0-968"></a><span class="sd">    Update an inventory item.</span>
-</span><span id="__span-0-969"><a id="__codelineno-0-969" name="__codelineno-0-969"></a>
-</span><span id="__span-0-970"><a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-971"><a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-972"><a id="__codelineno-0-972" name="__codelineno-0-972"></a><span class="sd">    inventory_item : InventoryItem</span>
-</span><span id="__span-0-973"><a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">        The updated inventory item object.</span>
+<span class="normal"><a href="#__codelineno-0-987">987</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-958"><a id="__codelineno-0-958" name="__codelineno-0-958"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_item</span><span class="p">:</span> <span class="n">InventoryItem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
+</span><span id="__span-0-959"><a id="__codelineno-0-959" name="__codelineno-0-959"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-960"><a id="__codelineno-0-960" name="__codelineno-0-960"></a><span class="sd">    Update an inventory item.</span>
+</span><span id="__span-0-961"><a id="__codelineno-0-961" name="__codelineno-0-961"></a>
+</span><span id="__span-0-962"><a id="__codelineno-0-962" name="__codelineno-0-962"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-963"><a id="__codelineno-0-963" name="__codelineno-0-963"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-964"><a id="__codelineno-0-964" name="__codelineno-0-964"></a><span class="sd">    inventory_item : InventoryItem</span>
+</span><span id="__span-0-965"><a id="__codelineno-0-965" name="__codelineno-0-965"></a><span class="sd">        The updated inventory item object.</span>
+</span><span id="__span-0-966"><a id="__codelineno-0-966" name="__codelineno-0-966"></a>
+</span><span id="__span-0-967"><a id="__codelineno-0-967" name="__codelineno-0-967"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-968"><a id="__codelineno-0-968" name="__codelineno-0-968"></a><span class="sd">    -------</span>
+</span><span id="__span-0-969"><a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">    InventoryItem</span>
+</span><span id="__span-0-970"><a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">        The updated inventory item retrieved from the server.</span>
+</span><span id="__span-0-971"><a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-972"><a id="__codelineno-0-972" name="__codelineno-0-972"></a>    <span class="c1"># Fetch the current object state from the server or database</span>
+</span><span id="__span-0-973"><a id="__codelineno-0-973" name="__codelineno-0-973"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span><span id="__span-0-974"><a id="__codelineno-0-974" name="__codelineno-0-974"></a>
-</span><span id="__span-0-975"><a id="__codelineno-0-975" name="__codelineno-0-975"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-976"><a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">    -------</span>
-</span><span id="__span-0-977"><a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">    InventoryItem</span>
-</span><span id="__span-0-978"><a id="__codelineno-0-978" name="__codelineno-0-978"></a><span class="sd">        The updated inventory item retrieved from the server.</span>
-</span><span id="__span-0-979"><a id="__codelineno-0-979" name="__codelineno-0-979"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-980"><a id="__codelineno-0-980" name="__codelineno-0-980"></a>    <span class="c1"># Fetch the current object state from the server or database</span>
-</span><span id="__span-0-981"><a id="__codelineno-0-981" name="__codelineno-0-981"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-982"><a id="__codelineno-0-982" name="__codelineno-0-982"></a>
-</span><span id="__span-0-983"><a id="__codelineno-0-983" name="__codelineno-0-983"></a>    <span class="c1"># Generate the PATCH payload</span>
-</span><span id="__span-0-984"><a id="__codelineno-0-984" name="__codelineno-0-984"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-985"><a id="__codelineno-0-985" name="__codelineno-0-985"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
-</span><span id="__span-0-986"><a id="__codelineno-0-986" name="__codelineno-0-986"></a>    <span class="p">)</span>
-</span><span id="__span-0-987"><a id="__codelineno-0-987" name="__codelineno-0-987"></a>
-</span><span id="__span-0-988"><a id="__codelineno-0-988" name="__codelineno-0-988"></a>    <span class="c1"># Complex patching is not working, so I&#39;m going to do this in a loop :(</span>
-</span><span id="__span-0-989"><a id="__codelineno-0-989" name="__codelineno-0-989"></a>    <span class="c1"># https://teams.microsoft.com/l/message/19:de4a48c366664ce1bafcdbea02298810@thread.tacv2/1724856117312?tenantId=98aab90e-764b-48f1-afaa-02e3c7300653&amp;groupId=35a36a3d-fc25-4899-a1dd-ad9c7d77b5b3&amp;parentMessageId=1724856117312&amp;teamName=Product%20%2B%20Engineering&amp;channelName=General%20-%20API&amp;createdTime=1724856117312</span>
-</span><span id="__span-0-990"><a id="__codelineno-0-990" name="__codelineno-0-990"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="__span-0-991"><a id="__codelineno-0-991" name="__codelineno-0-991"></a>    <span class="k">for</span> <span class="n">change</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]:</span>
-</span><span id="__span-0-992"><a id="__codelineno-0-992" name="__codelineno-0-992"></a>        <span class="n">change_payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">change</span><span class="p">]}</span>
-</span><span id="__span-0-993"><a id="__codelineno-0-993" name="__codelineno-0-993"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">change_payload</span><span class="p">)</span>
-</span><span id="__span-0-994"><a id="__codelineno-0-994" name="__codelineno-0-994"></a>    <span class="n">updated_inv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-995"><a id="__codelineno-0-995" name="__codelineno-0-995"></a>    <span class="k">return</span> <span class="n">updated_inv</span>
+</span><span id="__span-0-975"><a id="__codelineno-0-975" name="__codelineno-0-975"></a>    <span class="c1"># Generate the PATCH payload</span>
+</span><span id="__span-0-976"><a id="__codelineno-0-976" name="__codelineno-0-976"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-977"><a id="__codelineno-0-977" name="__codelineno-0-977"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
+</span><span id="__span-0-978"><a id="__codelineno-0-978" name="__codelineno-0-978"></a>    <span class="p">)</span>
+</span><span id="__span-0-979"><a id="__codelineno-0-979" name="__codelineno-0-979"></a>
+</span><span id="__span-0-980"><a id="__codelineno-0-980" name="__codelineno-0-980"></a>    <span class="c1"># Complex patching is not working, so I&#39;m going to do this in a loop :(</span>
+</span><span id="__span-0-981"><a id="__codelineno-0-981" name="__codelineno-0-981"></a>    <span class="c1"># https://teams.microsoft.com/l/message/19:de4a48c366664ce1bafcdbea02298810@thread.tacv2/1724856117312?tenantId=98aab90e-764b-48f1-afaa-02e3c7300653&amp;groupId=35a36a3d-fc25-4899-a1dd-ad9c7d77b5b3&amp;parentMessageId=1724856117312&amp;teamName=Product%20%2B%20Engineering&amp;channelName=General%20-%20API&amp;createdTime=1724856117312</span>
+</span><span id="__span-0-982"><a id="__codelineno-0-982" name="__codelineno-0-982"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-983"><a id="__codelineno-0-983" name="__codelineno-0-983"></a>    <span class="k">for</span> <span class="n">change</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]:</span>
+</span><span id="__span-0-984"><a id="__codelineno-0-984" name="__codelineno-0-984"></a>        <span class="n">change_payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">change</span><span class="p">]}</span>
+</span><span id="__span-0-985"><a id="__codelineno-0-985" name="__codelineno-0-985"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">change_payload</span><span class="p">)</span>
+</span><span id="__span-0-986"><a id="__codelineno-0-986" name="__codelineno-0-986"></a>    <span class="n">updated_inv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-987"><a id="__codelineno-0-987" name="__codelineno-0-987"></a>    <span class="k">return</span> <span class="n">updated_inv</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

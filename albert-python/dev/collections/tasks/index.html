@@ -4227,10 +4227,9 @@
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">order_by</span><span class="p">:</span> <span class="n"><span title="albert.core.shared.enums.OrderBy">OrderBy</span></span> <span class="o">=</span> <span class="n"><span title="albert.core.shared.enums.OrderBy.DESCENDING">DESCENDING</span></span><span class="p">,</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.TaskSearchItem">TaskSearchItem</a></span><span class="p">]</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.TaskSearchItem">TaskSearchItem</a></span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4509,22 +4508,6 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>page_size</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of items to return per page, default 100.</p>
-              </div>
-            </td>
-            <td>
-                  <code>100</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>max_items</code>
             </td>
             <td>
@@ -4686,11 +4669,7 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 <span class="normal"><a href="#__codelineno-0-336">336</a></span>
 <span class="normal"><a href="#__codelineno-0-337">337</a></span>
 <span class="normal"><a href="#__codelineno-0-338">338</a></span>
-<span class="normal"><a href="#__codelineno-0-339">339</a></span>
-<span class="normal"><a href="#__codelineno-0-340">340</a></span>
-<span class="normal"><a href="#__codelineno-0-341">341</a></span>
-<span class="normal"><a href="#__codelineno-0-342">342</a></span>
-<span class="normal"><a href="#__codelineno-0-343">343</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-237"><a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="nd">@validate_call</span>
+<span class="normal"><a href="#__codelineno-0-339">339</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-237"><a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="nd">@validate_call</span>
 </span><span id="__span-0-238"><a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span>
 </span><span id="__span-0-239"><a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="bp">self</span><span class="p">,</span>
 </span><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="o">*</span><span class="p">,</span>
@@ -4710,93 +4689,89 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 </span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a>    <span class="n">order_by</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
 </span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">TaskSearchItem</span><span class="p">]:</span>
-</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">    Search for Task matching the provided criteria.</span>
-</span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a>
-</span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">    ⚠️ This method returns partial (unhydrated) entities to optimize performance.</span>
-</span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">    To retrieve fully detailed entities, use :meth:`get_all` instead.</span>
-</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a>
-</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">    text : str, optional</span>
-</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">        Text search across multiple task fields.</span>
-</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">    tags : list[str], optional</span>
-</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">        Filter by tags associated with tasks.</span>
-</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    task_id : list[str], optional</span>
-</span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">        Specific task IDs to search for.</span>
-</span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    linked_task : list[str], optional</span>
-</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
-</span><span id="__span-0-277"><a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    category : TaskCategory, optional</span>
-</span><span id="__span-0-278"><a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
-</span><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    albert_id : list[str], optional</span>
-</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">        Albert-specific task identifiers.</span>
-</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">    data_template : list[str], optional</span>
-</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        Data template IDs associated with tasks.</span>
-</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">    assigned_to : list[str], optional</span>
-</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">        User IDs assigned to the tasks.</span>
-</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    location : list[str], optional</span>
-</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        Locations where tasks are carried out.</span>
-</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">    priority : list[str], optional</span>
-</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">        Priority levels for filtering tasks.</span>
-</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">    status : list[str], optional</span>
-</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">        Task status values (e.g., Open, Done).</span>
-</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">    parameter_group : list[str], optional</span>
-</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">        Parameter Group IDs associated with tasks.</span>
-</span><span id="__span-0-293"><a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">    created_by : list[str], optional</span>
-</span><span id="__span-0-294"><a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">        User IDs who created the tasks.</span>
-</span><span id="__span-0-295"><a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">    project_id : str, optional</span>
-</span><span id="__span-0-296"><a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        ID of the parent project for filtering tasks.</span>
-</span><span id="__span-0-297"><a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">    order_by : OrderBy, optional</span>
-</span><span id="__span-0-298"><a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">        The order in which to return results (asc or desc), default DESCENDING.</span>
-</span><span id="__span-0-299"><a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">    sort_by : str, optional</span>
-</span><span id="__span-0-300"><a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">        Attribute to sort tasks by (e.g., createdAt, name).</span>
-</span><span id="__span-0-301"><a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">    page_size : int, optional</span>
-</span><span id="__span-0-302"><a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        Number of items to return per page, default 100.</span>
-</span><span id="__span-0-303"><a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">    max_items : int, optional</span>
-</span><span id="__span-0-304"><a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
-</span><span id="__span-0-305"><a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">    offset : int, optional</span>
-</span><span id="__span-0-306"><a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">        Number of results to skip for pagination, default 0.</span>
-</span><span id="__span-0-307"><a id="__codelineno-0-307" name="__codelineno-0-307"></a>
-</span><span id="__span-0-308"><a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-309"><a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    -------</span>
-</span><span id="__span-0-310"><a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">    Iterator[TaskSearchItem]</span>
-</span><span id="__span-0-311"><a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">        An iterator of matching, lightweight TaskSearchItem entities.</span>
-</span><span id="__span-0-312"><a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-313"><a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-314"><a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="s2">&quot;offset&quot;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span>
-</span><span id="__span-0-315"><a id="__codelineno-0-315" name="__codelineno-0-315"></a>        <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">order_by</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
-</span><span id="__span-0-316"><a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span>
-</span><span id="__span-0-317"><a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="s2">&quot;sortBy&quot;</span><span class="p">:</span> <span class="n">sort_by</span><span class="p">,</span>
-</span><span id="__span-0-318"><a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="n">tags</span><span class="p">,</span>
-</span><span id="__span-0-319"><a id="__codelineno-0-319" name="__codelineno-0-319"></a>        <span class="s2">&quot;taskId&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
-</span><span id="__span-0-320"><a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="s2">&quot;linkedTask&quot;</span><span class="p">:</span> <span class="n">linked_task</span><span class="p">,</span>
-</span><span id="__span-0-321"><a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="n">category</span><span class="p">,</span>
-</span><span id="__span-0-322"><a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="s2">&quot;albertId&quot;</span><span class="p">:</span> <span class="n">albert_id</span><span class="p">,</span>
-</span><span id="__span-0-323"><a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="s2">&quot;dataTemplate&quot;</span><span class="p">:</span> <span class="n">data_template</span><span class="p">,</span>
-</span><span id="__span-0-324"><a id="__codelineno-0-324" name="__codelineno-0-324"></a>        <span class="s2">&quot;assignedTo&quot;</span><span class="p">:</span> <span class="n">assigned_to</span><span class="p">,</span>
-</span><span id="__span-0-325"><a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span>
-</span><span id="__span-0-326"><a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="n">priority</span><span class="p">,</span>
-</span><span id="__span-0-327"><a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
-</span><span id="__span-0-328"><a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="s2">&quot;parameterGroup&quot;</span><span class="p">:</span> <span class="n">parameter_group</span><span class="p">,</span>
-</span><span id="__span-0-329"><a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="s2">&quot;createdBy&quot;</span><span class="p">:</span> <span class="n">created_by</span><span class="p">,</span>
-</span><span id="__span-0-330"><a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="s2">&quot;projectId&quot;</span><span class="p">:</span> <span class="n">project_id</span><span class="p">,</span>
-</span><span id="__span-0-331"><a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="p">}</span>
-</span><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a>
-</span><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
-</span><span id="__span-0-334"><a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
-</span><span id="__span-0-335"><a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
-</span><span id="__span-0-336"><a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
-</span><span id="__span-0-337"><a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-</span><span id="__span-0-338"><a id="__codelineno-0-338" name="__codelineno-0-338"></a>        <span class="n">page_size</span><span class="o">=</span><span class="n">page_size</span><span class="p">,</span>
-</span><span id="__span-0-339"><a id="__codelineno-0-339" name="__codelineno-0-339"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-340"><a id="__codelineno-0-340" name="__codelineno-0-340"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="k">lambda</span> <span class="n">items</span><span class="p">:</span> <span class="p">[</span>
-</span><span id="__span-0-341"><a id="__codelineno-0-341" name="__codelineno-0-341"></a>            <span class="n">TaskSearchItem</span><span class="p">(</span><span class="o">**</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="n">_bind_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span>
-</span><span id="__span-0-342"><a id="__codelineno-0-342" name="__codelineno-0-342"></a>        <span class="p">],</span>
-</span><span id="__span-0-343"><a id="__codelineno-0-343" name="__codelineno-0-343"></a>    <span class="p">)</span>
+</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">TaskSearchItem</span><span class="p">]:</span>
+</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">    Search for Task matching the provided criteria.</span>
+</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a>
+</span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">    ⚠️ This method returns partial (unhydrated) entities to optimize performance.</span>
+</span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">    To retrieve fully detailed entities, use :meth:`get_all` instead.</span>
+</span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a>
+</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">    text : str, optional</span>
+</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">        Text search across multiple task fields.</span>
+</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">    tags : list[str], optional</span>
+</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">        Filter by tags associated with tasks.</span>
+</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    task_id : list[str], optional</span>
+</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">        Specific task IDs to search for.</span>
+</span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    linked_task : list[str], optional</span>
+</span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
+</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    category : TaskCategory, optional</span>
+</span><span id="__span-0-277"><a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
+</span><span id="__span-0-278"><a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    albert_id : list[str], optional</span>
+</span><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">        Albert-specific task identifiers.</span>
+</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">    data_template : list[str], optional</span>
+</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        Data template IDs associated with tasks.</span>
+</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">    assigned_to : list[str], optional</span>
+</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        User IDs assigned to the tasks.</span>
+</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">    location : list[str], optional</span>
+</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">        Locations where tasks are carried out.</span>
+</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">    priority : list[str], optional</span>
+</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">        Priority levels for filtering tasks.</span>
+</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">    status : list[str], optional</span>
+</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">        Task status values (e.g., Open, Done).</span>
+</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">    parameter_group : list[str], optional</span>
+</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">        Parameter Group IDs associated with tasks.</span>
+</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">    created_by : list[str], optional</span>
+</span><span id="__span-0-293"><a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">        User IDs who created the tasks.</span>
+</span><span id="__span-0-294"><a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">    project_id : str, optional</span>
+</span><span id="__span-0-295"><a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">        ID of the parent project for filtering tasks.</span>
+</span><span id="__span-0-296"><a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">    order_by : OrderBy, optional</span>
+</span><span id="__span-0-297"><a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">        The order in which to return results (asc or desc), default DESCENDING.</span>
+</span><span id="__span-0-298"><a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">    sort_by : str, optional</span>
+</span><span id="__span-0-299"><a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        Attribute to sort tasks by (e.g., createdAt, name).</span>
+</span><span id="__span-0-300"><a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">    max_items : int, optional</span>
+</span><span id="__span-0-301"><a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
+</span><span id="__span-0-302"><a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">    offset : int, optional</span>
+</span><span id="__span-0-303"><a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">        Number of results to skip for pagination, default 0.</span>
+</span><span id="__span-0-304"><a id="__codelineno-0-304" name="__codelineno-0-304"></a>
+</span><span id="__span-0-305"><a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-306"><a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">    -------</span>
+</span><span id="__span-0-307"><a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">    Iterator[TaskSearchItem]</span>
+</span><span id="__span-0-308"><a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">        An iterator of matching, lightweight TaskSearchItem entities.</span>
+</span><span id="__span-0-309"><a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-310"><a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-311"><a id="__codelineno-0-311" name="__codelineno-0-311"></a>        <span class="s2">&quot;offset&quot;</span><span class="p">:</span> <span class="n">offset</span><span class="p">,</span>
+</span><span id="__span-0-312"><a id="__codelineno-0-312" name="__codelineno-0-312"></a>        <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">order_by</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+</span><span id="__span-0-313"><a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span>
+</span><span id="__span-0-314"><a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="s2">&quot;sortBy&quot;</span><span class="p">:</span> <span class="n">sort_by</span><span class="p">,</span>
+</span><span id="__span-0-315"><a id="__codelineno-0-315" name="__codelineno-0-315"></a>        <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="n">tags</span><span class="p">,</span>
+</span><span id="__span-0-316"><a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="s2">&quot;taskId&quot;</span><span class="p">:</span> <span class="n">task_id</span><span class="p">,</span>
+</span><span id="__span-0-317"><a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="s2">&quot;linkedTask&quot;</span><span class="p">:</span> <span class="n">linked_task</span><span class="p">,</span>
+</span><span id="__span-0-318"><a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="n">category</span><span class="p">,</span>
+</span><span id="__span-0-319"><a id="__codelineno-0-319" name="__codelineno-0-319"></a>        <span class="s2">&quot;albertId&quot;</span><span class="p">:</span> <span class="n">albert_id</span><span class="p">,</span>
+</span><span id="__span-0-320"><a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="s2">&quot;dataTemplate&quot;</span><span class="p">:</span> <span class="n">data_template</span><span class="p">,</span>
+</span><span id="__span-0-321"><a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="s2">&quot;assignedTo&quot;</span><span class="p">:</span> <span class="n">assigned_to</span><span class="p">,</span>
+</span><span id="__span-0-322"><a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="s2">&quot;location&quot;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span>
+</span><span id="__span-0-323"><a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="s2">&quot;priority&quot;</span><span class="p">:</span> <span class="n">priority</span><span class="p">,</span>
+</span><span id="__span-0-324"><a id="__codelineno-0-324" name="__codelineno-0-324"></a>        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+</span><span id="__span-0-325"><a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="s2">&quot;parameterGroup&quot;</span><span class="p">:</span> <span class="n">parameter_group</span><span class="p">,</span>
+</span><span id="__span-0-326"><a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="s2">&quot;createdBy&quot;</span><span class="p">:</span> <span class="n">created_by</span><span class="p">,</span>
+</span><span id="__span-0-327"><a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="s2">&quot;projectId&quot;</span><span class="p">:</span> <span class="n">project_id</span><span class="p">,</span>
+</span><span id="__span-0-328"><a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="p">}</span>
+</span><span id="__span-0-329"><a id="__codelineno-0-329" name="__codelineno-0-329"></a>
+</span><span id="__span-0-330"><a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
+</span><span id="__span-0-331"><a id="__codelineno-0-331" name="__codelineno-0-331"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
+</span><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
+</span><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+</span><span id="__span-0-334"><a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+</span><span id="__span-0-335"><a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-336"><a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="k">lambda</span> <span class="n">items</span><span class="p">:</span> <span class="p">[</span>
+</span><span id="__span-0-337"><a id="__codelineno-0-337" name="__codelineno-0-337"></a>            <span class="n">TaskSearchItem</span><span class="p">(</span><span class="o">**</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="n">_bind_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span>
+</span><span id="__span-0-338"><a id="__codelineno-0-338" name="__codelineno-0-338"></a>        <span class="p">],</span>
+</span><span id="__span-0-339"><a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4829,10 +4804,9 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">order_by</span><span class="p">:</span> <span class="n"><span title="albert.core.shared.enums.OrderBy">OrderBy</span></span> <span class="o">=</span> <span class="n"><span title="albert.core.shared.enums.OrderBy.DESCENDING">DESCENDING</span></span><span class="p">,</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BaseTask">BaseTask</a></span><span class="p">]</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">offset</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.BaseTask">BaseTask</a></span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5111,22 +5085,6 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>page_size</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of items to return per page, default 100.</p>
-              </div>
-            </td>
-            <td>
-                  <code>100</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>max_items</code>
             </td>
             <td>
@@ -5186,7 +5144,11 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 
             <details class="quote">
               <summary>Source code in <code>src/albert/collections/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-345">345</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-341">341</a></span>
+<span class="normal"><a href="#__codelineno-0-342">342</a></span>
+<span class="normal"><a href="#__codelineno-0-343">343</a></span>
+<span class="normal"><a href="#__codelineno-0-344">344</a></span>
+<span class="normal"><a href="#__codelineno-0-345">345</a></span>
 <span class="normal"><a href="#__codelineno-0-346">346</a></span>
 <span class="normal"><a href="#__codelineno-0-347">347</a></span>
 <span class="normal"><a href="#__codelineno-0-348">348</a></span>
@@ -5281,118 +5243,106 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 <span class="normal"><a href="#__codelineno-0-437">437</a></span>
 <span class="normal"><a href="#__codelineno-0-438">438</a></span>
 <span class="normal"><a href="#__codelineno-0-439">439</a></span>
-<span class="normal"><a href="#__codelineno-0-440">440</a></span>
-<span class="normal"><a href="#__codelineno-0-441">441</a></span>
-<span class="normal"><a href="#__codelineno-0-442">442</a></span>
-<span class="normal"><a href="#__codelineno-0-443">443</a></span>
-<span class="normal"><a href="#__codelineno-0-444">444</a></span>
-<span class="normal"><a href="#__codelineno-0-445">445</a></span>
-<span class="normal"><a href="#__codelineno-0-446">446</a></span>
-<span class="normal"><a href="#__codelineno-0-447">447</a></span>
-<span class="normal"><a href="#__codelineno-0-448">448</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-345"><a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all</span><span class="p">(</span>
-</span><span id="__span-0-346"><a id="__codelineno-0-346" name="__codelineno-0-346"></a>    <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-347"><a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-348"><a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-349"><a id="__codelineno-0-349" name="__codelineno-0-349"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-350"><a id="__codelineno-0-350" name="__codelineno-0-350"></a>    <span class="n">task_id</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-351"><a id="__codelineno-0-351" name="__codelineno-0-351"></a>    <span class="n">linked_task</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-352"><a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="n">category</span><span class="p">:</span> <span class="n">TaskCategory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-353"><a id="__codelineno-0-353" name="__codelineno-0-353"></a>    <span class="n">albert_id</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-354"><a id="__codelineno-0-354" name="__codelineno-0-354"></a>    <span class="n">data_template</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355"></a>    <span class="n">assigned_to</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-356"><a id="__codelineno-0-356" name="__codelineno-0-356"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-357"><a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="n">priority</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-358"><a id="__codelineno-0-358" name="__codelineno-0-358"></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-359"><a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="n">parameter_group</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-360"><a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="n">created_by</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-361"><a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-362"><a id="__codelineno-0-362" name="__codelineno-0-362"></a>    <span class="n">order_by</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
-</span><span id="__span-0-363"><a id="__codelineno-0-363" name="__codelineno-0-363"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-364"><a id="__codelineno-0-364" name="__codelineno-0-364"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-365"><a id="__codelineno-0-365" name="__codelineno-0-365"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-366"><a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-367"><a id="__codelineno-0-367" name="__codelineno-0-367"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">BaseTask</span><span class="p">]:</span>
-</span><span id="__span-0-368"><a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-369"><a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="sd">    Retrieve fully hydrated Task entities with optional filters.</span>
-</span><span id="__span-0-370"><a id="__codelineno-0-370" name="__codelineno-0-370"></a>
-</span><span id="__span-0-371"><a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">    This method returns complete entity data using `get_by_id`.</span>
-</span><span id="__span-0-372"><a id="__codelineno-0-372" name="__codelineno-0-372"></a><span class="sd">    Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.</span>
-</span><span id="__span-0-373"><a id="__codelineno-0-373" name="__codelineno-0-373"></a>
-</span><span id="__span-0-374"><a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-375"><a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-376"><a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">    text : str, optional</span>
-</span><span id="__span-0-377"><a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        Text search across multiple task fields.</span>
-</span><span id="__span-0-378"><a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    tags : list[str], optional</span>
-</span><span id="__span-0-379"><a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        Filter by tags associated with tasks.</span>
-</span><span id="__span-0-380"><a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    task_id : list[str], optional</span>
-</span><span id="__span-0-381"><a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        Specific task IDs to search for.</span>
-</span><span id="__span-0-382"><a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    linked_task : list[str], optional</span>
-</span><span id="__span-0-383"><a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
-</span><span id="__span-0-384"><a id="__codelineno-0-384" name="__codelineno-0-384"></a><span class="sd">    category : TaskCategory, optional</span>
-</span><span id="__span-0-385"><a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
-</span><span id="__span-0-386"><a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">    albert_id : list[str], optional</span>
-</span><span id="__span-0-387"><a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">        Albert-specific task identifiers.</span>
-</span><span id="__span-0-388"><a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">    data_template : list[str], optional</span>
-</span><span id="__span-0-389"><a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">        Data template IDs associated with tasks.</span>
-</span><span id="__span-0-390"><a id="__codelineno-0-390" name="__codelineno-0-390"></a><span class="sd">    assigned_to : list[str], optional</span>
-</span><span id="__span-0-391"><a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">        User IDs assigned to the tasks.</span>
-</span><span id="__span-0-392"><a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">    location : list[str], optional</span>
-</span><span id="__span-0-393"><a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">        Locations where tasks are carried out.</span>
-</span><span id="__span-0-394"><a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">    priority : list[str], optional</span>
-</span><span id="__span-0-395"><a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">        Priority levels for filtering tasks.</span>
-</span><span id="__span-0-396"><a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">    status : list[str], optional</span>
-</span><span id="__span-0-397"><a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">        Task status values (e.g., Open, Done).</span>
-</span><span id="__span-0-398"><a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">    parameter_group : list[str], optional</span>
-</span><span id="__span-0-399"><a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="sd">        Parameter Group IDs associated with tasks.</span>
-</span><span id="__span-0-400"><a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">    created_by : list[str], optional</span>
-</span><span id="__span-0-401"><a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">        User IDs who created the tasks.</span>
-</span><span id="__span-0-402"><a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">    project_id : str, optional</span>
-</span><span id="__span-0-403"><a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">        ID of the parent project for filtering tasks.</span>
-</span><span id="__span-0-404"><a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">    order_by : OrderBy, optional</span>
-</span><span id="__span-0-405"><a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">        The order in which to return results (asc or desc), default DESCENDING.</span>
-</span><span id="__span-0-406"><a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">    sort_by : str, optional</span>
-</span><span id="__span-0-407"><a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">        Attribute to sort tasks by (e.g., createdAt, name).</span>
-</span><span id="__span-0-408"><a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    page_size : int, optional</span>
-</span><span id="__span-0-409"><a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">        Number of items to return per page, default 100.</span>
-</span><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">    max_items : int, optional</span>
-</span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
-</span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">    offset : int, optional</span>
-</span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">        Number of results to skip for pagination, default 0.</span>
-</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a>
-</span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">    Yields</span>
-</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    ------</span>
-</span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    Iterator[BaseTask]</span>
-</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">        A stream of fully hydrated Task entities (PropertyTask, BatchTask, or GeneralTask).</span>
-</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
-</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
-</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
-</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
-</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="n">linked_task</span><span class="o">=</span><span class="n">linked_task</span><span class="p">,</span>
-</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
-</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">albert_id</span><span class="o">=</span><span class="n">albert_id</span><span class="p">,</span>
-</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="n">data_template</span><span class="o">=</span><span class="n">data_template</span><span class="p">,</span>
-</span><span id="__span-0-428"><a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="n">assigned_to</span><span class="o">=</span><span class="n">assigned_to</span><span class="p">,</span>
-</span><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
-</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">,</span>
-</span><span id="__span-0-431"><a id="__codelineno-0-431" name="__codelineno-0-431"></a>        <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
-</span><span id="__span-0-432"><a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="n">parameter_group</span><span class="o">=</span><span class="n">parameter_group</span><span class="p">,</span>
-</span><span id="__span-0-433"><a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
-</span><span id="__span-0-434"><a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
-</span><span id="__span-0-435"><a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="n">order_by</span><span class="o">=</span><span class="n">order_by</span><span class="p">,</span>
-</span><span id="__span-0-436"><a id="__codelineno-0-436" name="__codelineno-0-436"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
-</span><span id="__span-0-437"><a id="__codelineno-0-437" name="__codelineno-0-437"></a>        <span class="n">page_size</span><span class="o">=</span><span class="n">page_size</span><span class="p">,</span>
-</span><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-439"><a id="__codelineno-0-439" name="__codelineno-0-439"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
-</span><span id="__span-0-440"><a id="__codelineno-0-440" name="__codelineno-0-440"></a>    <span class="p">):</span>
-</span><span id="__span-0-441"><a id="__codelineno-0-441" name="__codelineno-0-441"></a>        <span class="n">task_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-442"><a id="__codelineno-0-442" name="__codelineno-0-442"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">task_id</span><span class="p">:</span>
-</span><span id="__span-0-443"><a id="__codelineno-0-443" name="__codelineno-0-443"></a>            <span class="k">continue</span>
-</span><span id="__span-0-444"><a id="__codelineno-0-444" name="__codelineno-0-444"></a>
-</span><span id="__span-0-445"><a id="__codelineno-0-445" name="__codelineno-0-445"></a>        <span class="k">try</span><span class="p">:</span>
-</span><span id="__span-0-446"><a id="__codelineno-0-446" name="__codelineno-0-446"></a>            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task_id</span><span class="p">)</span>
-</span><span id="__span-0-447"><a id="__codelineno-0-447" name="__codelineno-0-447"></a>        <span class="k">except</span> <span class="p">(</span><span class="n">AlbertHTTPError</span><span class="p">,</span> <span class="n">RetryError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-</span><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching task &#39;</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-440">440</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-341"><a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_all</span><span class="p">(</span>
+</span><span id="__span-0-342"><a id="__codelineno-0-342" name="__codelineno-0-342"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-343"><a id="__codelineno-0-343" name="__codelineno-0-343"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-344"><a id="__codelineno-0-344" name="__codelineno-0-344"></a>    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-345"><a id="__codelineno-0-345" name="__codelineno-0-345"></a>    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-346"><a id="__codelineno-0-346" name="__codelineno-0-346"></a>    <span class="n">task_id</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-347"><a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="n">linked_task</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-348"><a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="n">category</span><span class="p">:</span> <span class="n">TaskCategory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-349"><a id="__codelineno-0-349" name="__codelineno-0-349"></a>    <span class="n">albert_id</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-350"><a id="__codelineno-0-350" name="__codelineno-0-350"></a>    <span class="n">data_template</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-351"><a id="__codelineno-0-351" name="__codelineno-0-351"></a>    <span class="n">assigned_to</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-352"><a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-353"><a id="__codelineno-0-353" name="__codelineno-0-353"></a>    <span class="n">priority</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-354"><a id="__codelineno-0-354" name="__codelineno-0-354"></a>    <span class="n">status</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355"></a>    <span class="n">parameter_group</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-356"><a id="__codelineno-0-356" name="__codelineno-0-356"></a>    <span class="n">created_by</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-357"><a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-358"><a id="__codelineno-0-358" name="__codelineno-0-358"></a>    <span class="n">order_by</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
+</span><span id="__span-0-359"><a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="n">sort_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-360"><a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-361"><a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-362"><a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">BaseTask</span><span class="p">]:</span>
+</span><span id="__span-0-363"><a id="__codelineno-0-363" name="__codelineno-0-363"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-364"><a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">    Retrieve fully hydrated Task entities with optional filters.</span>
+</span><span id="__span-0-365"><a id="__codelineno-0-365" name="__codelineno-0-365"></a>
+</span><span id="__span-0-366"><a id="__codelineno-0-366" name="__codelineno-0-366"></a><span class="sd">    This method returns complete entity data using `get_by_id`.</span>
+</span><span id="__span-0-367"><a id="__codelineno-0-367" name="__codelineno-0-367"></a><span class="sd">    Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.</span>
+</span><span id="__span-0-368"><a id="__codelineno-0-368" name="__codelineno-0-368"></a>
+</span><span id="__span-0-369"><a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-370"><a id="__codelineno-0-370" name="__codelineno-0-370"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-371"><a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">    text : str, optional</span>
+</span><span id="__span-0-372"><a id="__codelineno-0-372" name="__codelineno-0-372"></a><span class="sd">        Text search across multiple task fields.</span>
+</span><span id="__span-0-373"><a id="__codelineno-0-373" name="__codelineno-0-373"></a><span class="sd">    tags : list[str], optional</span>
+</span><span id="__span-0-374"><a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="sd">        Filter by tags associated with tasks.</span>
+</span><span id="__span-0-375"><a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="sd">    task_id : list[str], optional</span>
+</span><span id="__span-0-376"><a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">        Specific task IDs to search for.</span>
+</span><span id="__span-0-377"><a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    linked_task : list[str], optional</span>
+</span><span id="__span-0-378"><a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
+</span><span id="__span-0-379"><a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    category : TaskCategory, optional</span>
+</span><span id="__span-0-380"><a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
+</span><span id="__span-0-381"><a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">    albert_id : list[str], optional</span>
+</span><span id="__span-0-382"><a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">        Albert-specific task identifiers.</span>
+</span><span id="__span-0-383"><a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">    data_template : list[str], optional</span>
+</span><span id="__span-0-384"><a id="__codelineno-0-384" name="__codelineno-0-384"></a><span class="sd">        Data template IDs associated with tasks.</span>
+</span><span id="__span-0-385"><a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">    assigned_to : list[str], optional</span>
+</span><span id="__span-0-386"><a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">        User IDs assigned to the tasks.</span>
+</span><span id="__span-0-387"><a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">    location : list[str], optional</span>
+</span><span id="__span-0-388"><a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="sd">        Locations where tasks are carried out.</span>
+</span><span id="__span-0-389"><a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="sd">    priority : list[str], optional</span>
+</span><span id="__span-0-390"><a id="__codelineno-0-390" name="__codelineno-0-390"></a><span class="sd">        Priority levels for filtering tasks.</span>
+</span><span id="__span-0-391"><a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">    status : list[str], optional</span>
+</span><span id="__span-0-392"><a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">        Task status values (e.g., Open, Done).</span>
+</span><span id="__span-0-393"><a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">    parameter_group : list[str], optional</span>
+</span><span id="__span-0-394"><a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">        Parameter Group IDs associated with tasks.</span>
+</span><span id="__span-0-395"><a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">    created_by : list[str], optional</span>
+</span><span id="__span-0-396"><a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">        User IDs who created the tasks.</span>
+</span><span id="__span-0-397"><a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">    project_id : str, optional</span>
+</span><span id="__span-0-398"><a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">        ID of the parent project for filtering tasks.</span>
+</span><span id="__span-0-399"><a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="sd">    order_by : OrderBy, optional</span>
+</span><span id="__span-0-400"><a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">        The order in which to return results (asc or desc), default DESCENDING.</span>
+</span><span id="__span-0-401"><a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">    sort_by : str, optional</span>
+</span><span id="__span-0-402"><a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="sd">        Attribute to sort tasks by (e.g., createdAt, name).</span>
+</span><span id="__span-0-403"><a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">    max_items : int, optional</span>
+</span><span id="__span-0-404"><a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
+</span><span id="__span-0-405"><a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    offset : int, optional</span>
+</span><span id="__span-0-406"><a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">        Number of results to skip for pagination, default 0.</span>
+</span><span id="__span-0-407"><a id="__codelineno-0-407" name="__codelineno-0-407"></a>
+</span><span id="__span-0-408"><a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    Yields</span>
+</span><span id="__span-0-409"><a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">    ------</span>
+</span><span id="__span-0-410"><a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">    Iterator[BaseTask]</span>
+</span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">        A stream of fully hydrated Task entities (PropertyTask, BatchTask, or GeneralTask).</span>
+</span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a>    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a>        <span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
+</span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a>        <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>        <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
+</span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>        <span class="n">linked_task</span><span class="o">=</span><span class="n">linked_task</span><span class="p">,</span>
+</span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="n">category</span><span class="o">=</span><span class="n">category</span><span class="p">,</span>
+</span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">albert_id</span><span class="o">=</span><span class="n">albert_id</span><span class="p">,</span>
+</span><span id="__span-0-420"><a id="__codelineno-0-420" name="__codelineno-0-420"></a>        <span class="n">data_template</span><span class="o">=</span><span class="n">data_template</span><span class="p">,</span>
+</span><span id="__span-0-421"><a id="__codelineno-0-421" name="__codelineno-0-421"></a>        <span class="n">assigned_to</span><span class="o">=</span><span class="n">assigned_to</span><span class="p">,</span>
+</span><span id="__span-0-422"><a id="__codelineno-0-422" name="__codelineno-0-422"></a>        <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+</span><span id="__span-0-423"><a id="__codelineno-0-423" name="__codelineno-0-423"></a>        <span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">,</span>
+</span><span id="__span-0-424"><a id="__codelineno-0-424" name="__codelineno-0-424"></a>        <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+</span><span id="__span-0-425"><a id="__codelineno-0-425" name="__codelineno-0-425"></a>        <span class="n">parameter_group</span><span class="o">=</span><span class="n">parameter_group</span><span class="p">,</span>
+</span><span id="__span-0-426"><a id="__codelineno-0-426" name="__codelineno-0-426"></a>        <span class="n">created_by</span><span class="o">=</span><span class="n">created_by</span><span class="p">,</span>
+</span><span id="__span-0-427"><a id="__codelineno-0-427" name="__codelineno-0-427"></a>        <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span>
+</span><span id="__span-0-428"><a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="n">order_by</span><span class="o">=</span><span class="n">order_by</span><span class="p">,</span>
+</span><span id="__span-0-429"><a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="n">sort_by</span><span class="o">=</span><span class="n">sort_by</span><span class="p">,</span>
+</span><span id="__span-0-430"><a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-431"><a id="__codelineno-0-431" name="__codelineno-0-431"></a>        <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+</span><span id="__span-0-432"><a id="__codelineno-0-432" name="__codelineno-0-432"></a>    <span class="p">):</span>
+</span><span id="__span-0-433"><a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="n">task_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-434"><a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">task_id</span><span class="p">:</span>
+</span><span id="__span-0-435"><a id="__codelineno-0-435" name="__codelineno-0-435"></a>            <span class="k">continue</span>
+</span><span id="__span-0-436"><a id="__codelineno-0-436" name="__codelineno-0-436"></a>
+</span><span id="__span-0-437"><a id="__codelineno-0-437" name="__codelineno-0-437"></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a>            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task_id</span><span class="p">)</span>
+</span><span id="__span-0-439"><a id="__codelineno-0-439" name="__codelineno-0-439"></a>        <span class="k">except</span> <span class="p">(</span><span class="n">AlbertHTTPError</span><span class="p">,</span> <span class="n">RetryError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-0-440"><a id="__codelineno-0-440" name="__codelineno-0-440"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching task &#39;</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5471,7 +5421,15 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 
             <details class="quote">
               <summary>Source code in <code>src/albert/collections/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-596">596</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-588">588</a></span>
+<span class="normal"><a href="#__codelineno-0-589">589</a></span>
+<span class="normal"><a href="#__codelineno-0-590">590</a></span>
+<span class="normal"><a href="#__codelineno-0-591">591</a></span>
+<span class="normal"><a href="#__codelineno-0-592">592</a></span>
+<span class="normal"><a href="#__codelineno-0-593">593</a></span>
+<span class="normal"><a href="#__codelineno-0-594">594</a></span>
+<span class="normal"><a href="#__codelineno-0-595">595</a></span>
+<span class="normal"><a href="#__codelineno-0-596">596</a></span>
 <span class="normal"><a href="#__codelineno-0-597">597</a></span>
 <span class="normal"><a href="#__codelineno-0-598">598</a></span>
 <span class="normal"><a href="#__codelineno-0-599">599</a></span>
@@ -5491,43 +5449,35 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 <span class="normal"><a href="#__codelineno-0-613">613</a></span>
 <span class="normal"><a href="#__codelineno-0-614">614</a></span>
 <span class="normal"><a href="#__codelineno-0-615">615</a></span>
-<span class="normal"><a href="#__codelineno-0-616">616</a></span>
-<span class="normal"><a href="#__codelineno-0-617">617</a></span>
-<span class="normal"><a href="#__codelineno-0-618">618</a></span>
-<span class="normal"><a href="#__codelineno-0-619">619</a></span>
-<span class="normal"><a href="#__codelineno-0-620">620</a></span>
-<span class="normal"><a href="#__codelineno-0-621">621</a></span>
-<span class="normal"><a href="#__codelineno-0-622">622</a></span>
-<span class="normal"><a href="#__codelineno-0-623">623</a></span>
-<span class="normal"><a href="#__codelineno-0-624">624</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">BaseTask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseTask</span><span class="p">:</span>
-</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Update a task.</span>
-</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a>
-</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">    task : BaseTask</span>
-</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">        The updated Task object.</span>
+<span class="normal"><a href="#__codelineno-0-616">616</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-588"><a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">BaseTask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseTask</span><span class="p">:</span>
+</span><span id="__span-0-589"><a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Update a task.</span>
+</span><span id="__span-0-590"><a id="__codelineno-0-590" name="__codelineno-0-590"></a>
+</span><span id="__span-0-591"><a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-592"><a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-593"><a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">    task : BaseTask</span>
+</span><span id="__span-0-594"><a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        The updated Task object.</span>
+</span><span id="__span-0-595"><a id="__codelineno-0-595" name="__codelineno-0-595"></a>
+</span><span id="__span-0-596"><a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-597"><a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">    -------</span>
+</span><span id="__span-0-598"><a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    BaseTask</span>
+</span><span id="__span-0-599"><a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">        The updated Task object as it exists in the Albert platform.</span>
+</span><span id="__span-0-600"><a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-601"><a id="__codelineno-0-601" name="__codelineno-0-601"></a>    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-602"><a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_adv_patch_payload</span><span class="p">(</span><span class="n">updated</span><span class="o">=</span><span class="n">task</span><span class="p">,</span> <span class="n">existing</span><span class="o">=</span><span class="n">existing</span><span class="p">)</span>
 </span><span id="__span-0-603"><a id="__codelineno-0-603" name="__codelineno-0-603"></a>
-</span><span id="__span-0-604"><a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-605"><a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">    -------</span>
-</span><span id="__span-0-606"><a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">    BaseTask</span>
-</span><span id="__span-0-607"><a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        The updated Task object as it exists in the Albert platform.</span>
-</span><span id="__span-0-608"><a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-609"><a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-610"><a id="__codelineno-0-610" name="__codelineno-0-610"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_adv_patch_payload</span><span class="p">(</span><span class="n">updated</span><span class="o">=</span><span class="n">task</span><span class="p">,</span> <span class="n">existing</span><span class="o">=</span><span class="n">existing</span><span class="p">)</span>
-</span><span id="__span-0-611"><a id="__codelineno-0-611" name="__codelineno-0-611"></a>
-</span><span id="__span-0-612"><a id="__codelineno-0-612" name="__codelineno-0-612"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="__span-0-613"><a id="__codelineno-0-613" name="__codelineno-0-613"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is already up to date&quot;</span><span class="p">)</span>
-</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614"></a>        <span class="k">return</span> <span class="n">task</span>
-</span><span id="__span-0-615"><a id="__codelineno-0-615" name="__codelineno-0-615"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="__span-0-616"><a id="__codelineno-0-616" name="__codelineno-0-616"></a>
-</span><span id="__span-0-617"><a id="__codelineno-0-617" name="__codelineno-0-617"></a>    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-</span><span id="__span-0-618"><a id="__codelineno-0-618" name="__codelineno-0-618"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">TaskPatchPayload</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">datum</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-619"><a id="__codelineno-0-619" name="__codelineno-0-619"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
-</span><span id="__span-0-620"><a id="__codelineno-0-620" name="__codelineno-0-620"></a>            <span class="n">url</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-</span><span id="__span-0-621"><a id="__codelineno-0-621" name="__codelineno-0-621"></a>            <span class="n">json</span><span class="o">=</span><span class="p">[</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
-</span><span id="__span-0-622"><a id="__codelineno-0-622" name="__codelineno-0-622"></a>        <span class="p">)</span>
-</span><span id="__span-0-623"><a id="__codelineno-0-623" name="__codelineno-0-623"></a>
-</span><span id="__span-0-624"><a id="__codelineno-0-624" name="__codelineno-0-624"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-604"><a id="__codelineno-0-604" name="__codelineno-0-604"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="__span-0-605"><a id="__codelineno-0-605" name="__codelineno-0-605"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is already up to date&quot;</span><span class="p">)</span>
+</span><span id="__span-0-606"><a id="__codelineno-0-606" name="__codelineno-0-606"></a>        <span class="k">return</span> <span class="n">task</span>
+</span><span id="__span-0-607"><a id="__codelineno-0-607" name="__codelineno-0-607"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-608"><a id="__codelineno-0-608" name="__codelineno-0-608"></a>
+</span><span id="__span-0-609"><a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="__span-0-610"><a id="__codelineno-0-610" name="__codelineno-0-610"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">TaskPatchPayload</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">datum</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-611"><a id="__codelineno-0-611" name="__codelineno-0-611"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
+</span><span id="__span-0-612"><a id="__codelineno-0-612" name="__codelineno-0-612"></a>            <span class="n">url</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+</span><span id="__span-0-613"><a id="__codelineno-0-613" name="__codelineno-0-613"></a>            <span class="n">json</span><span class="o">=</span><span class="p">[</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
+</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614"></a>        <span class="p">)</span>
+</span><span id="__span-0-615"><a id="__codelineno-0-615" name="__codelineno-0-615"></a>
+</span><span id="__span-0-616"><a id="__codelineno-0-616" name="__codelineno-0-616"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5558,7 +5508,15 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 
             <details class="quote">
               <summary>Source code in <code>src/albert/collections/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-626">626</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-618">618</a></span>
+<span class="normal"><a href="#__codelineno-0-619">619</a></span>
+<span class="normal"><a href="#__codelineno-0-620">620</a></span>
+<span class="normal"><a href="#__codelineno-0-621">621</a></span>
+<span class="normal"><a href="#__codelineno-0-622">622</a></span>
+<span class="normal"><a href="#__codelineno-0-623">623</a></span>
+<span class="normal"><a href="#__codelineno-0-624">624</a></span>
+<span class="normal"><a href="#__codelineno-0-625">625</a></span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span>
 <span class="normal"><a href="#__codelineno-0-627">627</a></span>
 <span class="normal"><a href="#__codelineno-0-628">628</a></span>
 <span class="normal"><a href="#__codelineno-0-629">629</a></span>
@@ -5569,34 +5527,26 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 <span class="normal"><a href="#__codelineno-0-634">634</a></span>
 <span class="normal"><a href="#__codelineno-0-635">635</a></span>
 <span class="normal"><a href="#__codelineno-0-636">636</a></span>
-<span class="normal"><a href="#__codelineno-0-637">637</a></span>
-<span class="normal"><a href="#__codelineno-0-638">638</a></span>
-<span class="normal"><a href="#__codelineno-0-639">639</a></span>
-<span class="normal"><a href="#__codelineno-0-640">640</a></span>
-<span class="normal"><a href="#__codelineno-0-641">641</a></span>
-<span class="normal"><a href="#__codelineno-0-642">642</a></span>
-<span class="normal"><a href="#__codelineno-0-643">643</a></span>
-<span class="normal"><a href="#__codelineno-0-644">644</a></span>
-<span class="normal"><a href="#__codelineno-0-645">645</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_history</span><span class="p">(</span>
-</span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627"></a>    <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="nb">id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span>
-</span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
-</span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
-</span><span id="__span-0-632"><a id="__codelineno-0-632" name="__codelineno-0-632"></a>    <span class="n">entity</span><span class="p">:</span> <span class="n">HistoryEntity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-633"><a id="__codelineno-0-633" name="__codelineno-0-633"></a>    <span class="n">blockId</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-634"><a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="n">startKey</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-635"><a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskHistory</span><span class="p">:</span>
-</span><span id="__span-0-636"><a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-637"><a id="__codelineno-0-637" name="__codelineno-0-637"></a>        <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span>
-</span><span id="__span-0-638"><a id="__codelineno-0-638" name="__codelineno-0-638"></a>        <span class="s2">&quot;orderBy&quot;</span><span class="p">:</span> <span class="n">OrderBy</span><span class="p">(</span><span class="n">order</span><span class="p">)</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">order</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-639"><a id="__codelineno-0-639" name="__codelineno-0-639"></a>        <span class="s2">&quot;entity&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="p">,</span>
-</span><span id="__span-0-640"><a id="__codelineno-0-640" name="__codelineno-0-640"></a>        <span class="s2">&quot;blockId&quot;</span><span class="p">:</span> <span class="n">blockId</span><span class="p">,</span>
-</span><span id="__span-0-641"><a id="__codelineno-0-641" name="__codelineno-0-641"></a>        <span class="s2">&quot;startKey&quot;</span><span class="p">:</span> <span class="n">startKey</span><span class="p">,</span>
-</span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="p">}</span>
-</span><span id="__span-0-643"><a id="__codelineno-0-643" name="__codelineno-0-643"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">/history&quot;</span>
-</span><span id="__span-0-644"><a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
-</span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="k">return</span> <span class="n">TaskHistory</span><span class="p">(</span><span class="o">**</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+<span class="normal"><a href="#__codelineno-0-637">637</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-618"><a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_history</span><span class="p">(</span>
+</span><span id="__span-0-619"><a id="__codelineno-0-619" name="__codelineno-0-619"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-620"><a id="__codelineno-0-620" name="__codelineno-0-620"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-621"><a id="__codelineno-0-621" name="__codelineno-0-621"></a>    <span class="nb">id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span>
+</span><span id="__span-0-622"><a id="__codelineno-0-622" name="__codelineno-0-622"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
+</span><span id="__span-0-623"><a id="__codelineno-0-623" name="__codelineno-0-623"></a>    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-0-624"><a id="__codelineno-0-624" name="__codelineno-0-624"></a>    <span class="n">entity</span><span class="p">:</span> <span class="n">HistoryEntity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-625"><a id="__codelineno-0-625" name="__codelineno-0-625"></a>    <span class="n">blockId</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626"></a>    <span class="n">startKey</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskHistory</span><span class="p">:</span>
+</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a>        <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span>
+</span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="s2">&quot;orderBy&quot;</span><span class="p">:</span> <span class="n">OrderBy</span><span class="p">(</span><span class="n">order</span><span class="p">)</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">order</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631"></a>        <span class="s2">&quot;entity&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="p">,</span>
+</span><span id="__span-0-632"><a id="__codelineno-0-632" name="__codelineno-0-632"></a>        <span class="s2">&quot;blockId&quot;</span><span class="p">:</span> <span class="n">blockId</span><span class="p">,</span>
+</span><span id="__span-0-633"><a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="s2">&quot;startKey&quot;</span><span class="p">:</span> <span class="n">startKey</span><span class="p">,</span>
+</span><span id="__span-0-634"><a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="p">}</span>
+</span><span id="__span-0-635"><a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">/history&quot;</span>
+</span><span id="__span-0-636"><a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+</span><span id="__span-0-637"><a id="__codelineno-0-637" name="__codelineno-0-637"></a>    <span class="k">return</span> <span class="n">TaskHistory</span><span class="p">(</span><span class="o">**</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

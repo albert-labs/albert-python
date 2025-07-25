@@ -5906,9 +5906,8 @@ BulkPropertyData column names must exactly match the names of the data columns (
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    <span class="n">task_created_by</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/identifiers/#albert.core.shared.identifiers.UserId">UserId</a></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" href="../../resources/identifiers/#albert.core.shared.identifiers.UserId">UserId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    <span class="n">return_fields</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    <span class="n">return_facets</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/glossary.html#term-list">list</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/property_data/#albert.resources.property_data.PropertyDataSearchItem">PropertyDataSearchItem</a></span><span class="p">]</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Iterator" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterator">Iterator</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" href="../../resources/property_data/#albert.resources.property_data.PropertyDataSearchItem">PropertyDataSearchItem</a></span><span class="p">]</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6233,22 +6232,6 @@ BulkPropertyData column names must exactly match the names of the data columns (
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>page_size</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of items to return per page. Defaults to 100.</p>
-              </div>
-            </td>
-            <td>
-                  <code>100</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>max_items</code>
             </td>
             <td>
@@ -6413,11 +6396,7 @@ BulkPropertyData column names must exactly match the names of the data columns (
 <span class="normal"><a href="#__codelineno-0-903">903</a></span>
 <span class="normal"><a href="#__codelineno-0-904">904</a></span>
 <span class="normal"><a href="#__codelineno-0-905">905</a></span>
-<span class="normal"><a href="#__codelineno-0-906">906</a></span>
-<span class="normal"><a href="#__codelineno-0-907">907</a></span>
-<span class="normal"><a href="#__codelineno-0-908">908</a></span>
-<span class="normal"><a href="#__codelineno-0-909">909</a></span>
-<span class="normal"><a href="#__codelineno-0-910">910</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-785"><a id="__codelineno-0-785" name="__codelineno-0-785"></a><span class="nd">@validate_call</span>
+<span class="normal"><a href="#__codelineno-0-906">906</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-785"><a id="__codelineno-0-785" name="__codelineno-0-785"></a><span class="nd">@validate_call</span>
 </span><span id="__span-0-786"><a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span>
 </span><span id="__span-0-787"><a id="__codelineno-0-787" name="__codelineno-0-787"></a>    <span class="bp">self</span><span class="p">,</span>
 </span><span id="__span-0-788"><a id="__codelineno-0-788" name="__codelineno-0-788"></a>    <span class="o">*</span><span class="p">,</span>
@@ -6447,102 +6426,98 @@ BulkPropertyData column names must exactly match the names of the data columns (
 </span><span id="__span-0-812"><a id="__codelineno-0-812" name="__codelineno-0-812"></a>    <span class="n">return_fields</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-813"><a id="__codelineno-0-813" name="__codelineno-0-813"></a>    <span class="n">return_facets</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="__span-0-814"><a id="__codelineno-0-814" name="__codelineno-0-814"></a>    <span class="c1"># Pagination</span>
-</span><span id="__span-0-815"><a id="__codelineno-0-815" name="__codelineno-0-815"></a>    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-</span><span id="__span-0-816"><a id="__codelineno-0-816" name="__codelineno-0-816"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-817"><a id="__codelineno-0-817" name="__codelineno-0-817"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="p">]:</span>
-</span><span id="__span-0-818"><a id="__codelineno-0-818" name="__codelineno-0-818"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="__span-0-819"><a id="__codelineno-0-819" name="__codelineno-0-819"></a><span class="sd">    Search for property data with various filtering options.</span>
-</span><span id="__span-0-820"><a id="__codelineno-0-820" name="__codelineno-0-820"></a>
-</span><span id="__span-0-821"><a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-822"><a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-823"><a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">    result : str, optional</span>
-</span><span id="__span-0-824"><a id="__codelineno-0-824" name="__codelineno-0-824"></a><span class="sd">        Query using syntax, e.g. result=viscosity(&lt;200)@temperature(25).</span>
-</span><span id="__span-0-825"><a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">    text : str, optional</span>
-</span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">        Free text search across all fields.</span>
-</span><span id="__span-0-827"><a id="__codelineno-0-827" name="__codelineno-0-827"></a><span class="sd">    order : OrderBy, optional</span>
-</span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828"></a><span class="sd">        Sort order (ascending/descending).</span>
-</span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829"></a><span class="sd">    sort_by : str, optional</span>
-</span><span id="__span-0-830"><a id="__codelineno-0-830" name="__codelineno-0-830"></a><span class="sd">        Field to sort results by.</span>
-</span><span id="__span-0-831"><a id="__codelineno-0-831" name="__codelineno-0-831"></a><span class="sd">    inventory_ids : SearchInventoryId or list[SearchInventoryId], optional</span>
-</span><span id="__span-0-832"><a id="__codelineno-0-832" name="__codelineno-0-832"></a><span class="sd">        Filter by inventory IDs.</span>
-</span><span id="__span-0-833"><a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">    project_ids : SearchProjectId or list[SearchProjectId], optional</span>
-</span><span id="__span-0-834"><a id="__codelineno-0-834" name="__codelineno-0-834"></a><span class="sd">        Filter by project IDs.</span>
-</span><span id="__span-0-835"><a id="__codelineno-0-835" name="__codelineno-0-835"></a><span class="sd">    lot_ids : LotId or list[LotId], optional</span>
-</span><span id="__span-0-836"><a id="__codelineno-0-836" name="__codelineno-0-836"></a><span class="sd">        Filter by lot IDs.</span>
-</span><span id="__span-0-837"><a id="__codelineno-0-837" name="__codelineno-0-837"></a><span class="sd">    data_template_ids : DataTemplateId or list[DataTemplateId], optional</span>
-</span><span id="__span-0-838"><a id="__codelineno-0-838" name="__codelineno-0-838"></a><span class="sd">        Filter by data template IDs.</span>
-</span><span id="__span-0-839"><a id="__codelineno-0-839" name="__codelineno-0-839"></a><span class="sd">    data_column_ids : DataColumnId or list[DataColumnId], optional</span>
-</span><span id="__span-0-840"><a id="__codelineno-0-840" name="__codelineno-0-840"></a><span class="sd">        Filter by data column IDs.</span>
-</span><span id="__span-0-841"><a id="__codelineno-0-841" name="__codelineno-0-841"></a><span class="sd">    category : DataEntity or list[DataEntity], optional</span>
-</span><span id="__span-0-842"><a id="__codelineno-0-842" name="__codelineno-0-842"></a><span class="sd">        Filter by data entity categories.</span>
-</span><span id="__span-0-843"><a id="__codelineno-0-843" name="__codelineno-0-843"></a><span class="sd">    data_templates : str or list[str], optional</span>
-</span><span id="__span-0-844"><a id="__codelineno-0-844" name="__codelineno-0-844"></a><span class="sd">        Filter by data template names.</span>
-</span><span id="__span-0-845"><a id="__codelineno-0-845" name="__codelineno-0-845"></a><span class="sd">    data_columns : str or list[str], optional</span>
-</span><span id="__span-0-846"><a id="__codelineno-0-846" name="__codelineno-0-846"></a><span class="sd">        Filter by data column names.</span>
-</span><span id="__span-0-847"><a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">    parameters : str or list[str], optional</span>
-</span><span id="__span-0-848"><a id="__codelineno-0-848" name="__codelineno-0-848"></a><span class="sd">        Filter by parameter names.</span>
-</span><span id="__span-0-849"><a id="__codelineno-0-849" name="__codelineno-0-849"></a><span class="sd">    parameter_group : str or list[str], optional</span>
-</span><span id="__span-0-850"><a id="__codelineno-0-850" name="__codelineno-0-850"></a><span class="sd">        Filter by parameter group names.</span>
-</span><span id="__span-0-851"><a id="__codelineno-0-851" name="__codelineno-0-851"></a><span class="sd">    unit : str or list[str], optional</span>
-</span><span id="__span-0-852"><a id="__codelineno-0-852" name="__codelineno-0-852"></a><span class="sd">        Filter by unit names.</span>
-</span><span id="__span-0-853"><a id="__codelineno-0-853" name="__codelineno-0-853"></a><span class="sd">    created_by : UserId or list[UserId], optional</span>
-</span><span id="__span-0-854"><a id="__codelineno-0-854" name="__codelineno-0-854"></a><span class="sd">        Filter by user IDs who created the data.</span>
-</span><span id="__span-0-855"><a id="__codelineno-0-855" name="__codelineno-0-855"></a><span class="sd">    task_created_by : UserId or list[UserId], optional</span>
-</span><span id="__span-0-856"><a id="__codelineno-0-856" name="__codelineno-0-856"></a><span class="sd">        Filter by user IDs who created the task.</span>
-</span><span id="__span-0-857"><a id="__codelineno-0-857" name="__codelineno-0-857"></a><span class="sd">    return_fields : str or list[str], optional</span>
-</span><span id="__span-0-858"><a id="__codelineno-0-858" name="__codelineno-0-858"></a><span class="sd">        Specific fields to return.</span>
-</span><span id="__span-0-859"><a id="__codelineno-0-859" name="__codelineno-0-859"></a><span class="sd">    return_facets : str or list[str], optional</span>
-</span><span id="__span-0-860"><a id="__codelineno-0-860" name="__codelineno-0-860"></a><span class="sd">        Specific facets to return.</span>
-</span><span id="__span-0-861"><a id="__codelineno-0-861" name="__codelineno-0-861"></a><span class="sd">    page_size : int, optional</span>
-</span><span id="__span-0-862"><a id="__codelineno-0-862" name="__codelineno-0-862"></a><span class="sd">        Number of items to return per page. Defaults to 100.</span>
-</span><span id="__span-0-863"><a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="sd">    max_items : int, optional</span>
-</span><span id="__span-0-864"><a id="__codelineno-0-864" name="__codelineno-0-864"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
-</span><span id="__span-0-865"><a id="__codelineno-0-865" name="__codelineno-0-865"></a>
-</span><span id="__span-0-866"><a id="__codelineno-0-866" name="__codelineno-0-866"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-867"><a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="sd">    -------</span>
-</span><span id="__span-0-868"><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="sd">    Iterator[PropertyDataSearchItem]</span>
-</span><span id="__span-0-869"><a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="sd">        An iterator of search results matching the specified filters.</span>
-</span><span id="__span-0-870"><a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-815"><a id="__codelineno-0-815" name="__codelineno-0-815"></a>    <span class="n">max_items</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-816"><a id="__codelineno-0-816" name="__codelineno-0-816"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="p">]:</span>
+</span><span id="__span-0-817"><a id="__codelineno-0-817" name="__codelineno-0-817"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="__span-0-818"><a id="__codelineno-0-818" name="__codelineno-0-818"></a><span class="sd">    Search for property data with various filtering options.</span>
+</span><span id="__span-0-819"><a id="__codelineno-0-819" name="__codelineno-0-819"></a>
+</span><span id="__span-0-820"><a id="__codelineno-0-820" name="__codelineno-0-820"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-821"><a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-822"><a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="sd">    result : str, optional</span>
+</span><span id="__span-0-823"><a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="sd">        Query using syntax, e.g. result=viscosity(&lt;200)@temperature(25).</span>
+</span><span id="__span-0-824"><a id="__codelineno-0-824" name="__codelineno-0-824"></a><span class="sd">    text : str, optional</span>
+</span><span id="__span-0-825"><a id="__codelineno-0-825" name="__codelineno-0-825"></a><span class="sd">        Free text search across all fields.</span>
+</span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">    order : OrderBy, optional</span>
+</span><span id="__span-0-827"><a id="__codelineno-0-827" name="__codelineno-0-827"></a><span class="sd">        Sort order (ascending/descending).</span>
+</span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828"></a><span class="sd">    sort_by : str, optional</span>
+</span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829"></a><span class="sd">        Field to sort results by.</span>
+</span><span id="__span-0-830"><a id="__codelineno-0-830" name="__codelineno-0-830"></a><span class="sd">    inventory_ids : SearchInventoryId or list[SearchInventoryId], optional</span>
+</span><span id="__span-0-831"><a id="__codelineno-0-831" name="__codelineno-0-831"></a><span class="sd">        Filter by inventory IDs.</span>
+</span><span id="__span-0-832"><a id="__codelineno-0-832" name="__codelineno-0-832"></a><span class="sd">    project_ids : SearchProjectId or list[SearchProjectId], optional</span>
+</span><span id="__span-0-833"><a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">        Filter by project IDs.</span>
+</span><span id="__span-0-834"><a id="__codelineno-0-834" name="__codelineno-0-834"></a><span class="sd">    lot_ids : LotId or list[LotId], optional</span>
+</span><span id="__span-0-835"><a id="__codelineno-0-835" name="__codelineno-0-835"></a><span class="sd">        Filter by lot IDs.</span>
+</span><span id="__span-0-836"><a id="__codelineno-0-836" name="__codelineno-0-836"></a><span class="sd">    data_template_ids : DataTemplateId or list[DataTemplateId], optional</span>
+</span><span id="__span-0-837"><a id="__codelineno-0-837" name="__codelineno-0-837"></a><span class="sd">        Filter by data template IDs.</span>
+</span><span id="__span-0-838"><a id="__codelineno-0-838" name="__codelineno-0-838"></a><span class="sd">    data_column_ids : DataColumnId or list[DataColumnId], optional</span>
+</span><span id="__span-0-839"><a id="__codelineno-0-839" name="__codelineno-0-839"></a><span class="sd">        Filter by data column IDs.</span>
+</span><span id="__span-0-840"><a id="__codelineno-0-840" name="__codelineno-0-840"></a><span class="sd">    category : DataEntity or list[DataEntity], optional</span>
+</span><span id="__span-0-841"><a id="__codelineno-0-841" name="__codelineno-0-841"></a><span class="sd">        Filter by data entity categories.</span>
+</span><span id="__span-0-842"><a id="__codelineno-0-842" name="__codelineno-0-842"></a><span class="sd">    data_templates : str or list[str], optional</span>
+</span><span id="__span-0-843"><a id="__codelineno-0-843" name="__codelineno-0-843"></a><span class="sd">        Filter by data template names.</span>
+</span><span id="__span-0-844"><a id="__codelineno-0-844" name="__codelineno-0-844"></a><span class="sd">    data_columns : str or list[str], optional</span>
+</span><span id="__span-0-845"><a id="__codelineno-0-845" name="__codelineno-0-845"></a><span class="sd">        Filter by data column names.</span>
+</span><span id="__span-0-846"><a id="__codelineno-0-846" name="__codelineno-0-846"></a><span class="sd">    parameters : str or list[str], optional</span>
+</span><span id="__span-0-847"><a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">        Filter by parameter names.</span>
+</span><span id="__span-0-848"><a id="__codelineno-0-848" name="__codelineno-0-848"></a><span class="sd">    parameter_group : str or list[str], optional</span>
+</span><span id="__span-0-849"><a id="__codelineno-0-849" name="__codelineno-0-849"></a><span class="sd">        Filter by parameter group names.</span>
+</span><span id="__span-0-850"><a id="__codelineno-0-850" name="__codelineno-0-850"></a><span class="sd">    unit : str or list[str], optional</span>
+</span><span id="__span-0-851"><a id="__codelineno-0-851" name="__codelineno-0-851"></a><span class="sd">        Filter by unit names.</span>
+</span><span id="__span-0-852"><a id="__codelineno-0-852" name="__codelineno-0-852"></a><span class="sd">    created_by : UserId or list[UserId], optional</span>
+</span><span id="__span-0-853"><a id="__codelineno-0-853" name="__codelineno-0-853"></a><span class="sd">        Filter by user IDs who created the data.</span>
+</span><span id="__span-0-854"><a id="__codelineno-0-854" name="__codelineno-0-854"></a><span class="sd">    task_created_by : UserId or list[UserId], optional</span>
+</span><span id="__span-0-855"><a id="__codelineno-0-855" name="__codelineno-0-855"></a><span class="sd">        Filter by user IDs who created the task.</span>
+</span><span id="__span-0-856"><a id="__codelineno-0-856" name="__codelineno-0-856"></a><span class="sd">    return_fields : str or list[str], optional</span>
+</span><span id="__span-0-857"><a id="__codelineno-0-857" name="__codelineno-0-857"></a><span class="sd">        Specific fields to return.</span>
+</span><span id="__span-0-858"><a id="__codelineno-0-858" name="__codelineno-0-858"></a><span class="sd">    return_facets : str or list[str], optional</span>
+</span><span id="__span-0-859"><a id="__codelineno-0-859" name="__codelineno-0-859"></a><span class="sd">        Specific facets to return.</span>
+</span><span id="__span-0-860"><a id="__codelineno-0-860" name="__codelineno-0-860"></a><span class="sd">    max_items : int, optional</span>
+</span><span id="__span-0-861"><a id="__codelineno-0-861" name="__codelineno-0-861"></a><span class="sd">        Maximum number of items to return in total. If None, fetches all available items.</span>
+</span><span id="__span-0-862"><a id="__codelineno-0-862" name="__codelineno-0-862"></a>
+</span><span id="__span-0-863"><a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-864"><a id="__codelineno-0-864" name="__codelineno-0-864"></a><span class="sd">    -------</span>
+</span><span id="__span-0-865"><a id="__codelineno-0-865" name="__codelineno-0-865"></a><span class="sd">    Iterator[PropertyDataSearchItem]</span>
+</span><span id="__span-0-866"><a id="__codelineno-0-866" name="__codelineno-0-866"></a><span class="sd">        An iterator of search results matching the specified filters.</span>
+</span><span id="__span-0-867"><a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-868"><a id="__codelineno-0-868" name="__codelineno-0-868"></a>
+</span><span id="__span-0-869"><a id="__codelineno-0-869" name="__codelineno-0-869"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="p">]:</span>
+</span><span id="__span-0-870"><a id="__codelineno-0-870" name="__codelineno-0-870"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
 </span><span id="__span-0-871"><a id="__codelineno-0-871" name="__codelineno-0-871"></a>
-</span><span id="__span-0-872"><a id="__codelineno-0-872" name="__codelineno-0-872"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">deserialize</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="p">]:</span>
-</span><span id="__span-0-873"><a id="__codelineno-0-873" name="__codelineno-0-873"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">PropertyDataSearchItem</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
-</span><span id="__span-0-874"><a id="__codelineno-0-874" name="__codelineno-0-874"></a>
-</span><span id="__span-0-875"><a id="__codelineno-0-875" name="__codelineno-0-875"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_list</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
-</span><span id="__span-0-876"><a id="__codelineno-0-876" name="__codelineno-0-876"></a>        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a>            <span class="k">return</span> <span class="kc">None</span>
-</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Enum</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span>
-</span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a>
-</span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a>        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
-</span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span>
-</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a>        <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">order</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a>        <span class="s2">&quot;sortBy&quot;</span><span class="p">:</span> <span class="n">sort_by</span><span class="p">,</span>
-</span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a>        <span class="s2">&quot;inventoryIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">inventory_ids</span><span class="p">),</span>
-</span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a>        <span class="s2">&quot;projectIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">project_ids</span><span class="p">),</span>
-</span><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a>        <span class="s2">&quot;lotIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">lot_ids</span><span class="p">),</span>
-</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a>        <span class="s2">&quot;dataTemplateId&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_template_ids</span><span class="p">),</span>
-</span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a>        <span class="s2">&quot;dataColumnId&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_column_ids</span><span class="p">),</span>
-</span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">category</span><span class="p">)]</span> <span class="k">if</span> <span class="n">category</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a>        <span class="s2">&quot;dataTemplates&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_templates</span><span class="p">),</span>
-</span><span id="__span-0-892"><a id="__codelineno-0-892" name="__codelineno-0-892"></a>        <span class="s2">&quot;dataColumns&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_columns</span><span class="p">),</span>
-</span><span id="__span-0-893"><a id="__codelineno-0-893" name="__codelineno-0-893"></a>        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">parameters</span><span class="p">),</span>
-</span><span id="__span-0-894"><a id="__codelineno-0-894" name="__codelineno-0-894"></a>        <span class="s2">&quot;parameterGroup&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">parameter_group</span><span class="p">),</span>
-</span><span id="__span-0-895"><a id="__codelineno-0-895" name="__codelineno-0-895"></a>        <span class="s2">&quot;unit&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">unit</span><span class="p">),</span>
-</span><span id="__span-0-896"><a id="__codelineno-0-896" name="__codelineno-0-896"></a>        <span class="s2">&quot;createdBy&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">created_by</span><span class="p">),</span>
-</span><span id="__span-0-897"><a id="__codelineno-0-897" name="__codelineno-0-897"></a>        <span class="s2">&quot;taskCreatedBy&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">task_created_by</span><span class="p">),</span>
-</span><span id="__span-0-898"><a id="__codelineno-0-898" name="__codelineno-0-898"></a>        <span class="s2">&quot;returnFields&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">return_fields</span><span class="p">),</span>
-</span><span id="__span-0-899"><a id="__codelineno-0-899" name="__codelineno-0-899"></a>        <span class="s2">&quot;returnFacets&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">return_facets</span><span class="p">),</span>
-</span><span id="__span-0-900"><a id="__codelineno-0-900" name="__codelineno-0-900"></a>    <span class="p">}</span>
-</span><span id="__span-0-901"><a id="__codelineno-0-901" name="__codelineno-0-901"></a>
-</span><span id="__span-0-902"><a id="__codelineno-0-902" name="__codelineno-0-902"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
-</span><span id="__span-0-903"><a id="__codelineno-0-903" name="__codelineno-0-903"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
-</span><span id="__span-0-904"><a id="__codelineno-0-904" name="__codelineno-0-904"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
-</span><span id="__span-0-905"><a id="__codelineno-0-905" name="__codelineno-0-905"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
-</span><span id="__span-0-906"><a id="__codelineno-0-906" name="__codelineno-0-906"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-</span><span id="__span-0-907"><a id="__codelineno-0-907" name="__codelineno-0-907"></a>        <span class="n">page_size</span><span class="o">=</span><span class="n">page_size</span><span class="p">,</span>
-</span><span id="__span-0-908"><a id="__codelineno-0-908" name="__codelineno-0-908"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
-</span><span id="__span-0-909"><a id="__codelineno-0-909" name="__codelineno-0-909"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
-</span><span id="__span-0-910"><a id="__codelineno-0-910" name="__codelineno-0-910"></a>    <span class="p">)</span>
+</span><span id="__span-0-872"><a id="__codelineno-0-872" name="__codelineno-0-872"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_list</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+</span><span id="__span-0-873"><a id="__codelineno-0-873" name="__codelineno-0-873"></a>        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-874"><a id="__codelineno-0-874" name="__codelineno-0-874"></a>            <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-875"><a id="__codelineno-0-875" name="__codelineno-0-875"></a>        <span class="k">return</span> <span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Enum</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span>
+</span><span id="__span-0-876"><a id="__codelineno-0-876" name="__codelineno-0-876"></a>
+</span><span id="__span-0-877"><a id="__codelineno-0-877" name="__codelineno-0-877"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-878"><a id="__codelineno-0-878" name="__codelineno-0-878"></a>        <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+</span><span id="__span-0-879"><a id="__codelineno-0-879" name="__codelineno-0-879"></a>        <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span>
+</span><span id="__span-0-880"><a id="__codelineno-0-880" name="__codelineno-0-880"></a>        <span class="s2">&quot;order&quot;</span><span class="p">:</span> <span class="n">order</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="n">order</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-881"><a id="__codelineno-0-881" name="__codelineno-0-881"></a>        <span class="s2">&quot;sortBy&quot;</span><span class="p">:</span> <span class="n">sort_by</span><span class="p">,</span>
+</span><span id="__span-0-882"><a id="__codelineno-0-882" name="__codelineno-0-882"></a>        <span class="s2">&quot;inventoryIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">inventory_ids</span><span class="p">),</span>
+</span><span id="__span-0-883"><a id="__codelineno-0-883" name="__codelineno-0-883"></a>        <span class="s2">&quot;projectIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">project_ids</span><span class="p">),</span>
+</span><span id="__span-0-884"><a id="__codelineno-0-884" name="__codelineno-0-884"></a>        <span class="s2">&quot;lotIds&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">lot_ids</span><span class="p">),</span>
+</span><span id="__span-0-885"><a id="__codelineno-0-885" name="__codelineno-0-885"></a>        <span class="s2">&quot;dataTemplateId&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_template_ids</span><span class="p">),</span>
+</span><span id="__span-0-886"><a id="__codelineno-0-886" name="__codelineno-0-886"></a>        <span class="s2">&quot;dataColumnId&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_column_ids</span><span class="p">),</span>
+</span><span id="__span-0-887"><a id="__codelineno-0-887" name="__codelineno-0-887"></a>        <span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">category</span><span class="p">)]</span> <span class="k">if</span> <span class="n">category</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-888"><a id="__codelineno-0-888" name="__codelineno-0-888"></a>        <span class="s2">&quot;dataTemplates&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_templates</span><span class="p">),</span>
+</span><span id="__span-0-889"><a id="__codelineno-0-889" name="__codelineno-0-889"></a>        <span class="s2">&quot;dataColumns&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">data_columns</span><span class="p">),</span>
+</span><span id="__span-0-890"><a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">parameters</span><span class="p">),</span>
+</span><span id="__span-0-891"><a id="__codelineno-0-891" name="__codelineno-0-891"></a>        <span class="s2">&quot;parameterGroup&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">parameter_group</span><span class="p">),</span>
+</span><span id="__span-0-892"><a id="__codelineno-0-892" name="__codelineno-0-892"></a>        <span class="s2">&quot;unit&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">unit</span><span class="p">),</span>
+</span><span id="__span-0-893"><a id="__codelineno-0-893" name="__codelineno-0-893"></a>        <span class="s2">&quot;createdBy&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">created_by</span><span class="p">),</span>
+</span><span id="__span-0-894"><a id="__codelineno-0-894" name="__codelineno-0-894"></a>        <span class="s2">&quot;taskCreatedBy&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">task_created_by</span><span class="p">),</span>
+</span><span id="__span-0-895"><a id="__codelineno-0-895" name="__codelineno-0-895"></a>        <span class="s2">&quot;returnFields&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">return_fields</span><span class="p">),</span>
+</span><span id="__span-0-896"><a id="__codelineno-0-896" name="__codelineno-0-896"></a>        <span class="s2">&quot;returnFacets&quot;</span><span class="p">:</span> <span class="n">ensure_list</span><span class="p">(</span><span class="n">return_facets</span><span class="p">),</span>
+</span><span id="__span-0-897"><a id="__codelineno-0-897" name="__codelineno-0-897"></a>    <span class="p">}</span>
+</span><span id="__span-0-898"><a id="__codelineno-0-898" name="__codelineno-0-898"></a>
+</span><span id="__span-0-899"><a id="__codelineno-0-899" name="__codelineno-0-899"></a>    <span class="k">return</span> <span class="n">AlbertPaginator</span><span class="p">(</span>
+</span><span id="__span-0-900"><a id="__codelineno-0-900" name="__codelineno-0-900"></a>        <span class="n">mode</span><span class="o">=</span><span class="n">PaginationMode</span><span class="o">.</span><span class="n">OFFSET</span><span class="p">,</span>
+</span><span id="__span-0-901"><a id="__codelineno-0-901" name="__codelineno-0-901"></a>        <span class="n">path</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/search&quot;</span><span class="p">,</span>
+</span><span id="__span-0-902"><a id="__codelineno-0-902" name="__codelineno-0-902"></a>        <span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span>
+</span><span id="__span-0-903"><a id="__codelineno-0-903" name="__codelineno-0-903"></a>        <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+</span><span id="__span-0-904"><a id="__codelineno-0-904" name="__codelineno-0-904"></a>        <span class="n">max_items</span><span class="o">=</span><span class="n">max_items</span><span class="p">,</span>
+</span><span id="__span-0-905"><a id="__codelineno-0-905" name="__codelineno-0-905"></a>        <span class="n">deserialize</span><span class="o">=</span><span class="n">deserialize</span><span class="p">,</span>
+</span><span id="__span-0-906"><a id="__codelineno-0-906" name="__codelineno-0-906"></a>    <span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
