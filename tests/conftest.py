@@ -189,9 +189,14 @@ def static_lists(
 
 
 @pytest.fixture(scope="session")
-def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
+def seeded_cas(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> Iterator[list[Cas]]:
     seeded = []
-    for cas in generate_cas_seeds(seed_prefix):
+    for cas in generate_cas_seeds(seed_prefix, static_custom_fields, static_lists):
         created_cas = client.cas_numbers.get_or_create(cas=cas)
         seeded.append(created_cas)
 

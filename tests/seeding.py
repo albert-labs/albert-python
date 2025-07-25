@@ -99,6 +99,7 @@ def generate_custom_fields() -> list[CustomField]:
         ServiceType.TASKS,
         ServiceType.USERS,
         ServiceType.PARAMETER_GROUPS,
+        ServiceType.CAS,
     ]
 
     seeds = []
@@ -154,7 +155,11 @@ def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[Li
     return all_list_items
 
 
-def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
+def generate_cas_seeds(
+    seed_prefix: str,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> list[Cas]:
     """
     Generates a list of CAS seed objects for testing without IDs.
 
@@ -163,7 +168,23 @@ def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
     List[Cas]
         A list of Cas objects with different permutations.
     """
+    cas_string_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.CAS and x.field_type == FieldType.STRING
+    ]
+    cas_list_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.CAS and x.field_type == FieldType.LIST
+    ]
 
+    faux_metadata = {}
+    for i, custom_field in enumerate(cas_string_custom_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(cas_list_custom_fields):
+        list_items = [x for x in static_lists if x.list_type == custom_field.name]
+        faux_metadata[custom_field.name] = [list_items[i].to_entity_link()]
     return [
         # CAS with basic fields
         Cas(
@@ -204,6 +225,14 @@ def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
             number=f"{seed_prefix}-1234-56-7",
             description="Unknown substance",
             category=CasCategory.UNKNOWN,
+        ),
+        # CAS with Metadata
+        Cas(
+            number=f"{seed_prefix}-with-metadata-50-00-0",
+            description="Formaldehyde",
+            category=CasCategory.USER,
+            smiles="C=O",
+            metadata=faux_metadata,
         ),
     ]
 

@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.types import MetadataItem
 
 
 class CasCategory(str, Enum):
@@ -48,6 +49,7 @@ class Cas(BaseAlbertModel):
         None, alias="classificationType", description="Classification type of the CAS."
     )
     order: str | None = Field(None, description="CAS order.")
+    metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
 
     @classmethod
     def from_string(cls, *, number: str) -> "Cas":
