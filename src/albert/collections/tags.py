@@ -228,7 +228,6 @@ class TagCollection(BaseCollection):
         name: str | list[str] | None = None,
         exact_match: bool = True,
         start_key: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Tag]:
         """
@@ -244,8 +243,6 @@ class TagCollection(BaseCollection):
             Whether to match the name(s) exactly. Default is True.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -268,7 +265,6 @@ class TagCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [Tag(**item) for item in items],
         )

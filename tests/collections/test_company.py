@@ -17,7 +17,7 @@ def assert_valid_company_items(items: list[Company]):
 
 def test_company_get_all_with_pagination(client: Albert):
     """Test that Company get_all() respects pagination and max_items."""
-    results = list(client.companies.get_all(page_size=5, max_items=10))
+    results = list(client.companies.get_all(max_items=10))
     assert len(results) <= 10
     assert_valid_company_items(results)
 
@@ -30,7 +30,6 @@ def test_company_get_all_with_filters(client: Albert, seeded_companies: list[Com
         client.companies.get_all(
             name=name,
             exact_match=True,
-            page_size=3,
             max_items=10,
         )
     )

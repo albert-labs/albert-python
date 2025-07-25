@@ -33,7 +33,6 @@ class LocationCollection(BaseCollection):
         country: str | None = None,
         exact_match: bool = False,
         start_key: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Location]:
         """
@@ -51,8 +50,6 @@ class LocationCollection(BaseCollection):
             Whether to return only exact matches. Default is False.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -76,7 +73,6 @@ class LocationCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [Location(**item) for item in items],
         )

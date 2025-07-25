@@ -16,7 +16,6 @@ def test_customfield_get_all_with_pagination(client: Albert):
     """Test CustomField get_all() paginates correctly with small page size."""
     results = list(
         client.custom_fields.get_all(
-            page_size=5,
             max_items=10,
         )
     )

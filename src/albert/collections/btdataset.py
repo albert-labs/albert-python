@@ -125,7 +125,6 @@ class BTDatasetCollection(BaseCollection):
         *,
         name: str | None = None,
         created_by: str | None = None,
-        page_size: int = 100,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[BTDataset]:
@@ -138,8 +137,6 @@ class BTDatasetCollection(BaseCollection):
             Filter datasets by name.
         created_by : str, optional
             Filter datasets by the user who created them.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         start_key : str, optional
             Start key for paginated results.
         max_items : int, optional
@@ -160,7 +157,6 @@ class BTDatasetCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [BTDataset(**item) for item in items],
         )

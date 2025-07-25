@@ -36,7 +36,6 @@ class ActivityCollection(BaseCollection):
         action: ActivityAction | None = ActivityAction.WRITE,
         order_by: OrderBy | None = OrderBy.DESCENDING,
         start_key: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Activity]:
         """Lists Activity entities with optional filters
@@ -59,8 +58,6 @@ class ActivityCollection(BaseCollection):
             The order by which to sort the results, by default OrderBy.DESCENDING
         operation_id : ActivityOperationId | None, optional
             OperationId of id for which activities will be fetched. Applicable only for recency support of sds/bl, by default ActivityOperationId.POST_SDS
-        page_size : int, optional
-            Number of items to fetch per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -84,7 +81,6 @@ class ActivityCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [Activity(**item) for item in items],
         )

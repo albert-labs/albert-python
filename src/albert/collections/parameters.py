@@ -101,7 +101,6 @@ class ParameterCollection(BaseCollection):
         exact_match: bool = False,
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Parameter]:
         """
@@ -119,8 +118,6 @@ class ParameterCollection(BaseCollection):
             Sort order of results. Default is DESCENDING.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to return per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -147,7 +144,6 @@ class ParameterCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )

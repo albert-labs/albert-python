@@ -66,7 +66,6 @@ class ListsCollection(BaseCollection):
         list_type: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[ListItem]:
         """
@@ -82,8 +81,6 @@ class ListsCollection(BaseCollection):
             The list type to filter by.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -101,11 +98,10 @@ class ListsCollection(BaseCollection):
         }
 
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [ListItem(**item) for item in items],
         )

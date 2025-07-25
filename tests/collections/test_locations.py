@@ -20,8 +20,8 @@ def test_location_get_all_with_filters(client: Albert):
 
 
 def test_location_get_all_with_pagination(client: Albert):
-    """Test pagination with page_size in locations.get_all()."""
-    results = list(client.locations.get_all(page_size=5, max_items=10))
+    """Test pagination in locations.get_all()."""
+    results = list(client.locations.get_all(max_items=10))
     assert_valid_location_items(results)
     assert len(results) <= 10
 

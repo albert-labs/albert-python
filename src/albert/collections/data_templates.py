@@ -325,7 +325,6 @@ class DataTemplateCollection(BaseCollection):
         name: str | None = None,
         user_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        page_size: int = 50,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[DataTemplateSearchItem]:
@@ -343,8 +342,6 @@ class DataTemplateCollection(BaseCollection):
             The user ID to filter by.
         order_by : OrderBy, optional
             The order in which to sort the results. Default is DESCENDING.
-        page_size : int, optional
-            Number of results to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -367,7 +364,6 @@ class DataTemplateCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
@@ -472,7 +468,6 @@ class DataTemplateCollection(BaseCollection):
         name: str | None = None,
         user_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        page_size: int = 50,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[DataTemplate]:
@@ -490,8 +485,6 @@ class DataTemplateCollection(BaseCollection):
             The user ID to filter by.
         order_by : OrderBy, optional
             The order in which to sort results. Default is DESCENDING.
-        page_size : int, optional
-            Number of results to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -514,11 +507,10 @@ class DataTemplateCollection(BaseCollection):
                 name=name,
                 user_id=user_id,
                 order_by=order_by,
-                page_size=page_size,
                 max_items=max_items,
                 offset=offset,
             ),
-            page_size,
+            100,
         )
 
         for batch in id_batches:

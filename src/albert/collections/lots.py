@@ -103,7 +103,6 @@ class LotCollection(BaseCollection):
         exact_match: bool = False,
         begins_with: bool = False,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[Lot]:
         """
@@ -129,8 +128,6 @@ class LotCollection(BaseCollection):
             Whether to match barcodeId as prefix. Default is False.
         start_key : str, optional
             The pagination key to continue listing from.
-        page_size : int, optional
-            Number of items to return per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -156,7 +153,6 @@ class LotCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [Lot(**item) for item in items],
         )

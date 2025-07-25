@@ -18,8 +18,8 @@ def assert_valid_cas_items(items: list[Cas]):
 
 
 def test_cas_get_all_with_pagination(client: Albert):
-    """Test that CAS get_all() respects pagination via max_items and page_size."""
-    simple_list = list(client.cas_numbers.get_all(page_size=5, max_items=10))
+    """Test that CAS get_all() respects pagination via max_items."""
+    simple_list = list(client.cas_numbers.get_all(max_items=10))
     assert_valid_cas_items(simple_list)
     assert len(simple_list) <= 10
 

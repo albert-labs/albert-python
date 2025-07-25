@@ -34,7 +34,7 @@ def assert_valid_inventory_items(returned_list: list[InventoryItem]):
 
 def test_inventory_get_all_with_pagination(client: Albert):
     """Test inventory get_all respects pagination and item type."""
-    results = list(client.inventory.get_all(page_size=5, max_items=10))
+    results = list(client.inventory.get_all(max_items=10))
     assert len(results) <= 10
     assert_valid_inventory_items(results)
 

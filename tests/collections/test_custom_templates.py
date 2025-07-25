@@ -28,7 +28,7 @@ def assert_template_items(
 
 def test_custom_template_get_all(client: Albert):
     """Test get_all returns hydrated CustomTemplate items."""
-    results = list(client.custom_templates.get_all(page_size=5, max_items=10))
+    results = list(client.custom_templates.get_all(max_items=10))
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplate,
@@ -39,7 +39,7 @@ def test_custom_template_get_all(client: Albert):
 
 def test_custom_template_search(client: Albert):
     """Test search returns unhydrated CustomTemplateSearchItem results."""
-    results = list(client.custom_templates.search(page_size=5, max_items=10))
+    results = list(client.custom_templates.search(max_items=10))
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplateSearchItem,

@@ -86,7 +86,6 @@ class WorkflowCollection(BaseCollection):
 
     def get_all(
         self,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Workflow]:
         """
@@ -94,8 +93,6 @@ class WorkflowCollection(BaseCollection):
 
         Parameters
         ----------
-        page_size : int, optional
-            Number of items to fetch per page. Defaults to 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -114,6 +111,5 @@ class WorkflowCollection(BaseCollection):
             params={},
             session=self.session,
             deserialize=deserialize,
-            page_size=page_size,
             max_items=max_items,
         )

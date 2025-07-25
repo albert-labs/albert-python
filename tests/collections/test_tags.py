@@ -19,8 +19,8 @@ def assert_valid_tag_items(returned_list: list[Tag], limit=100):
 
 
 def test_tag_get_all_with_pagination(client: Albert):
-    """Test Tag get_all paginates with page_size and max_items."""
-    results = list(client.tags.get_all(page_size=5, max_items=10))
+    """Test Tag get_all paginates with max_items."""
+    results = list(client.tags.get_all(max_items=10))
     assert len(results) <= 10
     assert_valid_tag_items(results)
 

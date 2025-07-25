@@ -78,7 +78,6 @@ class UserCollection(BaseCollection):
         contains_text: list[str] | None = None,
         mentions: bool | None = None,
         offset: int = 0,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[UserSearchItem]:
         """
@@ -121,8 +120,6 @@ class UserCollection(BaseCollection):
             Filter by users who are mentioned.
         offset : int, optional
             Number of results to skip for pagination. Default is 0.
-        page_size : int, optional
-            Number of items per page/request. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -155,7 +152,6 @@ class UserCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 UserSearchItem(**item)._bind_collection(self) for item in items
@@ -169,7 +165,6 @@ class UserCollection(BaseCollection):
         type: UserFilterType | None = None,
         id: list[str] | None = None,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[User]:
         """
@@ -188,8 +183,6 @@ class UserCollection(BaseCollection):
             Values of the attribute to filter on.
         start_key : str, optional
             The starting point for the next set of results.
-        page_size : int, optional
-            Number of items per page to fetch from the API, by default 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -219,7 +212,6 @@ class UserCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )

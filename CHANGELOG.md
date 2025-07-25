@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-07-25
+
+### Changed
+
+- Default limit for all search() functions set to 1000 items per page
+
+### Fixed
+
+- Removed page_size parameter from all get_all() and search() functions for consistency
+
+## [1.1.3] - 2025-07-23
+
+### Added
+
+- New activity tracking functionality ([#244] by @ventura-rivera)
+
+- Initial release of Analytical Reports (analyticalreports) module ([#250] by @lkubie)
+
+### Fixed
+
+- Allow DataTemplate creation with inline parameters ([#248] by @prasad-albert)
+
+## [1.0.1] - 2025-07-21
+
+### Fixed
+
+- Corrected base URL extraction for Client Credentials auth.
+
 ## [1.0.0] - 2025-07-21
 
 ### Added

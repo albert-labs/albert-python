@@ -48,7 +48,6 @@ class CustomTemplatesCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[CustomTemplateSearchItem]:
@@ -62,8 +61,6 @@ class CustomTemplatesCollection(BaseCollection):
         ----------
         text : str, optional
             Text to filter search results by.
-        page_size : int, optional
-            Number of results per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -84,7 +81,6 @@ class CustomTemplatesCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 CustomTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
@@ -95,7 +91,6 @@ class CustomTemplatesCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[CustomTemplate]:
@@ -109,8 +104,6 @@ class CustomTemplatesCollection(BaseCollection):
         ----------
         text : str, optional
             Text filter for template name or content.
-        page_size : int, optional
-            Number of search results per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -121,9 +114,7 @@ class CustomTemplatesCollection(BaseCollection):
         Iterator[CustomTemplate]
             An iterator of CustomTemplate entities.
         """
-        for item in self.search(
-            text=text, page_size=page_size, max_items=max_items, offset=offset
-        ):
+        for item in self.search(text=text, max_items=max_items, offset=offset):
             try:
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:

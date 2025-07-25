@@ -12,7 +12,7 @@ def assert_valid_un_number_items(returned_list):
 
 def test_un_number_get_all_with_pagination(client: Albert):
     """Test UNNumber.get_all supports pagination and returns expected items."""
-    paginated = list(client.un_numbers.get_all(page_size=5, max_items=10))
+    paginated = list(client.un_numbers.get_all(max_items=10))
     assert_valid_un_number_items(paginated)
 
 

@@ -11,7 +11,7 @@ from tests.utils.test_patches import change_metadata, make_metadata_update_asser
 
 def test_task_search_with_pagination(client: Albert, seeded_tasks):
     """Test that task search returns unhydrated search items."""
-    search_results = list(client.tasks.search(page_size=5, max_items=10))
+    search_results = list(client.tasks.search(max_items=10))
     assert search_results, "Expected some TaskSearchItem results"
 
     for task in search_results:
@@ -23,7 +23,7 @@ def test_task_search_with_pagination(client: Albert, seeded_tasks):
 
 def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
     """Test that get_all returns hydrated BaseTask objects."""
-    task_results = list(client.tasks.get_all(page_size=5, max_items=10))
+    task_results = list(client.tasks.get_all(max_items=10))
     assert task_results, "Expected some BaseTask results"
 
     for task in task_results:

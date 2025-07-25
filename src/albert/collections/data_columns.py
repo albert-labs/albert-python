@@ -64,7 +64,6 @@ class DataColumnCollection(BaseCollection):
         exact_match: bool | None = None,
         default: bool | None = None,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[DataColumn]:
         """
@@ -84,8 +83,6 @@ class DataColumnCollection(BaseCollection):
             Whether to return only default columns.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to return per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -112,7 +109,6 @@ class DataColumnCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )

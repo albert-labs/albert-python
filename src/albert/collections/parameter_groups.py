@@ -67,7 +67,6 @@ class ParameterGroupCollection(BaseCollection):
         types: PGType | list[PGType] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
-        page_size: int = 25,
         max_items: int | None = None,
     ) -> Iterator[ParameterGroupSearchItem]:
         """
@@ -83,8 +82,6 @@ class ParameterGroupCollection(BaseCollection):
             Order of results. Default is DESCENDING.
         offset : int, optional
             Offset to begin results from.
-        page_size : int, optional
-            Number of results per page. Default is 25.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -105,7 +102,6 @@ class ParameterGroupCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 ParameterGroupSearchItem(**item)._bind_collection(self) for item in items
@@ -119,7 +115,6 @@ class ParameterGroupCollection(BaseCollection):
         types: PGType | list[PGType] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
-        page_size: int = 25,
         max_items: int | None = None,
     ) -> Iterator[ParameterGroup]:
         """
@@ -135,8 +130,6 @@ class ParameterGroupCollection(BaseCollection):
             Order of results. Default is DESCENDING.
         offset : int, optional
             Offset to begin results from.
-        page_size : int, optional
-            Number of results per page. Default is 25.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -150,7 +143,6 @@ class ParameterGroupCollection(BaseCollection):
             types=types,
             order_by=order_by,
             offset=offset,
-            page_size=page_size,
             max_items=max_items,
         ):
             try:

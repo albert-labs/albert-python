@@ -196,7 +196,7 @@ def seeded_cas(client: Albert, seed_prefix: str) -> Iterator[list[Cas]]:
         seeded.append(created_cas)
 
     # Avoid race condition while it populated through DBs
-    time.sleep(1.5)
+    time.sleep(3)
 
     yield seeded
 

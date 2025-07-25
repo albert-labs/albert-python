@@ -13,7 +13,7 @@ def assert_unit_items(returned_list: list[Unit]):
 
 def test_units_get_all_with_pagination(client: Albert):
     """Test retrieving units with pagination and max_items control."""
-    paginated = list(client.units.get_all(page_size=5, max_items=10))
+    paginated = list(client.units.get_all(max_items=10))
     assert_unit_items(paginated)
     assert len(paginated) <= 10
 

@@ -483,7 +483,6 @@ class InventoryCollection(BaseCollection):
         match_all_conditions: bool = False,
         order: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[InventorySearchItem]:
@@ -523,8 +522,6 @@ class InventoryCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort results by. Default is None.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -565,7 +562,6 @@ class InventoryCollection(BaseCollection):
             else f"{self.base_path}/search",
             params=query_params,
             session=self.session,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )
@@ -588,7 +584,6 @@ class InventoryCollection(BaseCollection):
         match_all_conditions: bool = False,
         order: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[InventoryItem]:
@@ -628,8 +623,6 @@ class InventoryCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort results by. Default is None.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -670,7 +663,6 @@ class InventoryCollection(BaseCollection):
             else f"{self.base_path}/search",
             params=query_params,
             session=self.session,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )

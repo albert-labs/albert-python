@@ -25,6 +25,7 @@ class ServiceType(str, Enum):
     DATA_COLUMNS = "datacolumns"
     DATA_TEMPLATES = "datatemplates"
     PARAMETER_GROUPS = "parametergroups"
+    CAS = "cas"
 
 
 class FieldCategory(str, Enum):

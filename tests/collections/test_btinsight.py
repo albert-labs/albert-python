@@ -11,7 +11,6 @@ def test_search_by_category(client: Albert, seeded_btinsight: BTInsight):
     results = list(
         client.btinsights.search(
             category=BTInsightCategory.CUSTOM_OPTIMIZER,
-            page_size=2,
             max_items=5,
             offset=0,
         )

@@ -128,7 +128,6 @@ class CustomFieldCollection(BaseCollection):
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[CustomField]:
         """
@@ -146,8 +145,6 @@ class CustomFieldCollection(BaseCollection):
             Whether the field is related to a lookup row.
         start_key : str, optional
             Pagination key to start fetching from.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -169,7 +166,6 @@ class CustomFieldCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [CustomField(**item) for item in items],
         )

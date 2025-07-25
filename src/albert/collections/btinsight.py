@@ -102,7 +102,6 @@ class BTInsightCollection(BaseCollection):
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
         offset: int | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[BTInsight]:
         """Search for items in the BTInsight collection.
@@ -123,8 +122,6 @@ class BTInsightCollection(BaseCollection):
             BTInsight category search filter, default None
         offset : int | None, optional
             Item offset to begin search at, default None
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -152,7 +149,6 @@ class BTInsightCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [BTInsight(**item) for item in items],
         )

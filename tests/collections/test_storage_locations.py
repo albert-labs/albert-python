@@ -13,8 +13,8 @@ def assert_valid_storage_location_items(returned_list: list[StorageLocation]):
 
 
 def test_storage_location_get_all_with_pagination(client: Albert):
-    """Test storage location get_all with page_size for pagination."""
-    results = list(client.storage_locations.get_all(page_size=5, max_items=10))
+    """Test storage location get_all."""
+    results = list(client.storage_locations.get_all(max_items=10))
     assert_valid_storage_location_items(results)
     assert len(results) <= 10
 

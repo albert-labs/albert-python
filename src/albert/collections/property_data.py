@@ -812,7 +812,6 @@ class PropertyDataCollection(BaseCollection):
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[PropertyDataSearchItem]:
         """
@@ -858,8 +857,6 @@ class PropertyDataCollection(BaseCollection):
             Specific fields to return.
         return_facets : str or list[str], optional
             Specific facets to return.
-        page_size : int, optional
-            Number of items to return per page. Defaults to 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -904,7 +901,6 @@ class PropertyDataCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )

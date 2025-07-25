@@ -124,7 +124,6 @@ class ProjectCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[ProjectSearchItem]:
         """
@@ -173,8 +172,6 @@ class ProjectCollection(BaseCollection):
             Field to sort by.
         offset : int, optional
             Pagination offset.
-        page_size : int, optional
-            Number of results per page.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -210,7 +207,6 @@ class ProjectCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=query_params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
@@ -239,7 +235,6 @@ class ProjectCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[Project]:
         """
@@ -273,7 +268,6 @@ class ProjectCollection(BaseCollection):
             order_by=order_by,
             sort_by=sort_by,
             offset=offset,
-            page_size=page_size,
             max_items=max_items,
         ):
             project_id = getattr(project, "albertId", None) or getattr(project, "id", None)

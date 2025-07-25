@@ -16,7 +16,7 @@ def test_data_column_get_all_with_pagination(
     client: Albert, seeded_data_columns: list[DataColumn]
 ):
     """Test get_all with pagination for DataColumn."""
-    results = list(client.data_columns.get_all(page_size=5, max_items=10))
+    results = list(client.data_columns.get_all(max_items=10))
     assert len(results) <= 10
     assert_valid_data_column_items(results)
 

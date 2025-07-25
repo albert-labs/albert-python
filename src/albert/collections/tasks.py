@@ -254,7 +254,6 @@ class TaskCollection(BaseCollection):
         project_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
         offset: int = 0,
     ) -> Iterator[TaskSearchItem]:
@@ -298,8 +297,6 @@ class TaskCollection(BaseCollection):
             The order in which to return results (asc or desc), default DESCENDING.
         sort_by : str, optional
             Attribute to sort tasks by (e.g., createdAt, name).
-        page_size : int, optional
-            Number of items to return per page, default 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -335,7 +332,6 @@ class TaskCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [
                 TaskSearchItem(**item)._bind_collection(self) for item in items
@@ -361,7 +357,6 @@ class TaskCollection(BaseCollection):
         project_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
         offset: int = 0,
     ) -> Iterator[BaseTask]:
@@ -405,8 +400,6 @@ class TaskCollection(BaseCollection):
             The order in which to return results (asc or desc), default DESCENDING.
         sort_by : str, optional
             Attribute to sort tasks by (e.g., createdAt, name).
-        page_size : int, optional
-            Number of items to return per page, default 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
@@ -434,7 +427,6 @@ class TaskCollection(BaseCollection):
             project_id=project_id,
             order_by=order_by,
             sort_by=sort_by,
-            page_size=page_size,
             max_items=max_items,
             offset=offset,
         ):

@@ -1,9 +1,12 @@
+import pytest
+
 from albert import Albert
 from albert.resources.files import FileInfo
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 
 
+@pytest.mark.slow
 def test_load_file_to_inventories(
     client: Albert,
     static_image_file: FileInfo,

@@ -158,7 +158,6 @@ class UnitCollection(BaseCollection):
         exact_match: bool = False,
         verified: bool | None = None,
         start_key: str | None = None,
-        page_size: int = 100,
         max_items: int | None = None,
     ) -> Iterator[Unit]:
         """
@@ -178,8 +177,6 @@ class UnitCollection(BaseCollection):
             Whether the unit is verified, by default None.
         start_key : str | None, optional
             The primary key of the first item to evaluate for pagination.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -202,7 +199,6 @@ class UnitCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=lambda items: [Unit(**item) for item in items],
         )

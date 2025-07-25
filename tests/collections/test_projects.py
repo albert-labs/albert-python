@@ -29,7 +29,7 @@ def test_project_search_basic(client: Albert):
 
 def test_project_search_paged(client: Albert):
     """Test search with a small page size."""
-    short_lists = list(client.projects.search(page_size=5, max_items=10))
+    short_lists = list(client.projects.search(max_items=10))
     assert_valid_project_items(short_lists, ProjectSearchItem)
 
 

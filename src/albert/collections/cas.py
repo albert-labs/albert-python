@@ -33,8 +33,7 @@ class CasCollection(BaseCollection):
         cas: list[str] | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        start_key: str | None = None,
-        page_size: int = 50,
+        startKey: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
@@ -52,8 +51,6 @@ class CasCollection(BaseCollection):
             Sort direction (ascending or descending). Default is DESCENDING.
         start_key : str, optional
             The pagination key to start fetching from.
-        page_size : int, optional
-            Number of items to fetch per page. Default is 100.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -62,23 +59,33 @@ class CasCollection(BaseCollection):
         Iterator[Cas]
             An iterator over Cas entities.
         """
-        params = {
-            "orderBy": order_by.value,
-            "startKey": start_key,
-            "number": number,
-            "cas": cas,
-            "albertId": id,
-        }
+        params = {"orderBy": order_by.value, "startKey": startKey}
 
-        return AlbertPaginator(
+        cas_items = AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
-            max_items=max_items,
+            max_items=None,
             deserialize=lambda items: [Cas(**item) for item in items],
         )
+
+        # Apply custom filtering until https://linear.app/albert-invent/issue/TAS-564/inconsistent-cas-pagination-behaviour is fixed.
+        def filtered_items() -> Iterator[Cas]:
+            count = 0
+            for item in cas_items:
+                if number is not None and number not in item.number:
+                    continue
+                if cas is not None and item.number not in cas:
+                    continue
+                if id is not None and item.id != id:
+                    continue
+                yield item
+                count += 1
+                if max_items is not None and count >= max_items:
+                    break
+
+        yield from filtered_items()
 
     def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """

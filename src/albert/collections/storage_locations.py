@@ -53,7 +53,6 @@ class StorageLocationsCollection(BaseCollection):
         exact_match: bool = False,
         location: str | Location | None = None,
         start_key: str | None = None,
-        page_size: int = 50,
         max_items: int | None = None,
     ) -> Iterator[StorageLocation]:
         """
@@ -69,8 +68,6 @@ class StorageLocationsCollection(BaseCollection):
             A location ID or Location object to filter by.
         start_key : str, optional
             The pagination key to start from.
-        page_size : int, optional
-            Number of items to return per page. Default is 50.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -105,7 +102,6 @@ class StorageLocationsCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
-            page_size=page_size,
             max_items=max_items,
             deserialize=deserialize,
         )
