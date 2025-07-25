@@ -219,7 +219,7 @@ class Design(BaseSessionResource):
             columns.append(
                 Column(
                     colId=v["colId"],
-                    name=inv_id,
+                    name=v.get("name", inv_id),
                     type=v["type"],
                     session=self.session,
                     sheet=self.sheet,
@@ -389,7 +389,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             rows.extend(d.rows)
         return rows
 
-    def _get_design_id(self, *, design: DesignType):
+    def get_design_id(self, *, design: DesignType):
         if design == DesignType.APPS:
             return self.app_design.id
         elif design == DesignType.PRODUCTS:
@@ -571,7 +571,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             raise AlbertException("You cannot add rows to the results design")
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
-        endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
+        endpoint = f"/api/v3/worksheet/design/{self.get_design_id(design=design)}/rows"
 
         payload = [
             {
