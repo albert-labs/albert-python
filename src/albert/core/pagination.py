@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, TypeVar
 
@@ -43,9 +42,7 @@ class AlbertPaginator(Iterator[ItemType]):
         self.session = session
         self.deserialize = deserialize
         self.max_items = max_items
-
-        params = params or {}
-        self.params = self._encode_query_params(params)
+        self.params = params or {}
 
         if self.mode == PaginationMode.OFFSET:
             self.params.setdefault("limit", DEFAULT_LIMIT)
@@ -53,14 +50,6 @@ class AlbertPaginator(Iterator[ItemType]):
         self._last_key: str | None = None
 
         self._iterator = self._create_iterator()
-
-    def _encode_query_params(self, params: dict) -> dict:
-        """Encode and clean up query parameters for the request."""
-        return {
-            k: json.dumps(v) if isinstance(v, bool) else v
-            for k, v in params.items()
-            if v is not None
-        }
 
     @property
     def last_key(self) -> str | None:
@@ -73,6 +62,8 @@ class AlbertPaginator(Iterator[ItemType]):
 
     def _create_iterator(self) -> Iterator[ItemType]:
         yielded = 0
+        seen_keys: set[str] = set()
+
         while True:
             response = self.session.get(self.path, params=self.params)
             data = response.json()
@@ -90,6 +81,17 @@ class AlbertPaginator(Iterator[ItemType]):
                 if self.max_items is not None and yielded >= self.max_items:
                     return
 
+            # Track repeated keys in KEY pagination
+            # TODO: remove when pagination is fixed in the backend.
+            # https://linear.app/albert-invent/issue/TAS-564/inconsistent-cas-pagination-behaviour
+            current_key = data.get("lastKey")
+
+            if self.mode == PaginationMode.KEY:
+                if current_key is None:
+                    return
+                if current_key in seen_keys:
+                    return
+                seen_keys.add(current_key)
             if not self._update_params(data=data, count=item_count):
                 return
 

@@ -1,4 +1,6 @@
-from urllib.parse import urljoin
+import json
+from enum import Enum
+from urllib.parse import quote, urlencode, urljoin
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -75,7 +77,29 @@ class AlbertSession(requests.Session):
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
         self.headers["Authorization"] = f"Bearer {self._access_token}"
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
+        params = self._encode_query_params(kwargs.pop("params", {}))
+
+        # The requests library internally uses urllib.parse.urlencode() with the quote_via parameter set to quote_plus, which breaks CAS pagination.
+        # Encoding parameters manually (via quote) to avoid this issue.
+        if params:
+            qs = urlencode(params, doseq=True, quote_via=quote)
+            full_url = f"{full_url}?{qs}"
+
         with handle_http_errors():
             response = super().request(method, full_url, *args, **kwargs)
             response.raise_for_status()
             return response
+
+    def _encode_query_params(self, params: dict) -> dict:
+        """Encode and clean up query parameters for the request."""
+
+        def convert(v):
+            if isinstance(v, bool):
+                return json.dumps(v)
+            if isinstance(v, Enum):
+                return v.value
+            if isinstance(v, list) and all(isinstance(i, Enum) for i in v):
+                return [i.value for i in v]
+            return v
+
+        return {k: convert(v) for k, v in params.items() if v is not None}

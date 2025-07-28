@@ -33,7 +33,7 @@ class CasCollection(BaseCollection):
         cas: list[str] | None = None,
         id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        startKey: str | None = None,
+        start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
@@ -59,7 +59,20 @@ class CasCollection(BaseCollection):
         Iterator[Cas]
             An iterator over Cas entities.
         """
-        params = {"orderBy": order_by.value, "startKey": startKey}
+
+        if cas:
+            params = {
+                "orderBy": order_by.value,
+                "cas": cas,
+            }
+
+            response = self.session.get(url=self.base_path, params=params)
+            items = response.json().get("Items", [])
+
+            yield from [Cas(**item) for item in items]
+            return
+
+        params = {"orderBy": order_by.value, "startKey": start_key}
 
         cas_items = AlbertPaginator(
             mode=PaginationMode.KEY,
@@ -75,8 +88,6 @@ class CasCollection(BaseCollection):
             count = 0
             for item in cas_items:
                 if number is not None and number not in item.number:
-                    continue
-                if cas is not None and item.number not in cas:
                     continue
                 if id is not None and item.id != id:
                     continue
@@ -204,7 +215,7 @@ class CasCollection(BaseCollection):
         Optional[Cas]
             The Cas object if found, None otherwise.
         """
-        found = self.get_all(number=number)
+        found = self.get_all(cas=[number])
         if exact_match:
             for f in found:
                 if self._clean_cas_number(f.number) == self._clean_cas_number(number):
