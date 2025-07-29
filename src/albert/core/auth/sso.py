@@ -8,7 +8,8 @@ from pydantic import Field
 from albert.core.auth._listener import local_http_server
 from albert.core.auth._manager import AuthManager, OAuthTokenInfo
 from albert.core.base import BaseAlbertModel
-from albert.exceptions import handle_http_errors
+from albert.core.logging import logger
+from albert.exceptions import AlbertAuthError, handle_http_errors
 from albert.utils._auth import default_albert_base_url
 
 
@@ -53,6 +54,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         minimum_port: int = 5000,
         maximum_port: int | None = None,
         tenant_id: str | None = None,
+        timeout: int = 5,
     ) -> OAuthTokenInfo:
         """
         Launch an interactive browser-based SSO login and return an OAuth token.
@@ -76,18 +78,24 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         OAuthTokenInfo
             The initial token info containing the refresh token.
         """
-        with local_http_server(minimum_port=minimum_port, maximum_port=maximum_port) as (
-            server,
-            port,
-        ):
+        self._validate_email(email=self.email, tenant_id=tenant_id)
+        with local_http_server(
+            minimum_port=minimum_port,
+            maximum_port=maximum_port,
+            timeout=timeout,
+        ) as (server, port):
             login_url = self._build_login_url(port=port, tenant_id=tenant_id)
             webbrowser.open(login_url)
-
             # Block here until one request arrives at localhost:port/?token=…
             server.handle_request()
             refresh_token = server.token
+            if not refresh_token:
+                raise AlbertAuthError("SSO Login failed! Please try again.")
 
-        self._token_info = OAuthTokenInfo(refresh_token=refresh_token)
+        self._token_info = OAuthTokenInfo(
+            refresh_token=refresh_token,
+            tenant_id=tenant_id.upper() if tenant_id else None,
+        )
         return self._token_info
 
     @property
@@ -97,19 +105,40 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
 
     def _request_access_token(self) -> None:
         """Request and store a new access token using refresh-token."""
-        payload = {"refreshtoken": self._token_info.refresh_token}
         with handle_http_errors():
             response = requests.post(
                 self.refresh_token_url,
-                json=payload,
+                json={"refreshtoken": self._token_info.refresh_token},
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()
-            data = response.json()[0]
+            tokens = response.json()
+
+        tenant_id = self._token_info.tenant_id
+        tenant_id = tenant_id.upper() if tenant_id else None
+
+        try:
+            token = (
+                next(t for t in tokens if t["tenantId"] == tenant_id) if tenant_id else tokens[0]
+            )
+        except (StopIteration, IndexError) as e:
+            raise AlbertAuthError("No matching tenant token found in response") from e
+
+        if not tenant_id:
+            logger.warning(
+                "Authenticated %s via SSO using the default tenant (%s). "
+                "To avoid this, explicitly pass a tenant ID when calling authenticate()",
+                self.email,
+                token["tenantId"],
+            )
 
         self._token_info = OAuthTokenInfo(
-            access_token=data["jwt"], expires_in=data["exp"], refresh_token=data["refreshToken"]
+            access_token=token["jwt"],
+            expires_in=token["exp"],
+            refresh_token=token["refreshToken"],
+            tenant_id=token["tenantId"],
         )
+
         self._refresh_time = (
             datetime.now(timezone.utc)
             + timedelta(seconds=self._token_info.expires_in)
@@ -118,11 +147,13 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
 
     def get_access_token(self) -> str:
         """Return a valid access token, refreshing it if needed."""
+        if not self._token_info or not self._token_info.refresh_token:
+            raise AlbertAuthError("Client not authenticated. Call `.authenticate()` first.")
         if self._requires_refresh():
             self._request_access_token()
         return self._token_info.access_token
 
-    def _build_login_url(self, *, port: int, tenant_id: str) -> str:
+    def _build_login_url(self, *, port: int, tenant_id: str | None) -> str:
         """Build sso login URL."""
         path = "/api/v3/login"
         raw = {
@@ -135,3 +166,44 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         params = {k: value for k, value in raw.items() if value is not None}
         query = urlencode(params)
         return f"{urljoin(self.base_url, path)}?{query}"
+
+    def _validate_email(self, *, email: str, tenant_id: str | None) -> None:
+        """
+        Validate whether the given user has access to the tenant.
+
+        Parameters
+        ----------
+        email : str
+            Email to validate.
+        tenant_id : str | None
+            Tenant to scope the SSO login check.
+
+        Raises
+        ------
+        AlbertAuthError
+            If the user does not have access or the response is unexpected.
+        """
+        path = "/api/v3/login"
+        raw = {
+            "email": email,
+            "tenantId": tenant_id,
+        }
+
+        params = {k: v for k, v in raw.items() if v is not None}
+        url = f"{urljoin(self.base_url, path)}?{urlencode(params)}"
+
+        try:
+            response = requests.get(url, allow_redirects=False, timeout=5)
+        except requests.RequestException as e:
+            raise AlbertAuthError(f"SSO Login failed: {e}") from e
+
+        if response.status_code == 302:
+            return  # OK
+
+        if response.status_code == 404:
+            msg = "User not found or Access denied."
+            raise AlbertAuthError(f"SSO Login failed: {msg}")
+
+        raise AlbertAuthError(
+            f"Unexpected response from SSO Login: {response.status_code} {response.reason}"
+        )

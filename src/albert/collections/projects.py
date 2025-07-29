@@ -1,10 +1,13 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ProjectId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import Project, ProjectSearchItem
 
@@ -46,7 +49,8 @@ class ProjectCollection(BaseCollection):
         )
         return Project(**response.json())
 
-    def get_by_id(self, *, id: str) -> Project:
+    @validate_call
+    def get_by_id(self, *, id: ProjectId) -> Project:
         """
         Retrieve a project by its ID.
 

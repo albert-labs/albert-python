@@ -12,6 +12,7 @@ class OAuthTokenInfo(BaseAlbertModel):
     access_token: str = Field(default="")
     refresh_token: str
     expires_in: int = Field(default=0)
+    tenant_id: str | None = Field(default=None)
 
 
 class AuthManager(ABC):
