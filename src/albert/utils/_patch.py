@@ -202,8 +202,8 @@ def data_column_validation_patches(
         return DTPatchDatum(
             operation="update",
             attribute="validation",
-            oldValue=initial_data_column.validation,  # Use original, not copy
-            newValue=updated_data_column.validation,  # Use original, not copy
+            oldValue=initial_data_column.validation,
+            newValue=updated_data_column.validation,
         )
     return None
 
@@ -237,7 +237,7 @@ def parameter_validation_patch(
             return PGPatchDatum(
                 operation="add",
                 attribute="validation",
-                newValue=updated_parameter.validation,  # Use original, not copy
+                newValue=updated_parameter.validation,
                 rowId=updated_parameter.sequence,
             )
     elif updated_parameter_copy.validation is None:
@@ -245,14 +245,14 @@ def parameter_validation_patch(
             return PGPatchDatum(
                 operation="delete",
                 attribute="validation",
-                oldValue=initial_parameter.validation,  # Use original, not copy
+                oldValue=initial_parameter.validation,
                 rowId=updated_parameter.sequence,
             )
     elif initial_parameter_copy.validation != updated_parameter_copy.validation:
         return PGPatchDatum(
             operation="update",
             attribute="validation",
-            newValue=updated_parameter.validation,  # Use original, not copy
+            newValue=updated_parameter.validation,
             rowId=updated_parameter.sequence,
         )
     return None
