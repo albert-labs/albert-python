@@ -368,7 +368,7 @@ def generate_enum_patches(
     deleted_enums = [
         x for x in existing_enums if x.id is not None and x.id not in updated_enum_ids
     ]
-    new_enums = [x for x in updated_enums if x.id is None]
+    new_enums = [x for x in updated_enums if x.id is None or x.id not in existing_ids]
     enums_with_new_names = []
     for enum_to_check in enums_in_both:
         initial_enum = next(x for x in existing_enums_values if x.id == enum_to_check.id)

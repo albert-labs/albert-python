@@ -73,7 +73,7 @@ class ParameterValue(BaseAlbertModel):
 
     Attributes
     ----------
-    parameter : Parameter
+    parameter : Parameter | None
         The Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
     id : str | None
         The Albert ID of the Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
@@ -91,7 +91,7 @@ class ParameterValue(BaseAlbertModel):
         The sequence of the parameter. Read-only.
     """
 
-    parameter: Parameter = Field(default=None, exclude=True)
+    parameter: Parameter | None = Field(default=None, exclude=True)
     id: str | None = Field(default=None)
     category: ParameterCategory | None = Field(default=None)
     short_name: str | None = Field(alias="shortName", default=None)

@@ -87,7 +87,7 @@ class DataTemplateCollection(BaseCollection):
         *,
         data_template_id: DataTemplateId,
         new_parameters: list[ParameterValue],
-    ):
+    ) -> list[EnumValidationValue]:
         """Adds enum values to a parameter."""
 
         data_template = self.get_by_id(id=data_template_id)
@@ -169,10 +169,11 @@ class DataTemplateCollection(BaseCollection):
                         )
 
                 if len(enum_patches) > 0:
-                    self.session.put(
+                    enum_response = self.session.put(
                         f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
                         json=enum_patches,
                     )
+                    return [EnumValidationValue(**x) for x in enum_response.json()]
 
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
@@ -419,6 +420,7 @@ class DataTemplateCollection(BaseCollection):
                     ],
                 },
             )
+        data_column_enum_sequences = {}
         if len(data_column_enum_patches) > 0:
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
@@ -426,23 +428,29 @@ class DataTemplateCollection(BaseCollection):
                 logger.info(
                     f"SENDING DATA COLUMN ENUM PATCHES FOR SEQUENCE {sequence}: {enum_patches}"
                 )
-                self.session.put(
+                enums = self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
+                data_column_enum_sequences[sequence] = [
+                    EnumValidationValue(**x) for x in enums.json()
+                ]
         if len(new_parameters) > 0:
             # remove enum types, will become enums after enum adds
+            initial_enum_values = {}  # track original enum values by index
             no_enum_params = []
-            for p in new_parameters:
+            for i, p in enumerate(new_parameters):
                 if (
                     p.validation
                     and len(p.validation) > 0
                     and p.validation[0].datatype == DataType.ENUM
                 ):
+                    initial_enum_values[i] = p.validation[0].value
                     p.validation[0].datatype = DataType.STRING
                     p.validation[0].value = None
                 no_enum_params.append(p)
-            self.session.put(
+
+            response = self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
                     "Parameters": [
@@ -450,6 +458,19 @@ class DataTemplateCollection(BaseCollection):
                         for x in no_enum_params
                     ],
                 },
+            )
+
+            # Get returned parameters with sequences and restore enum values
+            returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
+            for i, param in enumerate(returned_parameters):
+                if i in initial_enum_values:
+                    param.validation[0].value = initial_enum_values[i]
+                    param.validation[0].datatype = DataType.ENUM
+
+            # Add enum values to newly created parameters
+            self._add_param_enums(
+                data_template_id=existing.id,
+                new_parameters=returned_parameters,
             )
         enum_sequences = {}
         if len(parameter_enum_patches) > 0:
@@ -464,32 +485,36 @@ class DataTemplateCollection(BaseCollection):
                 enum_sequences[sequence] = [EnumValidationValue(**x) for x in enums.json()]
 
         if len(parameter_patches) > 0:
-            # re add the enum values to the validation
-            true_parameter_patches = []
+            patches_by_sequence = {}
             for p in parameter_patches:
-                if p.rowId in enum_sequences and p.attribute == "validation":
-                    continue
+                if p.rowId not in patches_by_sequence:
+                    patches_by_sequence[p.rowId] = []
+                patches_by_sequence[p.rowId].append(p)
 
-                true_parameter_patches.append(p)
-            for sequence, enums in enum_sequences.items():
-                real_value = ValueValidation(
-                    datatype=DataType.ENUM,
-                    value=enums,
-                )
-                true_parameter_patches.append(
-                    PGPatchDatum(
+            for sequence, patches in patches_by_sequence.items():
+                # Filter out validation patches for sequences that have enum sequences
+                if sequence in enum_sequences:
+                    patches = [p for p in patches if p.attribute != "validation"]
+
+                    enums = enum_sequences[sequence]
+                    enum_validation = ValueValidation(
+                        datatype=DataType.ENUM,
+                        value=enums,
+                    )
+                    enum_patch = PGPatchDatum(
                         rowId=sequence,
                         operation="update",
                         attribute="validation",
-                        new_value=[real_value],
+                        new_value=[enum_validation],
                     )
+                    patches.append(enum_patch)
+
+                payload = PGPatchPayload(data=patches)
+                json_payload = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+                self.session.patch(
+                    path + "/parameters",
+                    json=json_payload,
                 )
-            payload = PGPatchPayload(data=true_parameter_patches)
-            json_payload = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
-            self.session.patch(
-                path + "/parameters",
-                json=json_payload,
-            )
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)
             self.session.patch(
