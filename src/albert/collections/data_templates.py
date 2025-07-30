@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from itertools import islice
 
-from pydantic import Field
+from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
@@ -169,6 +169,7 @@ class DataTemplateCollection(BaseCollection):
                         json=enum_patches,
                     )
 
+    @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
 
