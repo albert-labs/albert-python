@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.developer.albertinvent.com/albert-python/latest/installation/">
+        <link rel="canonical" href="https://docs.developer.albertinvent.com/albert-python/latest/concepts/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../authentication/">
       
       
-        <link rel="next" href="../authentication/">
+        <link rel="next" href="../configuration/">
       
       
       <link rel="icon" href="../assets/Vector_Favicon_Blue.svg">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Installation - Albert Python SDK Docs</title>
+        <title>Concepts - Albert Python SDK Docs</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation" class="md-skip">
+        <a href="#concepts" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Installation
+              Concepts
             
           </span>
         </div>
@@ -395,32 +395,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Installation
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
         
   
   
@@ -431,44 +409,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      Dependencies
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#install-from-repository" class="md-nav__link">
-    <span class="md-ellipsis">
-      Install from repository
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -501,10 +441,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../concepts/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -515,6 +477,176 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#resource-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Models
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resource-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Collections
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Methods
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entitylink-and-serializeasentitylink" class="md-nav__link">
+    <span class="md-ellipsis">
+      EntityLink and SerializeAsEntityLink
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EntityLink and SerializeAsEntityLink">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metadata-and-custom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metadata and Custom Fields
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metadata and Custom Fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-custom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating Custom Fields
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partial-vs-full-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      Partial vs Full Records
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pagination" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pagination
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tagging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tagging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2893,18 +3025,150 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#dependencies" class="md-nav__link">
+  <a href="#resource-models" class="md-nav__link">
     <span class="md-ellipsis">
-      Dependencies
+      Resource Models
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resource-collections" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Collections
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource Collections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Common Methods
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entitylink-and-serializeasentitylink" class="md-nav__link">
+    <span class="md-ellipsis">
+      EntityLink and SerializeAsEntityLink
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EntityLink and SerializeAsEntityLink">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-from-repository" class="md-nav__link">
+  <a href="#metadata-and-custom-fields" class="md-nav__link">
     <span class="md-ellipsis">
-      Install from repository
+      Metadata and Custom Fields
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metadata and Custom Fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-custom-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating Custom Fields
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partial-vs-full-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      Partial vs Full Records
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pagination" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pagination
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tagging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tagging
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
     </span>
   </a>
   
@@ -2929,42 +3193,202 @@
   
 
 
-<h1 id="installation">Installation</h1>
-<p>Installation is as simple as:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">pip</label><label for="__tabbed_1_2">uv</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>albert
+<h1 id="concepts">Concepts</h1>
+<p>This document outlines the core concepts used throughout the Albert Python SDK. Understanding these concepts will help you use the SDK more effectively and customize your integrations with the Albert platform.</p>
+<hr />
+<h2 id="resource-models">Resource Models</h2>
+<p>Resource Models represent individual entities in the Albert API, such as <code>InventoryItem</code>, <code>Project</code>, <code>Company</code>, <code>Tag</code>, <code>User</code>, and many more. These models are implemented using <a href="https://docs.pydantic.dev/">Pydantic</a> and define the structure of the data being exchanged with the API.</p>
+<p>Each model supports validation, serialization, and automatic handling of nested objects.</p>
+<h3 id="example">Example</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryItem</span><span class="p">,</span> <span class="n">InventoryCategory</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">item</span> <span class="o">=</span> <span class="n">InventoryItem</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Goggles&quot;</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Safety Equipment&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">category</span><span class="o">=</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>add<span class="w"> </span>albert
+<hr />
+<h2 id="resource-collections">Resource Collections</h2>
+<p>Each Resource Model has a corresponding Collection that acts as its manager. These collections expose methods to interact with the Albert backend APIs.</p>
+<h3 id="common-methods">Common Methods</h3>
+<ul>
+<li><code>create()</code> – Create a new resource.</li>
+<li><code>get_by_id()</code> – Retrieve a specific resource by its ID.</li>
+<li><code>get_all()</code> – List all matching resources.</li>
+<li><code>search()</code> – Perform a lightweight search, returns partial records.</li>
+<li><code>update()</code> – Modify a resource.</li>
+<li><code>delete()</code> – Remove a resource.</li>
+</ul>
+<h3 id="example_1">Example</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span><span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">all_projects</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">()</span>
 </span></code></pre></div>
-</div>
-</div>
+<hr />
+<h2 id="entitylink-and-serializeasentitylink">EntityLink and SerializeAsEntityLink</h2>
+<p>The Albert API represents foreign key relationships using minimal JSON objects like <code>{ "id": "abc123" }</code>. This pattern is modeled using the <code>EntityLink</code> class.</p>
+<p>The SDK simplifies this using <code>SerializeAsEntityLink[T]</code>, which accepts either the full object or just an <code>EntityLink</code>, and handles the conversion internally.</p>
+<h3 id="example_2">Example</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">Project</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityLink</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Directly use EntityLink</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example&quot;</span><span class="p">,</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;loc123&quot;</span><span class="p">)]</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Or pass full object and let SDK convert</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">location</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="s2">&quot;loc123&quot;</span><span class="p">)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">project</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example&quot;</span><span class="p">,</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">location</span><span class="p">]</span>  <span class="c1"># Automatically converted</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="authentication">Authentication</h2>
+<p>The SDK supports multiple authentication flows:</p>
+<ul>
+<li><code>from_token(...)</code> – Use a static JWT token.</li>
+<li><code>client_credentials=...</code> – Use OAuth2 Client ID and Secret.</li>
+<li><code>auth_manager=AlbertSSOClient(...)</code> – Use interactive browser-based SSO.</li>
+</ul>
+<p>Each authenticated <code>Albert</code> instance provides access to all resource collections.</p>
+<hr />
+<h2 id="metadata-and-custom-fields">Metadata and Custom Fields</h2>
+<p><code>CustomFields</code> allow you to store custom metadata on a <code>Project</code>, <code>InventoryItem</code>, <code>User</code>, <code>BaseTask</code> (Tasks), and <code>Lot</code>. The <code>FieldType</code> used determines the shape of the metadata field's value. If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory</code> defines the ACL needed to add new allowed items to the given list. A <code>FieldCategory.USER_DEFINED</code> allows general users to add new items to the list whereas <code>FieldCategory.BUSINESS_DEFINED</code> allows only admin users to add new allowed values.</p>
+<h3 id="creating-custom-fields">Creating Custom Fields</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.custom_fields</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomField</span><span class="p">,</span> <span class="n">FieldCategory</span><span class="p">,</span> <span class="n">FieldType</span><span class="p">,</span> <span class="n">ServiceType</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.lists</span><span class="w"> </span><span class="kn">import</span> <span class="n">ListItem</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">Project</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">stage_gate_field</span> <span class="o">=</span> <span class="n">CustomField</span><span class="p">(</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;stage_gate_status&quot;</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">display_name</span><span class="o">=</span><span class="s2">&quot;Stage Gate&quot;</span><span class="p">,</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">field_type</span><span class="o">=</span><span class="n">FieldType</span><span class="o">.</span><span class="n">LIST</span><span class="p">,</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">service</span><span class="o">=</span><span class="n">ServiceType</span><span class="o">.</span><span class="n">PROJECTS</span><span class="p">,</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="nb">max</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">category</span><span class="o">=</span><span class="n">FieldCategory</span><span class="o">.</span><span class="n">BUSINESS_DEFINED</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">)</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">justification_field</span> <span class="o">=</span> <span class="n">CustomField</span><span class="p">(</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;justification&quot;</span><span class="p">,</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">display_name</span><span class="o">=</span><span class="s2">&quot;Project Justification&quot;</span><span class="p">,</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">field_type</span><span class="o">=</span><span class="n">FieldType</span><span class="o">.</span><span class="n">STRING</span><span class="p">,</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="n">service</span><span class="o">=</span><span class="n">ServiceType</span><span class="o">.</span><span class="n">PROJECTS</span><span class="p">,</span>
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="p">)</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="n">client</span><span class="o">.</span><span class="n">custom_fields</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">stage_gate_field</span><span class="p">)</span>
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="n">client</span><span class="o">.</span><span class="n">custom_fields</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">justification_field</span><span class="p">)</span>
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="n">stages</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>    <span class="s2">&quot;1. Discovery&quot;</span><span class="p">,</span>
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>    <span class="s2">&quot;2. Concept Validation&quot;</span><span class="p">,</span>
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    <span class="s2">&quot;3. Proof of Concept&quot;</span><span class="p">,</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a>    <span class="s2">&quot;4. Prototype Development&quot;</span><span class="p">,</span>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a>    <span class="s2">&quot;5. Preliminary Evaluation&quot;</span><span class="p">,</span>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a>    <span class="s2">&quot;6. Feasibility Study&quot;</span><span class="p">,</span>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>    <span class="s2">&quot;7. Optimization&quot;</span><span class="p">,</span>
+</span><span id="__span-3-36"><a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a>    <span class="s2">&quot;8. Scale-Up&quot;</span><span class="p">,</span>
+</span><span id="__span-3-37"><a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a>    <span class="s2">&quot;9. Regulatory Assessment&quot;</span><span class="p">,</span>
+</span><span id="__span-3-38"><a id="__codelineno-3-38" name="__codelineno-3-38" href="#__codelineno-3-38"></a><span class="p">]</span>
+</span><span id="__span-3-39"><a id="__codelineno-3-39" name="__codelineno-3-39" href="#__codelineno-3-39"></a>
+</span><span id="__span-3-40"><a id="__codelineno-3-40" name="__codelineno-3-40" href="#__codelineno-3-40"></a><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stages</span><span class="p">:</span>
+</span><span id="__span-3-41"><a id="__codelineno-3-41" name="__codelineno-3-41" href="#__codelineno-3-41"></a>    <span class="n">item</span> <span class="o">=</span> <span class="n">ListItem</span><span class="p">(</span>
+</span><span id="__span-3-42"><a id="__codelineno-3-42" name="__codelineno-3-42" href="#__codelineno-3-42"></a>        <span class="n">name</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
+</span><span id="__span-3-43"><a id="__codelineno-3-43" name="__codelineno-3-43" href="#__codelineno-3-43"></a>        <span class="n">category</span><span class="o">=</span><span class="n">stage_gate_field</span><span class="o">.</span><span class="n">category</span><span class="p">,</span>
+</span><span id="__span-3-44"><a id="__codelineno-3-44" name="__codelineno-3-44" href="#__codelineno-3-44"></a>        <span class="n">list_type</span><span class="o">=</span><span class="n">stage_gate_field</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a>    <span class="p">)</span>
+</span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a>    <span class="n">client</span><span class="o">.</span><span class="n">lists</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">list_item</span><span class="o">=</span><span class="n">item</span><span class="p">)</span>
+</span><span id="__span-3-47"><a id="__codelineno-3-47" name="__codelineno-3-47" href="#__codelineno-3-47"></a>
+</span><span id="__span-3-48"><a id="__codelineno-3-48" name="__codelineno-3-48" href="#__codelineno-3-48"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
+</span><span id="__span-3-49"><a id="__codelineno-3-49" name="__codelineno-3-49" href="#__codelineno-3-49"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
+</span><span id="__span-3-50"><a id="__codelineno-3-50" name="__codelineno-3-50" href="#__codelineno-3-50"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="nb">next</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;My Location&quot;</span><span class="p">))],</span>
+</span><span id="__span-3-51"><a id="__codelineno-3-51" name="__codelineno-3-51" href="#__codelineno-3-51"></a>    <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-3-52"><a id="__codelineno-3-52" name="__codelineno-3-52" href="#__codelineno-3-52"></a>        <span class="n">stage_gate_field</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="p">[</span><span class="n">client</span><span class="o">.</span><span class="n">lists</span><span class="o">.</span><span class="n">get_matching_item</span><span class="p">(</span><span class="n">list_type</span><span class="o">=</span><span class="n">stage_gate_field</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">stages</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">to_entity_link</span><span class="p">()],</span>
+</span><span id="__span-3-53"><a id="__codelineno-3-53" name="__codelineno-3-53" href="#__codelineno-3-53"></a>        <span class="n">justification_field</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="s2">&quot;To show an example of using custom fields.&quot;</span>
+</span><span id="__span-3-54"><a id="__codelineno-3-54" name="__codelineno-3-54" href="#__codelineno-3-54"></a>    <span class="p">}</span>
+</span><span id="__span-3-55"><a id="__codelineno-3-55" name="__codelineno-3-55" href="#__codelineno-3-55"></a>    <span class="c1"># Note: the values of list metadata fields are list[EntityLink]</span>
+</span><span id="__span-3-56"><a id="__codelineno-3-56" name="__codelineno-3-56" href="#__codelineno-3-56"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="partial-vs-full-records">Partial vs Full Records</h2>
+<ul>
+<li><code>search()</code> returns <strong>partial records</strong> for performance. These contain minimal fields.</li>
+<li><code>get_all()</code> or <code>get_by_id()</code> return <strong>fully hydrated</strong> records.</li>
+</ul>
+<p>This allows faster operations when full data isn't needed.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Use <code>get_all()</code> or <code>get_by_ids()</code> when you need complete information. <code>search()</code> is optimized for speed and returns partial data.</p>
 </div>
 <hr />
-<h2 id="dependencies">Dependencies</h2>
-<p>Albert has a few dependencies:</p>
-<ul>
-<li><a href="https://pypi.org/project/pydantic/">pydantic</a> — For model validation</li>
-<li><a href="https://pypi.org/project/pandas/">pandas</a> — For Data frames</li>
-</ul>
-<p>If you’re on Python 3.10+ and already have <strong>pip</strong> or <strong>uv</strong> set up, you’re ready to go!</p>
-<h2 id="install-from-repository">Install from repository</h2>
-<p>And if you prefer to install albert directly from the repository:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">pip</label><label for="__tabbed_2_2">uv</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">&#39;git+https://github.com/albert-labs/albert-python@main&#39;</span>
+<h2 id="pagination">Pagination</h2>
+<p>Many methods in the SDK support pagination via the <code>max_items</code> parameter. The SDK handles pagination behind the scenes to return a complete list.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">projects</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
 </span></code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>add<span class="w"> </span><span class="s1">&#39;git+https://github.com/albert-labs/albert-python@main&#39;</span>
+<p>Use <code>search()</code> + <code>max_items</code> when working with large datasets.</p>
+<hr />
+<h2 id="tagging">Tagging</h2>
+<p>Some resources like InventoryItems and Projects support tags. Tags are strings and can be freely defined by users.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">item</span> <span class="o">=</span> <span class="n">InventoryItem</span><span class="p">(</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Gloves&quot;</span><span class="p">,</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;safety&quot;</span><span class="p">,</span> <span class="s2">&quot;lab&quot;</span><span class="p">]</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">)</span>
 </span></code></pre></div>
-</div>
-</div>
-</div>
+<p>Tags are searchable and help categorize content.</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>Concepts you should know:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resource Models</td>
+<td>Define the structure of data entities</td>
+</tr>
+<tr>
+<td>Resource Collections</td>
+<td>Manage CRUD operations for each model</td>
+</tr>
+<tr>
+<td>EntityLink</td>
+<td>Represents foreign key references</td>
+</tr>
+<tr>
+<td>Custom Fields &amp; Lists</td>
+<td>Add structured metadata to resources</td>
+</tr>
+<tr>
+<td>SerializeAsEntityLink</td>
+<td>Allows transparent references or links</td>
+</tr>
+<tr>
+<td>Authentication</td>
+<td>Supports static token, OAuth2, and SSO</td>
+</tr>
+<tr>
+<td>Partial Records</td>
+<td>Lightweight search results</td>
+</tr>
+<tr>
+<td>Tags and Metadata</td>
+<td>Categorize and extend data</td>
+</tr>
+</tbody>
+</table>
+<p>These concepts form the foundation of working effectively with the Albert SDK.</p>
 
 
 

@@ -429,60 +429,21 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Overview">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resource-models" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
-      Resource Models
+      Quick Start
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resource-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resource Collections
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-with-resource-collections-and-models" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
-      Working with Resource Collections and Models
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Working with Resource Collections and Models">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-inventory-collection" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example: Inventory Collection
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#entitylink-serializeasentitylink" class="md-nav__link">
-    <span class="md-ellipsis">
-      EntityLink / SerializeAsEntityLink
+      Next Steps
     </span>
   </a>
   
@@ -533,6 +494,52 @@
   
   <span class="md-ellipsis">
     Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
     
   </span>
   
@@ -2899,60 +2906,21 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Overview">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resource-models" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
-      Resource Models
+      Quick Start
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resource-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resource Collections
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#working-with-resource-collections-and-models" class="md-nav__link">
+  <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
-      Working with Resource Collections and Models
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Working with Resource Collections and Models">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-inventory-collection" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example: Inventory Collection
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#entitylink-serializeasentitylink" class="md-nav__link">
-    <span class="md-ellipsis">
-      EntityLink / SerializeAsEntityLink
+      Next Steps
     </span>
   </a>
   
@@ -2987,93 +2955,40 @@
 <a href="https://pypi.python.org/pypi/albert"><img alt="pypi" src="https://img.shields.io/pypi/v/albert.svg" /></a>
 <a href="https://pypi.org/project/albert/"><img alt="downloads" src="https://img.shields.io/pypi/dm/albert.svg" /></a><br>
 <a href="https://github.com/albert-labs/albert-python/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/github/license/albert-labs/albert-python.svg" /></a></p>
+<h2 id="overview">Overview</h2>
 <p>Albert Python is the official Albert Invent Software Development Kit (SDK) for Python
 that provides a comprehensive and easy-to-use interface for interacting with the Albert Platform.
 The SDK allows Python developers to write software that interacts with various platform resources,
 such as inventories, projects, companies, tags, and many more.</p>
-<h2 id="overview">Overview</h2>
-<p>Albert Python is built around two main concepts:</p>
-<ol>
-<li>
-<p><strong>Resource Models</strong>: Represent individual entities like <code>InventoryItem</code>, <code>Project</code>, <code>Company</code>, and <code>Tag</code>. These are all controlled using <a href="https://docs.pydantic.dev/">Pydantic</a>.</p>
-</li>
-<li>
-<p><strong>Resource Collections</strong>: Provide methods to interact with the API endpoints related to a specific resource, such as listing, creating, updating, and deleting resources.</p>
-</li>
-</ol>
-<h3 id="resource-models">Resource Models</h3>
-<p>Resource Models represent the data structure of individual resources. They encapsulate the attributes and behaviors of a single resource. For example, an <code>InventoryItem</code> has attributes like <code>name</code>, <code>description</code>, <code>category</code>, and <code>tags</code>.</p>
-<h3 id="resource-collections">Resource Collections</h3>
-<p>Resource Collections act as managers for Resource Models. They provide methods for performing CRUD operations (Create, Read, Update, Delete) on the resources. For example, the <code>InventoryCollection</code> class has methods like <code>create()</code>, <code>get_by_id()</code>, <code>get_all()</code>, <code>search()</code>, <code>update()</code>, and <code>delete()</code>. <code>search()</code> returns lightweight records for performance, while <code>get_all()</code> hydrates each item.</p>
-<h2 id="working-with-resource-collections-and-models">Working with Resource Collections and Models</h2>
-<h3 id="example-inventory-collection">Example: Inventory Collection</h3>
-<p>You can interact with inventory items using the <code>InventoryCollection</code> class. Here is an example of how to create a new inventory item, list all inventory items, and fetch an inventory item by its ID.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.inventory</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryItem</span><span class="p">,</span> <span class="n">InventoryCategory</span><span class="p">,</span> <span class="n">UnitCategory</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Create a new inventory item</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">new_inventory</span> <span class="o">=</span> <span class="n">InventoryItem</span><span class="p">(</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Goggles&quot;</span><span class="p">,</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Safety Equipment&quot;</span><span class="p">,</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">category</span><span class="o">=</span><span class="n">InventoryCategory</span><span class="o">.</span><span class="n">EQUIPMENT</span><span class="p">,</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">unit_category</span><span class="o">=</span><span class="n">UnitCategory</span><span class="o">.</span><span class="n">UNITS</span><span class="p">,</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;safety&quot;</span><span class="p">,</span> <span class="s2">&quot;equipment&quot;</span><span class="p">],</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">company</span><span class="o">=</span><span class="s2">&quot;Company ABC&quot;</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="p">)</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="n">created_inventory</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">inventory_item</span><span class="o">=</span><span class="n">new_inventory</span><span class="p">)</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># List all inventory items</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="n">all_inventories</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_all</span><span class="p">()</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># Fetch an inventory item by ID</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">inventory_id</span> <span class="o">=</span> <span class="s2">&quot;INV1&quot;</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="n">inventory_id</span><span class="p">)</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="c1"># Search an inventory item by name</span>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="n">inventory_item</span> <span class="o">=</span> <span class="n">inventory_collection</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s2">&quot;Acetone&quot;</span><span class="p">)</span>
+<p>It provides:</p>
+<ul>
+<li><strong>Typed Resource Models</strong> via Pydantic for entities like <code>Project</code>, <code>InventoryItem</code>, <code>Company</code>, and more.</li>
+<li><strong>Resource Collections</strong> with CRUD and search methods for each model (e.g., <code>client.projects</code>, <code>client.inventory</code>).</li>
+<li><strong>Multiple Authentication</strong> options: static token, OAuth2 client credentials, or browser-based SSO.</li>
+<li><strong>Automatic Pagination</strong> and configurable logging.</li>
+</ul>
+<h2 id="quick-start">Quick Start</h2>
+<p>Install the package:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>albert
 </span></code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><code>search()</code> is optimized for performance and returns partial objects.
-Use <code>get_all()</code> or <code>get_by_ids()</code> when full details are required.</p>
-</div>
-<h2 id="entitylink-serializeasentitylink">EntityLink / SerializeAsEntityLink</h2>
-<p>We introduced the concept of a <code>EntityLink</code> to represent the foreign key references you can find around the Albert API. Payloads to the API expect these refrences in the <code>EntityLink</code> format (e.g., <code>{"id":x}</code>). However, as a convenience, you will see some value types defined as <code>SerializeAsEntityLink</code>, and then another resource name (e.g., <code>SerializeAsEntityLink[Location]</code>). This allows a user to make that reference either to a base and link or to the actual other entity, and the SDK will handle the serialization for you! For example:</p>
+<p>Get all projects:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.project</span><span class="w"> </span><span class="kn">import</span> <span class="n">Project</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">EntityLink</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;your.jwt.token&quot;</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">my_location</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">locations</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;My Location&quot;</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="p">]</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="p">)</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="c1"># Equivalent to</span>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">my_location</span><span class="o">.</span><span class="n">id</span><span class="p">)]</span>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="p">)</span>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
-</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1"># Equivalent to</span>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
-</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="n">p</span> <span class="o">=</span> <span class="n">Project</span><span class="p">(</span>
-</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Example project&quot;</span><span class="p">,</span>
-</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">locations</span><span class="o">=</span><span class="p">[</span><span class="n">my_location</span><span class="o">.</span><span class="n">to_entity_link</span><span class="p">()]</span>
-</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="p">)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Initialize with a static JWT token</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;YOUR_JWT_TOKEN&quot;</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">project</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 </span></code></pre></div>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>Learn core concepts: see <a href="concepts/">Concepts</a></li>
+<li>Explore Authentication methods: see <a href="authentication/">Authentication</a></li>
+<li>Explore detailed references: see <a href="albert/">Albert</a></li>
+</ul>
 
 
 

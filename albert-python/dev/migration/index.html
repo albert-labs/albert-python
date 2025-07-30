@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://docs.developer.albertinvent.com/albert-python/latest/migration/">
       
       
-        <link rel="prev" href="../authentication/">
+        <link rel="prev" href="../configuration/">
       
       
         <link rel="next" href="../CONTRIBUTING/">
@@ -427,6 +427,52 @@
   
   <span class="md-ellipsis">
     Authentication
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
     
   </span>
   
@@ -3300,14 +3346,11 @@ This guide provides details highlighting the most important changes to help you 
 <li>Added a <code>max_items</code> parameter to all <code>get_all()</code> and <code>search()</code> methods:</li>
 <li><code>max_items</code> : int, optional
     Maximum number of items to return in total. If <code>None</code>, fetches all available items.</li>
-<li>Added a <code>page_size</code> parameter:</li>
-<li><code>page_size</code> : int, optional
-    Number of items to fetch per page.</li>
 <li>You no longer need to slice iterators or use <code>itertools.islice</code> to control result length.</li>
 </ul>
 <p><strong>How to migrate:</strong></p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Fetch up to 10 items, fetching results in pages of 5</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">projects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">page_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_items</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">projects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># The same applies to search() as well</span>
 </span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">search_results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;Active&quot;</span><span class="p">,</span> <span class="n">max_items</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
