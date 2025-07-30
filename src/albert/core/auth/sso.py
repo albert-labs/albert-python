@@ -117,20 +117,23 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
         tenant_id = self._token_info.tenant_id
         tenant_id = tenant_id.upper() if tenant_id else None
 
-        try:
-            token = (
-                next(t for t in tokens if t["tenantId"] == tenant_id) if tenant_id else tokens[0]
-            )
-        except (StopIteration, IndexError) as e:
-            raise AlbertAuthError("No matching tenant token found in response") from e
-
-        if not tenant_id:
-            logger.warning(
-                "Authenticated %s via SSO using the default tenant (%s). "
-                "To avoid this, explicitly pass a tenant ID when calling authenticate()",
-                self.email,
-                token["tenantId"],
-            )
+        if tenant_id:
+            try:
+                token = next(t for t in tokens if t["tenantId"] == tenant_id)
+            except StopIteration as e:
+                msg = "User not found or access denied."
+                raise AlbertAuthError(f"SSO Login failed: {msg}") from e
+        else:
+            token = tokens[0]
+            if len(tokens) > 1:
+                logger.warning(
+                    "User %s has access to multiple tenants but no `tenant_id` was specified. "
+                    "Defaulting to tenant %s. To avoid ambiguity, pass `tenant_id` to `authenticate()` or `from_sso()`. "
+                    "Available tenants: %s",
+                    self.email,
+                    token["tenantId"],
+                    [t["tenantId"] for t in tokens],
+                )
 
         self._token_info = OAuthTokenInfo(
             access_token=token["jwt"],
@@ -201,7 +204,7 @@ class AlbertSSOClient(BaseAlbertModel, AuthManager):
             return  # OK
 
         if response.status_code == 404:
-            msg = "User not found or Access denied."
+            msg = "User not found or access denied."
             raise AlbertAuthError(f"SSO Login failed: {msg}")
 
         raise AlbertAuthError(

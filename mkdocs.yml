@@ -119,6 +119,8 @@ nav:
       - Overview: index.md
       - Installation: installation.md
       - Authentication: authentication.md
+      - Concepts: concepts.md
+      - Configuration: configuration.md
       - Migration Guide: migration.md
       - Contributing: CONTRIBUTING.md
       - Changelog: CHANGELOG.md
