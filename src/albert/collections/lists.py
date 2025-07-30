@@ -174,7 +174,8 @@ class ListsCollection(BaseCollection):
         ListItem | None
             A list item with the provided name and list type, or None if not found.
         """
-        for list_item in self.get_all(names=[name], list_type=list_type):
+        for list_item in self.get_all(names=[name], list_type=list_type, max_items=20):
+            # since it's a ranked search, we only need to check the first few results
             if list_item.name.lower() == name.lower():
                 return list_item
         return None

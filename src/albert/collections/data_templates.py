@@ -9,7 +9,12 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import DataTemplateId
-from albert.core.shared.models.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
+from albert.core.shared.models.patch import (
+    GeneralPatchDatum,
+    GeneralPatchPayload,
+    PGPatchDatum,
+    PGPatchPayload,
+)
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
     DataColumnValue,
@@ -17,7 +22,7 @@ from albert.resources.data_templates import (
     DataTemplateSearchItem,
     ParameterValue,
 )
-from albert.resources.parameter_groups import DataType, EnumValidationValue
+from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import generate_data_template_patches
 
 
@@ -286,6 +291,7 @@ class DataTemplateCollection(BaseCollection):
         """
         # make sure the parameter values have a default validaion of string type.
         initial_enum_values = {}  # use index to track the enum values
+        cleaned_params = []
         if parameters is None or len(parameters) == 0:
             return self.get_by_id(id=data_template_id)
         for i, param in enumerate(parameters):
@@ -297,10 +303,11 @@ class DataTemplateCollection(BaseCollection):
                 initial_enum_values[i] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
+            cleaned_params.append(param)
 
         payload = {
             "Parameters": [
-                x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in parameters
+                x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in cleaned_params
             ]
         }
         # if there are enum values, we need to add them as an allowed enum
@@ -416,33 +423,72 @@ class DataTemplateCollection(BaseCollection):
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
+                logger.info(
+                    f"SENDING DATA COLUMN ENUM PATCHES FOR SEQUENCE {sequence}: {enum_patches}"
+                )
                 self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
         if len(new_parameters) > 0:
+            # remove enum types, will become enums after enum adds
+            no_enum_params = []
+            for p in new_parameters:
+                if (
+                    p.validation
+                    and len(p.validation) > 0
+                    and p.validation[0].datatype == DataType.ENUM
+                ):
+                    p.validation[0].datatype = DataType.STRING
+                    p.validation[0].value = None
+                no_enum_params.append(p)
             self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
                     "Parameters": [
                         x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                        for x in new_parameters
+                        for x in no_enum_params
                     ],
                 },
             )
+        enum_sequences = {}
         if len(parameter_enum_patches) > 0:
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
-                self.session.put(
+
+                enums = self.session.put(
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
+                enum_sequences[sequence] = [EnumValidationValue(**x) for x in enums.json()]
+
         if len(parameter_patches) > 0:
-            payload = PGPatchPayload(data=parameter_patches)
+            # re add the enum values to the validation
+            true_parameter_patches = []
+            for p in parameter_patches:
+                if p.rowId in enum_sequences and p.attribute == "validation":
+                    continue
+
+                true_parameter_patches.append(p)
+            for sequence, enums in enum_sequences.items():
+                real_value = ValueValidation(
+                    datatype=DataType.ENUM,
+                    value=enums,
+                )
+                true_parameter_patches.append(
+                    PGPatchDatum(
+                        rowId=sequence,
+                        operation="update",
+                        attribute="validation",
+                        new_value=[real_value],
+                    )
+                )
+            payload = PGPatchPayload(data=true_parameter_patches)
+            json_payload = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
             self.session.patch(
                 path + "/parameters",
-                json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                json=json_payload,
             )
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)

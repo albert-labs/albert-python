@@ -53,6 +53,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 @contextmanager
 def local_http_server(
     *,
+    timeout: int,
     minimum_port: int = 5000,
     maximum_port: int | None = None,
     handler: type[BaseHTTPRequestHandler] = RequestHandler,
@@ -66,6 +67,7 @@ def local_http_server(
     server = HTTPServer((LOCALHOST, port), handler)
     server.allow_reuse_address = True
     server.token = None
+    server.timeout = timeout
 
     try:
         yield server, port

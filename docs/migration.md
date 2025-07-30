@@ -164,16 +164,13 @@ project_full = project.hydrate()
 * Added a `max_items` parameter to all `get_all()` and `search()` methods:
   * `max_items` : int, optional
     Maximum number of items to return in total. If `None`, fetches all available items.
-* Added a `page_size` parameter:
-  * `page_size` : int, optional
-    Number of items to fetch per page.
 * You no longer need to slice iterators or use `itertools.islice` to control result length.
 
 **How to migrate:**
 
 ```python
 # Fetch up to 10 items, fetching results in pages of 5
-projects = list(client.projects.get_all(page_size=5, max_items=10))
+projects = list(client.projects.get_all(max_items=10))
 
 # The same applies to search() as well
 search_results = list(client.projects.search(status="Active", max_items=20))

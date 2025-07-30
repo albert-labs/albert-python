@@ -43,7 +43,7 @@ class ActivityCollection(BaseCollection):
         Parameters
         ----------
         type : ActivityType
-           The type of Id for which activities will be fetched.
+            The type of Id for which activities will be fetched.
         start_key : str | None, optional
             The primary key of the first item that this operation will evaluate.
         id : str | None, optional
