@@ -1,7 +1,13 @@
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import IntervalId, ParameterGroupId, ParameterId, RowId
+from albert.core.shared.identifiers import (
+    DataTemplateId,
+    IntervalId,
+    ParameterGroupId,
+    ParameterId,
+    RowId,
+)
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
@@ -160,7 +166,7 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     """
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
-    parameter_group_id: ParameterGroupId | None = Field(alias="id", default=None)
+    parameter_group_id: ParameterGroupId | DataTemplateId | None = Field(alias="id", default=None)
     parameter_group_name: str | None = Field(alias="name", default=None, frozen=True, exclude=True)
     parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
 
