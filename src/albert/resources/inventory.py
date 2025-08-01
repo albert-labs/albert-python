@@ -6,6 +6,7 @@ from pydantic import Field, field_validator, model_validator
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.models.base import AuditFields
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
@@ -46,6 +47,12 @@ class InventoryUnitCategory(str, Enum):
     UNITS = "units"
 
 
+class CasAuditFieldsWithEmail(AuditFields):
+    """The audit fields for a CAS resource with email"""
+
+    email: str | None = Field(default=None)
+
+
 class CasAmount(BaseAlbertModel):
     """
     CasAmount is a Pydantic model representing an amount of a given CAS.
@@ -76,6 +83,16 @@ class CasAmount(BaseAlbertModel):
     cas: Cas | None = Field(default=None, exclude=True)
     cas_smiles: str | None = Field(default=None, alias="casSmiles", exclude=True, frozen=True)
     number: str | None = Field(default=None, exclude=True, frozen=True)
+    created: AuditFields | None = Field(
+        default=None,
+        alias="Created",
+        frozen=True,
+    )
+    updated: CasAuditFieldsWithEmail | None = Field(
+        default=None,
+        alias="Updated",
+        frozen=True,
+    )
 
     @model_validator(mode="after")
     def set_cas_attributes(self: "CasAmount") -> "CasAmount":
