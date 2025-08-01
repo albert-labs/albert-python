@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import AfterValidator
 
 _ALBERT_PREFIXES = {
+    "AttachmentId": "ATT",
     "BlockId": "BLK",
     "BTInsightId": "INS",
     "BTDatasetId": "DST",
@@ -20,6 +21,7 @@ _ALBERT_PREFIXES = {
     "ParameterId": "PRM",
     "ProjectId": "PRO",
     "PropertyDataId": "PTD",
+    "ReportId": "REP",
     "RowId": "ROW",
     "SynthesisId": "SYN",
     "TagId": "TAG",
@@ -71,6 +73,13 @@ def _ensure_albert_id(id: str, id_type: str) -> str:
         raise ValueError(f"{id_type} {id} has invalid prefix. Expected: {prefix}")
 
     return f"{prefix}{id.upper()}"
+
+
+def ensure_attachment_id(id: str) -> str:
+    return _ensure_albert_id(id, "AttachmentId")
+
+
+AttachmentId = Annotated[str, AfterValidator(ensure_attachment_id)]
 
 
 def ensure_block_id(id: str) -> str:
@@ -156,6 +165,8 @@ ParameterId = Annotated[str, AfterValidator(ensure_parameter_id)]
 
 
 def ensure_paramter_group_id(id: str) -> str:
+    if id and id.upper().startswith("PG"):
+        id = f"PRG{id[2:]}"  # Replace PG with PRG
     return _ensure_albert_id(id, "ParameterGroupId")
 
 
@@ -291,3 +302,10 @@ def ensure_row_id(id: str) -> str:
 
 
 RowId = Annotated[str, AfterValidator(ensure_row_id)]
+
+
+def ensure_report_id(id: str) -> str:
+    return _ensure_albert_id(id, "ReportId")
+
+
+ReportId = Annotated[str, AfterValidator(ensure_report_id)]

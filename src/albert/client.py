@@ -1,5 +1,10 @@
+from __future__ import annotations
+
 import os
 
+from pydantic import SecretStr
+
+from albert.collections.activities import ActivityCollection
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.batch_data import BatchDataCollection
 from albert.collections.btdataset import BTDatasetCollection
@@ -25,6 +30,7 @@ from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
 from albert.collections.property_data import PropertyDataCollection
+from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
 from albert.collections.storage_locations import StorageLocationsCollection
@@ -36,43 +42,53 @@ from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
-from albert.session import AlbertSession
-from albert.utils.credentials import ClientCredentials
+from albert.core.auth.credentials import AlbertClientCredentials
+from albert.core.auth.sso import AlbertSSOClient
+from albert.core.session import AlbertSession
 
 
 class Albert:
     """
-    Albert is the main client class for interacting with the Albert API.
+    Main client for interacting with the Albert API.
+
+    This class manages authentication and access to API resource collections.
+    It supports token-based, SSO, and client credentials authentication via a unified interface.
 
     Parameters
     ----------
     base_url : str, optional
-        The base URL of the Albert API (default is "https://app.albertinvent.com").
+        The base URL of the Albert API. Defaults to the "ALBERT_BASE_URL" environment variable
+        or "https://app.albertinvent.com" if not set.
     token : str, optional
-        The token for authentication (default is read from environment variable "ALBERT_TOKEN").
-    client_credentials: ClientCredentials, optional
-        The client credentials for programmatic authentication.
-        Client credentials can be read from the environment by `ClientCredentials.from_env()`.
+        A static token for authentication. If provided, it overrides any `auth_manager`.
+        Defaults to the "ALBERT_TOKEN" environment variable.
+    auth_manager : AlbertClientCredentials | AlbertSSOClient, optional
+        An authentication manager for OAuth2-based authentication flows.
+        Ignored if `token` is provided.
     retries : int, optional
-        The maximum number of retries for failed requests (default is None).
+        Maximum number of retries for failed HTTP requests.
     session : AlbertSession, optional
-        An optional preconfigured session to use for API requests. If not provided,
-        a default session is created using the other parameters or environment variables.
-        When supplied, ``base_url``,
-        ``token`` and ``client_credentials`` are ignored.
+        A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
+        are all ignored.
 
     Attributes
     ----------
     session : AlbertSession
-        The session for API requests, with a base URL set.
+        The internal session used for authenticated requests.
     projects : ProjectCollection
-        The project collection instance.
+        Access to project-related API methods.
     tags : TagCollection
-        The tag collection instance.
+        Access to tag-related API methods.
     inventory : InventoryCollection
-        The inventory collection instance.
+        Access to inventory-related API methods.
     companies : CompanyCollection
-        The company collection instance.
+        Access to company-related API methods.
+
+    Helpers
+    -------------------
+    - `from_token` — Create a client using a static token.
+    - `from_sso` — Create a client using interactive browser-based SSO login.
+    - `from_client_credentials` — Create a client using OAuth2 client credentials.
     """
 
     def __init__(
@@ -80,20 +96,61 @@ class Albert:
         *,
         base_url: str | None = None,
         token: str | None = None,
-        client_credentials: ClientCredentials | None = None,
+        auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
         session: AlbertSession | None = None,
     ):
         self.session = session or AlbertSession(
             base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
             token=token or os.getenv("ALBERT_TOKEN"),
-            client_credentials=client_credentials or ClientCredentials.from_env(),
+            auth_manager=auth_manager,
             retries=retries,
         )
+
+    @classmethod
+    def from_token(cls, *, base_url: str, token: str) -> Albert:
+        """Create an Albert client using a static token for authentication."""
+        return cls(base_url=base_url, token=token)
+
+    @classmethod
+    def from_sso(
+        cls,
+        *,
+        base_url: str,
+        email: str,
+        port: int = 5000,
+        tenant_id: str | None = None,
+        retries: int | None = None,
+    ) -> Albert:
+        """Create an Albert client using interactive OAuth2 SSO login."""
+        oauth = AlbertSSOClient(base_url=base_url, email=email)
+        oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
+        return cls(base_url=base_url, auth_manager=oauth, retries=retries)
+
+    @classmethod
+    def from_client_credentials(
+        cls,
+        *,
+        base_url: str,
+        client_id: str,
+        client_secret: str,
+        retries: int | None = None,
+    ) -> Albert:
+        """Create an Albert client using client credentials authentication."""
+        creds = AlbertClientCredentials(
+            id=client_id,
+            secret=SecretStr(client_secret),
+            base_url=base_url,
+        )
+        return cls(base_url=base_url, auth_manager=creds, retries=retries)
 
     @property
     def projects(self) -> ProjectCollection:
         return ProjectCollection(session=self.session)
+
+    @property
+    def activities(self) -> ActivityCollection:
+        return ActivityCollection(session=self.session)
 
     @property
     def attachments(self) -> AttachmentCollection:
@@ -164,6 +221,10 @@ class Albert:
         return ReportCollection(session=self.session)
 
     @property
+    def report_templates(self) -> ReportTemplateCollection:
+        return ReportTemplateCollection(session=self.session)
+
+    @property
     def roles(self) -> RoleCollection:
         return RoleCollection(session=self.session)
 
@@ -176,7 +237,7 @@ class Albert:
         return TaskCollection(session=self.session)
 
     @property
-    def templates(self) -> CustomTemplatesCollection:
+    def custom_templates(self) -> CustomTemplatesCollection:
         return CustomTemplatesCollection(session=self.session)
 
     @property

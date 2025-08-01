@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import Field, model_validator
 
-from albert.resources.base import BaseResource
+from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
@@ -25,6 +25,7 @@ class ServiceType(str, Enum):
     DATA_COLUMNS = "datacolumns"
     DATA_TEMPLATES = "datatemplates"
     PARAMETER_GROUPS = "parametergroups"
+    CAS = "cas"
 
 
 class FieldCategory(str, Enum):
@@ -95,7 +96,7 @@ class CustomField(BaseResource):
     name: str
     id: str | None = Field(default=None, alias="albertId")
     field_type: FieldType = Field(alias="type")
-    display_name: str = Field(default=None, alias="labelName")
+    display_name: str = Field(alias="labelName")
     searchable: bool | None = Field(default=None, alias="search")
     service: ServiceType
     hidden: bool | None = Field(default=None)

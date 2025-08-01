@@ -1,6 +1,7 @@
 from pydantic import TypeAdapter
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.notebooks import (
     Notebook,
@@ -11,7 +12,6 @@ from albert.resources.notebooks import (
     PutBlockPayload,
     PutOperation,
 )
-from albert.session import AlbertSession
 
 
 class NotebookCollection(BaseCollection):
@@ -75,12 +75,12 @@ class NotebookCollection(BaseCollection):
         Parameters
         ----------
         notebook : Notebook
-            A list of Notebook objects to find or create.
+            A list of Notebook entities to find or create.
 
         Returns
         -------
         Notebook
-            A list of created or found Notebook objects.
+            A list of created or found Notebook entities.
         """
         if notebook.blocks:
             # This check keeps a user from corrupting the Notebook data.

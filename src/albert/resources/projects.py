@@ -1,18 +1,20 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
-from albert.resources.base import BaseResource, MetadataItem
 from albert.resources.locations import Location
-from albert.resources.serialization import SerializeAsEntityLink
 
 
 class ProjectClass(str, Enum):
     """The ACL Class of a project"""
 
     SHARED = "shared"
-    PUBLIC = "public"
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
 
@@ -26,7 +28,7 @@ class State(str, Enum):
     CLOSED_ARCHIVED = "Closed - Archived"
 
 
-class TaskConfig(BaseModel):
+class TaskConfig(BaseAlbertModel):
     """The task configuration for a project"""
 
     datatemplateId: str | None = None
@@ -85,7 +87,7 @@ class Project(BaseResource):
         alias="appEngg",
         description="Inventory Ids to be added as application engineering",
     )
-    id: str | None = Field(None, alias="albertId")
+    id: ProjectId | None = Field(None, alias="albertId")
     acl: list[ACL] | None = Field(default_factory=list, alias="ACL")
     old_api_params: dict | None = None
     task_config: list[TaskConfig] | None = Field(default_factory=list)
@@ -102,3 +104,9 @@ class Project(BaseResource):
         if isinstance(value, str):
             return value.lower()
         return value
+
+
+class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
+    id: ProjectId | None = Field(None, alias="albertId")
+    description: str = Field(min_length=1, max_length=2000)
+    status: str | None = Field(default=None, exclude=True, frozen=True)

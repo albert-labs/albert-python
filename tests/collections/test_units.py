@@ -1,42 +1,46 @@
-from albert.albert import Albert
-from albert.collections.base import OrderBy
+from albert.client import Albert
+from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
 
 
-def _list_asserts(returned_list):
-    found = False
-    for i, u in enumerate(returned_list):
-        if i == 100:
-            break
+def assert_unit_items(returned_list: list[Unit]):
+    for u in returned_list[:10]:
         assert isinstance(u, Unit)
         assert isinstance(u.name, str)
         assert isinstance(u.id, str)
         assert u.id.startswith("UNI")
-        found = True
-    assert found
 
 
-def test_simple_units_list(client: Albert):
-    simple_list = client.units.list()
-    _list_asserts(simple_list)
+def test_units_get_all_with_pagination(client: Albert):
+    """Test retrieving units with pagination and max_items control."""
+    paginated = list(client.units.get_all(max_items=10))
+    assert_unit_items(paginated)
+    assert len(paginated) <= 10
 
 
-def test_advanced_units_list(client: Albert, seeded_units: list[Unit]):
+def test_units_get_all_with_filters(client: Albert, seeded_units: list[Unit]):
+    """Test filtered retrieval of units using name, category, and verification flag."""
     test_unit = seeded_units[1]
-    adv_list = client.units.list(
-        name=test_unit.name,
-        category=test_unit.category,
-        order_by=OrderBy.ASCENDING,
-        exact_match=True,
-        verified=test_unit.verified,
+    filtered = list(
+        client.units.get_all(
+            name=test_unit.name,
+            category=test_unit.category,
+            order_by=OrderBy.ASCENDING,
+            exact_match=True,
+            verified=test_unit.verified,
+            max_items=10,
+        )
     )
-    adv_list = list(adv_list)
-    for u in adv_list:
+    for u in filtered:
         assert test_unit.name.lower() in u.name.lower()
-    _list_asserts(adv_list)
+    assert_unit_items(filtered)
 
-    adv_short_list = client.units.list(limit=2)
-    _list_asserts(adv_short_list)
+
+def test_units_get_all_limited_batch(client: Albert):
+    """Test small result batch retrieval with max_items."""
+    short_list = list(client.units.get_all(max_items=2))
+    assert_unit_items(short_list)
+    assert len(short_list) <= 2
 
 
 def test_get_unit(client: Albert, seeded_units: list[Unit]):
@@ -57,22 +61,22 @@ def test_bulk_get(client: Albert, seeded_units: list[Unit]):
 
 def test_unit_exists(client: Albert, seeded_units: list[Unit]):
     test_unit = seeded_units[2]
-    assert client.units.unit_exists(name=test_unit.name)
-    assert not client.units.unit_exists(
+    assert client.units.exists(name=test_unit.name)
+    assert not client.units.exists(
         name="totally nonesense unit no one should be using!662378393278932y5r"
     )
 
 
-def test_unit_crud(client: Albert):
+def test_unit_crud(client: Albert, seed_prefix: str):
     new_unit = Unit(
-        name="SDK Test Unit",
+        name=seed_prefix,
         symbol="x",
         synonyms=["kfnehiuow", "hbfuiewhbuewf89fy89b"],
         category=UnitCategory.MASS,
     )
     created_unit = client.units.create(unit=new_unit)
     assert isinstance(created_unit, Unit)
-    assert created_unit.name == "SDK Test Unit"
+    assert created_unit.name == seed_prefix
     assert created_unit.id is not None
 
     created_unit.symbol = "y"
@@ -82,16 +86,16 @@ def test_unit_crud(client: Albert):
     assert updated_unit.symbol == "y"
 
     client.units.delete(id=updated_unit.id)
-    assert not client.units.unit_exists(name=updated_unit.name)
+    assert not client.units.exists(name=updated_unit.name)
 
 
-def test_create_unit(caplog, seeded_units: list[Unit], client: Albert):
+def test_get_or_create_unit(caplog, seeded_units: list[Unit], client: Albert):
     dupe_unit = Unit(
         name=seeded_units[0].name,
         symbol=seeded_units[0].symbol,
     )
 
-    registered = client.units.create(unit=dupe_unit)
+    registered = client.units.get_or_create(unit=dupe_unit)
     assert registered.id == seeded_units[0].id
     assert (
         f"Unit with the name {seeded_units[0].name} already exists. Returning the existing unit."

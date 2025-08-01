@@ -3,19 +3,16 @@ from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.resources.base import (
-    AuditFields,
-    EntityLink,
-    MetadataItem,
-    SecurityClass,
-)
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.models.base import AuditFields, EntityLink, LocalizedNames
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.utils.types import BaseAlbertModel
 
 
 class PGType(str, Enum):
@@ -152,3 +149,21 @@ class ParameterGroup(BaseTaggedResource):
     # Read-only fields
     verified: bool = Field(default=False, exclude=True, frozen=True)
     documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)
+
+
+class ParameterSearchItemParameter(BaseAlbertModel):
+    name: str
+    id: str
+    localized_names: LocalizedNames = Field(alias="localizedNames")
+
+
+class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
+    """Lightweight representation of a ParameterGroup returned from unhydrated search()."""
+
+    name: str
+    type: PGType | None = Field(default=None)
+    id: str | None = Field(None, alias="albertId")
+    description: str | None = Field(default=None)
+    parameters: list[ParameterSearchItemParameter] = Field(
+        default_factory=list, alias="parameters"
+    )

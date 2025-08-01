@@ -119,7 +119,7 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
         )
 
     # now search for the properties
-    _ = client.property_data.search(result=f"{property_search_string}(50-56)")
+    _ = client.property_data.search(result=f"{property_search_string}(50-56)", max_items=5)
     # Currently the search indexes are not updated automatically so we cannot use
     # the SDK entities to search against and no other entities are static enough
     # for us to use as a reliable unit test.
@@ -218,14 +218,3 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].inventory_id == inv.id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
-
-    # new_value = "77.7"
-    # new_data_column = InventoryDataColumn(id=seeded_data_columns[0].id, value=new_value)
-
-    # update the properties on the inventory
-    # r = client.property_data.update_property_on_inventory(
-    #     inventory_id=inv.id, property_data=new_data_column
-    # )
-    # assert isinstance(r[0], InventoryPropertyData)
-    # assert r[0].inventory_id == inv.id
-    # assert r[0].custom_property_data[0].data_column.data_column_id == seeded_data_columns[0].id

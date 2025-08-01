@@ -8,9 +8,16 @@ def test_get_by_id(client: Albert, seeded_btinsight: BTInsight):
 
 
 def test_search_by_category(client: Albert, seeded_btinsight: BTInsight):
-    ins = next(client.btinsights.search(category=BTInsightCategory.CUSTOM_OPTIMIZER), None)
-    assert ins is not None
-    assert ins.category == BTInsightCategory.CUSTOM_OPTIMIZER
+    results = list(
+        client.btinsights.search(
+            category=BTInsightCategory.CUSTOM_OPTIMIZER,
+            max_items=5,
+            offset=0,
+        )
+    )
+    assert results, "No results returned for CUSTOM_OPTIMIZER category"
+    for insight in results:
+        assert insight.category == BTInsightCategory.CUSTOM_OPTIMIZER
 
 
 def test_update(client: Albert, seeded_btinsight: BTInsight):

@@ -1,11 +1,10 @@
-import json
-import logging
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.resources.locations import Location
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LocationCollection(BaseCollection):
@@ -26,46 +25,55 @@ class LocationCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{LocationCollection._api_version}/locations"
 
-    def list(
+    def get_all(
         self,
         *,
         ids: list[str] | None = None,
         name: str | list[str] | None = None,
         country: str | None = None,
         exact_match: bool = False,
-        limit: int = 50,
         start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[Location]:
-        """Searches for locations matching the provided criteria.
+        """
+        Get all Location entities matching the provided criteria.
 
         Parameters
         ----------
-        ids: list[str] | None, optional
-            The list of IDs to filter the locations, by default None.
-            Max length is 100.
-        name : str | list[str] | None, optional
-            The name or names of locations to search for, by default None
-        country : str | None, optional
-            The country code of the country to filter the locations , by default None
+        ids : list[str], optional
+            The list of IDs to filter the locations. Max length is 100.
+        name : str or list[str], optional
+            The name or names of locations to search for.
+        country : str, optional
+            Country code to filter by.
         exact_match : bool, optional
-            Whether to return exact matches only, by default False
+            Whether to return only exact matches. Default is False.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[Location]
-            An iterator of Location objects matching the search criteria.
+            An iterator of Location entities matching the filters.
         """
-        params = {"limit": limit, "startKey": start_key, "country": country}
+        params = {
+            "startKey": start_key,
+            "country": country,
+        }
         if ids:
             params["id"] = ids
         if name:
             params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [Location(**item) for item in items],
         )
 
@@ -93,12 +101,12 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         location : Location
-            The Location object to update. The ID of the Location object must be provided.
+            The Location entity to update. The ID of the Location entity must be provided.
 
         Returns
         -------
         Location
-            The updated Location object as returned by the server.
+            The updated Location entity as returned by the server.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=location.id)
@@ -112,24 +120,23 @@ class LocationCollection(BaseCollection):
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=location.id)
 
-    def location_exists(self, *, location: Location) -> Location | None:
+    def exists(self, *, location: Location) -> Location | None:
         """Determines if a location, with the same name, exists in the collection.
 
         Parameters
         ----------
         location : Location
-            The Location object to check
+            The Location entity to check
 
         Returns
         -------
         Location | None
-            The existing registered Location object if found, otherwise None.
+            The existing registered Location entity if found, otherwise None.
         """
-        hits = self.list(name=location.name)
-        if hits:
-            for hit in hits:
-                if hit and hit.name.lower() == location.name.lower():
-                    return hit
+        hits = self.get_all(name=location.name)
+        for hit in hits:
+            if hit and hit.name.lower() == location.name.lower():
+                return hit
         return None
 
     def create(self, *, location: Location) -> Location:
@@ -139,24 +146,37 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         location : Location
-            The Location object to create.
+            The Location entity to create.
 
         Returns
         -------
         Location
-            The created Location object.
+            The created Location entity.
         """
-        exists = self.location_exists(location=location)
-        if exists:
-            logging.warning(
-                f"Location with name {location.name} matches an existing location. Returning the existing Location."
-            )
-            return exists
-
         payload = location.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
 
         return Location(**response.json())
+
+    def get_or_create(self, *, location: Location) -> Location:
+        """
+        Retrieves a Location by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        location : Location
+            The Location entity to retrieve or create.
+
+        Returns
+        -------
+        Location
+            The found or created Location entity.
+        """
+        found = self.exists(location=location)
+        if found:
+            return found
+        else:
+            return self.create(location=location)
 
     def delete(self, *, id: str) -> None:
         """
@@ -165,7 +185,7 @@ class LocationCollection(BaseCollection):
         Parameters
         ----------
         id : Str
-            The id of the Location object to delete.
+            The id of the Location entity to delete.
 
         Returns
         -------

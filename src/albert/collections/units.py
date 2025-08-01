@@ -1,11 +1,11 @@
-import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.units import Unit, UnitCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnitCollection(BaseCollection):
@@ -42,6 +42,7 @@ class UnitCollection(BaseCollection):
         Unit
             The created Unit object.
         """
+<<<<<<< HEAD
         hit = self.get_by_name(name=unit.name, exact_match=True)
         if hit is not None:
             logging.warning(
@@ -49,11 +50,35 @@ class UnitCollection(BaseCollection):
             )
             return hit
         
+=======
+>>>>>>> main
         response = self.session.post(
             self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )
-        this_unit = Unit(**response.json())
-        return this_unit
+        unit = Unit(**response.json())
+        return unit
+
+    def get_or_create(self, *, unit: Unit) -> Unit:
+        """
+        Retrieves a Unit or creates it if it does not exist.
+
+        Parameters
+        ----------
+        unit : Unit
+            The unit object to find or create.
+
+        Returns
+        -------
+        Unit
+            The existing or newly created Unit object.
+        """
+        match = self.get_by_name(name=unit.name, exact_match=True)
+        if match:
+            logging.warning(
+                f"Unit with the name {unit.name} already exists. Returning the existing unit."
+            )
+            return match
+        return self.create(unit=unit)
 
     def get_by_id(self, *, id: str) -> Unit:
         """
@@ -86,7 +111,7 @@ class UnitCollection(BaseCollection):
         Returns
         -------
         list[Unit]
-            The Unit objects
+            The Unit entities
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 500] for i in range(0, len(ids), 500)]
@@ -134,54 +159,57 @@ class UnitCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 100,
         name: str | list[str] | None = None,
         category: UnitCategory | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         exact_match: bool = False,
-        start_key: str | None = None,
         verified: bool | None = None,
+        start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[Unit]:
         """
-        Lists unit entities with optional filters.
+        Get all unit entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of units to return, by default 50.
-        name : Optional[str], optional
-            The name of the unit to filter by, by default None.
-        category : Optional[UnitCategory], optional
-            The category of the unit to filter by, by default None.
+        name : str | list[str] | None, optional
+            The name(s) of the unit(s) to filter by.
+        category : UnitCategory | None, optional
+            The category of the unit to filter by.
         order_by : OrderBy, optional
             The order by which to sort the results, by default OrderBy.DESCENDING.
         exact_match : bool, optional
             Whether to match the name exactly, by default False.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
+        verified : bool | None, optional
+            Whether the unit is verified, by default None.
+        start_key : str | None, optional
+            The primary key of the first item to evaluate for pagination.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Unit]
-            An iterator of Unit objects.
+            An iterator of Unit entities.
         """
         params = {
-            "limit": limit,
-            "startKey": start_key,
             "orderBy": order_by.value,
             "name": [name] if isinstance(name, str) else name,
-            "exactMatch": json.dumps(exact_match),
-            "verified": json.dumps(verified) if verified is not None else None,
+            "exactMatch": exact_match,
+            "verified": verified,
             "category": category.value if isinstance(category, UnitCategory) else category,
+            "startKey": start_key,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [Unit(**item) for item in items],
         )
 
@@ -201,10 +229,10 @@ class UnitCollection(BaseCollection):
         Optional[Unit]
             The Unit object if found, None otherwise.
         """
-        found = self.list(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
-    def unit_exists(self, *, name: str, exact_match: bool = True) -> bool:
+    def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
         Checks if a unit exists by its name.
 

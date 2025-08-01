@@ -1,10 +1,10 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.resources.un_numbers import UnNumber
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class UnNumberCollection(BaseCollection):
@@ -64,39 +64,45 @@ class UnNumberCollection(BaseCollection):
         UnNumber | None
             The corresponding UN Number or None if not found
         """
-        found = self.list(exact_match=True, name=name)
+        found = self.get_all(exact_match=True, name=name)
         return next(found, None)
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | None = None,
         exact_match: bool = False,
-        limit: int = 50,
         start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[UnNumber]:
-        """List UN Numbers matching the provided criteria.
+        """Get all UN Numbers matching the provided criteria.
 
         Parameters
         ----------
         name : str | None, optional
-            The name of the UN Number to search for, by default None
+            The name of the UN Number to search for, by default None.
         exact_match : bool, optional
-            Weather to return exact matches only, by default False
+            Whether to return exact matches only, by default False.
+        start_key : str | None, optional
+            The pagination key to continue fetching items from, by default None.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
         Iterator[UnNumber]
-            The UN Numbers matching the search criteria
+            The UN Numbers matching the search criteria.
         """
-        params = {"limit": limit, "startKey": start_key}
+        params = {"startKey": start_key}
         if name:
             params["name"] = name
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [UnNumber(**item) for item in items],
         )

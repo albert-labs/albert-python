@@ -3,18 +3,25 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
-from albert.resources.acls import ACL
-from albert.resources.base import BaseResource, EntityLink, MetadataItem
-from albert.resources.identifiers import NotebookId
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass, Status
+from albert.core.shared.identifiers import NotebookId
+from albert.core.shared.models.base import BaseResource, EntityLink
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
+from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.projects import Project
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tasks import TaskSource
+<<<<<<< HEAD
 from albert.resources.users import User
 from albert.resources.tags import Tag
+=======
+from albert.resources.users import User, UserClass
+>>>>>>> main
 
 
 class DataTemplateInventory(EntityLink):
@@ -39,6 +46,7 @@ class TemplateCategory(str, Enum):
 
 class Priority(str, Enum):
     LOW = "Low"
+    MEDIUM = "Medium"
     HIGH = "High"
     MEDIUM = "Medium"
 
@@ -96,7 +104,8 @@ class QCBatchData(BaseTaggedResource):
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
     location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
-    batch_size_unit: str = Field(alias="batchSizeUnit", default=None)
+    batch_size_unit: str | None = Field(alias="batchSizeUnit", default=None)
+    batch_size: str | None = Field(alias="batchSize", default=None)
     priority: Priority  # enum?!
     name: str | None = Field(default=None)
 
@@ -151,6 +160,7 @@ class ACLType(str, Enum):
     TEAM = "team"
     MEMBER = "member"
     OWNER = "owner"
+    VIEWER = "viewer"
 
 
 class TeamACL(ACL):
@@ -165,12 +175,16 @@ class MemberACL(ACL):
     type: Literal[ACLType.MEMBER] = ACLType.MEMBER
 
 
-ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL, Field(discriminator="type")]
+class ViewerACL(ACL):
+    type: Literal[ACLType.VIEWER] = ACLType.VIEWER
+
+
+ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discriminator="type")]
 
 
 class TemplateACL(BaseResource):
     fgclist: list[ACLEntry] = Field(default=None)
-    acl_class: str = Field(alias="class")
+    acl_class: str | None = Field(default=None, alias="class")
 
 
 class CustomTemplate(BaseTaggedResource):
@@ -211,4 +225,40 @@ class CustomTemplate(BaseTaggedResource):
 
         if "Data" in data and "category" in data and "category" not in data["Data"]:
             data["Data"]["category"] = data["category"]
+<<<<<<< HEAD
         return data
+=======
+        return data
+
+
+class CustomTemplateSearchItemData(BaseAlbertModel):
+    designs: list[DesignLink] = Field(default=None, alias="Designs")
+    formula_info: list = Field(default_factory=list, alias="FormulaInfo")
+    task_rows: list[EntityLink] = Field(default_factory=list, alias="TaskRows")
+
+
+class CustomTemplateSearchItemACL(ACL):
+    name: str | None = None
+    user_type: UserClass | None = Field(default=None, alias="userType")
+    type: ACLType
+
+
+class CustomTemplateSearchItemTeam(BaseAlbertModel):
+    id: str
+    name: str
+    type: ACLType | None = None
+    fgc: AccessControlLevel | None = Field(default=None)
+
+
+class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
+    name: str
+    id: str = Field(alias="albertId")
+    created_by_name: str = Field(..., alias="createdByName")
+    created_at: str = Field(..., alias="createdAt")
+    category: str
+    status: Status | None = None
+    resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
+    data: CustomTemplateSearchItemData | None = None
+    acl: list[CustomTemplateSearchItemACL]
+    team: list[CustomTemplateSearchItemTeam]
+>>>>>>> main

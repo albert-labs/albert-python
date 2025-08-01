@@ -3,13 +3,17 @@ from collections.abc import Iterator
 
 import requests
 
-from albert.utils.logging import logger
+from albert.core.logging import logger
 
 
 class AlbertException(Exception):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
+
+
+class AlbertAuthError(AlbertException):
+    """Raised when authentication fails (e.g., bad credentials, expired token)."""
 
 
 class AlbertHTTPError(AlbertException):
@@ -23,9 +27,10 @@ class AlbertHTTPError(AlbertException):
     @classmethod
     def _format_message(cls, response: requests.Response) -> str:
         try:
-            errors = response.json().get("errors")
+            payload = response.json()
+            errors = payload.get("errors") or payload
         except ValueError:
-            errors = None
+            errors = response.text.strip()
         message = (
             f"{response.request.method} '{response.request.url}' failed with status code "
             f"{response.status_code} ({response.reason})."
@@ -90,7 +95,7 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
         case code if 500 <= code < 600:
             return AlbertServerError
         case _:
-            raise ValueError(f"No HTTP error class for status code {status_code}")
+            raise AlbertHTTPError
 
 
 @contextlib.contextmanager
@@ -101,5 +106,5 @@ def handle_http_errors() -> Iterator[None]:
         error_cls = _get_http_error_cls(e.response.status_code)
         albert_error = error_cls(e.response)
         # TODO: Enable debug logging via requests directly
-        logger.debug("Albert HTTP Error", albert_error)
+        logger.debug("Albert HTTP Error %s", albert_error)
         raise albert_error from e

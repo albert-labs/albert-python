@@ -1,13 +1,13 @@
-import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class TagCollection(BaseCollection):
@@ -26,9 +26,9 @@ class TagCollection(BaseCollection):
 
     Methods
     -------
-    list(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
+    get_all(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
         Lists tag entities with optional filters.
-    tag_exists(tag, exact_match=True) -> bool
+    exists(tag, exact_match=True) -> bool
         Checks if a tag exists by its name.
     create(tag) -> Tag
         Creates a new tag entity.
@@ -36,7 +36,7 @@ class TagCollection(BaseCollection):
         Retrieves a tag by its ID.
     get_by_ids(tag_ids) -> list[Tag]
         Retrieve a list of tags by their IDs.
-    get_by_tag(tag, exact_match=True) -> Tag
+    get_by_name(name, exact_match=True) -> Tag
         Retrieves a tag by its name.
     delete(tag_id) -> bool
         Deletes a tag by its ID.
@@ -58,7 +58,7 @@ class TagCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{TagCollection._api_version}/tags"
 
-    def tag_exists(self, *, tag: str, exact_match: bool = True) -> bool:
+    def exists(self, *, tag: str, exact_match: bool = True) -> bool:
         """
         Checks if a tag exists by its name.
 
@@ -75,32 +75,51 @@ class TagCollection(BaseCollection):
             True if the tag exists, False otherwise.
         """
 
-        return self.get_by_tag(tag=tag, exact_match=exact_match) is not None
+        return self.get_by_name(name=tag, exact_match=exact_match) is not None
 
     def create(self, *, tag: str | Tag) -> Tag:
         """
-        Creates a new tag entity if the given tag does not exist.
+        Creates a new tag entity.
 
         Parameters
         ----------
         tag : Union[str, Tag]
-            The tag name or Tag object to create.
+            The tag name or Tag entity to create.
 
         Returns
         -------
         Tag
-            The created Tag object or the existing Tag object of it already exists.
+            The created Tag entity.
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
-        hit = self.get_by_tag(tag=tag.tag, exact_match=True)
-        if hit is not None:
-            logging.warning(f"Tag {hit.tag} already exists with id {hit.id}")
-            return hit
+
         payload = {"name": tag.tag}
         response = self.session.post(self.base_path, json=payload)
         tag = Tag(**response.json())
         return tag
+
+    def get_or_create(self, *, tag: str | Tag) -> Tag:
+        """
+        Retrieves a Tag by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        tag : Union[str, Tag]
+            The tag name or Tag entity to retrieve or create.
+
+        Returns
+        -------
+        Tag
+            The existing or newly created Tag entity.
+        """
+        if isinstance(tag, str):
+            tag = Tag(tag=tag)
+        found = self.get_by_name(name=tag.tag, exact_match=True)
+        if found:
+            logging.warning(f"Tag {found.tag} already exists with id {found.id}")
+            return found
+        return self.create(tag=tag)
 
     def get_by_id(self, *, id: str) -> Tag:
         """
@@ -114,7 +133,7 @@ class TagCollection(BaseCollection):
         Returns
         -------
         Tag
-            The Tag object.
+            The Tag entity.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -129,13 +148,13 @@ class TagCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
-    def get_by_tag(self, *, tag: str, exact_match: bool = True) -> Tag | None:
+    def get_by_name(self, *, name: str, exact_match: bool = True) -> Tag | None:
         """
-        Retrieves a tag by its name of None if not found.
+        Retrieves a tag by its name or None if not found.
 
         Parameters
         ----------
-        tag : str
+        name : str
             The name of the tag to retrieve.
         exact_match : bool, optional
             Whether to match the name exactly, by default True.
@@ -143,9 +162,9 @@ class TagCollection(BaseCollection):
         Returns
         -------
         Tag
-            The Tag object if found, None otherwise.
+            The Tag entity if found, None otherwise.
         """
-        found = self.list(name=tag, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     def delete(self, *, id: str) -> None:
@@ -180,7 +199,7 @@ class TagCollection(BaseCollection):
         Tag
             The renamed Tag.
         """
-        found_tag = self.get_by_tag(tag=old_name, exact_match=True)
+        found_tag = self.get_by_name(name=old_name, exact_match=True)
         if not found_tag:
             msg = f'Tag "{old_name}" not found.'
             logger.error(msg)
@@ -202,44 +221,50 @@ class TagCollection(BaseCollection):
         self.session.patch(self.base_path, json=payload)
         return self.get_by_id(id=tag_id)
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 50,
         order_by: OrderBy = OrderBy.DESCENDING,
         name: str | list[str] | None = None,
         exact_match: bool = True,
         start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[Tag]:
         """
-        Lists Tag entities with optional filters.
+        Get all Tag entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of tags to return, by default 50.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        name : Union[str, None], optional
-            The name of the tag to filter by, by default None.
+            The order by which to sort the results. Default is DESCENDING.
+        name : str or list[str], optional
+            Filter tags by one or more names.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
-        start_key : Optional[str], optional
-            The starting point for the next set of results, by default None.
+            Whether to match the name(s) exactly. Default is True.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Tag]
-            An iterator of Tag objects.
+            An iterator of Tag entities matching the filters.
         """
-        params = {"limit": limit, "orderBy": order_by.value, "startKey": start_key}
+        params = {
+            "orderBy": order_by.value,
+            "startKey": start_key,
+        }
+
         if name:
             params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [Tag(**item) for item in items],
         )

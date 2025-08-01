@@ -1,6 +1,9 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.types import MetadataItem
 
 
 class CasCategory(str, Enum):
@@ -14,7 +17,7 @@ class CasCategory(str, Enum):
     CL_INVENTORY_UPLOAD = "CL_Inventory Upload"
 
 
-class Hazard(BaseModel):
+class Hazard(BaseAlbertModel):
     """Represents a chemical hazard."""
 
     sub_category: str | None = Field(None, alias="subCategory", description="Hazard subcategory")
@@ -24,7 +27,7 @@ class Hazard(BaseModel):
     h_code_text: str | None = Field(None, alias="hCodeText", description="Hazard code text")
 
 
-class Cas(BaseModel):
+class Cas(BaseAlbertModel):
     """Represents a CAS entity."""
 
     number: str = Field(..., description="The CAS number.")
@@ -46,6 +49,7 @@ class Cas(BaseModel):
         None, alias="classificationType", description="Classification type of the CAS."
     )
     order: str | None = Field(None, description="CAS order.")
+    metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
 
     @classmethod
     def from_string(cls, *, number: str) -> "Cas":

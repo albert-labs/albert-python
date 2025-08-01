@@ -1,10 +1,10 @@
-import json
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
-from albert.resources.custom_fields import CustomField, ServiceType
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
+from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 
 
 class CustomFieldCollection(BaseCollection):
@@ -28,7 +28,7 @@ class CustomFieldCollection(BaseCollection):
     from albert import Albert
     from albert.resources.custom_fields import CustomField, FieldCategory, FieldType, ServiceType
     from albert.resources.lists import ListItem
-    from albert.resources.project import Project
+    from albert.resources.projects import Project
 
     # Initialize the Albert client
     client = Albert()
@@ -74,7 +74,7 @@ class CustomFieldCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         """
-        Initializes the CasCollection with the provided session.
+        Initializes the CustomFieldCollection with the provided session.
 
         Parameters
         ----------
@@ -115,48 +115,62 @@ class CustomFieldCollection(BaseCollection):
         CustomField | None
             The CustomField item, or None if not found.
         """
-        for custom_field in self.list(name=name, service=service):
+        for custom_field in self.get_all(name=name, service=service):
             if custom_field.name.lower() == name.lower():
                 return custom_field
         return None
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | None = None,
+        type: FieldType | None = None,
         service: ServiceType | None = None,
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
+        start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[CustomField]:
-        """Searches for CustomField items based on the provided parameters.
+        """
+        Get all CustomField entities with optional filters.
 
         Parameters
         ----------
-        name : str | None, optional
-            The name of the field, by default None
-        service : ServiceType | None, optional
-            The related service the field is in, by default None
-        lookup_column : bool | None, optional
-            Whether the field relates to a lookup column, by default None
-        lookup_row : bool | None, optional
-            Whether the field relates to a lookup row, by default None
+        name : str, optional
+            The name of the field.
+        type: FieldType, optional
+            The type of the custom field.
+        service : ServiceType, optional
+            The related service the field belongs to.
+        lookup_column : bool, optional
+            Whether the field is related to a lookup column.
+        lookup_row : bool, optional
+            Whether the field is related to a lookup row.
+        start_key : str, optional
+            Pagination key to start fetching from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[CustomField]
-            Returns an iterator of CustomField items matching the search criteria.
+            An iterator over matching CustomField entities.
         """
         params = {
             "name": name,
-            "service": service if service else None,
-            "lookupColumn": json.dumps(lookup_column) if lookup_column is not None else None,
-            "lookupRow": json.dumps(lookup_row) if lookup_row is not None else None,
+            "type": type,
+            "service": service,
+            "lookupColumn": lookup_column,
+            "lookupRow": lookup_row,
+            "startKey": start_key,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
-            params=params,
             session=self.session,
+            params=params,
+            max_items=max_items,
             deserialize=lambda items: [CustomField(**item) for item in items],
         )
 

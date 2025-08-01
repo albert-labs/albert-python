@@ -4,16 +4,22 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter
 
-from albert.resources.base import BaseAlbertModel, MetadataItem, SecurityClass
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.identifiers import InventoryId, LotId, TaskId
+from albert.core.shared.models.patch import PatchPayload
+from albert.core.shared.types import (
+    MetadataItem,
+    SerializeAsEntityLink,
+    SerializeAsEntityLinkWithName,
+)
+from albert.resources._mixins import HydrationMixin
 from albert.resources.data_templates import DataTemplate
-from albert.resources.identifiers import InventoryId, LotId
 from albert.resources.locations import Location
 from albert.resources.projects import Project
-from albert.resources.serialization import SerializeAsEntityLink
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
-from albert.utils.patch_types import PatchPayload
 
 
 class TaskCategory(str, Enum):
@@ -92,6 +98,9 @@ class Standard(BaseAlbertModel):
     standard_organization: str | None = Field(
         alias="standardOrganization", default=None, frozen=True
     )
+    standard_organization_id: int | None = Field(
+        alias="standardOrganizationId", default=None, frozen=True
+    )
 
 
 class BlockDataTemplateInfo(BaseAlbertModel):
@@ -110,7 +119,7 @@ class TaskState(str, Enum):
     CLOSED = "Closed"
 
 
-class InventoryInformation(BaseAlbertModel):
+class TaskInventoryInformation(BaseAlbertModel):
     """Represents the Inventory information needed for a task. For a Batch task, inventory_id and batch_size are required.
     For Property and general tasks, inventory_id and lot_id is recomended is required.
 
@@ -120,6 +129,8 @@ class InventoryInformation(BaseAlbertModel):
         The inventory id of the item to be used in the task.
     lot_id : str, optional
         The lot id of the item to be used in the task. Reccomended for Property and General tasks.
+    lot_number : str, optional
+        The lot number of the item to be used in the task. Optional.
     batch_size : float, Required for Batch tasks, otherwise optional.
         The batch size to make of the related InventoryItem. Required for Batch tasks.
     selected_lot : bool, read only
@@ -128,6 +139,7 @@ class InventoryInformation(BaseAlbertModel):
 
     inventory_id: InventoryId = Field(alias="id")
     lot_id: LotId | None = Field(alias="lotId", default=None)
+    lot_number: str | None = Field(default=None, alias="lotNumber")
     inv_lot_unique_id: str | None = Field(alias="invLotUniqueId", default=None)
     batch_size: float | None = Field(alias="batchSize", default=None)
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
@@ -182,7 +194,9 @@ class BaseTask(BaseTaggedResource):
     parent_id: str | None = Field(alias="parentId", default=None)
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
     sources: list[TaskSource] | None = Field(default_factory=list, alias="Sources")
-    inventory_information: list[InventoryInformation] = Field(alias="Inventories", default=None)
+    inventory_information: list[TaskInventoryInformation] = Field(
+        alias="Inventories", default=None
+    )
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
     priority: TaskPriority | None = Field(default=None)
     security_class: SecurityClass | None = Field(alias="class", default=None)
@@ -198,7 +212,9 @@ class BaseTask(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
     )
-    assigned_to: SerializeAsEntityLink[User] | None = Field(default=None, alias="AssignedTo")
+    assigned_to: SerializeAsEntityLinkWithName[User] | None = Field(
+        default=None, alias="AssignedTo"
+    )
     page_state: PageState | None = Field(
         alias="PageState",
         default=None,
@@ -216,7 +232,7 @@ class PropertyTask(BaseTask):
     ----------
     name : str
         The name of the batch task.
-    inventory_information : list[InventoryInformation]
+    inventory_information : list[TaskInventoryInformation]
         Information about the inventory associated with the batch task.
     location : SerializeAsEntityLink[Location]
         The location where the batch task is performed.
@@ -272,7 +288,7 @@ class BatchTask(BaseTask):
     ----------
     name : str
         The name of the batch task.
-    inventory_information : list[InventoryInformation]
+    inventory_information : list[TaskInventoryInformation]
         Information about the inventory associated with the batch task.
     location : SerializeAsEntityLink[Location]
         The location where the batch task is performed.
@@ -367,3 +383,61 @@ class TaskPatchPayload(PatchPayload):
     """
 
     id: str
+
+
+class TaskSearchInventory(BaseAlbertModel):
+    id: str | None = None
+    name: str | None = None
+    albert_id_and_name: str | None = Field(default=None, alias="albertIdAndName")
+
+
+class TaskSearchDataTemplate(BaseAlbertModel):
+    id: str | None = None
+    name: str
+
+
+class TaskSearchLot(BaseAlbertModel):
+    number: str | None = None
+    selected_lot: bool | None = Field(default=None, alias="selectedLot")
+
+
+class TaskSearchLocation(BaseAlbertModel):
+    name: str
+
+
+class TaskSearchTag(BaseAlbertModel):
+    tag_name: str = Field(alias="tagName")
+
+
+class TaskSearchWorkflow(BaseAlbertModel):
+    id: str
+    name: str | None = None
+    category: str
+
+
+class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
+    """Lightweight representation of a Task returned from unhydrated search()."""
+
+    id: TaskId = Field(alias="albertId")
+    name: str
+    category: str
+    priority: str | None = None
+    state: str | None = None
+    assigned_to: str | None = Field(default=None, alias="assignedTo")
+    assigned_to_user_id: str | None = Field(default=None, alias="assignedToUserId")
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    created_at: str | None = Field(default=None, alias="createdAt")
+    due_date: str | None = Field(default=None, alias="dueDate")
+    completed_date: str | None = Field(default=None, alias="completedDate")
+    start_date: str | None = Field(default=None, alias="startDate")
+    closed_date: str | None = Field(default=None, alias="closedDate")
+
+    location: list[TaskSearchLocation] | None = None
+    inventory: list[TaskSearchInventory] | None = None
+    tags: list[TaskSearchTag] | None = None
+    lot: list[TaskSearchLot] | None = None
+    data_template: list[TaskSearchDataTemplate] | None = Field(default=None, alias="dataTemplate")
+    workflow: list[TaskSearchWorkflow] | None = None
+    project_id: list[str] | None = Field(default=None, alias="projectId")
+    is_qc_task: bool | None = Field(default=None, alias="isQCTask")
+    parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")

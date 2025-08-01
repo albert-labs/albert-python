@@ -1,8 +1,8 @@
 import urllib
 
 from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
 from albert.resources.roles import Role
-from albert.session import AlbertSession
 
 
 class RoleCollection(BaseCollection):
@@ -53,8 +53,8 @@ class RoleCollection(BaseCollection):
         )
         return Role(**response.json())
 
-    def list(self, *, params: dict | None = None) -> list[Role]:
-        """Lists the available Roles
+    def get_all(self, *, params: dict | None = None) -> list[Role]:
+        """Get all the available Roles
 
         Parameters
         ----------

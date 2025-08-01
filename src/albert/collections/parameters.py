@@ -1,13 +1,11 @@
-import json
 import logging
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.exceptions import AlbertHTTPError
+from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.parameters import Parameter
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ParameterCollection(BaseCollection):
@@ -55,19 +53,34 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         Parameter
-            Returns the created parameter or the existing parameter if it already exists.
+            Returns the created parameter.
         """
-        match = next(self.list(names=parameter.name, exact_match=True), None)
-        if match is not None:
-            logging.warning(
-                f"Parameter with name {parameter.name} already exists. Returning existing parameter."
-            )
-            return match
         response = self.session.post(
             self.base_path,
             json=parameter.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
         return Parameter(**response.json())
+
+    def get_or_create(self, *, parameter: Parameter) -> Parameter:
+        """Retrieves a Parameter or creates it if it does not exist.
+
+        Parameters
+        ----------
+        parameter : Parameter
+            The parameter to get or create.
+
+        Returns
+        -------
+        Parameter
+            The existing or newly created parameter.
+        """
+        match = next(self.get_all(names=parameter.name, exact_match=True, max_items=1), None)
+        if match:
+            logging.warning(
+                f"Parameter with name {parameter.name} already exists. Returning existing parameter."
+            )
+            return match
+        return self.create(parameter=parameter)
 
     def delete(self, *, id: str) -> None:
         """Delete a parameter by its ID.
@@ -80,7 +93,7 @@ class ParameterCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def get_all(
         self,
         *,
         ids: list[str] | None = None,
@@ -88,51 +101,50 @@ class ParameterCollection(BaseCollection):
         exact_match: bool = False,
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
-        limit: int = 50,
-        return_full: bool = True,
+        max_items: int | None = None,
     ) -> Iterator[Parameter]:
-        """Lists parameters that match the provided criteria.
+        """
+        Retrieve all Parameter items with optional filters.
 
         Parameters
         ----------
-        ids : list[str] | None, optional
-            A list of parameter IDs to retrieve, by default None
-        names : str | list[str], optional
-            A list of parameter names to retrieve, by default None
+        ids : list[str], optional
+            A list of parameter IDs to retrieve.
+        names : str or list[str], optional
+            One or more parameter names to filter by.
         exact_match : bool, optional
-            Whether to match the name exactly, by default False
+            Whether to require exact name matches. Default is False.
         order_by : OrderBy, optional
-            The order in which to return results, by default OrderBy.DESCENDING
-        return_full : bool, optional
-            Whether to make additional API call to fetch the full object, by default True
+            Sort order of results. Default is DESCENDING.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
+        Returns
+        -------
         Iterator[Parameter]
             An iterator of Parameters matching the given criteria.
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
-            if return_full:
-                for item in items:
-                    id = item["albertId"]
-                    try:
-                        yield self.get_by_id(id=id)
-                    except AlbertHTTPError as e:
-                        logger.warning(f"Error fetching Parameter '{id}': {e}")
-            else:
-                yield from (Parameter(**item) for item in items)
+            yield from (Parameter(**item) for item in items)
 
-        params = {"limit": limit, "orderBy": order_by, "parameters": ids, "startKey": start_key}
+        params = {
+            "orderBy": order_by.value,
+            "parameters": ids,
+            "startKey": start_key,
+        }
         if names:
             params["name"] = [names] if isinstance(names, str) else names
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

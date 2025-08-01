@@ -1,6 +1,7 @@
 from uuid import uuid4
 
-from albert.resources.base import EntityLink, SecurityClass
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.models.base import EntityLink
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight, BTInsightCategory
 from albert.resources.btmodel import BTModel, BTModelSession, BTModelSessionCategory, BTModelState
@@ -61,6 +62,7 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.reports import FullAnalyticalReport
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
@@ -69,9 +71,9 @@ from albert.resources.tasks import (
     BatchTask,
     Block,
     GeneralTask,
-    InventoryInformation,
     PropertyTask,
     TaskCategory,
+    TaskInventoryInformation,
     TaskPriority,
 )
 from albert.resources.units import Unit, UnitCategory
@@ -97,6 +99,7 @@ def generate_custom_fields() -> list[CustomField]:
         ServiceType.TASKS,
         ServiceType.USERS,
         ServiceType.PARAMETER_GROUPS,
+        ServiceType.CAS,
     ]
 
     seeds = []
@@ -152,7 +155,11 @@ def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[Li
     return all_list_items
 
 
-def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
+def generate_cas_seeds(
+    seed_prefix: str,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> list[Cas]:
     """
     Generates a list of CAS seed objects for testing without IDs.
 
@@ -161,7 +168,23 @@ def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
     List[Cas]
         A list of Cas objects with different permutations.
     """
+    cas_string_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.CAS and x.field_type == FieldType.STRING
+    ]
+    cas_list_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.CAS and x.field_type == FieldType.LIST
+    ]
 
+    faux_metadata = {}
+    for i, custom_field in enumerate(cas_string_custom_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(cas_list_custom_fields):
+        list_items = [x for x in static_lists if x.list_type == custom_field.name]
+        faux_metadata[custom_field.name] = [list_items[i].to_entity_link()]
     return [
         # CAS with basic fields
         Cas(
@@ -202,6 +225,14 @@ def generate_cas_seeds(seed_prefix: str) -> list[Cas]:
             number=f"{seed_prefix}-1234-56-7",
             description="Unknown substance",
             category=CasCategory.UNKNOWN,
+        ),
+        # CAS with Metadata
+        Cas(
+            number=f"{seed_prefix}-with-metadata-50-00-0",
+            description="Formaldehyde",
+            category=CasCategory.USER,
+            smiles="C=O",
+            metadata=faux_metadata,
         ),
     ]
 
@@ -333,7 +364,7 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
     """
 
     return [
-        # Project with basic metadata and public classification
+        # Project with basic metadata and private classification
         Project(
             description=f"{seed_prefix} - A basic development project.",
             locations=[EntityLink(id=seeded_locations[0].id)],
@@ -343,7 +374,7 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         Project(
             description=f"{seed_prefix} - A public research project focused on new materials.",
             locations=[EntityLink(id=seeded_locations[1].id)],
-            project_class=ProjectClass.PUBLIC,
+            project_class=ProjectClass.SHARED,
             grid=GridDefault.WKS,
         ),
         # Project with production category and custom ACLs
@@ -1334,7 +1365,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - Property Task 1",
             category=TaskCategory.PROPERTY,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[0].id,
                     lot_id=seeded_lots[0].id,
                 )
@@ -1357,7 +1388,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - Property Task 2",
             category=TaskCategory.PROPERTY,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[1].id,
                     lot_id=(
                         [l for l in seeded_lots if l.inventory_id == seeded_inventory[1].id][0].id
@@ -1379,7 +1410,7 @@ def generate_task_seeds(
             name=f"{seed_prefix} - General Task with metadata",
             category=TaskCategory.GENERAL,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_inventory[2].id,
                 )
             ],
@@ -1395,7 +1426,7 @@ def generate_task_seeds(
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.KILOGRAMS,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_products[2].id,
                     batch_size=100.0,
                 )
@@ -1415,7 +1446,7 @@ def generate_task_seeds(
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.GRAMS,
             inventory_information=[
-                InventoryInformation(
+                TaskInventoryInformation(
                     inventory_id=seeded_products[1].id,
                     batch_size=250.0,
                 )
@@ -1494,3 +1525,35 @@ def generate_btinsight_seed(
         category=BTInsightCategory.CUSTOM_OPTIMIZER,
         metadata={},
     )
+
+
+def generate_report_seeds(
+    seed_prefix: str, seeded_projects: list[Project]
+) -> list[FullAnalyticalReport]:
+    """
+    Generates a list of FullAnalyticalReport seed objects for testing.
+
+    Parameters
+    ----------
+    seed_prefix : str
+        Prefix to use for generating unique names.
+    seeded_projects : list[Project]
+        List of seeded Project objects to reference in reports.
+
+    Returns
+    -------
+    list[FullAnalyticalReport]
+        A list of FullAnalyticalReport objects with different configurations.
+    """
+    project_ids = [project.id for project in seeded_projects]
+
+    return [
+        # Basic analytical report
+        FullAnalyticalReport(
+            report_type_id="ALB#RET42",
+            name=f"{seed_prefix} - Basic Analytical Report",
+            description=f"{seed_prefix} - A basic analytical report for testing",
+            input_data={"project": project_ids},
+            project_id=seeded_projects[0].id if seeded_projects else None,
+        ),
+    ]

@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  python: circleci/python@3.1.0
+  python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
 
 commands:
@@ -10,51 +10,6 @@ commands:
       - run:
           name: Install uv
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
-
-  deploy_docs:
-    parameters:
-      mode:
-        type: enum
-        enum: ["dev", "release"]
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
-      - install_uv
-      - run:
-          name: Install dependencies
-          command: uv sync
-      - run:
-          name: Configure Git
-          command: |
-            git config --global user.name "CircleCI"
-            git config --global user.email "circleci@users.noreply.github.com"
-      - run:
-          name: Build Documentation
-          command: |
-            uv run mkdocs build --clean
-      - run:
-          name: Deploy Docs with mike
-          command: |
-            if [ "<< parameters.mode >>" = "dev" ]; then
-              echo "Deploying dev docs"
-              uv run mike deploy --push --update-aliases dev
-            elif [ "<< parameters.mode >>" = "release" ]; then
-              if [ -z "$CIRCLE_TAG" ]; then
-                echo "CIRCLE_TAG is empty. Skipping mike deploy."
-                exit 0
-              fi
-
-              if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                VERSION="${CIRCLE_TAG#v}"
-                echo "Stable semver tag detected. Deploying $VERSION with alias: latest"
-                uv run mike deploy --push --update-aliases "$VERSION" latest
-              else
-                echo "Non-semver release tag. Skipping docs deployment."
-                exit 0
-              fi
-            fi
 
 jobs:
   snyk_app_scan:
@@ -111,29 +66,21 @@ jobs:
     executor:
       name: python/default
       tag: "3.10.15"
+    parameters:
+      base_branch:
+        type: string
+        default: "main"
     steps:
       - checkout
       - run:
           name: Validate version bump
           command: |
-            if [[ -z ${CIRCLE_PULL_REQUEST} ]]; then
-              echo "Not a PR, assuming base branch is main"
-              BASE_BRANCH="main"
-            else
-              GITHUB_PR_URL=$(echo https://api.github.com/repos/${CIRCLE_PULL_REQUEST:19} | sed "s/\/pull\//\/pulls\//")
-              BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_PYTHON}" ${GITHUB_PR_URL} | jq ".base.ref" | tr -d "\042")
-              if [[ -z ${BASE_BRANCH} ]]; then
-                echo "Could not determine base branch from PR, defaulting to main"
-                BASE_BRANCH="main"
-              fi
+            if [[ $CIRCLE_BRANCH == << parameters.base_branch >> ]]; then
+              echo "Already on base branch '<< parameters.base_branch >>', skipping version bump validation."
+              exit 0
             fi
-
-            if [[ $BASE_BRANCH == "main" ]]; then
-              echo "Validating version bump for PR into '${BASE_BRANCH}'"
-              python scripts/validate_version_bump.py --base origin/${BASE_BRANCH}
-            else
-              echo "Skipping version bump check for non-production base branch '${BASE_BRANCH}'"
-            fi
+            echo "Validating version bump against '<< parameters.base_branch >>'"
+            python scripts/validate_version_bump.py --base origin/<< parameters.base_branch >>
 
   validate_release_tag:
     executor:
@@ -161,16 +108,53 @@ jobs:
             uv publish --token $PYPI_TOKEN_ALBERT_PYTHON
 
   deploy_docs:
+    executor:
+      name: python/default
+      tag: "3.10.15"
     parameters:
       mode:
         type: enum
         enum: ["dev", "release"]
-    executor:
-      name: python/default
-      tag: "3.10.15"
     steps:
-      - deploy_docs:
-          mode: << parameters.mode >>
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
+      - install_uv
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Configure Git
+          command: |
+            git config --global user.name "CircleCI"
+            git config --global user.email "circleci@users.noreply.github.com"
+      - run:
+          name: Build Documentation
+          command: |
+            uv run mkdocs build --clean
+      - run:
+          name: Deploy Docs with mike
+          command: |
+            git fetch origin gh-pages:gh-pages
+            if [ "<< parameters.mode >>" = "dev" ]; then
+              echo "Deploying dev docs"
+              uv run mike deploy --push --update-aliases dev
+            elif [ "<< parameters.mode >>" = "release" ]; then
+              if [ -z "$CIRCLE_TAG" ]; then
+                echo "CIRCLE_TAG is empty. Skipping mike deploy."
+                exit 0
+              fi
+
+              if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                VERSION="${CIRCLE_TAG#v}"
+                echo "Stable semver tag detected. Deploying $VERSION with alias: latest"
+                uv run mike deploy --push --update-aliases "$VERSION" latest
+              else
+                echo "Non-semver release tag. Skipping docs deployment."
+                exit 0
+              fi
+            fi
 
 workflows:
   main:
@@ -184,9 +168,7 @@ workflows:
       - validate_version_bump:
           name: Validate Version Bump
           context: dev
-          filters:
-            branches:
-              ignore: ["main"]
+          base_branch: main
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev

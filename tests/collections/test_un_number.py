@@ -1,25 +1,25 @@
-from albert.albert import Albert
+from albert.client import Albert
 from albert.collections.un_numbers import UnNumber
 
 
-def _list_asserts(returned_list):
-    for i, u in enumerate(returned_list):
-        if i == 100:
-            break
+def assert_valid_un_number_items(returned_list):
+    for u in returned_list[:10]:
         assert isinstance(u, UnNumber)
         assert isinstance(u.un_number, str)
         assert isinstance(u.id, str)
         assert u.id.startswith("UNN")
 
 
-def test_simple_un_number_list(client: Albert):
-    simple_list = client.un_numbers.list()
-    _list_asserts(simple_list)
+def test_un_number_get_all_with_pagination(client: Albert):
+    """Test UNNumber.get_all supports pagination and returns expected items."""
+    paginated = list(client.un_numbers.get_all(max_items=10))
+    assert_valid_un_number_items(paginated)
 
 
-def test_advanced_un_number_list(client: Albert):
-    adv_list = client.un_numbers.list(name="56", exact_match=False)
-    _list_asserts(adv_list)
+def test_un_number_get_all_with_filters(client: Albert):
+    """Test UNNumber.get_all supports filters like name + exact_match."""
+    filtered = list(client.un_numbers.get_all(name="56", exact_match=False, max_items=10))
+    assert_valid_un_number_items(filtered)
 
 
 # TO FIX! Need to have at least one UN Number loaded to the test environment.

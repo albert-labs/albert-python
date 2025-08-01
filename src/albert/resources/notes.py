@@ -1,6 +1,12 @@
 from pydantic import Field
 
-from albert.resources.base import BaseResource, EntityLink
+from albert.core.shared.models.base import BaseResource, EntityLink
+
+
+class NoteAttachmentEntityLink(EntityLink):
+    """Entity link for a note attachment w/ an optional signed download URL."""
+
+    signed_url: str | None = Field(default=None, alias="signedURL")
 
 
 class Note(BaseResource):
@@ -11,6 +17,6 @@ class Note(BaseResource):
     parent_id: str = Field(..., alias="parentId")
     note: str
     id: str | None = Field(default=None, alias="albertId")
-    attachments: list[EntityLink] | None = Field(
+    attachments: list[NoteAttachmentEntityLink] | None = Field(
         default=None, exclude=True, frozen=True, alias="Attachments"
     )

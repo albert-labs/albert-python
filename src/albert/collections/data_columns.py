@@ -1,12 +1,10 @@
-import json
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.exceptions import AlbertHTTPError
+from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.data_columns import DataColumn
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class DataColumnCollection(BaseCollection):
@@ -34,7 +32,7 @@ class DataColumnCollection(BaseCollection):
         DataColumn | None
             The data column object on match or None
         """
-        for dc in self.list(name=name):
+        for dc in self.get_all(name=name):
             if dc.name.lower() == name.lower():
                 return dc
         return None
@@ -57,7 +55,7 @@ class DataColumnCollection(BaseCollection):
         dc = DataColumn(**response.json())
         return dc
 
-    def list(
+    def get_all(
         self,
         *,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -66,58 +64,52 @@ class DataColumnCollection(BaseCollection):
         exact_match: bool | None = None,
         default: bool | None = None,
         start_key: str | None = None,
-        limit: int = 100,
-        return_full: bool = True,
+        max_items: int | None = None,
     ) -> Iterator[DataColumn]:
         """
-        Lists data column entities with optional filters.
+        Get all data column entities with optional filters.
 
         Parameters
         ----------
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
-        ids: str | list[str] | None, optional
-            Data column IDs to filter the search by, default None.
-        name : Union[str, None], optional
-            The name of the tag to filter by, by default None.
+            The order in which to sort the results. Default is DESCENDING.
+        ids : str or list[str], optional
+            Filter by one or more data column IDs.
+        name : str or list[str], optional
+            Filter by name(s).
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            Whether the name filter should match exactly.
         default : bool, optional
-            Whether to return only default columns, by default None.
-        return_full : bool, optional
-            Whether to make additional API call to fetch the full object, by default True
+            Whether to return only default columns.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[DataColumn]
-            An iterator of DataColumns matching the provided criteria.
+            An iterator over matching DataColumn entities.
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
-            if return_full:
-                for item in items:
-                    id = item["albertId"]
-                    try:
-                        yield self.get_by_id(id=id)
-                    except AlbertHTTPError as e:
-                        logger.warning(f"Error fetching Data Column '{id}': {e}")
-            else:
-                yield from (DataColumn(**item) for item in items)
+            yield from (DataColumn(**item) for item in items)
 
         params = {
-            "limit": limit,
             "orderBy": order_by.value,
             "startKey": start_key,
             "name": [name] if isinstance(name, str) else name,
-            "exactMatch": json.dumps(exact_match) if exact_match is not None else None,
-            "default": json.dumps(default) if default is not None else None,
+            "exactMatch": exact_match,
+            "default": default,
             "dataColumns": [ids] if isinstance(ids, str) else ids,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

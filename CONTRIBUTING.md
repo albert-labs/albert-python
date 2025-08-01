@@ -1,29 +1,35 @@
-# Contributing to Albert SDK for Python
+# Contributing to Albert Python SDK
 
-## Installation for Local Development
+Thanks for your interest in contributing to the Albert Python SDK! We aim to make it as easy as possible to get started and see your changes released quickly.
 
-The package is built using the [uv](https://docs.astral.sh/uv/getting-started/installation/) build tool.
-To get started, install `uv` on your system by running
+---
 
-```bash
-# For Mac OS users
-brew install uv
-# or
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# or
-pip install uv
-```
+## 🚀 Quickstart
 
-After that, the package and its dependencies can be installed
-in your local virtual environment by running
+1. **Fork** the repository on GitHub.
+2. **Clone** your fork locally:
 
-```bash
-uv sync
-```
+    ```bash
+    git clone https://github.com/your-username/albert-python.git
+    cd albert-python
+    ```
 
-Follow the documentation on the [uv website](https://docs.astral.sh/uv/concepts/projects/)
-for additional project features such as managing dependencies, managing environments,
-and configuring Python project metadata.
+3. **Run** the setup script (installs all dependencies and hooks):
+
+    ```bash
+    ./setup.sh
+    ```
+
+4. **Create** a new branch for your work:
+
+    ```bash
+    git checkout -b my-awesome-feature
+    ```
+
+5. **Make your changes**, then commit. Pre-commit hooks and linting will run automatically.
+6. **Push** your branch and open a Pull Request against `main`.
+
+Your contribution could ship in days or weeks—welcome aboard! 🚀
 
 ## Dynamic Versioning
 
@@ -35,7 +41,7 @@ and read dynamically when building distributions.
 This project uses [ruff](https://docs.astral.sh/ruff/) for both formatting and linting.
 Formatting and linting rules are enforced in the CI process.
 
-To check (or fix) your code formatting, you can run the commands
+To check (or fix) your code formatting, you can run the commands,
 
 ```bash
 # Check
@@ -58,6 +64,29 @@ uv run ruff check . --fix
 For VSCode users, there is also base workspace settings defined in `.vscode/settings.json` that enable
 automatic fomatting and import sorting on-save using the
 [Ruff for VSCode](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) extension.
+
+## Commit Guidelines
+
+We use the [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```text
+type(scope)!: summary
+```
+
+* `type`: one of `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `build`, `ci`, `perf`, `revert`
+* `scope`: optional, a module or feature name (e.g., `auth`, `session`)
+* `!`: optional, indicates a **breaking change**
+* `summary`: short and clear — think “when applied, the SDK will…”
+
+### Examples
+
+```text
+feat(auth): support token refresh
+fix!: remove deprecated param handling
+docs: clarify local dev setup
+```
+
+This keeps commit history readable and enables changelog automation.
 
 ## Documentation
 
@@ -106,7 +135,7 @@ To add coverage for a new microservice, you can add a page by doing the followin
  1. in the `docs/` folder make a new markdown file following the pattern of the others.
     For example:
 
-    ```
+    ```markdown
     # cas.md
 
     ::: albert.collections.cas
@@ -132,9 +161,9 @@ uv run mkdocs serve
 
 #### 3. Open <http://127.0.0.1:8000/> (or specified address) in your browser and navigate through the docs to confirm that
 
-- All references and links are resolving correctly.
-- Docstrings are properly formatted.
-- No missing or broken sections exist.
+* All references and links are resolving correctly.
+* Docstrings are properly formatted.
+* No missing or broken sections exist.
 
 ### Deploying Documentation
 
@@ -145,9 +174,9 @@ The documentation is automatically built and deployed to GitHub Pages when a pul
 1. A PR is merged into main.
 2. CircleCI runs the deploy_docs job, which:
 
-    - Builds the latest version of the documentation using mkdocs build --clean.
-    - Pushes the built docs to the gh-pages branch.
-    - GitHub Pages automatically serves the latest docs
+    * Builds the latest version of the documentation using mkdocs build --clean.
+    * Pushes the built docs to the gh-pages branch.
+    * GitHub Pages automatically serves the latest docs
 
 #### Manually Triggering a Docs Deployment
 
@@ -171,7 +200,7 @@ git push origin gh-pages
 
 The release will automatically trigger the CircleCI workflow to:
 
-- Build and publish the package to PyPI
-- Build and deploy the documentation
+* Build and publish the package to PyPI
+* Build and deploy the documentation
 
 Note: Only designated Albert team members have permissions to create releases.

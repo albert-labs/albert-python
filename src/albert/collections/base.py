@@ -1,13 +1,7 @@
-from enum import Enum
-
-from albert.resources.base import BaseResource, MetadataItem
-from albert.session import AlbertSession
-from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
-
-
-class OrderBy(str, Enum):
-    DESCENDING = "desc"
-    ASCENDING = "asc"
+from albert.core.session import AlbertSession
+from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.shared.types import MetadataItem
 
 
 class BaseCollection:
@@ -18,7 +12,6 @@ class BaseCollection:
     ----------
     session : AlbertSession
         The Albert API Session instance.
-
     """
 
     # Class property specifying updatable attributes
@@ -95,25 +88,19 @@ class BaseCollection:
                             )
                         )
                     elif len(to_add) > 0:
-                        data.extend(
-                            [
-                                PatchDatum(
-                                    attribute=attribute, operation=PatchOperation.ADD, new_value=a
-                                )
-                                for a in to_add
-                            ]
+                        data.append(
+                            PatchDatum(
+                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
+                            )
                         )
 
                     elif len(to_remove) > 0:
-                        data.extend(
-                            [
-                                PatchDatum(
-                                    attribute=attribute,
-                                    operation=PatchOperation.DELETE,
-                                    old_value=r,
-                                )
-                                for r in to_remove
-                            ]
+                        data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.DELETE,
+                                old_value=to_remove,
+                            )
                         )
 
                 else:

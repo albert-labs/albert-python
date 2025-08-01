@@ -1,9 +1,15 @@
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.resources.projects import Project
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
+from pydantic import validate_call
+
+from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ProjectId
+from albert.exceptions import AlbertHTTPError
+from albert.resources.projects import Project, ProjectSearchItem
 
 
 class ProjectCollection(BaseCollection):
@@ -43,7 +49,8 @@ class ProjectCollection(BaseCollection):
         )
         return Project(**response.json())
 
-    def get_by_id(self, *, id: str) -> Project:
+    @validate_call
+    def get_by_id(self, *, id: ProjectId) -> Project:
         """
         Retrieve a project by its ID.
 
@@ -99,79 +106,87 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
-    def list(
+    def search(
         self,
         *,
-        text: str = None,
-        status: list[str] = None,
-        market_segment: list[str] = None,
-        application: list[str] = None,
-        technology: list[str] = None,
-        created_by: list[str] = None,
-        location: list[str] = None,
-        from_created_at: str = None,
-        to_created_at: str = None,
-        facet_field: str = None,
-        facet_text: str = None,
-        contains_field: list[str] = None,
-        contains_text: list[str] = None,
-        linked_to: str = None,
-        my_projects: bool = None,
-        my_role: list[str] = None,
+        text: str | None = None,
+        status: list[str] | None = None,
+        market_segment: list[str] | None = None,
+        application: list[str] | None = None,
+        technology: list[str] | None = None,
+        created_by: list[str] | None = None,
+        location: list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        linked_to: str | None = None,
+        my_project: bool | None = None,
+        my_role: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        sort_by: str = None,
-        limit: int = 50,
-    ) -> Iterator[Project]:
+        sort_by: str | None = None,
+        offset: int | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[ProjectSearchItem]:
         """
-        List projects with optional filters.
+        Search for Project matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
         text : str, optional
-            Search any test in the project.
-        status : list[str], optional
-            The status filter for the projects.
-        market_segment : list[str], optional
-            The market segment filter for the projects.
-        application : list[str], optional
-            The application filter for the projects.
-        technology : list[str], optional
-            The technology filter for the projects.
-        created_by : list[str], optional
-            The name of the user who created the project.
-        location : list[str], optional
-            The location filter for the projects.
+            Full-text search query.
+        status : list of str, optional
+            Filter by project statuses.
+        market_segment : list of str, optional
+            Filter by market segment.
+        application : list of str, optional
+            Filter by application.
+        technology : list of str, optional
+            Filter by technology tags.
+        created_by : list of str, optional
+            Filter by user ID(s) who created the project.
+        location : list of str, optional
+            Filter by location(s).
         from_created_at : str, optional
-            The start date filter for the projects.
+            Earliest creation date in 'YYYY-MM-DD' format.
         to_created_at : str, optional
-            The end date filter for the projects.
+            Latest creation date in 'YYYY-MM-DD' format.
         facet_field : str, optional
-            The facet field for the projects.
+            Facet field to filter on.
         facet_text : str, optional
-            The facet text for the projects.
-        contains_field : list[str], optional
-            To power project facets search
-        contains_text : list[str], optional
-            To power project facets search
+            Facet text to search for.
+        contains_field : list of str, optional
+            Fields to search inside.
+        contains_text : list of str, optional
+            Values to search for within the `contains_field`.
         linked_to : str, optional
-            To pass text for linked to dropdown search in Task creation flow.
-        my_projects : bool, optional
-            Return Projects owned by you.
-        my_role : list[str], optional
-            Filter Projects to ones which you have a specific role in.
+            Entity ID the project is linked to.
+        my_project : bool, optional
+            If True, return only projects owned by current user.
+        my_role : list of str, optional
+            User roles to filter by.
         order_by : OrderBy, optional
-            The order in which to retrieve items (default is OrderBy.DESCENDING).
+            Sort order. Default is DESCENDING.
         sort_by : str, optional
-            The field to sort by.
+            Field to sort by.
+        offset : int, optional
+            Pagination offset.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
-        ------
-        Iterator[Project]
-            An iterator of Project resources.
+        -------
+        Iterator[ProjectSearchItem]
+            An iterator of matching partial (unhydrated) Project results.
         """
-        params = {
-            "limit": limit,
+        query_params = {
             "order": order_by.value,
+            "offset": offset,
             "text": text,
             "sortBy": sort_by,
             "status": status,
@@ -187,13 +202,85 @@ class ProjectCollection(BaseCollection):
             "containsField": contains_field,
             "containsText": contains_text,
             "linkedTo": linked_to,
-            "myProjects": my_projects,
+            "myProject": my_project,
             "myRole": my_role,
         }
+
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
-            deserialize=lambda items: [Project(**item) for item in items],
+            params=query_params,
+            max_items=max_items,
+            deserialize=lambda items: [
+                ProjectSearchItem(**item)._bind_collection(self) for item in items
+            ],
         )
+
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        status: list[str] | None = None,
+        market_segment: list[str] | None = None,
+        application: list[str] | None = None,
+        technology: list[str] | None = None,
+        created_by: list[str] | None = None,
+        location: list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        linked_to: str | None = None,
+        my_project: bool | None = None,
+        my_role: list[str] | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        offset: int | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[Project]:
+        """
+        Retrieve fully hydrated Project entities with optional filters.
+
+        This method returns complete entity data using `get_by_id`.
+        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+
+        Returns
+        -------
+        Iterator[Project]
+            An iterator of fully hydrated Project entities.
+        """
+        for project in self.search(
+            text=text,
+            status=status,
+            market_segment=market_segment,
+            application=application,
+            technology=technology,
+            created_by=created_by,
+            location=location,
+            from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            facet_field=facet_field,
+            facet_text=facet_text,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            linked_to=linked_to,
+            my_project=my_project,
+            my_role=my_role,
+            order_by=order_by,
+            sort_by=sort_by,
+            offset=offset,
+            max_items=max_items,
+        ):
+            project_id = getattr(project, "albertId", None) or getattr(project, "id", None)
+            if not project_id:
+                continue
+
+            id = project_id if project_id.startswith("PRO") else f"PRO{project_id}"
+
+            try:
+                yield self.get_by_id(id=id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error fetching project details {id}: {e}")

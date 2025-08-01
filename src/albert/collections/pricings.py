@@ -1,10 +1,11 @@
 from pydantic import validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
-from albert.resources.identifiers import InventoryId
+from albert.collections.base import BaseCollection
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy
+from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.pricings import InventoryPricings, Pricing, PricingBy
-from albert.session import AlbertSession
-from albert.utils.patch_types import PatchDatum, PatchOperation, PatchPayload
 
 
 class PricingCollection(BaseCollection):
@@ -121,7 +122,7 @@ class PricingCollection(BaseCollection):
         Returns
         -------
         list[InventoryPricing]
-            A list of InventoryPricing objects matching the provided inventory.
+            A list of InventoryPricing entities matching the provided inventory.
         """
         params = {"id": inventory_ids}
         response = self.session.get(f"{self.base_path}/ids", params=params)

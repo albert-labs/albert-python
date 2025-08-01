@@ -1,15 +1,15 @@
-import json
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import AlbertHTTPError
-from albert.resources.base import EntityLink
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class StorageLocationsCollection(BaseCollection):
@@ -46,32 +46,38 @@ class StorageLocationsCollection(BaseCollection):
         response = self.session.get(path)
         return StorageLocation(**response.json())
 
-    def list(
+    def get_all(
         self,
         *,
         name: str | list[str] | None = None,
         exact_match: bool = False,
         location: str | Location | None = None,
         start_key: str | None = None,
-        limit: int = 50,
-    ) -> Generator[StorageLocation, None, None]:
-        """List storage locations with optional filtering.
+        max_items: int | None = None,
+    ) -> Iterator[StorageLocation]:
+        """
+        Get all storage locations with optional filtering.
 
         Parameters
         ----------
-        name : str | list[str] | None, optional
-            The name or names of the storage locations to filter by, by default None
+        name : str or list[str], optional
+            The name or names of the storage locations to filter by.
         exact_match : bool, optional
-            Whether to perform an exact match on the name, by default False
-        location : str | Location | None, optional
-            The location ID or Location object to filter by, by default None
+            Whether to perform an exact match on the name(s). Default is False.
+        location : str or Location, optional
+            A location ID or Location object to filter by.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
-        Yields
-        ------
-        Generator[StorageLocation, None, None]
-            _description_
+        Returns
+        -------
+        Iterator[StorageLocation]
+            An iterator over StorageLocation items matching the search criteria.
         """
 
+        # Remove explicit hydration when SUP-410 is fixed
         def deserialize(items: list[dict]) -> Iterator[StorageLocation]:
             for x in items:
                 id = x["albertId"]
@@ -81,19 +87,22 @@ class StorageLocationsCollection(BaseCollection):
                     logger.warning(f"Error fetching storage location {id}: {e}")
 
         params = {
-            "limit": limit,
-            "locationId": location.id if isinstance(location, Location | EntityLink) else location,
+            "locationId": location.id
+            if isinstance(location, (Location | EntityLink))
+            else location,
             "startKey": start_key,
         }
+
         if name:
             params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = json.dumps(exact_match)
+            params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=deserialize,
         )
 
@@ -110,7 +119,26 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The created storage location.
         """
-        matching = self.list(
+        response = self.session.post(
+            self.base_path,
+            json=storage_location.model_dump(by_alias=True, exclude_none=True, mode="json"),
+        )
+        return StorageLocation(**response.json())
+
+    def get_or_create(self, *, storage_location: StorageLocation) -> StorageLocation:
+        """Get or create a storage location.
+
+        Parameters
+        ----------
+        storage_location : StorageLocation
+            The storage location to get or create.
+
+        Returns
+        -------
+        StorageLocation
+            The existing or newly created storage location.
+        """
+        matching = self.get_all(
             name=storage_location.name, location=storage_location.location, exact_match=True
         )
         for m in matching:
@@ -119,12 +147,7 @@ class StorageLocationsCollection(BaseCollection):
                     f"Storage location with name {storage_location.name} already exists, returning existing."
                 )
                 return m
-
-        path = self.base_path
-        response = self.session.post(
-            path, json=storage_location.model_dump(by_alias=True, exclude_none=True, mode="json")
-        )
-        return StorageLocation(**response.json())
+        return self.create(storage_location=storage_location)
 
     def delete(self, *, id: str) -> None:
         """Delete a storage location by its ID.

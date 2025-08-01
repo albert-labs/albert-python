@@ -3,12 +3,20 @@ from collections.abc import Iterator
 
 from pydantic import TypeAdapter, validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import (
+    InventoryId,
+    ProjectId,
+    SearchProjectId,
+    WorksheetId,
+)
 from albert.resources.facet import FacetItem
-from albert.resources.identifiers import InventoryId, ProjectId, SearchProjectId, WorksheetId
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
@@ -21,8 +29,6 @@ from albert.resources.inventory import (
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class InventoryCollection(BaseCollection):
@@ -95,7 +101,7 @@ class InventoryCollection(BaseCollection):
         # post request
         self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
-    def inventory_exists(self, *, inventory_item: InventoryItem) -> bool:
+    def exists(self, *, inventory_item: InventoryItem) -> bool:
         """
         Check if an inventory item exists.
 
@@ -114,7 +120,7 @@ class InventoryCollection(BaseCollection):
 
     def get_match_or_none(self, *, inventory_item: InventoryItem) -> InventoryItem | None:
         """
-        Get a matching inventory item or return None if not found.
+        Get a matching inventory item by name and company, or return None if not found.
 
         Parameters
         ----------
@@ -123,20 +129,23 @@ class InventoryCollection(BaseCollection):
 
         Returns
         -------
-        Union[InventoryItem, None]
-            The matching inventory item or None if not found.
+        InventoryItem or None
+            The matching inventory item, or None if no match is found.
         """
-        hits = self.list(text=inventory_item.name, company=[inventory_item.company])
         inv_company = (
             inventory_item.company.name
             if isinstance(inventory_item.company, Company)
             else inventory_item.company
         )
+
+        hits = self.get_all(
+            text=inventory_item.name, company=[inventory_item.company], max_items=100
+        )
+
         for inv in hits:
             if inv and inv.name == inventory_item.name and inv.company.name == inv_company:
                 return inv
-        else:
-            return None
+        return None
 
     def create(
         self,
@@ -170,12 +179,15 @@ class InventoryCollection(BaseCollection):
         tag_collection = TagCollection(session=self.session)
         if inventory_item.tags is not None and inventory_item.tags != []:
             all_tags = [
-                tag_collection.create(tag=t) if t.id is None else t for t in inventory_item.tags
+                tag_collection.get_or_create(tag=t) if t.id is None else t
+                for t in inventory_item.tags
             ]
             inventory_item.tags = all_tags
         if inventory_item.company and inventory_item.company.id is None:
             company_collection = CompanyCollection(session=self.session)
-            inventory_item.company = company_collection.create(company=inventory_item.company)
+            inventory_item.company = company_collection.get_or_create(
+                company=inventory_item.company
+            )
         # Check to see if there is a match on name + Company already
         if avoid_duplicates:
             existing = self.get_match_or_none(inventory_item=inventory_item)
@@ -212,7 +224,7 @@ class InventoryCollection(BaseCollection):
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
         """
-        Retrieve an set of inventory items by their IDs.
+        Retrieve a set of inventory items by their IDs.
 
         Parameters
         ----------
@@ -244,7 +256,7 @@ class InventoryCollection(BaseCollection):
         Returns
         -------
         list[InventorySpecList]
-            A list of InventorySpecList objects, each containing the specs for an inventory item.
+            A list of InventorySpecList entities, each containing the specs for an inventory item.
         """
         url = f"{self.base_path}/specs"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -272,7 +284,7 @@ class InventoryCollection(BaseCollection):
         inventory_id : InventoryId
             The Albert ID of the inventory item to add the specs to
         specs : list[InventorySpec]
-            List of InventorySpec objects to add to the inventory item,
+            List of InventorySpec entities to add to the inventory item,
             which described the value and, optionally,
             the conditions associated with the value (via workflow).
 
@@ -311,7 +323,6 @@ class InventoryCollection(BaseCollection):
     def _prepare_parameters(
         self,
         *,
-        limit: int | None = None,
         text: str | None = None,
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
@@ -325,6 +336,7 @@ class InventoryCollection(BaseCollection):
         created_by: list[User] | User | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
+        offset: int | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -342,7 +354,6 @@ class InventoryCollection(BaseCollection):
             storage_location = [storage_location]
 
         params = {
-            "limit": limit,
             "text": text,
             "order": order.value if order is not None else None,
             "sortBy": sort_by if sort_by is not None else None,
@@ -358,6 +369,7 @@ class InventoryCollection(BaseCollection):
             "createdBy": [c.name for c in created_by] if created_by is not None else None,
             "sheetId": sheet_id,
             "projectId": project_id,
+            "offset": offset,
         }
 
         return params
@@ -384,7 +396,6 @@ class InventoryCollection(BaseCollection):
         """
 
         params = self._prepare_parameters(
-            limit=1,
             text=text,
             cas=cas,
             category=category,
@@ -397,6 +408,8 @@ class InventoryCollection(BaseCollection):
             lot_owner=lot_owner,
             tags=tags,
         )
+        params["limit"] = 1
+        params = {k: v for k, v in params.items() if v is not None}
         response = self.session.get(
             url=f"{self.base_path}/llmsearch"
             if match_all_conditions
@@ -456,7 +469,6 @@ class InventoryCollection(BaseCollection):
     def search(
         self,
         *,
-        limit: int = 100,
         text: str | None = None,
         cas: list[Cas] | Cas | None = None,
         category: list[InventoryCategory] | InventoryCategory | None = None,
@@ -469,108 +481,64 @@ class InventoryCollection(BaseCollection):
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
+        order: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        max_items: int | None = None,
+        offset: int | None = 0,
     ) -> Iterator[InventorySearchItem]:
         """
-        Get a list of inventory items that match the search criteria and
-        return the raw search records. These are not full inventory item
-        objects, but are special short documents intended for fast summary results
-        """
+        Search for Inventory items matching the provided criteria.
 
-        def deserialize(items: list[dict]):
-            return [InventorySearchItem.model_validate(x) for x in items]
-
-        params = self._prepare_parameters(
-            limit=limit,
-            text=text,
-            cas=cas,
-            category=category,
-            company=company,
-            location=location,
-            storage_location=storage_location,
-            project_id=project_id,
-            sheet_id=sheet_id,
-            created_by=created_by,
-            lot_owner=lot_owner,
-            tags=tags,
-        )
-        return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
-            else f"{self.base_path}/search",
-            params=params,
-            session=self.session,
-            deserialize=deserialize,
-        )
-
-    @validate_call
-    def list(
-        self,
-        *,
-        limit: int = 100,
-        text: str | None = None,
-        cas: list[Cas] | Cas | None = None,
-        category: list[InventoryCategory] | InventoryCategory | None = None,
-        company: list[Company] | Company | None = None,
-        order: OrderBy = OrderBy.DESCENDING,
-        sort_by: str | None = "createdAt",
-        location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
-        project_id: ProjectId | None = None,
-        sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
-        lot_owner: list[User] | User | None = None,
-        tags: list[str] | None = None,
-        match_all_conditions: bool = False,
-    ) -> Iterator[InventoryItem]:
-        """
-        List inventory items with optional filters.
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
 
         Parameters
         ----------
-        limit : int, optional
-            Maximum number of items to return (default is 100)
         text : str, optional
-            Text to search for in inventory names and descriptions
-        cas : list[Cas] | Cas | None, optional
-            Filter by CAS number(s)
-        category : list[InventoryCategory] | InventoryCategory | None, optional
-            Filter by inventory category/categories
-        company : list[Company] | Company | None, optional
-            Filter by manufacturing company/companies
-        order : OrderBy, optional
-            Sort order, either ASCENDING or DESCENDING (default is DESCENDING)
-        sort_by : str, optional
-            Field to sort by (default is "createdAt")
-        location : list[Location] | None, optional
-            Filter by location(s)
-        storage_location : list[StorageLocation] | None, optional
-            Filter by storage location(s)
+            Search text for full-text matching.
+        cas : Cas or list[Cas], optional
+            Filter by CAS numbers.
+        category : InventoryCategory or list[InventoryCategory], optional
+            Filter by item category.
+        company : Company or list[Company], optional
+            Filter by associated company.
+        location : Location or list[Location], optional
+            Filter by location.
+        storage_location : StorageLocation or list[StorageLocation], optional
+            Filter by storage location.
         project_id : str, optional
-            Filter by project ID
+            Filter by project ID (formulas).
         sheet_id : str, optional
-            Filter by sheet ID
-        created_by : list[User], optional
-            Filter by creator(s)
-        lot_owner : list[User], optional
-            Filter by lot owner(s)
+            Filter by worksheet ID.
+        created_by : User or list[User], optional
+            Filter by creator(s).
+        lot_owner : User or list[User], optional
+            Filter by lot owner(s).
         tags : list[str], optional
-            Filter by tag(s)
+            Filter by tag name(s).
         match_all_conditions : bool, optional
-            Whether to match all conditions (default is False -- e.g. OR between conditions)
+            Whether to match all filters (AND logic). Default is False.
+        order : OrderBy, optional
+            Sort order. Default is DESCENDING.
+        sort_by : str, optional
+            Field to sort results by. Default is None.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Offset for pagination. Default is 0.
 
         Returns
         -------
-        Iterator[InventoryItem]
-            An iterator over the matching inventory items
+        Iterator[InventorySearchItem]
+            An iterator over partial (unhydrated) InventorySearchItem results.
         """
 
-        def deserialize(items: list[dict]) -> list[InventoryItem]:
-            return self.get_by_ids(ids=[x["albertId"] for x in items])
+        def deserialize(items: list[dict]):
+            return [InventorySearchItem.model_validate(x)._bind_collection(self) for x in items]
 
-        search_text = text if (text is None or len(text) < 50) else text[0:50]
-        params = self._prepare_parameters(
-            limit=limit,
+        search_text = text if (text is None or len(text) < 50) else text[:50]
+
+        query_params = self._prepare_parameters(
             text=search_text,
             cas=cas,
             category=category,
@@ -584,14 +552,118 @@ class InventoryCollection(BaseCollection):
             created_by=created_by,
             lot_owner=lot_owner,
             tags=tags,
+            offset=offset,
         )
+
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/llmsearch"
             if match_all_conditions
             else f"{self.base_path}/search",
-            params=params,
+            params=query_params,
             session=self.session,
+            max_items=max_items,
+            deserialize=deserialize,
+        )
+
+    @validate_call
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        cas: list[Cas] | Cas | None = None,
+        category: list[InventoryCategory] | InventoryCategory | None = None,
+        company: list[Company] | Company | None = None,
+        location: list[Location] | Location | None = None,
+        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        project_id: ProjectId | None = None,
+        sheet_id: WorksheetId | None = None,
+        created_by: list[User] | User | None = None,
+        lot_owner: list[User] | User | None = None,
+        tags: list[str] | None = None,
+        match_all_conditions: bool = False,
+        order: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        max_items: int | None = None,
+        offset: int | None = 0,
+    ) -> Iterator[InventoryItem]:
+        """
+        Retrieve fully hydrated InventoryItem entities with optional filters.
+
+        This method returns complete entity data using `get_by_ids`.
+        Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+
+        Parameters
+        ----------
+        text : str, optional
+            Search text for full-text matching.
+        cas : Cas or list[Cas], optional
+            Filter by CAS numbers.
+        category : InventoryCategory or list[InventoryCategory], optional
+            Filter by item category.
+        company : Company or list[Company], optional
+            Filter by associated company.
+        location : Location or list[Location], optional
+            Filter by location.
+        storage_location : StorageLocation or list[StorageLocation], optional
+            Filter by storage location.
+        project_id : str, optional
+            Filter by project ID (formulas).
+        sheet_id : str, optional
+            Filter by worksheet ID.
+        created_by : User or list[User], optional
+            Filter by creator(s).
+        lot_owner : User or list[User], optional
+            Filter by lot owner(s).
+        tags : list[str], optional
+            Filter by tag name(s).
+        match_all_conditions : bool, optional
+            Whether to match all filters (AND logic). Default is False.
+        order : OrderBy, optional
+            Sort order. Default is DESCENDING.
+        sort_by : str, optional
+            Field to sort results by. Default is None.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            Offset for pagination. Default is 0.
+
+        Returns
+        -------
+        Iterator[InventoryItem]
+            An iterator over fully hydrated InventoryItem entities.
+        """
+
+        def deserialize(items: list[dict]) -> list[InventoryItem]:
+            return self.get_by_ids(ids=[x["albertId"] for x in items])
+
+        search_text = text if (text is None or len(text) < 50) else text[:50]
+
+        query_params = self._prepare_parameters(
+            text=search_text,
+            cas=cas,
+            category=category,
+            company=company,
+            order=order,
+            sort_by=sort_by,
+            location=location,
+            storage_location=storage_location,
+            project_id=project_id,
+            sheet_id=sheet_id,
+            created_by=created_by,
+            lot_owner=lot_owner,
+            tags=tags,
+            offset=offset,
+        )
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/llmsearch"
+            if match_all_conditions
+            else f"{self.base_path}/search",
+            params=query_params,
+            session=self.session,
+            max_items=max_items,
             deserialize=deserialize,
         )
 

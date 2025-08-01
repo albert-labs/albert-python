@@ -67,6 +67,9 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
 
 plugins:
   - search
@@ -108,16 +111,27 @@ plugins:
       alias_type: symlink
       canonical_version: latest
       deploy_prefix: albert-python
-
 watch:
   - src
 
 nav:
-  - Getting Started: index.md
+  - Getting Started:
+      - Overview: index.md
+      - Installation: installation.md
+      - Authentication: authentication.md
+      - Concepts: concepts.md
+      - Configuration: configuration.md
+      - Migration Guide: migration.md
+      - Contributing: CONTRIBUTING.md
+      - Changelog: CHANGELOG.md
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
+      - Authenticaton:
+          - Albert Client Credentials: credentials.md
+          - Albert SSO Client: sso.md
       - Collections:
+          - Activities: collections/activities.md
           - Attachments: collections/attachments.md
           - Batch Data: collections/batch_data.md
           - Base: collections/base.md
@@ -157,6 +171,7 @@ nav:
           - Workflows: collections/workflows.md
           - Worksheets: collections/worksheets.md
       - Resources:
+          - Activities: resources/activities.md
           - Attachments: resources/attachments.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:

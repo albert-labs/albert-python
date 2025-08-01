@@ -3,10 +3,11 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import BTDatasetId
 from albert.resources.btdataset import BTDataset
-from albert.resources.identifiers import BTDatasetId
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class BTDatasetCollection(BaseCollection):
@@ -122,31 +123,31 @@ class BTDatasetCollection(BaseCollection):
     def get_all(
         self,
         *,
-        limit: int = 100,
         name: str | None = None,
-        start_key: str | None = None,
         created_by: str | None = None,
+        start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[BTDataset]:
-        """Get all items from the BTDataset collection.
+        """
+        Get all items from the BTDataset collection.
 
         Parameters
         ----------
-        limit : int, optional
-            Number of items to return per page, default 100
         name : str, optional
-            Name of the dataset to filter by, default None
-        start_key : str, optional
-            The starting key for pagination, default None
+            Filter datasets by name.
         created_by : str, optional
-            The user who created the dataset, default None
+            Filter datasets by the user who created them.
+        start_key : str, optional
+            Start key for paginated results.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[BTDataset]
-            An iterator of elements returned by the BTDataset listing.
+            An iterator over BTDataset items.
         """
         params = {
-            "limit": limit,
             "startKey": start_key,
             "createdBy": created_by,
             "name": name,
@@ -156,5 +157,6 @@ class BTDatasetCollection(BaseCollection):
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [BTDataset(**item) for item in items],
         )

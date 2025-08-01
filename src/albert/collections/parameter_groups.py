@@ -2,16 +2,18 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
     ParameterGroup,
+    ParameterGroupSearchItem,
     PGType,
 )
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patches import generate_parameter_group_patches
+from albert.utils._patch import generate_parameter_group_patches
 
 
 class ParameterGroupCollection(BaseCollection):
@@ -58,44 +60,37 @@ class ParameterGroupCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def list(
+    def search(
         self,
         *,
         text: str | None = None,
         types: PGType | list[PGType] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 25,
         offset: int | None = None,
-    ) -> Iterator[ParameterGroup]:
-        """Search for Parameter Groups matching the given criteria.
+        max_items: int | None = None,
+    ) -> Iterator[ParameterGroupSearchItem]:
+        """
+        Search for Parameter Groups matching the given criteria.
 
         Parameters
         ----------
-        text : str | None, optional
-            Text to search for, by default None
-        types : PGType | list[PGType] | None, optional
-            Filer the returned Parameter Groups by Type, by default None
+        text : str, optional
+            Text to search for.
+        types : PGType or list of PGType, optional
+            Filter by Parameter Group types.
         order_by : OrderBy, optional
-            The order in which to return results, by default OrderBy.DESCENDING
+            Order of results. Default is DESCENDING.
+        offset : int, optional
+            Offset to begin results from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
-        Iterator[ParameterGroup]
-            An iterator of Parameter Groups matching the given criteria.
+        Iterator[ParameterGroupSearchItem]
+            Iterator of ParameterGroupSearchItem entities, which are partial representations of Parameter Groups.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[ParameterGroup]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:  # pragma: no cover
-                    logger.warning(f"Error fetching parameter group {id}: {e}")
-            # Currently, the API is not returning metadata for the list_by_ids endpoint, so we need to fetch individually until that is fixed
-            # return self.get_by_ids(ids=[x["albertId"] for x in items])
-
         params = {
-            "limit": limit,
             "offset": offset,
             "order": order_by.value,
             "text": text,
@@ -107,8 +102,53 @@ class ParameterGroupCollection(BaseCollection):
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
-            deserialize=deserialize,
+            max_items=max_items,
+            deserialize=lambda items: [
+                ParameterGroupSearchItem(**item)._bind_collection(self) for item in items
+            ],
         )
+
+    def get_all(
+        self,
+        *,
+        text: str | None = None,
+        types: PGType | list[PGType] | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        offset: int | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[ParameterGroup]:
+        """
+        Search and hydrate all Parameter Groups matching the given criteria.
+
+        Parameters
+        ----------
+        text : str, optional
+            Text to search for.
+        types : PGType or list of PGType, optional
+            Filter by Parameter Group types.
+        order_by : OrderBy, optional
+            Order of results. Default is DESCENDING.
+        offset : int, optional
+            Offset to begin results from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+
+        Yields
+        ------
+        Iterator[ParameterGroup]
+            Iterator over Parameter Group entities.
+        """
+        for item in self.search(
+            text=text,
+            types=types,
+            order_by=order_by,
+            offset=offset,
+            max_items=max_items,
+        ):
+            try:
+                yield self.get_by_id(id=item.id)
+            except AlbertHTTPError as e:  # pragma: no cover
+                logger.warning(f"Error fetching parameter group {item.id}: {e}")
 
     def delete(self, *, id: str) -> None:
         """Delete a parameter group by its ID.
@@ -154,10 +194,10 @@ class ParameterGroupCollection(BaseCollection):
         ParameterGroup | None
             The parameter group with the given name, or None if not found.
         """
-        matches = self.list(text=name)
+        matches = self.search(text=name)
         for m in matches:
             if m.name.lower() == name.lower():
-                return m
+                return m.hydrate()
         return None
 
     def update(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
@@ -191,10 +231,12 @@ class ParameterGroupCollection(BaseCollection):
         if len(new_parameter_values) > 0:
             self.session.put(
                 url=new_param_url,
-                json=[
-                    x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                    for x in new_parameter_values
-                ],
+                json={
+                    "Parameters": [
+                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
+                        for x in new_parameter_values
+                    ],
+                },
             )
         new_param_sequences = [x.sequence for x in new_parameter_values]
         # handle enum updates

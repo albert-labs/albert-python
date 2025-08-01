@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.resources.lists import ListItem, ListItemCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class ListsCollection(BaseCollection):
@@ -47,7 +48,7 @@ class ListsCollection(BaseCollection):
 
     def __init__(self, *, session: AlbertSession):
         """
-        Initializes the TagCollection with the provided session.
+        Initializes the ListsCollection with the provided session.
 
         Parameters
         ----------
@@ -57,45 +58,51 @@ class ListsCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ListsCollection._api_version}/lists"
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 100,
         names: list[str] | None = None,
         category: ListItemCategory | None = None,
         list_type: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[ListItem]:
         """
-        Generates a list of list entities with optional filters.
+        Get all list entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of list entities to return.
         names : list[str], optional
-            A list of names of the list entity to retrieve.
+            A list of names to filter by.
         category : ListItemCategory, optional
-            The category of the list entity to retrieve.
+            The category of the list items to filter by.
         list_type : str, optional
-            The type of list entity to retrieve.
+            The list type to filter by.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+
         Returns
-        ------
+        -------
         Iterator[ListItem]
-            An iterator of ListItems.
+            An iterator of ListItem entities.
         """
         params = {
-            "limit": limit,
             "startKey": start_key,
-            "name": [names] if isinstance(names, str) else names,
+            "name": names,
             "category": category.value if isinstance(category, ListItemCategory) else category,
             "listType": list_type,
+            "orderBy": order_by,
         }
+
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [ListItem(**item) for item in items],
         )
 
@@ -167,7 +174,7 @@ class ListsCollection(BaseCollection):
         ListItem | None
             A list item with the provided name and list type, or None if not found.
         """
-        for list_item in self.list(names=[name], list_type=list_type):
+        for list_item in self.get_all(names=[name], list_type=list_type):
             if list_item.name.lower() == name.lower():
                 return list_item
         return None

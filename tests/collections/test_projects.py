@@ -1,33 +1,54 @@
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.base import EntityLink
-from albert.resources.projects import Project
+from albert.resources.projects import Project, ProjectSearchItem
 
 
-def _list_asserts(returned_list, limit=50):
-    found = False
-    for i, project in enumerate(returned_list):
-        if i == limit:  # Limit to checking first 50 projects
-            break
-        assert isinstance(project, Project)
-        assert isinstance(project.description, str)
-        assert isinstance(project.id, str)
-        assert project.id is not None
-        found = True
-    assert found
+def assert_valid_project_items(returned_list: list, entity_type: type = Project):
+    """Assert that project items are valid and correctly typed."""
+    assert returned_list, "Expected at least one project"
+    for item in returned_list[:50]:
+        assert isinstance(item, entity_type)
+        assert isinstance(item.description, str)
+        assert isinstance(item.id, str) and item.id
 
 
-def test_list_projects(client: Albert):
-    project_list = client.projects.list()
-    _list_asserts(project_list)
+def test_project_get_all(client: Albert):
+    """Test get_all returns hydrated Project items."""
+    project_list = list(client.projects.get_all(max_items=10))
+    assert_valid_project_items(project_list, Project)
 
-    short_lists = client.projects.list(limit=5)
-    _list_asserts(short_lists, limit=7)
 
-    advanced_list = client.projects.list(limit=5, status=["Active"])
-    _list_asserts(advanced_list, limit=2)
+def test_project_search_basic(client: Albert):
+    """Test search returns ProjectSearchItem items."""
+    project_list = list(client.projects.search(max_items=10))
+    assert_valid_project_items(project_list, ProjectSearchItem)
+
+
+def test_project_search_paged(client: Albert):
+    """Test search with a small page size."""
+    short_lists = list(client.projects.search(max_items=10))
+    assert_valid_project_items(short_lists, ProjectSearchItem)
+
+
+def test_project_search_filtered(client: Albert):
+    """Test search with status filter."""
+    advanced_list = list(client.projects.search(status=["Active"], max_items=10))
+    assert_valid_project_items(advanced_list, ProjectSearchItem)
+
+
+def test_hydrate_project(client: Albert):
+    projects = list(client.projects.search(created_by="Sdk", max_items=5))
+    assert projects, "Expected at least one project in search results"
+
+    for project in projects:
+        hydrated = project.hydrate()
+
+        # identity checks
+        assert hydrated.id == project.id
+        assert hydrated.description == project.description
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):

@@ -1,13 +1,16 @@
+<<<<<<< HEAD
 from __future__ import annotations
 import logging
+=======
+>>>>>>> main
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator, PaginationMode
+from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class CompanyCollection(BaseCollection):
@@ -30,44 +33,51 @@ class CompanyCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CompanyCollection._api_version}/companies"
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 50,
         name: str | list[str] = None,
         exact_match: bool = True,
         start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[Company]:
         """
-        Lists company entities with optional filters.
+        Get all company entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of companies to return, by default 50.
-        name : Union[str, None], optional
-            The name of the company to filter by, by default None.
+        name : str | list[str], optional
+            The name(s) of the company to filter by.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            Whether to match the name(s) exactly. Default is True.
+        start_key : str, optional
+            Key to start paginated results from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
-        Iterator
-            An iterator of Company objects.
+        Iterator[Company]
+            An iterator of Company entities.
         """
-        params = {"limit": limit, "dupDetection": "false", "startKey": start_key}
+        params = {
+            "dupDetection": "false",
+            "startKey": start_key,
+        }
         if name:
             params["name"] = name if isinstance(name, list) else [name]
             params["exactMatch"] = str(exact_match).lower()
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             params=params,
+            max_items=max_items,
             deserialize=lambda items: [Company(**item) for item in items],
         )
 
-    def company_exists(self, *, name: str, exact_match: bool = True) -> bool:
+    def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """
         Checks if a company exists by its name.
 
@@ -122,10 +132,10 @@ class CompanyCollection(BaseCollection):
         Company
             The Company object if found, None otherwise.
         """
-        found = self.list(name=name, exact_match=exact_match)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
-    def create(self, *, company: str | Company, check_if_exists: bool = True) -> Company:
+    def create(self, *, company: str | Company) -> Company:
         """
         Creates a new company entity.
 
@@ -133,8 +143,6 @@ class CompanyCollection(BaseCollection):
         ----------
         company : Union[str, Company]
             The company name or Company object to create.
-        check_if_exists : bool, optional
-            Whether to check if the company already exists, by default True.
 
         Returns
         -------
@@ -143,15 +151,33 @@ class CompanyCollection(BaseCollection):
         """
         if isinstance(company, str):
             company = Company(name=company)
-        hit = self.get_by_name(name=company.name, exact_match=True)
-        if check_if_exists and hit:
-            logging.warning(f"Company {company.name} already exists with id {hit.id}.")
-            return hit
 
         payload = company.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         this_company = Company(**response.json())
         return this_company
+
+    def get_or_create(self, *, company: str | Company) -> Company:
+        """
+        Retrieves a company by its name or creates it if it does not exist.
+
+        Parameters
+        ----------
+        company : Union[str, Company]
+            The company name or Company object to retrieve or create.
+
+        Returns
+        -------
+        Company
+            The Company object if found or created.
+        """
+        if isinstance(company, str):
+            company = Company(name=company)
+        found = self.get_by_name(name=company.name, exact_match=True)
+        if found:
+            return found
+        else:
+            return self.create(company=company)
 
     def delete(self, *, id: str) -> None:
         """Deletes a company entity.

@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.resources.workflows import Workflow
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class WorkflowCollection(BaseCollection):
@@ -30,12 +31,12 @@ class WorkflowCollection(BaseCollection):
         Parameters
         ----------
         workflows : list[Workflow]
-            A list of Workflow objects to find or create.
+            A list of Workflow entities to find or create.
 
         Returns
         -------
         list[Workflow]
-            A list of created or found Workflow objects.
+            A list of created or found Workflow entities.
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
@@ -63,7 +64,7 @@ class WorkflowCollection(BaseCollection):
         return Workflow(**response.json())
 
     def get_by_ids(self, *, ids: list[str]) -> list[Workflow]:
-        """Returns a list of Workflow objects by their IDs.
+        """Returns a list of Workflow entities by their IDs.
 
         Parameters
         ----------
@@ -73,7 +74,7 @@ class WorkflowCollection(BaseCollection):
         Returns
         -------
         list[Workflow]
-            The list of Workflow objects matching the provided IDs.
+            The list of Workflow entities matching the provided IDs.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
@@ -83,28 +84,32 @@ class WorkflowCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
-    def list(self, limit: int = 50) -> Iterator[Workflow]:
-        """List all workflows. Unlikly to be used in production.
+    def get_all(
+        self,
+        max_items: int | None = None,
+    ) -> Iterator[Workflow]:
+        """
+        Get all workflows. Unlikely to be used in production.
 
         Parameters
         ----------
-        limit : int, optional
-            The number of workflows to return, by default 50.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
         Iterator[Workflow]
-            An iterator of Workflow objects.
+            An iterator of Workflow entities.
         """
 
         def deserialize(items: list[dict]) -> list[Workflow]:
             return self.get_by_ids(ids=[x["albertId"] for x in items])
 
-        params = {"limit": limit}
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
-            params=params,
+            params={},
             session=self.session,
             deserialize=deserialize,
+            max_items=max_items,
         )

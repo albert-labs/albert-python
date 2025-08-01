@@ -1,19 +1,24 @@
 from collections.abc import Iterator
+from itertools import islice
 
-from pydantic import Field
+from pydantic import Field, validate_call
 
-from albert.collections.base import BaseCollection, OrderBy
+from albert.collections.base import BaseCollection
+from albert.core.logging import logger
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.models.patch import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
 from albert.exceptions import AlbertHTTPError
-from albert.resources.data_templates import DataColumnValue, DataTemplate, ParameterValue
-from albert.resources.identifiers import DataTemplateId
-from albert.resources.parameter_groups import DataType, EnumValidationValue
-from albert.session import AlbertSession
-from albert.utils.logging import logger
-from albert.utils.pagination import AlbertPaginator, PaginationMode
-from albert.utils.patch_types import GeneralPatchDatum, GeneralPatchPayload, PGPatchPayload
-from albert.utils.patches import (
-    generate_data_template_patches,
+from albert.resources.data_templates import (
+    DataColumnValue,
+    DataTemplate,
+    DataTemplateSearchItem,
+    ParameterValue,
 )
+from albert.resources.parameter_groups import DataType, EnumValidationValue
+from albert.utils._patch import generate_data_template_patches
 
 
 class DCPatchDatum(PGPatchPayload):
@@ -67,12 +72,10 @@ class DataTemplateCollection(BaseCollection):
         )
         dt = DataTemplate(**response.json())
         dt.parameter_values = parameter_values
-        if data_template.parameter_values is None or len(data_template.parameter_values) == 0:
+        if parameter_values is None or len(parameter_values) == 0:
             return dt
         else:
-            return self.add_parameters(
-                data_template_id=dt.id, parameters=data_template.parameter_values
-            )
+            return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
 
     def _add_param_enums(
         self,
@@ -166,6 +169,7 @@ class DataTemplateCollection(BaseCollection):
                         json=enum_patches,
                     )
 
+    @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
 
@@ -193,7 +197,7 @@ class DataTemplateCollection(BaseCollection):
         Returns
         -------
         list[DataTemplate]
-            A list of DataTemplate objects with the provided IDs.
+            A list of DataTemplate entities with the provided IDs.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -216,10 +220,9 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate | None
             The matching data template object or None if not found.
         """
-        hits = list(self.list(name=name))
-        for h in hits:
-            if h.name.lower() == name.lower():
-                return h
+        for t in self.search(name=name):
+            if t.name.lower() == name.lower():
+                return t.hydrate()
         return None
 
     def add_data_columns(
@@ -232,7 +235,7 @@ class DataTemplateCollection(BaseCollection):
         data_template_id : str
             The ID of the data template to add the columns to.
         data_columns : list[DataColumnValue]
-            The list of DataColumnValue objects to add to the data template.
+            The list of DataColumnValue entities to add to the data template.
 
         Returns
         -------
@@ -275,7 +278,7 @@ class DataTemplateCollection(BaseCollection):
         data_template_id : str
             The ID of the data template to add the columns to.
         parameters : list[ParameterValue]
-            The list of ParameterValue objects to add to the data template.
+            The list of ParameterValue entities to add to the data template.
 
         Returns
         -------
@@ -315,55 +318,44 @@ class DataTemplateCollection(BaseCollection):
             data_template_id=data_template_id,
             new_parameters=returned_parameters,
         )
-        dt_with_params = self.get_by_id(id=data_template_id)
-        for i, param in enumerate(dt_with_params.parameter_values):
-            if i in initial_enum_values:
-                param.validation[0].value = initial_enum_values[i]
-                param.validation[0].datatype = DataType.ENUM
+        return self.get_by_id(id=data_template_id)
 
-        return self.update(data_template=dt_with_params)
-
-    def list(
+    def search(
         self,
         *,
         name: str | None = None,
         user_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> Iterator[DataTemplate]:
+        max_items: int | None = None,
+        offset: int | None = 0,
+    ) -> Iterator[DataTemplateSearchItem]:
         """
-        Lists data template entities with optional filters.
+        Search for DataTemplate matching the provided criteria.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use `get_all` instead.
 
         Parameters
         ----------
-        name : Union[str, None], optional
-            The name of the data template to filter by, by default None.
+        name : str, optional
+            The name of the data template to filter by.
         user_id : str, optional
-            user_id to filter by, by default None.
+            The user ID to filter by.
         order_by : OrderBy, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING.
+            The order in which to sort the results. Default is DESCENDING.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            The result offset to begin pagination from.
 
         Returns
         -------
-        Iterator[DataTemplate]
-            An iterator of DataTemplate objects matching the provided criteria.
+        Iterator[DataTemplateSearchItem]
+            An iterator of matching DataTemplateSearchItem entities.
         """
-
-        def deserialize(items: list[dict]) -> Iterator[DataTemplate]:
-            for item in items:
-                id = item["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching parameter group {id}: {e}")
-            # get by ids is not currently returning metadata correctly, so temp fixing this
-            # return self.get_by_ids(ids=[x["albertId"] for x in items])
-
         params = {
-            "limit": limit,
             "offset": offset,
-            "order": OrderBy(order_by).value if order_by else None,
+            "order": order_by.value,
             "text": name,
             "userId": user_id,
         }
@@ -372,8 +364,11 @@ class DataTemplateCollection(BaseCollection):
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            deserialize=deserialize,
             params=params,
+            max_items=max_items,
+            deserialize=lambda items: [
+                DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
         )
 
     def update(self, *, data_template: DataTemplate) -> DataTemplate:
@@ -467,3 +462,61 @@ class DataTemplateCollection(BaseCollection):
             The ID of the data template to delete.
         """
         self.session.delete(f"{self.base_path}/{id}")
+
+    def get_all(
+        self,
+        *,
+        name: str | None = None,
+        user_id: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        max_items: int | None = None,
+        offset: int | None = 0,
+    ) -> Iterator[DataTemplate]:
+        """
+        Retrieve fully hydrated DataTemplate entities with optional filters.
+
+        This method returns complete entity data using `get_by_ids`.
+        Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+
+        Parameters
+        ----------
+        name : str, optional
+            The name of the data template to filter by.
+        user_id : str, optional
+            The user ID to filter by.
+        order_by : OrderBy, optional
+            The order in which to sort results. Default is DESCENDING.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+        offset : int, optional
+            The result offset to begin pagination from.
+
+        Returns
+        -------
+        Iterator[DataTemplate]
+            An iterator over fully hydrated DataTemplate entities.
+        """
+
+        def batched(iterable, size: int):
+            """Yield lists of up to `size` IDs from an iterable of entities with an `id` attribute."""
+            it = (item.id for item in iterable)
+            while batch := list(islice(it, size)):
+                yield batch
+
+        id_batches = batched(
+            self.search(
+                name=name,
+                user_id=user_id,
+                order_by=order_by,
+                max_items=max_items,
+                offset=offset,
+            ),
+            100,
+        )
+
+        for batch in id_batches:
+            try:
+                hydrated_templates = self.get_by_ids(ids=batch)
+                yield from hydrated_templates
+            except AlbertHTTPError as e:
+                logger.warning(f"Error hydrating batch {batch}: {e}")

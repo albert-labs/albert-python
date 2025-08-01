@@ -1,38 +1,40 @@
 import pytest
 
-from albert.albert import Albert
+from albert.client import Albert
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
 
-def _list_asserts(returned_list):
-    found = False
-    for i, c in enumerate(returned_list):
-        if i == 100:
-            break
-        found = True
+def assert_valid_company_items(items: list[Company]):
+    """Assert basic structure and types of Company items."""
+    assert items, "Expected at least one Company result"
+    for c in items[:10]:
         assert isinstance(c, Company)
         assert isinstance(c.name, str)
         assert isinstance(c.id, str)
         assert c.id.startswith("COM")
-    assert found
 
 
-def test_simple_company_list(client: Albert):
-    simple_list = client.companies.list()
-    _list_asserts(simple_list)
+def test_company_get_all_with_pagination(client: Albert):
+    """Test that Company get_all() respects pagination and max_items."""
+    results = list(client.companies.get_all(max_items=10))
+    assert len(results) <= 10
+    assert_valid_company_items(results)
 
 
-def test_advanced_company_list(client: Albert, seeded_companies: list[Company]):
+def test_company_get_all_with_filters(client: Albert, seeded_companies: list[Company]):
+    """Test Company get_all() with name filter and exact match."""
     name = seeded_companies[1].name
-    adv_list = client.companies.list(name=name, exact_match=True)
-    adv_list = list(adv_list)
-    for c in adv_list:
-        assert name.lower() in c.name.lower()
-    _list_asserts(adv_list)
 
-    list_small_batch = client.companies.list(limit=2)
-    _list_asserts(list_small_batch)
+    filtered = list(
+        client.companies.get_all(
+            name=name,
+            exact_match=True,
+            max_items=10,
+        )
+    )
+    assert any(name.lower() in c.name.lower() for c in filtered)
+    assert_valid_company_items(filtered)
 
 
 def test_company_get_by(client: Albert, seeded_companies: list[Company]):
@@ -50,7 +52,7 @@ def test_company_crud(client: Albert, seed_prefix: str):
     company_name = f"{seed_prefix} company name"
     company = Company(name=company_name)
 
-    company = client.companies.create(company=company)
+    company = client.companies.get_or_create(company=company)
     assert isinstance(company, Company)
     assert company.id is not None
     assert company.name == company_name
@@ -62,6 +64,6 @@ def test_company_crud(client: Albert, seed_prefix: str):
     assert renamed_company.id == company.id
 
     client.companies.delete(id=company.id)
-    assert not client.companies.company_exists(name=company_name)
+    assert not client.companies.exists(name=company_name)
     with pytest.raises(AlbertException):
         client.companies.rename(old_name=company_name, new_name="nope")

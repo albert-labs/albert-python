@@ -1,9 +1,10 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
+from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.resources.links import Link, LinkCategory
-from albert.session import AlbertSession
-from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
 class LinksCollection(BaseCollection):
@@ -44,39 +45,50 @@ class LinksCollection(BaseCollection):
         )
         return [Link(**l) for l in response.json()]
 
-    def list(
+    def get_all(
         self,
         *,
-        limit: int = 100,
         type: str | None = None,
         category: LinkCategory | None = None,
         id: str | None = None,
+        start_key: str | None = None,
+        max_items: int | None = None,
     ) -> Iterator[Link]:
         """
-        Generates a list of link entities with optional filters.
+        Get all link entities with optional filters.
 
         Parameters
         ----------
-        limit : int, optional
-            The maximum number of link entities to return.
         type : str, optional
-            The type of the link entities to return. Allowed values are `parent`, `child`, and `all`. If type is "all" then it will fetch both parent/child record for mentioned id.
+            The type of the link entities to return. Allowed values are `parent`, `child`, and `all`.
+            If type is "all", both parent and child records for the given ID will be returned.
         category : LinkCategory, optional
             The category of the link entities to return. Allowed values are `mention`, `linkedTask`, and `synthesis`.
-        id : str
-            The ID of the link entity to return. (Use with `type` parameter)
+        id : str, optional
+            The ID of the entity to fetch links for.
+        start_key : str, optional
+            The pagination key to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
-        ------
+        -------
         Iterator[Link]
-            An iterator of Links.
+            An iterator of Link entities.
         """
-        params = {"limit": limit, "type": type, "category": category, "id": id}
+        params = {
+            "type": type,
+            "category": category,
+            "id": id,
+            "startKey": start_key,
+        }
+
         return AlbertPaginator(
             mode=PaginationMode.KEY,
             path=self.base_path,
-            params=params,
             session=self.session,
+            params=params,
+            max_items=max_items,
             deserialize=lambda items: [Link(**item) for item in items],
         )
 
