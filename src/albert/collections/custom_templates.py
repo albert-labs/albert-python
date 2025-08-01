@@ -8,6 +8,7 @@ from albert.utils.logging import logger
 from albert.utils.pagination import AlbertPaginator, PaginationMode
 
 
+
 class CustomTemplatesCollection(BaseCollection):
     """CustomTemplatesCollection is a collection class for managing CustomTemplate entities in the Albert platform."""
 
@@ -81,3 +82,24 @@ class CustomTemplatesCollection(BaseCollection):
             params=params,
             deserialize=deserialize,
         )
+
+    def create(self, *, custom_template: CustomTemplate) -> CustomTemplate:
+        """Creates a new custom template.
+
+        Parameters
+        ----------
+        custom_template : CustomTemplate
+            The custom template to create.
+
+        Returns
+        -------
+        CustomTemplate
+            The created CustomTemplate object.
+        """
+
+        response = self.session.post(
+            url=self.base_path,
+            json=[custom_template.model_dump(mode="json", by_alias=True, exclude_unset=True, exclude_none=True)],
+        )
+        return CustomTemplate(**response.json()[0])
+    

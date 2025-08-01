@@ -14,6 +14,7 @@ from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tasks import TaskSource
 from albert.resources.users import User
+from albert.resources.tags import Tag
 
 
 class DataTemplateInventory(EntityLink):
@@ -39,6 +40,7 @@ class TemplateCategory(str, Enum):
 class Priority(str, Enum):
     LOW = "Low"
     HIGH = "High"
+    MEDIUM = "Medium"
 
 
 class GeneralData(BaseTaggedResource):
@@ -51,6 +53,7 @@ class GeneralData(BaseTaggedResource):
     priority: Priority | None = Field(default=None)
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
+    notes: str | None = Field(default=None)
 
 
 class JobStatus(str, Enum):
@@ -109,6 +112,8 @@ class BatchData(BaseTaggedResource):
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     priority: Priority  # enum?!
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
+    notes: str | None = Field(default=None)
+    tags: list[Tag] | None = Field(default=None, alias="Tags")
 
 
 class PropertyData(BaseTaggedResource):
@@ -121,6 +126,8 @@ class PropertyData(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     due_date: str | None = Field(alias="dueDate", default=None)
+    tags: list[Tag] | None = Field(default=None, alias="Tags")
+    notes: str | None = Field(default=None)
 
 
 class SheetData(BaseTaggedResource):
@@ -178,7 +185,7 @@ class CustomTemplate(BaseTaggedResource):
     category : TemplateCategory
         The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
     metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
-        The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
+        The metadata of the template. Allowed Metadata fields can be found using Custom Fields.
     data : CustomTemplateData | None
         The data of the template.
     team : List[TeamACL] | None
@@ -188,7 +195,7 @@ class CustomTemplate(BaseTaggedResource):
     """
 
     name: str
-    id: str = Field(alias="albertId")
+    id: str | None = Field(alias="albertId", default=None)
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")

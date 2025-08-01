@@ -208,6 +208,30 @@ class ParameterGroupCollection(BaseCollection):
                     url=enum_url,
                     json=ep,
                 )
+        required_params: list[dict] = []
+        for existing_param in existing.parameters:
+            # find the matching updated param by its row_id
+            updated_param = next(
+                (parameter for parameter in parameter_group.parameters if parameter.sequence == existing_param.sequence),
+                None
+            )
+            if not updated_param:
+                continue
+
+            if existing_param.required != updated_param.required:
+                required_params.append({
+                    "operation":  "update",
+                    "attribute":  "required",
+                    "rowId":      existing_param.sequence,
+                    "oldValue":   existing_param.required,
+                    "newValue":   updated_param.required,
+                })
+
+        if required_params:
+            self.session.patch(
+                url=path,
+                json={"data": required_params},
+            )
         if len(general_patches.data) > 0:
             # patch the general patches
             self.session.patch(
@@ -216,3 +240,5 @@ class ParameterGroupCollection(BaseCollection):
             )
 
         return self.get_by_id(id=parameter_group.id)
+
+    

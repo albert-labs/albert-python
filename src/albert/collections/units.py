@@ -48,6 +48,7 @@ class UnitCollection(BaseCollection):
                 f"Unit with the name {hit.name} already exists. Returning the existing unit."
             )
             return hit
+        
         response = self.session.post(
             self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )

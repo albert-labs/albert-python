@@ -28,6 +28,8 @@ class BaseTaggedResource(BaseResource):
         tags = data.get("tags")
         if not tags:
             tags = data.get("Tags")
+        if not tags and "Data" in data:
+            tags = data["Data"].get("tags") or data["Data"].get("Tags")
         if tags:
             new_tags = []
             for t in tags:

@@ -57,7 +57,7 @@ class TaskCollection(BaseCollection):
         """Create a new task. Tasks can be of different types, such as PropertyTask, and are created using the provided task object.
 
         Parameters
-        ----------
+        ----------        
         task : BaseTask
             The task object to create.
 
