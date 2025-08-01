@@ -79,6 +79,7 @@ def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
 def test_get_by_number(client: Albert, seeded_cas: list[Cas]):
     """Test get_by_number() returns the correct CAS using exact match."""
     returned_cas = client.cas_numbers.get_by_number(number=seeded_cas[0].number, exact_match=True)
+
     assert returned_cas.id == seeded_cas[0].id
     assert returned_cas.number == seeded_cas[0].number
 

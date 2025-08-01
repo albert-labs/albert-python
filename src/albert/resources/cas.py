@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem
 
 
@@ -27,7 +28,7 @@ class Hazard(BaseAlbertModel):
     h_code_text: str | None = Field(None, alias="hCodeText", description="Hazard code text")
 
 
-class Cas(BaseAlbertModel):
+class Cas(BaseResource):
     """Represents a CAS entity."""
 
     number: str = Field(..., description="The CAS number.")
