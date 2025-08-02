@@ -155,14 +155,14 @@ def test_enum_validation_addition(client: Albert, seeded_parameter_groups: list[
     pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
     pg = client.parameter_groups.get_by_id(id=pg.id)
     param = pg.parameters[2]  # Parameter with enum validation
-
+    initial_enum_count = len(param.validation[0].value)
     # Add a new enum value
-    param.validation[0].value.append(EnumValidationValue(id="3", text="Option3"))
+    param.validation[0].value.append(EnumValidationValue(text="Option3"))
     updated_pg = client.parameter_groups.update(parameter_group=pg)
 
     assert updated_pg is not None
     updated_param = updated_pg.parameters[2]
-    assert len(updated_param.validation[0].value) == 3
+    assert len(updated_param.validation[0].value) == initial_enum_count + 1
     # make sure it was added to the enum
 
     assert "Option3" in [x.text for x in updated_param.validation[0].value]
