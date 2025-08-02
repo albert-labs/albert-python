@@ -49,9 +49,9 @@ def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
     assert isinstance(new_col, Column)
 
     for cell in new_col.cells:
-        if cell.type == "INV":
+        if cell.type == "INV" and cell.row_type == "INV":
             assert cell.value in ["33", "67"]
-        elif cell.type == "TOT":
+        elif cell.row_type == "TOT":
             assert cell.value == "100"
 
 
