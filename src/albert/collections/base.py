@@ -78,23 +78,16 @@ class BaseCollection:
                     to_remove = list(existing_id - updated_id)
                     if len(to_add + to_remove) == 0:  # if there are no changes, skip
                         continue
-                    if len(to_add) > 0 and len(to_remove) > 0:
-                        data.append(
-                            PatchDatum(
-                                attribute=attribute,
-                                operation=PatchOperation.UPDATE,
-                                old_value=existing_id,
-                                new_value=updated_id,
-                            )
-                        )
-                    elif len(to_add) > 0:
+
+                    # Handle additions and removals separately to avoid conflicts
+                    if len(to_add) > 0:
                         data.append(
                             PatchDatum(
                                 attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
                             )
                         )
 
-                    elif len(to_remove) > 0:
+                    if len(to_remove) > 0:
                         data.append(
                             PatchDatum(
                                 attribute=attribute,
