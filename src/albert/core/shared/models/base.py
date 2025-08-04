@@ -75,6 +75,14 @@ class BaseResource(BaseAlbertModel):
             "Ensure the linked object is registered and has a valid 'id'."
         )
 
+    def to_entity_link_with_name(self) -> EntityLinkWithName:
+        if id := getattr(self, "id", None):
+            return EntityLinkWithName(id=id, name=getattr(self, "name", None))
+        raise AlbertException(
+            "A non-null 'id' is required to create an entity link. "
+            "Ensure the linked object is registered and has a valid 'id'."
+        )
+
 
 class BaseSessionResource(BaseResource):
     _session: AlbertSession | None = PrivateAttr(default=None)
