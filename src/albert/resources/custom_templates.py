@@ -16,12 +16,9 @@ from albert.resources.projects import Project
 from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tasks import TaskSource
-<<<<<<< HEAD
-from albert.resources.users import User
 from albert.resources.tags import Tag
-=======
 from albert.resources.users import User, UserClass
->>>>>>> main
+
 
 
 class DataTemplateInventory(EntityLink):
@@ -199,7 +196,7 @@ class CustomTemplate(BaseTaggedResource):
     category : TemplateCategory
         The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
     metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
-        The metadata of the template. Allowed Metadata fields can be found using Custom Fields.
+        The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
     data : CustomTemplateData | None
         The data of the template.
     team : List[TeamACL] | None
@@ -209,7 +206,7 @@ class CustomTemplate(BaseTaggedResource):
     """
 
     name: str
-    id: str | None = Field(alias="albertId", default=None)
+    id: str = Field(alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
@@ -225,9 +222,6 @@ class CustomTemplate(BaseTaggedResource):
 
         if "Data" in data and "category" in data and "category" not in data["Data"]:
             data["Data"]["category"] = data["category"]
-<<<<<<< HEAD
-        return data
-=======
         return data
 
 
@@ -261,4 +255,4 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     data: CustomTemplateSearchItemData | None = None
     acl: list[CustomTemplateSearchItemACL]
     team: list[CustomTemplateSearchItemTeam]
->>>>>>> main
+

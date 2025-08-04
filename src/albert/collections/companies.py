@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 from __future__ import annotations
 import logging
-=======
->>>>>>> main
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection

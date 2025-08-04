@@ -42,16 +42,6 @@ class UnitCollection(BaseCollection):
         Unit
             The created Unit object.
         """
-<<<<<<< HEAD
-        hit = self.get_by_name(name=unit.name, exact_match=True)
-        if hit is not None:
-            logging.warning(
-                f"Unit with the name {hit.name} already exists. Returning the existing unit."
-            )
-            return hit
-        
-=======
->>>>>>> main
         response = self.session.post(
             self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )

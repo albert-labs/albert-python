@@ -61,13 +61,8 @@ class TaskCollection(BaseCollection):
         """Create a new task. Tasks can be of different types, such as PropertyTask, and are created using the provided task object.
 
         Parameters
-<<<<<<< HEAD
-        ----------        
-        task : BaseTask
-=======
         ----------
         task : PropertyTask | GeneralTask | BatchTask
->>>>>>> main
             The task object to create.
 
         Returns
