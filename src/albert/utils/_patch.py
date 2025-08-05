@@ -330,6 +330,9 @@ def generate_enum_patches(
     existing_enums: list[EnumValidationValue], updated_enums: list[EnumValidationValue]
 ) -> list[dict]:
     """Generate enum patches for a data column or parameter validation."""
+    existing_enums = existing_enums or []
+    updated_enums  = updated_enums  or []
+
     enum_patches = []
     existing_enum = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
     updated_enum = [x for x in updated_enums if isinstance(x, EnumValidationValue)]

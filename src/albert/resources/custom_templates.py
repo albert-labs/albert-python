@@ -45,7 +45,7 @@ class Priority(str, Enum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
-    MEDIUM = "Medium"
+
 
 
 class GeneralData(BaseTaggedResource):
