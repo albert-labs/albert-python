@@ -35,6 +35,16 @@ def test_crud_empty_column(seeded_sheet: Sheet):
     seeded_sheet.delete_column(column_id=new_col.column_id)
 
 
+def test_formulation_column_names_use_display_name(seeded_sheet: Sheet):
+    mapping = {f.id: f.name for f in seeded_sheet.formulations}
+    matched = False
+    for col in seeded_sheet.columns:
+        if col.inventory_id in mapping:
+            matched = True
+            assert col.name == mapping[col.inventory_id]
+    assert matched, "No formulation columns found"
+
+
 def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory, seeded_products):
     components_updated = [
         Component(inventory_item=seeded_inventory[0], amount=33),
@@ -53,6 +63,40 @@ def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
             assert cell.value in ["33", "67"]
         elif cell.row_type == "TOT":
             assert cell.value == "100"
+
+
+def test_add_formulation_clear_updates_existing(
+    seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
+):
+    name = f"{seed_prefix} - Clear existing"
+    initial = [
+        Component(inventory_item=seeded_inventory[0], amount=60),
+        Component(inventory_item=seeded_inventory[1], amount=40),
+    ]
+    updated = [
+        Component(inventory_item=seeded_inventory[0], amount=20),
+        Component(inventory_item=seeded_inventory[1], amount=80),
+    ]
+
+    col1 = seeded_sheet.add_formulation(formulation_name=name, components=initial)
+    col2 = seeded_sheet.add_formulation(formulation_name=name, components=updated, clear=True)
+    assert col1.column_id == col2.column_id
+    values = [c.value for c in col2.cells if c.type == "INV" and c.row_type == "INV"]
+    assert sorted(values) == ["20", "80"]
+
+
+def test_add_formulation_no_clear_adds_new_column(
+    seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
+):
+    name = f"{seed_prefix} - No clear"
+    components = [
+        Component(inventory_item=seeded_inventory[0], amount=50),
+        Component(inventory_item=seeded_inventory[1], amount=50),
+    ]
+
+    col1 = seeded_sheet.add_formulation(formulation_name=name, components=components)
+    col2 = seeded_sheet.add_formulation(formulation_name=name, components=components, clear=False)
+    assert col1.column_id != col2.column_id
 
 
 ########################## COLUMNS ##########################

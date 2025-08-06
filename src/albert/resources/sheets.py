@@ -260,7 +260,7 @@ class Design(BaseSessionResource):
             else:
                 inv_id = None
 
-            display_name = inv_id or v.get("name")
+            display_name = v.get("name") or inv_id
 
             cols.append(
                 Column(
@@ -449,7 +449,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     @property
     def columns(self) -> list["Column"]:
         """The columns of a given sheet"""
-        return self.app_design.columns
+        return self.product_design.columns
 
     @property
     def rows(self) -> list["Row"]:
@@ -515,15 +515,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return r
 
     def add_formulation(
-        self, *, formulation_name: str, components: list[Component], enforce_order: bool = False
-    ) -> "Column":
+        self,
+        *,
+        formulation_name: str,
+        components: list[Component],
+        enforce_order: bool = False,
+        clear: bool = True,
+    ) -> Column:
         existing_formulation_names = [x.name for x in self.columns]
-        if formulation_name not in existing_formulation_names:
-            col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
-        else:
+        if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
             col = self.get_column(column_name=formulation_name)
             self._clear_formulation_from_column(column=col)
+        else:
+            col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
         col_id = col.column_id
 
         all_cells = []
