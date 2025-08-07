@@ -1,5 +1,5 @@
 from __future__ import annotations
-import logging
+
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
@@ -280,7 +280,7 @@ class CompanyCollection(BaseCollection):
         url = f"{self.base_path}/merge"
         response = self.session.post(url, json=payload)
         if response.status_code == 206:
-            msg = f"Merge returned partial content (206). Check that all ACLs are valid."
+            msg = "Merge returned partial content (206). Check that all ACLs are valid."
             logger.error(msg)
             raise AlbertException(msg)
         response.raise_for_status()

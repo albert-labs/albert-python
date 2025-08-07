@@ -9,7 +9,6 @@ from albert.exceptions import AlbertHTTPError
 from albert.resources.custom_templates import CustomTemplate, CustomTemplateSearchItem
 
 
-
 class CustomTemplatesCollection(BaseCollection):
     """CustomTemplatesCollection is a collection class for managing CustomTemplate entities in the Albert platform."""
 

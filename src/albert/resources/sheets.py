@@ -302,10 +302,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
     """
 
-    id: str = Field(alias="albertId")
+    id: str | None = Field(default=None, alias="albertId")
     name: str
     formulations: list[SheetFormulationRef] = Field(default_factory=list, alias="Formulas")
-    hidden: bool
+    hidden: bool = Field(default=False)
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
