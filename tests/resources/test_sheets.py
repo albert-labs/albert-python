@@ -164,3 +164,5 @@ def test_get_cell_value():
     )
     assert cell.raw_value == "test"
     assert cell.color is None
+    assert cell.min_value is None
+    assert cell.max_value is None

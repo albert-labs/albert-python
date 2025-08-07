@@ -67,6 +67,10 @@ class Cell(BaseResource):
         The row ID of the cell.
     value : str | dict
         The value of the cell. If the cell is an inventory item, this will be a dict.
+    min_value : str | None
+        The minimum allowed value for inventory cells. Optional.
+    max_value : str | None
+        The maximum allowed value for inventory cells. Optional.
     row_label_name : str, optional
         The display name of the row.
     type : CellType
@@ -92,6 +96,8 @@ class Cell(BaseResource):
     row_id: str = Field(alias="rowId")
     row_label_name: str | None = Field(default=None, alias="lableName")
     value: str | dict = ""
+    min_value: str | None = Field(default=None, alias="minValue")
+    max_value: str | None = Field(default=None, alias="maxValue")
     type: CellType
     row_type: CellType | None = Field(default=None)
     name: str | None = Field(default=None)
@@ -190,9 +196,14 @@ class Design(BaseSessionResource):
                 c["rowId"] = this_row_id
                 c["design_id"] = self.id
                 c["row_type"] = row_type
-
                 c["lableName"] = row_label
-
+                # Preserve inventory bounds when constructing the Cell
+                min_value = raw_cell.get("minValue")
+                max_value = raw_cell.get("maxValue")
+                if min_value is not None:
+                    c["minValue"] = min_value
+                if max_value is not None:
+                    c["maxValue"] = max_value
                 raw_id = c.pop("id", None)
                 inv = (raw_id if raw_id.startswith("INV") else f"INV{raw_id}") if raw_id else None
                 c["inventory_id"] = inv
