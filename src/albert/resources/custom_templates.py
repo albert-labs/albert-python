@@ -15,6 +15,7 @@ from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedResource
+from albert.resources.tags import Tag
 from albert.resources.tasks import TaskSource
 from albert.resources.users import User, UserClass
 
@@ -55,6 +56,8 @@ class GeneralData(BaseTaggedResource):
     priority: Priority | None = Field(default=None)
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
+    notes: str | None = Field(default=None)
+    tags: list[Tag] | None = Field(default=None, alias="Tags")
 
 
 class JobStatus(str, Enum):
@@ -114,6 +117,8 @@ class BatchData(BaseTaggedResource):
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     priority: Priority  # enum?!
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
+    notes: str | None = Field(default=None)
+    tags: list[Tag] | None = Field(default=None, alias="Tags")
 
 
 class PropertyData(BaseTaggedResource):
@@ -126,6 +131,8 @@ class PropertyData(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     due_date: str | None = Field(alias="dueDate", default=None)
+    tags: list[Tag] | None = Field(default=None, alias="Tags")
+    notes: str | None = Field(default=None)
 
 
 class SheetData(BaseTaggedResource):
@@ -198,7 +205,7 @@ class CustomTemplate(BaseTaggedResource):
     """
 
     name: str
-    id: str = Field(alias="albertId")
+    id: str | None = Field(default=None, alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
