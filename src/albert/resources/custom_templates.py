@@ -46,7 +46,6 @@ class Priority(str, Enum):
     HIGH = "High"
 
 
-
 class GeneralData(BaseTaggedResource):
     category: Literal[TemplateCategory.GENERAL] = TemplateCategory.GENERAL
     name: str | None = Field(default=None)
@@ -255,4 +254,3 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     data: CustomTemplateSearchItemData | None = None
     acl: list[CustomTemplateSearchItemACL]
     team: list[CustomTemplateSearchItemTeam]
-

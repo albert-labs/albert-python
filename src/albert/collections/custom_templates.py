@@ -87,7 +87,6 @@ class CustomTemplatesCollection(BaseCollection):
             ],
         )
 
-
     def create(self, *, custom_template: CustomTemplate) -> CustomTemplate:
         """Creates a new custom template.
 
@@ -104,10 +103,13 @@ class CustomTemplatesCollection(BaseCollection):
 
         response = self.session.post(
             url=self.base_path,
-            json=[custom_template.model_dump(mode="json", by_alias=True, exclude_unset=True, exclude_none=True)],
+            json=[
+                custom_template.model_dump(
+                    mode="json", by_alias=True, exclude_unset=True, exclude_none=True
+                )
+            ],
         )
         return CustomTemplate(**response.json()[0])
-    
 
     def get_all(
         self,
@@ -141,4 +143,3 @@ class CustomTemplatesCollection(BaseCollection):
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating custom template {item.id}: {e}")
-
