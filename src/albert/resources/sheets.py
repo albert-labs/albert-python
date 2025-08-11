@@ -67,8 +67,13 @@ class Cell(BaseResource):
         The row ID of the cell.
     value : str | dict
         The value of the cell. If the cell is an inventory item, this will be a dict.
+    row_label_name : str, optional
+        The display name of the row.
     type : CellType
         The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+    row_type : CellType, optional
+        The type of the row containing this cell. Usually one of
+        INV (inventory row), TOT (total row), TAS (task row), TAG, PRC, PDC, BAT or BLK.
     name : str | None
         The name of the cell. Optional. Default is None.
     calculation : str
@@ -85,8 +90,10 @@ class Cell(BaseResource):
 
     column_id: str = Field(alias="colId")
     row_id: str = Field(alias="rowId")
+    row_label_name: str | None = Field(default=None, alias="lableName")
     value: str | dict = ""
     type: CellType
+    row_type: CellType | None = Field(default=None)
     name: str | None = Field(default=None)
     calculation: str = ""
     design_id: str
@@ -162,37 +169,52 @@ class Design(BaseSessionResource):
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
     def _grid_to_cell_df(self, *, grid_response):
-        all_rows = []
-        all_index = []
-        if not grid_response["Items"] or len(grid_response["Items"]) == 0:
+        items = grid_response.get("Items") or []
+        if not items:
             return pd.DataFrame()
-        for item in grid_response["Items"]:
-            row = {}
+
+        records: list[dict[str, Cell]] = []
+        index: list[str] = []
+
+        for item in items:
             this_row_id = item["rowId"]
-            row_type = item["type"]
             this_index = item["rowUniqueId"]
-            all_index.append(this_index)
-            for c in item["Values"]:
+            row_label = item.get("lableName") or item.get("name")
+            row_type = item["type"]
+
+            index.append(this_index)
+            row_cells: dict[str, Cell] = {}
+
+            for raw_cell in item["Values"]:
+                c = raw_cell.copy()
                 c["rowId"] = this_row_id
                 c["design_id"] = self.id
-                c["type"] = row_type
-                c["inventory_id"] = c.get("id", None)
-                this_cell = Cell(**c)
-                col_id = c["colId"]
-                inv_id = c.get("id", None)
-                if inv_id is not None and not inv_id.startswith("INV"):
-                    inv_id = "INV" + inv_id
+                c["row_type"] = row_type
 
-                name = c.get("name", inv_id)
-                if inv_id is None:
-                    inv_id = name
-                row[f"{col_id}#{inv_id}"] = this_cell
-            all_rows.append(row)
-        for i, state in enumerate(grid_response["Formulas"]):
-            if state.get("state", None) is None or state["state"].get("pinned", None) is None:
-                self._leftmost_pinned_column = grid_response["Formulas"][i - 1]["colId"]
+                c["lableName"] = row_label
+
+                raw_id = c.pop("id", None)
+                inv = (raw_id if raw_id.startswith("INV") else f"INV{raw_id}") if raw_id else None
+                c["inventory_id"] = inv
+
+                cell = Cell(**c)
+
+                col_id = c["colId"]
+                label = inv or c.get("name")
+                row_cells[f"{col_id}#{label}"] = cell
+
+            records.append(row_cells)
+
+        # Determine the leftmost pinned column
+        for i, fmt in enumerate(grid_response.get("Formulas", [])):
+            state = fmt.get("state", {})
+            if state.get("pinned") is None:
+                # use the previous formula's colId
+                prev = grid_response["Formulas"][i - 1]
+                self._leftmost_pinned_column = prev["colId"]
                 break
-        return pd.DataFrame.from_records(all_rows, index=all_index)
+
+        return pd.DataFrame.from_records(records, index=index)
 
     @property
     def sheet(self):
@@ -204,48 +226,95 @@ class Design(BaseSessionResource):
             self._grid = self._get_grid()
         return self._grid
 
-    def _get_columns(self, *, grid_response) -> list["Column"]:
-        columns = []
-        # rsp_json = response.json()
-        if not grid_response["Items"] or len(grid_response["Items"]) == 0:
+    def _get_columns(self, *, grid_response: dict) -> list["Column"]:
+        """
+        Normalizes inventory IDs (always prefixed "INV") and—for the
+        "Inventory ID" header—falls back to the row's top-level `id`
+        when Values[].id is absent.
+
+        Parameters
+        ----------
+        grid_response : dict
+            The JSON-decoded payload from GET /worksheet/.../grid.
+
+        Returns
+        -------
+        list[Column]
+        """
+        items = grid_response.get("Items") or []
+        if not items:
             return []
-        first_row = grid_response["Items"][0]
-        for v in first_row["Values"]:
-            inv_id = v.get("id", None)
-            if inv_id is not None and not inv_id.startswith("INV"):
-                inv_id = "INV" + inv_id
-            if inv_id is None:
-                inv_id = v.get("name", None)
-            columns.append(
+
+        first = items[0]
+        # for the Inventory-ID column fallback
+        row_item_id = first.get("id")
+
+        cols: list[Column] = []
+        for v in first["Values"]:
+            raw_id = v.get("id")
+            if raw_id is None and v.get("name") == "Inventory ID":
+                raw_id = row_item_id
+
+            if raw_id:
+                inv_id = raw_id if str(raw_id).startswith("INV") else f"INV{raw_id}"
+            else:
+                inv_id = None
+
+            display_name = v.get("name") or inv_id
+
+            cols.append(
                 Column(
                     colId=v["colId"],
-                    name=inv_id,
+                    name=display_name,
                     type=v["type"],
                     session=self.session,
                     sheet=self.sheet,
                     inventory_id=inv_id,
                 )
             )
-        return columns
 
-    def _get_rows(self, *, grid_response) -> list["Column"]:
-        rows = []
-        rows_dicts = grid_response["Items"]
-        if not grid_response["Items"] or len(grid_response["Items"]) == 0:
+        return cols
+
+    def _get_rows(self, *, grid_response: dict) -> list["Row"]:
+        """
+        Parse the /grid response into a list of Row models.
+
+        Parameters
+        ----------
+        grid_response : dict
+            The JSON-decoded payload from GET /worksheet/.../grid.
+
+        Returns
+        -------
+        list[Row]
+            One Row per item in `Items`
+        """
+        items = grid_response.get("Items") or []
+        if not items:
             return []
-        for v in rows_dicts:
+
+        rows: list[Row] = []
+        for v in items:
+            raw_id = v.get("id")
+            if raw_id and not str(raw_id).startswith("INV"):
+                raw_id = f"INV{raw_id}"
+            inv_id = raw_id
+
+            row_label = v.get("lableName") or v.get("name")
+
             rows.append(
                 Row(
-                    name=v.get("name", None),
                     rowId=v["rowId"],
                     type=v["type"],
                     session=self.session,
                     design=self,
                     sheet=self.sheet,
-                    manufacturer=v.get("manufacturer", None),
-                    inventory_id=v.get("id", None),
+                    name=row_label,
+                    manufacturer=v.get("manufacturer"),
+                    inventory_id=inv_id,
                 )
             )
+
         return rows
 
     def _get_grid(self):
@@ -310,7 +379,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
     designs: list[Design] = Field(alias="Designs")
-    project_id: str
+    project_id: str = Field(alias="projectId")
     _grid: pd.DataFrame = PrivateAttr(default=None)
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
@@ -361,6 +430,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if value is None:
             # I am sure I could do this better.
             self._grid = value
+            self._leftmost_pinned_column = None
             for design in self.designs:
                 design._grid = None  # Assuming Design has a grid property
                 design._rows = None
@@ -379,7 +449,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     @property
     def columns(self) -> list["Column"]:
         """The columns of a given sheet"""
-        return self.app_design.columns
+        return self.product_design.columns
 
     @property
     def rows(self) -> list["Row"]:
@@ -445,15 +515,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return r
 
     def add_formulation(
-        self, *, formulation_name: str, components: list[Component], enforce_order: bool = False
-    ) -> "Column":
+        self,
+        *,
+        formulation_name: str,
+        components: list[Component],
+        enforce_order: bool = False,
+        clear: bool = True,
+    ) -> Column:
         existing_formulation_names = [x.name for x in self.columns]
-        if formulation_name not in existing_formulation_names:
-            col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
-        else:
+        if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
             col = self.get_column(column_name=formulation_name)
             self._clear_formulation_from_column(column=col)
+        else:
+            col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
         col_id = col.column_id
 
         all_cells = []
@@ -854,23 +929,78 @@ class Sheet(BaseSessionResource):  # noqa:F811
         else:
             return self.grid[matches[0]]
 
-    def get_column(self, *, column_id: None | str = None, column_name: str | None = None):
-        if column_id is None and column_name is None:
-            raise AlbertException("Either a column name or id must be provided")
-        else:
-            matching_series = self._find_column(column_id=column_id, column_name=column_name)
-            first_item = matching_series.iloc[0]
-            inv_id = first_item.inventory_id
-            if inv_id is not None and not inv_id.startswith("INV"):
-                inv_id = "INV" + inv_id
-            return Column(
-                name=first_item.name,
-                colId=first_item.column_id,
-                type=first_item.type,
-                sheet=self,
-                session=self.session,
-                inventory_id=first_item.inventory_id,
+    def get_column(
+        self,
+        *,
+        column_id: str | None = None,
+        inventory_id: str | None = None,
+        column_name: str | None = None,
+    ) -> Column:
+        """
+        Retrieve a Column by its colId, underlying inventory ID, or display header name.
+
+        Parameters
+        ----------
+        column_id : str | None
+            The sheet column ID to match (e.g. "COL5").
+        inventory_id : str | None
+            The internal inventory identifier to match (e.g. "INVP015-001").
+        column_name : str | None
+            The human-readable header name of the column (e.g. "p1").
+
+        Returns
+        -------
+        Column
+            The matching Column object.
+
+        Raises
+        ------
+        AlbertException
+            If no matching column is found or if multiple matches exist.
+        """
+
+        if not (column_id or inventory_id or column_name):
+            raise AlbertException(
+                "Must provide at least one of column_id, inventory_id or column_name"
             )
+
+        # Gather candidates matching your filters
+        candidates: list[tuple[str, Cell]] = []
+        for col_label in self.grid.columns:
+            colId_part, inv_part = col_label.split("#", 1)
+
+            if column_id and colId_part != column_id:
+                continue
+            if inventory_id and inv_part != inventory_id:
+                continue
+
+            first_cell = self.grid[col_label].iloc[0]
+            if column_name and first_cell.name != column_name:
+                continue
+
+            candidates.append((col_label, first_cell))
+
+        if not candidates:
+            raise AlbertException(
+                f"No column found matching id={column_id}, "
+                f"inventory_id={inventory_id}, column_name={column_name}"
+            )
+        if len(candidates) > 1:
+            raise AlbertException("Ambiguous column match; please be more specific.")
+
+        _, first_item = candidates[0]
+        inv_id = first_item.inventory_id
+        if inv_id is not None and not inv_id.startswith("INV"):
+            inv_id = "INV" + inv_id
+
+        return Column(
+            name=first_item.name,
+            colId=first_item.column_id,
+            type=first_item.type,
+            sheet=self,
+            session=self.session,
+            inventory_id=first_item.inventory_id,
+        )
 
 
 class Column(BaseSessionResource):  # noqa:F811
@@ -900,7 +1030,7 @@ class Column(BaseSessionResource):  # noqa:F811
     _cells: list[Cell] | None = PrivateAttr(default=None)
 
     @property
-    def df_name(self):
+    def df_name(self) -> str:
         if self.inventory_id is not None:
             return f"{self.column_id}#{self.inventory_id}"
         return f"{self.column_id}#{self.name}"

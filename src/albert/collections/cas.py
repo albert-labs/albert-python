@@ -67,6 +67,7 @@ class CasCollection(BaseCollection):
             }
 
             response = self.session.get(url=self.base_path, params=params)
+
             items = response.json().get("Items", [])
 
             yield from [Cas(**item) for item in items]
