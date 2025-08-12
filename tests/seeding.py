@@ -1173,17 +1173,20 @@ def generate_workflow_seeds(
     consumeable_inv = [x for x in seeded_inventory if x.category == InventoryCategory.CONSUMABLES][
         0
     ]
+    pg0 = seeded_parameter_groups[0]
+    pg2 = seeded_parameter_groups[2]
+
     return [
         Workflow(
             name=f"{seed_prefix} - Workflow 1",
             parameter_group_setpoints=[
                 ParameterGroupSetpoints(
-                    parameter_group=seeded_parameter_groups[0],
+                    parameter_group=pg0,
                     parameter_setpoints=[
                         ParameterSetpoint(
-                            parameter_id=seeded_parameter_groups[0].parameters[0].id,
+                            parameter_id=pg0.parameters[0].id,
                             value="25.0",
-                            unit=seeded_parameter_groups[0].parameters[0].unit,
+                            unit=pg0.parameters[0].unit,
                         ),
                     ],
                 )
@@ -1193,12 +1196,12 @@ def generate_workflow_seeds(
             name=f"{seed_prefix} - Workflow 2 Equipment",
             parameter_group_setpoints=[
                 ParameterGroupSetpoints(
-                    parameter_group=seeded_parameter_groups[2],
+                    parameter_group=pg2,
                     parameter_setpoints=[
                         ParameterSetpoint(
-                            parameter_id=seeded_parameter_groups[2].parameters[0].id,
+                            parameter_id=pg2.parameters[0].id,
                             value="25.0",
-                            unit=seeded_parameter_groups[2].parameters[0].unit,
+                            unit=pg2.parameters[0].unit,
                         ),
                         ParameterSetpoint(
                             parameter_id=static_consumeable_parameter.id,
@@ -1207,16 +1210,10 @@ def generate_workflow_seeds(
                             category=ParameterCategory.SPECIAL,
                         ),
                         ParameterSetpoint(
-                            parameter=_get_param_from_id(
-                                seeded_parameters, seeded_parameter_groups[2].parameters[2].id
-                            ),  # Make sure setting from the parameter works
+                            parameter=_get_param_from_id(seeded_parameters, pg2.parameters[2].id),
                             intervals=[
-                                Interval(
-                                    value="1.1", unit=seeded_parameter_groups[2].parameters[2].unit
-                                ),
-                                Interval(
-                                    value="2.2", unit=seeded_parameter_groups[2].parameters[2].unit
-                                ),
+                                Interval(value="1.1", unit=pg2.parameters[2].unit),
+                                Interval(value="2.2", unit=pg2.parameters[2].unit),
                             ],
                         ),
                     ],
@@ -1227,25 +1224,19 @@ def generate_workflow_seeds(
             name=f"{seed_prefix} - Workflow 3",
             parameter_group_setpoints=[
                 ParameterGroupSetpoints(
-                    parameter_group=seeded_parameter_groups[2],
+                    parameter_group=pg2,
                     parameter_setpoints=[
                         ParameterSetpoint(
-                            parameter=_get_param_from_id(
-                                seeded_parameters, seeded_parameter_groups[2].parameters[0].id
-                            ),  # make sure setting from a parameter works
+                            parameter=_get_param_from_id(seeded_parameters, pg2.parameters[0].id),
                             value="12.2",
-                            unit=seeded_parameter_groups[2].parameters[0].unit,
-                            categoty=ParameterCategory.NORMAL,
+                            unit=pg2.parameters[0].unit,
+                            category=ParameterCategory.NORMAL,
                         ),
                         ParameterSetpoint(
-                            parameter_id=seeded_parameter_groups[2].parameters[1].id,
+                            parameter_id=pg2.parameters[1].id,
                             intervals=[
-                                Interval(
-                                    value="1.1", unit=seeded_parameter_groups[2].parameters[1].unit
-                                ),
-                                Interval(
-                                    value="2.2", unit=seeded_parameter_groups[2].parameters[1].unit
-                                ),
+                                Interval(value="1.1", unit=pg2.parameters[0].unit),
+                                Interval(value="2.2", unit=pg2.parameters[0].unit),
                             ],
                         ),
                     ],
