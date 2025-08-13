@@ -143,6 +143,7 @@ class SheetData(BaseTaggedResource):
 
 
 class NotebookData(BaseTaggedResource):
+    id: str
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
