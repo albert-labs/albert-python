@@ -165,6 +165,8 @@ ParameterId = Annotated[str, AfterValidator(ensure_parameter_id)]
 
 
 def ensure_paramter_group_id(id: str) -> str:
+    if id and id.upper().startswith("PG"):
+        id = f"PRG{id[2:]}"  # Replace PG with PRG
     return _ensure_albert_id(id, "ParameterGroupId")
 
 

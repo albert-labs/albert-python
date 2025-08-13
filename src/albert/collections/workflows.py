@@ -1,10 +1,13 @@
 from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
+from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
-from albert.resources.workflows import Workflow
+from albert.resources.parameter_groups import DataType, ParameterValue
+from albert.resources.workflows import ParameterSetpoint, Workflow
 
 
 class WorkflowCollection(BaseCollection):
@@ -41,11 +44,80 @@ class WorkflowCollection(BaseCollection):
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
             workflows = [workflows]
+
+        # Hydrate any parameter groups provided only by ID with their parameters
+        for wf in workflows:
+            self._hydrate_parameter_groups(workflow=wf)
+
         response = self.session.post(
             url=f"{self.base_path}/bulk",
-            json=[x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in workflows],
+            json=[
+                x.model_dump(
+                    mode="json",
+                    by_alias=True,
+                    exclude_none=True,
+                    exclude={"created", "updated"},
+                )
+                for x in workflows
+            ],
         )
         return [Workflow(**x) for x in response.json()]
+
+    def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
+        """Populate parameter setpoints when only an ID is provided."""
+        dt_collection = DataTemplateCollection(session=self.session)
+        pg_collection = ParameterGroupCollection(session=self.session)
+        for pg_setpoint in workflow.parameter_group_setpoints:
+            if pg_setpoint.parameter_setpoints:
+                continue
+            pg_id = pg_setpoint.id
+            if pg_id is None:
+                continue
+
+            if pg_id.upper().startswith("DAT"):
+                group = dt_collection.get_by_id(id=pg_id)
+                pg_setpoint.parameter_group_name = group.name
+                params = group.parameter_values or []
+            else:
+                group = pg_collection.get_by_id(id=pg_id)
+                pg_setpoint.parameter_group_name = group.name
+                params = group.parameters or []
+
+            pg_setpoint.parameter_setpoints = [
+                self._parameter_value_to_setpoint(pv) for pv in params
+            ]
+
+    @staticmethod
+    def _parameter_value_to_setpoint(parameter_value: ParameterValue) -> ParameterSetpoint:
+        """Convert a ParameterValue to a ParameterSetpoint."""
+
+        value = parameter_value.value
+        if (
+            parameter_value.validation
+            and len(parameter_value.validation) > 0
+            and parameter_value.validation[0].datatype == DataType.ENUM
+            and parameter_value.validation[0].value
+        ):
+            enum_options = parameter_value.validation[0].value
+            match = next(
+                (
+                    option
+                    for option in enum_options
+                    if option.id == parameter_value.value or option.text == parameter_value.value
+                ),
+                None,
+            )
+            if match is not None:
+                value = {"id": match.id, "value": match.text}
+
+        return ParameterSetpoint(
+            parameter_id=parameter_value.id,
+            category=parameter_value.category,
+            short_name=parameter_value.short_name,
+            value=value,
+            unit=parameter_value.unit,
+            sequence=parameter_value.sequence,
+        )
 
     def get_by_id(self, *, id: str) -> Workflow:
         """Retrieve a Workflow by its ID.
