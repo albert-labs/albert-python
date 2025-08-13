@@ -1,10 +1,11 @@
 from enum import Enum
-from typing import ForwardRef, Union
+from typing import Any, ForwardRef, Union
 
 import pandas as pd
-from pydantic import Field, PrivateAttr, model_validator
+from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import InventoryId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryItem
@@ -175,7 +176,6 @@ class Design(BaseSessionResource):
 
         records: list[dict[str, Cell]] = []
         index: list[str] = []
-
         for item in items:
             this_row_id = item["rowId"]
             this_index = item["rowUniqueId"]
@@ -245,12 +245,21 @@ class Design(BaseSessionResource):
         if not items:
             return []
 
+        formulas = grid_response.get("Formulas") or []
+        formula_by_col: dict[str, dict[str, Any]] = {
+            f["colId"]: f for f in formulas if isinstance(f, dict) and f.get("colId")
+        }
+
         first = items[0]
         # for the Inventory-ID column fallback
         row_item_id = first.get("id")
 
         cols: list[Column] = []
         for v in first["Values"]:
+            col_id = v.get("colId")
+            if not col_id:
+                continue
+
             raw_id = v.get("id")
             if raw_id is None and v.get("name") == "Inventory ID":
                 raw_id = row_item_id
@@ -260,8 +269,20 @@ class Design(BaseSessionResource):
             else:
                 inv_id = None
 
-            display_name = v.get("name") or inv_id
+            formula = formula_by_col.get(col_id) or {}
+            state = formula.get("state") or {}
 
+            display_name = v.get("name") or formula.get("name") or inv_id
+
+            locked = state.get("locked")
+            if locked is not None:
+                locked = bool(locked)
+
+            pinned = state.get("pinned") or None
+            hidden = formula.get("hidden")
+            if hidden is not None:
+                hidden = bool(hidden)
+            column_width = state.get("columnWidth") or None
             cols.append(
                 Column(
                     colId=v["colId"],
@@ -270,6 +291,10 @@ class Design(BaseSessionResource):
                     session=self.session,
                     sheet=self.sheet,
                     inventory_id=inv_id,
+                    hidden=hidden,
+                    locked=locked,
+                    pinned=pinned,
+                    column_width=column_width,
                 )
             )
 
@@ -924,11 +949,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         else:
             return self.grid[matches[0]]
 
+    @validate_call
     def get_column(
         self,
         *,
         column_id: str | None = None,
-        inventory_id: str | None = None,
+        inventory_id: InventoryId | None = None,
         column_name: str | None = None,
     ) -> Column:
         """
@@ -958,22 +984,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
             raise AlbertException(
                 "Must provide at least one of column_id, inventory_id or column_name"
             )
-
         # Gather candidates matching your filters
-        candidates: list[tuple[str, Cell]] = []
-        for col_label in self.grid.columns:
-            colId_part, inv_part = col_label.split("#", 1)
-
-            if column_id and colId_part != column_id:
+        candidates: list[Column] = []
+        for col in self.columns:
+            if column_id and col.column_id != column_id:
                 continue
-            if inventory_id and inv_part != inventory_id:
+            if inventory_id and col.inventory_id != inventory_id:
                 continue
-
-            first_cell = self.grid[col_label].iloc[0]
-            if column_name and first_cell.name != column_name:
+            if column_name and col.name != column_name:
                 continue
-
-            candidates.append((col_label, first_cell))
+            candidates.append(col)
 
         if not candidates:
             raise AlbertException(
@@ -983,19 +1003,64 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if len(candidates) > 1:
             raise AlbertException("Ambiguous column match; please be more specific.")
 
-        _, first_item = candidates[0]
-        inv_id = first_item.inventory_id
-        if inv_id is not None and not inv_id.startswith("INV"):
-            inv_id = "INV" + inv_id
+        return candidates[0]
 
-        return Column(
-            name=first_item.name,
-            colId=first_item.column_id,
-            type=first_item.type,
-            sheet=self,
-            session=self.session,
-            inventory_id=first_item.inventory_id,
+    def lock_column(
+        self,
+        *,
+        column_id: str | None = None,
+        inventory_id: InventoryId | None = None,
+        column_name: str | None = None,
+        locked: bool = True,
+    ) -> Column:
+        """Lock or unlock a column in the sheet.
+
+        The column can be specified by its sheet column ID (e.g. ``"COL5"``),
+        by the underlying inventory identifier of a formulation/product, or by
+        the displayed header name. By default the column will be locked; pass
+        ``locked=False`` to unlock it.
+
+        Parameters
+        ----------
+        column_id : str | None
+            The sheet column ID to match.
+        inventory_id : str | None
+            The inventory identifier of the formulation or product to match.
+        column_name : str | None
+            The displayed header name of the column.
+        locked : bool
+            Whether to lock (``True``) or unlock (``False``) the column. Defaults to
+            ``True``.
+
+        Returns
+        -------
+        Column
+            The column that was updated.
+        """
+
+        column = self.get_column(
+            column_id=column_id, inventory_id=inventory_id, column_name=column_name
         )
+
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "locked",
+                    "colIds": [column.column_id],
+                    "newValue": locked,
+                }
+            ]
+        }
+
+        self.session.patch(
+            url=f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json=payload,
+        )
+
+        self.grid = None
+
+        return self.get_column(column_id=column.column_id)
 
 
 class Column(BaseSessionResource):  # noqa:F811
@@ -1023,6 +1088,15 @@ class Column(BaseSessionResource):  # noqa:F811
     sheet: Sheet
     inventory_id: str | None = Field(default=None, exclude=True)
     _cells: list[Cell] | None = PrivateAttr(default=None)
+    locked: bool = Field(default=False)
+    hidden: bool | None = Field(default=None)
+    pinned: str | None = Field(default=None)
+    column_width: str | None = Field(default=None)
+
+    @field_validator("locked", mode="before")
+    @classmethod
+    def _none_to_false(cls, v):
+        return False if v is None else v
 
     @property
     def df_name(self) -> str:

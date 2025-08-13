@@ -120,6 +120,20 @@ def test_property_reads(seeded_sheet: Sheet):
     assert isinstance(col.df_name, str)
 
 
+def test_lock_column(seeded_sheet: Sheet):
+    for col in seeded_sheet.columns:
+        if col.type == CellType.INVENTORY:
+            curr_state = bool(col.locked)
+            toggle_col = seeded_sheet.lock_column(locked=not curr_state, column_id=col.column_id)
+
+            assert toggle_col.locked is not curr_state
+            assert toggle_col.column_id == col.column_id
+
+            # Restore to original state
+            seeded_sheet.lock_column(locked=curr_state, column_id=col.column_id)
+            break
+
+
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]
