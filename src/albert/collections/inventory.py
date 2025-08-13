@@ -710,6 +710,15 @@ class InventoryCollection(BaseCollection):
                                 "min": c.min,
                             }
                         )
+                        if c.target:
+                            payload["data"].append(
+                                {
+                                    "operation": "add",
+                                    "attribute": "inventoryValue",
+                                    "newValue": c.target,
+                                    "entityId": c.id
+                                }
+                            )
                 else:
                     # Get the IDs from both sets
                     old_set = set() if old_value is None else {obj.id for obj in old_value}
