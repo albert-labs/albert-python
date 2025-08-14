@@ -52,6 +52,7 @@ class PricingCollection(BaseCollection):
         response = self.session.post(self.base_path, json=payload)
         return Pricing(**response.json())
 
+    @validate_call
     def get_by_id(self, *, id: str) -> Pricing:
         """Retrieves a Pricing entity by its ID.
 
@@ -69,10 +70,11 @@ class PricingCollection(BaseCollection):
         response = self.session.get(url)
         return Pricing(**response.json())
 
+    @validate_call
     def get_by_inventory_id(
         self,
         *,
-        inventory_id: str,
+        inventory_id: InventoryId,
         group_by: PricingBy | None = None,
         filter_by: PricingBy | None = None,
         filter_id: str | None = None,
@@ -128,6 +130,7 @@ class PricingCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/ids", params=params)
         return [InventoryPricings(**x) for x in response.json()["Items"]]
 
+    @validate_call
     def delete(self, *, id: str) -> None:
         """Deletes a Pricing entity by its ID.
 

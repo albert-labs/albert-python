@@ -1,10 +1,13 @@
 import logging
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ParameterId
 from albert.resources.parameters import Parameter
 
 
@@ -25,7 +28,8 @@ class ParameterCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ParameterCollection._api_version}/parameters"
 
-    def get_by_id(self, *, id: str) -> Parameter:
+    @validate_call
+    def get_by_id(self, *, id: ParameterId) -> Parameter:
         """Retrieve a parameter by its ID.
 
         Parameters
@@ -82,7 +86,8 @@ class ParameterCollection(BaseCollection):
             return match
         return self.create(parameter=parameter)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: ParameterId) -> None:
         """Delete a parameter by its ID.
 
         Parameters
@@ -96,7 +101,7 @@ class ParameterCollection(BaseCollection):
     def get_all(
         self,
         *,
-        ids: list[str] | None = None,
+        ids: list[ParameterId] | None = None,
         names: str | list[str] = None,
         exact_match: bool = False,
         order_by: OrderBy = OrderBy.DESCENDING,

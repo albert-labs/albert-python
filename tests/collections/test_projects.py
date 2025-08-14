@@ -40,12 +40,11 @@ def test_project_search_filtered(client: Albert):
 
 
 def test_hydrate_project(client: Albert):
-    projects = list(client.projects.search(created_by="Sdk", max_items=5))
+    projects = list(client.projects.search(created_by=["Sdk"], max_items=5))
     assert projects, "Expected at least one project in search results"
 
     for project in projects:
         hydrated = project.hydrate()
-
         # identity checks
         assert hydrated.id == project.id
         assert hydrated.description == project.description
