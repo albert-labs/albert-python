@@ -374,7 +374,7 @@ def seeded_worksheet(client: Albert, seeded_projects: list[Project]) -> Workshee
         wksht = collection.get_by_project_id(project_id=seeded_projects[0].id)
     except NotFoundError:
         wksht = collection.setup_worksheet(project_id=seeded_projects[0].id)
-    if wksht.sheets is None or wksht.sheets == []:
+    if not wksht.sheets:
         wksht = collection.add_sheet(project_id=seeded_projects[0].id, sheet_name="test")
     else:
         for s in wksht.sheets:
