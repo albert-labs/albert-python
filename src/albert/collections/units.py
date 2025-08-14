@@ -1,10 +1,13 @@
 import logging
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import UnitId
 from albert.resources.units import Unit, UnitCategory
 
 
@@ -70,7 +73,8 @@ class UnitCollection(BaseCollection):
             return match
         return self.create(unit=unit)
 
-    def get_by_id(self, *, id: str) -> Unit:
+    @validate_call
+    def get_by_id(self, *, id: UnitId) -> Unit:
         """
         Retrieves a unit by its ID.
 
@@ -89,7 +93,8 @@ class UnitCollection(BaseCollection):
         this_unit = Unit(**response.json())
         return this_unit
 
-    def get_by_ids(self, *, ids: list[str]) -> list[Unit]:
+    @validate_call
+    def get_by_ids(self, *, ids: list[UnitId]) -> list[Unit]:
         """
         Retrieves a set of units by their IDs
 
@@ -133,7 +138,8 @@ class UnitCollection(BaseCollection):
         unit = self.get_by_id(id=unit_id)
         return unit
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: UnitId) -> None:
         """
         Deletes a unit by its ID.
 

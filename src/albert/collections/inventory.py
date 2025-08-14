@@ -56,6 +56,7 @@ class InventoryCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
 
+    @validate_call
     def merge(
         self,
         *,

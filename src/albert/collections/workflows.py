@@ -1,11 +1,14 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import WorkflowId
 from albert.resources.parameter_groups import DataType, ParameterValue
 from albert.resources.workflows import ParameterSetpoint, Workflow
 
@@ -119,7 +122,8 @@ class WorkflowCollection(BaseCollection):
             sequence=parameter_value.sequence,
         )
 
-    def get_by_id(self, *, id: str) -> Workflow:
+    @validate_call
+    def get_by_id(self, *, id: WorkflowId) -> Workflow:
         """Retrieve a Workflow by its ID.
 
         Parameters
@@ -135,7 +139,8 @@ class WorkflowCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{id}")
         return Workflow(**response.json())
 
-    def get_by_ids(self, *, ids: list[str]) -> list[Workflow]:
+    @validate_call
+    def get_by_ids(self, *, ids: list[WorkflowId]) -> list[Workflow]:
         """Returns a list of Workflow entities by their IDs.
 
         Parameters

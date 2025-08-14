@@ -1,7 +1,8 @@
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
+from albert.core.shared.identifiers import NotebookId, ProjectId, TaskId
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.notebooks import (
     Notebook,
@@ -32,7 +33,8 @@ class NotebookCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{NotebookCollection._api_version}/notebooks"
 
-    def get_by_id(self, *, id: str) -> Notebook:
+    @validate_call
+    def get_by_id(self, *, id: NotebookId) -> Notebook:
         """Retrieve a Notebook by its ID.
 
         Parameters
@@ -48,13 +50,14 @@ class NotebookCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{id}")
         return Notebook(**response.json())
 
-    def list_by_parent_id(self, *, parent_id: str) -> list[Notebook]:
+    @validate_call
+    def list_by_parent_id(self, *, parent_id: ProjectId | TaskId) -> list[Notebook]:
         """Retrieve a Notebook by parent ID.
 
         Parameters
         ----------
         parent_id : str
-            The ID of the parent ID, e.g. task.
+            The ID of the parent ID, e.g. task or project.
 
         Returns
         -------
@@ -97,7 +100,8 @@ class NotebookCollection(BaseCollection):
         )
         return Notebook(**response.json())
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: NotebookId) -> None:
         """
         Deletes a notebook by its ID.
 
@@ -153,7 +157,8 @@ class NotebookCollection(BaseCollection):
 
         return self.get_by_id(id=notebook.id)
 
-    def get_block_by_id(self, *, notebook_id: str, block_id: str) -> NotebookBlock:
+    @validate_call
+    def get_block_by_id(self, *, notebook_id: NotebookId, block_id: str) -> NotebookBlock:
         """Retrieve a Notebook Block by its ID.
 
         Parameters

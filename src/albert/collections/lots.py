@@ -1,9 +1,12 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import InventoryId, LotId
 from albert.resources.lots import Lot
 
 
@@ -46,7 +49,8 @@ class LotCollection(BaseCollection):
         # return [Lot(**lot) for lot in response.json().get("CreatedLots", [])]
         return all_lots
 
-    def get_by_id(self, *, id: str) -> Lot:
+    @validate_call
+    def get_by_id(self, *, id: LotId) -> Lot:
         """Get a lot by its ID.
 
         Parameters
@@ -63,7 +67,8 @@ class LotCollection(BaseCollection):
         response = self.session.get(url)
         return Lot(**response.json())
 
-    def get_by_ids(self, *, ids: list[str]) -> list[Lot]:
+    @validate_call
+    def get_by_ids(self, *, ids: list[LotId]) -> list[Lot]:
         """Get a list of lots by their IDs.
 
         Parameters
@@ -80,7 +85,8 @@ class LotCollection(BaseCollection):
         response = self.session.get(url, params={"id": ids})
         return [Lot(**lot) for lot in response.json()["Items"]]
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: LotId) -> None:
         """Delete a lot by its ID.
 
         Parameters
@@ -91,11 +97,12 @@ class LotCollection(BaseCollection):
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
 
+    @validate_call
     def get_all(
         self,
         *,
-        parent_id: str | None = None,
-        inventory_id: str | None = None,
+        parent_id: InventoryId | None = None,
+        inventory_id: InventoryId | None = None,
         barcode_id: str | None = None,
         parent_id_category: str | None = None,
         inventory_on_hand: str | None = None,

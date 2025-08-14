@@ -1,11 +1,14 @@
 import logging
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import TagId
 from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
 
@@ -121,7 +124,8 @@ class TagCollection(BaseCollection):
             return found
         return self.create(tag=tag)
 
-    def get_by_id(self, *, id: str) -> Tag:
+    @validate_call
+    def get_by_id(self, *, id: TagId) -> Tag:
         """
         Get a tag by its ID.
 
@@ -139,7 +143,8 @@ class TagCollection(BaseCollection):
         response = self.session.get(url)
         return Tag(**response.json())
 
-    def get_by_ids(self, *, ids: list[str]) -> list[Tag]:
+    @validate_call
+    def get_by_ids(self, *, ids: list[TagId]) -> list[Tag]:
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
         return [
@@ -167,7 +172,8 @@ class TagCollection(BaseCollection):
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: TagId) -> None:
         """
         Deletes a tag by its ID.
 
