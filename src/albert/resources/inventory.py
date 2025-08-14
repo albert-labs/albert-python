@@ -63,6 +63,8 @@ class CasAmount(BaseAlbertModel):
         The minimum amount of the CAS in the formulation.
     max : float
         The maximum amount of the CAS in the formulation.
+    target: float | None
+        The inventory value or target of the CAS in the formulation.
     id : str | None
         The Albert ID of the CAS Number Resource this amount represents. Provide either a Cas or an ID.
     cas : Cas | None
