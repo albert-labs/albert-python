@@ -73,7 +73,6 @@ def client() -> Albert:
         base_url_env="ALBERT_BASE_URL",
     )
     return Albert(
-        base_url="https://app.albertinvent.com",
         auth_manager=credentials,
         retries=3,
     )
