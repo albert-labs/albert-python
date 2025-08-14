@@ -277,7 +277,7 @@ def test_update_inventory_item_advanced_attributes(
 
     updated_inventory_item = seeded_inventory[0].model_copy(
         update={
-            "cas": [CasAmount(id=seeded_cas[1].id, min=0.5, max=0.75)],
+            "cas": [CasAmount(id=seeded_cas[1].id, min=0.5, max=0.75, target=0.6)],
             "company": seeded_companies[1],
             "tags": [seeded_tags[0], seeded_tags[1]],
             "alias": "Updated Alias Again",
@@ -288,6 +288,7 @@ def test_update_inventory_item_advanced_attributes(
     assert returned_item.cas[0].id == seeded_cas[1].id
     assert returned_item.cas[0].min == 0.5
     assert returned_item.cas[0].max == 0.75
+    assert returned_item.cas[0].target == 0.6
     assert returned_item.company.id == seeded_inventory[1].company.id
     assert len(returned_item.tags) == 2
     assert seeded_tags[1].id in [x.id for x in returned_item.tags]
@@ -306,7 +307,7 @@ def test_update_inventory_item_advanced_attributes(
     # Update existing values
 
     fetched_item.cas = [
-        CasAmount(id=seeded_cas[1].id, min=0.1, max=0.5),
+        CasAmount(id=seeded_cas[1].id, min=0.1, max=0.5, target=0.3),
         CasAmount(id=seeded_cas[0].id, min=0.4, max=0.9),
     ]
     fetched_item.company = seeded_companies[0]
@@ -318,6 +319,7 @@ def test_update_inventory_item_advanced_attributes(
         if c.id == seeded_cas[1].id:
             assert c.min == 0.1
             assert c.max == 0.5
+            assert c.target == 0.3
         elif c.id == seeded_cas[0].id:
             assert c.min == 0.4
             assert c.max == 0.9
