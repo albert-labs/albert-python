@@ -63,7 +63,7 @@ class Interval(BaseAlbertModel):
     def validate_interval(self) -> "Interval":
         if not self.value:
             raise ValueError("Interval: 'value' is required.")
-        if not self.unit or not getattr(self.unit, "id", None):
+        if self.unit and not getattr(self.unit, "id", None):
             raise ValueError("Interval: 'Unit.id' is required.")
         return self
 
