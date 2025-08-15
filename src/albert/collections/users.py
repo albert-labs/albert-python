@@ -1,12 +1,14 @@
 from collections.abc import Iterator
 
 import jwt
+from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
+from albert.core.shared.identifiers import UserId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.users import User, UserFilterType, UserSearchItem
 
@@ -41,7 +43,8 @@ class UserCollection(BaseCollection):
         claims = jwt.decode(self.session._access_token, options={"verify_signature": False})
         return self.get_by_id(id=claims["id"])
 
-    def get_by_id(self, *, id: str) -> User:
+    @validate_call
+    def get_by_id(self, *, id: UserId) -> User:
         """
         Retrieves a User by its ID.
 
@@ -59,6 +62,7 @@ class UserCollection(BaseCollection):
         response = self.session.get(url)
         return User(**response.json())
 
+    @validate_call
     def search(
         self,
         *,
@@ -69,7 +73,7 @@ class UserCollection(BaseCollection):
         teams: list[str] | None = None,
         locations: list[str] | None = None,
         status: list[Status] | None = None,
-        user_id: list[str] | None = None,
+        user_id: list[UserId] | None = None,
         subscription: list[str] | None = None,
         search_fields: list[str] | None = None,
         facet_text: str | None = None,
@@ -158,12 +162,13 @@ class UserCollection(BaseCollection):
             ],
         )
 
+    @validate_call
     def get_all(
         self,
         *,
         status: Status | None = None,
         type: UserFilterType | None = None,
-        id: list[str] | None = None,
+        id: list[UserId] | None = None,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[User]:

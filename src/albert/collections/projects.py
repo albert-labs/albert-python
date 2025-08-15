@@ -90,7 +90,8 @@ class ProjectCollection(BaseCollection):
 
         return self.get_by_id(id=project.id)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: ProjectId) -> None:
         """
         Delete a project by its ID.
 
@@ -106,6 +107,7 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
+    @validate_call
     def search(
         self,
         *,
@@ -149,7 +151,7 @@ class ProjectCollection(BaseCollection):
         technology : list of str, optional
             Filter by technology tags.
         created_by : list of str, optional
-            Filter by user ID(s) who created the project.
+            Filter by user names who created the project.
         location : list of str, optional
             Filter by location(s).
         from_created_at : str, optional
@@ -217,6 +219,7 @@ class ProjectCollection(BaseCollection):
             ],
         )
 
+    @validate_call
     def get_all(
         self,
         *,
