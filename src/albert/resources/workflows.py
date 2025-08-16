@@ -171,7 +171,7 @@ class ParameterSetpoint(BaseAlbertModel):
 
         # Normal Parameters
         # Exactly one of value / intervals
-        if (self.value is None) == (self.intervals is None):
+        if self.value is not None and self.intervals is not None:
             raise ValueError(f"Parameter {pid}: provide exactly one of 'value' or 'Intervals'.")
 
         # If value is mapping-shaped for Normal, it must include id (e.g., enum {id,...})
