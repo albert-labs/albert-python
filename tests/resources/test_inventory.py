@@ -11,17 +11,19 @@ from albert.resources.inventory import (
 
 
 def test_cas_amount_attributes():
-    amt = CasAmount(min=5, max=95)
     cas = Cas(number="test", smiles="CCC", id="dogs")
+    amt = CasAmount(min=5, max=95, cas=cas)
 
-    amt.cas = cas
-    assert amt.cas == cas
-    assert amt.id == cas.id
-    assert amt.number == cas.number
-    assert amt.cas_smiles == cas.smiles
+    assert amt.cas is cas
+    assert amt.id == "dogs"
+    assert amt.number == "test"
+    assert amt.cas_smiles == "CCC"
 
-    data = amt.model_dump()
-    assert set(data.keys()) == {"id", "min", "max", "target", "cas_category"}
+    data = amt.model_dump(exclude_none=True)
+    assert set(data.keys()) == {"min", "max", "id"}
+
+    full = amt.model_dump(exclude_none=False)
+    assert set(full.keys()) == {"min", "max", "target", "id", "cas_category", "created", "updated"}
 
 
 def test_inventory_minimum(seeded_locations):

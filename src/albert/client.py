@@ -46,6 +46,7 @@ from albert.collections.worksheets import WorksheetCollection
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 from albert.core.session import AlbertSession
+from albert.utils._auth import default_albert_base_url
 
 
 class Albert:
@@ -58,8 +59,9 @@ class Albert:
     Parameters
     ----------
     base_url : str, optional
-        The base URL of the Albert API. Defaults to the "ALBERT_BASE_URL" environment variable
-        or "https://app.albertinvent.com" if not set.
+        The base URL of the Albert API. If not provided, the URL from ``auth_manager`` is used
+        when available, otherwise the ``ALBERT_BASE_URL`` environment variable or
+        "https://app.albertinvent.com".
     token : str, optional
         A static token for authentication. If provided, it overrides any `auth_manager`.
         Defaults to the "ALBERT_TOKEN" environment variable.
@@ -101,15 +103,24 @@ class Albert:
         retries: int | None = None,
         session: AlbertSession | None = None,
     ):
+        if auth_manager and base_url and base_url != auth_manager.base_url:
+            raise ValueError("`base_url` must match the URL used by the auth manager.")
+
+        resolved_base_url = (
+            base_url
+            or (auth_manager.base_url if auth_manager else None)
+            or default_albert_base_url()
+        )
+
         self.session = session or AlbertSession(
-            base_url=base_url or os.getenv("ALBERT_BASE_URL") or "https://app.albertinvent.com",
+            base_url=resolved_base_url,
             token=token or os.getenv("ALBERT_TOKEN"),
             auth_manager=auth_manager,
             retries=retries,
         )
 
     @classmethod
-    def from_token(cls, *, base_url: str, token: str) -> Albert:
+    def from_token(cls, *, base_url: str | None, token: str) -> Albert:
         """Create an Albert client using a static token for authentication."""
         return cls(base_url=base_url, token=token)
 
@@ -117,33 +128,35 @@ class Albert:
     def from_sso(
         cls,
         *,
-        base_url: str,
+        base_url: str | None,
         email: str,
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
     ) -> Albert:
         """Create an Albert client using interactive OAuth2 SSO login."""
-        oauth = AlbertSSOClient(base_url=base_url, email=email)
+        resolved_base_url = base_url or default_albert_base_url()
+        oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
         oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
-        return cls(base_url=base_url, auth_manager=oauth, retries=retries)
+        return cls(auth_manager=oauth, retries=retries)
 
     @classmethod
     def from_client_credentials(
         cls,
         *,
-        base_url: str,
+        base_url: str | None,
         client_id: str,
         client_secret: str,
         retries: int | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
+        resolved_base_url = base_url or default_albert_base_url()
         creds = AlbertClientCredentials(
             id=client_id,
             secret=SecretStr(client_secret),
-            base_url=base_url,
+            base_url=resolved_base_url,
         )
-        return cls(base_url=base_url, auth_manager=creds, retries=retries)
+        return cls(auth_manager=creds, retries=retries)
 
     @property
     def projects(self) -> ProjectCollection:

@@ -57,13 +57,11 @@ class BaseResource(BaseAlbertModel):
     created: AuditFields | None = Field(
         default=None,
         alias="Created",
-        exclude=True,
         frozen=True,
     )
     updated: AuditFields | None = Field(
         default=None,
         alias="Updated",
-        exclude=True,
         frozen=True,
     )
 

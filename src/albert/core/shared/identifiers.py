@@ -9,7 +9,10 @@ _ALBERT_PREFIXES = {
     "BTDatasetId": "DST",
     "BTModelId": "MDL",
     "BTModelSessionId": "MDS",
+    "CasId": "CAS",
+    "CompanyId": "COM",
     "CustomFieldId": "CTF",
+    "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
     "EntityTypeId": "ETT",
@@ -166,10 +169,26 @@ ParameterId = Annotated[str, AfterValidator(ensure_parameter_id)]
 
 
 def ensure_paramter_group_id(id: str) -> str:
+    if id and id.upper().startswith("PG"):
+        id = f"PRG{id[2:]}"  # Replace PG with PRG
     return _ensure_albert_id(id, "ParameterGroupId")
 
 
 ParameterGroupId = Annotated[str, AfterValidator(ensure_paramter_group_id)]
+
+
+def ensure_cas_id(id: str) -> str:
+    return _ensure_albert_id(id, "CasId")
+
+
+CasId = Annotated[str, AfterValidator(ensure_cas_id)]
+
+
+def ensure_company_id(id: str) -> str:
+    return _ensure_albert_id(id, "CompanyId")
+
+
+CompanyId = Annotated[str, AfterValidator(ensure_company_id)]
 
 
 def ensure_custom_field_id(id: str) -> str:
@@ -177,6 +196,13 @@ def ensure_custom_field_id(id: str) -> str:
 
 
 CustomFieldId = Annotated[str, AfterValidator(ensure_custom_field_id)]
+
+
+def ensure_custom_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "CustomTemplateId")
+
+
+CustomTemplateId = Annotated[str, AfterValidator(ensure_custom_template_id)]
 
 
 def ensure_entity_type_id(id: str) -> str:
@@ -255,6 +281,15 @@ LinkId = Annotated[str, AfterValidator(ensure_link_id)]
 
 
 def ensure_lot_id(id: str) -> str:
+    if id and "-" in id:
+        id_upper = id.upper()
+        parts = id_upper.split("-")
+        if id_upper.startswith("ALB0-") and len(parts) >= 3:
+            id = f"B{parts[-1]}"
+        elif parts[0].startswith("B"):
+            id = parts[0]
+        else:
+            id = parts[-1]
     return _ensure_albert_id(id, "LotId")
 
 

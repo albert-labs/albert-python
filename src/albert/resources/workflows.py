@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
 from albert.core.base import BaseAlbertModel
@@ -54,7 +57,15 @@ class Interval(BaseAlbertModel):
 
     value: str | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
-    row_id: RowId | None = Field(default=None, alias="rowId")
+    row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
+
+    @model_validator(mode="after")
+    def validate_interval(self) -> "Interval":
+        if not self.value:
+            raise ValueError("Interval: 'value' is required.")
+        if self.unit and not getattr(self.unit, "id", None):
+            raise ValueError("Interval: 'Unit.id' is required.")
+        return self
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -111,41 +122,62 @@ class ParameterSetpoint(BaseAlbertModel):
     """
 
     parameter: Parameter | None = Field(exclude=True, default=None)
-    value: str | EntityLink | None = Field(default=None)
+    value: str | dict[str, Any] | EntityLink | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     parameter_id: ParameterId | None = Field(alias="id", default=None)
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")
     category: ParameterCategory | None = Field(default=None)
     short_name: str | None = Field(default=None, alias="shortName")
     name: str | None = Field(default=None, exclude=True)
-    row_id: RowId | None = Field(default=None, alias="rowId")
-
-    def model_post_init(self, __context) -> None:
-        """
-        Note:   We use post init here rather than doing the assignment
-                in the validator because `name` is a pydantic field
-                and setting it will trigger the model validation again
-                causing an infinite recursion error
-        """
-        if self.parameter is not None and not self.name:
-            self.name = self.parameter.name
+    row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    sequence: str | None = Field(default=None, alias="prgPrmRowId")
 
     @model_validator(mode="after")
-    def check_parameter_setpoint_validity(self):
+    def validate_shape(self) -> "ParameterSetpoint":
+        def has_id(obj: Any) -> bool:
+            if isinstance(obj, Mapping):
+                return bool(obj.get("id"))
+            return getattr(obj, "id", None) not in (None, "")
+
         if self.parameter:
             if self.parameter_id is not None and self.parameter_id != self.parameter.id:
                 raise ValueError("Provided parameter_id does not match the parameter's id.")
-            if self.parameter_id is None:
-                self.parameter_id = self.parameter.id
-        elif self.parameter is None and self.parameter_id is None:
+
+            # Note: We use  __setattr__ here rather than doing the assignment
+            # because `name` and `parameter_id` are pydantic field
+            # and setting it will trigger the model validation again
+            # causing an infinite recursion error
+
+            object.__setattr__(self, "parameter_id", self.parameter.id)
+            if not self.name:
+                object.__setattr__(self, "name", self.parameter.name)
+
+        if self.parameter_id is None:
             raise ValueError("Either parameter or parameter_id must be provided.")
+
+        pid = self.parameter_id
+
+        # Special Parameters
+        if self.category == ParameterCategory.SPECIAL:
+            if self.intervals is not None:
+                raise ValueError(f"Parameter {pid}: Special parameters cannot have 'intervals'.")
+            if self.value is None:
+                return self  # presence-only allowed
+            if not has_id(self.value):
+                raise ValueError(
+                    f"Parameter {pid}: Special parameters require an object value with an 'id'."
+                )
+            return self
+
+        # Normal Parameters
+        # Exactly one of value / intervals
         if self.value is not None and self.intervals is not None:
-            raise ValueError("Cannot provide both value and intervals.")
-        if isinstance(self.value, dict) and self.short_name is None:
-            raise ValueError("Please provide a short_name.")
-        if isinstance(self.value, dict) and self.category is None:
-            # Help the user out by setting the category to special if it's not set
-            self.category = ParameterCategory.SPECIAL
+            raise ValueError(f"Parameter {pid}: provide exactly one of 'value' or 'Intervals'.")
+
+        # If value is mapping-shaped for Normal, it must include id (e.g., enum {id,...})
+        if isinstance(self.value, Mapping) and not has_id(self.value):
+            raise ValueError(f"Parameter {pid}: object-shaped 'value' must include an 'id'.")
+
         return self
 
 
@@ -166,20 +198,37 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     """
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
-    parameter_group_id: ParameterGroupId | DataTemplateId | None = Field(alias="id", default=None)
-    parameter_group_name: str | None = Field(alias="name", default=None, frozen=True, exclude=True)
+    id: ParameterGroupId | DataTemplateId | None = Field(default=None, alias="id")
+    parameter_group_name: str = Field(default="Pre-linked Parameters", alias="name", exclude=True)
     parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
 
+    # READ ONLY
+    row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    sequence: int | None = Field(default=None, alias="prgSequence", frozen=True, exclude=True)
+
     @model_validator(mode="after")
-    def validate_pg_setpoint(self):
-        if self.parameter_group is not None:
-            if self.parameter_group_id is not None:
-                if self.parameter_group.id != self.parameter_group_id:
+    def validate_identifiers(self):
+        if self.parameter_group is not None and getattr(self.parameter_group, "id", None) is None:
+            raise ValueError("Provided parameter_group must include a non-null `id` attribute.")
+
+        if (
+            self.parameter_group is not None
+            and self.id is not None
+            and self.id != self.parameter_group.id
+        ):
+            raise ValueError(f"id mismatch: expected {self.parameter_group.id!r}, got {self.id!r}")
+
+        if self.parameter_group is not None and self.id is None:
+            object.__setattr__(self, "id", self.parameter_group.id)
+
+        if self.id is None:
+            # For workflows created without a PRG/DT id, intervals are not allowed.
+            for sp in self.parameter_setpoints:
+                if sp.intervals is not None:
                     raise ValueError(
-                        "Provided parameter_group_id does not match the parameter_group's id."
+                        f"Parameter {sp.parameter_id}: Intervals are not allowed when the Parameter Group has no 'id'."
                     )
-            else:
-                self.parameter_group_id = self.parameter_group.id
+
         return self
 
 
@@ -209,6 +258,7 @@ class Workflow(BaseResource):
         validation_alias=AliasChoices("albertId", "existingAlbertId"),
         exclude=True,
     )
+    block_mapping: str | None = Field(default=None, alias="blockMapping")
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)

@@ -13,6 +13,8 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataTemplateId,
+    ParameterGroupId,
+    ProjectId,
     TaskId,
     WorkflowId,
 )
@@ -240,18 +242,18 @@ class TaskCollection(BaseCollection):
         *,
         text: str | None = None,
         tags: list[str] | None = None,
-        task_id: list[str] | None = None,
-        linked_task: list[str] | None = None,
+        task_id: list[TaskId] | None = None,
+        linked_task: list[TaskId] | None = None,
         category: TaskCategory | str | list[str] | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[str] | None = None,
+        data_template: list[DataTemplateId] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[str] | None = None,
+        parameter_group: list[ParameterGroupId] | None = None,
         created_by: list[str] | None = None,
-        project_id: str | None = None,
+        project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -280,7 +282,7 @@ class TaskCollection(BaseCollection):
         data_template : list[str], optional
             Data template IDs associated with tasks.
         assigned_to : list[str], optional
-            User IDs assigned to the tasks.
+            User names assigned to the tasks.
         location : list[str], optional
             Locations where tasks are carried out.
         priority : list[str], optional
@@ -290,7 +292,7 @@ class TaskCollection(BaseCollection):
         parameter_group : list[str], optional
             Parameter Group IDs associated with tasks.
         created_by : list[str], optional
-            User IDs who created the tasks.
+            User names who created the tasks.
         project_id : str, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
@@ -338,23 +340,24 @@ class TaskCollection(BaseCollection):
             ],
         )
 
+    @validate_call
     def get_all(
         self,
         *,
         text: str | None = None,
         tags: list[str] | None = None,
-        task_id: list[str] | None = None,
-        linked_task: list[str] | None = None,
+        task_id: list[TaskId] | None = None,
+        linked_task: list[TaskId] | None = None,
         category: TaskCategory | str | list[str] | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[str] | None = None,
+        data_template: list[DataTemplateId] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[str] | None = None,
+        parameter_group: list[ParameterGroupId] | None = None,
         created_by: list[str] | None = None,
-        project_id: str | None = None,
+        project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -383,7 +386,7 @@ class TaskCollection(BaseCollection):
         data_template : list[str], optional
             Data template IDs associated with tasks.
         assigned_to : list[str], optional
-            User IDs assigned to the tasks.
+            User names assigned to the tasks.
         location : list[str], optional
             Locations where tasks are carried out.
         priority : list[str], optional
@@ -393,7 +396,7 @@ class TaskCollection(BaseCollection):
         parameter_group : list[str], optional
             Parameter Group IDs associated with tasks.
         created_by : list[str], optional
-            User IDs who created the tasks.
+            User names who created the tasks.
         project_id : str, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional

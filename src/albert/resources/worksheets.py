@@ -19,7 +19,7 @@ class Worksheet(BaseSessionResource):
         The Albert ID of the project.
     """
 
-    sheets: list[Sheet] = Field(alias="Sheets")
+    sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")
     project_name: str | None = Field(default=None, alias="projectName")
     sheets_enabled: bool = Field(default=True, alias="sheetEnabled")
     project_id: str = Field(alias="projectId")

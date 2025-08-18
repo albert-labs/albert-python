@@ -117,6 +117,7 @@ class TaskState(str, Enum):
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
     CLOSED = "Closed"
+    CANCELLED = "Cancelled"
 
 
 class TaskInventoryInformation(BaseAlbertModel):

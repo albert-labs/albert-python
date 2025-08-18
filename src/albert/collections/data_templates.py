@@ -1,14 +1,14 @@
 from collections.abc import Iterator
 from itertools import islice
 
-from pydantic import Field
+from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import DataTemplateId
+from albert.core.shared.identifiers import DataTemplateId, UserId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
     GeneralPatchPayload,
@@ -175,6 +175,7 @@ class DataTemplateCollection(BaseCollection):
                     )
                     return [EnumValidationValue(**x) for x in enum_response.json()]
 
+    @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Get a data template by its ID.
 
@@ -327,11 +328,12 @@ class DataTemplateCollection(BaseCollection):
         )
         return self.get_by_id(id=data_template_id)
 
+    @validate_call
     def search(
         self,
         *,
         name: str | None = None,
-        user_id: str | None = None,
+        user_id: UserId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -533,11 +535,12 @@ class DataTemplateCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
+    @validate_call
     def get_all(
         self,
         *,
         name: str | None = None,
-        user_id: str | None = None,
+        user_id: UserId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,

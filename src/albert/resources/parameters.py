@@ -35,3 +35,4 @@ class Parameter(BaseResource):
     # Read-only fields
     category: ParameterCategory | None = Field(default=None, exclude=True, frozen=True)
     rank: int | None = Field(default=None, exclude=True, frozen=True)
+    required: bool | None = Field(default=None, exclude=True)

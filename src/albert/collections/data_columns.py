@@ -1,9 +1,12 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import DataColumnId
 from albert.resources.data_columns import DataColumn
 
 
@@ -18,7 +21,8 @@ class DataColumnCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{DataColumnCollection._api_version}/datacolumns"
 
-    def get_by_name(self, *, name) -> DataColumn | None:
+    @validate_call
+    def get_by_name(self, *, name: str) -> DataColumn | None:
         """
         Get a data column by its name.
 
@@ -37,7 +41,8 @@ class DataColumnCollection(BaseCollection):
                 return dc
         return None
 
-    def get_by_id(self, *, id) -> DataColumn:
+    @validate_call
+    def get_by_id(self, *, id: DataColumnId) -> DataColumn:
         """
         Get a data column by its ID.
 
@@ -55,11 +60,12 @@ class DataColumnCollection(BaseCollection):
         dc = DataColumn(**response.json())
         return dc
 
+    @validate_call
     def get_all(
         self,
         *,
         order_by: OrderBy = OrderBy.DESCENDING,
-        ids: str | list[str] | None = None,
+        ids: DataColumnId | list[DataColumnId] | None = None,
         name: str | list[str] | None = None,
         exact_match: bool | None = None,
         default: bool | None = None,
@@ -132,7 +138,8 @@ class DataColumnCollection(BaseCollection):
 
         return DataColumn(**response.json()[0])
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: DataColumnId) -> None:
         """
         Delete a data column entity.
 
