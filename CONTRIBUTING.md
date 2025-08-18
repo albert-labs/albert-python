@@ -6,30 +6,29 @@ Thanks for your interest in contributing to the Albert Python SDK! We aim to mak
 
 ## 🚀 Quickstart
 
-1. **Fork** the repository on GitHub.
-2. **Clone** your fork locally:
+1. **Clone** the repository:
 
     ```bash
     git clone https://github.com/your-username/albert-python.git
     cd albert-python
     ```
 
-3. **Run** the setup script (installs all dependencies and hooks):
+2. **Run** the setup script (installs all dependencies and hooks):
 
     ```bash
     ./setup.sh
     ```
 
-4. **Create** a new branch for your work:
+3. **Create** a new branch for your work:
 
     ```bash
     git checkout -b my-awesome-feature
     ```
 
-5. **Make your changes**, then commit. Pre-commit hooks and linting will run automatically.
-6. **Push** your branch and open a Pull Request against `main`.
+4. **Make your changes**, then commit. Pre-commit hooks and linting will run automatically.
+5. **Push** your branch and open a Pull Request against `main`.
 
-Your contribution could ship in days or weeks—welcome aboard! 🚀
+Your contribution could ship in days or weeks -- welcome aboard! 🚀
 
 ## Dynamic Versioning
 
