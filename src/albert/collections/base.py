@@ -182,6 +182,13 @@ class BaseCollection:
                             new_value=new_value,
                         )
                     )
+                if new_value is None and old_value is not None:
+                    # Delete the attribute
+                    data.append(
+                        PatchDatum(
+                            attribute=alias, operation=PatchOperation.DELETE, old_value=old_value
+                        )
+                    )
                 elif old_value is not None and new_value != old_value:
                     # Update existing attribute
                     old_value = str(old_value) if stringify_values else old_value
