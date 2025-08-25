@@ -4,6 +4,8 @@ from albert.resources.custom_templates import (
     CustomTemplateSearchItem,
     CustomTemplateSearchItemData,
     _CustomTemplateDataUnion,
+    GeneralData,
+    TemplateCategory,
 )
 
 
@@ -58,3 +60,34 @@ def test_hydrate_custom_template(client: Albert):
         # identity checks
         assert hydrated.id == custom_template.id
         assert hydrated.name == custom_template.name
+# Put mock data in and test create general task
+# add a delete function write after
+#run test locally if just making minor change
+#uv run pytest -x
+
+def test_create_custom_template_from_seed(
+    caplog,
+    client: Albert,
+    seed_prefix: str,
+    seeded_custom_templates: list[CustomTemplate],
+):
+    """Test creating a new custom template."""
+    seed = seeded_custom_templates[0]
+
+    new_template = CustomTemplate(
+        name=seed_prefix,
+        category=seed.category,
+        data=(
+            seed.data.model_copy(update={"name": seed_prefix}, deep=True)
+            if getattr(seed, "data", None) is not None
+            else None
+        ),
+    )
+
+    created = client.custom_templates.create(custom_template=new_template)
+
+    assert isinstance(created, CustomTemplate)
+    assert created.name == new_template.name
+    assert created.category == new_template.category
+    if new_template.data is not None and hasattr(new_template.data, "name"):
+        assert getattr(created.data, "name", None) == new_template.data.name

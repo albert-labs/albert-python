@@ -143,3 +143,20 @@ class CustomTemplatesCollection(BaseCollection):
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating custom template {item.id}: {e}")
+
+    def delete(self, *, id: str) -> None:
+        """
+        Delete a Custom Template by ID.
+
+        Parameters
+        ----------
+        id : str
+            The Albert ID of the custom template to delete.
+
+        Raises
+        ------
+        AlbertHTTPError
+            If the API responds with a non-2xx status (e.g., 404 if not found).
+        """
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)

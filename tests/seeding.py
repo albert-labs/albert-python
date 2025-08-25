@@ -1,3 +1,4 @@
+from typing import Iterator
 from uuid import uuid4
 
 from albert.core.shared.enums import SecurityClass
@@ -13,6 +14,7 @@ from albert.resources.custom_fields import (
     FieldType,
     ServiceType,
 )
+from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.inventory import (
@@ -1557,3 +1559,13 @@ def generate_report_seeds(
             project_id=seeded_projects[0].id if seeded_projects else None,
         ),
     ]
+
+def generate_custom_template_seeds(prefix: str) -> Iterator[CustomTemplate]:
+    for i in range(2):
+        yield CustomTemplate(
+            name=f"{prefix}-general-{i}",
+            category=TemplateCategory.GENERAL,
+            data=GeneralData(
+                name=f"{prefix}-general-{i}"
+            ),
+        )
