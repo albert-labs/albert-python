@@ -4,8 +4,6 @@ from albert.resources.custom_templates import (
     CustomTemplateSearchItem,
     CustomTemplateSearchItemData,
     _CustomTemplateDataUnion,
-    GeneralData,
-    TemplateCategory,
 )
 
 
@@ -60,12 +58,6 @@ def test_hydrate_custom_template(client: Albert):
         # identity checks
         assert hydrated.id == custom_template.id
         assert hydrated.name == custom_template.name
-
-
-# Put mock data in and test create general task
-# add a delete function write after
-# run test locally if just making minor change
-# uv run pytest -x
 
 
 def test_create_custom_template_from_seed(

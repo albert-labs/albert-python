@@ -1,4 +1,3 @@
-from typing import Iterator
 from uuid import uuid4
 
 from albert.core.shared.enums import SecurityClass
