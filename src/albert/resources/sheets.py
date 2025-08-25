@@ -409,10 +409,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
     """
 
-    id: str = Field(alias="albertId")
+    id: str | None = Field(default=None, alias="albertId")
     name: str
     formulations: list[SheetFormulationRef] = Field(default_factory=list, alias="Formulas")
-    hidden: bool
+    hidden: bool = Field(default=False)
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
@@ -602,6 +602,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return self.get_column(column_id=col_id)
 
     def _get_row_id_for_component(self, *, inventory_item, existing_cells, enforce_order):
+        # Checks if that inventory row already exists
+        sheet_inv_id = inventory_item.id
+        for r in self.product_design.rows:
+            if r.inventory_id == sheet_inv_id:
+                return r.row_id
         self.grid = None
 
         # within a sheet, the "INV" prefix is dropped

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterator
 
 from pydantic import validate_call
@@ -249,3 +251,46 @@ class CompanyCollection(BaseCollection):
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         updated_company = self.get_by_id(id=company.id)
         return updated_company
+
+    def merge(self, *, parent_id: str, child_ids: str | list[str]) -> Company:
+        """
+        Merge one or more child companies into a single parent company.
+
+        Parameters
+        ----------
+        parent_id : str
+            The ID of the company that will remain as the parent.
+        child_ids : Union[str, List[str]]
+            A single company ID or a list of company IDs to merge into the parent.
+
+        Returns
+        -------
+        Company
+            The updated parent Company object.
+        """
+        # allow passing a single ID as a string
+        if isinstance(child_ids, str):
+            child_ids = [child_ids]
+
+        if not child_ids:
+            msg = "At least one child company ID must be provided for merge."
+            logger.error(msg)
+            raise AlbertException(msg)
+
+        payload = {
+            "parentId": parent_id,
+            "ChildCompanies": [{"id": child_id} for child_id in child_ids],
+        }
+
+        url = f"{self.base_path}/merge"
+        response = self.session.post(url, json=payload)
+        if response.status_code == 206:
+            msg = "Merge returned partial content (206). Check that all ACLs are valid."
+            logger.error(msg)
+            raise AlbertException(msg)
+        response.raise_for_status()
+
+        try:
+            return Company(**response.json())
+        except (ValueError, TypeError):
+            return self.get_by_id(id=parent_id)
