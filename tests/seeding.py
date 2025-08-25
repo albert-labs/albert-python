@@ -1551,10 +1551,12 @@ def generate_report_seeds(
     ]
 
 
-def generate_custom_template_seeds(prefix: str) -> Iterator[CustomTemplate]:
-    for i in range(2):
-        yield CustomTemplate(
+def generate_custom_template_seeds(prefix: str) -> list[CustomTemplate]:
+    return [
+        CustomTemplate(
             name=f"{prefix}-general-{i}",
             category=TemplateCategory.GENERAL,
             data=GeneralData(name=f"{prefix}-general-{i}"),
         )
+        for i in range(2)
+    ]
