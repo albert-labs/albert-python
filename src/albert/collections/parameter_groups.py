@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ParameterGroupId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
     ParameterGroup,
@@ -34,7 +37,8 @@ class ParameterGroupCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{ParameterGroupCollection._api_version}/parametergroups"
 
-    def get_by_id(self, *, id: str) -> ParameterGroup:
+    @validate_call
+    def get_by_id(self, *, id: ParameterGroupId) -> ParameterGroup:
         """Get a parameter group by its ID.
 
         Parameters
@@ -51,7 +55,8 @@ class ParameterGroupCollection(BaseCollection):
         response = self.session.get(path)
         return ParameterGroup(**response.json())
 
-    def get_by_ids(self, *, ids: list[str]) -> ParameterGroup:
+    @validate_call
+    def get_by_ids(self, *, ids: list[ParameterGroupId]) -> list[ParameterGroup]:
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
         return [
@@ -150,7 +155,8 @@ class ParameterGroupCollection(BaseCollection):
             except AlbertHTTPError as e:  # pragma: no cover
                 logger.warning(f"Error fetching parameter group {item.id}: {e}")
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: ParameterGroupId) -> None:
         """Delete a parameter group by its ID.
 
         Parameters

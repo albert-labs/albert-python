@@ -1,10 +1,13 @@
 import re
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import CasId
 from albert.resources.cas import Cas
 
 
@@ -26,12 +29,13 @@ class CasCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
 
+    @validate_call
     def get_all(
         self,
         *,
         number: str | None = None,
         cas: list[str] | None = None,
-        id: str | None = None,
+        id: CasId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         start_key: str | None = None,
         max_items: int | None = None,
@@ -162,7 +166,8 @@ class CasCollection(BaseCollection):
         else:
             return self.create(cas=cas)
 
-    def get_by_id(self, *, id: str) -> Cas:
+    @validate_call
+    def get_by_id(self, *, id: CasId) -> Cas:
         """
         Retrieves a CAS by its ID.
 
@@ -223,7 +228,8 @@ class CasCollection(BaseCollection):
                     return f
         return next(found, None)
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: CasId) -> None:
         """
         Deletes a CAS by its ID.
 

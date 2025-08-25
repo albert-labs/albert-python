@@ -1,9 +1,12 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import LinkId
 from albert.resources.links import Link, LinkCategory
 
 
@@ -92,7 +95,8 @@ class LinksCollection(BaseCollection):
             deserialize=lambda items: [Link(**item) for item in items],
         )
 
-    def get_by_id(self, *, id: str) -> Link:
+    @validate_call
+    def get_by_id(self, *, id: LinkId) -> Link:
         """
         Retrieves a link entity by its ID.
 
@@ -110,7 +114,8 @@ class LinksCollection(BaseCollection):
         response = self.session.get(path)
         return Link(**response.json())
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: LinkId) -> None:
         """
         Deletes a link entity by its ID.
 

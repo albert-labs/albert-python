@@ -74,7 +74,6 @@ def client() -> Albert:
         base_url_env="ALBERT_BASE_URL",
     )
     return Albert(
-        base_url="https://app.albertinvent.com",
         auth_manager=credentials,
         retries=3,
     )
@@ -223,6 +222,7 @@ def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location
     for location in seeded:
         with suppress(NotFoundError):
             client.locations.delete(id=location.id)
+
 
 @pytest.fixture(scope="session")
 def seeded_custom_templates(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
@@ -388,7 +388,7 @@ def seeded_worksheet(client: Albert, seeded_projects: list[Project]) -> Workshee
         wksht = collection.get_by_project_id(project_id=seeded_projects[0].id)
     except NotFoundError:
         wksht = collection.setup_worksheet(project_id=seeded_projects[0].id)
-    if wksht.sheets is None or wksht.sheets == []:
+    if not wksht.sheets:
         wksht = collection.add_sheet(project_id=seeded_projects[0].id, sheet_name="test")
     else:
         for s in wksht.sheets:

@@ -108,7 +108,8 @@ class AttachmentCollection(BaseCollection):
         )
         return Attachment(**response.json())
 
-    def delete(self, *, id: str) -> None:
+    @validate_call
+    def delete(self, *, id: AttachmentId) -> None:
         """Deletes an attachment by ID.
 
         Parameters

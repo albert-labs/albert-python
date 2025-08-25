@@ -110,7 +110,7 @@ class CustomField(BaseResource):
     required: bool | None = Field(default=None)
     multiselect: bool | None = Field(default=None)
     pattern: str | None = Field(default=None)
-    default: str | None = Field(default=None)
+    default: str | dict | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":

@@ -1,3 +1,5 @@
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import ProjectId
@@ -22,6 +24,7 @@ class WorksheetCollection(BaseCollection):
         response_json["session"] = self.session
         return response_json
 
+    @validate_call
     def get_by_project_id(self, *, project_id: ProjectId) -> Worksheet:
         """Retrieve a worksheet by its project ID. Projects and Worksheets are 1:1 in the Albert platform.
 
@@ -43,7 +46,6 @@ class WorksheetCollection(BaseCollection):
 
         # Sheets are themselves collections, and therefore need access to the session
         response_json = self._add_session_to_sheets(response_json)
-
         return Worksheet(**response_json)
 
     def setup_worksheet(self, *, project_id: ProjectId, add_sheet=False) -> Worksheet:

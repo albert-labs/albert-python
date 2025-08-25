@@ -202,8 +202,8 @@ def data_column_validation_patches(
         return DTPatchDatum(
             operation="update",
             attribute="validation",
-            oldValue=initial_data_column_copy.validation,
-            newValue=updated_data_column_copy.validation,
+            oldValue=initial_data_column.validation,
+            newValue=updated_data_column.validation,
         )
     return None
 
@@ -214,6 +214,8 @@ def parameter_validation_patch(
     """Generate validation patches for a parameter."""
 
     # We need to clear enum values without modifying anything in memory
+    if initial_parameter.validation == updated_parameter.validation:
+        return None
     initial_parameter_copy = deepcopy(initial_parameter)
     updated_parameter_copy = deepcopy(updated_parameter)
     if (
@@ -235,23 +237,23 @@ def parameter_validation_patch(
             return PGPatchDatum(
                 operation="add",
                 attribute="validation",
-                newValue=updated_parameter_copy.validation,
-                rowId=updated_parameter_copy.sequence,
+                newValue=updated_parameter.validation,
+                rowId=updated_parameter.sequence,
             )
     elif updated_parameter_copy.validation is None:
         if initial_parameter_copy.validation is not None:
             return PGPatchDatum(
                 operation="delete",
                 attribute="validation",
-                oldValue=initial_parameter_copy.validation,
-                rowId=updated_parameter_copy.sequence,
+                oldValue=initial_parameter.validation,
+                rowId=updated_parameter.sequence,
             )
     elif initial_parameter_copy.validation != updated_parameter_copy.validation:
         return PGPatchDatum(
             operation="update",
             attribute="validation",
-            newValue=updated_parameter_copy.validation,
-            rowId=updated_parameter_copy.sequence,
+            newValue=updated_parameter.validation,
+            rowId=updated_parameter.sequence,
         )
     return None
 
@@ -330,29 +332,59 @@ def generate_enum_patches(
     existing_enums: list[EnumValidationValue], updated_enums: list[EnumValidationValue]
 ) -> list[dict]:
     """Generate enum patches for a data column or parameter validation."""
-    existing_enums = existing_enums or []
-    updated_enums = updated_enums or []
+
+    if existing_enums is None:
+        existing_enums = []
+    if updated_enums is None:
+        updated_enums = []
+    existing_enums = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
+    updated_enums = [x for x in updated_enums if isinstance(x, EnumValidationValue)]
+    existing_lookup = {x.text: x for x in existing_enums}
+    existing_ids = {x.id for x in existing_enums if x.id is not None}
+
+    rehydrated_updated_enums = []
+    for e in updated_enums:
+        if e.id is not None:
+            rehydrated_updated_enums.append(e)
+            continue
+        else:
+            # look for the enum in existing_enums
+            if e.text in existing_lookup:
+                e = existing_lookup[e.text]
+            rehydrated_updated_enums.append(e)
+
+    updated_enums = rehydrated_updated_enums
+    enums_in_both = [x for x in updated_enums if x.id is not None and x.id in existing_ids]
+    if existing_enums == updated_enums:
+        return []
 
     enum_patches = []
-    existing_enum = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
-    updated_enum = [x for x in updated_enums if isinstance(x, EnumValidationValue)]
 
-    existing_enum_ids = [x.id for x in existing_enum if x.id is not None]
+    existing_enums_values = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
 
-    updated_enum_ids = [x.id for x in updated_enum if x.id is not None]
+    enums_in_both = [x for x in enums_in_both if isinstance(x, EnumValidationValue)]
 
-    deleted_enums = [x for x in existing_enum if x.id is not None and x.id not in updated_enum_ids]
-    new_enums = [x for x in updated_enum if x.id is None or x.id not in existing_enum_ids]
-    enums_to_update = [x for x in updated_enum if x.id is not None and x.id in existing_enum_ids]
+    updated_enum_ids = [x.id for x in updated_enums if x.id is not None]
+
+    deleted_enums = [
+        x for x in existing_enums if x.id is not None and x.id not in updated_enum_ids
+    ]
+    new_enums = [x for x in updated_enums if x.id is None or x.id not in existing_ids]
+    enums_with_new_names = []
+    for enum_to_check in enums_in_both:
+        initial_enum = next(x for x in existing_enums_values if x.id == enum_to_check.id)
+        if initial_enum.text != enum_to_check.text:
+            enums_with_new_names.append(enum_to_check)
 
     for new_enum in new_enums:
         enum_patches.append({"operation": "add", "text": new_enum.text})
     for deleted_enum in deleted_enums:
         enum_patches.append({"operation": "delete", "id": deleted_enum.id})
-    for updated_enum in enums_to_update:
+    for updated_enum in enums_with_new_names:
         enum_patches.append(
             {"operation": "update", "id": updated_enum.id, "text": updated_enum.text}
         )
+
     return enum_patches
 
 
@@ -413,8 +445,13 @@ def generate_parameter_patches(
             and updated_param.validation != []
             and updated_param.validation[0].datatype == DataType.ENUM
         ):
+            existing = (
+                existing_param.validation[0].value
+                if existing_param.validation is not None and len(existing_param.validation) > 0
+                else []
+            )
             enum_patches[updated_param.sequence] = generate_enum_patches(
-                existing_enums=existing_param.validation[0].value,
+                existing_enums=existing,
                 updated_enums=updated_param.validation[0].value,
             )
     return parameter_patches, new_parameters, enum_patches
