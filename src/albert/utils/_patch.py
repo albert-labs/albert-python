@@ -357,6 +357,7 @@ def generate_enum_patches(
     enums_in_both = [x for x in updated_enums if x.id is not None and x.id in existing_ids]
     if existing_enums == updated_enums:
         return []
+
     enum_patches = []
 
     existing_enums_values = [x for x in existing_enums if isinstance(x, EnumValidationValue)]
