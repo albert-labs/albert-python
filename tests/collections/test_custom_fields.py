@@ -53,6 +53,26 @@ def get_or_create_custom_field(
     return client.custom_fields.create(custom_field=new_custom_field)
 
 
+def get_or_create_list_items(
+    client: Albert, custom_field_name: str, category: FieldCategory
+) -> list[ListItem]:
+    names = [f"{custom_field_name} Option {i}" for i in range(0, 2)]
+    existing_items = [
+        client.lists.get_matching_item(name=name, list_type=custom_field_name) for name in names
+    ]
+    items_to_create = [
+        name for name in names if name not in [item.name for item in existing_items]
+    ]
+
+    new_items = []
+    for name in items_to_create:
+        new_item = ListItem(name=name, list_type=custom_field_name, category=category)
+        created_item = client.lists.create(list_item=new_item)
+        new_items.append(created_item)
+
+    return existing_items + new_items
+
+
 def assert_valid_customfield_items(items: list[CustomField]):
     """Assert basic structure and types of CustomField items."""
     assert items, "Expected at least one CustomField result"
@@ -168,12 +188,15 @@ def test_update_custom_field(
         assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
 
 
-def test_update_custom_field_type_list(client: Albert, static_lists: list[ListItem]):
+def test_update_custom_field_type_list(client: Albert):
     """Test updating various attributes of a custom field."""
     field_type = FieldType.LIST
     service = ServiceType.PROJECTS
     field_name = f"test_update_{field_type.value}_{service.value}"
-    list_items = [x for x in static_lists if ServiceType.PROJECTS.value in x.name.lower()]
+    list_items = get_or_create_list_items(
+        client, custom_field_name=field_name, category=FieldCategory.USER_DEFINED
+    )
+
     initial_attributes = {
         "display_name": "Initial List Field",
         "searchable": False,
