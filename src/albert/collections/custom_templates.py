@@ -144,7 +144,7 @@ class CustomTemplatesCollection(BaseCollection):
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating custom template {item.id}: {e}")
 
-    def delete(self, *, id: str) -> None:
+    def delete(self, *, id: CustomTemplateId) -> None:
         """
         Delete a Custom Template by ID.
 
