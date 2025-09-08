@@ -5,6 +5,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import CustomTemplateId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.custom_templates import CustomTemplate, CustomTemplateSearchItem
 
@@ -104,7 +105,7 @@ class CustomTemplatesCollection(BaseCollection):
         response = self.session.post(
             url=self.base_path,
             json=[
-                custom_template.model_dump(
+                custom_templates.model_dump(
                     mode="json", by_alias=True, exclude_unset=True, exclude_none=True
                 )
             ],
