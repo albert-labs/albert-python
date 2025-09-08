@@ -15,7 +15,6 @@ from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.sheets import DesignType, Sheet
 from albert.resources.tagged_base import BaseTaggedResource
-from albert.resources.tags import Tag
 from albert.resources.tasks import TaskSource
 from albert.resources.users import User, UserClass
 
