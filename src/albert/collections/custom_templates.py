@@ -88,7 +88,7 @@ class CustomTemplatesCollection(BaseCollection):
             ],
         )
 
-    def create(self, *, custom_templates: list[CustomTemplate]) -> list[CustomTemplate]:
+    def create(self, *, custom_template: list[CustomTemplate]) -> list[CustomTemplate]:
         """Creates a new custom template.
 
         Parameters
@@ -105,7 +105,7 @@ class CustomTemplatesCollection(BaseCollection):
         response = self.session.post(
             url=self.base_path,
             json=[
-                custom_templates.model_dump(
+                custom_template.model_dump(
                     mode="json", by_alias=True, exclude_unset=True, exclude_none=True
                 )
             ],
