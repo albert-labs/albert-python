@@ -87,7 +87,7 @@ class CustomTemplatesCollection(BaseCollection):
             ],
         )
 
-    def create(self, *, custom_template: CustomTemplate) -> CustomTemplate:
+    def create(self, *, custom_templates: list[CustomTemplate]) -> list[CustomTemplate]:
         """Creates a new custom template.
 
         Parameters
