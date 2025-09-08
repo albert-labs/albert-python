@@ -57,7 +57,6 @@ class GeneralData(BaseTaggedResource):
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
     notes: str | None = Field(default=None)
-    tags: list[Tag] | None = Field(default=None, alias="Tags")
 
 
 class JobStatus(str, Enum):
@@ -118,7 +117,6 @@ class BatchData(BaseTaggedResource):
     priority: Priority  # enum?!
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
     notes: str | None = Field(default=None)
-    tags: list[Tag] | None = Field(default=None, alias="Tags")
 
 
 class PropertyData(BaseTaggedResource):
@@ -131,7 +129,6 @@ class PropertyData(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     due_date: str | None = Field(alias="dueDate", default=None)
-    tags: list[Tag] | None = Field(default=None, alias="Tags")
     notes: str | None = Field(default=None)
 
 
