@@ -1,9 +1,11 @@
-from pydantic import Field, model_validator
+from enum import Enum
+
+from pydantic import AliasChoices, Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
-from albert.core.shared.identifiers import DataTemplateId
-from albert.core.shared.models.base import LocalizedNames
+from albert.core.shared.identifiers import DataColumnId, DataTemplateId
+from albert.core.shared.models.base import EntityLink, LocalizedNames
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
@@ -31,6 +33,11 @@ class DataColumnValue(BaseAlbertModel):
     calculation: str | None = None
     sequence: str | None = Field(default=None, exclude=True)
     validation: list[ValueValidation] | None = Field(default_factory=list)
+    curve_data: list["CurveDataLink"] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CurveData", "curveData"),
+        serialization_alias="curveData",
+    )
 
     @model_validator(mode="after")
     def check_for_id(self):
@@ -47,11 +54,21 @@ class DataColumnValue(BaseAlbertModel):
         return self
 
 
+class Axis(str, Enum):
+    X = "X"
+    Y = "Y"
+
+
+class CurveDataLink(BaseAlbertModel):
+    id: DataColumnId
+    axis: Axis | None = Field(default=None)
+
+
 class DataTemplate(BaseTaggedResource):
     name: str
     id: DataTemplateId | None = Field(None, alias="albertId")
     description: str | None = None
-    security_class: SecurityClass | None = None
+    security_class: SecurityClass | None = Field(default=None, alias="class")
     verified: bool = False
     users_with_access: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
     data_column_values: list[DataColumnValue] | None = Field(alias="DataColumns", default=None)
@@ -60,6 +77,15 @@ class DataTemplate(BaseTaggedResource):
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+    documents: list[EntityLink] = Field(
+        default_factory=list, alias="Documents", exclude=True, frozen=True
+    )
+
+    # Read-only convenience fields from API
+    original_name: str | None = Field(
+        default=None, alias="originalName", exclude=True, frozen=True
+    )
+    full_name: str | None = Field(default=None, alias="fullName", exclude=True, frozen=True)
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):

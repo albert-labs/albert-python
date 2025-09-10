@@ -27,6 +27,7 @@ class DataType(str, Enum):
     NUMBER = "number"
     STRING = "string"
     ENUM = "enum"
+    CURVE = "curve"
 
 
 class Operator(str, Enum):
