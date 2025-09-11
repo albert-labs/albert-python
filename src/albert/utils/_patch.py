@@ -399,24 +399,35 @@ def generate_parameter_patches(
         initial_parameters = []
     if updated_parameters is None:
         updated_parameters = []
-    new_parameters = [
-        x
-        for x in updated_parameters
-        if x.sequence not in [y.sequence for y in initial_parameters] or not x.sequence
-    ]
+
+    initial_seq_map = {p.sequence: p for p in initial_parameters if p.sequence}
+    initial_id_map = {p.id: p for p in initial_parameters}
+
+    updated_param_pairs = []  # tuple of (initial, updated)
+    new_parameters = []
+
+    # Match updated parameters to initial ones
+    for p_updated in updated_parameters:
+        p_initial = None
+        # match by sequence if available
+        if p_updated.sequence and p_updated.sequence in initial_seq_map:
+            p_initial = initial_seq_map[p_updated.sequence]
+        # matching by ID if sequence is missing on the updated param
+        elif not p_updated.sequence and p_updated.id in initial_id_map:
+            p_initial = initial_id_map[p_updated.id]
+            if p_initial.sequence:
+                p_updated.sequence = p_initial.sequence
+
+        if p_initial:
+            updated_param_pairs.append((p_initial, p_updated))
+        else:
+            new_parameters.append(p_updated)
+
+    updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
     deleted_parameters = [
-        x for x in initial_parameters if x.sequence not in [y.sequence for y in updated_parameters]
-    ]
-    updated_parameters = [
-        x for x in updated_parameters if x.sequence in [y.sequence for y in initial_parameters]
+        p for p in initial_parameters if p.sequence not in updated_matched_sequences
     ]
 
-    # for del_param in deleted_parameters:
-    #     parameter_patches.append(
-    #         PGPatchDatum(
-    #             operation="delete", attribute=parameter_attribute_name, oldValue=del_param.sequence
-    #         )
-    #     )
     if len(deleted_parameters) > 0:
         parameter_patches.append(
             PGPatchDatum(
@@ -425,10 +436,7 @@ def generate_parameter_patches(
                 oldValue=[x.sequence for x in deleted_parameters],
             )
         )
-    for updated_param in updated_parameters:
-        existing_param = next(
-            x for x in initial_parameters if x.sequence == updated_param.sequence
-        )
+    for existing_param, updated_param in updated_param_pairs:
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
