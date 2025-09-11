@@ -3,7 +3,6 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 
-from albert.resources.custom_templates import CustomTemplate, GeneralData
 import pytest
 
 from albert import Albert, AlbertClientCredentials
@@ -15,6 +14,7 @@ from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
+from albert.resources.custom_templates import GeneralData
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.files import FileCategory, FileInfo, FileNamespace

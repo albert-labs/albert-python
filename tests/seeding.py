@@ -13,7 +13,6 @@ from albert.resources.custom_fields import (
     FieldType,
     ServiceType,
 )
-from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.inventory import (
