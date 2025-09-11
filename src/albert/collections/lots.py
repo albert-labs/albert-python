@@ -7,6 +7,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.lots import Lot
 
 
@@ -164,6 +165,28 @@ class LotCollection(BaseCollection):
             deserialize=lambda items: [Lot(**item) for item in items],
         )
 
+    def _generate_lots_patch_payload(self, *, existing: Lot, updated: Lot) -> PatchPayload:
+        """Generate a patch payload for a lot, handling inventory_on_hand separately."""
+        patch_data = super()._generate_patch_payload(
+            existing=existing, updated=updated, generate_metadata_diff=False
+        )
+        # inventory on hand is a special case, where the API expects a delta
+        if (
+            updated.inventory_on_hand is not None
+            and updated.inventory_on_hand != existing.inventory_on_hand
+        ):
+            patch_data.data = [d for d in patch_data.data if d.attribute != "inventoryOnHand"]
+            delta = updated.inventory_on_hand - existing.inventory_on_hand
+            patch_data.data.append(
+                PatchDatum(
+                    attribute="inventoryOnHand",
+                    operation=PatchOperation.UPDATE,
+                    new_value=str(delta),
+                    old_value=str(existing.inventory_on_hand),
+                )
+            )
+        return patch_data
+
     def update(self, *, lot: Lot) -> Lot:
         """Update a lot.
 
@@ -178,9 +201,9 @@ class LotCollection(BaseCollection):
             The updated Lot entity as returned by the server.
         """
         existing_lot = self.get_by_id(id=lot.id)
-        patch_data = self._generate_patch_payload(existing=existing_lot, updated=lot)
+        patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)
         url = f"{self.base_path}/{lot.id}"
-
-        self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
+        if patch_data.data:
+            self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
 
         return self.get_by_id(id=lot.id)

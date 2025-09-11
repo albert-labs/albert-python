@@ -28,7 +28,7 @@ class CustomTemplatesCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomTemplatesCollection._api_version}/customtemplates"
 
-    def get_by_id(self, *, id) -> CustomTemplate:
+    def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a Custom Template by ID
 
         Parameters
@@ -39,7 +39,7 @@ class CustomTemplatesCollection(BaseCollection):
         Returns
         -------
         CustomTemplate
-            The CutomTemplate with the provided ID (or None if not found)
+            The CutomTemplate with the provided ID
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)

@@ -68,10 +68,10 @@ class CustomFieldCollection(BaseCollection):
         "min",
         "max",
         "entity_categories",
+        "default",
         # "required",
         # "multiselect",
         # "pattern",
-        # "default",
     }
     _api_version = "v3"
 
@@ -237,6 +237,12 @@ class CustomFieldCollection(BaseCollection):
 
         # run patch
         url = f"{self.base_path}/{custom_field.id}"
-        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
+
+        self.session.patch(
+            url,
+            json=payload.model_dump(
+                mode="json", by_alias=True, exclude_unset=False, exclude_none=True
+            ),
+        )
         updated_ctf = self.get_by_id(id=custom_field.id)
         return updated_ctf

@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass, Status
-from albert.core.shared.identifiers import NotebookId
+from albert.core.shared.identifiers import CustomTemplateId, NotebookId
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -242,7 +242,7 @@ class CustomTemplateSearchItemTeam(BaseAlbertModel):
 
 class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     name: str
-    id: str = Field(alias="albertId")
+    id: CustomTemplateId = Field(alias="albertId")
     created_by_name: str = Field(..., alias="createdByName")
     created_at: str = Field(..., alias="createdAt")
     category: str

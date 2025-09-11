@@ -55,9 +55,9 @@ def test_get_by_ids(client: Albert, seeded_lots: list[Lot]):
 
 def test_update(client: Albert, seeded_lot: Lot):
     lot = seeded_lot.model_copy()
-
     marker = "TEST"
     lot.manufacturer_lot_number = marker
-
+    lot.inventory_on_hand = 10
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
+    assert updated_lot.inventory_on_hand == 10
