@@ -228,7 +228,7 @@ def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location
 def seeded_custom_templates(client: Albert, seed_prefix: str):
     seeded = []
     data = GeneralData(name=f"{seed_prefix}-general")
-    custom_template=CustomTemplate(**data)
+    custom_template = CustomTemplate(**data)
     created = client.custom_templates.create(custom_template=custom_template)
     seeded.append(created)
 
