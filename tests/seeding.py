@@ -1549,14 +1549,3 @@ def generate_report_seeds(
             project_id=seeded_projects[0].id if seeded_projects else None,
         ),
     ]
-
-
-def generate_custom_template_seeds(prefix: str) -> list[CustomTemplate]:
-    return [
-        CustomTemplate(
-            name=f"{prefix}-general-{i}",
-            category=TemplateCategory.GENERAL,
-            data=GeneralData(name=f"{prefix}-general-{i}"),
-        )
-        for i in range(2)
-    ]

@@ -3,6 +3,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 
+from albert.resources.custom_templates import CustomTemplate, GeneralData
 import pytest
 
 from albert import Albert, AlbertClientCredentials
@@ -41,7 +42,6 @@ from tests.seeding import (
     generate_cas_seeds,
     generate_company_seeds,
     generate_custom_fields,
-    generate_custom_template_seeds,
     generate_data_column_seeds,
     generate_data_template_seeds,
     generate_inventory_seeds,
@@ -225,17 +225,17 @@ def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location
 
 
 @pytest.fixture(scope="session")
-def seeded_custom_templates(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
+def seeded_custom_templates(client: Albert, seed_prefix: str):
     seeded = []
-    for custom_template in generate_custom_template_seeds(seed_prefix):
-        created_custom_template = client.custom_templates.create(custom_template=custom_template)
-        seeded.append(created_custom_template)
+    data = GeneralData(name=f"{seed_prefix}-general")
+    created = client.custom_templates.create(custom_template={"data": data})
+    seeded.append(created)
 
     yield seeded
 
-    for custom_template in seeded:
+    for t in seeded:
         with suppress(NotFoundError):
-            client.custom_templates.delete(id=custom_template.id)
+            client.custom_templates.delete(id=t.id)
 
 
 @pytest.fixture(scope="session")
