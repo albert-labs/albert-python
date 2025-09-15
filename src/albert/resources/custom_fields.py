@@ -3,8 +3,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from albert.core.shared.models.base import BaseResource, EntityLinkWithName
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
