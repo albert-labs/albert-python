@@ -47,8 +47,8 @@ def test_formulation_column_names_use_display_name(seeded_sheet: Sheet):
 
 def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory, seeded_products):
     components_updated = [
-        Component(inventory_item=seeded_inventory[0], amount=33),
-        Component(inventory_item=seeded_inventory[1], amount=67),
+        Component(inventory_item=seeded_inventory[0], amount=33.1, min_value=0, max_value=50),
+        Component(inventory_item=seeded_inventory[1], amount=66.9, min_value=50, max_value=100),
     ]
 
     new_col = seeded_sheet.add_formulation(
@@ -58,11 +58,25 @@ def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
     )
     assert isinstance(new_col, Column)
 
+    component_map = {c.inventory_item.id: c for c in components_updated}
+    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
+
+    found_cells = 0
     for cell in new_col.cells:
         if cell.type == "INV" and cell.row_type == "INV":
-            assert cell.value in ["33", "67"]
+            inv_id = row_id_to_inv_id.get(cell.row_id)
+            if not inv_id or inv_id not in component_map:
+                continue
+
+            component = component_map[inv_id]
+            assert float(cell.value) == float(component.amount)
+            assert float(cell.min_value) == float(component.min_value)
+            assert float(cell.max_value) == float(component.max_value)
+            found_cells += 1
         elif cell.row_type == "TOT":
             assert cell.value == "100"
+
+    assert found_cells == len(components_updated)
 
 
 def test_add_formulation_clear_updates_existing(
@@ -178,3 +192,5 @@ def test_get_cell_value():
     )
     assert cell.raw_value == "test"
     assert cell.color is None
+    assert cell.min_value is None
+    assert cell.max_value is None

@@ -80,12 +80,6 @@ class BaseCollection:
                         continue
 
                     # Handle additions and removals separately to avoid conflicts
-                    if len(to_add) > 0:
-                        data.append(
-                            PatchDatum(
-                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
-                            )
-                        )
 
                     if len(to_remove) > 0:
                         data.append(
@@ -96,6 +90,12 @@ class BaseCollection:
                             )
                         )
 
+                    if len(to_add) > 0:
+                        data.append(
+                            PatchDatum(
+                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
+                            )
+                        )
                 else:
                     data.append(
                         PatchDatum(
@@ -180,6 +180,13 @@ class BaseCollection:
                             attribute=alias,
                             operation=PatchOperation.ADD,
                             new_value=new_value,
+                        )
+                    )
+                if new_value is None and old_value is not None:
+                    # Delete the attribute
+                    data.append(
+                        PatchDatum(
+                            attribute=alias, operation=PatchOperation.DELETE, old_value=old_value
                         )
                     )
                 elif old_value is not None and new_value != old_value:

@@ -1,8 +1,10 @@
 from enum import Enum
+from typing import Annotated, Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from albert.core.shared.models.base import BaseResource, EntityLinkWithName
+from albert.core.base import BaseAlbertModel
 
 
 class FieldType(str, Enum):
@@ -54,6 +56,37 @@ class UIComponent(str, Enum):
     DETAILS = "details"
 
 
+class ListDefaultValue(BaseAlbertModel):
+    id: str = Field(alias="albertId")
+    name: str
+
+
+class StringDefault(BaseAlbertModel):
+    type: Literal[FieldType.STRING] = FieldType.STRING
+    value: str
+
+
+class NumberDefault(BaseAlbertModel):
+    type: Literal[FieldType.NUMBER] = FieldType.NUMBER
+    value: int | float
+
+
+class ListDefault(BaseAlbertModel):
+    """
+    !!! note
+        For multi-select custom fields, `value` must be `list[ListDefaultValue]`.
+    """
+
+    type: Literal[FieldType.LIST] = FieldType.LIST
+    value: ListDefaultValue | list[ListDefaultValue]
+
+
+Default = Annotated[
+    StringDefault | NumberDefault | ListDefault,
+    Field(discriminator="type"),
+]
+
+
 class CustomField(BaseResource):
     """A custom field for an entity in Albert.
 
@@ -91,6 +124,8 @@ class CustomField(BaseResource):
         The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
     ui_components : list[UIComponent] | None
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
+    default: Default | None
+        The default value of the custom field, optional. Defaults to None.
     """
 
     name: str
@@ -112,12 +147,38 @@ class CustomField(BaseResource):
     multiselect: bool | None = Field(default=None)
     editable: bool | None = Field(default=None, alias="editable")
     pattern: str | None = Field(default=None)
-    default: str | EntityLinkWithName | float | dict[any, any] | None = Field(
-        default=None, alias="default"
-    )
+    default: Default | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
         if self.field_type == FieldType.LIST and self.category is None:
             raise ValueError("Category must be set for list fields")
         return self
+
+    # TODO: Remove once API always includes 'type' in default payloads.
+    # Required here because `Default` is a discriminated-union alias,
+    # and Pydantic must see the discriminator to pick the correct variant.
+    @field_validator("default", mode="before")
+    @classmethod
+    def ensure_default_has_type(cls, v: Any) -> Any:
+        if v is None:
+            return v
+
+        if isinstance(v, dict) and "type" in v:
+            return v
+
+        if isinstance(v, dict) and "value" in v:
+            raw_val = v["value"]
+
+            if isinstance(raw_val, str):
+                inferred_type = FieldType.STRING
+            elif isinstance(raw_val, (int | float)):
+                inferred_type = FieldType.NUMBER
+            elif isinstance(raw_val, dict) and "albertId" in raw_val or isinstance(raw_val, list):
+                inferred_type = FieldType.LIST
+            else:
+                raise ValueError(f"Cannot infer default type from value: {raw_val!r}")
+
+            return {"type": inferred_type, "value": raw_val}
+
+        return v

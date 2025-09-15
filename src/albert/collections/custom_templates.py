@@ -5,6 +5,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.identifiers import CustomTemplateId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.custom_templates import CustomTemplate, CustomTemplateSearchItem
 
@@ -27,7 +28,7 @@ class CustomTemplatesCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{CustomTemplatesCollection._api_version}/customtemplates"
 
-    def get_by_id(self, *, id) -> CustomTemplate:
+    def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a Custom Template by ID
 
         Parameters
@@ -38,7 +39,7 @@ class CustomTemplatesCollection(BaseCollection):
         Returns
         -------
         CustomTemplate
-            The CutomTemplate with the provided ID (or None if not found)
+            The CutomTemplate with the provided ID
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
