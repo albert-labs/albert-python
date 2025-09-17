@@ -5,7 +5,13 @@ from pydantic import AliasChoices, Field, model_validator
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import DataColumnId, DataTemplateId
-from albert.core.shared.models.base import EntityLink, LocalizedNames
+from albert.core.shared.models.base import (
+    AuditFields,
+    BaseResource,
+    EntityLink,
+    EntityLinkWithName,
+    LocalizedNames,
+)
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
@@ -24,19 +30,61 @@ class CSVMapping(BaseAlbertModel):
     )
 
 
-class DataColumnValue(BaseAlbertModel):
-    data_column: DataColumn = Field(exclude=True, default=None)
-    data_column_id: str = Field(alias="id", default=None)
+class AthenaMetadata(BaseAlbertModel):
+    table_name: str | None = Field(default=None, alias="tableName")
+    partition_key: str | None = Field(default=None, alias="partitionKey")
+
+
+class S3KeyReference(BaseAlbertModel):
+    rawfile: str | None = None
+    s3_input: str | None = Field(default=None, alias="s3Input")
+    s3_output: str | None = Field(default=None, alias="s3Output")
+
+
+class JobSummary(BaseAlbertModel):
+    id: str | None = None
+    state: str | None = None
+
+
+class Axis(str, Enum):
+    X = "X"
+    Y = "Y"
+
+
+class CurveDataEntityLink(EntityLinkWithName):
+    id: DataColumnId
+    axis: Axis | None = Field(default=None)
+    unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+
+
+class DataColumnValue(BaseResource):
+    data_column: DataColumn | None = Field(exclude=True, default=None)
+    data_column_id: DataColumnId | None = Field(alias="id", default=None)
+    name: str | None = None
+    original_name: str | None = Field(
+        default=None, alias="originalName", exclude=True, frozen=True
+    )
     value: str | None = None
     hidden: bool = False
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     calculation: str | None = None
-    sequence: str | None = Field(default=None, exclude=True)
+    sequence: str | None = Field(default=None)
+    script: bool | None = None
+    athena: AthenaMetadata | None = None
+    s3_key: S3KeyReference | None = Field(default=None, alias="s3Key")
+    job: JobSummary | None = None
+    csv_mapping: dict[str, str] | CSVMapping | None = Field(default=None, alias="csvMapping")
     validation: list[ValueValidation] | None = Field(default_factory=list)
-    curve_data: list["CurveDataLink"] | None = Field(
+    curve_data: list[CurveDataEntityLink] | None = Field(
         default=None,
         validation_alias=AliasChoices("CurveData", "curveData"),
         serialization_alias="curveData",
+    )
+    created: AuditFields | None = Field(
+        default=None,
+        alias="Created",
+        validation_alias=AliasChoices("Created", "Added"),
+        serialization_alias="Added",
     )
 
     @model_validator(mode="after")
@@ -52,16 +100,6 @@ class DataColumnValue(BaseAlbertModel):
         elif self.data_column_id is None:
             self.data_column_id = self.data_column.id
         return self
-
-
-class Axis(str, Enum):
-    X = "X"
-    Y = "Y"
-
-
-class CurveDataLink(BaseAlbertModel):
-    id: DataColumnId
-    axis: Axis | None = Field(default=None)
 
 
 class DataTemplate(BaseTaggedResource):
