@@ -8,7 +8,7 @@ from albert.core.shared.models.patch import (
     PGPatchDatum,
     PGPatchPayload,
 )
-from albert.resources.data_templates import CurveDataLink, DataColumnValue, DataTemplate
+from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue, DataTemplate
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -208,7 +208,7 @@ def data_column_validation_patches(
     return None
 
 
-def _normalize_curve_links(links: list[CurveDataLink] | None) -> list[CurveDataLink]:
+def _normalize_curve_links(links: list[CurveDataEntityLink] | None) -> list[CurveDataEntityLink]:
     if links is None:
         return []
     # Sort consistently by (id, axis) for stable comparisons
