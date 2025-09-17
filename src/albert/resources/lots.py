@@ -74,7 +74,7 @@ class Lot(BaseResource):
     pack_size: str | None = Field(None, alias="packSize")
     initial_quantity: NonNegativeFloat | None = Field(default=None, alias="initialQuantity")
     cost: NonNegativeFloat | None = Field(default=None)
-    inventory_on_hand: float = Field(alias="inventoryOnHand")
+    inventory_on_hand: NonNegativeFloat = Field(alias="inventoryOnHand")
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="Owner")
     lot_number: str | None = Field(None, alias="lotNumber")
     external_barcode_id: str | None = Field(None, alias="externalBarcodeId")

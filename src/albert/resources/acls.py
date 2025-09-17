@@ -12,6 +12,7 @@ class AccessControlLevel(str, Enum):
     PROJECT_EDITOR = "ProjectEditor"
     PROJECT_VIEWER = "ProjectViewer"
     PROJECT_ALL_TASKS = "ProjectAllTask"
+    PROJECT_STRICT_VIEWER = "ProjectStrictViewer"
     PROJECT_PROPERTY_TASKS = "ProjectPropertyTask"
     INVENTORY_OWNER = "InventoryOwner"
     INVENTORY_VIEWER = "InventoryViewer"

@@ -68,6 +68,10 @@ class Cell(BaseResource):
         The row ID of the cell.
     value : str | dict
         The value of the cell. If the cell is an inventory item, this will be a dict.
+    min_value : str | None
+        The minimum allowed value for inventory cells. Optional.
+    max_value : str | None
+        The maximum allowed value for inventory cells. Optional.
     row_label_name : str, optional
         The display name of the row.
     type : CellType
@@ -93,6 +97,8 @@ class Cell(BaseResource):
     row_id: str = Field(alias="rowId")
     row_label_name: str | None = Field(default=None, alias="lableName")
     value: str | dict = ""
+    min_value: str | None = Field(default=None, alias="minValue")
+    max_value: str | None = Field(default=None, alias="maxValue")
     type: CellType
     row_type: CellType | None = Field(default=None)
     name: str | None = Field(default=None)
@@ -128,6 +134,8 @@ class Component(BaseResource):
 
     inventory_item: InventoryItem
     amount: float
+    min_value: float | None = Field(default=None)
+    max_value: float | None = Field(default=None)
     _cell: Cell = None  # read only property set on registrstion
 
     @property
@@ -190,9 +198,14 @@ class Design(BaseSessionResource):
                 c["rowId"] = this_row_id
                 c["design_id"] = self.id
                 c["row_type"] = row_type
-
                 c["lableName"] = row_label
-
+                # Preserve inventory bounds when constructing the Cell
+                min_value = raw_cell.get("minValue")
+                max_value = raw_cell.get("maxValue")
+                if min_value is not None:
+                    c["minValue"] = min_value
+                if max_value is not None:
+                    c["maxValue"] = max_value
                 raw_id = c.pop("id", None)
                 inv = (raw_id if raw_id.startswith("INV") else f"INV{raw_id}") if raw_id else None
                 c["inventory_id"] = inv
@@ -536,21 +549,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
             if cell.type == CellType.INVENTORY:
                 cell_copy = cell.model_copy(update={"value": "", "calculation": ""})
                 cleared_cells.append(cell_copy)
-        r = self.update_cells(cells=cleared_cells)
-        return r
+        self.update_cells(cells=cleared_cells)
 
     def add_formulation(
         self,
         *,
         formulation_name: str,
         components: list[Component],
+        inventory_id: InventoryId | None = None,
         enforce_order: bool = False,
         clear: bool = True,
     ) -> Column:
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
-            col = self.get_column(column_name=formulation_name)
+            col = self.get_column(column_name=formulation_name, inventory_id=inventory_id)
             self._clear_formulation_from_column(column=col)
         else:
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
@@ -567,15 +580,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
             if row_id is None:
                 raise AlbertException(f"no component with id {component.inventory_item.id}")
+
+            value = str(component.amount)
+            min_value = str(component.min_value) if component.min_value is not None else None
+            max_value = str(component.max_value) if component.max_value is not None else None
             this_cell = Cell(
                 column_id=col_id,
                 row_id=row_id,
-                value=str(component.amount),
+                value=value,
                 calculation="",
                 type=CellType.INVENTORY,
                 design_id=self.product_design.id,
                 name=formulation_name,
                 inventory_id=col.inventory_id,
+                min_value=min_value,
+                max_value=max_value,
             )
             all_cells.append(this_cell)
 
@@ -757,41 +776,41 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 return first_value
         return first_value
 
+    def _generate_attribute_change(self, *, new_value, old_value, api_attribute_name):
+        """Generates a change dictionary for a single attribute."""
+        if new_value == old_value:
+            return None
+
+        if new_value is None or new_value in ("", {}):
+            return {
+                "operation": "delete",
+                "attribute": api_attribute_name,
+                "oldValue": old_value,
+            }
+        if old_value is None or old_value in ("", {}):
+            return {
+                "operation": "add",
+                "attribute": api_attribute_name,
+                "newValue": new_value,
+            }
+        return {
+            "operation": "update",
+            "attribute": api_attribute_name,
+            "oldValue": old_value,
+            "newValue": new_value,
+        }
+
     def _get_cell_changes(self, *, cell: Cell) -> dict:
         current_cell = self._get_current_cell(cell=cell)
-        change_dict = {
-            "Id": {"rowId": cell.row_id, "colId": cell.column_id},
-            "data": [],
-        }
-        if cell.calculation != current_cell.calculation:
-            if cell.calculation is None or cell.calculation == "":
-                change_dict["data"].append(
-                    {
-                        "operation": "delete",
-                        "attribute": "calculation",
-                        "oldValue": current_cell.calculation,
-                    }
-                )
-            elif current_cell.calculation is None or current_cell.calculation == "":
-                change_dict["data"].append(
-                    {
-                        "operation": "add",
-                        "attribute": "calculation",
-                        "newValue": cell.calculation,
-                    }
-                )
-            else:
-                change_dict["data"].append(
-                    {
-                        "operation": "update",
-                        "attribute": "calculation",
-                        "oldValue": current_cell.calculation,
-                        "newValue": cell.calculation,
-                    }
-                )
+        if current_cell is None:
+            return None
+
+        data = []
+
+        # Handle format change
         if cell.format != current_cell.format:
             if cell.format is None or cell.format == {}:
-                change_dict["data"].append(
+                data.append(
                     {
                         "operation": "delete",
                         "attribute": "cellFormat",
@@ -799,7 +818,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     }
                 )
             else:
-                change_dict["data"].append(
+                data.append(
                     {
                         "operation": "update",
                         "attribute": "cellFormat",
@@ -807,50 +826,56 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         "newValue": cell.format,
                     }
                 )
-        if not self._compare_cell_values(cell=cell, existing_cell=current_cell) and (
-            cell.calculation is None or cell.calculation == ""
-        ):
-            if cell.value is None or cell.value == "":
-                change_dict["data"].append(
-                    {
-                        "operation": "delete",
-                        "attribute": "cell",
-                        "oldValue": current_cell.value,
-                    }
-                )
-            elif current_cell.value is None or current_cell.value == "":
-                change_dict["data"].append(
-                    {
-                        "operation": "add",
-                        "attribute": "cell",
-                        "newValue": cell.value,
-                    }
-                )
-            else:
-                change_dict["data"].append(
-                    {
-                        "operation": "update",
-                        "attribute": "cell",
-                        "oldValue": current_cell.value,
-                        "newValue": cell.value,
-                    }
-                )
-        if change_dict["data"] == []:
-            return None
-        return change_dict
 
-    def _compare_cell_values(self, *, cell: Cell, existing_cell: Cell):
+        # Handle calculation change
+        if cell.calculation != current_cell.calculation:
+            change = self._generate_attribute_change(
+                new_value=cell.calculation,
+                old_value=current_cell.calculation,
+                api_attribute_name="calculation",
+            )
+            if change:
+                data.append(change)
+
+        # Special handling for value, min_value, max_value
+        value_attributes = [
+            ("value", "cell"),
+            ("min_value", "minValue"),
+            ("max_value", "maxValue"),
+        ]
+        if cell.calculation is None or cell.calculation == "":
+            for attr, api_attr in value_attributes:
+                if not self._compare_cell_attributes(
+                    cell=cell, existing_cell=current_cell, attribute=attr
+                ):
+                    change = self._generate_attribute_change(
+                        new_value=getattr(cell, attr),
+                        old_value=getattr(current_cell, attr),
+                        api_attribute_name=api_attr,
+                    )
+                    if change:
+                        data.append(change)
+
+        if not data:
+            return None
+
+        return {"Id": {"rowId": cell.row_id, "colId": cell.column_id}, "data": data}
+
+    def _compare_cell_attributes(self, *, cell: Cell, existing_cell: Cell, attribute: str):
+        """Compares a given attribute of two cells, trying both string and float comparison."""
+        new_value = getattr(cell, attribute)
+        old_value = getattr(existing_cell, attribute)
         # Check if the strings are exactly equal
-        if cell.value == existing_cell.value:
+        if new_value == old_value:
             return True
 
         # Try to cast both strings to floats and compare
         try:
-            float1 = float(cell.value)
-            float2 = float(existing_cell.value)
+            float1 = float(new_value)
+            float2 = float(old_value)
             if float1 == float2:
                 return True
-        except ValueError:
+        except (ValueError, TypeError):
             # One or both strings could not be cast to a float
             pass
 
@@ -869,29 +894,58 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 request_path_dict[c.design_id].append(c)
 
         for design_id, cell_list in request_path_dict.items():
-            payload = []
+            payloads = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(cell=cell)
                 if change_dict is not None:
-                    payload.append(change_dict)
+                    # For non-calculation cells, only one change is allowed at a time.
+                    is_calculation_cell = cell.calculation is not None and cell.calculation != ""
+                    max_items = 2 if is_calculation_cell else 1
 
-            if payload == []:
+                    if len(change_dict["data"]) > max_items:
+                        for item in change_dict["data"]:
+                            payloads.append(
+                                {
+                                    "Id": change_dict["Id"],
+                                    "data": [item],
+                                }
+                            )
+                    else:
+                        payloads.append(change_dict)
+
+            if not payloads:
                 continue
 
             this_url = f"/api/v3/worksheet/{design_id}/values"
-            response = self.session.patch(
-                this_url,
-                json=payload,
-            )
+            for payload in payloads:
+                response = self.session.patch(
+                    this_url,
+                    json=[payload],  # The API expects a list of changes
+                )
 
-            if response.status_code == 204:
-                # They all updated
-                updated.extend(cell_list)
-            elif response.status_code == 206:
-                # Some updated and some did not.
-                cell_results = self._filter_cells(cells=cell_list, response_dict=response.json())
-                updated.extend(cell_results[0])
-                failed.extend(cell_results[1])
+                original_cell = next(
+                    (
+                        c
+                        for c in cell_list
+                        if c.row_id == payload["Id"]["rowId"]
+                        and c.column_id == payload["Id"]["colId"]
+                    ),
+                    None,
+                )
+
+                if response.status_code == 204:
+                    if original_cell and original_cell not in updated:
+                        updated.append(original_cell)
+                elif response.status_code == 206:
+                    cell_results = self._filter_cells(
+                        cells=[original_cell], response_dict=response.json()
+                    )
+                    updated.extend(cell_results[0])
+                    failed.extend(cell_results[1])
+                else:
+                    if original_cell and original_cell not in failed:
+                        failed.append(original_cell)
+
         # reset the in-memory grid after updates
         self.grid = None
         return (updated, failed)
