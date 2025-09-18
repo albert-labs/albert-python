@@ -433,7 +433,7 @@ def generate_parameter_patches(
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
-        required_patch = _parameter_required_patches(existing_param, updated_param) 
+        required_patch = _parameter_required_patches(existing_param, updated_param)
 
         if unit_patch:
             parameter_patches.append(unit_patch)
@@ -552,6 +552,7 @@ def generate_parameter_group_patches(
     general_patches.data.extend(tag_patches)
 
     return general_patches, new_parameters, parameter_enum_patches
+
 
 def _parameter_required_patches(
     initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
