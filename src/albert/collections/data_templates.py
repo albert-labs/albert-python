@@ -500,7 +500,7 @@ class DataTemplateCollection(BaseCollection):
 
                     enums = enum_sequences[sequence]
                     enum_validation = ValueValidation(
-                        datatype=DataType.ENUM,  # Ensure this is ENUM
+                        datatype=DataType.ENUM,  # This line is missing
                         value=enums,
                     )
                     enum_patch = PGPatchDatum(

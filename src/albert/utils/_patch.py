@@ -230,7 +230,10 @@ def parameter_validation_patch(
         and updated_parameter_copy.validation[0].datatype == DataType.ENUM
     ):
         updated_parameter_copy.validation[0].value = None
-    if initial_parameter_copy.validation == updated_parameter_copy.validation:
+    if (
+        initial_parameter_copy.validation == updated_parameter_copy.validation
+        and initial_parameter.validation[0].datatype == updated_parameter.validation[0].datatype
+    ):
         return None
     if initial_parameter_copy.validation is None:
         if updated_parameter_copy.validation is not None:
