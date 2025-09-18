@@ -236,12 +236,18 @@ def parameter_validation_patch(
         and updated_parameter_copy.validation[0].datatype == DataType.ENUM
     ):
         updated_parameter_copy.validation[0].value = None
+    # Only return None if validations are truly identical (both structure and datatype)
     if initial_parameter_copy.validation == updated_parameter_copy.validation and (
-        not initial_parameter.validation
-        or not updated_parameter.validation
-        or len(initial_parameter.validation) == 0
-        or len(updated_parameter.validation) == 0
-        or initial_parameter.validation[0].datatype == updated_parameter.validation[0].datatype
+        (not initial_parameter.validation and not updated_parameter.validation)
+        or (len(initial_parameter.validation) == 0 and len(updated_parameter.validation) == 0)
+        or (
+            initial_parameter.validation
+            and updated_parameter.validation
+            and len(initial_parameter.validation) > 0
+            and len(updated_parameter.validation) > 0
+            and initial_parameter.validation[0].datatype
+            == updated_parameter.validation[0].datatype
+        )
     ):
         logger.info(
             f"DEBUG: parameter_validation_patch - {initial_parameter.id}: Validations identical, returning None"
@@ -411,6 +417,9 @@ def generate_parameter_patches(
     logger.info(
         f"DEBUG: generate_parameter_patches - Processing {len(updated_parameters or [])} updated parameters"
     )
+    logger.info(
+        f"DEBUG: generate_parameter_patches - Initial parameters: {len(initial_parameters or [])} - IDs: {[p.id for p in (initial_parameters or [])]}"
+    )
     parameter_patches = []
     enum_patches = {}
     if initial_parameters is None:
@@ -420,6 +429,9 @@ def generate_parameter_patches(
 
     initial_seq_map = {p.sequence: p for p in initial_parameters if p.sequence}
     initial_id_map = {p.id: p for p in initial_parameters}
+    logger.info(
+        f"DEBUG: generate_parameter_patches - initial_id_map keys: {list(initial_id_map.keys())}"
+    )
 
     updated_param_pairs = []  # tuple of (initial, updated)
     new_parameters = []
@@ -430,16 +442,28 @@ def generate_parameter_patches(
         # match by sequence if available
         if p_updated.sequence and p_updated.sequence in initial_seq_map:
             p_initial = initial_seq_map[p_updated.sequence]
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {p_updated.id}: Matched by sequence {p_updated.sequence}"
+            )
         # matching by ID if sequence is missing on the updated param OR if sequence match failed
         elif p_updated.id in initial_id_map:
             p_initial = initial_id_map[p_updated.id]
             if p_initial.sequence:
                 p_updated.sequence = p_initial.sequence
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {p_updated.id}: Matched by ID, assigned sequence {p_updated.sequence}"
+            )
 
         if p_initial:
             updated_param_pairs.append((p_initial, p_updated))
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {p_updated.id}: Added to existing parameter pairs"
+            )
         else:
             new_parameters.append(p_updated)
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {p_updated.id}: Added to new parameters"
+            )
 
     updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
     deleted_parameters = [
@@ -464,17 +488,36 @@ def generate_parameter_patches(
 
         if unit_patch:
             parameter_patches.append(unit_patch)
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Added unit patch"
+            )
         if value_patch:
             parameter_patches.append(value_patch)
-        if validation_patch:
-            parameter_patches.append(validation_patch)
-        if (
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Added value patch"
+            )
+        # Check if this parameter will have enum patches
+        will_have_enum_patches = (
             updated_param.validation is not None
             and updated_param.validation != []
             and updated_param.validation[0].datatype == DataType.ENUM
-        ):
+        )
+
+        # Only add validation patch if this parameter won't have enum patches
+        # (enum patches will handle the validation update)
+        if validation_patch and not will_have_enum_patches:
+            parameter_patches.append(validation_patch)
             logger.info(
-                f"DEBUG: generate_parameter_patches - {updated_param.id}: Adding to enum_patches"
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Added validation patch"
+            )
+        elif validation_patch and will_have_enum_patches:
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Skipped validation patch (will use enum validation instead)"
+            )
+
+        if will_have_enum_patches:
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Adding to enum_patches with sequence {updated_param.sequence}"
             )
             existing = (
                 existing_param.validation[0].value
@@ -485,6 +528,19 @@ def generate_parameter_patches(
                 existing_enums=existing,
                 updated_enums=updated_param.validation[0].value,
             )
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Generated enum patches: {enum_patches[updated_param.sequence]}"
+            )
+        else:
+            logger.info(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: NOT adding to enum_patches - validation: {updated_param.validation}"
+            )
+    logger.info(
+        f"DEBUG: generate_parameter_patches - Final results: {len(parameter_patches)} parameter patches, {len(new_parameters)} new parameters, {len(enum_patches)} enum patches"
+    )
+    logger.info(
+        f"DEBUG: generate_parameter_patches - Enum patches by sequence: {list(enum_patches.keys())}"
+    )
     return parameter_patches, new_parameters, enum_patches
 
 
@@ -547,40 +603,6 @@ def generate_data_template_patches(
         updated_parameters=updated_data_template.parameter_values,
         parameter_attribute_name="parameters",
     )
-
-    if len(parameter_enum_patches) > 0:
-        logger.info(
-            f"DEBUG: data_templates.update - Processing {len(parameter_enum_patches)} parameter enum patches for DT {existing_data_template.id}"
-        )
-        for sequence, enum_patches in parameter_enum_patches.items():
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing_data_template.id}: Processing enum patches for sequence {sequence}: {enum_patches}"
-            )
-            # We need to clear enum values without modifying anything in memory
-            initial_parameter_copy = deepcopy(existing_data_template.parameter_values[sequence])
-            updated_parameter_copy = deepcopy(updated_data_template.parameter_values[sequence])
-            if (
-                initial_parameter_copy.validation
-                and len(initial_parameter_copy.validation) == 1
-                and initial_parameter_copy.validation[0].datatype == DataType.ENUM
-            ):
-                initial_parameter_copy.validation[0].value = None
-            if (
-                updated_parameter_copy.validation
-                and len(updated_parameter_copy.validation) == 1
-                and updated_parameter_copy.validation[0].datatype == DataType.ENUM
-            ):
-                updated_parameter_copy.validation[0].value = None
-            if initial_parameter_copy.validation != updated_parameter_copy.validation:
-                parameter_patches.append(
-                    PGPatchDatum(
-                        operation="update",
-                        attribute="validation",
-                        oldValue=initial_parameter_copy.validation,
-                        newValue=updated_parameter_copy.validation,
-                        rowId=sequence,
-                    )
-                )
 
     return (
         general_patches,
