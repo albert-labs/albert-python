@@ -88,6 +88,30 @@ class CustomTemplatesCollection(BaseCollection):
             ],
         )
 
+    def create(self, *, custom_template: list[CustomTemplate]) -> list[CustomTemplate]:
+        """Creates a new custom template.
+
+        Parameters
+        ----------
+        custom_template : CustomTemplate
+            The custom template to create.
+
+        Returns
+        -------
+        CustomTemplate
+            The created CustomTemplate object.
+        """
+
+        response = self.session.post(
+            url=self.base_path,
+            json=[
+                custom_template.model_dump(
+                    mode="json", by_alias=True, exclude_unset=True, exclude_none=True
+                )
+            ],
+        )
+        return CustomTemplate(**response.json()[0])
+
     def get_all(
         self,
         *,
@@ -120,3 +144,20 @@ class CustomTemplatesCollection(BaseCollection):
                 yield self.get_by_id(id=item.id)
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating custom template {item.id}: {e}")
+
+    def delete(self, *, id: CustomTemplateId) -> None:
+        """
+        Delete a Custom Template by ID.
+
+        Parameters
+        ----------
+        id : str
+            The Albert ID of the custom template to delete.
+
+        Raises
+        ------
+        AlbertHTTPError
+            If the API responds with a non-2xx status (e.g., 404 if not found).
+        """
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)

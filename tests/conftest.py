@@ -14,6 +14,7 @@ from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
+from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
@@ -221,6 +222,23 @@ def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location
     for location in seeded:
         with suppress(NotFoundError):
             client.locations.delete(id=location.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_custom_templates(client: Albert, seed_prefix: str):
+    seeded = []
+    data = GeneralData(name=f"{seed_prefix}-general")
+    custom_template = CustomTemplate(
+        name=f"{seed_prefix}-general", data=data, category=TemplateCategory.GENERAL
+    )
+    created = client.custom_templates.create(custom_template=custom_template)
+    seeded.append(created)
+
+    yield seeded
+
+    for t in seeded:
+        with suppress(NotFoundError):
+            client.custom_templates.delete(id=t.id)
 
 
 @pytest.fixture(scope="session")
