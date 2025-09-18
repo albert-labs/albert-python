@@ -1,18 +1,27 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
+from typing import Literal
 
 from pydantic import validate_call
 from requests.exceptions import RetryError
 
+from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
+from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.notes import NotesCollection
+from albert.collections.property_data import PropertyDataCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
+    AttachmentId,
     BlockId,
     DataTemplateId,
+    InventoryId,
+    LotId,
     ParameterGroupId,
     ProjectId,
     TaskId,
@@ -21,6 +30,8 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
 from albert.exceptions import AlbertHTTPError
+from albert.resources.attachments import AttachmentCategory
+from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
@@ -205,6 +216,334 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=url, json=payload)
+
+    @validate_call
+    def import_results_from_csv(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        inventory_id: InventoryId,
+        data_template_id: DataTemplateId,
+        csv_attachment_id: AttachmentId | None = None,
+        csv_file_path: str | Path | None = None,
+        note_text: str | None = None,
+        lot_id: LotId | None = None,
+        interval: str = "default",
+        csv_table_key: str | None = None,
+        column_mapping: dict[str, str] | None = None,
+        mode: Literal["SCRIPT", "CSV"] = "CSV",
+    ) -> BaseTask:
+        """
+        Import result values from a CSV attachment into task property data.
+
+        This orchestrates the multi-step workflow of discovering the script attachment on the
+        data template, filtering eligible CSV files on the task, optionally uploading a new file,
+        reading the CSV preview, mapping the data columns, deleting existing property data, and
+        finally posting the new values. The updated task is returned for convenience.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The property task receiving the results.
+        block_id : BlockId
+            Target block on the task where the data will be written.
+        inventory_id : InventoryId
+            Inventory identifier paired with the block.
+        data_template_id : DataTemplateId
+            Data template guiding the column mapping.
+        csv_attachment_id : AttachmentId | None, optional
+            Existing CSV attachment to use. If omitted a new upload or the first matching
+            attachment will be used.
+        csv_file_path : str | Path | None, optional
+            Local CSV to upload and attach to a new note on the task.
+        note_text : str | None, optional
+            Optional text for the note created when uploading a new CSV.
+        lot_id : LotId | None, optional
+            Lot context when deleting/writing property data.
+        interval : str, optional
+            Interval combination to target. Defaults to "default".
+        csv_table_key : str | None, optional
+            Specific table key to read from the csvtables preview. Defaults to the first table.
+        column_mapping : dict[str, str] | None, optional
+            Optional mapping hints. Keys or values containing a data column ID (e.g. ``DAC1037``)
+            are associated with the provided CSV identifier (either a ``col#`` key or header
+            label).
+        mode : Literal["SCRIPT", "CSV"], optional
+            Workflow mode. Currently informational; script metadata is always leveraged.
+
+        Returns
+        -------
+        BaseTask
+            Hydrated task after property data import completes.
+        """
+
+        logger.info("Importing results for task %s using %s mode", task_id, mode)
+
+        if csv_attachment_id and csv_file_path:
+            raise ValueError("Provide either 'csv_attachment_id' or 'csv_file_path', not both.")
+
+        # --- Discover allowed extensions from the data template script attachment ---
+        attachment_collection = AttachmentCollection(session=self.session)
+        data_template_collection = DataTemplateCollection(session=self.session)
+        property_data_collection = PropertyDataCollection(session=self.session)
+        notes_collection = NotesCollection(session=self.session)
+
+        data_template = data_template_collection.get_by_id(id=data_template_id)
+
+        def _extract_extensions_from_attachment(attachment) -> set[str]:
+            metadata = getattr(attachment, "metadata", None)
+            raw_extensions = []
+            if metadata is None:
+                return set()
+            if isinstance(metadata, dict):
+                raw_extensions = metadata.get("extensions", [])
+            else:
+                raw_extensions = getattr(metadata, "extensions", []) or []
+            extensions = set()
+            for ext in raw_extensions:
+                name = ext.get("name") if isinstance(ext, dict) else getattr(ext, "name", None)
+                if name:
+                    extensions.add(name.lower().lstrip("."))
+            return extensions
+
+        script_attachments = attachment_collection.get_by_parent_ids(parent_ids=[data_template_id])
+        script_entries = script_attachments.get(data_template_id, []) if script_attachments else []
+        allowed_extensions = set()
+        for script_attachment in script_entries:
+            if (
+                script_attachment.category
+                and script_attachment.category != AttachmentCategory.SCRIPT
+            ):
+                continue
+            allowed_extensions.update(_extract_extensions_from_attachment(script_attachment))
+        if not allowed_extensions:
+            allowed_extensions = {"csv"}
+
+        def _collect_task_attachments() -> tuple[dict[str, object], list[object]]:
+            attachments_by_id: dict[str, object] = {}
+            ordered: list[object] = []
+            for note in notes_collection.get_by_parent_id(parent_id=task_id):
+                if not note.attachments:
+                    continue
+                for att in note.attachments:
+                    attachments_by_id[att.id] = att
+                    ordered.append(att)
+            return attachments_by_id, ordered
+
+        _, ordered_attachments = _collect_task_attachments()
+
+        def _determine_extension(filename: str | None) -> str | None:
+            if not filename:
+                return None
+            return Path(filename).suffix.lower().lstrip(".")
+
+        # --- Optional upload of a new CSV file ---
+        if csv_file_path is not None:
+            csv_path = Path(csv_file_path).expanduser()
+            if not csv_path.exists() or not csv_path.is_file():
+                raise FileNotFoundError(f"CSV file not found at '{csv_path}'.")
+            ext = _determine_extension(csv_path.name)
+            if allowed_extensions and (ext or "") not in allowed_extensions:
+                raise ValueError(
+                    f"File extension '{ext}' is not permitted. Allowed extensions: {sorted(allowed_extensions)}"
+                )
+            note_text_to_use = note_text or ""
+            with csv_path.open("rb") as csv_handle:
+                attachment_collection.upload_and_attach_file_as_note(
+                    parent_id=task_id,
+                    file_data=csv_handle,
+                    note_text=note_text_to_use,
+                    file_name=csv_path.name,
+                )
+            # Refresh attachment cache including the newly uploaded file
+            _, ordered_attachments = _collect_task_attachments()
+            csv_candidates = [
+                att
+                for att in ordered_attachments
+                if att.name and att.name.lower() == csv_path.name.lower()
+            ]
+            if not csv_candidates:
+                raise ValueError("Uploaded CSV attachment could not be located on the task note.")
+            csv_attachment_id = csv_candidates[0].id
+
+        # --- Resolve the CSV attachment to use ---
+        if csv_attachment_id is None:
+            eligible = [
+                att
+                for att in ordered_attachments
+                if _determine_extension(att.name) in allowed_extensions
+            ]
+            if not eligible:
+                raise ValueError(
+                    "No CSV attachments on the task match the extensions specified by the data template script."
+                )
+            csv_attachment_id = eligible[0].id
+        else:
+            csv_attachment_id = AttachmentId(csv_attachment_id)
+
+        attachment_details = attachment_collection.get_by_id(id=csv_attachment_id)
+        attachment_extension = _determine_extension(attachment_details.name)
+        if allowed_extensions and attachment_extension not in allowed_extensions:
+            raise ValueError(
+                f"Attachment '{attachment_details.name}' does not match required extensions {sorted(allowed_extensions)}."
+            )
+
+        # --- Fetch and parse CSV preview ---
+        csv_tables_response = self.session.get(
+            f"/api/{self._api_version}/csvtables/{csv_attachment_id}"
+        )
+        csv_tables_payload = csv_tables_response.json()
+        if not csv_tables_payload:
+            raise ValueError("CSV preview response was empty; unable to import results.")
+
+        if csv_table_key:
+            if csv_table_key not in csv_tables_payload:
+                raise ValueError(f"CSV table key '{csv_table_key}' not found in preview response.")
+            table_rows = csv_tables_payload[csv_table_key]
+        else:
+            first_key = next(iter(csv_tables_payload))
+            table_rows = csv_tables_payload[first_key]
+
+        if not isinstance(table_rows, list) or len(table_rows) < 2:
+            raise ValueError(
+                "CSV preview must contain a header row followed by at least one data row."
+            )
+
+        header_row = table_rows[0]
+        data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
+        if not data_rows:
+            raise ValueError("No data rows detected in CSV preview.")
+
+        header_lookup = {}
+        row_key_lookup = {}
+        if isinstance(header_row, dict):
+            for key, value in header_row.items():
+                row_key_lookup[key.lower()] = key
+                if isinstance(value, str):
+                    header_lookup[value.strip().lower()] = key
+
+        user_mapping: dict[str, str] = {}
+        if column_mapping:
+            for key, value in column_mapping.items():
+                if not isinstance(key, str) or not isinstance(value, str):
+                    raise ValueError("column_mapping keys and values must be strings.")
+                key_upper = key.upper()
+                value_upper = value.upper()
+                if key_upper.startswith("DAC"):
+                    user_mapping[key_upper] = value
+                elif value_upper.startswith("DAC"):
+                    user_mapping[value_upper] = key
+                else:
+                    raise ValueError(
+                        "column_mapping must include a data column ID (e.g. 'DAC1037') in either the key or the value."
+                    )
+
+        def _resolve_csv_identifier(identifier: str) -> str | None:
+            candidate = identifier.strip()
+            candidate_lower = candidate.lower()
+            if candidate_lower in row_key_lookup:
+                return row_key_lookup[candidate_lower]
+            if candidate_lower.startswith("col"):
+                return row_key_lookup.get(candidate_lower)
+            header_match = header_lookup.get(candidate_lower)
+            if header_match:
+                return header_match
+            return None
+
+        def _auto_map_sequence(sequence: str | None) -> str | None:
+            if not sequence:
+                return None
+            digits = "".join(ch for ch in sequence if ch.isdigit())
+            if not digits:
+                return None
+            return _resolve_csv_identifier(f"col{digits}")
+
+        column_to_csv_key: dict[str, str] = {}
+        data_columns = data_template.data_column_values or []
+        for column in data_columns:
+            if getattr(column, "hidden", False):
+                continue
+            csv_identifier = None
+            if user_mapping:
+                csv_identifier = user_mapping.get(column.data_column_id)
+            if csv_identifier:
+                resolved = _resolve_csv_identifier(csv_identifier)
+            else:
+                resolved = _auto_map_sequence(column.sequence)
+                if resolved is None:
+                    for label in filter(None, [column.name, column.original_name]):
+                        resolved = _resolve_csv_identifier(label)
+                        if resolved:
+                            break
+            if resolved:
+                column_to_csv_key[column.data_column_id] = resolved
+
+        if not column_to_csv_key:
+            raise ValueError(
+                "Unable to map any data template columns to CSV fields. Provide 'column_mapping' hints or verify the CSV header matches the template."
+            )
+
+        # --- Build task property payload ---
+        properties_to_add: list[TaskPropertyCreate] = []
+        for trial_index, row in enumerate(data_rows, start=1):
+            for data_column_id, csv_key in column_to_csv_key.items():
+                value = row.get(csv_key)
+                if value is None or value == "":
+                    continue
+                value_str = str(value)
+                column = next(
+                    (c for c in data_columns if c.data_column_id == data_column_id), None
+                )
+                if column is None:
+                    continue
+                properties_to_add.append(
+                    TaskPropertyCreate(
+                        data_column=TaskDataColumn(
+                            data_column_id=data_column_id,
+                            column_sequence=column.sequence,
+                        ),
+                        value=value_str,
+                        visible_trial_number=trial_index,
+                        interval_combination=interval,
+                        data_template=EntityLink(id=data_template_id),
+                    )
+                )
+
+        if not properties_to_add:
+            raise ValueError("CSV data produced no values to import after filtering empty cells.")
+
+        # --- Delete existing property data if present ---
+        existing_data_info = property_data_collection.check_for_task_data(task_id=task_id)
+        target_combo = next(
+            (
+                combo
+                for combo in existing_data_info
+                if combo.block_id == block_id
+                and combo.inventory_id == inventory_id
+                and (lot_id is None or combo.lot_id == lot_id)
+            ),
+            None,
+        )
+        if target_combo and target_combo.data_exists:
+            property_data_collection.bulk_delete_task_data(
+                task_id=task_id,
+                block_id=block_id,
+                inventory_id=inventory_id,
+                lot_id=lot_id,
+                interval_id=interval,
+            )
+
+        property_data_collection.add_properties_to_task(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=properties_to_add,
+        )
+
+        # Return the refreshed task representation
+        return self.get_by_id(id=task_id)
 
     @validate_call
     def delete(self, *, id: TaskId) -> None:
