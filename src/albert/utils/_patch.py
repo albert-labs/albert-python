@@ -430,8 +430,8 @@ def generate_parameter_patches(
         # match by sequence if available
         if p_updated.sequence and p_updated.sequence in initial_seq_map:
             p_initial = initial_seq_map[p_updated.sequence]
-        # matching by ID if sequence is missing on the updated param
-        elif not p_updated.sequence and p_updated.id in initial_id_map:
+        # matching by ID if sequence is missing on the updated param OR if sequence match failed
+        elif p_updated.id in initial_id_map:
             p_initial = initial_id_map[p_updated.id]
             if p_initial.sequence:
                 p_updated.sequence = p_initial.sequence
