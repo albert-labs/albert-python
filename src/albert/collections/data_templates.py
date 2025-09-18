@@ -292,17 +292,17 @@ class DataTemplateCollection(BaseCollection):
             The updated DataTemplate object.
         """
         # make sure the parameter values have a default validaion of string type.
-        initial_enum_values = {}  # use index to track the enum values
+        initial_enum_values = {}  # use parameter ID to track the enum values
         cleaned_params = []
         if parameters is None or len(parameters) == 0:
             return self.get_by_id(id=data_template_id)
-        for i, param in enumerate(parameters):
+        for param in parameters:
             if (
                 param.validation
                 and len(param.validation) > 0
                 and param.validation[0].datatype == DataType.ENUM
             ):
-                initial_enum_values[i] = param.validation[0].value
+                initial_enum_values[param.id] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
             cleaned_params.append(param)
@@ -318,9 +318,9 @@ class DataTemplateCollection(BaseCollection):
             json=payload,
         )
         returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
-        for i, param in enumerate(returned_parameters):
-            if i in initial_enum_values:
-                param.validation[0].value = initial_enum_values[i]
+        for param in returned_parameters:
+            if param.id in initial_enum_values:
+                param.validation[0].value = initial_enum_values[param.id]
                 param.validation[0].datatype = DataType.ENUM
         self._add_param_enums(
             data_template_id=data_template_id,
