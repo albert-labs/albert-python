@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from albert.core.logging import logger
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -214,7 +215,7 @@ def parameter_validation_patch(
     """Generate validation patches for a parameter."""
 
     # Add debug log
-    print(
+    logger.info(
         f"DEBUG: parameter_validation_patch - Initial: {initial_parameter.id} datatype={initial_parameter.validation[0].datatype if initial_parameter.validation else 'None'}, Updated: {updated_parameter.id} datatype={updated_parameter.validation[0].datatype if updated_parameter.validation else 'None'}"
     )
 
@@ -242,7 +243,7 @@ def parameter_validation_patch(
         or len(updated_parameter.validation) == 0
         or initial_parameter.validation[0].datatype == updated_parameter.validation[0].datatype
     ):
-        print(
+        logger.info(
             f"DEBUG: parameter_validation_patch - {initial_parameter.id}: Validations identical, returning None"
         )
         return None
@@ -407,7 +408,7 @@ def generate_parameter_patches(
     parameter_attribute_name: str = "parameter",
 ) -> tuple[list[PGPatchDatum], list[ParameterValue], dict[str, list[dict]]]:
     """Generate patches for a parameter."""
-    print(
+    logger.info(
         f"DEBUG: generate_parameter_patches - Processing {len(updated_parameters or [])} updated parameters"
     )
     parameter_patches = []
@@ -454,7 +455,7 @@ def generate_parameter_patches(
             )
         )
     for existing_param, updated_param in updated_param_pairs:
-        print(
+        logger.info(
             f"DEBUG: generate_parameter_patches - Processing {updated_param.id}: existing_datatype={existing_param.validation[0].datatype if existing_param.validation else 'None'}, updated_datatype={updated_param.validation[0].datatype if updated_param.validation else 'None'}"
         )
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
@@ -472,7 +473,7 @@ def generate_parameter_patches(
             and updated_param.validation != []
             and updated_param.validation[0].datatype == DataType.ENUM
         ):
-            print(
+            logger.info(
                 f"DEBUG: generate_parameter_patches - {updated_param.id}: Adding to enum_patches"
             )
             existing = (
@@ -548,11 +549,11 @@ def generate_data_template_patches(
     )
 
     if len(parameter_enum_patches) > 0:
-        print(
+        logger.info(
             f"DEBUG: data_templates.update - Processing {len(parameter_enum_patches)} parameter enum patches for DT {existing_data_template.id}"
         )
         for sequence, enum_patches in parameter_enum_patches.items():
-            print(
+            logger.info(
                 f"DEBUG: data_templates.update - DT {existing_data_template.id}: Processing enum patches for sequence {sequence}: {enum_patches}"
             )
             # We need to clear enum values without modifying anything in memory
