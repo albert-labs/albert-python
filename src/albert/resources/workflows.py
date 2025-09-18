@@ -281,7 +281,7 @@ class Workflow(BaseResource):
                         )
         return self
 
-    def get_interval_id(self, parameter_values: dict[str, any]) -> str:
+    def get_interval_id(self, parameter_values: dict[str, Any]) -> str:
         """Get the interval ID for a set of parameter values.
 
         This method matches parameter values to intervals defined in the workflow and constructs
@@ -289,7 +289,7 @@ class Workflow(BaseResource):
 
         Parameters
         ----------
-        parameter_values : dict[str, any]
+        parameter_values : dict[str, Any]
             Dictionary mapping parameter names to their values. Values can be numbers or strings
             that match the interval values defined in the workflow.
 
