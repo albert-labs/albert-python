@@ -116,6 +116,7 @@ class BatchData(BaseTaggedResource):
     priority: Priority  # enum?!
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
     notes: str | None = Field(default=None)
+    due_date: str | None = Field(alias="dueDate", default=None)
 
 
 class PropertyData(BaseTaggedResource):
