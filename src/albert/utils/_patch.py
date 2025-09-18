@@ -213,9 +213,14 @@ def parameter_validation_patch(
 ) -> PGPatchDatum | None:
     """Generate validation patches for a parameter."""
 
+    # Add debug log
+    print(
+        f"DEBUG: parameter_validation_patch - Initial: {initial_parameter.id} datatype={initial_parameter.validation[0].datatype if initial_parameter.validation else 'None'}, Updated: {updated_parameter.id} datatype={updated_parameter.validation[0].datatype if updated_parameter.validation else 'None'}"
+    )
+
     # We need to clear enum values without modifying anything in memory
-    if initial_parameter.validation == updated_parameter.validation:
-        return None
+    # if initial_parameter.validation == updated_parameter.validation:
+    #     return None
     initial_parameter_copy = deepcopy(initial_parameter)
     updated_parameter_copy = deepcopy(updated_parameter)
     if (
@@ -230,10 +235,16 @@ def parameter_validation_patch(
         and updated_parameter_copy.validation[0].datatype == DataType.ENUM
     ):
         updated_parameter_copy.validation[0].value = None
-    if (
-        initial_parameter_copy.validation == updated_parameter_copy.validation
-        and initial_parameter.validation[0].datatype == updated_parameter.validation[0].datatype
+    if initial_parameter_copy.validation == updated_parameter_copy.validation and (
+        not initial_parameter.validation
+        or not updated_parameter.validation
+        or len(initial_parameter.validation) == 0
+        or len(updated_parameter.validation) == 0
+        or initial_parameter.validation[0].datatype == updated_parameter.validation[0].datatype
     ):
+        print(
+            f"DEBUG: parameter_validation_patch - {initial_parameter.id}: Validations identical, returning None"
+        )
         return None
     if initial_parameter_copy.validation is None:
         if updated_parameter_copy.validation is not None:
@@ -396,6 +407,9 @@ def generate_parameter_patches(
     parameter_attribute_name: str = "parameter",
 ) -> tuple[list[PGPatchDatum], list[ParameterValue], dict[str, list[dict]]]:
     """Generate patches for a parameter."""
+    print(
+        f"DEBUG: generate_parameter_patches - Processing {len(updated_parameters or [])} updated parameters"
+    )
     parameter_patches = []
     enum_patches = {}
     if initial_parameters is None:
@@ -440,6 +454,9 @@ def generate_parameter_patches(
             )
         )
     for existing_param, updated_param in updated_param_pairs:
+        print(
+            f"DEBUG: generate_parameter_patches - Processing {updated_param.id}: existing_datatype={existing_param.validation[0].datatype if existing_param.validation else 'None'}, updated_datatype={updated_param.validation[0].datatype if updated_param.validation else 'None'}"
+        )
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
@@ -455,6 +472,9 @@ def generate_parameter_patches(
             and updated_param.validation != []
             and updated_param.validation[0].datatype == DataType.ENUM
         ):
+            print(
+                f"DEBUG: generate_parameter_patches - {updated_param.id}: Adding to enum_patches"
+            )
             existing = (
                 existing_param.validation[0].value
                 if existing_param.validation is not None and len(existing_param.validation) > 0
@@ -526,6 +546,40 @@ def generate_data_template_patches(
         updated_parameters=updated_data_template.parameter_values,
         parameter_attribute_name="parameters",
     )
+
+    if len(parameter_enum_patches) > 0:
+        print(
+            f"DEBUG: data_templates.update - Processing {len(parameter_enum_patches)} parameter enum patches for DT {existing_data_template.id}"
+        )
+        for sequence, enum_patches in parameter_enum_patches.items():
+            print(
+                f"DEBUG: data_templates.update - DT {existing_data_template.id}: Processing enum patches for sequence {sequence}: {enum_patches}"
+            )
+            # We need to clear enum values without modifying anything in memory
+            initial_parameter_copy = deepcopy(existing_data_template.parameter_values[sequence])
+            updated_parameter_copy = deepcopy(updated_data_template.parameter_values[sequence])
+            if (
+                initial_parameter_copy.validation
+                and len(initial_parameter_copy.validation) == 1
+                and initial_parameter_copy.validation[0].datatype == DataType.ENUM
+            ):
+                initial_parameter_copy.validation[0].value = None
+            if (
+                updated_parameter_copy.validation
+                and len(updated_parameter_copy.validation) == 1
+                and updated_parameter_copy.validation[0].datatype == DataType.ENUM
+            ):
+                updated_parameter_copy.validation[0].value = None
+            if initial_parameter_copy.validation != updated_parameter_copy.validation:
+                parameter_patches.append(
+                    PGPatchDatum(
+                        operation="update",
+                        attribute="validation",
+                        oldValue=initial_parameter_copy.validation,
+                        newValue=updated_parameter_copy.validation,
+                        rowId=sequence,
+                    )
+                )
 
     return (
         general_patches,

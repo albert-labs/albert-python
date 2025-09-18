@@ -150,6 +150,7 @@ class CustomField(BaseResource):
     default: str | EntityLinkWithName | float | dict[any, any] | None = Field(
         default=None, alias="default"
     )
+    api: dict[str, str] | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
