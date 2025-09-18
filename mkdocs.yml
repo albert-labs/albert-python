@@ -146,6 +146,7 @@ nav:
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
           - Files: collections/files.md
+          - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
           - Links: collections/links.md
           - Lists: collections/lists.md
@@ -161,6 +162,7 @@ nav:
           - Property Data: collections/property_data.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
+          - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
           - Tags: collections/tags.md
@@ -185,6 +187,7 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Files: resources/files.md
+          - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
           - Links: resources/links.md
@@ -201,6 +204,7 @@ nav:
           - Property Data: resources/property_data.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
+          - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
           - Tags: resources/tags.md

@@ -17,6 +17,7 @@ from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.files import FileCollection
+from albert.collections.hazards import HazardsCollection
 from albert.collections.inventory import InventoryCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
@@ -33,6 +34,7 @@ from albert.collections.property_data import PropertyDataCollection
 from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
+from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
 from albert.collections.tags import TagCollection
@@ -312,3 +314,11 @@ class Albert:
     @property
     def batch_data(self) -> BatchDataCollection:
         return BatchDataCollection(session=self.session)
+
+    @property
+    def storage_classes(self) -> StorageClassesCollection:
+        return StorageClassesCollection(session=self.session)
+
+    @property
+    def hazards(self) -> HazardsCollection:
+        return HazardsCollection(session=self.session)
