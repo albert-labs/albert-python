@@ -110,7 +110,21 @@ class CustomTemplatesCollection(BaseCollection):
                 )
             ],
         )
-        return CustomTemplate(**response.json()[0])
+        obj = response.json()[0]
+        tags = (obj.get("Data")).get("Tags") or []
+
+        def _resolve_tags(tid: str) -> dict:
+            r = self.session.get(url=f"/api/v3/tags/{tid}")
+            if r.ok:
+                d = r.json()
+                item = (d.get("Items") or [d])[0] if isinstance(d, dict) and "Items" in d else d
+                return {"albertId": item.get("albertId", tid), "name": item.get("name")}
+            return {"albertId": tid}
+
+        if tags:
+            obj["Data"]["Tags"] = [_resolve_tags(t.get("id")) for t in tags]
+
+        return CustomTemplate(**obj)
 
     def get_all(
         self,
