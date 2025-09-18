@@ -92,7 +92,7 @@ class DataTemplateCollection(BaseCollection):
 
         data_template = self.get_by_id(id=data_template_id)
         existing_parameters = data_template.parameter_values
-
+        enums_by_sequence = {}
         for parameter in new_parameters:
             this_sequence = next(
                 (
@@ -173,7 +173,10 @@ class DataTemplateCollection(BaseCollection):
                         f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
                         json=enum_patches,
                     )
-                    return [EnumValidationValue(**x) for x in enum_response.json()]
+                    enums_by_sequence[this_sequence] = [
+                        EnumValidationValue(**x) for x in enum_response.json()
+                    ]
+        return enums_by_sequence
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
@@ -302,6 +305,9 @@ class DataTemplateCollection(BaseCollection):
                 and len(param.validation) > 0
                 and param.validation[0].datatype == DataType.ENUM
             ):
+                logger.info(
+                    f"DEBUG: add_parameters - Storing enum values for {param.id}: {param.validation[0].value}"
+                )
                 initial_enum_values[param.id] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
@@ -318,14 +324,24 @@ class DataTemplateCollection(BaseCollection):
             json=payload,
         )
         returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
+        logger.info(
+            f"DEBUG: add_parameters - Returned parameter IDs: {[p.id for p in returned_parameters]}"
+        )
+        logger.info(
+            f"DEBUG: add_parameters - Initial enum values keys: {list(initial_enum_values.keys())}"
+        )
         for param in returned_parameters:
             if param.id in initial_enum_values:
+                logger.info(f"DEBUG: add_parameters - Restoring enum values for {param.id}")
                 param.validation[0].value = initial_enum_values[param.id]
                 param.validation[0].datatype = DataType.ENUM
-        self._add_param_enums(
-            data_template_id=data_template_id,
-            new_parameters=returned_parameters,
-        )
+                self._add_param_enums(
+                    data_template_id=data_template_id,
+                    new_parameters=[param],
+                )
+            else:
+                logger.info(f"DEBUG: add_parameters - No enum values to restore for {param.id}")
+
         return self.get_by_id(id=data_template_id)
 
     @validate_call
