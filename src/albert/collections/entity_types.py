@@ -10,9 +10,12 @@ from albert.resources.entity_types import EntityServiceType, EntityType, EntityT
 
 
 class EntityTypeCollection(BaseCollection):
-    """A collection of entity types in the Albert system.
-    Attributes
-    ----------
+    """A collection of configurable entity types in the Albert system.
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
     """
 
     _api_version = "v3"

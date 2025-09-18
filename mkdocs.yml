@@ -145,6 +145,7 @@ nav:
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
+          - Entity Types (🧪Beta): collections/entity_types.md
           - Files: collections/files.md
           - Inventory: collections/inventory.md
           - Links: collections/links.md

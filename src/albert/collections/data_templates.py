@@ -486,6 +486,21 @@ class DataTemplateCollection(BaseCollection):
                 )
                 enum_sequences[sequence] = [EnumValidationValue(**x) for x in enums.json()]
 
+        # Create validation patches for all sequences with enum changes
+        enum_validation_patches = []
+        for sequence, enums in enum_sequences.items():
+            enum_validation = ValueValidation(
+                datatype=DataType.ENUM,
+                value=enums,
+            )
+            enum_patch = PGPatchDatum(
+                rowId=sequence,
+                operation="update",
+                attribute="validation",
+                new_value=[enum_validation],
+            )
+            enum_validation_patches.append(enum_patch)
+
         if len(parameter_patches) > 0:
             patches_by_sequence = {}
             for p in parameter_patches:
@@ -498,25 +513,21 @@ class DataTemplateCollection(BaseCollection):
                 if sequence in enum_sequences:
                     patches = [p for p in patches if p.attribute != "validation"]
 
-                    enums = enum_sequences[sequence]
-                    enum_validation = ValueValidation(
-                        datatype=DataType.ENUM,  # This line is missing
-                        value=enums,
-                    )
-                    enum_patch = PGPatchDatum(
-                        rowId=sequence,
-                        operation="update",
-                        attribute="validation",
-                        new_value=[enum_validation],
-                    )
-                    patches.append(enum_patch)
-
                 payload = PGPatchPayload(data=patches)
                 json_payload = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
                 self.session.patch(
                     path + "/parameters",
                     json=json_payload,
                 )
+
+        # Apply enum validation patches separately to ensure they're always applied
+        if len(enum_validation_patches) > 0:
+            payload = PGPatchPayload(data=enum_validation_patches)
+            json_payload = payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+            self.session.patch(
+                path + "/parameters",
+                json=json_payload,
+            )
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)
             self.session.patch(

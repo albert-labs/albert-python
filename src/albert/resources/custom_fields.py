@@ -147,7 +147,7 @@ class CustomField(BaseResource):
     multiselect: bool | None = Field(default=None)
     editable: bool | None = Field(default=None, alias="editable")
     pattern: str | None = Field(default=None)
-    default: str | EntityLinkWithName | float | dict[any, any] | None = Field(
+    default: str | EntityLinkWithName | float | dict[Any, Any] | None = Field(
         default=None, alias="default"
     )
     api: dict[str, str] | None = Field(default=None)
