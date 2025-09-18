@@ -467,7 +467,7 @@ class DataTemplateCollection(BaseCollection):
             for i, param in enumerate(returned_parameters):
                 if i in initial_enum_values:
                     param.validation[0].value = initial_enum_values[i]
-                    param.validation[0].datatype = DataType.ENUM
+                    param.validation[0].datatype = DataType.ENUM  # Add this line
 
             # Add enum values to newly created parameters
             self._add_param_enums(
@@ -500,7 +500,7 @@ class DataTemplateCollection(BaseCollection):
 
                     enums = enum_sequences[sequence]
                     enum_validation = ValueValidation(
-                        datatype=DataType.ENUM,
+                        datatype=DataType.ENUM,  # Ensure this is ENUM
                         value=enums,
                     )
                     enum_patch = PGPatchDatum(
