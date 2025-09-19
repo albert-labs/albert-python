@@ -30,12 +30,12 @@ class CSVMapping(BaseAlbertModel):
     )
 
 
-class AthenaMetadata(BaseAlbertModel):
+class CurveDBMetadata(BaseAlbertModel):
     table_name: str | None = Field(default=None, alias="tableName")
     partition_key: str | None = Field(default=None, alias="partitionKey")
 
 
-class S3KeyReference(BaseAlbertModel):
+class StorageKeyReference(BaseAlbertModel):
     rawfile: str | None = None
     s3_input: str | None = Field(default=None, alias="s3Input")
     s3_output: str | None = Field(default=None, alias="s3Output")
@@ -70,8 +70,8 @@ class DataColumnValue(BaseResource):
     calculation: str | None = None
     sequence: str | None = Field(default=None)
     script: bool | None = None
-    athena: AthenaMetadata | None = None
-    s3_key: S3KeyReference | None = Field(default=None, alias="s3Key")
+    db_metadata: CurveDBMetadata | None = Field(default=None, alias="athena")
+    storage_key_reference: StorageKeyReference | None = Field(default=None, alias="s3Key")
     job: JobSummary | None = None
     csv_mapping: dict[str, str] | CSVMapping | None = Field(default=None, alias="csvMapping")
     validation: list[ValueValidation] | None = Field(default_factory=list)

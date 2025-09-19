@@ -593,9 +593,3 @@ class DataTemplateCollection(BaseCollection):
                 yield from hydrated_templates
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating batch {batch}: {e}")
-
-
-"""
-
-
-"""
