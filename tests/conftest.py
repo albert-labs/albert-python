@@ -27,6 +27,7 @@ from albert.resources.projects import Project
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.roles import Role
 from albert.resources.sheets import Component, Sheet
+from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.tasks import BaseTask
 from albert.resources.units import Unit
@@ -262,8 +263,8 @@ def seeded_companies(client: Albert, seed_prefix: str) -> Iterator[list[Company]
 def seeded_storage_locations(
     client: Albert,
     seeded_locations: list[Location],
-) -> Iterator[list[Location]]:
-    seeded = []
+) -> Iterator[list[StorageLocation]]:
+    seeded: list[StorageLocation] = []
     for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
         created_location = client.storage_locations.get_or_create(
             storage_location=storage_location

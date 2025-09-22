@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import AliasChoices, Field, NonNegativeFloat, field_serializer, field_validator
+from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 
 from albert.core.shared.identifiers import InventoryId, LotId
 from albert.core.shared.models.base import BaseResource
@@ -69,10 +69,7 @@ class Lot(BaseResource):
     expiration_date: str | None = Field(None, alias="expirationDate")
     manufacturer_lot_number: str | None = Field(None, alias="manufacturerLotNumber")
     storage_location: SerializeAsEntityLink[StorageLocation] | None = Field(
-        alias="StorageLocation",
-        serialization_alias="storageLocation",
-        validation_alias=AliasChoices("StorageLocation", "storageLocation"),
-        default=None,
+        alias="StorageLocation", default=None
     )
     pack_size: str | None = Field(None, alias="packSize")
     initial_quantity: NonNegativeFloat | None = Field(default=None, alias="initialQuantity")
