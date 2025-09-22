@@ -13,7 +13,7 @@ from albert.core.shared.identifiers import AttachmentId, InventoryId
 from albert.core.shared.types import MetadataItem
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileCategory, FileNamespace
-from albert.resources.hazards import HazardStatement
+from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.notes import Note
 
 
@@ -183,6 +183,7 @@ class AttachmentCollection(BaseCollection):
         jurisdiction_code: str = "US",
         language_code: str = "EN",
         hazard_statements: list[HazardStatement] | None = None,
+        hazard_symbols: list[HazardSymbol] | None = None,
         wgk: str | None = None,
     ) -> Attachment:
         """Upload an SDS document and attach it to an inventory item.
@@ -240,6 +241,10 @@ class AttachmentCollection(BaseCollection):
             metadata["hazardStatement"] = [
                 statement.model_dump(by_alias=True, exclude_none=True)
                 for statement in hazard_statements
+            ]
+        if hazard_symbols:
+            metadata["Symbols"] = [
+                symbol.model_dump(by_alias=True, exclude_none=True) for symbol in hazard_symbols
             ]
 
         if un_number is not None:
