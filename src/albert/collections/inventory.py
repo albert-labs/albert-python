@@ -747,7 +747,6 @@ class InventoryCollection(BaseCollection):
                             "entityId": new_lookup[id].id,
                             "max": new_lookup[id].max,
                             "min": new_lookup[id].min,
-                            "inventoryValue": new_lookup[id].target,
                             "casCategory": new_lookup[id].cas_category,
                         }
                         add_payload = {k: v for k, v in add_payload.items() if v is not None}
