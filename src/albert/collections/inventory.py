@@ -744,6 +744,7 @@ class InventoryCollection(BaseCollection):
                             "operation": "add",
                             "attribute": "casId",
                             "newValue": new_lookup[id].id,
+                            "entityId": new_lookup[id].id,
                             "max": new_lookup[id].max,
                             "min": new_lookup[id].min,
                             "inventoryValue": new_lookup[id].target,
@@ -751,15 +752,15 @@ class InventoryCollection(BaseCollection):
                         }
                         add_payload = {k: v for k, v in add_payload.items() if v is not None}
                         payload["data"].append(add_payload)
-                    for id in to_del:
-                        payload["data"].append(
-                            {
-                                "operation": "delete",
-                                "attribute": "casId",
-                                "entityId": id,
-                                "oldValue": id,
-                            }
-                        )
+                        if new_lookup[id].target:
+                            payload["data"].append(
+                                {
+                                    "operation": "add",
+                                    "attribute": "inventoryValue",
+                                    "newValue": new_lookup[id].target,
+                                    "entityId": new_lookup[id].id,
+                                }
+                            )
                     for id in to_check_for_update:
                         if old_lookup[id].max != new_lookup[id].max:
                             if new_lookup[id].max is not None:
