@@ -214,8 +214,8 @@ def parameter_validation_patch(
     """Generate validation patches for a parameter."""
 
     # We need to clear enum values without modifying anything in memory
-    if initial_parameter.validation == updated_parameter.validation:
-        return None
+    # if initial_parameter.validation == updated_parameter.validation:
+    #     return None
     initial_parameter_copy = deepcopy(initial_parameter)
     updated_parameter_copy = deepcopy(updated_parameter)
     if (
@@ -230,7 +230,19 @@ def parameter_validation_patch(
         and updated_parameter_copy.validation[0].datatype == DataType.ENUM
     ):
         updated_parameter_copy.validation[0].value = None
-    if initial_parameter_copy.validation == updated_parameter_copy.validation:
+    # Only return None if validations are truly identical (both structure and datatype)
+    if initial_parameter_copy.validation == updated_parameter_copy.validation and (
+        (not initial_parameter.validation and not updated_parameter.validation)
+        or (len(initial_parameter.validation) == 0 and len(updated_parameter.validation) == 0)
+        or (
+            initial_parameter.validation
+            and updated_parameter.validation
+            and len(initial_parameter.validation) > 0
+            and len(updated_parameter.validation) > 0
+            and initial_parameter.validation[0].datatype
+            == updated_parameter.validation[0].datatype
+        )
+    ):
         return None
     if initial_parameter_copy.validation is None:
         if updated_parameter_copy.validation is not None:
@@ -412,8 +424,8 @@ def generate_parameter_patches(
         # match by sequence if available
         if p_updated.sequence and p_updated.sequence in initial_seq_map:
             p_initial = initial_seq_map[p_updated.sequence]
-        # matching by ID if sequence is missing on the updated param
-        elif not p_updated.sequence and p_updated.id in initial_id_map:
+        # matching by ID if sequence is missing on the updated param OR if sequence match failed
+        elif p_updated.id in initial_id_map:
             p_initial = initial_id_map[p_updated.id]
             if p_initial.sequence:
                 p_updated.sequence = p_initial.sequence
@@ -445,13 +457,21 @@ def generate_parameter_patches(
             parameter_patches.append(unit_patch)
         if value_patch:
             parameter_patches.append(value_patch)
-        if validation_patch:
-            parameter_patches.append(validation_patch)
-        if (
+        # Check if this parameter will have enum patches
+        will_have_enum_patches = (
             updated_param.validation is not None
             and updated_param.validation != []
             and updated_param.validation[0].datatype == DataType.ENUM
-        ):
+        )
+
+        # Only add validation patch if this parameter won't have enum patches
+        # (enum patches will handle the validation update)
+        if validation_patch and not will_have_enum_patches:
+            parameter_patches.append(validation_patch)
+        elif validation_patch and will_have_enum_patches:
+            pass  # Skipped validation patch (will use enum validation instead)
+
+        if will_have_enum_patches:
             existing = (
                 existing_param.validation[0].value
                 if existing_param.validation is not None and len(existing_param.validation) > 0
