@@ -761,6 +761,15 @@ class InventoryCollection(BaseCollection):
                                     "entityId": new_lookup[id].id,
                                 }
                             )
+                    for id in to_del:
+                        payload["data"].append(
+                            {
+                                "operation": "delete",
+                                "attribute": "casId",
+                                "entityId": id,
+                                "oldValue": id,
+                            }
+                        )
                     for id in to_check_for_update:
                         if old_lookup[id].max != new_lookup[id].max:
                             if new_lookup[id].max is not None:
