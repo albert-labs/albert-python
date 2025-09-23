@@ -1,14 +1,19 @@
 import mimetypes
+from datetime import date
+from pathlib import Path
 from typing import IO
+from urllib.parse import quote
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
-from albert.core.shared.identifiers import AttachmentId
-from albert.resources.attachments import Attachment
+from albert.core.shared.identifiers import AttachmentId, InventoryId
+from albert.core.shared.types import MetadataItem
+from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileCategory, FileNamespace
+from albert.resources.hazards import HazardStatement
 from albert.resources.notes import Note
 
 
@@ -165,3 +170,93 @@ class AttachmentCollection(BaseCollection):
             file_key=file_info.name,
         )
         return note_collection.get_by_id(id=registered_note.id)
+
+    @validate_call
+    def upload_and_attach_sds_to_inventory_item(
+        self,
+        *,
+        inventory_id: InventoryId,
+        file_sds: Path,
+        revision_date: date,
+        storage_class: str,
+        un_number: str,
+        jurisdiction_code: str = "US",
+        language_code: str = "EN",
+        hazard_statements: list[HazardStatement] | None = None,
+        wgk: str | None = None,
+    ) -> Attachment:
+        """Upload an SDS document and attach it to an inventory item.
+
+        Parameters
+        ----------
+        inventory_id : str
+            Id of Inventory Item to attach SDS to.
+        file_sds : Path
+            Local path to the SDS PDF to upload.
+        revision_date : date
+            Revision date for the SDS. (yyyy-mm-dd)
+        un_number : str
+            The UN number.
+        storage_class : str
+            The Storage Class number.
+        jurisdiction_code : str | None, optional
+            Jurisdiction code associated with the SDS (e.g. ``US``).
+        language_code : str, optional
+            Language code for the SDS (e.g. ``EN``).
+        hazard_statements : list[HazardStatement] | None, optional
+            Collection of hazard statements.
+        wgk : str | None, optional
+            WGK classification metadata.
+        """
+
+        sds_path = file_sds.expanduser()
+        if not sds_path.is_file():
+            raise FileNotFoundError(f"SDS file not found at '{sds_path}'")
+
+        content_type = mimetypes.guess_type(sds_path.name)[0] or "application/pdf"
+
+        encoded_file_name = quote(sds_path.name)
+        file_key = f"{inventory_id}/SDS/{encoded_file_name}"
+
+        file_collection = self._get_file_collection()
+        with sds_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=file_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+                category=FileCategory.SDS,
+            )
+
+        metadata: dict[str, MetadataItem] = {
+            "jurisdictionCode": jurisdiction_code,
+            "languageCode": language_code,
+        }
+
+        if revision_date is not None:
+            metadata["revisionDate"] = revision_date.isoformat()
+
+        if hazard_statements:
+            metadata["hazardStatement"] = [
+                statement.model_dump(by_alias=True, exclude_none=True)
+                for statement in hazard_statements
+            ]
+
+        if un_number is not None:
+            metadata["unNumber"] = un_number
+        if storage_class is not None:
+            metadata["storageClass"] = storage_class
+        if wgk is not None:
+            metadata["wgk"] = wgk
+
+        payload = {
+            "parentId": inventory_id,
+            "category": AttachmentCategory.SDS.value,
+            "name": encoded_file_name,
+            "key": file_key,
+            "nameSpace": FileNamespace.RESULT.value,
+            "Metadata": metadata,
+        }
+
+        response = self.session.post(self.base_path, json=payload)
+        return Attachment(**response.json())

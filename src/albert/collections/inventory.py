@@ -744,13 +744,22 @@ class InventoryCollection(BaseCollection):
                             "operation": "add",
                             "attribute": "casId",
                             "newValue": new_lookup[id].id,
+                            "entityId": new_lookup[id].id,
                             "max": new_lookup[id].max,
                             "min": new_lookup[id].min,
-                            "inventoryValue": new_lookup[id].target,
                             "casCategory": new_lookup[id].cas_category,
                         }
                         add_payload = {k: v for k, v in add_payload.items() if v is not None}
                         payload["data"].append(add_payload)
+                        if new_lookup[id].target:
+                            payload["data"].append(
+                                {
+                                    "operation": "add",
+                                    "attribute": "inventoryValue",
+                                    "newValue": new_lookup[id].target,
+                                    "entityId": new_lookup[id].id,
+                                }
+                            )
                     for id in to_del:
                         payload["data"].append(
                             {
