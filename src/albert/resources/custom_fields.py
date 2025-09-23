@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.models.base import BaseResource, EntityLinkWithName
+from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
@@ -147,9 +147,7 @@ class CustomField(BaseResource):
     multiselect: bool | None = Field(default=None)
     editable: bool | None = Field(default=None, alias="editable")
     pattern: str | None = Field(default=None)
-    default: str | EntityLinkWithName | float | dict[Any, Any] | None = Field(
-        default=None, alias="default"
-    )
+    default: Default | None = Field(default=None, alias="default")
     api: dict[str, str] | None = Field(default=None)
 
     @model_validator(mode="after")
