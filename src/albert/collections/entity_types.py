@@ -102,37 +102,6 @@ class EntityTypeCollection(BaseCollection):
             List of patch operations for special attributes.
         """
         patches = []
-
-        # Handle custom fields updates
-        # if updated.custom_fields is not None:
-        #     for i, new_field in enumerate(updated.custom_fields):
-        #         if i < len(existing.custom_fields):
-        #             old_field = existing.custom_fields[i]
-        #             # Get all fields from the model, including their aliases
-        #             field_info = new_field.model_fields
-        #             for field_name, field in field_info.items():
-        #                 new_value = getattr(new_field, field_name)
-        #                 old_value = getattr(old_field, field_name)
-        #                 if new_value != old_value:
-        #                     # Use the field's alias if available, otherwise use the field name
-        #                     attr_name = field.alias or field_name
-        #                     patches.append(
-        #                         PatchDatum(
-        #                             operation=PatchOperation.UPDATE,
-        #                             attribute=f"customFields[{i}].{attr_name}",
-        #                             new_value=new_value,
-        #                             old_value=old_value,
-        #                         )
-        #                     )
-        #         else:
-        #             # New field added
-        #             patches.append(
-        #                 PatchDatum(
-        #                     operation=PatchOperation.ADD,
-        #                     attribute=f"customFields[{i}]",
-        #                     new_value=new_field.model_dump(by_alias=True),
-        #                 )
-        #             )
         if updated.custom_fields is not None and existing.custom_fields is not None:
             patches.append(
                 PatchDatum(
@@ -236,7 +205,7 @@ class EntityTypeCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/rules/{id}")
 
-    def list(
+    def get_all(
         self,
         *,
         service: EntityServiceType | None = None,

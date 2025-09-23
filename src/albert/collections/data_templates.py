@@ -305,9 +305,6 @@ class DataTemplateCollection(BaseCollection):
                 and len(param.validation) > 0
                 and param.validation[0].datatype == DataType.ENUM
             ):
-                logger.info(
-                    f"DEBUG: add_parameters - Storing enum values for {param.id}: {param.validation[0].value}"
-                )
                 initial_enum_values[param.id] = param.validation[0].value
                 param.validation[0].value = None
                 param.validation[0].datatype = DataType.STRING
@@ -324,23 +321,14 @@ class DataTemplateCollection(BaseCollection):
             json=payload,
         )
         returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
-        logger.info(
-            f"DEBUG: add_parameters - Returned parameter IDs: {[p.id for p in returned_parameters]}"
-        )
-        logger.info(
-            f"DEBUG: add_parameters - Initial enum values keys: {list(initial_enum_values.keys())}"
-        )
         for param in returned_parameters:
             if param.id in initial_enum_values:
-                logger.info(f"DEBUG: add_parameters - Restoring enum values for {param.id}")
                 param.validation[0].value = initial_enum_values[param.id]
                 param.validation[0].datatype = DataType.ENUM
                 self._add_param_enums(
                     data_template_id=data_template_id,
                     new_parameters=[param],
                 )
-            else:
-                logger.info(f"DEBUG: add_parameters - No enum values to restore for {param.id}")
 
         return self.get_by_id(id=data_template_id)
 
@@ -428,10 +416,6 @@ class DataTemplateCollection(BaseCollection):
             existing_data_template=existing,
         )
 
-        logger.info(
-            f"DEBUG: data_templates.update - DT {existing.id}: Generated {len(parameter_enum_patches)} parameter enum patches, {len(new_parameters)} new parameters"
-        )
-
         if len(new_data_columns) > 0:
             self.session.put(
                 f"{self.base_path}/{existing.id}/datacolumns",
@@ -447,9 +431,6 @@ class DataTemplateCollection(BaseCollection):
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
                     continue
-                logger.info(
-                    f"SENDING DATA COLUMN ENUM PATCHES FOR SEQUENCE {sequence}: {enum_patches}"
-                )
                 enums = self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
@@ -496,27 +477,15 @@ class DataTemplateCollection(BaseCollection):
             )
         enum_sequences = {}
         if len(parameter_enum_patches) > 0:
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing.id}: Processing parameter enum patches for sequences: {list(parameter_enum_patches.keys())}"
-            )
             for sequence, enum_patches in parameter_enum_patches.items():
                 if len(enum_patches) == 0:
-                    logger.info(
-                        f"DEBUG: data_templates.update - DT {existing.id}: Skipping empty enum patches for sequence {sequence}"
-                    )
                     continue
 
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Applying enum patches for sequence {sequence}: {enum_patches}"
-                )
                 enums = self.session.put(
                     f"{self.base_path}/{existing.id}/parameters/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
                 enum_sequences[sequence] = [EnumValidationValue(**x) for x in enums.json()]
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Created enums for sequence {sequence}: {[e.text for e in enum_sequences[sequence]]}"
-                )
 
         # Create validation patches ONLY for sequences that actually have enum changes
         enum_validation_patches = []
@@ -546,51 +515,25 @@ class DataTemplateCollection(BaseCollection):
                 patches_by_sequence[p.rowId].append(p)
 
             for sequence, patches in patches_by_sequence.items():
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Processing patches for sequence {sequence}: {[p.attribute for p in patches]}"
-                )
                 # Filter out validation patches for sequences that have enum sequences
                 # because enum validation patches will handle validation for those sequences
                 if sequence in enum_sequences:
-                    original_count = len(patches)
                     patches = [p for p in patches if p.attribute != "validation"]
-                    logger.info(
-                        f"DEBUG: data_templates.update - DT {existing.id}: Filtered sequence {sequence}: {original_count} → {len(patches)} patches"
-                    )
 
                 all_parameter_patches.extend(patches)
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Added {len(patches)} patches for sequence {sequence}"
-                )
 
                 # Add enum validation patches (these replace any filtered validation patches)
         # Don't add enum validation patches to all_parameter_patches - apply them separately
 
         # Apply all parameter patches in one request to avoid duplicates
         if len(all_parameter_patches) > 0:
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing.id}: Applying {len(all_parameter_patches)} total parameter patches"
-            )
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing.id}: All patch attributes: {[p.attribute for p in all_parameter_patches]}"
-            )
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing.id}: All patch sequences: {[p.rowId for p in all_parameter_patches]}"
-            )
-
             # Apply enum validation patches one by one to avoid duplicate validation errors
             for patch in enum_validation_patches:
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Applying single enum validation patch for sequence {patch.rowId}"
-                )
                 single_payload = PGPatchPayload(data=[patch])
                 single_json = single_payload.model_dump(
                     mode="json", by_alias=True, exclude_none=True
                 )
                 self.session.patch(path + "/parameters", json=single_json)
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Applied enum validation patch for sequence {patch.rowId}"
-                )
 
             # Apply non-enum patches if any
             non_enum_patches = [
@@ -603,13 +546,8 @@ class DataTemplateCollection(BaseCollection):
                     path + "/parameters",
                     json=json_payload,
                 )
-                logger.info(
-                    f"DEBUG: data_templates.update - DT {existing.id}: Applied {len(non_enum_patches)} non-enum parameter patches successfully"
-                )
         else:
-            logger.info(
-                f"DEBUG: data_templates.update - DT {existing.id}: No parameter patches to apply"
-            )
+            pass
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)
             self.session.patch(
