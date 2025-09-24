@@ -186,6 +186,11 @@ class QCTaskData(BaseAlbertModel):
     workflows: list[QCWorkflowTargets] | None = Field(alias="Workflows", default=None)
 
 
+class TaskEntityType(BaseAlbertModel):
+    id: str = Field(...)
+    custom_category: str = Field(..., alias="customCategory")
+
+
 class BaseTask(BaseTaggedResource):
     """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
 
@@ -220,6 +225,7 @@ class BaseTask(BaseTaggedResource):
         alias="PageState",
         default=None,
     )
+    entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
 
 
 class PropertyTask(BaseTask):
