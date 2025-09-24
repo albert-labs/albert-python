@@ -72,6 +72,7 @@ class CustomFieldCollection(BaseCollection):
         # "required",
         # "multiselect",
         # "pattern",
+        "editable",
     }
     _api_version = "v3"
 

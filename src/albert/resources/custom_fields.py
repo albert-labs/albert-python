@@ -126,6 +126,8 @@ class CustomField(BaseResource):
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
     default: Default | None
         The default value of the custom field, optional. Defaults to None.
+    editable: Default | None
+        Decides whether the field should be editable on UI or not.
     """
 
     name: str
@@ -146,6 +148,7 @@ class CustomField(BaseResource):
     multiselect: bool | None = Field(default=None)
     pattern: str | None = Field(default=None)
     default: Default | None = Field(default=None)
+    editable: bool | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
