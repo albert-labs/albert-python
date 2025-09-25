@@ -262,6 +262,7 @@ class Workflow(BaseResource):
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)
+    category: str | None = Field(default=None, alias="category", exclude=True, frozen=True)
 
     def model_post_init(self, __context) -> None:
         self._populate_interval_parameters()
