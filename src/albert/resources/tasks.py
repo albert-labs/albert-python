@@ -187,8 +187,8 @@ class QCTaskData(BaseAlbertModel):
 
 
 class TaskEntityType(BaseAlbertModel):
-    id: str = Field(...)
-    custom_category: str = Field(..., alias="customCategory", exclude=True, frozen=True)
+    id: str | None = Field(default=None)
+    custom_category: str = Field(default=None, alias="customCategory", exclude=True, frozen=True)
 
 
 class BaseTask(BaseTaggedResource):
