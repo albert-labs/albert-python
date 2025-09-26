@@ -2,6 +2,8 @@ from enum import Enum
 
 from pydantic import Field
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import UnitId
 from albert.core.shared.models.base import BaseResource
 
 
@@ -108,3 +110,7 @@ class Unit(BaseResource):
 
     # Read-only fields
     verified: bool | None = Field(default=False, exclude=True, frozen=True)
+
+    class MergeUnit(BaseAlbertModel):
+        parent_id: UnitId = Field(alias="parentId")
+        child_units: list[dict[str, UnitId]] = Field(alias="ChildUnits")

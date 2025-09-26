@@ -8,7 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import UnitId
-from albert.resources.units import Unit, UnitCategory
+from albert.resources.units import MergeUnit, Unit, UnitCategory
 
 
 class UnitCollection(BaseCollection):
@@ -245,3 +245,34 @@ class UnitCollection(BaseCollection):
             True if the unit exists, False otherwise.
         """
         return self.get_by_name(name=name, exact_match=exact_match) is not None
+
+    @validate_call
+    def merge(self, *, parent_id: UnitId, child_units: UnitId | list[UnitId]) -> None:
+        """
+        Merge one or multiple child unit into a parent unit item.
+
+        Parameters
+        ----------
+        parent_id : UnitId
+            The ID of the parent unit item.
+        child_units : UnitId | list[UnitId]
+            The ID(s) of the child unit item(s).
+
+        Returns
+        -------
+        None
+        """
+
+        # define merge endpoint
+        url = f"{self.base_path}/merge"
+
+        if isinstance(child_units, list):
+            child_inventories = [{"id": i} for i in child_units]
+        else:
+            child_inventories = [{"id": child_units}]
+
+        # define payload using the class
+        payload = MergeUnit(parent_id=parent_id, child_inventories=child_inventories)
+
+        # post request
+        self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
