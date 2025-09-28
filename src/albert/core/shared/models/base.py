@@ -19,6 +19,7 @@ class AuditFields(BaseAlbertModel):
 class EntityLink(BaseAlbertModel):
     id: str
     name: str | None = Field(default=None, exclude=True)
+    category: str | None = Field(default=None, exclude=True)
 
     def to_entity_link(self) -> "EntityLink":
         # Convience method to return self, so you can call this method on objects that are already entity links
