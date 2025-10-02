@@ -185,6 +185,16 @@ class Design(BaseSessionResource):
         records: list[dict[str, Cell]] = []
         index: list[str] = []
         for item in items:
+
+            def _normalize_value(v):
+                if v is None:
+                    return ""
+                if isinstance(v, list):
+                    return "" if not v else (v[0] if isinstance(v[0], str) else str(v[0]))
+                if isinstance(v, str | dict):
+                    return v
+                return str(v)
+
             this_row_id = item["rowId"]
             this_index = item["rowUniqueId"]
             row_label = item.get("lableName") or item.get("name")
@@ -209,7 +219,10 @@ class Design(BaseSessionResource):
                 raw_id = c.pop("id", None)
                 inv = (raw_id if raw_id.startswith("INV") else f"INV{raw_id}") if raw_id else None
                 c["inventory_id"] = inv
-
+                c["value"] = _normalize_value(c.get("value", ""))
+                fmt = c.get("cellFormat")
+                if fmt is None or isinstance(fmt, list):
+                    c["cellFormat"] = {}
                 cell = Cell(**c)
 
                 col_id = c["colId"]
@@ -601,6 +614,62 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.update_cells(cells=all_cells)
         return self.get_column(column_id=col_id)
 
+    def append_components_to_formulation(
+        self,
+        *,
+        formulation_name: str | None = None,
+        column_id: str | None = None,
+        inventory_id: InventoryId | None = None,
+        components: list[Component],
+        enforce_order: bool = False,
+    ) -> Column:
+        """
+        Append (or upsert) components into an existing formulation column
+        without clearing other cells.
+
+        You must specify exactly one of: column_id, inventory_id, or formulation_name.
+        """
+        # 1) Resolve target column
+        col = self.get_column(
+            column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
+        )
+        col_id = col.column_id
+
+        # 2) Build Cell updates for just the given components
+        all_cells: list[Cell] = []
+        self.grid = None  # refresh caches
+
+        for component in components:
+            row_id = self._get_row_id_for_component(
+                inventory_item=component.inventory_item,
+                existing_cells=all_cells,
+                enforce_order=enforce_order,
+            )
+            if row_id is None:
+                raise AlbertException(f"no component with id {component.inventory_item.id}")
+
+            value = str(component.amount)
+            min_value = str(component.min_value) if component.min_value is not None else None
+            max_value = str(component.max_value) if component.max_value is not None else None
+
+            this_cell = Cell(
+                column_id=col_id,
+                row_id=row_id,
+                value=value,
+                calculation="",
+                type=CellType.INVENTORY,
+                design_id=self.product_design.id,
+                name=col.name or formulation_name or "",
+                inventory_id=col.inventory_id,
+                min_value=min_value,
+                max_value=max_value,
+            )
+            all_cells.append(this_cell)
+
+            # 3) Upsert only these cells
+            self.update_cells(cells=all_cells)
+            return self.get_column(column_id=col_id)
+
     def _get_row_id_for_component(self, *, inventory_item, existing_cells, enforce_order):
         # Checks if that inventory row already exists
         sheet_inv_id = inventory_item.id
@@ -975,6 +1044,46 @@ class Sheet(BaseSessionResource):  # noqa:F811
         data[0]["session"] = self.session
         self.grid = None  # reset the known grid. We could probably make this nicer later.
         return Column(**data[0])
+
+    def add_lookup_column(self, *, name: str, position: dict | None = None) -> "Column":
+        """
+        Create a Lookup (LKP) column at a position relative to a reference column.
+
+        position: {"reference_id": "COL8", "position": "leftOf" | "rightOf"}
+        """
+        if position is None:
+            position = {"reference_id": self.leftmost_pinned_column, "position": "rightOf"}
+
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
+        payload = [
+            {
+                "type": "LKP",
+                "name": name,
+                "referenceId": position["reference_id"],
+                "position": position["position"],
+            }
+        ]
+
+        resp = self.session.post(endpoint, json=payload)
+
+        if resp.status_code >= 400:
+            # Optional: graceful fallback to a BLK column
+            # (Remove this block if you want hard failure instead.)
+            blk_payload = [
+                {
+                    "type": "BLK",
+                    "name": name,
+                    "referenceId": position["reference_id"],
+                    "position": position["position"],
+                }
+            ]
+            resp = self.session.post(endpoint, json=blk_payload)
+
+        data = resp.json()[0]
+        data["sheet"] = self
+        data["session"] = self.session
+        self.grid = None
+        return Column(**data)
 
     def delete_column(self, *, column_id: str) -> None:
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"

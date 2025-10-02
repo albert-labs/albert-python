@@ -158,22 +158,26 @@ class ACLType(str, Enum):
 
 
 class TeamACL(ACL):
-    type: Literal[ACLType.TEAM] = ACLType.TEAM
+    # accept either backend token or SDK enum value
+    type: Literal[ACLType.TEAM, "CustomTemplateTeam"] = ACLType.TEAM
 
 
 class OwnerACL(ACL):
-    type: Literal[ACLType.OWNER] = ACLType.OWNER
+    type: Literal[ACLType.OWNER, "CustomTemplateOwner"] = ACLType.OWNER
 
 
 class MemberACL(ACL):
-    type: Literal[ACLType.MEMBER] = ACLType.MEMBER
+    type: Literal[ACLType.MEMBER, "CustomTemplateMember"] = ACLType.MEMBER
 
 
 class ViewerACL(ACL):
-    type: Literal[ACLType.VIEWER] = ACLType.VIEWER
+    type: Literal[ACLType.VIEWER, "CustomTemplateViewer"] = ACLType.VIEWER
 
 
-ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discriminator="type")]
+ACLEntry = Annotated[
+    TeamACL | OwnerACL | MemberACL | ViewerACL,
+    Field(discriminator="type"),
+]
 
 
 class TemplateACL(BaseResource):
