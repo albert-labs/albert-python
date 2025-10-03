@@ -96,7 +96,7 @@ class Cell(BaseResource):
     column_id: str = Field(alias="colId")
     row_id: str = Field(alias="rowId")
     row_label_name: str | None = Field(default=None, alias="lableName")
-    value: str | dict = ""
+    value: str | dict | list = ""
     min_value: str | None = Field(default=None, alias="minValue")
     max_value: str | None = Field(default=None, alias="maxValue")
     type: CellType
