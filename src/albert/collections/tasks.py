@@ -13,7 +13,6 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataTemplateId,
-    ParameterGroupId,
     ProjectId,
     TaskId,
     WorkflowId,
@@ -246,12 +245,12 @@ class TaskCollection(BaseCollection):
         linked_task: list[TaskId] | None = None,
         category: TaskCategory | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[DataTemplateId] | None = None,
+        data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[ParameterGroupId] | None = None,
+        parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -280,7 +279,7 @@ class TaskCollection(BaseCollection):
         albert_id : list[str], optional
             Albert-specific task identifiers.
         data_template : list[str], optional
-            Data template IDs associated with tasks.
+            Data template names associated with tasks.
         assigned_to : list[str], optional
             User names assigned to the tasks.
         location : list[str], optional
@@ -290,7 +289,7 @@ class TaskCollection(BaseCollection):
         status : list[str], optional
             Task status values (e.g., Open, Done).
         parameter_group : list[str], optional
-            Parameter Group IDs associated with tasks.
+            Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
         project_id : str, optional
@@ -350,12 +349,12 @@ class TaskCollection(BaseCollection):
         linked_task: list[TaskId] | None = None,
         category: TaskCategory | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[DataTemplateId] | None = None,
+        data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[ParameterGroupId] | None = None,
+        parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -384,7 +383,7 @@ class TaskCollection(BaseCollection):
         albert_id : list[str], optional
             Albert-specific task identifiers.
         data_template : list[str], optional
-            Data template IDs associated with tasks.
+            Data template names associated with tasks.
         assigned_to : list[str], optional
             User names assigned to the tasks.
         location : list[str], optional
@@ -394,7 +393,7 @@ class TaskCollection(BaseCollection):
         status : list[str], optional
             Task status values (e.g., Open, Done).
         parameter_group : list[str], optional
-            Parameter Group IDs associated with tasks.
+            Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
         project_id : str, optional
