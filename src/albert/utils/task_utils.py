@@ -162,14 +162,13 @@ def map_csv_headers_to_columns(
 
 def build_property_payload(
     *,
-    data_rows: Iterable[dict[str, object]],
+    data_rows: Iterable[dict[str, dict]],
     column_to_csv_key: dict[str, str],
     data_columns: Iterable[DataColumnValue],
     interval: str,
     data_template_id: DataTemplateId,
 ) -> list[TaskPropertyCreate]:
     """Construct TaskPropertyCreate payloads from CSV rows and mapped columns."""
-
     columns_by_id = {
         column.data_column_id: column
         for column in data_columns
@@ -302,7 +301,7 @@ def fetch_csv_table_rows(
     api_version: str,
     attachment_id: str,
     csv_table_key: str | None,
-) -> list[object]:
+) -> list[dict]:
     """Retrieve the CSV preview rows for a given attachment."""
 
     csv_tables_response = session.get(f"/api/{api_version}/csvtables/{attachment_id}")
@@ -322,5 +321,4 @@ def fetch_csv_table_rows(
         raise ValueError(
             "CSV preview must contain a header row followed by at least one data row."
         )
-
     return table_rows

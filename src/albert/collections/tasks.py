@@ -379,8 +379,6 @@ class TaskCollection(BaseCollection):
                 json=csv_payload.model_dump(by_alias=True, mode="json"),
             )
             response_body = response.json()
-            if not isinstance(response_body, list):
-                raise ValueError("Unexpected response format from proxy/csvtable")
             table_results = [CsvTableResponseItem.model_validate(item) for item in response_body]
             table_rows = table_results[0].data if table_results else None
             if not isinstance(table_rows, list) or len(table_rows) < 2:
