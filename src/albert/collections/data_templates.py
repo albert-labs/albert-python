@@ -93,7 +93,7 @@ class DataTemplateCollection(BaseCollection):
         data_template = self.get_by_id(id=data_template_id)
         existing_parameters = data_template.parameter_values
 
-        for parameter in new_parameters:
+        for index, parameter in enumerate(new_parameters, start=1):
             this_sequence = next(
                 (
                     p.sequence
@@ -102,6 +102,7 @@ class DataTemplateCollection(BaseCollection):
                 ),
                 None,
             )
+            rowId = f"ROW{index}"
             enum_patches = []
             if (
                 parameter.validation
@@ -170,7 +171,7 @@ class DataTemplateCollection(BaseCollection):
 
                 if len(enum_patches) > 0:
                     enum_response = self.session.put(
-                        f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
+                        f"{self.base_path}/{data_template_id}/parameters/{rowId}/enums",
                         json=enum_patches,
                     )
                     return [EnumValidationValue(**x) for x in enum_response.json()]

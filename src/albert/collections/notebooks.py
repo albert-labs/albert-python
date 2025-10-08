@@ -13,6 +13,7 @@ from albert.resources.notebooks import (
     PutBlockPayload,
     PutOperation,
 )
+from albert.resources.notebooks import BlockType
 
 
 class NotebookCollection(BaseCollection):
