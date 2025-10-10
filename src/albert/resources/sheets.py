@@ -376,6 +376,73 @@ class Design(BaseSessionResource):
         self._columns = self._get_columns(grid_response=resp_json)
         self._rows = self._get_rows(grid_response=resp_json)
         return self._grid_to_cell_df(grid_response=resp_json)
+    def group_rows(
+        self,
+        *,
+        name: str,
+        child_row_ids: list[str] | list["Row"],
+        reference_id: str | None = None,
+        position: str = "above",
+    ) -> dict:
+        """
+        Create a row group within this design.
+
+        Parameters
+        ----------
+        name : str
+            Display name for the group header.
+        child_row_ids : list[str] | list[Row]
+            Rows to group, as rowId strings or Row objects.
+        reference_id : str | None
+            A rowId used as an anchor for placement (defaults to first child).
+        position : str
+            One of: "above", "below". (Server may also accept others.)
+
+        Returns
+        -------
+        dict
+            Raw JSON response from the API.
+        """
+        # Accept Row objects or plain rowId strings
+        ids: list[str] = [
+            r.row_id if hasattr(r, "row_id") else str(r)  # type: ignore[attr-defined]
+            for r in child_row_ids
+        ]
+        if not ids:
+            raise AlbertException("child_row_ids must include at least one rowId")
+
+        # Fallback anchor if not provided
+        reference_id = reference_id or ids[0]
+
+        # Endpoint observed from your example:
+        # /api/v3/worksheet/{DESIGN_ID}/designs/groups
+        endpoint = f"/api/v3/worksheet/{self.id}/designs/groups"
+
+        payload = {
+            "name": name,
+            "referenceId": reference_id,
+            "position": position,
+            "ChildRows": [{"rowId": rid} for rid in ids],
+        }
+
+        # Some environments may use /worksheet/design/{id}/groups; try that if needed.
+        resp = self.session.put(endpoint, json=payload)
+        if resp.status_code >= 400:
+            alt_endpoint = f"/api/v3/worksheet/design/{self.id}/groups"
+            resp = self.session.put(alt_endpoint, json=payload)
+
+        if resp.status_code >= 400:
+            raise AlbertException(
+                f"Failed to group rows: {resp.status_code} {getattr(resp, 'text', '')}"
+            )
+
+        # Grouping changes the layout; clear cached grids/rows/columns
+        if self.sheet is not None:
+            self.sheet.grid = None
+        self._rows = None
+        self._columns = None
+
+        return resp.json() if hasattr(resp, "json") else {}
 
     @property
     def columns(self) -> list["Column"]:
@@ -385,8 +452,13 @@ class Design(BaseSessionResource):
 
     @property
     def rows(self) -> list["Row"]:
+        if self.design_type == 'process':
+            return []
         if not self._rows:
-            self._get_grid()
+            try:
+                self._get_grid()
+            except Exception as e:
+                print(e)
         return self._rows
 
 
@@ -820,6 +892,86 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=row_dict["name"],
             id=row_dict["id"],
             manufacturer=row_dict["manufacturer"],
+        )
+    def add_lookup_row(
+        self,
+        *,
+        name: str,
+        row_name: str | None = None,
+        design: DesignType | str | None = DesignType.APPS,
+        position: dict | None = None,
+    ) -> Row:
+        if design == DesignType.RESULTS:
+            raise AlbertException("You cannot add rows to the results design")
+        position = position or {"reference_id": "ROW1", "position": "above"}
+        design_id = self._get_design_id(design=design)
+        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        payload = [{
+            "type": "LKP",
+            "name": name,
+            "referenceId": position["reference_id"],
+            "position": position["position"],
+            "labelName": "" if row_name is None else row_name,
+        }]
+        resp = self.session.post(endpoint, json=payload)
+        self.grid = None
+        data = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=self._get_design(design=design),
+            sheet=self,
+            name=data.get("name") or data.get("lableName") or row_name or name,
+            inventory_id=data.get("id"),
+            manufacturer=data.get("manufacturer"),
+        )
+    def add_app_row(
+        self,
+        *,
+        app_id: str,
+        name: str,
+        config: dict[str, str] | tuple[str, str] | None = None,
+        design: DesignType | str | None = DesignType.APPS,
+        position: dict | None = None,
+    ) -> Row:
+        if design == DesignType.RESULTS:
+            raise AlbertException("You cannot add rows to the results design")
+
+        position = position or {"reference_id": "ROW1", "position": "above"}
+        design_id = self._get_design_id(design=design)
+        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+
+        app_id = app_id if app_id.startswith("APP") else f"APP{app_id}"
+        cfg = None
+        if isinstance(config, dict) and config:
+            k, v = next(iter(config.items()))
+            cfg = {"key": k, "value": v}
+        elif isinstance(config, tuple) and len(config) == 2:
+            cfg = {"key": config[0], "value": config[1]}
+
+        payload = [{
+            "type": "APP",
+            "referenceId": position["reference_id"],
+            "id": app_id,
+            "position": position["position"],
+            "name": name,
+            **({"config": cfg} if cfg else {}),
+        }]
+
+        resp = self.session.post(endpoint, json=payload)
+        self.grid = None
+
+        data = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=self._get_design(design=design),
+            sheet=self,
+            name=data.get("name") or name,
+            inventory_id=data.get("id"),
+            manufacturer=data.get("manufacturer"),
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
