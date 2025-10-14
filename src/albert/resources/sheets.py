@@ -948,57 +948,75 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 request_path_dict[c.design_id].append(c)
 
         for design_id, cell_list in request_path_dict.items():
-            payloads = []
+            payload_entries: list[tuple[dict[str, object], Cell]] = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(cell=cell)
-                if change_dict is not None:
-                    # For non-calculation cells, only one change is allowed at a time.
-                    is_calculation_cell = cell.calculation is not None and cell.calculation != ""
-                    max_items = 2 if is_calculation_cell else 1
+                if change_dict is None:
+                    continue
 
-                    if len(change_dict["data"]) > max_items:
-                        for item in change_dict["data"]:
-                            payloads.append(
-                                {
-                                    "Id": change_dict["Id"],
-                                    "data": [item],
-                                }
-                            )
-                    else:
-                        payloads.append(change_dict)
+                is_calculation_cell = cell.calculation is not None and cell.calculation != ""
+                max_items = 2 if is_calculation_cell else 1
 
-            if not payloads:
+                if len(change_dict["data"]) > max_items:
+                    for item in change_dict["data"]:
+                        payload_entries.append(({"Id": change_dict["Id"], "data": [item]}, cell))
+                else:
+                    payload_entries.append((change_dict, cell))
+
+            if not payload_entries:
                 continue
 
             this_url = f"/api/v3/worksheet/{design_id}/values"
-            for payload in payloads:
-                response = self.session.patch(
-                    this_url,
-                    json=[payload],  # The API expects a list of changes
-                )
+            pending_by_cell: dict[tuple[str, str], list[tuple[dict[str, object], Cell]]] = {}
+            for payload, cell in payload_entries:
+                key = (payload["Id"]["rowId"], payload["Id"]["colId"])
+                pending_by_cell.setdefault(key, []).append((payload, cell))
 
-                original_cell = next(
-                    (
-                        c
-                        for c in cell_list
-                        if c.row_id == payload["Id"]["rowId"]
-                        and c.column_id == payload["Id"]["colId"]
-                    ),
-                    None,
-                )
+            ordered_keys = list(pending_by_cell.keys())
+
+            def _unique_cells(cells: list[Cell]) -> list[Cell]:
+                seen: set[tuple[str, str, str]] = set()
+                result: list[Cell] = []
+                for c in cells:
+                    key = (c.design_id, c.row_id, c.column_id)
+                    if key not in seen:
+                        seen.add(key)
+                        result.append(c)
+                return result
+
+            while True:
+                batch_payloads: list[dict[str, object]] = []
+                batch_cells: list[Cell] = []
+                for key in ordered_keys:
+                    queue = pending_by_cell.get(key)
+                    if queue:
+                        payload, cell = queue.pop(0)
+                        batch_payloads.append(payload)
+                        batch_cells.append(cell)
+                if not batch_payloads:
+                    break
+
+                response = self.session.patch(this_url, json=batch_payloads)
+                target_cells = _unique_cells(batch_cells)
 
                 if response.status_code == 204:
-                    if original_cell and original_cell not in updated:
-                        updated.append(original_cell)
+                    for c in target_cells:
+                        if c not in updated:
+                            updated.append(c)
                 elif response.status_code == 206:
                     cell_results = self._filter_cells(
-                        cells=[original_cell], response_dict=response.json()
+                        cells=target_cells, response_dict=response.json()
                     )
-                    updated.extend(cell_results[0])
-                    failed.extend(cell_results[1])
+                    for c in cell_results[0]:
+                        if c not in updated:
+                            updated.append(c)
+                    for c in cell_results[1]:
+                        if c not in failed:
+                            failed.append(c)
                 else:
-                    if original_cell and original_cell not in failed:
-                        failed.append(original_cell)
+                    for c in target_cells:
+                        if c not in failed:
+                            failed.append(c)
 
         # reset the in-memory grid after updates
         self.grid = None

@@ -201,7 +201,8 @@ class InventoryCollection(BaseCollection):
             self.base_path,
             json=inventory_item.model_dump(by_alias=True, exclude_none=True, mode="json"),
         )
-        return InventoryItem(**response.json())
+        # ACL field populated after the create response is sent.
+        return self.get_by_id(id=response.json()["albertId"])
 
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
