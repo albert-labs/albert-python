@@ -141,7 +141,6 @@ def test_inventory_update(client: Albert, seed_prefix: str):
         unit_category=InventoryUnitCategory.MASS,
         security_class=SecurityClass.CONFIDENTIAL,
         company="",
-        ACL=[],
     )
     created = client.inventory.create(inventory_item=ii)
     # Give time for the DB to sync - somewhere between 1 and 4 seconds is needed
