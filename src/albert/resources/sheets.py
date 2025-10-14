@@ -1,3 +1,5 @@
+import logging
+import time
 from enum import Enum
 from typing import Any, ForwardRef, Union
 
@@ -14,6 +16,8 @@ from albert.resources.inventory import InventoryItem
 Row = ForwardRef("Row")
 Column = ForwardRef("Column")
 Sheet = ForwardRef("Sheet")
+
+logger = logging.getLogger(__name__)
 
 
 class CellColor(str, Enum):
@@ -583,49 +587,91 @@ class Sheet(BaseSessionResource):  # noqa:F811
         enforce_order: bool = False,
         clear: bool = True,
     ) -> Column:
+        overall_start = time.perf_counter()
+        timings: dict[str, float] = {}
+        rows_added = 0
+        log_context: dict[str, Any] = {
+            "component_count": len(components),
+            "inventory_id": inventory_id,
+        }
+
+        def record_duration(label: str, duration: float) -> None:
+            if duration < 0:
+                return
+            timings[label] = timings.get(label, 0.0) + duration
+
         existing_formulation_names = [x.name for x in self.columns]
-        if clear and formulation_name in existing_formulation_names:
-            # get the existing column and clear it out to put the new formulation in
-            col = self.get_column(column_name=formulation_name, inventory_id=inventory_id)
-            self._clear_formulation_from_column(column=col)
-        else:
-            col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
-        col_id = col.column_id
+        try:
+            if clear and formulation_name in existing_formulation_names:
+                clear_start = time.perf_counter()
+                # get the existing column and clear it out to put the new formulation in
+                col = self.get_column(column_name=formulation_name, inventory_id=inventory_id)
+                self._clear_formulation_from_column(column=col)
+                record_duration("clear_existing", time.perf_counter() - clear_start)
+            else:
+                create_start = time.perf_counter()
+                col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
+                record_duration("create_columns", time.perf_counter() - create_start)
+            col_id = col.column_id
+            log_context["column_id"] = col_id
 
-        all_cells = []
-        self.grid = None  # reset the grid for saftey
-        product_rows = list(self.product_design.rows)
+            all_cells = []
+            self.grid = None  # reset the grid for saftey
+            product_rows = list(self.product_design.rows)
 
-        for component in components:
-            component_inventory_id = component.inventory_item_id
-            row_id = self._get_row_id_for_component(
-                inventory_id=component_inventory_id,
-                existing_cells=all_cells,
-                enforce_order=enforce_order,
-                product_rows=product_rows,
-            )
-            if row_id is None:
-                raise AlbertException(f"No Component with id {component_inventory_id}")
+            for component in components:
+                component_inventory_id = component.inventory_item_id
+                row_resolution_start = time.perf_counter()
+                previous_count = len(product_rows)
+                row_id = self._get_row_id_for_component(
+                    inventory_id=component_inventory_id,
+                    existing_cells=all_cells,
+                    enforce_order=enforce_order,
+                    product_rows=product_rows,
+                )
+                record_duration("row_resolution", time.perf_counter() - row_resolution_start)
+                if len(product_rows) > previous_count:
+                    rows_added += len(product_rows) - previous_count
+                if row_id is None:
+                    raise AlbertException(f"No Component with id {component_inventory_id}")
 
-            value = str(component.amount)
-            min_value = str(component.min_value) if component.min_value is not None else None
-            max_value = str(component.max_value) if component.max_value is not None else None
-            this_cell = Cell(
-                column_id=col_id,
-                row_id=row_id,
-                value=value,
-                calculation="",
-                type=CellType.INVENTORY,
-                design_id=self.product_design.id,
-                name=formulation_name,
-                inventory_id=col.inventory_id,
-                min_value=min_value,
-                max_value=max_value,
-            )
-            all_cells.append(this_cell)
+                value = str(component.amount)
+                min_value = str(component.min_value) if component.min_value is not None else None
+                max_value = str(component.max_value) if component.max_value is not None else None
+                this_cell = Cell(
+                    column_id=col_id,
+                    row_id=row_id,
+                    value=value,
+                    calculation="",
+                    type=CellType.INVENTORY,
+                    design_id=self.product_design.id,
+                    name=formulation_name,
+                    inventory_id=col.inventory_id,
+                    min_value=min_value,
+                    max_value=max_value,
+                )
+                all_cells.append(this_cell)
 
-        self.update_cells(cells=all_cells)
-        return self.get_column(column_id=col_id)
+            log_context["cells_prepared"] = len(all_cells)
+            update_start = time.perf_counter()
+            self.update_cells(cells=all_cells)
+            record_duration("update_cells", time.perf_counter() - update_start)
+            return self.get_column(column_id=col_id)
+        finally:
+            if logger.isEnabledFor(logging.INFO):
+                log_durations = {k: round(v, 3) for k, v in timings.items()}
+                log_durations["overall"] = round(time.perf_counter() - overall_start, 3)
+                if rows_added:
+                    log_durations["rows_added"] = rows_added
+                if prepared := log_context.get("cells_prepared"):
+                    log_durations["cells_prepared"] = prepared
+                logger.info(
+                    "add_formulation name=%s components=%d column_id=%s timings=%s",
+                    formulation_name,
+                    len(components),
+                    log_context.get("column_id"),
+                    log_durations,
+                )
 
     def _get_row_id_for_component(
         self,
@@ -723,7 +769,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     "position": starting_position["position"],
                 }
             )
+        request_start = time.perf_counter()
         response = self.session.post(endpoint, json=payload)
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(
+                "add_formulation_columns sheet=%s added=%d duration=%.3fs status=%s",
+                sheet_id,
+                len(payload),
+                time.perf_counter() - request_start,
+                response.status_code,
+            )
 
         self.grid = None
         new_dicts = self._reformat_formulation_addition_payload(response_json=response.json())
@@ -782,7 +837,16 @@ class Sheet(BaseSessionResource):  # noqa:F811
             "position": position["position"],
         }
 
+        request_start = time.perf_counter()
         response = self.session.post(endpoint, json=payload)
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(
+                "add_inventory_row design=%s inventory_id=%s duration=%.3fs status=%s",
+                design_id,
+                inventory_id,
+                time.perf_counter() - request_start,
+                response.status_code,
+            )
 
         self.grid = None
         row_dict = response.json()
@@ -984,6 +1048,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                         result.append(c)
                 return result
 
+            batch_index = 0
             while True:
                 batch_payloads: list[dict[str, object]] = []
                 batch_cells: list[Cell] = []
@@ -996,7 +1061,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 if not batch_payloads:
                     break
 
+                batch_start = time.perf_counter()
                 response = self.session.patch(this_url, json=batch_payloads)
+                if logger.isEnabledFor(logging.INFO):
+                    logger.info(
+                        "update_cells design=%s batch=%d size=%d duration=%.3fs status=%s",
+                        design_id,
+                        batch_index,
+                        len(batch_payloads),
+                        time.perf_counter() - batch_start,
+                        response.status_code,
+                    )
                 target_cells = _unique_cells(batch_cells)
 
                 if response.status_code == 204:
@@ -1017,6 +1092,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     for c in target_cells:
                         if c not in failed:
                             failed.append(c)
+
+                batch_index += 1
 
         # reset the in-memory grid after updates
         self.grid = None
