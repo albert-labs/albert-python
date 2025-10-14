@@ -14,6 +14,61 @@ from albert.resources.sheets import (
 )
 
 
+def test_get_current_cell_exact_row_match():
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+
+    column_label = "COL1#INV1"
+
+    row_220_cell = Cell(
+        colId="COL1",
+        rowId="ROW220",
+        value="123",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW220",
+    )
+
+    row_22_cell = Cell(
+        colId="COL1",
+        rowId="ROW22",
+        value="456",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW22",
+    )
+
+    sheet._grid = pd.DataFrame(
+        [[row_220_cell], [row_22_cell]],
+        index=["DES1#ROW220", "DES1#ROW22"],
+        columns=[column_label],
+    )
+
+    lookup_cell = Cell(
+        colId="COL1",
+        rowId="ROW22",
+        value="0",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW22",
+    )
+
+    result = sheet._get_current_cell(cell=lookup_cell)
+
+    assert result is row_22_cell
+    assert result.row_id == "ROW22"
+
+
 def test_get_test_sheet(seeded_sheet: Sheet):
     assert isinstance(seeded_sheet, Sheet)
     seeded_sheet.rename(new_name="test renamed")

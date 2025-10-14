@@ -594,6 +594,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         all_cells = []
         self.grid = None  # reset the grid for saftey
+        product_rows = list(self.product_design.rows)
 
         for component in components:
             component_inventory_id = component.inventory_item_id
@@ -601,6 +602,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 inventory_id=component_inventory_id,
                 existing_cells=all_cells,
                 enforce_order=enforce_order,
+                product_rows=product_rows,
             )
             if row_id is None:
                 raise AlbertException(f"No Component with id {component_inventory_id}")
@@ -626,45 +628,67 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return self.get_column(column_id=col_id)
 
     def _get_row_id_for_component(
-        self, *, inventory_id: InventoryId, existing_cells, enforce_order
+        self,
+        *,
+        inventory_id: InventoryId,
+        existing_cells,
+        enforce_order,
+        product_rows: list["Row"],
     ):
-        self.grid = None
-
-        # within a sheet, the "INV" prefix is dropped
         sheet_inv_id = inventory_id
-        matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
+        matching_rows = [row for row in product_rows if row.inventory_id == sheet_inv_id]
 
-        used_row_ids = [x.row_id for x in existing_cells]
+        used_row_ids = [cell.row_id for cell in existing_cells]
+
+        existing_inv_order: list[str] = []
+        index_last_row = 0
         if enforce_order:
             existing_inv_order = [
-                x.row_id for x in self.product_design.rows if x.inventory_id is not None
+                row.row_id for row in product_rows if row.inventory_id is not None
             ]
-            index_last_row = 0
             for row_id in used_row_ids:
                 if row_id in existing_inv_order:
                     this_row_index = existing_inv_order.index(row_id)
                     if this_row_index > index_last_row:
                         index_last_row = this_row_index
-        for r in matching_rows:
-            if r.row_id not in used_row_ids:
-                if enforce_order:
-                    if existing_inv_order.index(r.row_id) >= index_last_row:
-                        return r.row_id
-                    else:
-                        continue
-                else:
-                    return r.row_id
-        # Otherwise I need to add a new row
+
+        for row in matching_rows:
+            if row.row_id in used_row_ids:
+                continue
+            if not enforce_order:
+                return row.row_id
+
+            if row.row_id in existing_inv_order:
+                if existing_inv_order.index(row.row_id) >= index_last_row:
+                    return row.row_id
+                continue
+
         if enforce_order:
-            return self.add_inventory_row(
-                inventory_id=inventory_id,
-                position={
-                    "reference_id": existing_inv_order[index_last_row],
-                    "position": "below",
-                },
-            ).row_id
-        else:
-            return self.add_inventory_row(inventory_id=inventory_id).row_id
+            if existing_inv_order:
+                reference_row_id = existing_inv_order[index_last_row]
+                new_row = self.add_inventory_row(
+                    inventory_id=inventory_id,
+                    position={"reference_id": reference_row_id, "position": "below"},
+                )
+
+                insert_position = None
+                for idx, row in enumerate(product_rows):
+                    if row.row_id == reference_row_id:
+                        insert_position = idx + 1
+                        break
+                if insert_position is None:
+                    product_rows.append(new_row)
+                else:
+                    product_rows.insert(insert_position, new_row)
+                return new_row.row_id
+
+            new_row = self.add_inventory_row(inventory_id=inventory_id)
+            product_rows.append(new_row)
+            return new_row.row_id
+
+        new_row = self.add_inventory_row(inventory_id=inventory_id)
+        product_rows.append(new_row)
+        return new_row.row_id
 
     def add_formulation_columns(
         self,
@@ -788,19 +812,23 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:
-        filtered_columns = [
-            col for col in self.grid.columns if col.startswith(cell.column_id + "#")
-        ]
-        filtered_rows = [
-            idx for idx in self.grid.index if idx.startswith(cell.design_id + "#" + cell.row_id)
-        ]
+        def _matches_column(column_label: str) -> bool:
+            col_parts = column_label.split("#", 1)
+            return col_parts[0] == cell.column_id
 
-        first_value = None
+        def _matches_row(index_label: str) -> bool:
+            row_parts = index_label.split("#", 2)
+            if len(row_parts) < 2:
+                return False
+            return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
+
+        filtered_columns = [col for col in self.grid.columns if _matches_column(col)]
+        filtered_rows = [idx for idx in self.grid.index if _matches_row(idx)]
+
         for row in filtered_rows:
             for col in filtered_columns:
-                first_value = self.grid.loc[row, col]
-                return first_value
-        return first_value
+                return self.grid.loc[row, col]
+        return None
 
     def _generate_attribute_change(self, *, new_value, old_value, api_attribute_name):
         """Generates a change dictionary for a single attribute."""
