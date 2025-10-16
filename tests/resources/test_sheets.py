@@ -14,6 +14,145 @@ from albert.resources.sheets import (
 )
 
 
+def test_get_current_cell_exact_row_match():
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+
+    column_label = "COL1#INV1"
+
+    row_220_cell = Cell(
+        colId="COL1",
+        rowId="ROW220",
+        value="123",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW220",
+    )
+
+    row_22_cell = Cell(
+        colId="COL1",
+        rowId="ROW22",
+        value="456",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW22",
+    )
+
+    sheet._grid = pd.DataFrame(
+        [[row_220_cell], [row_22_cell]],
+        index=["DES1#ROW220", "DES1#ROW22"],
+        columns=[column_label],
+    )
+
+    lookup_cell = Cell(
+        colId="COL1",
+        rowId="ROW22",
+        value="0",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        name="ROW22",
+    )
+
+    result = sheet._get_current_cell(cell=lookup_cell)
+
+    assert result is row_22_cell
+    assert result.row_id == "ROW22"
+
+
+def test_update_cells_updates_inventory_values(
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory,
+    seeded_products,
+):
+    formulation_name = f"{seed_prefix} - update cells integration"
+    components = [
+        Component(inventory_item=seeded_inventory[0], amount=20.0, min_value=10.0, max_value=40.0),
+        Component(inventory_item=seeded_inventory[1], amount=80.0, min_value=60.0, max_value=90.0),
+    ]
+
+    column = seeded_sheet.add_formulation(
+        formulation_name=formulation_name,
+        components=components,
+        enforce_order=True,
+    )
+
+    inventory_cells = [
+        cell
+        for cell in column.cells
+        if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY
+    ]
+    assert len(inventory_cells) >= 2
+
+    expected_values = {}
+    updated_cells = []
+    for idx, cell in enumerate(inventory_cells[:2]):
+        base_value = float(cell.value)
+        base_min = float(cell.min_value) if cell.min_value is not None else 0.0
+        base_max = float(cell.max_value) if cell.max_value is not None else base_value
+
+        new_value = round(base_value + 5 + idx, 3)
+        new_min = round(base_min + 1.5, 3)
+        new_max = round(base_max + 2.5, 3)
+
+        expected_values[cell.row_id] = {
+            "value": new_value,
+            "min": new_min,
+            "max": new_max,
+        }
+
+        updated_cells.append(
+            cell.model_copy(
+                update={
+                    "value": f"{new_value}",
+                    "min_value": f"{new_min}",
+                    "max_value": f"{new_max}",
+                }
+            )
+        )
+
+    updated, failed = seeded_sheet.update_cells(cells=updated_cells)
+
+    assert failed == []
+    assert {(c.row_id, c.column_id) for c in updated} == {
+        (c.row_id, c.column_id) for c in updated_cells
+    }
+
+    refreshed_column = seeded_sheet.get_column(column_id=column.column_id)
+    refreshed_cells = {
+        cell.row_id: cell
+        for cell in refreshed_column.cells
+        if cell.row_id in expected_values
+        and cell.type == CellType.INVENTORY
+        and cell.row_type == CellType.INVENTORY
+    }
+
+    assert set(refreshed_cells.keys()) == set(expected_values.keys())
+
+    for row_id, expected in expected_values.items():
+        refreshed = refreshed_cells[row_id]
+        assert float(refreshed.value) == pytest.approx(expected["value"], rel=1e-6)
+        if refreshed.min_value is not None:
+            assert float(refreshed.min_value) == pytest.approx(expected["min"], rel=1e-6)
+        else:
+            assert expected["min"] == pytest.approx(0.0, rel=1e-6)
+        if refreshed.max_value is not None:
+            assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
+
+    # Restore original values to keep fixture data stable for subsequent tests
+    seeded_sheet.update_cells(cells=inventory_cells[:2])
+
+
 def test_get_test_sheet(seeded_sheet: Sheet):
     assert isinstance(seeded_sheet, Sheet)
     seeded_sheet.rename(new_name="test renamed")
