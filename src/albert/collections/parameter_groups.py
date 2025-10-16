@@ -271,21 +271,26 @@ class ParameterGroupCollection(BaseCollection):
                 continue
 
             if existing_param.required != updated_param.required:
-                required_params.append(
+                required_params = [
                     {
                         "operation": "update",
                         "attribute": "required",
                         "rowId": existing_param.sequence,
                         "oldValue": existing_param.required,
                         "newValue": updated_param.required,
-                    }
-                )
-
-        if required_params:
-            self.session.patch(
+                    }]
+                
+                self.session.patch(
                 url=path,
                 json={"data": required_params},
-            )
+                )
+
+        # if required_params:
+        #     self.session.patch(
+        #         url=path,
+        #         json={"data": required_params},
+        #     )
+
         if len(general_patches.data) > 0:
             # patch the general patches
             self.session.patch(
