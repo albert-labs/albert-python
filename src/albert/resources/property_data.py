@@ -64,6 +64,7 @@ class Trial(BaseAlbertModel):
     trial_number: int = Field(alias="trialNo")
     visible_trial_number: int = Field(default=1, alias="visibleTrialNo")
     void: bool = Field(default=False)
+    back_end_trial_number: str | None = Field(default=None, alias="backEndTrialNo")
     data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
 
 
@@ -135,7 +136,7 @@ class TaskPropertyData(BaseResource):
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
         default=None, alias="DataTemplate"
     )
-    data: list[DataInterval] = Field(alias="Data", frozen=True, exclude=True)
+    data: list[DataInterval] = Field(default_factory=list, alias="Data")
     block_id: str | None = Field(alias="blockId", default=None)
 
 
