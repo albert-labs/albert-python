@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import Any, ForwardRef, Union
-
+from typing import Any, ForwardRef, Union, Optional
+from pydantic.config import ConfigDict
 import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
@@ -148,6 +148,66 @@ class DesignState(BaseResource):
 
     collapsed: bool | None = False
 
+class Group(BaseAlbertModel):
+    row_id: str
+    name: str | None = None
+    child_row_ids: list[str] = Field(default_factory=list)
+
+def _groups_from_sequence(seq: list[dict]) -> list[Group]:
+    """
+    Try to infer groups from GET /worksheet/design/{id}/rows/sequence.
+    We accept multiple shapes: look for parent-like keys and child arrays.
+    Returns [] if we can't infer anything.
+    """
+    if not isinstance(seq, list):
+        return []
+
+    # Build lookup
+    by_row: dict[str, dict] = {}
+    for item in seq:
+        rid = item.get("rowId") or item.get("id")
+        if rid:
+            by_row[rid] = item
+
+    # Accept several possible keys
+    def children_of(item: dict) -> list[str]:
+        for k in ("children", "childRows", "ChildRows", "rows"):
+            v = item.get(k)
+            if isinstance(v, list):
+                if v and isinstance(v[0], dict):
+                    return [x.get("rowId") or x.get("id") for x in v if (x.get("rowId") or x.get("id"))]
+                return [str(x) for x in v]
+        return []
+
+    def parent_of(item: dict) -> str | None:
+        for k in ("parentId", "groupId", "parentRowId"):
+            if item.get(k):
+                return item[k]
+        return None
+
+    # 1) Prefer explicit parent→children
+    groups: list[Group] = []
+    for item in seq:
+        rid = item.get("rowId") or item.get("id")
+        if not rid:
+            continue
+        kids = children_of(item)
+        if kids:
+            groups.append(Group(row_id=rid, name=item.get("name"), child_row_ids=[k for k in kids if k]))
+
+    if groups:
+        return groups
+
+    # 2) If only child→parent exists, invert it
+    parent_map: dict[str, list[str]] = {}
+    for item in seq:
+        rid = item.get("rowId") or item.get("id")
+        pid = parent_of(item)
+        if rid and pid:
+            parent_map.setdefault(pid, []).append(rid)
+
+    return [Group(row_id=pid, name=by_row.get(pid, {}).get("name"), child_row_ids=kids)
+            for pid, kids in parent_map.items()]
 
 class Design(BaseSessionResource):
     """A Design in a Sheet. Designs are sheet subsections that are largly abstracted away from the user.
@@ -176,6 +236,7 @@ class Design(BaseSessionResource):
     _columns: list["Column"] | None = PrivateAttr(default=None)
     _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # noqa
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
+    _groups_cache: list[Group] | None = PrivateAttr(default=None)
 
     def _grid_to_cell_df(self, *, grid_response):
         items = grid_response.get("Items") or []
@@ -326,6 +387,85 @@ class Design(BaseSessionResource):
 
         return cols
 
+    # def _get_rows(self, *, grid_response: dict) -> list["Row"]:
+    #     """
+    #     Parse the /grid response into a list of Row models.
+
+    #     Parameters
+    #     ----------
+    #     grid_response : dict
+    #         The JSON-decoded payload from GET /worksheet/.../grid.
+
+    #     Returns
+    #     -------
+    #     list[Row]
+    #         One Row per item in `Items`
+    #     """
+    #     items = grid_response.get("Items") or []
+    #     if not items:
+    #         return []
+
+    #     rows: list[Row] = []
+    #     for v in items:
+    #         raw_id = v.get("id")
+    #         if raw_id and not str(raw_id).startswith("INV"):
+    #             raw_id = f"INV{raw_id}"
+    #         inv_id = raw_id
+
+    #         row_label = v.get("lableName") or v.get("name")
+
+
+    #         rows.append(
+    #             Row(
+    #                 rowId=v["rowId"],
+    #                 type=v["type"],
+    #                 session=self.session,
+    #                 design=self,
+    #                 sheet=self.sheet,
+    #                 name=row_label,
+    #                 manufacturer=v.get("manufacturer"),
+    #                 inventory_id=inv_id,
+    #                 config=v.get("config"), 
+    #             )
+    #         )
+    #     seq = grid_response.get("RowSequence") or []
+    #     if seq:
+    #         groups_inline = _groups_from_sequence(seq)
+    #         if groups_inline:
+    #             by_id = {r.row_id: r for r in rows}
+    #             # children → parent
+    #             for g in groups_inline:
+    #                 for cid in g.child_row_ids:
+    #                     ch = by_id.get(cid)
+    #                     if ch:
+    #                         ch.parent_row_id = g.row_id
+    #             # header rows (if present)
+    #             for g in groups_inline:
+    #                 if g.row_id in by_id:
+    #                     by_id[g.row_id].child_row_ids = list(g.child_row_ids)
+    #             # warm the cache so later calls are cheap
+    #             self._groups_cache = groups_inline
+    #             return rows  # we’re done
+    #     try:
+    #         groups = self.list_groups()
+    #     except Exception:
+    #         groups = []
+
+    #     if groups:
+    #         by_id = {r.row_id: r for r in rows}
+    #         # Always mark children → parent
+    #         for g in groups:
+    #             for cid in g.child_row_ids:
+    #                 ch = by_id.get(cid)
+    #                 if ch:
+    #                     ch.parent_row_id = g.row_id
+    #         # Mark headers if present in grid
+    #         for g in groups:
+    #             if g.row_id in by_id:
+    #                 by_id[g.row_id].child_row_ids = list(g.child_row_ids)
+
+    #     return rows
+
     def _get_rows(self, *, grid_response: dict) -> list["Row"]:
         """
         Parse the /grid response into a list of Row models.
@@ -350,7 +490,6 @@ class Design(BaseSessionResource):
             if raw_id and not str(raw_id).startswith("INV"):
                 raw_id = f"INV{raw_id}"
             inv_id = raw_id
-
             row_label = v.get("lableName") or v.get("name")
 
             rows.append(
@@ -363,11 +502,50 @@ class Design(BaseSessionResource):
                     name=row_label,
                     manufacturer=v.get("manufacturer"),
                     inventory_id=inv_id,
+                    config=v.get("config"), 
                 )
             )
 
-        return rows
+        by_id = {r.row_id: r for r in rows}
 
+        # Extract parent-child from rowHierarchy
+        for v in items:
+            hierarchy = v.get("rowHierarchy", [])
+            if len(hierarchy) < 2:
+                continue
+            row_ids = [h for h in hierarchy if h != self.design_type.value]
+            if len(row_ids) > 1:
+                by_id[v["rowId"]].parent_row_id = row_ids[-2]
+
+        # Build child_row_ids
+        for row in rows:
+            if row.parent_row_id and row.parent_row_id in by_id:
+                parent = by_id[row.parent_row_id]
+                if row.row_id not in parent.child_row_ids:
+                    parent.child_row_ids.append(row.row_id)
+
+        seq = grid_response.get("RowSequence") or []
+        if seq:
+            groups_inline = _groups_from_sequence(seq)
+            if groups_inline:
+                for g in groups_inline:
+                    for cid in g.child_row_ids:
+                        ch = by_id.get(cid)
+                        if ch and not ch.parent_row_id:
+                            ch.parent_row_id = g.row_id
+                for g in groups_inline:
+                    if g.row_id in by_id:
+                        existing = set(by_id[g.row_id].child_row_ids)
+                        by_id[g.row_id].child_row_ids = list(existing | set(g.child_row_ids))
+                self._groups_cache = groups_inline
+                return rows
+
+        groups = [Group(row_id=r.row_id, name=r.name, child_row_ids=r.child_row_ids)
+                for r in rows if r.child_row_ids]
+        if groups:
+            self._groups_cache = groups
+
+        return rows
     def _get_grid(self):
         endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
         response = self.session.get(endpoint)
@@ -376,6 +554,29 @@ class Design(BaseSessionResource):
         self._columns = self._get_columns(grid_response=resp_json)
         self._rows = self._get_rows(grid_response=resp_json)
         return self._grid_to_cell_df(grid_response=resp_json)
+    def _hydrate_groups_from_sequence(self) -> list[Group]:
+        r = self.session.get(f"/api/v3/worksheet/design/{self.id}/rows/sequence")
+        if r.status_code >= 400:
+            return []
+        seq = r.json()
+        groups = _groups_from_sequence(seq)
+        self._groups_cache = groups
+        return groups
+
+    def list_groups(self, *, refresh: bool = False) -> list[Group]:
+        if self._groups_cache is not None and not refresh:
+            return self._groups_cache
+
+        # No GET /groups exists → try sequence as a fallback
+        groups = self._hydrate_groups_from_sequence()
+        self._groups_cache = groups or []  # [] = unknown
+        return self._groups_cache
+
+    def _clear_layout_caches(self):
+        if self.sheet is not None:
+            self.sheet.grid = None
+        self._rows = None
+        self._columns = None
     def group_rows(
         self,
         *,
@@ -387,22 +588,11 @@ class Design(BaseSessionResource):
         """
         Create a row group within this design.
 
-        Parameters
-        ----------
-        name : str
-            Display name for the group header.
-        child_row_ids : list[str] | list[Row]
-            Rows to group, as rowId strings or Row objects.
-        reference_id : str | None
-            A rowId used as an anchor for placement (defaults to first child).
-        position : str
-            One of: "above", "below". (Server may also accept others.)
-
-        Returns
-        -------
-        dict
-            Raw JSON response from the API.
+        Contract enforced here:
+        - referenceId MUST be one of ChildRows and MUST be the first item.
+        - If caller gives a reference_id not in children, we ignore it and use children[0].
         """
+
         # Accept Row objects or plain rowId strings
         ids: list[str] = [
             r.row_id if hasattr(r, "row_id") else str(r)  # type: ignore[attr-defined]
@@ -411,38 +601,50 @@ class Design(BaseSessionResource):
         if not ids:
             raise AlbertException("child_row_ids must include at least one rowId")
 
-        # Fallback anchor if not provided
-        reference_id = reference_id or ids[0]
+        # Deduplicate while preserving order
+        seen = set()
+        ids = [x for x in ids if not (x in seen or seen.add(x))]
 
-        # Endpoint observed from your example:
-        # /api/v3/worksheet/{DESIGN_ID}/designs/groups
+        # Enforce API requirement:
+        #   - if reference_id provided and in ids -> move it to front
+        #   - else -> reference_id = ids[0]
+        if reference_id and reference_id in ids:
+            ids = [reference_id] + [x for x in ids if x != reference_id]
+        else:
+            reference_id = ids[0]
+
         endpoint = f"/api/v3/worksheet/{self.id}/designs/groups"
-
         payload = {
             "name": name,
-            "referenceId": reference_id,
+            "referenceId": reference_id,  # now guaranteed to be ids[0]
             "position": position,
-            "ChildRows": [{"rowId": rid} for rid in ids],
+            "ChildRows": [{"rowId": rid} for rid in ids],  # referenceId is first
         }
 
-        # Some environments may use /worksheet/design/{id}/groups; try that if needed.
         resp = self.session.put(endpoint, json=payload)
         if resp.status_code >= 400:
-            alt_endpoint = f"/api/v3/worksheet/design/{self.id}/groups"
-            resp = self.session.put(alt_endpoint, json=payload)
-
+            alt = f"/api/v3/worksheet/design/{self.id}/groups"
+            resp = self.session.put(alt, json=payload)
         if resp.status_code >= 400:
-            raise AlbertException(
-                f"Failed to group rows: {resp.status_code} {getattr(resp, 'text', '')}"
+            raise AlbertException(f"Grouping failed: {resp.status_code} {getattr(resp, 'text', '')}")
+
+        data = resp.json() if hasattr(resp, "json") else {}
+
+        # Best-effort cache update
+        try:
+            group = Group(
+                row_id=data.get("rowId"),
+                name=data.get("name"),
+                child_row_ids=[d.get("rowId") for d in (data.get("ChildRows") or []) if d.get("rowId")],
             )
+            existing = {g.row_id: g for g in (self._groups_cache or [])}
+            existing[group.row_id] = group
+            self._groups_cache = list(existing.values())
+        except Exception:
+            self._groups_cache = None
 
-        # Grouping changes the layout; clear cached grids/rows/columns
-        if self.sheet is not None:
-            self.sheet.grid = None
-        self._rows = None
-        self._columns = None
-
-        return resp.json() if hasattr(resp, "json") else {}
+        self._clear_layout_caches()
+        return data
 
     @property
     def columns(self) -> list["Column"]:
@@ -943,12 +1145,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
 
         app_id = app_id if app_id.startswith("APP") else f"APP{app_id}"
-        cfg = None
-        if isinstance(config, dict) and config:
-            k, v = next(iter(config.items()))
-            cfg = {"key": k, "value": v}
-        elif isinstance(config, tuple) and len(config) == 2:
-            cfg = {"key": config[0], "value": config[1]}
 
         payload = [{
             "type": "APP",
@@ -956,7 +1152,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             "id": app_id,
             "position": position["position"],
             "name": name,
-            **({"config": cfg} if cfg else {}),
+            "config": config
         }]
 
         resp = self.session.post(endpoint, json=payload)
@@ -972,6 +1168,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=data.get("name") or name,
             inventory_id=data.get("id"),
             manufacturer=data.get("manufacturer"),
+            config=(data.get("config") or cfg), 
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
@@ -1144,10 +1341,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
             this_url = f"/api/v3/worksheet/{design_id}/values"
             for payload in payloads:
-                response = self.session.patch(
+                try:
+                    response = self.session.patch(
                     this_url,
                     json=[payload],  # The API expects a list of changes
                 )
+                except Exception as e:
+                    continue
 
                 original_cell = next(
                     (
@@ -1176,66 +1376,97 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None
         return (updated, failed)
 
-    def add_blank_column(self, *, name: str, position: dict = None):
+
+    def add_blank_column(self, col_or_name=None, *, position=None):
+        # accept Column, dict, or string
+        if isinstance(col_or_name, Column):
+            nm = col_or_name.name or ""
+        elif isinstance(col_or_name, dict):
+            nm = col_or_name.get("name", "")
+            position = position or col_or_name.get("position")
+        else:
+            nm = str(col_or_name or "")
+            extra = {}
+
         if position is None:
-            position = {"reference_id": self.leftmost_pinned_column, "position": "rightOf"}
-        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
-        payload = [
-            {
-                "type": "BLK",
-                "name": name,
-                "referenceId": position["reference_id"],
-                "position": position["position"],
-            }
-        ]
+            ref = self.columns[-1].column_id if getattr(self, "columns", None) else self.leftmost_pinned_column
+            position = {"reference_id": ref, "position": "rightOf"}
 
-        response = self.session.post(endpoint, json=payload)
-
-        data = response.json()
-        data[0]["sheet"] = self
-        data[0]["session"] = self.session
-        self.grid = None  # reset the known grid. We could probably make this nicer later.
-        return Column(**data[0])
-
-    def add_lookup_column(self, *, name: str, position: dict | None = None) -> "Column":
-        """
-        Create a Lookup (LKP) column at a position relative to a reference column.
-
-        position: {"reference_id": "COL8", "position": "leftOf" | "rightOf"}
-        """
-        if position is None:
-            position = {"reference_id": self.leftmost_pinned_column, "position": "rightOf"}
-
-        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
-        payload = [
-            {
-                "type": "LKP",
-                "name": name,
-                "referenceId": position["reference_id"],
-                "position": position["position"],
-            }
-        ]
-
-        resp = self.session.post(endpoint, json=payload)
-
-        if resp.status_code >= 400:
-            # Optional: graceful fallback to a BLK column
-            # (Remove this block if you want hard failure instead.)
-            blk_payload = [
-                {
-                    "type": "BLK",
-                    "name": name,
-                    "referenceId": position["reference_id"],
-                    "position": position["position"],
-                }
-            ]
-            resp = self.session.post(endpoint, json=blk_payload)
-
-        data = resp.json()[0]
-        data["sheet"] = self
-        data["session"] = self.session
+        payload = [{
+            "type": "BLK",
+            "name": nm,
+            "referenceId": position["reference_id"],
+            "position": position["position"],
+        }]
+        resp = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        data = resp.json()[0]; data["sheet"] = self; data["session"] = self.session
         self.grid = None
         return Column(**data)
+
+
+    def add_lookup_column(self, col_or_name=None, *, position=None):
+        if isinstance(col_or_name, Column):
+            nm = col_or_name.name or ""
+        elif isinstance(col_or_name, dict):
+            nm = col_or_name.get("name", "")
+        else:
+            nm = str(col_or_name or "")
+            extra = {}
+
+        if position is None:
+            ref = self.columns[-1].column_id if getattr(self, "columns", None) else self.leftmost_pinned_column
+            position = {"reference_id": ref, "position": "rightOf"}
+
+        payload = [{
+            "type": "LKP",
+            "name": nm,
+            "referenceId": position["reference_id"],
+            "position": position["position"],
+        }]
+        resp = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        if resp.status_code >= 400:
+            payload[0]["type"] = "BLK"
+            resp = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+
+        data = resp.json()[0]; data["sheet"] = self; data["session"] = self.session
+        self.grid = None
+        return Column(**data)
+    
+    def set_columns_pinned(self, *, col_ids: list[str], pinned: str | None) -> None:
+        """Pin columns: pinned in {'left','right',None}."""
+        payload = {"data": [{
+            "operation": "update",
+            "attribute": "pinned",
+            "colIds": col_ids,
+            "newValue": pinned,
+        }]}
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+
+    def set_columns_width(self, *, col_ids: list[str], width: str) -> None:
+        """Set width like '142px' for one or many columns."""
+        payload = {"data": [{
+            "operation": "update",
+            "attribute": "columnWidth",
+            "colIds": col_ids,
+            "newValue": width,
+        }]}
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+
+    def set_column_hidden(self, *, col_id: str, hidden: bool, old_value: bool | None = None) -> None:
+        """Hide/show a single column. If you know the previous value, pass it."""
+        data = {
+            "operation": "update",
+            "attribute": "hidden",
+            "colId": col_id,
+            "newValue": hidden,
+        }
+        if old_value is not None:
+            data["oldValue"] = old_value
+        payload = {"data": [data]}
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
 
     def delete_column(self, *, column_id: str) -> None:
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
@@ -1459,6 +1690,11 @@ class Column(BaseSessionResource):  # noqa:F811
             new_cells.append(cell_copy)
         return self.sheet.update_cells(cells=new_cells)
 
+class Config(BaseSessionResource):
+    key: str
+    value: str
+    model_config = ConfigDict(extra='ignore')
+
 
 class Row(BaseSessionResource):  # noqa:F811
     """A row in a Sheet
@@ -1493,6 +1729,9 @@ class Row(BaseSessionResource):  # noqa:F811
     name: str | None = Field(default=None)
     inventory_id: str | None = Field(default=None, alias="id")
     manufacturer: str | None = Field(default=None)
+    config:  Optional[Config] = Field(default=None) 
+    parent_row_id: str | None = Field(default=None)
+    child_row_ids: list[str] = Field(default_factory=list)
 
     @property
     def row_unique_id(self):
@@ -1501,6 +1740,20 @@ class Row(BaseSessionResource):  # noqa:F811
     @property
     def cells(self) -> list[Cell]:
         return self.sheet.grid.loc[self.row_unique_id]
+    
+    @property
+    def is_group_header(self) -> bool:
+        return bool(self.child_row_ids)
+    @field_validator("config", mode="before")
+    @classmethod
+    def _coerce_config(cls, v):
+        if v is None or isinstance(v, Config):
+            return v
+        if isinstance(v, dict):
+            return Config(**v)
+        if isinstance(v, (tuple, list)) and len(v) == 2:
+            return Config(key=v[0], value=v[1])
+        return v
 
     def recolor_cells(self, color: CellColor):
         new_cells = []
