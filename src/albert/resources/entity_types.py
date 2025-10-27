@@ -143,7 +143,7 @@ class EntityType(BaseResource):
         The display label for the entity type.
     service : EntityServiceType
         The service type associated with this entity type.
-    type : EntityType
+    type : EntityTypeType
         The type of entity type (custom or system).
     prefix : str
         The prefix used for IDs of this entity type.

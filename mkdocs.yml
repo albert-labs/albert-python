@@ -187,6 +187,7 @@ nav:
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
+          - Entity Types (🧪Beta): resources/entity_types.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md

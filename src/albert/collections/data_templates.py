@@ -546,8 +546,7 @@ class DataTemplateCollection(BaseCollection):
                     path + "/parameters",
                     json=json_payload,
                 )
-        else:
-            pass
+
         if len(general_patches.data) > 0:
             payload = GeneralPatchPayload(data=general_patches.data)
             self.session.patch(

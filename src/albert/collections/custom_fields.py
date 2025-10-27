@@ -8,6 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import CustomFieldId
+from albert.core.shared.models.patch import PatchOperation
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 
 
@@ -227,17 +228,17 @@ class CustomFieldCollection(BaseCollection):
         for patch in payload.data:
             if (
                 patch.attribute in ("hidden", "search", "lkpColumn", "lkpRow")
-                and patch.operation == "add"
+                and patch.operation == PatchOperation.ADD
             ):
-                patch.operation = "update"
+                patch.operation = PatchOperation.UPDATE
                 patch.old_value = False
             if (
                 patch.attribute in ("entityCategory", "customEntityCategory")
-                and patch.operation == "add"
+                and patch.operation == PatchOperation.ADD
                 and isinstance(patch.new_value, list)
             ):
                 if patch.attribute == "customEntityCategory":
-                    patch.operation = "update"
+                    patch.operation = PatchOperation.UPDATE
                     patch.old_value = []
                 for i, v in enumerate(patch.new_value):
                     if i == 0:

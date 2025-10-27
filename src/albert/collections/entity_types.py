@@ -55,32 +55,32 @@ class EntityTypeCollection(BaseCollection):
         )
         return EntityType(**response.json())
 
-    def update(self, *, updated_entity_type: EntityType) -> EntityType:
+    def update(self, *, entity_type: EntityType) -> EntityType:
         """Update an entity type.
         Parameters
         ----------
         entity_type : EntityType
             The entity type to update.
         """
-        current_entity_type = self.get_by_id(id=updated_entity_type.id)
+        current_entity_type = self.get_by_id(id=entity_type.id)
         patch = self._generate_patch_payload(
             existing=current_entity_type,
-            updated=updated_entity_type,
+            updated=entity_type,
             generate_metadata_diff=False,
             stringify_values=False,
         )
 
         # Add special attribute updates to the patch
         special_patches = self._generate_special_attribute_patches(
-            existing=current_entity_type, updated=updated_entity_type
+            existing=current_entity_type, updated=entity_type
         )
         patch.data.extend(special_patches)
 
         self.session.patch(
-            f"{self.base_path}/{updated_entity_type.id}",
+            f"{self.base_path}/{entity_type.id}",
             json=patch.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
-        return self.get_by_id(id=updated_entity_type.id)
+        return self.get_by_id(id=entity_type.id)
 
     def _generate_special_attribute_patches(
         self, *, existing: EntityType, updated: EntityType
@@ -125,7 +125,11 @@ class EntityTypeCollection(BaseCollection):
             field_info = updated.standard_field_visibility.model_fields
             for field_name, field in field_info.items():
                 new_value = getattr(updated.standard_field_visibility, field_name)
-                old_value = getattr(existing.standard_field_visibility, field_name)
+                old_value = (
+                    getattr(existing.standard_field_visibility, field_name)
+                    if existing.standard_field_visibility
+                    else None
+                )
                 if new_value != old_value:
                     # Use the field's alias if available, otherwise use the field name
                     attr_name = field.alias or field_name
@@ -143,7 +147,11 @@ class EntityTypeCollection(BaseCollection):
             field_info = updated.search_query_string.model_fields
             for field_name, field in field_info.items():
                 new_value = getattr(updated.search_query_string, field_name)
-                old_value = getattr(existing.search_query_string, field_name)
+                old_value = (
+                    getattr(existing.search_query_string, field_name)
+                    if existing.search_query_string
+                    else None
+                )
                 if new_value != old_value:
                     # Use the field's alias if available, otherwise use the field name
                     attr_name = field.alias or field_name

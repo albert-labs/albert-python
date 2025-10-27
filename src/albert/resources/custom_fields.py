@@ -147,9 +147,9 @@ class CustomField(BaseResource):
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
     required: bool | None = Field(default=None)
     multiselect: bool | None = Field(default=None)
-    editable: bool | None = Field(default=None, alias="editable")
+    editable: bool | None = Field(default=None)
     pattern: str | None = Field(default=None)
-    default: Default | None = Field(default=None, alias="default")
+    default: Default | None = Field(default=None)
     api: dict[str, str] | None = Field(default=None)
 
     @model_validator(mode="after")
