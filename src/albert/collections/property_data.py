@@ -275,22 +275,29 @@ class PropertyDataCollection(BaseCollection):
         return CheckPropertyData(response.json())
 
     @validate_call
-    def get_all_task_properties(self, *, task_id: TaskId) -> list[TaskPropertyData]:
-        """Returns all the properties for a specific task.
+    def get_all_task_properties(
+        self, *, task_id: TaskId, with_data_only: bool = False
+    ) -> list[TaskPropertyData]:
+        """Collect task property data for block/inventory combinations in a task.
 
         Parameters
         ----------
         task_id : TaskId
             The ID of the task to retrieve properties for.
+        with_data_only : bool, optional
+            When True, only return combinations actually having task data (``dataExist`` flag is true). Defaults to False.
 
         Returns
         -------
         list[TaskPropertyData]
-            A list of TaskPropertyData entities representing the properties within the task.
+            Task property data for each block/inventory/lot combination. When
+            ``with_data_only`` is True, combinations without recorded data are omitted.
         """
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
         for combo_info in task_data_info:
+            if with_data_only and not combo_info.data_exists:
+                continue
             all_info.append(
                 self.get_task_block_properties(
                     inventory_id=combo_info.inventory_id,
@@ -299,7 +306,6 @@ class PropertyDataCollection(BaseCollection):
                     lot_id=combo_info.lot_id,
                 )
             )
-
         return all_info
 
     @validate_call

@@ -74,6 +74,7 @@ class CustomFieldCollection(BaseCollection):
         "pattern",
         "default",
         "custom_entity_categories",
+        "editable",
     }
     _api_version = "v3"
 

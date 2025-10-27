@@ -120,27 +120,50 @@ class Cell(BaseResource):
 
 
 class Component(BaseResource):
-    """Represents an amount of an inventory item in a formulation
+    """Represents an amount of an inventory item in a formulation.
 
     Attributes
     ----------
-    inventory_item : InventoryItem
-        The inventory item in the component
+    inventory_item : InventoryItem | None
+        The inventory item in the component. Optional when ``inventory_id`` is provided.
+    inventory_id : InventoryId | None
+        The inventory identifier backing the component. Automatically populated from
+        ``inventory_item`` when present; required when ``inventory_item`` is omitted.
     amount : float
-        The amount of the inventory item in the component
+        The amount of the inventory item in the component.
     cell : Cell
         The cell that the component is in. Read-only.
     """
 
-    inventory_item: InventoryItem
+    inventory_item: InventoryItem | None = Field(default=None)
+    inventory_id: InventoryId | None = Field(default=None)
     amount: float
     min_value: float | None = Field(default=None)
     max_value: float | None = Field(default=None)
     _cell: Cell = None  # read only property set on registrstion
 
+    @model_validator(mode="after")
+    def _ensure_inventory_reference(self: "Component") -> "Component":
+        item = self.inventory_item
+        if item is None and self.inventory_id is None:
+            raise ValueError("Component requires either 'inventory_item' or 'inventory_id'.")
+        if item is not None:
+            if getattr(item, "id", None) is None:
+                raise ValueError("Provided inventory_item must include an 'id'.")
+            object.__setattr__(self, "inventory_id", item.id)
+        return self
+
     @property
     def cell(self):
         return self._cell
+
+    @property
+    def inventory_item_id(self) -> InventoryId:
+        if self.inventory_id:
+            return self.inventory_id
+        if self.inventory_item and getattr(self.inventory_item, "id", None):
+            return self.inventory_item.id
+        raise ValueError("Component is missing an inventory identifier.")
 
 
 class DesignState(BaseResource):
@@ -573,13 +596,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None  # reset the grid for saftey
 
         for component in components:
+            component_inventory_id = component.inventory_item_id
             row_id = self._get_row_id_for_component(
-                inventory_item=component.inventory_item,
+                inventory_id=component_inventory_id,
                 existing_cells=all_cells,
                 enforce_order=enforce_order,
             )
             if row_id is None:
-                raise AlbertException(f"no component with id {component.inventory_item.id}")
+                raise AlbertException(f"No Component with id {component_inventory_id}")
 
             value = str(component.amount)
             min_value = str(component.min_value) if component.min_value is not None else None
@@ -601,11 +625,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.update_cells(cells=all_cells)
         return self.get_column(column_id=col_id)
 
-    def _get_row_id_for_component(self, *, inventory_item, existing_cells, enforce_order):
+    def _get_row_id_for_component(
+        self, *, inventory_id: InventoryId, existing_cells, enforce_order
+    ):
         self.grid = None
 
         # within a sheet, the "INV" prefix is dropped
-        sheet_inv_id = inventory_item.id
+        sheet_inv_id = inventory_id
         matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
 
         used_row_ids = [x.row_id for x in existing_cells]
@@ -631,14 +657,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Otherwise I need to add a new row
         if enforce_order:
             return self.add_inventory_row(
-                inventory_id=inventory_item.id,
+                inventory_id=inventory_id,
                 position={
                     "reference_id": existing_inv_order[index_last_row],
                     "position": "below",
                 },
             ).row_id
         else:
-            return self.add_inventory_row(inventory_id=inventory_item.id).row_id
+            return self.add_inventory_row(inventory_id=inventory_id).row_id
 
     def add_formulation_columns(
         self,

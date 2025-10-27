@@ -185,6 +185,15 @@ class LotCollection(BaseCollection):
                     old_value=str(existing.inventory_on_hand),
                 )
             )
+
+        # Handle StorageLocation field name differences
+        # API expects only the ID for the new and old values
+        for datum in patch_data.data:
+            if datum.attribute == "StorageLocation":
+                datum.attribute = "storageLocation"
+                datum.new_value = datum.new_value.id if datum.new_value else None
+                datum.old_value = datum.old_value.id if datum.old_value else None
+
         return patch_data
 
     def update(self, *, lot: Lot) -> Lot:
