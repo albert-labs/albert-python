@@ -93,6 +93,7 @@ class DataTemplateCollection(BaseCollection):
         data_template = self.get_by_id(id=data_template_id)
         existing_parameters = data_template.parameter_values
 
+        updated_enum_values: list[EnumValidationValue] = []
         for parameter in new_parameters:
             this_sequence = next(
                 (
@@ -173,7 +174,10 @@ class DataTemplateCollection(BaseCollection):
                         f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
                         json=enum_patches,
                     )
-                    return [EnumValidationValue(**x) for x in enum_response.json()]
+                    updated_enum_values.extend(
+                        EnumValidationValue(**x) for x in enum_response.json()
+                    )
+        return updated_enum_values
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
