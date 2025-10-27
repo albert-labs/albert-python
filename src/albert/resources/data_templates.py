@@ -53,7 +53,7 @@ class DataTemplate(BaseTaggedResource):
     description: str | None = None
     security_class: SecurityClass | None = None
     verified: bool = False
-    users_with_access: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
+    acl: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
     data_column_values: list[DataColumnValue] | None = Field(alias="DataColumns", default=None)
     parameter_values: list[ParameterValue] | None = Field(alias="Parameters", default=None)
     deleted_parameters: list[ParameterValue] | None = Field(

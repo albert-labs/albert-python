@@ -8,7 +8,7 @@ from pandas import DataFrame
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
+from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId, CustomTemplateId
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL
@@ -220,7 +220,7 @@ NotebookBlock = Annotated[_NotebookBlockUnion, Field(discriminator="type")]
 class Notebook(BaseResource):
     id: NotebookId | None = Field(default=None, alias="albertId")
     name: str = Field(default="Untitled Notebook")
-    parent_id: ProjectId | TaskId = Field(..., alias="parentId")
+    parent_id: ProjectId | TaskId | CustomTemplateId = Field(..., alias="parentId")
     version: datetime | None = Field(default=None)
     blocks: list[NotebookBlock] = Field(default_factory=list)
     links: list[NotebookLink] | None = Field(default=None)
