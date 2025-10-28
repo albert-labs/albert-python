@@ -249,4 +249,5 @@ class EntityTypeCollection(BaseCollection):
             params=params,
             session=self.session,
             deserialize=lambda items: [EntityType(**item) for item in items],
+            max_items=max_items
         )
