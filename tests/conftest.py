@@ -201,7 +201,7 @@ def seeded_cas(
         seeded.append(created_cas)
 
     # Avoid race condition while it populated through DBs
-    time.sleep(6)
+    time.sleep(12)
 
     yield seeded
 
