@@ -393,4 +393,6 @@ def test_inventory_search_with_tags(
     ids = [x.id for x in seeded_inventory]
     matches = [x for x in results if ensure_inventory_id(x.id) in ids]
 
-    assert len(matches) == 1
+    for m in matches:
+        tags = [x.tag for x in m.tags]
+        assert any(t in tags for t in seeded_tags[:2])

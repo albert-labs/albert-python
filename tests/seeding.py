@@ -1056,7 +1056,7 @@ def generate_inventory_seeds(
             unit_category=InventoryUnitCategory.MASS,
             security_class=SecurityClass.SHARED,
             company=seeded_companies[0],
-            tags=[seeded_tags[0].tag, seeded_tags[1].tag],
+            tags=[seeded_tags[0].tag, seeded_tags[3].tag],
         ),
     ]
 
