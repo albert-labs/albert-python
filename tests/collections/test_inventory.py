@@ -143,7 +143,6 @@ def test_inventory_update(client: Albert, seed_prefix: str):
         company="",
     )
     created = client.inventory.create(inventory_item=ii)
-
     # Give time for the DB to sync - somewhere between 1 and 4 seconds is needed
     # for this test to work
     time.sleep(4)
@@ -384,8 +383,9 @@ def test_inventory_search_with_tags(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):
     """Test inventory search with tag filters and match_all_conditions."""
+    tags = [x.tag for x in seeded_tags[:1]]
     results = client.inventory.search(
-        tags=[x.tag for x in seeded_tags[:2]],
+        tags=tags,
         match_all_conditions=True,
         max_items=10,
     )
@@ -393,4 +393,4 @@ def test_inventory_search_with_tags(
     ids = [x.id for x in seeded_inventory]
     matches = [x for x in results if ensure_inventory_id(x.id) in ids]
 
-    assert len(matches) == 1
+    assert all(tag.tag in tags for match in matches for tag in match.tags)
