@@ -239,7 +239,7 @@ class EntityTypeCollection(BaseCollection):
         """
         params = {
             "service": service.value if service else None,
-            "limit": limit,
+            "limit": max_items,
             "startKey": start_key,
             "order": order.value if order else None,
         }
@@ -249,5 +249,5 @@ class EntityTypeCollection(BaseCollection):
             params=params,
             session=self.session,
             deserialize=lambda items: [EntityType(**item) for item in items],
-            max_items=max_items
+            max_items=max_items,
         )
