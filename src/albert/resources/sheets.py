@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, ForwardRef, Union
+from typing import Any, ForwardRef, TypedDict, Union
 
 import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
@@ -7,6 +7,7 @@ from pydantic import Field, PrivateAttr, field_validator, model_validator, valid
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import InventoryId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
+from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryItem
 
@@ -14,6 +15,18 @@ from albert.resources.inventory import InventoryItem
 Row = ForwardRef("Row")
 Column = ForwardRef("Column")
 Sheet = ForwardRef("Sheet")
+
+CellAttributeValue = str | float | int | dict[str, Any] | list[Any] | None
+
+
+class CellChangeId(TypedDict):
+    rowId: str
+    colId: str
+
+
+class CellChangePayload(TypedDict):
+    Id: CellChangeId
+    data: list[PatchDatum]
 
 
 class CellColor(str, Enum):
@@ -611,6 +624,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         enforce_order: bool = False,
         clear: bool = True,
     ) -> Column:
+        all_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
@@ -618,10 +632,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
             self._clear_formulation_from_column(column=col)
         else:
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
-        col_id = col.column_id
+        column_id = col.column_id
 
-        all_cells = []
         self.grid = None  # reset the grid for saftey
+        product_rows = list(self.product_design.rows)
 
         for component in components:
             component_inventory_id = component.inventory_item_id
@@ -629,6 +643,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 inventory_id=component_inventory_id,
                 existing_cells=all_cells,
                 enforce_order=enforce_order,
+                product_rows=product_rows,
             )
             if row_id is None:
                 raise AlbertException(f"No Component with id {component_inventory_id}")
@@ -637,7 +652,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             min_value = str(component.min_value) if component.min_value is not None else None
             max_value = str(component.max_value) if component.max_value is not None else None
             this_cell = Cell(
-                column_id=col_id,
+                column_id=column_id,
                 row_id=row_id,
                 value=value,
                 calculation="",
@@ -651,48 +666,70 @@ class Sheet(BaseSessionResource):  # noqa:F811
             all_cells.append(this_cell)
 
         self.update_cells(cells=all_cells)
-        return self.get_column(column_id=col_id)
+        return self.get_column(column_id=column_id)
 
     def _get_row_id_for_component(
-        self, *, inventory_id: InventoryId, existing_cells, enforce_order
+        self,
+        *,
+        inventory_id: InventoryId,
+        existing_cells,
+        enforce_order,
+        product_rows: list["Row"],
     ):
-        self.grid = None
-
-        # within a sheet, the "INV" prefix is dropped
         sheet_inv_id = inventory_id
-        matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
+        matching_rows = [row for row in product_rows if row.inventory_id == sheet_inv_id]
 
-        used_row_ids = [x.row_id for x in existing_cells]
+        used_row_ids = [cell.row_id for cell in existing_cells]
+
+        existing_inv_order: list[str] = []
+        index_last_row = 0
         if enforce_order:
             existing_inv_order = [
-                x.row_id for x in self.product_design.rows if x.inventory_id is not None
+                row.row_id for row in product_rows if row.inventory_id is not None
             ]
-            index_last_row = 0
             for row_id in used_row_ids:
                 if row_id in existing_inv_order:
                     this_row_index = existing_inv_order.index(row_id)
                     if this_row_index > index_last_row:
                         index_last_row = this_row_index
-        for r in matching_rows:
-            if r.row_id not in used_row_ids:
-                if enforce_order:
-                    if existing_inv_order.index(r.row_id) >= index_last_row:
-                        return r.row_id
-                    else:
-                        continue
-                else:
-                    return r.row_id
-        # Otherwise I need to add a new row
+
+        for row in matching_rows:
+            if row.row_id in used_row_ids:
+                continue
+            if not enforce_order:
+                return row.row_id
+
+            if row.row_id in existing_inv_order:
+                if existing_inv_order.index(row.row_id) >= index_last_row:
+                    return row.row_id
+                continue
+
         if enforce_order:
-            return self.add_inventory_row(
-                inventory_id=inventory_id,
-                position={
-                    "reference_id": existing_inv_order[index_last_row],
-                    "position": "below",
-                },
-            ).row_id
-        else:
-            return self.add_inventory_row(inventory_id=inventory_id).row_id
+            if existing_inv_order:
+                reference_row_id = existing_inv_order[index_last_row]
+                new_row = self.add_inventory_row(
+                    inventory_id=inventory_id,
+                    position={"reference_id": reference_row_id, "position": "below"},
+                )
+
+                insert_position = None
+                for idx, row in enumerate(product_rows):
+                    if row.row_id == reference_row_id:
+                        insert_position = idx + 1
+                        break
+                if insert_position is None:
+                    product_rows.append(new_row)
+                else:
+                    product_rows.insert(insert_position, new_row)
+                return new_row.row_id
+
+            new_row = self.add_inventory_row(inventory_id=inventory_id)
+            product_rows.append(new_row)
+            return new_row.row_id
+
+        new_row = self.add_inventory_row(inventory_id=inventory_id)
+        product_rows.append(new_row)
+        return new_row.row_id
 
     def add_formulation_columns(
         self,
@@ -816,69 +853,79 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:
-        filtered_columns = [
-            col for col in self.grid.columns if col.startswith(cell.column_id + "#")
-        ]
-        filtered_rows = [
-            idx for idx in self.grid.index if idx.startswith(cell.design_id + "#" + cell.row_id)
-        ]
+        def _matches_column(column_label: str) -> bool:
+            col_parts = column_label.split("#", 1)
+            return col_parts[0] == cell.column_id
 
-        first_value = None
+        def _matches_row(index_label: str) -> bool:
+            row_parts = index_label.split("#", 2)
+            if len(row_parts) < 2:
+                return False
+            return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
+
+        filtered_columns = [col for col in self.grid.columns if _matches_column(col)]
+        filtered_rows = [idx for idx in self.grid.index if _matches_row(idx)]
+
         for row in filtered_rows:
             for col in filtered_columns:
-                first_value = self.grid.loc[row, col]
-                return first_value
-        return first_value
+                return self.grid.loc[row, col]
+        return None
 
-    def _generate_attribute_change(self, *, new_value, old_value, api_attribute_name):
+    def _generate_attribute_change(
+        self,
+        *,
+        new_value: CellAttributeValue,
+        old_value: CellAttributeValue,
+        api_attribute_name: str,
+    ) -> PatchDatum | None:
         """Generates a change dictionary for a single attribute."""
         if new_value == old_value:
             return None
 
         if new_value is None or new_value in ("", {}):
-            return {
-                "operation": "delete",
-                "attribute": api_attribute_name,
-                "oldValue": old_value,
-            }
+            return PatchDatum(
+                operation="delete",
+                attribute=api_attribute_name,
+                old_value=old_value,
+            )
         if old_value is None or old_value in ("", {}):
-            return {
-                "operation": "add",
-                "attribute": api_attribute_name,
-                "newValue": new_value,
-            }
-        return {
-            "operation": "update",
-            "attribute": api_attribute_name,
-            "oldValue": old_value,
-            "newValue": new_value,
-        }
+            return PatchDatum(
+                operation="add",
+                attribute=api_attribute_name,
+                new_value=new_value,
+            )
+        return PatchDatum(
+            operation="update",
+            attribute=api_attribute_name,
+            old_value=old_value,
+            new_value=new_value,
+        )
 
-    def _get_cell_changes(self, *, cell: Cell) -> dict:
+    def _get_cell_changes(self, *, cell: Cell) -> CellChangePayload | None:
         current_cell = self._get_current_cell(cell=cell)
         if current_cell is None:
             return None
 
-        data = []
+        data: list[PatchDatum] = []
 
         # Handle format change
         if cell.format != current_cell.format:
             if cell.format is None or cell.format == {}:
                 data.append(
-                    {
-                        "operation": "delete",
-                        "attribute": "cellFormat",
-                        "oldValue": current_cell.format,
-                    }
+                    PatchDatum(
+                        operation="delete",
+                        attribute="cellFormat",
+                        old_value=current_cell.format,
+                    )
                 )
             else:
                 data.append(
-                    {
-                        "operation": "update",
-                        "attribute": "cellFormat",
-                        "oldValue": current_cell.format,
-                        "newValue": cell.format,
-                    }
+                    PatchDatum(
+                        operation="update",
+                        attribute="cellFormat",
+                        old_value=current_cell.format,
+                        new_value=cell.format,
+                    )
                 )
 
         # Handle calculation change
@@ -937,9 +984,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return False
 
     def update_cells(self, *, cells: list[Cell]):
-        request_path_dict = {}
-        updated = []
-        failed = []
+        request_path_dict: dict[str, list[Cell]] = {}
+        updated: list[Cell] = []
+        failed: list[Cell] = []
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -948,57 +995,89 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 request_path_dict[c.design_id].append(c)
 
         for design_id, cell_list in request_path_dict.items():
-            payloads = []
+            payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(cell=cell)
-                if change_dict is not None:
-                    # For non-calculation cells, only one change is allowed at a time.
-                    is_calculation_cell = cell.calculation is not None and cell.calculation != ""
-                    max_items = 2 if is_calculation_cell else 1
+                if change_dict is None:
+                    continue
 
-                    if len(change_dict["data"]) > max_items:
-                        for item in change_dict["data"]:
-                            payloads.append(
-                                {
-                                    "Id": change_dict["Id"],
-                                    "data": [item],
-                                }
-                            )
-                    else:
-                        payloads.append(change_dict)
+                is_calculation_cell = cell.calculation is not None and cell.calculation != ""
+                max_items = 2 if is_calculation_cell else 1
 
-            if not payloads:
+                if len(change_dict["data"]) > max_items:
+                    for item in change_dict["data"]:
+                        single_change: CellChangePayload = {
+                            "Id": change_dict["Id"],
+                            "data": [item],
+                        }
+                        payload_entries.append((single_change, cell))
+                else:
+                    payload_entries.append((change_dict, cell))
+
+            if not payload_entries:
                 continue
 
             this_url = f"/api/v3/worksheet/{design_id}/values"
-            for payload in payloads:
-                response = self.session.patch(
-                    this_url,
-                    json=[payload],  # The API expects a list of changes
-                )
+            pending_by_cell: dict[tuple[str, str], list[tuple[CellChangePayload, Cell]]] = {}
+            for payload, cell in payload_entries:
+                key = (payload["Id"]["rowId"], payload["Id"]["colId"])
+                pending_by_cell.setdefault(key, []).append((payload, cell))
 
-                original_cell = next(
-                    (
-                        c
-                        for c in cell_list
-                        if c.row_id == payload["Id"]["rowId"]
-                        and c.column_id == payload["Id"]["colId"]
-                    ),
-                    None,
-                )
+            ordered_keys = list(pending_by_cell.keys())
+
+            def _unique_cells(cells: list[Cell]) -> list[Cell]:
+                seen: set[tuple[str, str, str]] = set()
+                result: list[Cell] = []
+                for c in cells:
+                    key = (c.design_id, c.row_id, c.column_id)
+                    if key not in seen:
+                        seen.add(key)
+                        result.append(c)
+                return result
+
+            batch_index = 0
+            while True:
+                batch_payloads: list[CellChangePayload] = []
+                batch_cells: list[Cell] = []
+                for key in ordered_keys:
+                    queue = pending_by_cell.get(key)
+                    if queue:
+                        payload, cell = queue.pop(0)
+                        batch_payloads.append(payload)
+                        batch_cells.append(cell)
+                if not batch_payloads:
+                    break
+
+                payload_body = [
+                    {
+                        "Id": payload["Id"],
+                        "data": [datum.model_dump(by_alias=True) for datum in payload["data"]],
+                    }
+                    for payload in batch_payloads
+                ]
+                response = self.session.patch(this_url, json=payload_body)
+                target_cells = _unique_cells(batch_cells)
 
                 if response.status_code == 204:
-                    if original_cell and original_cell not in updated:
-                        updated.append(original_cell)
+                    for c in target_cells:
+                        if c not in updated:
+                            updated.append(c)
                 elif response.status_code == 206:
                     cell_results = self._filter_cells(
-                        cells=[original_cell], response_dict=response.json()
+                        cells=target_cells, response_dict=response.json()
                     )
-                    updated.extend(cell_results[0])
-                    failed.extend(cell_results[1])
+                    for c in cell_results[0]:
+                        if c not in updated:
+                            updated.append(c)
+                    for c in cell_results[1]:
+                        if c not in failed:
+                            failed.append(c)
                 else:
-                    if original_cell and original_cell not in failed:
-                        failed.append(original_cell)
+                    for c in target_cells:
+                        if c not in failed:
+                            failed.append(c)
+
+                batch_index += 1
 
         # reset the in-memory grid after updates
         self.grid = None
