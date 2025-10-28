@@ -998,11 +998,7 @@ class InventoryCollection(BaseCollection):
             existing=current_object, updated=inventory_item
         )
 
-        # Complex patching is not working, so I'm going to do this in a loop :(
-        # https://teams.microsoft.com/l/message/19:de4a48c366664ce1bafcdbea02298810@thread.tacv2/1724856117312?tenantId=98aab90e-764b-48f1-afaa-02e3c7300653&groupId=35a36a3d-fc25-4899-a1dd-ad9c7d77b5b3&parentMessageId=1724856117312&teamName=Product%20%2B%20Engineering&channelName=General%20-%20API&createdTime=1724856117312
         url = f"{self.base_path}/{inventory_item.id}"
-        for change in patch_payload["data"]:
-            change_payload = {"data": [change]}
-            self.session.patch(url, json=change_payload)
+        self.session.patch(url, json=patch_payload)
         updated_inv = self.get_by_id(id=inventory_item.id)
         return updated_inv
