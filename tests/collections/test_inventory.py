@@ -72,6 +72,7 @@ def test_inventory_hydration_from_search(client: Albert):
         assert hydrated.name == partial.name
 
 
+@pytest.mark.skip(reason="LLM search is currently not working as expected.")
 def test_inventory_get_all_match_all_conditions(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):

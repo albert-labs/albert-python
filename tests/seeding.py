@@ -1047,7 +1047,7 @@ def generate_inventory_seeds(
                 InventoryMinimum(minimum=10.0, location=seeded_locations[0]),
                 InventoryMinimum(minimum=20.0, id=seeded_locations[1].id),
             ],
-            tags=[seeded_tags[0].tag],  # make sure it knows to use the tag object
+            tags=seeded_tags,
         ),
         InventoryItem(
             name=f"{seed_prefix} - Sulfuric Acid",
@@ -1056,7 +1056,7 @@ def generate_inventory_seeds(
             unit_category=InventoryUnitCategory.MASS,
             security_class=SecurityClass.SHARED,
             company=seeded_companies[0],
-            tags=[seeded_tags[0].tag, seeded_tags[3].tag],
+            tags=[seeded_tags[0].tag, seeded_tags[2].tag, seeded_tags[3].tag],
         ),
     ]
 
