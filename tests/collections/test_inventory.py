@@ -384,8 +384,9 @@ def test_inventory_search_with_tags(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
 ):
     """Test inventory search with tag filters and match_all_conditions."""
+    tags_to_check = [x.tag for x in seeded_tags[:2]]
     results = client.inventory.search(
-        tags=[x.tag for x in seeded_tags[:2]],
+        tags=tags_to_check,
         match_all_conditions=True,
         max_items=10,
     )
@@ -395,4 +396,5 @@ def test_inventory_search_with_tags(
 
     for m in matches:
         tags = [x.tag for x in m.tags]
-        assert any(t in tags for t in seeded_tags[:2])
+
+        assert any(t in tags for t in tags_to_check)
