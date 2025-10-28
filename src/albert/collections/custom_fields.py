@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from copy import deepcopy
 
 from pydantic import validate_call
 
@@ -7,6 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import CustomFieldId
+from albert.core.shared.models.patch import PatchOperation
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 
 
@@ -68,10 +70,11 @@ class CustomFieldCollection(BaseCollection):
         "min",
         "max",
         "entity_categories",
+        "required",
+        "multiselect",
+        "pattern",
         "default",
-        # "required",
-        # "multiselect",
-        # "pattern",
+        "custom_entity_categories",
         "editable",
     }
     _api_version = "v3"
@@ -221,20 +224,30 @@ class CustomFieldCollection(BaseCollection):
             generate_metadata_diff=False,
             stringify_values=False,
         )
-
+        new_patches = []
         for patch in payload.data:
             if (
                 patch.attribute in ("hidden", "search", "lkpColumn", "lkpRow")
-                and patch.operation == "add"
+                and patch.operation == PatchOperation.ADD
             ):
-                patch.operation = "update"
+                patch.operation = PatchOperation.UPDATE
                 patch.old_value = False
             if (
-                patch.attribute in ("entityCategory")
-                and patch.operation == "add"
+                patch.attribute in ("entityCategory", "customEntityCategory")
+                and patch.operation == PatchOperation.ADD
                 and isinstance(patch.new_value, list)
             ):
-                patch.new_value = patch.new_value[0]
+                if patch.attribute == "customEntityCategory":
+                    patch.operation = PatchOperation.UPDATE
+                    patch.old_value = []
+                for i, v in enumerate(patch.new_value):
+                    if i == 0:
+                        patch.new_value = v
+                    else:
+                        new_patch = deepcopy(patch)
+                        new_patch.new_value = v
+                        new_patches.append(new_patch)
+        payload.data.extend(new_patches)
 
         # run patch
         url = f"{self.base_path}/{custom_field.id}"

@@ -145,6 +145,7 @@ nav:
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
+          - Entity Types (🧪Beta): collections/entity_types.md
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
@@ -186,6 +187,7 @@ nav:
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
+          - Entity Types (🧪Beta): resources/entity_types.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
