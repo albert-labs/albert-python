@@ -1015,4 +1015,5 @@ class InventoryCollection(BaseCollection):
             batch_patch_payload = {"data": batch_patch_changes}
             self.session.patch(url, json=batch_patch_payload)
 
+        updated_inv = self.get_by_id(id=inventory_item.id)
         return updated_inv
