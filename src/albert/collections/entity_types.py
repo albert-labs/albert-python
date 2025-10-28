@@ -217,9 +217,9 @@ class EntityTypeCollection(BaseCollection):
         self,
         *,
         service: EntityServiceType | None = None,
-        limit: int = 100,
         start_key: str | None = None,
         order: OrderBy | None = None,
+        max_items: int | None = None,
     ) -> Iterator[EntityType]:
         """Searches for EntityType items based on the provided parameters.
         Parameters
@@ -249,4 +249,5 @@ class EntityTypeCollection(BaseCollection):
             params=params,
             session=self.session,
             deserialize=lambda items: [EntityType(**item) for item in items],
+            max_items=max_items
         )
