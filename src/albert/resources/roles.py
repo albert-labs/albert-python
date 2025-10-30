@@ -22,5 +22,6 @@ class Role(BaseResource):
 
     id: str | None = Field(default=None, alias="albertId")
     name: str
-    policies: list[Any] | None = Field(default=None)
+    policies: list[Any] | None = Field(default=None, alias="Policies")
     tenant: str
+    visibility: bool | None = Field(default=None)
