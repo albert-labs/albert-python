@@ -1001,14 +1001,13 @@ class InventoryCollection(BaseCollection):
         # Complex patching does not work for some fields, so I'm going to do this in a loop :(
         # https://teams.microsoft.com/l/message/19:de4a48c366664ce1bafcdbea02298810@thread.tacv2/1724856117312?tenantId=98aab90e-764b-48f1-afaa-02e3c7300653&groupId=35a36a3d-fc25-4899-a1dd-ad9c7d77b5b3&parentMessageId=1724856117312&teamName=Product%20%2B%20Engineering&channelName=General%20-%20API&createdTime=1724856117312
         url = f"{self.base_path}/{inventory_item.id}"
-        no_batch_attrs = ["tagId"]  # These are attributes that do not allow batch patch updates
         batch_patch_changes = list()
         for change in patch_payload["data"]:
-            if change["attribute"] in no_batch_attrs:
+            if change["attribute"].startswith("Metadata."):  # Metadata can be batch patched
+                batch_patch_changes.append(change)
+            else:
                 change_payload = {"data": [change]}
                 self.session.patch(url, json=change_payload)
-            else:
-                batch_patch_changes.append(change)
 
         # Use batch update for fields that allow it
         if batch_patch_changes:
