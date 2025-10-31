@@ -13,7 +13,6 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataTemplateId,
-    ProjectId,
     TaskId,
     WorkflowId,
 )
@@ -252,7 +251,7 @@ class TaskCollection(BaseCollection):
         status: list[str] | None = None,
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
-        project_id: ProjectId | None = None,
+        project_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -356,7 +355,7 @@ class TaskCollection(BaseCollection):
         status: list[str] | None = None,
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
-        project_id: ProjectId | None = None,
+        project_id: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
