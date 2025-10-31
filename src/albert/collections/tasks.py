@@ -13,8 +13,10 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataTemplateId,
+    ProjectId,
     TaskId,
     WorkflowId,
+    remove_id_prefix,
 )
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
@@ -251,7 +253,7 @@ class TaskCollection(BaseCollection):
         status: list[str] | None = None,
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
-        project_id: str | None = None,
+        project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -291,7 +293,7 @@ class TaskCollection(BaseCollection):
             Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
-        project_id : str, optional
+        project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.
@@ -307,6 +309,9 @@ class TaskCollection(BaseCollection):
         Iterator[TaskSearchItem]
             An iterator of matching, lightweight TaskSearchItem entities.
         """
+        if project_id is not None:
+            project_id = remove_id_prefix(project_id, "ProjectId")
+
         params = {
             "offset": offset,
             "order": order_by.value,
@@ -355,7 +360,7 @@ class TaskCollection(BaseCollection):
         status: list[str] | None = None,
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
-        project_id: str | None = None,
+        project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -395,7 +400,7 @@ class TaskCollection(BaseCollection):
             Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
-        project_id : str, optional
+        project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.

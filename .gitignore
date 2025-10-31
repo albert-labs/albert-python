@@ -86,3 +86,6 @@ dev.ipynb
 
 # Rendered Docs
 site/
+
+# IDE
+.vscode/launch.json
