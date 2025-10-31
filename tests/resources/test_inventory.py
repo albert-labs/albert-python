@@ -23,7 +23,17 @@ def test_cas_amount_attributes():
     assert set(data.keys()) == {"min", "max", "id"}
 
     full = amt.model_dump(exclude_none=False)
-    assert set(full.keys()) == {"min", "max", "target", "id", "cas_category", "created", "updated"}
+    assert set(full.keys()) == {
+        "min",
+        "max",
+        "target",
+        "id",
+        "cas_category",
+        "created",
+        "updated",
+        "classification_type",
+        "type",
+    }
 
 
 def test_inventory_minimum(seeded_locations):

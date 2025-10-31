@@ -73,6 +73,11 @@ class CasAmount(BaseAlbertModel):
         The SMILES string of the CAS Number resource. Obtained from the Cas object when provided.
     number: str | None
         The CAS number. Obtained from the Cas object when provided.
+
+    !!! tip
+    ---
+    `type` and `classification_type` values can be retrieved from the CAS collection via
+    `CasCollection.get_all(number=[...])` before constructing the `CasAmount`.
     """
 
     min: float
@@ -80,6 +85,8 @@ class CasAmount(BaseAlbertModel):
     target: float | None = Field(default=None, alias="inventoryValue")
     id: str | None = Field(default=None)
     cas_category: str | None = Field(default=None, alias="casCategory")
+    type: str | None = Field(default=None)
+    classification_type: str | None = Field(default=None, alias="classificationType")
 
     # Read-only fields
     cas: Cas | None = Field(default=None, exclude=True)

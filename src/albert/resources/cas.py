@@ -45,7 +45,7 @@ class Cas(BaseResource):
     ec_number: str | None = Field(
         None, alias="ecListNo", description="European Community (EC) number."
     )
-    type: str | None = Field(None, description="Type of the CAS.")
+    type: str | None = Field(None, description="Internal classification_type reference.")
     classification_type: str | None = Field(
         None, alias="classificationType", description="Classification type of the CAS."
     )

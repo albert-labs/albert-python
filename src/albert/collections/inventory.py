@@ -29,6 +29,7 @@ from albert.resources.inventory import (
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
+from albert.utils.inventory import _build_cas_patch_operations
 
 
 class InventoryCollection(BaseCollection):
@@ -701,174 +702,8 @@ class InventoryCollection(BaseCollection):
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
             if attribute == "cas":
-                if (old_value is None or old_value == []) and new_value is not None:
-                    for c in new_value:
-                        payload["data"].append(
-                            {
-                                "operation": "add",
-                                "attribute": "casId",
-                                "newValue": c.id,  # This will be a CasAmount Object,
-                                "entityId": c.id,
-                                "max": c.max,
-                                "min": c.min,
-                            }
-                        )
-                        if c.target:
-                            payload["data"].append(
-                                {
-                                    "operation": "add",
-                                    "attribute": "inventoryValue",
-                                    "newValue": c.target,
-                                    "entityId": c.id,
-                                }
-                            )
-                else:
-                    # Get the IDs from both sets
-                    old_set = set() if old_value is None else {obj.id for obj in old_value}
-                    new_set = set() if new_value is None else {obj.id for obj in new_value}
-                    old_lookup = (
-                        dict() if old_value is None else {obj.id: obj for obj in old_value}
-                    )
-                    new_lookup = (
-                        dict() if new_value is None else {obj.id: obj for obj in new_value}
-                    )
-
-                    # Find what's in set 1 but not in set 2
-                    to_del = old_set - new_set
-
-                    # Find what's in set 2 but not in set 1
-                    to_add = new_set - old_set
-
-                    to_check_for_update = old_set.intersection(new_set)
-
-                    for id in to_add:
-                        add_payload = {
-                            "operation": "add",
-                            "attribute": "casId",
-                            "newValue": new_lookup[id].id,
-                            "entityId": new_lookup[id].id,
-                            "max": new_lookup[id].max,
-                            "min": new_lookup[id].min,
-                            "casCategory": new_lookup[id].cas_category,
-                        }
-                        add_payload = {k: v for k, v in add_payload.items() if v is not None}
-                        payload["data"].append(add_payload)
-                        if new_lookup[id].target:
-                            payload["data"].append(
-                                {
-                                    "operation": "add",
-                                    "attribute": "inventoryValue",
-                                    "newValue": new_lookup[id].target,
-                                    "entityId": new_lookup[id].id,
-                                }
-                            )
-                    for id in to_del:
-                        payload["data"].append(
-                            {
-                                "operation": "delete",
-                                "attribute": "casId",
-                                "entityId": id,
-                                "oldValue": id,
-                            }
-                        )
-                    for id in to_check_for_update:
-                        if old_lookup[id].max != new_lookup[id].max:
-                            if new_lookup[id].max is not None:
-                                payload["data"].append(
-                                    _remove_old_value_on_add(
-                                        {
-                                            "operation": "update"
-                                            if old_lookup[id].max is not None
-                                            else "add",
-                                            "attribute": "max",
-                                            "entityId": id,
-                                            "oldValue": str(old_lookup[id].max),
-                                            "newValue": str(new_lookup[id].max),
-                                        }
-                                    )
-                                )
-                            else:
-                                payload["data"].append(
-                                    {
-                                        "operation": "delete",
-                                        "attribute": "max",
-                                        "entityId": id,
-                                        "oldValue": str(old_lookup[id].max),
-                                    }
-                                )
-                        if old_lookup[id].min != new_lookup[id].min:
-                            if new_lookup[id].min is not None:
-                                payload["data"].append(
-                                    _remove_old_value_on_add(
-                                        {
-                                            "operation": "update"
-                                            if old_lookup[id].min is not None
-                                            else "add",
-                                            "attribute": "min",
-                                            "entityId": id,
-                                            "oldValue": str(old_lookup[id].min),
-                                            "newValue": str(new_lookup[id].min),
-                                        }
-                                    )
-                                )
-                            else:
-                                payload["data"].append(
-                                    {
-                                        "operation": "delete",
-                                        "attribute": "min",
-                                        "entityId": id,
-                                        "oldValue": str(old_lookup[id].min),
-                                    }
-                                )
-                        if old_lookup[id].target != new_lookup[id].target:
-                            if new_lookup[id].target is not None:
-                                payload["data"].append(
-                                    _remove_old_value_on_add(
-                                        {
-                                            "operation": "update"
-                                            if old_lookup[id].target is not None
-                                            else "add",
-                                            "attribute": "inventoryValue",
-                                            "entityId": id,
-                                            "oldValue": str(old_lookup[id].target),
-                                            "newValue": str(new_lookup[id].target),
-                                        }
-                                    )
-                                )
-                            else:
-                                payload["data"].append(
-                                    {
-                                        "operation": "delete",
-                                        "attribute": "inventoryValue",
-                                        "entityId": id,
-                                        "oldValue": str(old_lookup[id].target),
-                                    }
-                                )
-                        if old_lookup[id].cas_category != new_lookup[id].cas_category:
-                            if new_lookup[id].cas_category is not None:
-                                payload["data"].append(
-                                    _remove_old_value_on_add(
-                                        {
-                                            "operation": "update"
-                                            if old_lookup[id].cas_category is not None
-                                            else "add",
-                                            "attribute": "casCategory",
-                                            "entityId": id,
-                                            "oldValue": str(old_lookup[id].cas_category),
-                                            "newValue": str(new_lookup[id].cas_category),
-                                        }
-                                    )
-                                )
-                            else:
-                                payload["data"].append(
-                                    {
-                                        "operation": "delete",
-                                        "attribute": "casCategory",
-                                        "entityId": id,
-                                        "oldValue": str(old_lookup[id].cas_category),
-                                    }
-                                )
-
+                cas_operations = _build_cas_patch_operations(existing=old_value, updated=new_value)
+                payload["data"].extend(cas_operations)
             elif attribute == "acls":
                 existing_ids = [x.id for x in existing.acls]
                 new_ids = [x.id for x in updated.acls]
@@ -992,7 +827,6 @@ class InventoryCollection(BaseCollection):
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)
-
         # Generate the PATCH payload
         patch_payload = self._generate_inventory_patch_payload(
             existing=current_object, updated=inventory_item
