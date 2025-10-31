@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Annotated, Any, Literal
 
 from pandas import DataFrame
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
@@ -28,6 +28,10 @@ class BlockType(str, Enum):
     ATTACHES = "attaches"
     KETCHER = "ketcher"
     TABLE = "table"
+    REPORT = "report"
+    MS_PPTX = "mspptx"
+    MS_XLSX = "msxlsx"
+    MS_DOCX = "msdocx"
 
 
 class NotebookCopyType(str, Enum):
@@ -176,6 +180,37 @@ class TableBlock(BaseBlock):
         return df
 
 
+class GenericDocumentContent(BaseAlbertModel):
+    """Content wrapper for file-based notebook blocks where schema is loosely defined."""
+
+    model_config = ConfigDict(extra="allow")
+
+    title: str | None = Field(default=None)
+    namespace: str | None = Field(default="result")
+    file_key: str | None = Field(default=None, alias="fileKey", frozen=True)
+    signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
+
+
+class ReportBlock(BaseBlock):
+    type: Literal[BlockType.REPORT] = Field(default=BlockType.REPORT, alias="blockType")
+    content: GenericDocumentContent
+
+
+class PowerPointBlock(BaseBlock):
+    type: Literal[BlockType.MS_PPTX] = Field(default=BlockType.MS_PPTX, alias="blockType")
+    content: GenericDocumentContent
+
+
+class ExcelBlock(BaseBlock):
+    type: Literal[BlockType.MS_XLSX] = Field(default=BlockType.MS_XLSX, alias="blockType")
+    content: GenericDocumentContent
+
+
+class WordBlock(BaseBlock):
+    type: Literal[BlockType.MS_DOCX] = Field(default=BlockType.MS_DOCX, alias="blockType")
+    content: GenericDocumentContent
+
+
 class NotebookListItem(BaseAlbertModel):
     content: str | None
     items: list["NotebookListItem"] = Field(default_factory=list)
@@ -213,6 +248,10 @@ _NotebookBlockUnion = (
     | KetcherBlock
     | TableBlock
     | ListBlock
+    | ReportBlock
+    | PowerPointBlock
+    | ExcelBlock
+    | WordBlock
 )
 NotebookBlock = Annotated[_NotebookBlockUnion, Field(discriminator="type")]
 
@@ -236,6 +275,7 @@ NotebookContent = (
     | TableContent
     | BulletedListContent
     | NumberedListContent
+    | GenericDocumentContent
 )
 
 allowed_notebook_contents = {
@@ -247,6 +287,10 @@ allowed_notebook_contents = {
     BlockType.KETCHER: KetcherContent,
     BlockType.TABLE: TableContent,
     BlockType.LIST: (BulletedListContent, NumberedListContent),
+    BlockType.REPORT: GenericDocumentContent,
+    BlockType.MS_PPTX: GenericDocumentContent,
+    BlockType.MS_XLSX: GenericDocumentContent,
+    BlockType.MS_DOCX: GenericDocumentContent,
 }
 
 
