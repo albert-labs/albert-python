@@ -45,7 +45,7 @@ class BaseBlock(BaseAlbertModel):
 
 
 class HeaderContent(BaseAlbertModel):
-    level: Literal[1, 2, 3]
+    level: int = Field(ge=1)
     text: str | None
 
 

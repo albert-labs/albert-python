@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 from pydantic import Field, field_validator, model_validator
@@ -41,9 +41,21 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
+class PropertyDataStorageKey(BaseAlbertModel):
+    preview: str | None = Field(default=None)
+    thumb: str | None = Field(default=None)
+    original: str | None = Field(default=None)
+
+
 class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
+    value_type: str | None = Field(default=None, alias="valueType")
+    storage_key: PropertyDataStorageKey | dict | None = Field(default=None, alias="s3Key")
+    job: dict[str, Any] | None = Field(default=None)
+    csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
+    curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
+    athena: dict[str, Any] | None = Field(default=None)
 
 
 class PropertyValue(BaseAlbertModel):
