@@ -102,8 +102,8 @@ class ChecklistBlock(BaseBlock):
 class AttachesContent(BaseAlbertModel):
     title: str | None = Field(default=None)
     namespace: str = Field(default="result")
-    file_key: str | None = Field(default=None, alias="fileKey", exclude=True, frozen=True)
-    format: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
+    file_key: str | None = Field(default=None, alias="fileKey")
+    format: str | None = Field(default=None, alias="mimeType")
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
 
 
@@ -118,7 +118,8 @@ class ImageContent(BaseAlbertModel):
     stretched: bool = Field(default=False)
     with_background: bool = Field(default=False, alias="withBackground")
     with_border: bool = Field(default=False, alias="withBorder")
-    file_key: str | None = Field(default=None, alias="fileKey", exclude=True, frozen=True)
+    file_key: str | None = Field(default=None, alias="fileKey")
+    format: str | None = Field(default=None, alias="mimeType")
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
 
 
@@ -133,7 +134,7 @@ class KetcherContent(BaseAlbertModel):
     id: str | None = Field(default=None)
     block_id: str | None = Field(default=None, alias="blockId")
     data: str | None = Field(default=None)
-    file_key: str | None = Field(default=None, alias="fileKey", exclude=True, frozen=True)
+    file_key: str | None = Field(default=None, alias="fileKey")
     s3_key: str | None = Field(default=None, alias="s3Key", exclude=True, frozen=True)
     png: str | None = Field(default=None, exclude=True, frozen=True)
     ketcher_url: str | None = Field(default=None, alias="ketcherUrl", exclude=True, frozen=True)
