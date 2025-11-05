@@ -252,7 +252,7 @@ class InventoryItem(BaseTaggedResource):
             raise ValueError("A project_id must be supplied for all formulas.")
         return self
 
-    def to_mention(self) -> str:
+    def to_note_mention(self) -> str:
         """Convert the inventory informatio to an @-mention string to be used in notebooks"""
         to_mention = f'<span data-albertid="{self.id}" data-type="INVENTORY" contenteditable="false" class="mention_tool_at"><span class="mention-at-symbol-span" contenteditable="false">@</span><span class="mention-id-span" contenteditable="false">{self.id[3:]}</span><span class="mention-id-name-separator" contenteditable="false"> | </span><span class="mention-id-full-name-span" contenteditable="false">{self.name}</span></span>'
         # return string
