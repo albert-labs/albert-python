@@ -341,7 +341,7 @@ class InventoryCollection(BaseCollection):
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         offset: int | None = None,
-        fromCreatedAt: str | None = None,
+        from_created_at: str | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -375,7 +375,7 @@ class InventoryCollection(BaseCollection):
             "sheetId": sheet_id,
             "projectId": project_id,
             "offset": offset,
-            "fromCreatedAt": fromCreatedAt,
+            "fromCreatedAt": from_created_at,
         }
 
         return params
@@ -491,7 +491,7 @@ class InventoryCollection(BaseCollection):
         sort_by: str | None = None,
         max_items: int | None = None,
         offset: int | None = 0,
-        fromCreatedAt: str | None = None,
+        from_created_at: str | None = None,
     ) -> Iterator[InventorySearchItem]:
         """
         Search for Inventory items matching the provided criteria.
@@ -533,7 +533,7 @@ class InventoryCollection(BaseCollection):
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
             Offset for pagination. Default is 0.
-        fromCreatedAt: str | None
+        from_created_at: str | None
             Date after which the inventory has been created including that date
 
         Returns
@@ -562,7 +562,7 @@ class InventoryCollection(BaseCollection):
             lot_owner=lot_owner,
             tags=tags,
             offset=offset,
-            fromCreatedAt=fromCreatedAt,
+            from_created_at=from_created_at,
         )
 
         return AlbertPaginator(
