@@ -534,7 +534,7 @@ class InventoryCollection(BaseCollection):
         offset : int, optional
             Offset for pagination. Default is 0.
         from_created_at: str | None
-            Date after which the inventory has been created including that date
+            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
 
         Returns
         -------
@@ -639,7 +639,7 @@ class InventoryCollection(BaseCollection):
         offset : int, optional
             Offset for pagination. Default is 0.
         from_created_at: str | None
-            Date after which the inventory has been created including that date.
+            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
 
         Returns
         -------
