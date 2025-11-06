@@ -596,7 +596,7 @@ class InventoryCollection(BaseCollection):
         sort_by: str | None = None,
         max_items: int | None = None,
         offset: int | None = 0,
-        from_created_at: str | None,
+        from_created_at: str | None = None,
     ) -> Iterator[InventoryItem]:
         """
         Retrieve fully hydrated InventoryItem entities with optional filters.
