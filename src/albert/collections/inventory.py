@@ -375,7 +375,7 @@ class InventoryCollection(BaseCollection):
             "sheetId": sheet_id,
             "projectId": project_id,
             "offset": offset,
-            "fromCreatedAt": from_created_at,
+            "fromCreatedAt": from_created_at if from_created_at is not None else None,
         }
 
         return params
