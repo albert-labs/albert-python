@@ -596,6 +596,7 @@ class InventoryCollection(BaseCollection):
         sort_by: str | None = None,
         max_items: int | None = None,
         offset: int | None = 0,
+        from_created_at: str | None,
     ) -> Iterator[InventoryItem]:
         """
         Retrieve fully hydrated InventoryItem entities with optional filters.
@@ -637,6 +638,8 @@ class InventoryCollection(BaseCollection):
             Maximum number of items to return in total. If None, fetches all available items.
         offset : int, optional
             Offset for pagination. Default is 0.
+        from_created_at: str | None
+            Date after which the inventory has been created including that date.
 
         Returns
         -------
@@ -664,6 +667,7 @@ class InventoryCollection(BaseCollection):
             lot_owner=lot_owner,
             tags=tags,
             offset=offset,
+            from_created_at=from_created_at,
         )
 
         return AlbertPaginator(
