@@ -3,8 +3,9 @@ from enum import Enum
 
 from pydantic import Field
 
+from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId
-from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.base import BaseResource, EntityLinkWithName
 from albert.core.shared.types import MetadataItem
 
 
@@ -13,6 +14,11 @@ class AttachmentCategory(str, Enum):
     SDS = "SDS"
     LABEL = "Label"
     SCRIPT = "Script"
+
+
+class AttachmentMetadata(BaseAlbertModel):
+    description: str | None = None
+    extensions: list[EntityLinkWithName] | None = None
 
 
 class Attachment(BaseResource):
@@ -30,7 +36,7 @@ class Attachment(BaseResource):
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
     signed_url_v2: str | None = Field(default=None, alias="signedURLV2", exclude=True, frozen=True)
-    metadata: dict[str, MetadataItem] | None = Field(
+    metadata: AttachmentMetadata | dict[str, MetadataItem] | None = Field(
         default=None, alias="Metadata", exclude=True, frozen=True
     )
 
