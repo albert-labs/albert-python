@@ -345,3 +345,6 @@ class PropertyDataSearchItem(BaseAlbertModel):
     project_id: ProjectId = Field(..., alias="projectId")
     workflow_id: WorkflowId = Field(..., alias="workflowId")
     task_id: TaskId | None = Field(default=None, alias="taskId")
+
+
+ReturnScope = Literal["task", "block", "none"]
