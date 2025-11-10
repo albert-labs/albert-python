@@ -504,6 +504,7 @@ class TaskCollection(BaseCollection):
         _updatable_attributes_special = {
             "inventory_information",
             "assigned_to",
+            "tags",
         }
         if updated.assigned_to is not None:
             updated.assigned_to = EntityLinkWithName(
@@ -586,6 +587,46 @@ class TaskCollection(BaseCollection):
                             "operation": PatchOperation.ADD,
                             "attribute": "inventory",
                             "newValue": inv_to_add,
+                        }
+                    )
+
+            if attribute == "tags":
+                tag_aliases = {"Tags", "tags"}
+                base_payload.data = [
+                    datum
+                    for datum in base_payload.data
+                    if (
+                        (isinstance(datum, dict) and datum.get("attribute") not in tag_aliases)
+                        or (
+                            not isinstance(datum, dict)
+                            and getattr(datum, "attribute", None) not in tag_aliases
+                        )
+                    )
+                ]
+                old_value = old_value or []
+                new_value = new_value or []
+
+                if any(getattr(tag, "id", None) is None for tag in new_value):
+                    raise ValueError("Cannot update task tags unless every Tag has an 'id'")
+
+                old_ids = {tag.id for tag in old_value if getattr(tag, "id", None)}
+                new_ids = {tag.id for tag in new_value if getattr(tag, "id", None)}
+
+                for tag_id in new_ids - old_ids:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.ADD,
+                            "attribute": "tagId",
+                            "newValue": [tag_id],
+                        }
+                    )
+
+                for tag_id in old_ids - new_ids:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.DELETE,
+                            "attribute": "tagId",
+                            "oldValue": [tag_id],
                         }
                     )
 
