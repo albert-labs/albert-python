@@ -19,6 +19,7 @@ class AuditFields(BaseAlbertModel):
 class EntityLink(BaseAlbertModel):
     id: str
     name: str | None = Field(default=None, exclude=True)
+    category: str | None = Field(default=None, exclude=True)
 
     def to_entity_link(self) -> "EntityLink":
         # Convience method to return self, so you can call this method on objects that are already entity links
@@ -68,6 +69,14 @@ class BaseResource(BaseAlbertModel):
     def to_entity_link(self) -> EntityLink:
         if id := getattr(self, "id", None):
             return EntityLink(id=id)
+        raise AlbertException(
+            "A non-null 'id' is required to create an entity link. "
+            "Ensure the linked object is registered and has a valid 'id'."
+        )
+
+    def to_entity_link_with_name(self) -> EntityLinkWithName:
+        if id := getattr(self, "id", None):
+            return EntityLinkWithName(id=id, name=getattr(self, "name", None))
         raise AlbertException(
             "A non-null 'id' is required to create an entity link. "
             "Ensure the linked object is registered and has a valid 'id'."

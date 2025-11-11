@@ -214,8 +214,8 @@ def parameter_validation_patch(
     """Generate validation patches for a parameter."""
 
     # We need to clear enum values without modifying anything in memory
-    if initial_parameter.validation == updated_parameter.validation:
-        return None
+    # if initial_parameter.validation == updated_parameter.validation:
+    #     return None
     initial_parameter_copy = deepcopy(initial_parameter)
     updated_parameter_copy = deepcopy(updated_parameter)
     if (
@@ -230,7 +230,19 @@ def parameter_validation_patch(
         and updated_parameter_copy.validation[0].datatype == DataType.ENUM
     ):
         updated_parameter_copy.validation[0].value = None
-    if initial_parameter_copy.validation == updated_parameter_copy.validation:
+    # Only return None if validations are truly identical (both structure and datatype)
+    if initial_parameter_copy.validation == updated_parameter_copy.validation and (
+        (not initial_parameter.validation and not updated_parameter.validation)
+        or (len(initial_parameter.validation) == 0 and len(updated_parameter.validation) == 0)
+        or (
+            initial_parameter.validation
+            and updated_parameter.validation
+            and len(initial_parameter.validation) > 0
+            and len(updated_parameter.validation) > 0
+            and initial_parameter.validation[0].datatype
+            == updated_parameter.validation[0].datatype
+        )
+    ):
         return None
     if initial_parameter_copy.validation is None:
         if updated_parameter_copy.validation is not None:
@@ -400,24 +412,35 @@ def generate_parameter_patches(
         initial_parameters = []
     if updated_parameters is None:
         updated_parameters = []
-    new_parameters = [
-        x
-        for x in updated_parameters
-        if x.sequence not in [y.sequence for y in initial_parameters] or not x.sequence
-    ]
+
+    initial_seq_map = {p.sequence: p for p in initial_parameters if p.sequence}
+    initial_id_map = {p.id: p for p in initial_parameters}
+
+    updated_param_pairs = []  # tuple of (initial, updated)
+    new_parameters = []
+
+    # Match updated parameters to initial ones
+    for p_updated in updated_parameters:
+        p_initial = None
+        # match by sequence if available
+        if p_updated.sequence and p_updated.sequence in initial_seq_map:
+            p_initial = initial_seq_map[p_updated.sequence]
+        # matching by ID if sequence is missing on the updated param OR if sequence match failed
+        elif p_updated.id in initial_id_map:
+            p_initial = initial_id_map[p_updated.id]
+            if p_initial.sequence:
+                p_updated.sequence = p_initial.sequence
+
+        if p_initial:
+            updated_param_pairs.append((p_initial, p_updated))
+        else:
+            new_parameters.append(p_updated)
+
+    updated_matched_sequences = {p_updated.sequence for _, p_updated in updated_param_pairs}
     deleted_parameters = [
-        x for x in initial_parameters if x.sequence not in [y.sequence for y in updated_parameters]
-    ]
-    updated_parameters = [
-        x for x in updated_parameters if x.sequence in [y.sequence for y in initial_parameters]
+        p for p in initial_parameters if p.sequence not in updated_matched_sequences
     ]
 
-    # for del_param in deleted_parameters:
-    #     parameter_patches.append(
-    #         PGPatchDatum(
-    #             operation="delete", attribute=parameter_attribute_name, oldValue=del_param.sequence
-    #         )
-    #     )
     if len(deleted_parameters) > 0:
         parameter_patches.append(
             PGPatchDatum(
@@ -426,10 +449,7 @@ def generate_parameter_patches(
                 oldValue=[x.sequence for x in deleted_parameters],
             )
         )
-    for updated_param in updated_parameters:
-        existing_param = next(
-            x for x in initial_parameters if x.sequence == updated_param.sequence
-        )
+    for existing_param, updated_param in updated_param_pairs:
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
@@ -439,23 +459,55 @@ def generate_parameter_patches(
             parameter_patches.append(unit_patch)
         if value_patch:
             parameter_patches.append(value_patch)
-        if validation_patch:
-            parameter_patches.append(validation_patch)
         if required_patch:
             parameter_patches.append(required_patch)
-        if (
+
+        # Determine if this parameter uses enum validation
+        will_have_enum_patches = (
             updated_param.validation is not None
-            and updated_param.validation != []
+            and len(updated_param.validation) > 0
             and updated_param.validation[0].datatype == DataType.ENUM
-        ):
+        )
+
+        # Only add validation patch if enums are NOT being handled separately
+        if validation_patch and not will_have_enum_patches:
+            parameter_patches.append(validation_patch)
+
+        # Build enum patches keyed by rowId if applicable
+        if will_have_enum_patches:
+            # row/sequence guard
+            seq = getattr(updated_param, "sequence", None)
+            if seq is None:
+                # Can't target a row; skip enum patches for this param
+                continue
+
+            # Determine existing enums safely
             existing = (
                 existing_param.validation[0].value
-                if existing_param.validation is not None and len(existing_param.validation) > 0
+                if (
+                    existing_param.validation is not None
+                    and len(existing_param.validation) > 0
+                    and isinstance(existing_param.validation[0].value, list)
+                )
                 else []
             )
-            enum_patches[updated_param.sequence] = generate_enum_patches(
+
+            # Updated enums safely
+            updated_val = (
+                updated_param.validation[0].value
+                if (
+                    updated_param.validation is not None
+                    and len(updated_param.validation) > 0
+                    and isinstance(updated_param.validation[0].value, list)
+                )
+                else []
+            )
+
+            # Use string key compatible with callers/HTTP path
+            row_id = f"ROW{seq}"
+            enum_patches[row_id] = generate_enum_patches(
                 existing_enums=existing,
-                updated_enums=updated_param.validation[0].value,
+                updated_enums=updated_val,
             )
     return parameter_patches, new_parameters, enum_patches
 

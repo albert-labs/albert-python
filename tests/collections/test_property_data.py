@@ -48,6 +48,7 @@ def test_add_properties_to_task(client: Albert, seeded_tasks: list[BaseTask]):
         inventory_id=full_data[0].inventory.inventory_id,
         lot_id=full_data[0].inventory.lot_id,
         block_id=full_data[0].block_id,
+        return_scope="block",
     )
     final_count = _get_latest_row(r[0])
     assert final_count == inital_count + 1  # assert this added a new row
@@ -116,6 +117,7 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
                     interval_combination=interval_id,
                 )
             ],
+            return_scope="none",
         )
 
     # now search for the properties
@@ -173,6 +175,7 @@ def test_bulk_load_and_delete_properties_to_property_task(
         property_data=new_data,
         interval=interval_id,
         lot_id=prop_task.inventory_information[0].lot_id,
+        return_scope="block",
     )
 
     assert isinstance(r[0], TaskPropertyData)

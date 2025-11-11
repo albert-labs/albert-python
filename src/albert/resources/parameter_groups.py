@@ -28,6 +28,7 @@ class DataType(str, Enum):
     STRING = "string"
     ENUM = "enum"
     IMAGE = "image"
+    CURVE = "curve"
 
 
 class Operator(str, Enum):
@@ -104,7 +105,7 @@ class ParameterValue(BaseAlbertModel):
 
     # Read-only fields
     name: str | None = Field(default=None, exclude=True, frozen=True)
-    sequence: str | None = Field(default=None, exclude=True, frozen=True)
+    sequence: str | None = Field(default=None, exclude=True)
     original_short_name: str | None = Field(
         default=None, alias="originalShortName", frozen=True, exclude=True
     )

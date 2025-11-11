@@ -37,6 +37,7 @@ from albert.resources.property_data import (
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
     PropertyValue,
+    ReturnScope,
     TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
@@ -275,22 +276,29 @@ class PropertyDataCollection(BaseCollection):
         return CheckPropertyData(response.json())
 
     @validate_call
-    def get_all_task_properties(self, *, task_id: TaskId) -> list[TaskPropertyData]:
-        """Returns all the properties for a specific task.
+    def get_all_task_properties(
+        self, *, task_id: TaskId, with_data_only: bool = False
+    ) -> list[TaskPropertyData]:
+        """Collect task property data for block/inventory combinations in a task.
 
         Parameters
         ----------
         task_id : TaskId
             The ID of the task to retrieve properties for.
+        with_data_only : bool, optional
+            When True, only return combinations actually having task data (``dataExist`` flag is true). Defaults to False.
 
         Returns
         -------
         list[TaskPropertyData]
-            A list of TaskPropertyData entities representing the properties within the task.
+            Task property data for each block/inventory/lot combination. When
+            ``with_data_only`` is True, combinations without recorded data are omitted.
         """
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
         for combo_info in task_data_info:
+            if with_data_only and not combo_info.data_exists:
+                continue
             all_info.append(
                 self.get_task_block_properties(
                     inventory_id=combo_info.inventory_id,
@@ -299,12 +307,49 @@ class PropertyDataCollection(BaseCollection):
                     lot_id=combo_info.lot_id,
                 )
             )
-
         return all_info
+
+    def _resolve_return_scope(
+        self,
+        *,
+        task_id: TaskId,
+        return_scope: ReturnScope,
+        inventory_id: InventoryId | None,
+        block_id: BlockId | None,
+        lot_id: LotId | None,
+        prefetched_block: TaskPropertyData | None = None,
+    ) -> list[TaskPropertyData]:
+        if return_scope == "task":
+            return self.get_all_task_properties(task_id=task_id)
+
+        if return_scope == "block":
+            if prefetched_block is not None:
+                return [prefetched_block]
+            if inventory_id is None or block_id is None:
+                raise ValueError(
+                    "inventory_id and block_id are required when return_scope='combo'."
+                )
+            return [
+                self.get_task_block_properties(
+                    inventory_id=inventory_id,
+                    task_id=task_id,
+                    block_id=block_id,
+                    lot_id=lot_id,
+                )
+            ]
+
+        return []
 
     @validate_call
     def update_property_on_task(
-        self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
+        self,
+        *,
+        task_id: TaskId,
+        patch_payload: list[PropertyDataPatchDatum],
+        inventory_id: InventoryId | None = None,
+        block_id: BlockId | None = None,
+        lot_id: LotId | None = None,
+        return_scope: ReturnScope = "task",
     ) -> list[TaskPropertyData]:
         """Updates a specific property on a task.
 
@@ -314,6 +359,15 @@ class PropertyDataCollection(BaseCollection):
             The ID of the task.
         patch_payload : list[PropertyDataPatchDatum]
             The specific patch to make to update the property.
+        inventory_id : InventoryId | None, optional
+            Required when return_scope="block".
+        block_id : BlockId | None, optional
+            Required when return_scope="block".
+        lot_id : LotId | None, optional
+            Optional context for combo fetches.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
@@ -328,7 +382,13 @@ class PropertyDataCollection(BaseCollection):
                     for x in patch_payload
                 ],
             )
-        return self.get_all_task_properties(task_id=task_id)
+        return self._resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+        )
 
     @validate_call
     def add_properties_to_task(
@@ -339,7 +399,8 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
-    ):
+        return_scope: ReturnScope = "task",
+    ) -> list[TaskPropertyData]:
         """
         Add new task properties for a given task.
 
@@ -360,6 +421,9 @@ class PropertyDataCollection(BaseCollection):
             The ID of the lot, by default None.
         properties : list[TaskPropertyCreate]
             A list of TaskPropertyCreate entities representing the properties to add.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
@@ -390,9 +454,23 @@ class PropertyDataCollection(BaseCollection):
             existing_data_rows=existing_data_rows, properties=registered_properties
         )
         if len(patches) > 0:
-            return self.update_property_on_task(task_id=task_id, patch_payload=patches)
-        else:
-            return self.get_all_task_properties(task_id=task_id)
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+
+        return self._resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+        )
 
     @validate_call
     def update_or_create_task_properties(
@@ -403,6 +481,7 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope = "task",
     ) -> list[TaskPropertyData]:
         """
         Update or create task properties for a given task.
@@ -424,6 +503,9 @@ class PropertyDataCollection(BaseCollection):
             The ID of the lot, by default None.
         properties : list[TaskPropertyCreate]
             A list of TaskPropertyCreate entities representing the properties to update or create.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
@@ -443,16 +525,32 @@ class PropertyDataCollection(BaseCollection):
         )
         all_patches = update_patches + calculated_patches
         if len(new_values) > 0:
-            self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+            if len(all_patches) > 0:
+                self.update_property_on_task(
+                    task_id=task_id,
+                    patch_payload=all_patches,
+                    return_scope="none",
+                    inventory_id=inventory_id,
+                    block_id=block_id,
+                    lot_id=lot_id,
+                )
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
                 block_id=block_id,
                 lot_id=lot_id,
                 properties=new_values,
+                return_scope=return_scope,
             )
         else:
-            return self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=all_patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
 
     def bulk_load_task_properties(
         self,
@@ -463,6 +561,7 @@ class PropertyDataCollection(BaseCollection):
         property_data: BulkPropertyData,
         interval="default",
         lot_id: LotId = None,
+        return_scope: ReturnScope = "task",
     ) -> list[TaskPropertyData]:
         """
         Bulk load task properties for a given task. WARNING: This will overwrite any existing properties!
@@ -482,6 +581,9 @@ class PropertyDataCollection(BaseCollection):
             The interval to use for the properties, by default "default". Can be obtained using Workflow.get_interval_id().
         property_data : BulkPropertyData
             A list of columnwise data containing all your rows of data for a single interval. Can be created using BulkPropertyData.from_dataframe().
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
@@ -570,6 +672,7 @@ class PropertyDataCollection(BaseCollection):
             block_id=block_id,
             lot_id=lot_id,
             properties=all_task_prop_create,
+            return_scope=return_scope,
         )
 
     def bulk_delete_task_data(

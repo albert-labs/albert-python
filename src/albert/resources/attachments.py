@@ -1,3 +1,4 @@
+from datetime import date
 from enum import Enum
 
 from pydantic import Field
@@ -24,6 +25,7 @@ class Attachment(BaseResource):
     key: str
     namespace: str = Field(default="result", alias="nameSpace")
     category: AttachmentCategory | None = None
+    revision_date: date | None = Field(default=None, alias="revisionDate")
     file_size: int | None = Field(default=None, alias="fileSize", exclude=True, frozen=True)
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)

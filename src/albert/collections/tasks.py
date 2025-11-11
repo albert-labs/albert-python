@@ -13,10 +13,10 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     BlockId,
     DataTemplateId,
-    ParameterGroupId,
     ProjectId,
     TaskId,
     WorkflowId,
+    remove_id_prefix,
 )
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
@@ -244,14 +244,14 @@ class TaskCollection(BaseCollection):
         tags: list[str] | None = None,
         task_id: list[TaskId] | None = None,
         linked_task: list[TaskId] | None = None,
-        category: TaskCategory | None = None,
+        category: TaskCategory | str | list[str] | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[DataTemplateId] | None = None,
+        data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[ParameterGroupId] | None = None,
+        parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -280,7 +280,7 @@ class TaskCollection(BaseCollection):
         albert_id : list[str], optional
             Albert-specific task identifiers.
         data_template : list[str], optional
-            Data template IDs associated with tasks.
+            Data template names associated with tasks.
         assigned_to : list[str], optional
             User names assigned to the tasks.
         location : list[str], optional
@@ -290,10 +290,10 @@ class TaskCollection(BaseCollection):
         status : list[str], optional
             Task status values (e.g., Open, Done).
         parameter_group : list[str], optional
-            Parameter Group IDs associated with tasks.
+            Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
-        project_id : str, optional
+        project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.
@@ -309,6 +309,9 @@ class TaskCollection(BaseCollection):
         Iterator[TaskSearchItem]
             An iterator of matching, lightweight TaskSearchItem entities.
         """
+        if project_id is not None:
+            project_id = remove_id_prefix(project_id, "ProjectId")
+
         params = {
             "offset": offset,
             "order": order_by.value,
@@ -348,14 +351,14 @@ class TaskCollection(BaseCollection):
         tags: list[str] | None = None,
         task_id: list[TaskId] | None = None,
         linked_task: list[TaskId] | None = None,
-        category: TaskCategory | None = None,
+        category: TaskCategory | str | list[str] | None = None,
         albert_id: list[str] | None = None,
-        data_template: list[DataTemplateId] | None = None,
+        data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
-        parameter_group: list[ParameterGroupId] | None = None,
+        parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
@@ -384,7 +387,7 @@ class TaskCollection(BaseCollection):
         albert_id : list[str], optional
             Albert-specific task identifiers.
         data_template : list[str], optional
-            Data template IDs associated with tasks.
+            Data template names associated with tasks.
         assigned_to : list[str], optional
             User names assigned to the tasks.
         location : list[str], optional
@@ -394,10 +397,10 @@ class TaskCollection(BaseCollection):
         status : list[str], optional
             Task status values (e.g., Open, Done).
         parameter_group : list[str], optional
-            Parameter Group IDs associated with tasks.
+            Parameter Group names associated with tasks.
         created_by : list[str], optional
             User names who created the tasks.
-        project_id : str, optional
+        project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.
@@ -501,6 +504,7 @@ class TaskCollection(BaseCollection):
         _updatable_attributes_special = {
             "inventory_information",
             "assigned_to",
+            "tags",
         }
         if updated.assigned_to is not None:
             updated.assigned_to = EntityLinkWithName(
@@ -583,6 +587,46 @@ class TaskCollection(BaseCollection):
                             "operation": PatchOperation.ADD,
                             "attribute": "inventory",
                             "newValue": inv_to_add,
+                        }
+                    )
+
+            if attribute == "tags":
+                tag_aliases = {"Tags", "tags"}
+                base_payload.data = [
+                    datum
+                    for datum in base_payload.data
+                    if (
+                        (isinstance(datum, dict) and datum.get("attribute") not in tag_aliases)
+                        or (
+                            not isinstance(datum, dict)
+                            and getattr(datum, "attribute", None) not in tag_aliases
+                        )
+                    )
+                ]
+                old_value = old_value or []
+                new_value = new_value or []
+
+                if any(getattr(tag, "id", None) is None for tag in new_value):
+                    raise ValueError("Cannot update task tags unless every Tag has an 'id'")
+
+                old_ids = {tag.id for tag in old_value if getattr(tag, "id", None)}
+                new_ids = {tag.id for tag in new_value if getattr(tag, "id", None)}
+
+                for tag_id in new_ids - old_ids:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.ADD,
+                            "attribute": "tagId",
+                            "newValue": [tag_id],
+                        }
+                    )
+
+                for tag_id in old_ids - new_ids:
+                    base_payload.data.append(
+                        {
+                            "operation": PatchOperation.DELETE,
+                            "attribute": "tagId",
+                            "oldValue": [tag_id],
                         }
                     )
 

@@ -126,6 +126,8 @@ class CustomField(BaseResource):
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
     default: Default | None
         The default value of the custom field, optional. Defaults to None.
+    editable: Default | None
+        Decides whether the field should be editable on UI or not.
     """
 
     name: str
@@ -141,11 +143,14 @@ class CustomField(BaseResource):
     min: int | None = Field(default=None)
     max: int | None = Field(default=None)
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
+    custom_entity_categories: list[str] | None = Field(default=None, alias="customEntityCategory")
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
     required: bool | None = Field(default=None)
     multiselect: bool | None = Field(default=None)
+    editable: bool | None = Field(default=None)
     pattern: str | None = Field(default=None)
     default: Default | None = Field(default=None)
+    api: dict[str, str] | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":

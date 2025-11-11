@@ -225,8 +225,12 @@ class UnitCollection(BaseCollection):
         Optional[Unit]
             The Unit object if found, None otherwise.
         """
-        found = self.get_all(name=name, exact_match=exact_match, max_items=1)
-        return next(found, None)
+        found = self.get_all(name=name, exact_match=exact_match, max_items=10)
+        # return the first with exactly that name
+        for unit in found:
+            if unit.name == name:
+                return unit
+        return None
 
     def exists(self, *, name: str, exact_match: bool = True) -> bool:
         """

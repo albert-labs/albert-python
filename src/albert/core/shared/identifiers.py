@@ -26,6 +26,7 @@ _ALBERT_PREFIXES = {
     "PropertyDataId": "PTD",
     "ReportId": "REP",
     "RowId": "ROW",
+    "RuleId": "RUL",
     "SynthesisId": "SYN",
     "TagId": "TAG",
     "TaskId": "TAS",
@@ -205,6 +206,20 @@ CustomTemplateId = Annotated[str, AfterValidator(ensure_custom_template_id)]
 
 
 def ensure_entity_type_id(id: str) -> str:
+    return _ensure_albert_id(id, "EntityType")
+
+
+EntityTypeId = Annotated[str, AfterValidator(ensure_entity_type_id)]
+
+
+def ensure_rule_id(id: str) -> str:
+    return _ensure_albert_id(id, "RuleId")
+
+
+RuleId = Annotated[str, AfterValidator(ensure_rule_id)]
+
+
+def ensure_entity_type_id(id: str) -> str:
     return _ensure_albert_id(id, "EntityTypeId")
 
 
@@ -333,3 +348,20 @@ def ensure_report_id(id: str) -> str:
 
 
 ReportId = Annotated[str, AfterValidator(ensure_report_id)]
+
+
+def remove_id_prefix(id: str, id_type: str) -> str:
+    """Return the identifier with its expected prefix removed (if present)."""
+    if not id:
+        raise ValueError(f"{id_type} cannot be empty")
+
+    prefix = _ALBERT_PREFIXES[id_type]
+    id_upper = id.upper()
+
+    if id_upper.startswith(prefix):
+        return id_upper[len(prefix) :]
+
+    if _is_valid_albert_prefix(id_upper):
+        raise ValueError(f"{id_type} {id} has invalid prefix. Expected: {prefix}")
+
+    return id_upper

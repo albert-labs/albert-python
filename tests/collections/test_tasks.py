@@ -1,5 +1,6 @@
 from albert import Albert
 from albert.resources.lists import ListItem
+from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
     PropertyTask,
@@ -60,6 +61,7 @@ def test_update(
     seeded_tasks,
     seed_prefix: str,
     static_lists: list[ListItem],
+    seeded_tags: list[Tag],
 ):
     task = [x for x in seeded_tasks if "metadata" in x.name.lower()][0]
     new_name = f"{seed_prefix}-new name"
@@ -67,6 +69,11 @@ def test_update(
     new_metadata = change_metadata(
         task.metadata, static_lists=static_lists, seed_prefix=seed_prefix
     )
+    existing_tags = task.tags or []
+    existing_tag_ids = {tag.id for tag in existing_tags if tag.id}
+    new_tag = next(tag for tag in seeded_tags if tag.id not in existing_tag_ids)
+    tag_count = len(existing_tags)
+    task.tags = existing_tags + [new_tag]
     users = list(client.users.get_all(max_items=10))
     new_assigned_to = (
         users[0]
@@ -79,6 +86,9 @@ def test_update(
     assert updated_task.name == new_name
     assert updated_task.id == task.id
     assert updated_task.assigned_to.id == new_assigned_to.id
+    assert updated_task.tags is not None
+    assert new_tag.id in [t.id for t in updated_task.tags]
+    assert len(updated_task.tags) == tag_count + 1
     # check metadata updates
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 

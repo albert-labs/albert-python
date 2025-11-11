@@ -46,6 +46,8 @@ class CellType(str, Enum):
     FOR = "FOR"
     EXTINV = "EXTINV"
     BTI = "BTI"
+    PRM = "PRM"
+    PRG = "PRG"
 
 
 class DesignType(str, Enum):
@@ -96,7 +98,7 @@ class Cell(BaseResource):
     column_id: str = Field(alias="colId")
     row_id: str = Field(alias="rowId")
     row_label_name: str | None = Field(default=None, alias="lableName")
-    value: str | dict = ""
+    value: str | dict | list = ""
     min_value: str | None = Field(default=None, alias="minValue")
     max_value: str | None = Field(default=None, alias="maxValue")
     type: CellType
@@ -120,27 +122,50 @@ class Cell(BaseResource):
 
 
 class Component(BaseResource):
-    """Represents an amount of an inventory item in a formulation
+    """Represents an amount of an inventory item in a formulation.
 
     Attributes
     ----------
-    inventory_item : InventoryItem
-        The inventory item in the component
+    inventory_item : InventoryItem | None
+        The inventory item in the component. Optional when ``inventory_id`` is provided.
+    inventory_id : InventoryId | None
+        The inventory identifier backing the component. Automatically populated from
+        ``inventory_item`` when present; required when ``inventory_item`` is omitted.
     amount : float
-        The amount of the inventory item in the component
+        The amount of the inventory item in the component.
     cell : Cell
         The cell that the component is in. Read-only.
     """
 
-    inventory_item: InventoryItem
+    inventory_item: InventoryItem | None = Field(default=None)
+    inventory_id: InventoryId | None = Field(default=None)
     amount: float
     min_value: float | None = Field(default=None)
     max_value: float | None = Field(default=None)
     _cell: Cell = None  # read only property set on registrstion
 
+    @model_validator(mode="after")
+    def _ensure_inventory_reference(self: "Component") -> "Component":
+        item = self.inventory_item
+        if item is None and self.inventory_id is None:
+            raise ValueError("Component requires either 'inventory_item' or 'inventory_id'.")
+        if item is not None:
+            if getattr(item, "id", None) is None:
+                raise ValueError("Provided inventory_item must include an 'id'.")
+            object.__setattr__(self, "inventory_id", item.id)
+        return self
+
     @property
     def cell(self):
         return self._cell
+
+    @property
+    def inventory_item_id(self) -> InventoryId:
+        if self.inventory_id:
+            return self.inventory_id
+        if self.inventory_item and getattr(self.inventory_item, "id", None):
+            return self.inventory_item.id
+        raise ValueError("Component is missing an inventory identifier.")
 
 
 class DesignState(BaseResource):
@@ -547,7 +572,10 @@ class Design(BaseSessionResource):
 
         return rows
     def _get_grid(self):
-        endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
+        if self.design_type == DesignType.PROCESS:
+            endpoint = f"/api/v3/designs/{self.id}/grid"
+        else:
+            endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -703,6 +731,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
+    _process_design: Design = PrivateAttr(default=None)
     designs: list[Design] = Field(alias="Designs")
     project_id: str = Field(alias="projectId")
     _grid: pd.DataFrame = PrivateAttr(default=None)
@@ -727,6 +756,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def result_design(self):
         return self._result_design
 
+    @property
+    def process_design(self):
+        return self._process_design
+
     @model_validator(mode="after")
     def set_sheet_fields(self: "Sheet") -> "Sheet":
         for _idx, d in enumerate(self.designs):  # Instead of creating a new list
@@ -737,17 +770,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 self._product_design = d
             elif d.design_type == DesignType.RESULTS:
                 self._result_design = d
+            elif d.design_type == DesignType.PROCESS:
+                self._process_design = d
         return self
 
     @property
     def grid(self):
         if self._grid is None:
-            grids = [
+            design_order = [
                 self.product_design,
                 self.result_design,
                 self.app_design,
-            ]  # I don't just use the designs property, so I can ensure order.
-            self._grid = pd.concat([x.grid for x in grids])
+                self.process_design,
+            ]
+            frames = [design.grid for design in design_order if design is not None]
+            self._grid = pd.concat(frames) if frames else pd.DataFrame()
         return self._grid
 
     @grid.setter
@@ -784,21 +821,28 @@ class Sheet(BaseSessionResource):  # noqa:F811
             rows.extend(d.rows)
         return rows
 
+    def _design_lookup(self) -> dict[DesignType, Design]:
+        mapping = {
+            DesignType.APPS: self.app_design,
+            DesignType.PRODUCTS: self.product_design,
+            DesignType.RESULTS: self.result_design,
+            DesignType.PROCESS: self.process_design,
+        }
+        return {
+            design_type: design for design_type, design in mapping.items() if design is not None
+        }
+
+    def _resolve_design(self, design_type: DesignType) -> Design:
+        lookup = self._design_lookup()
+        if design_type not in lookup:
+            raise AlbertException(f"No design found for type '{design_type.value}'")
+        return lookup[design_type]
+
     def _get_design_id(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design.id
-        elif design == DesignType.PRODUCTS:
-            return self.product_design.id
-        elif design == DesignType.RESULTS:
-            return self.result_design.id
+        return self._resolve_design(design).id
 
     def _get_design(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design
-        elif design == DesignType.PRODUCTS:
-            return self.product_design
-        elif design == DesignType.RESULTS:
-            return self.result_design
+        return self._resolve_design(design)
 
     def rename(self, *, new_name: str):
         endpoint = f"/api/v3/worksheet/sheet/{self.id}"
@@ -860,13 +904,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None  # reset the grid for saftey
 
         for component in components:
+            component_inventory_id = component.inventory_item_id
             row_id = self._get_row_id_for_component(
-                inventory_item=component.inventory_item,
+                inventory_id=component_inventory_id,
                 existing_cells=all_cells,
                 enforce_order=enforce_order,
             )
             if row_id is None:
-                raise AlbertException(f"no component with id {component.inventory_item.id}")
+                raise AlbertException(f"No Component with id {component_inventory_id}")
 
             value = str(component.amount)
             min_value = str(component.min_value) if component.min_value is not None else None
@@ -879,6 +924,62 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 type=CellType.INVENTORY,
                 design_id=self.product_design.id,
                 name=formulation_name,
+                inventory_id=col.inventory_id,
+                min_value=min_value,
+                max_value=max_value,
+            )
+            all_cells.append(this_cell)
+
+        self.update_cells(cells=all_cells)
+        return self.get_column(column_id=col_id)
+
+    def append_components_to_formulation(
+        self,
+        *,
+        formulation_name: str | None = None,
+        column_id: str | None = None,
+        inventory_id: InventoryId | None = None,
+        components: list[Component],
+        enforce_order: bool = False,
+    ) -> Column:
+        """
+        Append (or upsert) components into an existing formulation column
+        without clearing other cells.
+
+        You must specify exactly one of: column_id, inventory_id, or formulation_name.
+        """
+        # 1) Resolve target column
+        col = self.get_column(
+            column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
+        )
+        col_id = col.column_id
+
+        # 2) Build Cell updates for just the given components
+        all_cells: list[Cell] = []
+        self.grid = None  # refresh caches
+
+        for component in components:
+            component_inventory_id = component.inventory_item_id
+            row_id = self._get_row_id_for_component(
+                inventory_id=component_inventory_id,
+                existing_cells=all_cells,
+                enforce_order=enforce_order,
+            )
+            if row_id is None:
+                raise AlbertException(f"No Component with id {component_inventory_id}")
+
+            value = str(component.amount)
+            min_value = str(component.min_value) if component.min_value is not None else None
+            max_value = str(component.max_value) if component.max_value is not None else None
+
+            this_cell = Cell(
+                column_id=col_id,
+                row_id=row_id,
+                value=value,
+                calculation="",
+                type=CellType.INVENTORY,
+                design_id=self.product_design.id,
+                name=col.name or formulation_name or "",
                 inventory_id=col.inventory_id,
                 min_value=min_value,
                 max_value=max_value,
@@ -953,7 +1054,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None
 
         # within a sheet, the "INV" prefix is dropped
-        sheet_inv_id = inventory_item.id
+        sheet_inv_id = inventory_id
         matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
 
         used_row_ids = [x.row_id for x in existing_cells]
@@ -979,14 +1080,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         # Otherwise I need to add a new row
         if enforce_order:
             return self.add_inventory_row(
-                inventory_id=inventory_item.id,
+                inventory_id=inventory_id,
                 position={
                     "reference_id": existing_inv_order[index_last_row],
                     "position": "below",
                 },
             ).row_id
         else:
-            return self.add_inventory_row(inventory_id=inventory_item.id).row_id
+            return self.add_inventory_row(inventory_id=inventory_id).row_id
 
     def add_formulation_columns(
         self,
@@ -1031,7 +1132,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         row_name: str,
-        design: DesignType | str | None = DesignType.PRODUCTS,
+        design: DesignType = DesignType.PRODUCTS,
         position: dict | None = None,
     ):
         if design == DesignType.RESULTS:

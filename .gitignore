@@ -78,8 +78,14 @@ venv.bak/
 # Poetry
 poetry.lock
 
+#UV
+uv.lock
+
 # Jupyter
 dev.ipynb
 
 # Rendered Docs
 site/
+
+# IDE
+.vscode/launch.json

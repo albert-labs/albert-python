@@ -4,6 +4,7 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.lots import Lot
+from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
 
 
@@ -53,11 +54,24 @@ def test_get_by_ids(client: Albert, seeded_lots: list[Lot]):
         assert l.id in seeded_ids
 
 
-def test_update(client: Albert, seeded_lot: Lot):
+def test_update(
+    client: Albert, seeded_lot: Lot, seeded_storage_locations: Iterator[list[StorageLocation]]
+):
     lot = seeded_lot.model_copy()
     marker = "TEST"
     lot.manufacturer_lot_number = marker
     lot.inventory_on_hand = 10
+    current_location_id = lot.storage_location.id if lot.storage_location else None
+    new_storage_location = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id),
+        None,
+    )
+    assert new_storage_location is not None, (
+        "Expected an alternate storage location for update test"
+    )
+    lot.storage_location = new_storage_location
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
+    assert updated_lot.storage_location is not None
+    assert updated_lot.storage_location.id == new_storage_location.id

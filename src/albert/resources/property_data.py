@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 from pydantic import Field, field_validator, model_validator
@@ -41,9 +41,21 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
+class PropertyDataStorageKey(BaseAlbertModel):
+    preview: str | None = Field(default=None)
+    thumb: str | None = Field(default=None)
+    original: str | None = Field(default=None)
+
+
 class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
+    value_type: str | None = Field(default=None, alias="valueType")
+    storage_key: PropertyDataStorageKey | dict | None = Field(default=None, alias="s3Key")
+    job: dict[str, Any] | None = Field(default=None)
+    csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
+    curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
+    athena: dict[str, Any] | None = Field(default=None)
 
 
 class PropertyValue(BaseAlbertModel):
@@ -64,6 +76,7 @@ class Trial(BaseAlbertModel):
     trial_number: int = Field(alias="trialNo")
     visible_trial_number: int = Field(default=1, alias="visibleTrialNo")
     void: bool = Field(default=False)
+    back_end_trial_number: str | None = Field(default=None, alias="backEndTrialNo")
     data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
 
 
@@ -135,7 +148,7 @@ class TaskPropertyData(BaseResource):
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
         default=None, alias="DataTemplate"
     )
-    data: list[DataInterval] = Field(alias="Data", frozen=True, exclude=True)
+    data: list[DataInterval] = Field(default_factory=list, alias="Data")
     block_id: str | None = Field(alias="blockId", default=None)
 
 
@@ -332,3 +345,6 @@ class PropertyDataSearchItem(BaseAlbertModel):
     project_id: ProjectId = Field(..., alias="projectId")
     workflow_id: WorkflowId = Field(..., alias="workflowId")
     task_id: TaskId | None = Field(default=None, alias="taskId")
+
+
+ReturnScope = Literal["task", "block", "none"]
