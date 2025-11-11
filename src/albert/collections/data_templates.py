@@ -14,6 +14,7 @@ from albert.core.shared.models.patch import (
     GeneralPatchPayload,
     PGPatchDatum,
     PGPatchPayload,
+    DTPatchDatum
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
@@ -407,6 +408,7 @@ class DataTemplateCollection(BaseCollection):
         path = f"{self.base_path}/{existing.id}"
         (
             general_patches,
+            calculation_patches,
             new_data_columns,
             data_column_enum_patches,
             new_parameters,
@@ -552,6 +554,63 @@ class DataTemplateCollection(BaseCollection):
                 path,
                 json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
             )
+        if len(calculation_patches) > 0:
+            # Clear all calculations first (to break cyclic dependencies)
+            clear_patches = []
+            for calc_patch in calculation_patches:
+                for action in calc_patch.actions:
+                    if action.operation in ("update", "delete"):
+                        # Create a delete operation to clear the old calculation
+                        clear_action = DTPatchDatum(
+                            operation="delete",
+                            attribute="calculation",
+                            old_value=action.old_value, 
+                        )
+                        clear_patch = GeneralPatchDatum(
+                            attribute="datacolumn",
+                            actions=[clear_action],
+                            colId=calc_patch.colId,
+                        )
+                        clear_patches.append(clear_patch)
+            
+            # Apply all clears first
+            if len(clear_patches) > 0:
+                clear_payload = GeneralPatchPayload(data=clear_patches)
+                self.session.patch(
+                    path,
+                    json=clear_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
+            
+            # Update the new calculations
+            set_patches = []
+            for calc_patch in calculation_patches:
+                actions = []
+                for action in calc_patch.actions:
+                    if action.operation == "add":
+                        actions.append(action)
+                    elif action.operation == "update":
+                        # Convert update to add since we just cleared it
+                        actions.append(DTPatchDatum(
+                            operation="add",
+                            attribute="calculation",
+                            new_value=action.new_value,  # Changed from newValue
+                        ))
+                
+                if actions:
+                    set_patch = GeneralPatchDatum(
+                        attribute="datacolumn",
+                        actions=actions,
+                        colId=calc_patch.colId,
+                    )
+                    set_patches.append(set_patch)
+            
+            if len(set_patches) > 0:
+                set_payload = GeneralPatchPayload(data=set_patches)
+                self.session.patch(
+                    path,
+                    json=set_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+                )
+
         return self.get_by_id(id=data_template.id)
 
     def delete(self, *, id: DataTemplateId) -> None:

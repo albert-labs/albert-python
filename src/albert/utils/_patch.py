@@ -207,6 +207,35 @@ def data_column_validation_patches(
         )
     return None
 
+def _data_column_calculation_patches(
+    initial_dc: DataColumnValue,
+    updated_dc: DataColumnValue,
+) -> DTPatchDatum | None:
+    """Generate patch for calculation field changes."""
+    if initial_dc.calculation == updated_dc.calculation:
+        return None
+    elif initial_dc.calculation is None and updated_dc.calculation is not None:
+        return DTPatchDatum(
+            operation="add",
+            attribute="calculation",
+            newValue=updated_dc.calculation,
+            colId=updated_dc.sequence,
+        )
+    elif updated_dc.calculation is None and initial_dc.calculation is not None:
+        return DTPatchDatum(
+            operation="delete",
+            attribute="calculation",
+            oldValue=initial_dc.calculation,
+            colId=updated_dc.sequence,
+        )
+    else:  # both not None but different
+        return DTPatchDatum(
+            operation="update",
+            attribute="calculation",
+            oldValue=initial_dc.calculation,
+            newValue=updated_dc.calculation,
+            colId=updated_dc.sequence,
+        )
 
 def parameter_validation_patch(
     initial_parameter: ParameterValue, updated_parameter: ParameterValue
@@ -270,18 +299,91 @@ def parameter_validation_patch(
     return None
 
 
+# def generate_data_column_patches(
+#     initial_data_column: list[DataColumnValue] | None,
+#     updated_data_column: list[DataColumnValue] | None,
+# ) -> tuple[list[DTPatchDatum], list[DataColumnValue], dict[str, list[dict]]]:
+#     """Generate patches for a data column.
+#     Returns a group of patches as well as the data column values to add/put
+#     """
+#     if initial_data_column is None:
+#         initial_data_column = []
+#     if updated_data_column is None:
+#         updated_data_column = []
+#     patches = []
+#     enum_patches = {}
+#     new_data_columns = [
+#         x
+#         for x in updated_data_column
+#         if x.sequence not in [y.sequence for y in initial_data_column] or not x.sequence
+#     ]
+#     deleted_data_columns = [
+#         x
+#         for x in initial_data_column
+#         if x.sequence not in [y.sequence for y in updated_data_column]
+#     ]
+#     updated_data_columns = [
+#         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
+#     ]
+#     for del_dc in deleted_data_columns:
+#         patches.append(
+#             DTPatchDatum(operation="delete", attribute="datacolumn", oldValue=del_dc.sequence)
+#         )
+
+#     for updated_dc in updated_data_columns:
+#         these_actions = []
+#         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
+#         # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
+#         value_patch = _data_column_value_patches(initial_dc, updated_dc)
+#         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
+#         calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
+#         # if unit_patch:
+#         #     these_actions.append(unit_patch)
+#         if value_patch:
+#             these_actions.append(value_patch)
+#         if validation_patch:
+#             these_actions.append(validation_patch)
+#         if calculation_patch:
+#             these_actions.append(calculation_patch)
+#         # actions cannot have colId, so we need to remove it
+#         for action in these_actions:
+#             action.colId = None
+#         if len(these_actions) > 0:
+#             this_patch = GeneralPatchDatum(
+#                 attribute="datacolumn",
+#                 actions=these_actions,
+#                 colId=updated_dc.sequence,
+#             )
+#             patches.append(this_patch)
+
+#         unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
+#         if unit_patch:
+#             patches.append(unit_patch)
+
+#         if (
+#             updated_dc.validation is not None
+#             and updated_dc.validation != []
+#             and updated_dc.validation[0].datatype == DataType.ENUM
+#         ):
+#             enum_patches[updated_dc.sequence] = generate_enum_patches(
+#                 existing_enums=initial_dc.validation[0].value,
+#                 updated_enums=updated_dc.validation[0].value,
+#             )
+#     return patches, new_data_columns, enum_patches
+
 def generate_data_column_patches(
     initial_data_column: list[DataColumnValue] | None,
     updated_data_column: list[DataColumnValue] | None,
-) -> tuple[list[DTPatchDatum], list[DataColumnValue], dict[str, list[dict]]]:
+) -> tuple[list[DTPatchDatum], list[DTPatchDatum], list[DataColumnValue], dict[str, list[dict]]]:
     """Generate patches for a data column.
-    Returns a group of patches as well as the data column values to add/put
+    Returns patches, calculation_patches, new data columns, and enum patches
     """
     if initial_data_column is None:
         initial_data_column = []
     if updated_data_column is None:
         updated_data_column = []
     patches = []
+    calculation_patches = []  # NEW: separate list for calculations
     enum_patches = {}
     new_data_columns = [
         x
@@ -304,15 +406,28 @@ def generate_data_column_patches(
     for updated_dc in updated_data_columns:
         these_actions = []
         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
-        # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
+        
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
-        # if unit_patch:
-        #     these_actions.append(unit_patch)
+        calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
+        
         if value_patch:
             these_actions.append(value_patch)
         if validation_patch:
             these_actions.append(validation_patch)
+        
+        # DON'T add calculation_patch to these_actions - handle separately
+        if calculation_patch:
+            # Remove colId from calculation patch
+            calculation_patch.colId = None
+            # Create separate patch for this calculation
+            calc_general_patch = GeneralPatchDatum(
+                attribute="datacolumn",
+                actions=[calculation_patch],
+                colId=updated_dc.sequence,
+            )
+            calculation_patches.append(calc_general_patch)
+        
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
@@ -337,8 +452,7 @@ def generate_data_column_patches(
                 existing_enums=initial_dc.validation[0].value,
                 updated_enums=updated_dc.validation[0].value,
             )
-    return patches, new_data_columns, enum_patches
-
+    return patches, calculation_patches, new_data_columns, enum_patches
 
 def generate_enum_patches(
     existing_enums: list[EnumValidationValue], updated_enums: list[EnumValidationValue]
@@ -545,14 +659,49 @@ def handle_tags(
     return patches
 
 
+# def generate_data_template_patches(
+#     initial_patches: PatchPayload,
+#     updated_data_template: DataTemplate,
+#     existing_data_template: DataTemplate,
+# ):
+#     # First handle the data columns
+#     general_patches = initial_patches
+#     patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
+#         initial_data_column=existing_data_template.data_column_values,
+#         updated_data_column=updated_data_template.data_column_values,
+#     )
+
+#     tag_patches = handle_tags(
+#         existing_tags=existing_data_template.tags,
+#         updated_tags=updated_data_template.tags,
+#         attribute_name="tag",
+#     )
+#     # add the general patches
+#     general_patches.data.extend(patches)
+#     general_patches.data.extend(tag_patches)
+
+#     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
+#         initial_parameters=existing_data_template.parameter_values,
+#         updated_parameters=updated_data_template.parameter_values,
+#         parameter_attribute_name="parameters",
+#     )
+
+#     return (
+#         general_patches,
+#         new_data_columns,
+#         data_column_enum_patches,
+#         new_parameters,
+#         parameter_enum_patches,
+#         parameter_patches,
+#     )
+
 def generate_data_template_patches(
     initial_patches: PatchPayload,
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
 ):
-    # First handle the data columns
     general_patches = initial_patches
-    patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
+    patches, calculation_patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
         initial_data_column=existing_data_template.data_column_values,
         updated_data_column=updated_data_template.data_column_values,
     )
@@ -562,7 +711,6 @@ def generate_data_template_patches(
         updated_tags=updated_data_template.tags,
         attribute_name="tag",
     )
-    # add the general patches
     general_patches.data.extend(patches)
     general_patches.data.extend(tag_patches)
 
@@ -574,13 +722,13 @@ def generate_data_template_patches(
 
     return (
         general_patches,
+        calculation_patches,  # NEW: return calculation patches separately
         new_data_columns,
         data_column_enum_patches,
         new_parameters,
         parameter_enum_patches,
         parameter_patches,
     )
-
 
 def generate_parameter_group_patches(
     initial_patches: PatchPayload,
