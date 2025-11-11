@@ -156,7 +156,8 @@ class TaskCollection(BaseCollection):
                 if w.name == "No Parameter Group" and len(b.workflow) > 1:
                     # hardcoded default workflow
                     continue
-                existing_workflow_id = w.id
+                if w.category != "INITIAL":
+                    existing_workflow_id = w.id
         if existing_workflow_id == workflow_id:
             logger.info(f"Block {block_id} already has workflow {workflow_id}")
             return None
