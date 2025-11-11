@@ -8,7 +8,7 @@ from albert.core.shared.models.patch import (
     PGPatchDatum,
     PGPatchPayload,
 )
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue, DataTemplate
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -208,6 +208,46 @@ def data_column_validation_patches(
     return None
 
 
+def _normalize_curve_links(links: list[CurveDataEntityLink] | None) -> list[CurveDataEntityLink]:
+    if links is None:
+        return []
+    # Sort consistently by (id, axis) for stable comparisons
+    return sorted(links, key=lambda x: (x.id, x.axis))
+
+
+def data_column_curve_data_patches(
+    initial_data_column: DataColumnValue, updated_data_column: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate curveData patches for a data column."""
+    initial_links = _normalize_curve_links(initial_data_column.curve_data)
+    updated_links = _normalize_curve_links(updated_data_column.curve_data)
+
+    if initial_links == updated_links:
+        return None
+
+    if (initial_links is None or len(initial_links) == 0) and len(updated_links) > 0:
+        return DTPatchDatum(
+            operation="add",
+            attribute="curveData",
+            newValue=updated_data_column.curve_data,
+        )
+
+    if (updated_links is None or len(updated_links) == 0) and len(initial_links) > 0:
+        return DTPatchDatum(
+            operation="delete",
+            attribute="curveData",
+            oldValue=initial_data_column.curve_data,
+        )
+
+    # Otherwise, update
+    return DTPatchDatum(
+        operation="update",
+        attribute="curveData",
+        oldValue=initial_data_column.curve_data,
+        newValue=updated_data_column.curve_data,
+    )
+
+
 def parameter_validation_patch(
     initial_parameter: ParameterValue, updated_parameter: ParameterValue
 ) -> PGPatchDatum | None:
@@ -307,12 +347,15 @@ def generate_data_column_patches(
         # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
+        curve_data_patch = data_column_curve_data_patches(initial_dc, updated_dc)
         # if unit_patch:
         #     these_actions.append(unit_patch)
         if value_patch:
             these_actions.append(value_patch)
         if validation_patch:
             these_actions.append(validation_patch)
+        if curve_data_patch:
+            these_actions.append(curve_data_patch)
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
