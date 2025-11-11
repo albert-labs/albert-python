@@ -46,6 +46,8 @@ class CellType(str, Enum):
     FOR = "FOR"
     EXTINV = "EXTINV"
     BTI = "BTI"
+    PRM = "PRM"
+    PRG = "PRG"
 
 
 class DesignType(str, Enum):
@@ -379,7 +381,10 @@ class Design(BaseSessionResource):
         return rows
 
     def _get_grid(self):
-        endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
+        if self.design_type == DesignType.PROCESS:
+            endpoint = f"/api/v3/designs/{self.id}/grid"
+        else:
+            endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -439,6 +444,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
+    _process_design: Design = PrivateAttr(default=None)
     designs: list[Design] = Field(alias="Designs")
     project_id: str = Field(alias="projectId")
     _grid: pd.DataFrame = PrivateAttr(default=None)
@@ -463,6 +469,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def result_design(self):
         return self._result_design
 
+    @property
+    def process_design(self):
+        return self._process_design
+
     @model_validator(mode="after")
     def set_sheet_fields(self: "Sheet") -> "Sheet":
         for _idx, d in enumerate(self.designs):  # Instead of creating a new list
@@ -473,17 +483,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 self._product_design = d
             elif d.design_type == DesignType.RESULTS:
                 self._result_design = d
+            elif d.design_type == DesignType.PROCESS:
+                self._process_design = d
         return self
 
     @property
     def grid(self):
         if self._grid is None:
-            grids = [
+            design_order = [
                 self.product_design,
                 self.result_design,
                 self.app_design,
-            ]  # I don't just use the designs property, so I can ensure order.
-            self._grid = pd.concat([x.grid for x in grids])
+                self.process_design,
+            ]
+            frames = [design.grid for design in design_order if design is not None]
+            self._grid = pd.concat(frames) if frames else pd.DataFrame()
         return self._grid
 
     @grid.setter
@@ -520,21 +534,28 @@ class Sheet(BaseSessionResource):  # noqa:F811
             rows.extend(d.rows)
         return rows
 
+    def _design_lookup(self) -> dict[DesignType, Design]:
+        mapping = {
+            DesignType.APPS: self.app_design,
+            DesignType.PRODUCTS: self.product_design,
+            DesignType.RESULTS: self.result_design,
+            DesignType.PROCESS: self.process_design,
+        }
+        return {
+            design_type: design for design_type, design in mapping.items() if design is not None
+        }
+
+    def _resolve_design(self, design_type: DesignType) -> Design:
+        lookup = self._design_lookup()
+        if design_type not in lookup:
+            raise AlbertException(f"No design found for type '{design_type.value}'")
+        return lookup[design_type]
+
     def _get_design_id(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design.id
-        elif design == DesignType.PRODUCTS:
-            return self.product_design.id
-        elif design == DesignType.RESULTS:
-            return self.result_design.id
+        return self._resolve_design(design).id
 
     def _get_design(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design
-        elif design == DesignType.PRODUCTS:
-            return self.product_design
-        elif design == DesignType.RESULTS:
-            return self.result_design
+        return self._resolve_design(design)
 
     def rename(self, *, new_name: str):
         endpoint = f"/api/v3/worksheet/sheet/{self.id}"
@@ -709,7 +730,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         row_name: str,
-        design: DesignType | str | None = DesignType.PRODUCTS,
+        design: DesignType = DesignType.PRODUCTS,
         position: dict | None = None,
     ):
         if design == DesignType.RESULTS:
