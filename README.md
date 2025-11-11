@@ -17,7 +17,7 @@ on the supported resources and usage patterns [here](https://docs.developer.albe
 
 This installs the latest stable release from [PyPI](https://pypi.org/project/albert/).
 
-### Contribution
+### Contribution Guide
 
 For developers, please see the [contributing guide](CONTRIBUTING.md), which includes setup instructions, testing, and linting guidelines.
 
