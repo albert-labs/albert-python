@@ -409,7 +409,7 @@ class SheetFormulationRef(BaseAlbertModel):
     """A reference to a formulation in a sheet"""
 
     id: str = Field(description="The Albert ID of the inventory item that is the formulation")
-    name: str = Field(description="The name of the formulation")
+    name: str | None = Field(default=None, description="The name of the formulation")
     hidden: bool = Field(description="Whether the formulation is hidden")
 
 

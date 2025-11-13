@@ -230,51 +230,51 @@ class BaseTask(BaseTaggedResource):
 
 class PropertyTask(BaseTask):
     """
-    Represents a batch task.
+    Represents a property task.
 
-    This class is used to create and manage batch tasks. It includes the base task attributes
-    and additional attributes specific to batch tasks.
+    This class is used to create and manage property tasks. It includes the base task attributes
+    and additional attributes specific to property tasks (e.g., blocks tied to workflows/data templates).
 
     Attributes
     ----------
     name : str
-        The name of the batch task.
+        The name of the property task.
     inventory_information : list[TaskInventoryInformation]
-        Information about the inventory associated with the batch task.
+        Information about the inventory associated with the property task.
     location : SerializeAsEntityLink[Location]
-        The location where the batch task is performed.
+        The location where the property task is performed.
     parent_id : str
         The ID of the parent project.
     blocks : list[Block]
-        A list of blocks associated with the batch task.
+        A list of blocks associated with the property task.
     id : str, optional
-        The ID of the batch task, by default None.
+        The ID of the property task, by default None.
 
     metadata : dict[str, MetadataItem], optional
-        Metadata associated with the batch task, by default an empty dictionary.
+        Metadata associated with the property task, by default an empty dictionary.
     due_date : str, optional
-        The due date of the batch task. YYY-MM-DD format, by default None.
+        The due date of the property task. YYYY-MM-DD format, by default None.
     notes : str, optional
-        Notes associated with the batch task, by default None.
+        Notes associated with the property task, by default None.
     priority : TaskPriority, optional
-        The priority of the batch task, by default None.
+        The priority of the property task, by default None.
     assigned_to : SerializeAsEntityLink[User], optional
-        The user assigned to the batch task, by default None.
+        The user assigned to the property task, by default None.
 
     state : TaskState, optional
-        The state of the batch task, by default None.
+        The state of the property task, by default None.
     sources : list[TaskSource], optional
-        A list of sources associated with the batch task, by default an empty list.
+        A list of sources associated with the property task, by default an empty list.
     security_class : SecurityClass, optional
-        The security class of the batch task, by default None.
+        The security class of the property task, by default None.
     start_date : str, read only
-        The start date of the batch task, by default None.
+        The start date of the property task, by default None.
     claimed_date : str, read only
-        The claimed date of the batch task, by default None.
+        The claimed date of the property task, by default None.
     completed_date : str, read only
-        The completed date of the batch task, by default None.
+        The completed date of the property task, by default None.
     closed_date : str, read only
-        The closed date of the batch task, by default None.
+        The closed date of the property task, by default None.
     """
 
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
