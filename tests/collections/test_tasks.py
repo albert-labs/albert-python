@@ -7,6 +7,7 @@ from albert.resources.tasks import (
     TaskCategory,
     TaskSearchItem,
 )
+from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
 
 
@@ -106,21 +107,22 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
 
 
 def test_update_block_workflow(
-    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+    client: Albert, seeded_tasks, seeded_workflows: list[Workflow],
 ):
-    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task: PropertyTask = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     # in case it mutated
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    new_workflow = [x for x in seeded_workflows if x.id != task.blocks[0].workflow][0]
+    new_workflow: Workflow = [workflow for workflow in seeded_workflows if workflow.id != task.blocks[0].workflow[0].id][0]
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
-    updated_task = client.tasks.get_by_id(id=task.id)
+    updated_task: PropertyTask = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = [x for x in updated_task.blocks if x.id == block_id][0]
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = [block for block in updated_task.blocks if block.id == block_id][0]
+    # Block's FINAL Workflow ID == New Workflow ID
+    assert new_workflow.id == updated_block.workflow[0].id
 
 
 def test_task_get_history(client: Albert, seeded_tasks):
