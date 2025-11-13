@@ -15,6 +15,15 @@ from albert.resources.custom_fields import (
 )
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.entity_types import (
+    EntityCategory,
+    EntityCustomField,
+    EntityServiceType,
+    EntityType,
+    EntityTypeStandardFieldRequired,
+    EntityTypeStandardFieldVisibility,
+    FieldSection,
+)
 from albert.resources.inventory import (
     CasAmount,
     InventoryCategory,
@@ -133,6 +142,40 @@ def generate_custom_fields() -> list[CustomField]:
     return seeds
 
 
+def generate_entity_custom_fields() -> list[CustomField]:
+    services = [
+        ServiceType.TASKS,
+    ]
+
+    seeds = []
+
+    for service in services:
+        # Create a string-type field for the service
+        seeds.append(
+            CustomField(
+                name=f"test_entity_type_{service.value}_string_field",
+                field_type=FieldType.STRING,
+                display_name=f"TEST Entity Type {service.value.capitalize()} String Field",
+                service=service,
+            )
+        )
+
+        # Create a list-type field for the service
+        seeds.append(
+            CustomField(
+                name=f"test_entity_type_{service.value}_list_field",
+                field_type=FieldType.LIST,
+                display_name=f"TEST Entity Type {service.value.capitalize()} List Field",
+                service=service,
+                category=FieldCategory.USER_DEFINED,
+                min=1,
+                max=5,
+                multiselect=True,
+            )
+        )
+    return seeds
+
+
 def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[ListItem]:
     """
     Generates a list of ListItem seed objects for testing without IDs.
@@ -155,6 +198,101 @@ def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[Li
                 )
             )
     return all_list_items
+
+
+def generate_entity_type_seeds(
+    seed_prefix: str,
+    static_entity_custom_fields: list[CustomField],
+) -> list[EntityType]:
+    """Generate entity type seeds scoped to the tasks service."""
+    task_custom_field_string_type = next(
+        (
+            cf
+            for cf in static_entity_custom_fields
+            if cf.service == ServiceType.TASKS and cf.field_type == FieldType.STRING
+        ),
+        None,
+    )
+    task_custom_field_list_type = next(
+        (
+            cf
+            for cf in static_entity_custom_fields
+            if cf.service == ServiceType.TASKS and cf.field_type == FieldType.LIST
+        ),
+        None,
+    )
+
+    def build_custom_fields(*, hide_list_field: bool = False) -> list[EntityCustomField]:
+        return [
+            EntityCustomField(
+                id=task_custom_field_string_type.id,
+                section=FieldSection.TOP,
+                hidden=False,
+                required=True,
+                default="Default String Value",
+            ),
+            EntityCustomField(
+                id=task_custom_field_list_type.id,
+                section=FieldSection.BOTTOM,
+                hidden=hide_list_field,
+                required=False,
+                default="Default List Value",
+            ),
+        ]
+
+    prefix_map = {
+        EntityCategory.PROPERTY: "PT",
+        EntityCategory.GENERAL: "GT",
+    }
+
+    def build_entity_type(
+        seed_prefix: str,
+        category: EntityCategory,
+        template_based: bool,
+        hide_list_field: bool,
+        visibility: tuple[bool, bool, bool],
+        required: tuple[bool, bool, bool],
+    ) -> EntityType:
+        seed_prefix = seed_prefix.replace("-", "")
+        return EntityType(
+            category=category,
+            custom_category=f"Category{seed_prefix}",
+            label=f"LABEL - {category.value} - {seed_prefix}",
+            service=EntityServiceType.TASKS,
+            prefix=prefix_map.get(category),
+            custom_fields=build_custom_fields(hide_list_field=hide_list_field),
+            standard_field_visibility=EntityTypeStandardFieldVisibility(
+                notes=visibility[0],
+                tags=visibility[1],
+                due_date=visibility[2],
+            ),
+            standard_field_required=EntityTypeStandardFieldRequired(
+                notes=required[0],
+                tags=required[1],
+                due_date=required[2],
+            ),
+            template_based=template_based,
+            locked_template=template_based,
+        )
+
+    return [
+        build_entity_type(
+            seed_prefix=f"{seed_prefix}-PRO",
+            category=EntityCategory.PROPERTY,
+            template_based=False,
+            hide_list_field=False,
+            visibility=(True, True, False),
+            required=(False, False, False),
+        ),
+        build_entity_type(
+            seed_prefix=f"{seed_prefix}-GEN",
+            category=EntityCategory.GENERAL,
+            template_based=True,
+            hide_list_field=True,
+            visibility=(True, False, True),
+            required=(True, False, True),
+        ),
+    ]
 
 
 def generate_cas_seeds(
@@ -1534,7 +1672,9 @@ def generate_task_seeds(
 
 
 def generate_note_seeds(
-    seeded_tasks: list[BaseTask], seeded_inventory: list[InventoryItem], seed_prefix: str
+    seeded_tasks: list[BaseTask],
+    seeded_inventory: list[InventoryItem],
+    seed_prefix: str,
 ):
     task_note = Note(
         parent_id=seeded_tasks[0].id,

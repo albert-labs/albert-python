@@ -16,6 +16,7 @@ from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
+from albert.resources.entity_types import EntityType
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.lists import ListItem
@@ -44,6 +45,8 @@ from tests.seeding import (
     generate_custom_fields,
     generate_data_column_seeds,
     generate_data_template_seeds,
+    generate_entity_custom_fields,
+    generate_entity_type_seeds,
     generate_inventory_seeds,
     generate_link_seeds,
     generate_list_item_seeds,
@@ -154,6 +157,22 @@ def static_consumeable_parameter(client: Albert) -> Parameter:
 def static_custom_fields(client: Albert) -> list[CustomField]:
     seeded = []
     for cf in generate_custom_fields():
+        try:
+            registered_cf = client.custom_fields.create(custom_field=cf)
+        except BadRequestError as e:
+            # If it's already registered, this will raise a BadRequestError
+            registered_cf = client.custom_fields.get_by_name(name=cf.name, service=cf.service)
+            if registered_cf is None:  # If it was something else, raise the error
+                raise e
+        seeded.append(registered_cf)
+    return seeded
+
+
+@pytest.fixture(scope="session")
+def static_entity_custom_fields(client: Albert) -> list[CustomField]:
+    """Custom fields associated with an entity type."""
+    seeded = []
+    for cf in generate_entity_custom_fields():
         try:
             registered_cf = client.custom_fields.create(custom_field=cf)
         except BadRequestError as e:
@@ -608,6 +627,25 @@ def seeded_tasks(
     for t in seeded:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=t.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_entity_types(
+    client: Albert,
+    seed_prefix: str,
+    static_entity_custom_fields: list[CustomField],
+) -> Iterator[list[EntityType]]:
+    seeded: list[EntityType] = []
+    entity_type_seeds = generate_entity_type_seeds(
+        seed_prefix=seed_prefix,
+        static_entity_custom_fields=static_entity_custom_fields,
+    )
+    for entity_type in entity_type_seeds:
+        seeded.append(client.entity_types.create(entity_type=entity_type))
+    yield seeded
+    for entity_type in seeded:
+        with suppress(NotFoundError):
+            client.entity_types.delete(id=entity_type.id)
 
 
 @pytest.fixture(scope="session")

@@ -151,7 +151,7 @@ class CustomField(BaseResource):
     name: str
     id: str | None = Field(default=None, alias="albertId")
     field_type: FieldType = Field(alias="type")
-    display_name: str = Field(alias="labelName")
+    display_name: str = Field(alias="labelName", max_length=40)
     searchable: bool | None = Field(default=None, alias="search")
     service: ServiceType
     hidden: bool | None = Field(default=None)

@@ -17,11 +17,23 @@ class EntityCategory(str, Enum):
         Batch category.
     GENERAL : str
         General category.
+    RAW_MATERIALS : str
+        Raw materials category.
+    CONSUMABLES : str
+        Consumables category.
+    EQUIPMENT : str
+        Equipment category.
+    FORMULAS : str
+        Formulas category.
     """
 
     PROPERTY = "Property"
     BATCH = "Batch"
     GENERAL = "General"
+    RAW_MATERIALS = "RawMaterials"
+    CONSUMABLES = "Consumables"
+    EQUIPMENT = "Equipment"
+    FORMULAS = "Formulas"
 
 
 class EntityServiceType(str, Enum):
@@ -30,9 +42,24 @@ class EntityServiceType(str, Enum):
     ----------
     TASKS : str
         Tasks service type.
+    PARAMETER_GROUPS : str
+        Parameter Groups service type.
+    DATA_TEMPLATES : str
+        Data Templates service type.
+    PROJECTS : str
+        Projects service type.
+    LOTS : str
+        Lots service type.
+    INVENTORIES : str
+        Inventories service type.
     """
 
     TASKS = "tasks"
+    PARAMETER_GROUPS = "parametergroups"
+    DATA_TEMPLATES = "datatemplates"
+    PROJECTS = "projects"
+    LOTS = "lots"
+    INVENTORIES = "inventories"
 
 
 class EntityTypeType(str, Enum):
@@ -69,6 +96,8 @@ class EntityCustomField(BaseAlbertModel):
     ----------
     id : CustomFieldId
         The ID of the custom field.
+    name : str | None
+        Read-only name of the custom field.
     section : FieldSection
         The section where the field should be displayed (i.e., top or bottom).
     hidden : bool
@@ -78,6 +107,7 @@ class EntityCustomField(BaseAlbertModel):
     """
 
     id: CustomFieldId
+    name: str | None = None
     section: FieldSection
     hidden: bool
     default: str | float | EntityLink | None = None
@@ -95,6 +125,14 @@ class EntityTypeStandardFieldVisibility(BaseAlbertModel):
     due_date : bool
         Whether the due date field should be visible.
     """
+
+    notes: bool = Field(alias="Notes")
+    tags: bool = Field(alias="Tags")
+    due_date: bool = Field(alias="DueDate")
+
+
+class EntityTypeStandardFieldRequired(BaseAlbertModel):
+    """Required state for standard fields in an entity type."""
 
     notes: bool = Field(alias="Notes")
     tags: bool = Field(alias="Tags")
@@ -137,7 +175,7 @@ class EntityType(BaseResource):
         The unique identifier for the entity type.
     category : EntityCategory
         The category the entity type belongs to.
-    custom_category : str
+    custom_category : str | None, optional
         A custom category name for the entity type.
     label : str
         The display label for the entity type.
@@ -145,7 +183,7 @@ class EntityType(BaseResource):
         The service type associated with this entity type.
     type : EntityTypeType
         The type of entity type (custom or system).
-    prefix : str
+    prefix : str | None, optional
         The prefix used for IDs of this entity type.
     standard_field_visibility : EntityTypeStandardFieldVisibility
         Visibility settings for standard fields.
@@ -157,14 +195,19 @@ class EntityType(BaseResource):
 
     id: EntityTypeId | None = Field(alias="albertId", default=None)
     category: EntityCategory
-    custom_category: str = Field(max_length=100, min_length=1, alias="customCategory")
+    custom_category: str | None = Field(
+        default=None, max_length=100, min_length=1, alias="customCategory"
+    )
     label: str
     service: EntityServiceType
     type: EntityTypeType = Field(default=EntityTypeType.CUSTOM)
-    prefix: str = Field(max_length=3)
+    prefix: str | None = Field(default=None, max_length=3)
     custom_fields: list[EntityCustomField] | None = Field(default=None, alias="customFields")
     standard_field_visibility: EntityTypeStandardFieldVisibility | None = Field(
         alias="standardFieldVisibility", default=None
+    )
+    standard_field_required: EntityTypeStandardFieldRequired | None = Field(
+        alias="standardFieldRequired", default=None
     )
     template_based: bool | None = Field(alias="templateBased", default=None)
     locked_template: bool | None = Field(alias="lockedTemplate", default=None)
@@ -181,10 +224,13 @@ class EntityTypeOptionType(str, Enum):
         String option type.
     LIST : str
         List option type.
+    LIST_CUSTOM : str
+        Custom list option type returned by rules endpoints.
     """
 
     STRING = "string"
     LIST = "list"
+    LIST_CUSTOM = "list-custom"
 
 
 class EntityLinkOption(EntityLink):
