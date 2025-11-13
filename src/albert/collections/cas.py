@@ -1,5 +1,6 @@
 import re
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -9,6 +10,47 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import CasId
 from albert.resources.cas import Cas
+
+
+class CasPaginator(AlbertPaginator):
+    """Paginator that treats `startKey` as a numeric offset for CAS listings."""
+
+    def __init__(
+        self,
+        *,
+        path: str,
+        session: AlbertSession,
+        params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+    ):
+        params = dict(params or {})
+        start_key = params.get("startKey")
+
+        if start_key in (None, ""):
+            self._cas_offset = 0
+        else:
+            try:
+                self._cas_offset = int(start_key)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("CAS startKey must be an integer offset.") from exc
+        params["startKey"] = self._cas_offset
+        params["limit"] = 50
+        super().__init__(
+            path=path,
+            mode=PaginationMode.OFFSET,
+            session=session,
+            deserialize=lambda items: [Cas(**item) for item in items],
+            params=params,
+            max_items=max_items,
+        )
+
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        if count == 0:
+            return False
+
+        self._cas_offset += count
+        self.params["startKey"] = self._cas_offset
+        return True
 
 
 class CasCollection(BaseCollection):
@@ -37,7 +79,7 @@ class CasCollection(BaseCollection):
         cas: list[str] | None = None,
         id: CasId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        start_key: str | None = None,
+        start_key: int | str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
@@ -53,8 +95,8 @@ class CasCollection(BaseCollection):
             Filter CAS entities by Albert CAS ID.
         order_by : OrderBy, optional
             Sort direction (ascending or descending). Default is DESCENDING.
-        start_key : str, optional
-            The pagination key to start fetching from.
+        start_key : int | str, optional
+            Integer offset to start fetching from. Defaults to 0.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -64,44 +106,32 @@ class CasCollection(BaseCollection):
             An iterator over Cas entities.
         """
 
-        if cas:
-            params = {
-                "orderBy": order_by.value,
-                "cas": cas,
-            }
-
-            response = self.session.get(url=self.base_path, params=params)
-
-            items = response.json().get("Items", [])
-
-            yield from [Cas(**item) for item in items]
+        params: dict[str, Any] = {"orderBy": order_by.value}
+        if id is not None:
+            yield self.get_by_id(id=id)
             return
 
-        params = {"orderBy": order_by.value, "startKey": start_key}
+        start_offset = 0
+        if start_key is not None:
+            try:
+                start_offset = int(start_key)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("CAS pagination start_key must be an integer.") from exc
 
-        cas_items = AlbertPaginator(
-            mode=PaginationMode.KEY,
+        params["startKey"] = start_offset
+        if number is not None:
+            params["number"] = number
+        if cas:
+            params["cas"] = cas
+
+        cas_items = CasPaginator(
             path=self.base_path,
             session=self.session,
             params=params,
-            max_items=None,
-            deserialize=lambda items: [Cas(**item) for item in items],
+            max_items=max_items,
         )
 
-        # Apply custom filtering until https://linear.app/albert-invent/issue/TAS-564/inconsistent-cas-pagination-behaviour is fixed.
-        def filtered_items() -> Iterator[Cas]:
-            count = 0
-            for item in cas_items:
-                if number is not None and number not in item.number:
-                    continue
-                if id is not None and item.id != id:
-                    continue
-                yield item
-                count += 1
-                if max_items is not None and count >= max_items:
-                    break
-
-        yield from filtered_items()
+        yield from cas_items
 
     def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
@@ -221,12 +251,18 @@ class CasCollection(BaseCollection):
         Optional[Cas]
             The Cas object if found, None otherwise.
         """
-        found = self.get_all(cas=[number])
+        cleaned_number = self._clean_cas_number(number)
+
         if exact_match:
-            for f in found:
-                if self._clean_cas_number(f.number) == self._clean_cas_number(number):
-                    return f
-        return next(found, None)
+            for candidate in self.get_all(cas=[cleaned_number], max_items=1):
+                if self._clean_cas_number(candidate.number) == cleaned_number:
+                    return candidate
+            return None
+
+        for candidate in self.get_all(number=cleaned_number):
+            if cleaned_number in self._clean_cas_number(candidate.number):
+                return candidate
+        return None
 
     @validate_call
     def delete(self, *, id: CasId) -> None:
