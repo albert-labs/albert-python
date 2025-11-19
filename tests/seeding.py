@@ -99,6 +99,7 @@ def generate_custom_fields() -> list[CustomField]:
         ServiceType.TASKS,
         ServiceType.USERS,
         ServiceType.PARAMETER_GROUPS,
+        ServiceType.DATA_TEMPLATES,
         ServiceType.CAS,
     ]
 
@@ -125,6 +126,7 @@ def generate_custom_fields() -> list[CustomField]:
                 category=FieldCategory.USER_DEFINED,
                 min=1,
                 max=5,
+                multiselect=True,
             )
         )
 
@@ -500,6 +502,8 @@ def generate_data_template_seeds(
     seeded_units: list[Unit],
     seeded_tags: list[Tag],
     seeded_parameters: list[Parameter],
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
 ) -> list[DataTemplate]:
     """
     Generates a list of DataTemplate seed objects for testing with enhanced complexity.
@@ -516,12 +520,38 @@ def generate_data_template_seeds(
         A list of seeded Unit objects.
     seeded_tags : list[Tag]
         A list of seeded Tag objects.
+    static_custom_fields : list[CustomField]
+        A list of reusable CustomField objects for metadata seeding.
+    static_lists : list[ListItem]
+        A list of list items associated with the static custom fields.
 
     Returns
     -------
     list[DataTemplate]
         A list of DataTemplate objects with enhanced complexity.
     """
+    dt_string_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.DATA_TEMPLATES and x.field_type == FieldType.STRING
+    ]
+    dt_list_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.DATA_TEMPLATES and x.field_type == FieldType.LIST
+    ]
+
+    faux_metadata: dict[str, str | list[EntityLink]] = {}
+    for i, custom_field in enumerate(dt_string_custom_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(dt_list_custom_fields):
+        list_items = [x for x in static_lists if x.list_type == custom_field.name]
+        if not list_items:
+            continue
+        faux_metadata[custom_field.name] = [
+            list_items[min(i, len(list_items) - 1)].to_entity_link()
+        ]
+
     return [
         # Basic Data Template with a single column and no validations
         DataTemplate(
@@ -753,6 +783,56 @@ def generate_data_template_seeds(
                 ),
             ],
             tags=[seeded_tags[1]],
+        ),
+        DataTemplate(
+            name=f"{seed_prefix} - Parameters Metadata Data Template",
+            description="A data template with parameters and metadata for testing PATCH metadata operations.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    value="21.0",
+                    unit=EntityLink(id=seeded_units[0].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="0",
+                            max="50",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                )
+            ],
+            parameter_values=[
+                ParameterValue(
+                    id=seeded_parameters[4].id,
+                    name="Metadata Parameter",
+                    value="77.7",
+                    unit=EntityLink(id=seeded_units[1].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="10",
+                            max="100",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                ),
+                ParameterValue(
+                    id=seeded_parameters[3].id,
+                    name="Metadata Parameter Two",
+                    value="12.0",
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="5",
+                            max="20",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                ),
+            ],
+            metadata=faux_metadata,
+            tags=[seeded_tags[0]],
         ),
     ]
 

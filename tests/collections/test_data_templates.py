@@ -90,6 +90,35 @@ def test_update_tags(
     assert len(updated_dt.tags) == len(original_tags) + 1
 
 
+def test_update_metadata(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test updating metadata on a data template."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Metadata Data Template" in x.name),
+        None,
+    )
+    assert dt is not None
+    assert dt.parameter_values
+
+    original_ids = sorted([p.id for p in dt.parameter_values])
+    original_sequences = sorted([p.sequence for p in dt.parameter_values if p.sequence])
+
+    dt.metadata = dt.metadata or {}
+    metadata_key = "test_datatemplates_string_field"
+    assert metadata_key in dt.metadata
+    dt.metadata[metadata_key] = "SDK metadata test value"
+
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt.metadata is not None
+    assert updated_dt.metadata.get(metadata_key) == "SDK metadata test value"
+    assert updated_dt.parameter_values is not None
+    assert sorted([p.id for p in updated_dt.parameter_values]) == original_ids
+    assert (
+        sorted([p.sequence for p in updated_dt.parameter_values if p.sequence])
+        == original_sequences
+    )
+
+
 def test_update_validations(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test updating validations on a data template."""
     dt = seeded_data_templates[2]

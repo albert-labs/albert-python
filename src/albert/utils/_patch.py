@@ -522,11 +522,21 @@ def generate_data_template_patches(
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
 ):
+    updated_data_columns = (
+        updated_data_template.data_column_values
+        if updated_data_template.data_column_values is not None
+        else existing_data_template.data_column_values
+    )
+    updated_parameters = (
+        updated_data_template.parameter_values
+        if updated_data_template.parameter_values is not None
+        else existing_data_template.parameter_values
+    )
     # First handle the data columns
     general_patches = initial_patches
     patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
         initial_data_column=existing_data_template.data_column_values,
-        updated_data_column=updated_data_template.data_column_values,
+        updated_data_column=updated_data_columns,
     )
 
     tag_patches = handle_tags(
@@ -540,7 +550,7 @@ def generate_data_template_patches(
 
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_data_template.parameter_values,
-        updated_parameters=updated_data_template.parameter_values,
+        updated_parameters=updated_parameters,
         parameter_attribute_name="parameters",
     )
 
