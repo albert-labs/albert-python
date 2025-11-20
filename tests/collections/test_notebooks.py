@@ -7,6 +7,8 @@ from albert.exceptions import AlbertException
 from albert.resources.notebooks import (
     HeaderBlock,
     HeaderContent,
+    KetcherBlock,
+    KetcherContent,
     Notebook,
     NotebookCopyInfo,
     NotebookCopyType,
@@ -14,7 +16,32 @@ from albert.resources.notebooks import (
     ParagraphContent,
 )
 from albert.resources.projects import Project
+from albert.resources.synthesis import CanvasData, Synthesis
 from tests.seeding import generate_notebook_block_seeds, generate_notebook_seeds
+
+
+class StubSynthesisCollection:
+    def __init__(self, created_id: str = "SYNSTUB"):
+        self.created_calls: list[tuple[str, str, str]] = []
+        self.updated_calls: list[tuple[str, str, CanvasData]] = []
+        self.table_calls: list[str] = []
+        self.created_id = created_id
+
+    def create(self, *, parent_id: str, name: str, block_id: str) -> Synthesis:
+        self.created_calls.append((parent_id, name, block_id))
+        return Synthesis(albertId=self.created_id, parentId=parent_id, blockId=block_id)
+
+    def update_canvas_data(
+        self, *, synthesis_id: str, smiles: str, canvas_data: CanvasData
+    ) -> Synthesis:
+        self.updated_calls.append((synthesis_id, smiles, canvas_data))
+        return Synthesis(
+            albertId=synthesis_id,
+            s3Key=f"TEN1/{synthesis_id}/ketcher.json",
+        )
+
+    def create_reactant_productant_table(self, *, synthesis_id: str) -> None:
+        self.table_calls.append(synthesis_id)
 
 
 @pytest.fixture(scope="function")
@@ -127,3 +154,72 @@ def test_copy(client: Albert, seeded_notebook: Notebook, seeded_projects: Iterat
     assert len(blocks) == len(block_copies)
     for block, block_copy in zip(blocks, block_copies, strict=True):
         assert type(block) == type(block_copy)
+
+
+def test_prepare_ketcher_blocks_creates_synthesis(fake_client: Albert):
+    notebook_collection = fake_client.notebooks
+    stub = StubSynthesisCollection(created_id="SYNNEW1")
+    notebook_collection._synthesis = stub
+
+    block = KetcherBlock(
+        id="BLK1",
+        content=KetcherContent(
+            name="Chemical Draw Block",
+            smiles="C1=CC=CC=C1",
+            canvas_data=CanvasData(data="jsondump", png="bytes"),
+        ),
+    )
+    notebook = Notebook(id="NTB12345", parent_id="PRJ12345", blocks=[block])
+
+    notebook_collection._prepare_ketcher_blocks(notebook=notebook)
+
+    assert block.content.synthesis_id == "SYNNEW1"
+    assert block.content.s3_key == "TEN1/SYNNEW1/ketcher.json"
+    assert stub.created_calls == [("NTB12345", "Chemical Draw Block", "BLK1")]
+    assert stub.updated_calls[0][0] == "SYNNEW1"
+    assert stub.table_calls == ["SYNNEW1"]
+
+
+def test_prepare_ketcher_blocks_skips_when_no_canvas(fake_client: Albert):
+    notebook_collection = fake_client.notebooks
+    stub = StubSynthesisCollection()
+    notebook_collection._synthesis = stub
+
+    block = KetcherBlock(
+        id="BLK2",
+        content=KetcherContent(
+            synthesis_id="SYNEXIST",
+            s3_key="TEN1/SYNEXIST/ketcher.json",
+        ),
+    )
+    notebook = Notebook(id="NTB54321", parent_id="PRJ54321", blocks=[block])
+
+    notebook_collection._prepare_ketcher_blocks(notebook=notebook)
+
+    assert not stub.created_calls
+    assert not stub.updated_calls
+    assert block.content.s3_key == "TEN1/SYNEXIST/ketcher.json"
+
+
+def test_prepare_ketcher_blocks_updates_existing(fake_client: Albert):
+    notebook_collection = fake_client.notebooks
+    stub = StubSynthesisCollection()
+    notebook_collection._synthesis = stub
+
+    block = KetcherBlock(
+        id="BLK3",
+        content=KetcherContent(
+            synthesis_id="SYN7777",
+            s3_key="OLDKEY",
+            smiles="C1CCCCC1",
+            canvas_data=CanvasData(data="newjson", png="newbytes"),
+        ),
+    )
+    notebook = Notebook(id="NTB77777", parent_id="PRJ77777", blocks=[block])
+
+    notebook_collection._prepare_ketcher_blocks(notebook=notebook)
+
+    assert not stub.created_calls
+    assert stub.updated_calls[0][0] == "SYN7777"
+    assert block.content.s3_key == "TEN1/SYN7777/ketcher.json"
+    assert not stub.table_calls
