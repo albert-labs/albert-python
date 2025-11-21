@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-
+from decimal import Decimal
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -168,7 +168,7 @@ class LotCollection(BaseCollection):
     def _generate_lots_patch_payload(self, *, existing: Lot, updated: Lot) -> PatchPayload:
         """Generate a patch payload for a lot, handling inventory_on_hand separately."""
         patch_data = super()._generate_patch_payload(
-            existing=existing, updated=updated, generate_metadata_diff=False
+            existing=existing, updated=updated, generate_metadata_diff=True
         )
         # inventory on hand is a special case, where the API expects a delta
         if (
@@ -176,12 +176,16 @@ class LotCollection(BaseCollection):
             and updated.inventory_on_hand != existing.inventory_on_hand
         ):
             patch_data.data = [d for d in patch_data.data if d.attribute != "inventoryOnHand"]
-            delta = updated.inventory_on_hand - existing.inventory_on_hand
+            delta = Decimal(str(updated.inventory_on_hand)) - Decimal(
+                str(existing.inventory_on_hand)
+            )
+            delta = delta.quantize(Decimal("0.00000000000000"))  # 14 decimal places
             patch_data.data.append(
                 PatchDatum(
                     attribute="inventoryOnHand",
                     operation=PatchOperation.UPDATE,
-                    new_value=str(delta),
+                    # new_value=str(delta),
+                    new_value=format(delta, "f"),
                     old_value=str(existing.inventory_on_hand),
                 )
             )
