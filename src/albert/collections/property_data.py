@@ -830,12 +830,21 @@ class PropertyDataCollection(BaseCollection):
     def _evaluate_calculation(self, *, calculation: str, column_values: dict) -> float | None:
         calculation = calculation.lstrip("=")  # Remove '=' at the start of the calculation
         try:
-            # Replace column names with their numeric values in the calculation string
-            for col, value in column_values.items():
-                calculation = calculation.replace(col, str(value))
-                calculation = calculation.replace(
-                    "^", "**"
-                )  # Replace '^' with '**' for exponentiation
+            if column_values:
+                # Replace column names with their numeric values in the calculation string.
+                # Regex ensures COL1 does not accidentally match COL10, etc.
+                escaped_cols = [re.escape(col) for col in column_values]
+                pattern = re.compile(rf"\b({'|'.join(escaped_cols)})\b")
+
+                def repl(match: re.Match) -> str:
+                    col = match.group(0)
+                    return str(column_values.get(col, match.group(0)))
+
+                calculation = pattern.sub(repl, calculation)
+
+            calculation = calculation.replace(
+                "^", "**"
+            )  # Replace '^' with '**' for exponentiation
             # Evaluate the resulting expression
             return eval(calculation)
         except Exception as e:
