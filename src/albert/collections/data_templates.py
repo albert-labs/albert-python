@@ -14,7 +14,7 @@ from albert.core.shared.models.patch import (
     GeneralPatchPayload,
     PGPatchDatum,
     PGPatchPayload,
-    DTPatchDatum
+    DTPatchDatum,
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
@@ -179,7 +179,7 @@ class DataTemplateCollection(BaseCollection):
                     )
                     all_results.extend([EnumValidationValue(**x) for x in enum_response.json()])
 
-        return all_results 
+        return all_results
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
@@ -519,12 +519,10 @@ class DataTemplateCollection(BaseCollection):
                 patches_by_sequence[p.rowId].append(p)
 
             for sequence, patches in patches_by_sequence.items():
-
                 if sequence in enum_sequences:
                     patches = [p for p in patches if p.attribute != "validation"]
 
                 all_parameter_patches.extend(patches)
-
 
         # Apply all parameter patches in one request to avoid duplicates
         if len(all_parameter_patches) > 0:
@@ -564,7 +562,7 @@ class DataTemplateCollection(BaseCollection):
                         clear_action = DTPatchDatum(
                             operation="delete",
                             attribute="calculation",
-                            old_value=action.old_value, 
+                            old_value=action.old_value,
                         )
                         clear_patch = GeneralPatchDatum(
                             attribute="datacolumn",
@@ -572,7 +570,7 @@ class DataTemplateCollection(BaseCollection):
                             colId=calc_patch.colId,
                         )
                         clear_patches.append(clear_patch)
-            
+
             # Apply all clears first
             if len(clear_patches) > 0:
                 clear_payload = GeneralPatchPayload(data=clear_patches)
@@ -580,7 +578,7 @@ class DataTemplateCollection(BaseCollection):
                     path,
                     json=clear_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
                 )
-            
+
             # Update the new calculations
             set_patches = []
             for calc_patch in calculation_patches:
@@ -590,12 +588,14 @@ class DataTemplateCollection(BaseCollection):
                         actions.append(action)
                     elif action.operation == "update":
                         # Convert update to add since we just cleared it
-                        actions.append(DTPatchDatum(
-                            operation="add",
-                            attribute="calculation",
-                            new_value=action.new_value,  # Changed from newValue
-                        ))
-                
+                        actions.append(
+                            DTPatchDatum(
+                                operation="add",
+                                attribute="calculation",
+                                new_value=action.new_value,  # Changed from newValue
+                            )
+                        )
+
                 if actions:
                     set_patch = GeneralPatchDatum(
                         attribute="datacolumn",
@@ -603,7 +603,7 @@ class DataTemplateCollection(BaseCollection):
                         colId=calc_patch.colId,
                     )
                     set_patches.append(set_patch)
-            
+
             if len(set_patches) > 0:
                 set_payload = GeneralPatchPayload(data=set_patches)
                 self.session.patch(

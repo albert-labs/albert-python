@@ -8,7 +8,14 @@ from pandas import DataFrame
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId, CustomTemplateId
+from albert.core.shared.identifiers import (
+    LinkId,
+    NotebookId,
+    ProjectId,
+    SynthesisId,
+    TaskId,
+    CustomTemplateId,
+)
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL

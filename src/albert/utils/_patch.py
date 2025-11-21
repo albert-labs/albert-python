@@ -207,6 +207,7 @@ def data_column_validation_patches(
         )
     return None
 
+
 def _data_column_calculation_patches(
     initial_dc: DataColumnValue,
     updated_dc: DataColumnValue,
@@ -236,6 +237,7 @@ def _data_column_calculation_patches(
             newValue=updated_dc.calculation,
             colId=updated_dc.sequence,
         )
+
 
 def parameter_validation_patch(
     initial_parameter: ParameterValue, updated_parameter: ParameterValue
@@ -371,6 +373,7 @@ def parameter_validation_patch(
 #             )
 #     return patches, new_data_columns, enum_patches
 
+
 def generate_data_column_patches(
     initial_data_column: list[DataColumnValue] | None,
     updated_data_column: list[DataColumnValue] | None,
@@ -406,16 +409,16 @@ def generate_data_column_patches(
     for updated_dc in updated_data_columns:
         these_actions = []
         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
-        
+
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
         calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
-        
+
         if value_patch:
             these_actions.append(value_patch)
         if validation_patch:
             these_actions.append(validation_patch)
-        
+
         # DON'T add calculation_patch to these_actions - handle separately
         if calculation_patch:
             # Remove colId from calculation patch
@@ -427,7 +430,7 @@ def generate_data_column_patches(
                 colId=updated_dc.sequence,
             )
             calculation_patches.append(calc_general_patch)
-        
+
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
@@ -453,6 +456,7 @@ def generate_data_column_patches(
                 updated_enums=updated_dc.validation[0].value,
             )
     return patches, calculation_patches, new_data_columns, enum_patches
+
 
 def generate_enum_patches(
     existing_enums: list[EnumValidationValue], updated_enums: list[EnumValidationValue]
@@ -695,15 +699,18 @@ def handle_tags(
 #         parameter_patches,
 #     )
 
+
 def generate_data_template_patches(
     initial_patches: PatchPayload,
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
 ):
     general_patches = initial_patches
-    patches, calculation_patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
-        initial_data_column=existing_data_template.data_column_values,
-        updated_data_column=updated_data_template.data_column_values,
+    patches, calculation_patches, new_data_columns, data_column_enum_patches = (
+        generate_data_column_patches(
+            initial_data_column=existing_data_template.data_column_values,
+            updated_data_column=updated_data_template.data_column_values,
+        )
     )
 
     tag_patches = handle_tags(
@@ -729,6 +736,7 @@ def generate_data_template_patches(
         parameter_enum_patches,
         parameter_patches,
     )
+
 
 def generate_parameter_group_patches(
     initial_patches: PatchPayload,

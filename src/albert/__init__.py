@@ -6,4 +6,3 @@ __all__ = ["Albert", "AlbertClientCredentials", "AlbertSSOClient"]
 
 
 __version__ = "1.8.2"
-

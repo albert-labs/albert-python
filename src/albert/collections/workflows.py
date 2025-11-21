@@ -67,7 +67,14 @@ class WorkflowCollection(BaseCollection):
         try:
             return [Workflow(**x) for x in response.json()]
         except Exception:
-            return [Workflow(id=response.json()[0].get('existingAlbertId') or response.json()[0].get('albertId'),name=response.json()[0].get('name'),ParameterGroups=[])]
+            return [
+                Workflow(
+                    id=response.json()[0].get("existingAlbertId")
+                    or response.json()[0].get("albertId"),
+                    name=response.json()[0].get("name"),
+                    ParameterGroups=[],
+                )
+            ]
 
     def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
         """Populate parameter setpoints when only an ID is provided."""
