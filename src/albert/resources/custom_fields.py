@@ -56,6 +56,20 @@ class UIComponent(str, Enum):
     DETAILS = "details"
 
 
+class CustomFieldApiMethod(str, Enum):
+    """HTTP methods supported by API-driven custom fields."""
+
+    GET = "GET"
+
+
+class CustomFieldAPI(BaseAlbertModel):
+    """Configuration for API-backed custom fields."""
+
+    endpoint: str | None = Field(default=None)
+    method: CustomFieldApiMethod | None = Field(default=None)
+    query_params_field: list[str] | None = Field(default=None, alias="queryParamsField")
+
+
 class ListDefaultValue(BaseAlbertModel):
     id: str = Field(alias="albertId")
     name: str
@@ -116,18 +130,22 @@ class CustomField(BaseResource):
         Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
     category : FieldCategory | None
         The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
-    min : int | None
+    min : int | float | None
         The minimum value of the custom field, optional. Defaults to None.
-    max : int | None
+    max : int | float | None
         The maximum value of the custom field, optional. Defaults to None.
     entity_categories : list[EntityCategory] | None
         The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
+    custom_entity_categories : list[str] | None
+        Custom entity categories that define where the field is valid.
     ui_components : list[UIComponent] | None
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
     default: Default | None
         The default value of the custom field, optional. Defaults to None.
-    editable: Default | None
+    editable: bool | None
         Decides whether the field should be editable on UI or not.
+    api: CustomFieldAPI | None
+        API configuration for fields backed by remote data sources.
     """
 
     name: str
@@ -140,8 +158,8 @@ class CustomField(BaseResource):
     lookup_column: bool | None = Field(default=None, alias="lkpColumn")
     lookup_row: bool | None = Field(default=None, alias="lkpRow")
     category: FieldCategory | None = Field(default=None)
-    min: int | None = Field(default=None)
-    max: int | None = Field(default=None)
+    min: int | float | None = Field(default=None)
+    max: int | float | None = Field(default=None)
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
     custom_entity_categories: list[str] | None = Field(default=None, alias="customEntityCategory")
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
@@ -150,7 +168,7 @@ class CustomField(BaseResource):
     editable: bool | None = Field(default=None)
     pattern: str | None = Field(default=None)
     default: Default | None = Field(default=None)
-    api: dict[str, str] | None = Field(default=None)
+    api: CustomFieldAPI | None = Field(default=None)
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> "CustomField":
@@ -185,3 +203,13 @@ class CustomField(BaseResource):
             return {"type": inferred_type, "value": raw_val}
 
         return v
+
+
+class SearchableCustomField(BaseAlbertModel):
+    """Metadata describing custom fields exposed to search."""
+
+    label: str
+    type: str
+    is_sortable: bool | None = Field(default=None, alias="isSortable")
+    sort_by_param: str | None = Field(default=None, alias="sortByParam")
+    is_custom: bool = Field(alias="isCustom")
