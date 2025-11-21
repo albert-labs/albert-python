@@ -9,7 +9,13 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import CustomFieldId
 from albert.core.shared.models.patch import PatchOperation
-from albert.resources.custom_fields import CustomField, FieldType, ServiceType
+from albert.resources.custom_fields import (
+    CustomField,
+    EntityCategory,
+    FieldType,
+    SearchableCustomField,
+    ServiceType,
+)
 
 
 class CustomFieldCollection(BaseCollection):
@@ -70,6 +76,7 @@ class CustomFieldCollection(BaseCollection):
         "min",
         "max",
         "entity_categories",
+        "ui_components",
         "required",
         "multiselect",
         "pattern",
@@ -136,6 +143,8 @@ class CustomFieldCollection(BaseCollection):
         service: ServiceType | None = None,
         lookup_column: bool | None = None,
         lookup_row: bool | None = None,
+        entity_category: EntityCategory | None = None,
+        custom_entity_category: str | None = None,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[CustomField]:
@@ -154,6 +163,10 @@ class CustomFieldCollection(BaseCollection):
             Whether the field is related to a lookup column.
         lookup_row : bool, optional
             Whether the field is related to a lookup row.
+        entity_category : EntityCategory | None, optional
+            Filter by supported entity category for the field.
+        custom_entity_category : str | None, optional
+            Filter by custom entity category configured for the field.
         start_key : str, optional
             Pagination key to start fetching from.
         max_items : int, optional
@@ -170,6 +183,8 @@ class CustomFieldCollection(BaseCollection):
             "service": service,
             "lookupColumn": lookup_column,
             "lookupRow": lookup_row,
+            "entityCategory": entity_category,
+            "customEntityCategory": custom_entity_category,
             "startKey": start_key,
         }
 
@@ -181,6 +196,28 @@ class CustomFieldCollection(BaseCollection):
             max_items=max_items,
             deserialize=lambda items: [CustomField(**item) for item in items],
         )
+
+    @validate_call
+    def get_searchable_fields(self, *, entity: ServiceType) -> dict[str, SearchableCustomField]:
+        """Return the custom fields that are configured as searchable for a given entity.
+
+        Parameters
+        ----------
+        entity : ServiceType
+            Entity/service to fetch searchable fields for.
+
+        Returns
+        -------
+        dict[str, SearchableCustomField]
+            Mapping of metadata paths to searchable field descriptors.
+        """
+
+        response = self.session.get(
+            f"{self.base_path}/searchable",
+            params={"entity": entity},
+        )
+        response = response.json()
+        return {key: SearchableCustomField(**value) for key, value in response.items()}
 
     def create(self, *, custom_field: CustomField) -> CustomField:
         """Create a new CustomField item.
