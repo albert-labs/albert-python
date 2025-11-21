@@ -6,7 +6,14 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy
 from albert.core.shared.identifiers import EntityTypeId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation
-from albert.resources.entity_types import EntityServiceType, EntityType, EntityTypeRule
+from albert.resources.entity_types import (
+    EntityServiceType,
+    EntityType,
+    EntityTypeRule,
+    EntityTypeSearchQueryStrings,
+    EntityTypeStandardFieldRequired,
+    EntityTypeStandardFieldVisibility,
+)
 
 
 class EntityTypeCollection(BaseCollection):
@@ -25,6 +32,7 @@ class EntityTypeCollection(BaseCollection):
         "locked_template",
         "custom_fields",
         "standard_field_visibility",
+        "standard_field_required",
         "search_query_string",
     }
 
@@ -122,7 +130,7 @@ class EntityTypeCollection(BaseCollection):
 
         # Handle standard field visibility updates
         if updated.standard_field_visibility is not None:
-            field_info = updated.standard_field_visibility.model_fields
+            field_info = EntityTypeStandardFieldVisibility.model_fields
             for field_name, field in field_info.items():
                 new_value = getattr(updated.standard_field_visibility, field_name)
                 old_value = (
@@ -142,9 +150,29 @@ class EntityTypeCollection(BaseCollection):
                         )
                     )
 
+        if updated.standard_field_required is not None:
+            field_info = EntityTypeStandardFieldRequired.model_fields
+            for field_name, field in field_info.items():
+                new_value = getattr(updated.standard_field_required, field_name)
+                old_value = (
+                    getattr(existing.standard_field_required, field_name)
+                    if existing.standard_field_required
+                    else None
+                )
+                if new_value != old_value:
+                    attr_name = field.alias or field_name
+                    patches.append(
+                        PatchDatum(
+                            operation=PatchOperation.UPDATE,
+                            attribute=f"standardFieldRequired.{attr_name}",
+                            new_value=new_value,
+                            old_value=old_value,
+                        )
+                    )
+
         # Handle search query string updates
         if updated.search_query_string is not None:
-            field_info = updated.search_query_string.model_fields
+            field_info = EntityTypeSearchQueryStrings.model_fields
             for field_name, field in field_info.items():
                 new_value = getattr(updated.search_query_string, field_name)
                 old_value = (
@@ -241,7 +269,7 @@ class EntityTypeCollection(BaseCollection):
             "service": service.value if service else None,
             "limit": max_items,
             "startKey": start_key,
-            "order": order.value if order else None,
+            "orderBy": order.value if order else None,
         }
         return AlbertPaginator(
             mode=PaginationMode.KEY,
