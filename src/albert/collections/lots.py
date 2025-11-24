@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from decimal import Decimal
+
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -9,6 +10,9 @@ from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import InventoryId, LotId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.lots import Lot
+
+# 14 decimal places for inventory on hand delta calculations
+DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
 
 
 class LotCollection(BaseCollection):
@@ -179,12 +183,11 @@ class LotCollection(BaseCollection):
             delta = Decimal(str(updated.inventory_on_hand)) - Decimal(
                 str(existing.inventory_on_hand)
             )
-            delta = delta.quantize(Decimal("0.00000000000000"))  # 14 decimal places
+            delta = delta.quantize(DECIMAL_DELTA_QUANTIZE)  # 14 decimal places
             patch_data.data.append(
                 PatchDatum(
                     attribute="inventoryOnHand",
                     operation=PatchOperation.UPDATE,
-                    # new_value=str(delta),
                     new_value=format(delta, "f"),
                     old_value=str(existing.inventory_on_hand),
                 )
