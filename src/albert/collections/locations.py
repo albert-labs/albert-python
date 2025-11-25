@@ -4,6 +4,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.utils import ensure_list
 from albert.resources.locations import Location
 
 
@@ -64,9 +65,8 @@ class LocationCollection(BaseCollection):
         }
         if ids:
             params["id"] = ids
-        if name:
-            params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = exact_match
+        params["name"] = ensure_list(name)
+        params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,

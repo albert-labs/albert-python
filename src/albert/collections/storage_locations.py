@@ -7,6 +7,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
@@ -93,9 +94,8 @@ class StorageLocationsCollection(BaseCollection):
             "startKey": start_key,
         }
 
-        if name:
-            params["name"] = [name] if isinstance(name, str) else name
-            params["exactMatch"] = exact_match
+        params["name"] = ensure_list(name)
+        params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,
