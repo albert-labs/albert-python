@@ -8,6 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ParameterId
+from albert.core.utils import ensure_list
 from albert.resources.parameters import Parameter
 
 
@@ -140,9 +141,8 @@ class ParameterCollection(BaseCollection):
             "parameters": ids,
             "startKey": start_key,
         }
-        if names:
-            params["name"] = [names] if isinstance(names, str) else names
-            params["exactMatch"] = exact_match
+        params["name"] = ensure_list(names)
+        params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,

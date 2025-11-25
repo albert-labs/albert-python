@@ -5,8 +5,9 @@ from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass, Status
-from albert.core.shared.identifiers import CustomTemplateId, NotebookId
+from albert.core.shared.identifiers import CustomTemplateId, EntityTypeId, NotebookId
 from albert.core.shared.models.base import BaseResource, EntityLink
+from albert.core.shared.models.patch import PatchDatum, PatchOperation
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL, AccessControlLevel
@@ -27,6 +28,11 @@ class DataTemplateInventory(EntityLink):
 
 class DesignLink(EntityLink):
     type: DesignType
+
+
+class TemplateEntityType(BaseAlbertModel):
+    id: EntityTypeId | None = Field(default=None)
+    custom_category: str | None = Field(default=None, alias="customCategory")
 
 
 class TemplateCategory(str, Enum):
@@ -176,6 +182,78 @@ class TemplateACL(BaseResource):
     acl_class: str | None = Field(default=None, alias="class")
 
 
+class CustomTemplatePatchAttribute(str, Enum):
+    NAME = "name"
+    CATEGORY = "category"
+    METADATA = "Metadata"
+    DATA = "Data"
+    LOCKED = "locked"
+
+
+class CustomTemplatePatchDatum(PatchDatum):
+    attribute: CustomTemplatePatchAttribute
+    operation: PatchOperation = PatchOperation.UPDATE
+
+
+class CustomTemplateBulkPatchItem(BaseAlbertModel):
+    id: CustomTemplateId
+    data: list[CustomTemplatePatchDatum] = Field(min_length=1, max_length=4)
+
+
+class CustomTemplatePatchResultItem(BaseAlbertModel):
+    message: str | None = None
+    id: CustomTemplateId | None = None
+
+
+class CustomTemplateBulkPatchPartialSuccess(BaseAlbertModel):
+    message: str | None = None
+    failed_items: list[CustomTemplatePatchResultItem] | None = Field(
+        default=None, alias="FailedItems"
+    )
+    updated_items: list[CustomTemplatePatchResultItem] | None = Field(
+        default=None, alias="UpdatedItems"
+    )
+
+
+class CustomTemplateACLAttribute(str, Enum):
+    ACL = "ACL"
+    FGC = "fgc"
+    CLASS = "class"
+
+
+class CustomTemplateACLReference(BaseAlbertModel):
+    id: str
+
+
+class CustomTemplateACLAssignment(BaseAlbertModel):
+    id: str
+    fgc: AccessControlLevel | SecurityClass | None = None
+
+
+class CustomTemplateACLChange(BaseAlbertModel):
+    operation: PatchOperation
+    attribute: CustomTemplateACLAttribute
+    id: str | None = None
+    new_value: AccessControlLevel | SecurityClass | list[CustomTemplateACLAssignment] | None = (
+        Field(default=None, alias="newValue")
+    )
+    old_value: AccessControlLevel | SecurityClass | list[CustomTemplateACLReference] | None = (
+        Field(default=None, alias="oldValue")
+    )
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        kwargs.setdefault("exclude_unset", True)
+        return super().model_dump(**kwargs)
+
+
+class CustomTemplateACLPatchPayload(BaseAlbertModel):
+    data: list[CustomTemplateACLChange]
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        kwargs.setdefault("exclude_unset", True)
+        return super().model_dump(**kwargs)
+
+
 class CustomTemplate(BaseTaggedResource):
     """A custom template entity.
 
@@ -191,6 +269,10 @@ class CustomTemplate(BaseTaggedResource):
         The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
     data : CustomTemplateData | None
         The data of the template.
+    entity_type : TemplateEntityType | None
+        The entity type associated with the template.
+    locked : bool | None
+        Whether the template is locked when loaded in the UI.
     team : List[TeamACL] | None
         The team of the template.
     acl : TemplateACL | None
@@ -202,8 +284,10 @@ class CustomTemplate(BaseTaggedResource):
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
-    team: list[TeamACL] | None = Field(default_factory=list)
-    acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
+    entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
+    locked: bool | None = Field(default=None)
+    team: list[TeamACL] | None = Field(default=None)
+    acl: TemplateACL | None = Field(default=None, alias="ACL")
 
     @model_validator(mode="before")  # Must happen before construction so the data are captured
     @classmethod
@@ -245,5 +329,5 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     status: Status | None = None
     resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
     data: CustomTemplateSearchItemData | None = None
-    acl: list[CustomTemplateSearchItemACL]
-    team: list[CustomTemplateSearchItemTeam]
+    acl: list[CustomTemplateSearchItemACL] | None = None
+    team: list[CustomTemplateSearchItemTeam] | None = None
