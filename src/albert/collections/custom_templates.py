@@ -7,10 +7,16 @@ from albert.collections.tags import TagCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
+from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import CustomTemplateId
-from albert.exceptions import AlbertHTTPError
-from albert.resources.custom_templates import CustomTemplate, CustomTemplateSearchItem
+from albert.core.shared.models.patch import PatchOperation
+from albert.core.utils import ensure_list
+from albert.resources.acls import ACL
+from albert.resources.custom_templates import (
+    CustomTemplate,
+    CustomTemplateSearchItem,
+    TemplateCategory,
+)
 
 
 class CustomTemplatesCollection(BaseCollection):
@@ -47,10 +53,10 @@ class CustomTemplatesCollection(BaseCollection):
 
         Returns
         -------
-        list[CustomTemplate] | dict[str, Any]
-            The created templates. Returns the raw API response when partial success data is provided.
+        list[CustomTemplate]
+            The created CustomTemplate entities.
         """
-        templates = custom_templates if isinstance(custom_templates, list) else [custom_templates]
+        templates = ensure_list(custom_templates) or []
         if len(templates) == 0:
             raise ValueError("At least one CustomTemplate must be provided.")
 
@@ -141,8 +147,20 @@ class CustomTemplatesCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        max_items: int | None = None,
         offset: int | None = 0,
+        sort_by: str | None = None,
+        order_by: OrderBy | None = None,
+        status: Status | str | None = None,
+        created_by: str | None = None,
+        category: TemplateCategory | list[TemplateCategory] | None = None,
+        created_by_name: str | list[str] | None = None,
+        collaborator: str | list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        my_role: str | list[str] | None = None,
+        max_items: int | None = None,
     ) -> Iterator[CustomTemplateSearchItem]:
         """
         Search for CustomTemplate matching the provided criteria.
@@ -153,20 +171,57 @@ class CustomTemplatesCollection(BaseCollection):
         Parameters
         ----------
         text : str, optional
-            Text to filter search results by.
-        max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Free text search term.
         offset : int, optional
-            Offset to begin pagination at. Default is 0.
+            Starting offset for pagination.
+        sort_by : str, optional
+            Field to sort on.
+        order_by : OrderBy, optional
+            Sort direction for `sort_by`.
+        status : Status | str, optional
+            Filter results by template status.
+        created_by : str, optional
+            Filter by creator id.
+        category : TemplateCategory | list[TemplateCategory], optional
+            Filter by template categories.
+        created_by_name : str | list[str], optional
+            Filter by creator display name(s).
+        collaborator : str | list[str], optional
+            Filter by collaborator ids.
+        facet_text : str, optional
+            Filter text within a facet.
+        facet_field : str, optional
+            Facet field to search inside.
+        contains_field : str | list[str], optional
+            Fields to apply contains search to.
+        contains_text : str | list[str], optional
+            Text values for contains search.
+        my_role : str | list[str], optional
+            Restrict templates to roles held by the calling user.
+        max_items : int, optional
+            Maximum number of items to yield client-side.
 
         Returns
         -------
         Iterator[CustomTemplateSearchItem]
             An iterator of CustomTemplateSearchItem items.
         """
+
         params = {
             "text": text,
             "offset": offset,
+            "sortBy": sort_by,
+            "order": order_by.value if order_by else None,
+            "status": status,
+            "createdBy": created_by,
+            "category": ensure_list(category),
+            "createdByName": ensure_list(created_by_name),
+            "collaborator": ensure_list(collaborator),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "myRole": ensure_list(my_role),
         }
 
         return AlbertPaginator(
@@ -183,33 +238,95 @@ class CustomTemplatesCollection(BaseCollection):
     def get_all(
         self,
         *,
-        text: str | None = None,
+        name: str | list[str] | None = None,
+        created_by: str | None = None,
+        category: TemplateCategory | None = None,
+        start_key: str | None = None,
         max_items: int | None = None,
-        offset: int | None = 0,
     ) -> Iterator[CustomTemplate]:
-        """
-        Retrieve fully hydrated CustomTemplate entities with optional filters.
-
-        This method returns complete entity data using `get_by_id`.
-        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        """Iterate over CustomTemplate entities with optional filters.
 
         Parameters
         ----------
-        text : str, optional
-            Text filter for template name or content.
+        name : str | list[str], optional
+            Filter by template name(s).
+        created_by : str, optional
+            Filter by creator id.
+        category : TemplateCategory, optional
+            Filter by category.
+        start_key : str, optional
+            Provide the `lastKey` from a previous request to resume pagination.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Offset for search pagination.
+            Maximum number of items to return.
 
         Returns
         -------
         Iterator[CustomTemplate]
-            An iterator of CustomTemplate entities.
+            An iterator of CustomTemplates.
         """
-        for item in self.search(text=text, max_items=max_items, offset=offset):
-            try:
-                yield self.get_by_id(id=item.id)
-            except AlbertHTTPError as e:
-                logger.warning(f"Error hydrating custom template {item.id}: {e}")
+        params = {
+            "startKey": start_key,
+            "createdBy": created_by,
+            "category": category,
+        }
+        params["name"] = ensure_list(name)
 
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [CustomTemplate(**item) for item in items],
+        )
+
+    @validate_call
+    def delete(self, *, id: CustomTemplateId) -> None:
+        """Delete a custom template by id."""
+
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)
+
+    @validate_call
+    def update_acl(
+        self,
+        *,
+        custom_template_id: CustomTemplateId,
+        acl_class: str | None = None,
+        acls: list[ACL] | None = None,
+    ) -> CustomTemplate:
+        """Replace the template's ACL class and/or entries with the provided values and return the updated template."""
+
+        if acl_class is None and not acls:
+            raise ValueError("Provide an ACL class and/or ACL entries to update.")
+
+        data = []
+
+        if acl_class is not None:
+            data.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "class",
+                    "newValue": acl_class,
+                }
+            )
+
+        if acls:
+            entries = []
+            for entry in acls:
+                payload: dict[str, str] = {"id": entry.id}
+                if entry.fgc is not None:
+                    payload["fgc"] = getattr(entry.fgc, "value", entry.fgc)
+                entries.append(payload)
+
+            data.append(
+                {
+                    "operation": PatchOperation.UPDATE.value,
+                    "attribute": "ACL",
+                    "newValue": entries,
+                }
+            )
+
+        url = f"{self.base_path}/{custom_template_id}/acl"
+        self.session.patch(url, json={"data": data})
+        return self.get_by_id(id=custom_template_id)
