@@ -39,7 +39,7 @@ def test_advanced_users_search(client: Albert, static_user: User):
     assert found
 
     adv_list_no_match = client.users.search(
-        text="h78frg279fbg92ubue9b80fhXBGYF&*0hnvioh",
+        text="h78frg279fbg92ubue9b80fhXBGYF0hnvioh",
         search_fields=["name"],
         max_items=10,
     )
