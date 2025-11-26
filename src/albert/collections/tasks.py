@@ -20,6 +20,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.tasks import (
     BaseTask,
@@ -320,7 +321,6 @@ class TaskCollection(BaseCollection):
             "tags": tags,
             "taskId": task_id,
             "linkedTask": linked_task,
-            "category": category,
             "albertId": albert_id,
             "dataTemplate": data_template,
             "assignedTo": assigned_to,
@@ -331,6 +331,13 @@ class TaskCollection(BaseCollection):
             "createdBy": created_by,
             "projectId": project_id,
         }
+
+        category_values = ensure_list(category)
+        params["category"] = (
+            [c.value if isinstance(c, TaskCategory) else c for c in category_values]
+            if category_values
+            else None
+        )
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
