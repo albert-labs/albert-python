@@ -179,6 +179,44 @@ class CompanyCollection(BaseCollection):
             return self.create(company=company)
 
     @validate_call
+    def merge(
+        self,
+        *,
+        parent_id: CompanyId,
+        child_ids: CompanyId | list[CompanyId],
+    ) -> Company:
+        """
+        Merge one or more child companies into a parent company.
+
+        Parameters
+        ----------
+        parent_id : CompanyId
+            The ID of the parent company.
+        child_ids : CompanyId | list[CompanyId]
+            A single child company ID or a list of child company IDs to merge.
+
+        Returns
+        -------
+        Company
+            The updated parent company after the merge operation.
+        """
+
+        normalized_child_ids = [child_ids] if isinstance(child_ids, str) else list(child_ids)
+
+        url = f"{self.base_path}/merge"
+        payload = {
+            "parentId": parent_id,
+            "ChildCompanies": [{"id": cid} for cid in normalized_child_ids],
+        }
+        response = self.session.post(url, json=payload)
+        if response.status_code == 206:
+            details = response.json()
+            msg = f"Company merge partially succeeded: {details}"
+            logger.error(msg)
+            raise AlbertException(msg)
+        return self.get_by_id(id=parent_id)
+
+    @validate_call
     def delete(self, *, id: CompanyId) -> None:
         """Deletes a company entity.
 
