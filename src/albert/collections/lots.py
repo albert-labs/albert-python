@@ -44,15 +44,37 @@ class LotCollection(BaseCollection):
         self.base_path = f"/api/{LotCollection._api_version}/lots"
 
     def create(self, *, lots: list[Lot]) -> list[Lot]:
-        # TODO: Once thi endpoint is fixed, go back to passing the whole list at once
+        """Create new lots.
+
+        Parameters
+        ----------
+        lots : list[Lot]
+            A list of Lot entities to create.
+
+        Returns
+        -------
+        list[Lot]
+            A list of created Lot entities.
+
+        Raises
+        ------
+        ValueError
+            If the response does not contain a list of created lots.
+        """
         payload = [lot.model_dump(by_alias=True, exclude_none=True, mode="json") for lot in lots]
-        all_lots = []
-        for lot in payload:
-            response = self.session.post(self.base_path, json=[lot])
-            all_lots.append(Lot(**response.json()[0]))
-        # response = self.session.post(self.base_path, json=payload)
-        # return [Lot(**lot) for lot in response.json().get("CreatedLots", [])]
-        return all_lots
+        response = self.session.post(self.base_path, json=payload)
+        response_json = response.json()
+        created_lots = (
+            response_json
+            if isinstance(response_json, list)
+            else response_json.get("CreatedLots")
+            or response_json.get("CreatedItems")
+            or response_json.get("Items")
+            or response_json
+        )
+        if not isinstance(created_lots, list):
+            raise ValueError("Unexpected response when creating lots.")
+        return [Lot(**lot) for lot in created_lots]
 
     @validate_call
     def get_by_id(self, *, id: LotId) -> Lot:

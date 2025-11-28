@@ -63,6 +63,7 @@ class Lot(BaseResource):
         The barcode ID of the lot. Read-only.
     """
 
+    action: str | None = Field(default=None)
     id: LotId | None = Field(None, alias="albertId")
     inventory_id: InventoryId = Field(alias="parentId")
     task_id: str | None = Field(default=None, alias="taskId")
@@ -79,17 +80,15 @@ class Lot(BaseResource):
     lot_number: str | None = Field(None, alias="lotNumber")
     external_barcode_id: str | None = Field(None, alias="externalBarcodeId")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    notes: str | None = Field(default=None)
     # because quarantined is an allowed Lot status, we need to extend the normal status
-    status: LotStatus | None = Field(default=None)
 
-    # Read-only fields
+    # API-returned fields (read-only)
+    status: LotStatus | None = Field(default=None, exclude=True, frozen=True)
     location: SerializeAsEntityLink[Location] | None = Field(
         default=None,
         alias="Location",
-        exclude=True,
-        frozen=True,
     )
-    notes: str | None = Field(default=None, exclude=True, frozen=True)
     has_notes: bool | None = Field(default=None, alias="hasNotes", exclude=True, frozen=True)
     has_attachments: bool | None = Field(
         default=None,
@@ -105,7 +104,10 @@ class Lot(BaseResource):
         exclude=True,
         frozen=True,
     )
-    barcode_id: str | None = Field(default=None, alias="barcodeId")
+    barcode_id: str | None = Field(default=None, alias="barcodeId", exclude=True, frozen=True)
+    task_completion_date: str | None = Field(
+        default=None, alias="taskCompletionDate", exclude=True, frozen=True
+    )
 
     @field_validator("has_notes", mode="before")
     def validate_has_notes(cls, value: Any) -> Any:
@@ -123,14 +125,21 @@ class Lot(BaseResource):
             return False
         return value
 
+    @staticmethod
+    def _format_decimal(value: NonNegativeFloat) -> str:
+        formatted = format(value, "f")
+        if "." in formatted:
+            formatted = formatted.rstrip("0").rstrip(".")
+        return formatted
+
     @field_serializer("initial_quantity", return_type=str)
     def serialize_initial_quantity(self, initial_quantity: NonNegativeFloat):
-        return str(initial_quantity)
+        return self._format_decimal(initial_quantity)
 
     @field_serializer("cost", return_type=str)
     def serialize_cost(self, cost: NonNegativeFloat):
-        return str(cost)
+        return self._format_decimal(cost)
 
     @field_serializer("inventory_on_hand", return_type=str)
     def serialize_inventory_on_hand(self, inventory_on_hand: NonNegativeFloat):
-        return str(inventory_on_hand)
+        return self._format_decimal(inventory_on_hand)
