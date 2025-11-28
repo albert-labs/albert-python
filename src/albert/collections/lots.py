@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
@@ -44,15 +45,32 @@ class LotCollection(BaseCollection):
         self.base_path = f"/api/{LotCollection._api_version}/lots"
 
     def create(self, *, lots: list[Lot]) -> list[Lot]:
-        # TODO: Once thi endpoint is fixed, go back to passing the whole list at once
+        """Create new lots.
+
+        Parameters
+        ----------
+        lots : list[Lot]
+            A list of Lot entities to create.
+
+        Returns
+        -------
+        list[Lot]
+            A list of created Lot entities.
+        """
         payload = [lot.model_dump(by_alias=True, exclude_none=True, mode="json") for lot in lots]
-        all_lots = []
-        for lot in payload:
-            response = self.session.post(self.base_path, json=[lot])
-            all_lots.append(Lot(**response.json()[0]))
-        # response = self.session.post(self.base_path, json=payload)
-        # return [Lot(**lot) for lot in response.json().get("CreatedLots", [])]
-        return all_lots
+        response = self.session.post(self.base_path, json=payload)
+        data = response.json()
+
+        if isinstance(data, list):
+            created_raw, failed = data, []
+        else:
+            created_raw = data.get("CreatedLots") or data.get("CreatedItems") or []
+            failed = data.get("FailedItems") or []
+
+        if (response.status_code == 206 or failed) and failed:
+            logger.warning("Partial success creating lots", extra={"failed": failed})
+
+        return [Lot(**lot) for lot in created_raw]
 
     @validate_call
     def get_by_id(self, *, id: LotId) -> Lot:
