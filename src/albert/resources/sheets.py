@@ -98,7 +98,7 @@ class Cell(BaseResource):
     row_label_name : str, optional
         The display name of the row.
     type : CellType
-            The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, `EXTINV`, `BTI`, `PRM`, `PRG`, and `RSL`.
+            The type of the cell. Allowed values are the same as for CellType.
     row_type : CellType, optional
         The type of the row containing this cell. Usually one of
         INV (inventory row), TOT (total row), TAS (task row), TAG, PRC, PDC, BAT or BLK.
@@ -203,7 +203,7 @@ class Design(BaseSessionResource):
     id : str
         The Albert ID of the design.
     design_type : DesignType
-        The type of the design. Allowed values are `apps`, `products`, and `results`.
+        The type of the design. Allowed values are the same as for DesignType.
     state : DesignState | None
         The state of the design. Optional. Default is None.
     grid : pd.DataFrame | None
@@ -1195,7 +1195,7 @@ class Column(BaseSessionResource):  # noqa:F811
     name : str | None
         The name of the column. Optional. Default is None.
     type : CellType
-        The type of the column. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+        The type of the column. Allowed values are the same as for CellType.
     sheet : Sheet
         The sheet the column is in.
     cells : list[Cell]
@@ -1270,7 +1270,7 @@ class Row(BaseSessionResource):  # noqa:F811
     row_id : str
         The row ID of the row.
     type : CellType
-        The type of the row. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+        The type of the row. Allowed values are the same as for CellType.
     design : Design
         The design the row is in.
     sheet : Sheet
