@@ -56,20 +56,6 @@ class CellType(str, Enum):
     NDR = "NDR"
     PIC = "PIC"
 
-    @classmethod
-    def _missing_(cls, value: object) -> "CellType":
-        """Handle unknown cell types by creating a dynamic enum member with the string value.
-
-        This allows the enum to accept unknown string values from the API without raising
-        validation errors, while still maintaining type safety for known values.
-        """
-        if isinstance(value, str):
-            pseudo_member = object.__new__(cls)
-            pseudo_member._name_ = value.upper().replace("-", "_")
-            pseudo_member._value_ = value
-            return pseudo_member
-        return None
-
 
 class DesignType(str, Enum):
     """The type of Design"""
@@ -97,7 +83,7 @@ class Cell(BaseResource):
         The maximum allowed value for inventory cells. Optional.
     row_label_name : str, optional
         The display name of the row.
-    type : CellType
+    type : CellType | str
             The type of the cell. Allowed values are the same as for CellType.
     row_type : CellType, optional
         The type of the row containing this cell. Usually one of
@@ -122,8 +108,8 @@ class Cell(BaseResource):
     value: str | dict | list = ""
     min_value: str | None = Field(default=None, alias="minValue")
     max_value: str | None = Field(default=None, alias="maxValue")
-    type: CellType
-    row_type: CellType | None = Field(default=None)
+    type: CellType | str
+    row_type: CellType | str | None = Field(default=None)
     name: str | None = Field(default=None)
     calculation: str = ""
     design_id: str
@@ -1194,7 +1180,7 @@ class Column(BaseSessionResource):  # noqa:F811
         The column ID of the column.
     name : str | None
         The name of the column. Optional. Default is None.
-    type : CellType
+    type : CellType | str
         The type of the column. Allowed values are the same as for CellType.
     sheet : Sheet
         The sheet the column is in.
@@ -1206,7 +1192,7 @@ class Column(BaseSessionResource):  # noqa:F811
 
     column_id: str = Field(alias="colId")
     name: str | None = Field(default=None)
-    type: CellType
+    type: CellType | str
     sheet: Sheet
     inventory_id: str | None = Field(default=None, exclude=True)
     _cells: list[Cell] | None = PrivateAttr(default=None)
@@ -1269,7 +1255,7 @@ class Row(BaseSessionResource):  # noqa:F811
     ----------
     row_id : str
         The row ID of the row.
-    type : CellType
+    type : CellType | str
         The type of the row. Allowed values are the same as for CellType.
     design : Design
         The design the row is in.
@@ -1289,7 +1275,7 @@ class Row(BaseSessionResource):  # noqa:F811
     """
 
     row_id: str = Field(alias="rowId")
-    type: CellType
+    type: CellType | str
     design: Design
     sheet: Sheet
     name: str | None = Field(default=None)
