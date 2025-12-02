@@ -48,6 +48,27 @@ class CellType(str, Enum):
     BTI = "BTI"
     PRM = "PRM"
     PRG = "PRG"
+    RSL = "RSL"
+    WFL = "WFL"
+    DAC = "DAC"
+    INT = "INT"
+    DAT = "DAT"
+    NDR = "NDR"
+    PIC = "PIC"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "CellType":
+        """Handle unknown cell types by creating a dynamic enum member with the string value.
+
+        This allows the enum to accept unknown string values from the API without raising
+        validation errors, while still maintaining type safety for known values.
+        """
+        if isinstance(value, str):
+            pseudo_member = object.__new__(cls)
+            pseudo_member._name_ = value.upper().replace("-", "_")
+            pseudo_member._value_ = value
+            return pseudo_member
+        return None
 
 
 class DesignType(str, Enum):
@@ -77,7 +98,7 @@ class Cell(BaseResource):
     row_label_name : str, optional
         The display name of the row.
     type : CellType
-        The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
+            The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, `EXTINV`, `BTI`, `PRM`, `PRG`, and `RSL`.
     row_type : CellType, optional
         The type of the row containing this cell. Usually one of
         INV (inventory row), TOT (total row), TAS (task row), TAG, PRC, PDC, BAT or BLK.
