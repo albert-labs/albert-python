@@ -85,7 +85,7 @@ class SamConfig(BaseResource):
 
 class Workflow(BaseResource):
     id: str
-    name: str
+    name: str | None = Field(default=None)
     # Some workflows may have SamConfig
     sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
 
