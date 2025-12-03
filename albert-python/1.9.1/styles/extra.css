@@ -1,0 +1,37 @@
+:root {
+  --md-primary-fg-color: #0149ff;
+  --md-accent-fg-color: #0149ff;
+}
+
+.logo-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 4rem auto;
+  aspect-ratio: 6 / 1;
+}
+
+.logo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain;
+}
+
+.only-dark {
+  display: none;
+}
+
+.only-light {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-dark {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-light {
+  display: none;
+}
