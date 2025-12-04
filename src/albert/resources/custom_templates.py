@@ -78,11 +78,35 @@ class SamConfig(BaseResource):
     job_status: JobStatus | None = Field(default=None, alias="status")
 
 
+class WorkflowCombination(BaseAlbertModel):
+    val: str | None = None
+    val2: str | None = None
+
+    unit_name: str | None = Field(default=None, alias="unitName")
+    unit_name2: str | None = Field(default=None, alias="unitName2")
+
+    heading: str | None = None
+    heading2: str | None = None
+
+    index: int
+    interval_params: str | None = Field(default=None, alias="intervalParams")
+
+    name: str | None = None
+    value: str | None = None
+
+    hidden: bool = False
+    is_checked: bool = Field(default=False, alias="isChecked")
+
+
 class Workflow(BaseResource):
     id: str
     name: str
     # Some workflows may have SamConfig
     sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
+    combination: list[WorkflowCombination] | None = Field(
+        default=None,
+        alias="Combination",
+    )
 
 
 # TODO: once DTs are done allow a list of DTs with the correct field_serializer
