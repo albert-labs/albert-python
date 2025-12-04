@@ -20,8 +20,9 @@ from albert.resources.users import User, UserClass
 
 
 class DataTemplateInventory(EntityLink):
+    id: str | None = None
     batch_size: float | None = Field(default=None, alias="batchSize")
-    sheet: list[Sheet | EntityLink] | None = Field(default=None)
+    sheet: Sheet | EntityLink | str | None = Field(default=None)
     category: InventoryCategory | None = Field(default=None)
 
 

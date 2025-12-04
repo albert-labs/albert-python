@@ -71,7 +71,7 @@ class WorkflowCollection(BaseCollection):
                 Workflow(
                     id=response.json()[0].get("existingAlbertId")
                     or response.json()[0].get("albertId"),
-                    name=response.json()[0].get("name"),
+                    name=response.json()[0].get("name") or f"Workflow {response.json()[0].get('existingAlbertId') or response.json()[0].get('albertId')}",
                     ParameterGroups=[],
                 )
             ]
