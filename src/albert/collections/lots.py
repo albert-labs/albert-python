@@ -7,10 +7,11 @@ from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
-from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import InventoryId, LotId, TaskId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.resources.lots import Lot
+from albert.resources.inventory import InventoryCategory
+from albert.resources.lots import Lot, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
@@ -119,6 +120,120 @@ class LotCollection(BaseCollection):
         """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        inventory_id: InventoryId | list[InventoryId] | None = None,
+        location_id: str | list[str] | None = None,
+        storage_location_id: str | list[str] | None = None,
+        task_id: TaskId | list[TaskId] | None = None,
+        category: InventoryCategory | str | list[InventoryCategory | str] | None = None,
+        external_barcode_id: str | list[str] | None = None,
+        search_field: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        is_drop_down: bool | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        offset: int | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[LotSearchItem]:
+        """
+        Search for Lot records matching the provided filters.
+
+        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
+        To retrieve fully detailed entities, use :meth:`get_all` instead.
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against lot fields.
+        inventory_id : InventoryId or list[InventoryId], optional
+            Filter by parent inventory IDs.
+        location_id : str or list[str], optional
+            Filter by specific location IDs.
+        storage_location_id : str or list[str], optional
+            Filter by storage location IDs.
+        task_id : TaskId or list[TaskId], optional
+            Filter by source task IDs.
+        category : InventoryCategory or list[str], optional
+            Filter by parent inventory categories.
+        external_barcode_id : str or list[str], optional
+            Filter by external barcode IDs.
+        search_field : str or list[str], optional
+            Restrict the fields the `text` query searches.
+        source_field : str or list[str], optional
+            Restrict which fields are returned in the response.
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        is_drop_down : bool, optional
+            Use dropdown sanitization for the search text when True.
+        order_by : OrderBy, optional
+            Sort order for the results, default DESCENDING.
+        sort_by : str, optional
+            Attribute to sort by.
+        offset : int, optional
+            Pagination offset to start from.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+
+        Returns
+        -------
+        Iterator[LotSearchItem]
+            An iterator of matching partial (unhydrated) lot entities.
+        """
+
+        search_text = text if (text is None or len(text) < 50) else text[:50]
+
+        def _ensure_list(value):
+            if value is None:
+                return None
+            if isinstance(value, list | tuple | set):
+                return list(value)
+            return [value]
+
+        def _format_categories(value):
+            raw = _ensure_list(value)
+            if raw is None:
+                return None
+            formatted: list[str] = []
+            for category in raw:
+                formatted.append(
+                    category.value if isinstance(category, InventoryCategory) else category
+                )
+            return formatted
+
+        params = {
+            "offset": offset,
+            "order": order_by.value,
+            "text": search_text,
+            "sortBy": sort_by,
+            "isDropDown": is_drop_down,
+            "inventoryId": _ensure_list(inventory_id),
+            "locationId": _ensure_list(location_id),
+            "storageLocationId": _ensure_list(storage_location_id),
+            "taskId": _ensure_list(task_id),
+            "category": _format_categories(category),
+            "externalBarcodeId": _ensure_list(external_barcode_id),
+            "searchField": _ensure_list(search_field),
+            "sourceField": _ensure_list(source_field),
+            "additionalField": _ensure_list(additional_field),
+        }
+        params = {key: value for key, value in params.items() if value is not None}
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [
+                LotSearchItem(**item)._bind_collection(self) for item in items
+            ],
+        )
 
     @validate_call
     def get_all(

@@ -3,9 +3,11 @@ from typing import Any
 
 from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
 
+from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import InventoryId, LotId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
+from albert.resources._mixins import HydrationMixin
 from albert.resources.inventory import InventoryCategory
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
@@ -143,3 +145,18 @@ class Lot(BaseResource):
     @field_serializer("inventory_on_hand", return_type=str)
     def serialize_inventory_on_hand(self, inventory_on_hand: NonNegativeFloat):
         return self._format_decimal(inventory_on_hand)
+
+
+class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
+    """Lightweight representation of a Lot returned from search()."""
+
+    id: LotId = Field(alias="albertId")
+    inventory_id: InventoryId | None = Field(default=None, alias="parentId")
+    parent_name: str | None = Field(default=None, alias="parentName")
+    parent_unit: str | None = Field(default=None, alias="parentUnit")
+    parent_category: InventoryCategory | None = Field(default=None, alias="parentIdCategory")
+    task_id: str | None = Field(default=None, alias="taskId")
+    barcode_id: str | None = Field(default=None, alias="barcodeId")
+    expiration_date: str | None = Field(default=None, alias="expirationDate")
+    manufacturer_lot_number: str | None = Field(default=None, alias="manufacturerLotNumber")
+    lot_number: str | None = Field(default=None, alias="number")
