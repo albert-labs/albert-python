@@ -1,10 +1,13 @@
 from pydantic import TypeAdapter, validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.synthesis import SynthesisCollection
+from albert.core.base import BaseAlbertModel
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import NotebookId, ProjectId, TaskId
-from albert.exceptions import AlbertException, NotFoundError
+from albert.core.shared.identifiers import NotebookId, ProjectId, SynthesisId, TaskId
+from albert.exceptions import AlbertException
 from albert.resources.notebooks import (
+    KetcherBlock,
     Notebook,
     NotebookBlock,
     NotebookCopyInfo,
@@ -13,6 +16,13 @@ from albert.resources.notebooks import (
     PutBlockPayload,
     PutOperation,
 )
+
+
+class _KetcherUpdateAction(BaseAlbertModel):
+    synthesis_id: SynthesisId
+    data: str
+    png: str
+    smiles: str
 
 
 class NotebookCollection(BaseCollection):
@@ -32,6 +42,7 @@ class NotebookCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{NotebookCollection._api_version}/notebooks"
+        self._synthesis = SynthesisCollection(session=session)
 
     @validate_call
     def get_by_id(self, *, id: NotebookId) -> Notebook:
@@ -150,11 +161,21 @@ class NotebookCollection(BaseCollection):
         Notebook
             The updated notebook object as returned by the server.
         """
-        put_data = self._generate_put_block_payload(notebook=notebook)
+        if notebook.id is None:
+            raise AlbertException("Notebook id is required to update block content.")
+        put_data, ketcher_updates = self._generate_put_block_payload(notebook=notebook)
         url = f"{self.base_path}/{notebook.id}/content"
 
         self.session.put(url, json=put_data.model_dump(mode="json", by_alias=True))
 
+        for action in ketcher_updates:
+            self._synthesis.update_canvas_data(
+                synthesis_id=action.synthesis_id,
+                smiles=action.smiles,
+                data=action.data,
+                png=action.png,
+            )
+            self._synthesis.create_reactant_productant_table(synthesis_id=action.synthesis_id)
         return self.get_by_id(id=notebook.id)
 
     @validate_call
@@ -176,29 +197,31 @@ class NotebookCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
         return TypeAdapter(NotebookBlock).validate_python(response.json())
 
-    def _generate_put_block_payload(self, *, notebook: Notebook) -> PutBlockPayload:
-        data = list()
-        seen_ids = set()
+    def _generate_put_block_payload(
+        self, *, notebook: Notebook
+    ) -> tuple[PutBlockPayload, list[_KetcherUpdateAction]]:
+        data: list[PutBlockDatum] = []
+        seen_ids: set[str] = set()
         previous_block_id = ""
-        # Update the Blocks in the Notebook
+        ketcher_updates: list[_KetcherUpdateAction] = []
+        existing_blocks = {b.id: b for b in self.get_by_id(id=notebook.id).blocks}
         for block in notebook.blocks:
             if block.id in seen_ids:
-                # This check keeps a user from corrupting the Notebook data.
                 msg = f"You have Notebook blocks with duplicate ids. [id={block.id}]"
                 raise AlbertException(msg)
-            try:
-                existing_block = self.get_block_by_id(notebook_id=notebook.id, block_id=block.id)
-                if type(block) is not type(existing_block):
-                    # This check keeps a user from corrupting the Notebook data.
-                    msg = (
-                        f"Cannot convert an existing block type into another block type. "
-                        f"Instead, please instantiate a new block, and remove the old block "
-                        f"from the Notebook object. [existing_block_type={type(existing_block)}, "
-                        f"new_block_type={type(block)}]"
-                    )
-                    raise AlbertException(msg)
-            except NotFoundError:
-                pass
+            existing_block = existing_blocks.get(block.id)
+            if existing_block and type(block) is not type(existing_block):
+                msg = (
+                    f"Cannot convert an existing block type into another block type. "
+                    f"Instead, please instantiate a new block, and remove the old block "
+                    f"from the Notebook object. [existing_block_type={type(existing_block)}, "
+                    f"new_block_type={type(block)}]"
+                )
+                raise AlbertException(msg)
+
+            if isinstance(block, KetcherBlock):
+                ketcher_updates.append(self._prepare_ketcher_block(notebook=notebook, block=block))
+
             put_datum = PutBlockDatum(
                 id=block.id,
                 type=block.type,
@@ -207,16 +230,50 @@ class NotebookCollection(BaseCollection):
                 previous_block_id=previous_block_id,
             )
             seen_ids.add(put_datum.id)
-            previous_block_id = put_datum.id  # Ensure the Block ordering is consecutive
+            previous_block_id = put_datum.id
             data.append(put_datum)
 
-        # Delete the Blocks not present in the new Notebook object
-        existing_notebook = self.get_by_id(id=notebook.id)
-        for block in existing_notebook.blocks:
+        for block in existing_blocks.values():
             if block.id not in seen_ids:
                 data.append(PutBlockDatum(id=block.id, operation=PutOperation.DELETE))
 
-        return PutBlockPayload(data=data)
+        return PutBlockPayload(data=data), ketcher_updates
+
+    def _prepare_ketcher_block(
+        self, *, notebook: Notebook, block: KetcherBlock
+    ) -> _KetcherUpdateAction:
+        content = block.content
+        smiles = content.smiles or ""
+        data = content.data
+        png = content.png
+
+        if content.synthesis_id is None:
+            if not smiles:
+                raise AlbertException("smiles is required to create a Ketcher block.")
+            name = "Chemical Draw Block"
+            synthesis = self._synthesis.create(
+                parent_id=notebook.id, name=name, block_id=block.id, smiles=smiles or None
+            )
+            content.synthesis_id = synthesis.id
+            content.s3_key = synthesis.s3_key or content.s3_key
+
+            canvas_data = synthesis.canvas_data or {}
+            data = data or canvas_data.get("data")
+            png = png or canvas_data.get("png")
+
+        content.id = block.id
+        content.block_id = block.id
+        content.state_type = "project"
+        content.smiles = smiles
+        content.data = data
+        content.png = png
+
+        return _KetcherUpdateAction(
+            synthesis_id=content.synthesis_id,
+            data=data or "",
+            png=png or "",
+            smiles=smiles or "",
+        )
 
     def copy(self, *, notebook_copy_info: NotebookCopyInfo, type: NotebookCopyType) -> Notebook:
         """Create a copy of a Notebook into a specified parent
