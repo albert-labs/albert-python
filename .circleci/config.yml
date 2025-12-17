@@ -146,9 +146,11 @@ jobs:
                 exit 0
               fi
 
-              if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              SEMVER_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(?:(?:a|b|rc|dev)[0-9]+|-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$'
+
+              if [[ "$CIRCLE_TAG" =~ $SEMVER_REGEX ]]; then
                 VERSION="${CIRCLE_TAG#v}"
-                echo "Stable semver tag detected. Deploying $VERSION with alias: latest"
+                echo "Semver tag detected. Deploying $VERSION with alias: latest"
                 uv run mike deploy --push --update-aliases "$VERSION" latest
               else
                 echo "Non-semver release tag. Skipping docs deployment."
@@ -205,6 +207,6 @@ workflows:
             - Validate Release Tag
           filters:
             tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+(?:(?:a|b|rc|dev)[0-9]+|-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/
             branches:
               ignore: /.*/
