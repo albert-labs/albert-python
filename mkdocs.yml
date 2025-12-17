@@ -123,7 +123,6 @@ nav:
       - Configuration: configuration.md
       - Migration Guide: migration.md
       - Contributing: CONTRIBUTING.md
-      - Changelog: CHANGELOG.md
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
