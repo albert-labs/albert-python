@@ -9,7 +9,7 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
-from albert.core.shared.identifiers import AttachmentId, InventoryId
+from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId
 from albert.core.shared.types import MetadataItem
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileCategory, FileNamespace
@@ -49,7 +49,9 @@ class AttachmentCollection(BaseCollection):
         response = self.session.get(url=f"{self.base_path}/{id}")
         return Attachment(**response.json())
 
-    def get_by_parent_ids(self, *, parent_ids: list[str]) -> dict[str, list[Attachment]]:
+    def get_by_parent_ids(
+        self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
+    ) -> dict[str, list[Attachment]]:
         """Retrieves attachments by their parent IDs.
 
         Note: This method returns a dictionary where the keys are parent IDs
@@ -69,7 +71,10 @@ class AttachmentCollection(BaseCollection):
         dict[str, list[Attachment]]
             A dictionary mapping parent IDs to lists of Attachment objects associated with each parent ID.
         """
-        response = self.session.get(url=f"{self.base_path}/parents", params={"id": parent_ids})
+        response = self.session.get(
+            url=f"{self.base_path}/parents",
+            params={"id": parent_ids, "dataColumnId": data_column_ids},
+        )
         response_data = response.json()
         return {
             parent["parentId"]: [
@@ -125,7 +130,12 @@ class AttachmentCollection(BaseCollection):
         self.session.delete(f"{self.base_path}/{id}")
 
     def upload_and_attach_file_as_note(
-        self, parent_id: str, file_data: IO, note_text: str = "", file_name: str = ""
+        self,
+        parent_id: str,
+        file_data: IO,
+        note_text: str = "",
+        file_name: str = "",
+        upload_key: str | None = None,
     ) -> Note:
         """Uploads a file and attaches it to a new note. A user can be tagged in the note_text string by using f-string and the User.to_note_mention() method.
         This allows for easy tagging and referencing of users within notes. example: f"Hello {tagged_user.to_note_mention()}!"
@@ -140,24 +150,31 @@ class AttachmentCollection(BaseCollection):
             Any additional text to add to the note, by default ""
         file_name : str, optional
             The name of the file, by default ""
+        upload_key : str | None, optional
+            Override the storage key used when signing and uploading the file.
+            Defaults to the provided ``file_name``.
 
         Returns
         -------
         Note
             The created note.
         """
-        file_type = mimetypes.guess_type(file_name)[0]
+        upload_name = upload_key or file_name
+        if not upload_name:
+            raise ValueError("A file name or upload key must be provided for attachment upload.")
+
+        file_type = mimetypes.guess_type(file_name or upload_name)[0]
         file_collection = self._get_file_collection()
         note_collection = self._get_note_collection()
 
         file_collection.sign_and_upload_file(
             data=file_data,
-            name=file_name,
+            name=upload_name,
             namespace=FileNamespace.RESULT.value,
             content_type=file_type,
         )
         file_info = file_collection.get_by_name(
-            name=file_name, namespace=FileNamespace.RESULT.value
+            name=upload_name, namespace=FileNamespace.RESULT.value
         )
         note = Note(
             parent_id=parent_id,
@@ -166,7 +183,7 @@ class AttachmentCollection(BaseCollection):
         registered_note = note_collection.create(note=note)
         self.attach_file_to_note(
             note_id=registered_note.id,
-            file_name=file_name,
+            file_name=file_name or Path(upload_name).name,
             file_key=file_info.name,
         )
         return note_collection.get_by_id(id=registered_note.id)
