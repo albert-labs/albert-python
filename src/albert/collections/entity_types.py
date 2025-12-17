@@ -254,12 +254,12 @@ class EntityTypeCollection(BaseCollection):
         ----------
         service : EntityServiceType | None, optional
             The service type the entity type is associated with, by default None
-        limit : int, optional
-            Maximum number of results to return, by default 100
         start_key : str | None, optional
             Key to start pagination from, by default None
         order : OrderBy | None, optional
             Sort order (ascending/descending), by default None
+        max_items : int | None, optional
+            Maximum number of items to return, by default None
         Yields
         ------
         Iterator[EntityType]
