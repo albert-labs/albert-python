@@ -7,7 +7,6 @@ import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.tasks import TaskCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -65,6 +64,8 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def _get_task_from_id(self, *, id: TaskId) -> PropertyTask:
+        from albert.collections.tasks import TaskCollection
+
         return TaskCollection(session=self.session).get_by_id(id=id)
 
     @validate_call

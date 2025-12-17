@@ -448,3 +448,162 @@ class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     project_id: list[str] | None = Field(default=None, alias="projectId")
     is_qc_task: bool | None = Field(default=None, alias="isQCTask")
     parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")
+
+
+class ImportMode(str, Enum):
+    SCRIPT = "SCRIPT"
+    CSV = "CSV"
+
+
+# TODO: refactor TaskMetadata models to reuse existing models where possible
+class TaskMetadataDataTemplate(BaseAlbertModel):
+    """Metadata summary describing a data template on the task."""
+
+    id: str
+    name: str | None = None
+    full_name: str | None = Field(default=None, alias="fullName")
+    property_id: str | None = Field(default=None, alias="propertyId")
+    isload_grid: bool | None = Field(default=None, alias="isloadGrid")
+    standards: Standard | None = Field(default=None, alias="Standards")
+
+
+class TaskMetadataIntervalDetail(BaseAlbertModel):
+    """Displays a single interval detail for workflow metadata."""
+
+    name: str | None = None
+    value: str | None = None
+    unit_name: str | None = Field(default=None, alias="unitName")
+
+
+class TaskMetadataInterval(BaseAlbertModel):
+    """Represents an interval attached to a workflow step."""
+
+    interval: str | None = None
+    interval_params: str | None = Field(default=None, alias="intervalParams")
+    interval_string: str | None = Field(default=None, alias="intervalString")
+    interval_details: list[TaskMetadataIntervalDetail] = Field(
+        default_factory=list, alias="intervalDetails"
+    )
+    sequence: int | None = None
+
+
+class TaskMetadataWorkflow(BaseAlbertModel):
+    """Captures workflow identifiers and interval configuration."""
+
+    albert_id: str | None = Field(default=None, alias="albertId")
+    name: str | None = Field(default=None)
+    intervals: list[TaskMetadataInterval] = Field(default_factory=list, alias="Intervals")
+
+
+class TaskMetadataValueItem(BaseAlbertModel):
+    """Represents a selectable value reference in metadata."""
+
+    id: str
+    name: str
+
+
+class TaskMetadataUnit(BaseAlbertModel):
+    """Identifies the unit associated with an interval or parameter."""
+
+    id: str
+    name: str
+
+
+class TaskMetadataIntervalType(BaseAlbertModel):
+    """Describes a concrete interval type recorded on the task."""
+
+    id: str
+    value: str | None = None
+    name: str | None = None
+    row_id: str = Field(alias="rowId")
+    unit: TaskMetadataUnit | None = Field(default=None, alias="Unit")
+
+
+class TaskMetadataParameter(BaseAlbertModel):
+    """Represents a parameter entry included in workflow metadata."""
+
+    id: str
+    name: str
+    value: str | TaskMetadataValueItem | None = None
+    row_id: str = Field(alias="rowId")
+    unit: TaskMetadataUnit | None = Field(default=None, alias="Unit")
+    short_name: str | None = Field(default=None, alias="shortName")
+    category: str | None = None
+    intervals: list[TaskMetadataIntervalType] = Field(default_factory=list, alias="Intervals")
+
+
+class TaskMetadataParameterGroup(BaseAlbertModel):
+    """Groups related parameters for metadata serialization."""
+
+    id: str
+    name: str
+    prg_sequence: int | None = Field(default=None, alias="prgSequence")
+    row_id: str = Field(alias="rowId")
+    parameters: list[TaskMetadataParameter] = Field(default_factory=list, alias="Parameters")
+
+
+class TaskMetadataWorkflowJson(BaseAlbertModel):
+    """Holds the serialized workflow JSON metadata payload."""
+
+    albert_id: str | None = Field(default=None, alias="albertId")
+    name: str | None = None
+    parameter_groups: list[TaskMetadataParameterGroup] = Field(
+        default_factory=list, alias="ParameterGroups"
+    )
+
+
+class TaskMetadataBlockdata(BaseAlbertModel):
+    """Aggregates block-level metadata for proxy execution."""
+
+    id: str
+    datatemplate: list[TaskMetadataDataTemplate] = Field(
+        default_factory=list, alias="Datatemplate"
+    )
+    workflow: list[TaskMetadataWorkflow] = Field(default_factory=list, alias="Workflow")
+    workflow_json: TaskMetadataWorkflowJson | dict = Field(
+        default_factory=dict, alias="WorkflowJson"
+    )
+
+
+class TaskMetadata(BaseAlbertModel):
+    """Top-level metadata describing the task context for scripts."""
+
+    filename: str | None = None
+    task_id: str | None = Field(default=None, alias="taskId")
+    block_id: str | None = Field(default=None, alias="blockId")
+    inventories: list[TaskInventoryInformation] = Field(default_factory=list, alias="Inventories")
+    blockdata: TaskMetadataBlockdata | None = Field(default=None, alias="Blockdata")
+
+
+# Models for CSV tables endpoints
+class CsvTableInput(BaseAlbertModel):
+    """Payload for invoking the CSV table proxy endpoint."""
+
+    script_s3_url: str = Field(alias="scriptS3URL")
+    data_s3_url: str = Field(alias="dataS3URL")
+    task_metadata: "TaskMetadata" = Field(alias="TaskMetadata")
+
+
+class CsvTableResponseItem(BaseAlbertModel):
+    """Single table response emitted by the CSV table proxy."""
+
+    data: list[dict[str, Any]] = Field(alias="Data")
+
+
+class CsvCurveInput(BaseAlbertModel):
+    """Payload sent to the curve CSV proxy runner."""
+
+    script_s3_url: str = Field(alias="scriptS3URL")
+    data_s3_url: str = Field(alias="dataS3URL")
+    result_s3_url: str = Field(alias="resultS3URL")
+    task_metadata: "TaskMetadata" = Field(alias="TaskMetadata")
+
+
+class CsvCurveResponse(BaseAlbertModel):
+    """Details about the curve CSV file produced by the runner."""
+
+    status: str
+    message: str
+    e_tag: str | None = Field(default=None, alias="eTag")
+    size: float | None = None
+    column_headers: dict[str, Any] = Field(alias="columnHeaders")
