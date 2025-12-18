@@ -511,7 +511,7 @@ def map_csv_headers_to_columns(
                 continue
             identifier, _display_name = matching_entry
             if identifier in used_columns:
-                logger.warning(
+                logger.info(
                     "Column %s already mapped; skipping CSV header '%s'.",
                     identifier,
                     header_name,
@@ -532,11 +532,11 @@ def map_csv_headers_to_columns(
         normalized_header = header_name.lower()
         matching_entry = columns_by_name.get(normalized_header)
         if matching_entry is None:
-            logger.warning("No matching column found for CSV header '%s'.", header_name)
+            logger.info("No matching column found for CSV header '%s'.", header_name)
             continue
         identifier, _display_name = matching_entry
         if identifier in used_columns:
-            logger.warning(
+            logger.info(
                 "Column %s already mapped; skipping CSV header '%s'.",
                 identifier,
                 header_name,

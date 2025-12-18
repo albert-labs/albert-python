@@ -450,11 +450,6 @@ class TaskSearchItem(BaseAlbertModel, HydrationMixin[BaseTask]):
     parent_batch_status: str | None = Field(default=None, alias="parentBatchStatus")
 
 
-class ImportMode(str, Enum):
-    SCRIPT = "SCRIPT"
-    CSV = "CSV"
-
-
 # TODO: refactor TaskMetadata models to reuse existing models where possible
 class TaskMetadataDataTemplate(BaseAlbertModel):
     """Metadata summary describing a data template on the task."""

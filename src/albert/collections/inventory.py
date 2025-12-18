@@ -281,7 +281,7 @@ class InventoryCollection(BaseCollection):
         """Add inventory specs to the inventory item.
 
         An `InventorySpec` is a property that was not directly measured via a task,
-        but is a generic property of that inentory item.
+        but is a generic property of that inventory item.
 
         Parameters
         ----------
