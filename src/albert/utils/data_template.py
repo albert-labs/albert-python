@@ -6,19 +6,26 @@ from typing import TYPE_CHECKING
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from albert.collections.attachments import AttachmentCollection
+from albert.collections.files import FileCollection
 from albert.core.logging import logger
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, DataTemplateId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
     GeneralPatchPayload,
+    PatchDatum,
     PatchOperation,
-    PGPatchDatum,
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.attachments import Attachment, AttachmentCategory
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import DataColumnValue, DataTemplate, ImportMode
 from albert.resources.files import FileNamespace
-from albert.resources.parameter_groups import DataType, ValueValidation
+from albert.resources.parameter_groups import (
+    DataType,
+    EnumValidationValue,
+    ParameterValue,
+    ValueValidation,
+)
 from albert.resources.tasks import CsvCurveInput, CsvCurveResponse, TaskMetadata
 from albert.resources.worker_jobs import (
     WORKER_JOB_PENDING_STATES,
@@ -28,21 +35,41 @@ from albert.resources.worker_jobs import (
     WorkerJobState,
 )
 from albert.utils.tasks import (
+    CSV_EXTENSIONS,
     determine_extension,
     extract_extensions_from_attachment,
+    fetch_csv_table_rows,
     map_csv_headers_to_columns,
     resolve_attachment,
 )
 
 if TYPE_CHECKING:
-    from albert.collections.attachments import AttachmentCollection
-    from albert.collections.files import FileCollection
     from albert.core.session import AlbertSession
+    from albert.resources.data_templates import CurveExample, ImageExample
 
 
 _CURVE_JOB_POLL_INTERVAL = 2.0
 _CURVE_JOB_MAX_ATTEMPTS = 20
 _CURVE_JOB_MAX_WAIT = 10.0
+SUPPORTED_IMAGE_EXTENSIONS = [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".jfif",
+    ".pjpeg",
+    ".pjp",
+    ".svg",
+    ".gif",
+    ".apng",
+    ".avif",
+    ".webp",
+    ".bmp",
+    ".ico",
+    ".cur",
+    ".tif",
+    ".tiff",
+    ".heic",
+]
 
 
 def get_target_data_column(
@@ -207,7 +234,6 @@ def prepare_curve_input_attachment(
 def exec_curve_script(
     *,
     session: "AlbertSession",
-    api_version: str,
     data_template_id: DataTemplateId,
     column_id: DataColumnId,
     raw_attachment: Attachment,
@@ -235,7 +261,7 @@ def exec_curve_script(
         task_metadata=metadata_payload,
     )
     response = session.post(
-        f"/api/{api_version}/proxy/csvtable/curve",
+        "/api/v3/proxy/csvtable/curve",
         json=csv_payload.model_dump(by_alias=True, mode="json", exclude_none=True),
     )
     curve_response = CsvCurveResponse.model_validate(response.json())
@@ -344,7 +370,7 @@ def create_curve_import_job(
         state = current_job.state
 
         if state in WORKER_JOB_PENDING_STATES:
-            logger.warning(
+            logger.info(
                 "Curve data import in progress for template %s column %s",
                 data_template_id,
                 column_id,
@@ -392,22 +418,22 @@ def build_curve_import_patch_payload(
         },
     }
     actions = [
-        PGPatchDatum(
+        PatchDatum(
             operation=PatchOperation.ADD.value,
             attribute="jobId",
             new_value=job_id,
         ),
-        PGPatchDatum(
+        PatchDatum(
             operation=PatchOperation.ADD.value,
             attribute="csvMapping",
             new_value=csv_mapping,
         ),
-        PGPatchDatum(
+        PatchDatum(
             operation=PatchOperation.ADD.value,
             attribute="value",
             new_value=value_payload,
         ),
-        PGPatchDatum(
+        PatchDatum(
             operation=PatchOperation.ADD.value,
             attribute="athenaPartitionKey",
             new_value=partition_uuid,
@@ -424,13 +450,305 @@ def build_curve_import_patch_payload(
     )
 
 
-def _validation_is_curve(validation: ValueValidation | dict | None) -> bool:
-    if isinstance(validation, ValueValidation):
-        return validation.datatype == DataType.CURVE
-    if isinstance(validation, dict):
-        datatype = validation.get("datatype")
-        if isinstance(datatype, DataType):
-            return datatype == DataType.CURVE
-        if isinstance(datatype, str):
-            return datatype.lower() == DataType.CURVE.value
-    return False
+def add_parameter_enums(
+    *,
+    session: "AlbertSession",
+    base_path: str,
+    data_template_id: DataTemplateId,
+    new_parameters: list[ParameterValue],
+) -> dict[str, list[EnumValidationValue]]:
+    """Add enum values to newly created parameters and return updated enum sequences."""
+
+    data_template = DataTemplate(**session.get(f"{base_path}/{data_template_id}").json())
+    existing_parameters = data_template.parameter_values or []
+    enums_by_sequence: dict[str, list[EnumValidationValue]] = {}
+    for parameter in new_parameters:
+        this_sequence = next(
+            (
+                p.sequence
+                for p in existing_parameters
+                if p.id == parameter.id and p.short_name == parameter.short_name
+            ),
+            None,
+        )
+        enum_patches: list[dict[str, str]] = []
+        if (
+            parameter.validation
+            and len(parameter.validation) > 0
+            and isinstance(parameter.validation[0].value, list)
+        ):
+            existing_validation = (
+                [x for x in existing_parameters if x.sequence == parameter.sequence]
+                if existing_parameters
+                else []
+            )
+            existing_enums = (
+                [
+                    x
+                    for x in existing_validation[0].validation[0].value
+                    if isinstance(x, EnumValidationValue) and x.id is not None
+                ]
+                if (
+                    existing_validation
+                    and len(existing_validation) > 0
+                    and existing_validation[0].validation
+                    and len(existing_validation[0].validation) > 0
+                    and existing_validation[0].validation[0].value
+                    and isinstance(existing_validation[0].validation[0].value, list)
+                )
+                else []
+            )
+            updated_enums = (
+                [x for x in parameter.validation[0].value if isinstance(x, EnumValidationValue)]
+                if parameter.validation[0].value
+                else []
+            )
+
+            deleted_enums = [
+                x for x in existing_enums if x.id not in [y.id for y in updated_enums]
+            ]
+
+            new_enums = [x for x in updated_enums if x.id not in [y.id for y in existing_enums]]
+
+            matching_enums = [x for x in updated_enums if x.id in [y.id for y in existing_enums]]
+
+            for new_enum in new_enums:
+                enum_patches.append({"operation": "add", "text": new_enum.text})
+            for deleted_enum in deleted_enums:
+                enum_patches.append({"operation": "delete", "id": deleted_enum.id})
+            for matching_enum in matching_enums:
+                if (
+                    matching_enum.text
+                    != [x for x in existing_enums if x.id == matching_enum.id][0].text
+                ):
+                    enum_patches.append(
+                        {
+                            "operation": "update",
+                            "id": matching_enum.id,
+                            "text": matching_enum.text,
+                        }
+                    )
+
+            if enum_patches and this_sequence:
+                enum_response = session.put(
+                    f"{base_path}/{data_template_id}/parameters/{this_sequence}/enums",
+                    json=enum_patches,
+                )
+                enums_by_sequence[this_sequence] = [
+                    EnumValidationValue(**x) for x in enum_response.json()
+                ]
+
+    return enums_by_sequence
+
+
+def upload_image_example_attachment(
+    *,
+    attachment_collection: "AttachmentCollection",
+    data_template_id: DataTemplateId,
+    file_path: str | Path | None,
+    attachment_id: AttachmentId | None,
+    upload_key: str | None = None,
+) -> Attachment:
+    """Upload or resolve an image attachment for a data template example."""
+
+    supported_extensions = {ext.lstrip(".").lower() for ext in SUPPORTED_IMAGE_EXTENSIONS}
+    resolved_attachment_id = AttachmentId(
+        resolve_attachment(
+            attachment_collection=attachment_collection,
+            task_id=data_template_id,
+            file_path=file_path,
+            attachment_id=str(attachment_id) if attachment_id else None,
+            allowed_extensions=supported_extensions,
+            note_text=None,
+            upload_key=upload_key,
+        )
+    )
+    attachment = attachment_collection.get_by_id(id=resolved_attachment_id)
+    if supported_extensions:
+        attachment_ext = determine_extension(filename=attachment.name)
+        if attachment_ext and attachment_ext not in supported_extensions:
+            raise ValueError(
+                f"Attachment '{attachment.name}' is not a supported image type "
+                f"({sorted(supported_extensions)})."
+            )
+    return attachment
+
+
+def build_data_column_image_example_payload(
+    *,
+    target_column: DataColumnValue,
+    attachment: Attachment,
+) -> GeneralPatchPayload:
+    """Construct the patch payload to set an image example on a data column."""
+
+    key = attachment.key
+    file_name = attachment.name
+    if not key:
+        raise ValueError("Image attachment is missing an S3 key.")
+    if target_column.sequence is None:
+        raise ValueError("Data column sequence is required to patch image examples.")
+
+    value_payload = {
+        "fileName": file_name,
+        "s3Key": {
+            "original": key,
+            "thumb": key,
+            "preview": key,
+        },
+    }
+    action = PatchDatum(
+        operation=PatchOperation.ADD.value,
+        attribute="value",
+        new_value=value_payload,
+    )
+    return GeneralPatchPayload(
+        data=[
+            GeneralPatchDatum(
+                attribute="datacolumn",
+                colId=target_column.sequence,
+                actions=[action],
+            )
+        ]
+    )
+
+
+def ensure_data_column_accepts_images(*, target_column: DataColumnValue) -> None:
+    """Ensure the resolved data column is configured for image data."""
+
+    validations = target_column.validation or []
+    if not any(_validation_is_image(validation) for validation in validations):
+        raise ValueError(
+            f"Data column '{target_column.name}' must be an image-type column to add image examples."
+        )
+
+
+def _validation_is_curve(validation: ValueValidation | None) -> bool:
+    return isinstance(validation, ValueValidation) and validation.datatype == DataType.CURVE
+
+
+def _validation_is_image(validation: ValueValidation | None) -> bool:
+    return isinstance(validation, ValueValidation) and validation.datatype == DataType.IMAGE
+
+
+def build_curve_example(
+    *,
+    session: "AlbertSession",
+    data_template_id: DataTemplateId,
+    example: "CurveExample",
+    target_column: DataColumnValue,
+) -> GeneralPatchPayload:
+    """Construct the patch payload for a curve example on a data template."""
+
+    validate_data_column_type(target_column=target_column)
+    column_id = target_column.data_column_id
+    if column_id is None:
+        raise ValueError("Target data column is missing an identifier.")
+    attachment_collection = AttachmentCollection(session=session)
+    file_collection = FileCollection(session=session)
+
+    script_attachment_signed_url: str | None = None
+
+    if example.mode is ImportMode.SCRIPT:
+        script_attachment, script_extensions = get_script_attachment(
+            attachment_collection=attachment_collection,
+            data_template_id=data_template_id,
+            column_id=column_id,
+        )
+        if not script_extensions:
+            raise ValueError("Script attachment must define allowed extensions.")
+        script_attachment_signed_url = script_attachment.signed_url
+        allowed_extensions = set(script_extensions)
+    else:
+        allowed_extensions = set(CSV_EXTENSIONS)
+    raw_attachment = prepare_curve_input_attachment(
+        attachment_collection=attachment_collection,
+        data_template_id=data_template_id,
+        column_id=column_id,
+        allowed_extensions=allowed_extensions,
+        file_path=example.file_path,
+        attachment_id=example.attachment_id,
+        require_signed_url=example.mode is ImportMode.SCRIPT,
+    )
+    raw_key = raw_attachment.key
+    if raw_attachment.id is None:
+        raise ValueError("Curve input attachment did not return an identifier.")
+    resolved_attachment_id = AttachmentId(raw_attachment.id)
+
+    processed_input_key: str = raw_key
+    column_headers: dict[str, str] = {}
+
+    if example.mode is ImportMode.SCRIPT:
+        processed_input_key, column_headers = exec_curve_script(
+            session=session,
+            data_template_id=data_template_id,
+            column_id=column_id,
+            raw_attachment=raw_attachment,
+            file_collection=file_collection,
+            script_attachment_signed_url=script_attachment_signed_url,
+        )
+    else:
+        table_rows = fetch_csv_table_rows(
+            session=session,
+            attachment_id=resolved_attachment_id,
+            headers_only=True,
+        )
+        header_row = table_rows[0]
+        if not isinstance(header_row, dict):
+            raise ValueError("Unexpected CSV header format returned by preview endpoint.")
+        column_headers = {
+            key: value
+            for key, value in header_row.items()
+            if isinstance(key, str) and isinstance(value, str) and value
+        }
+
+    csv_mapping = derive_curve_csv_mapping(
+        target_column=target_column,
+        column_headers=column_headers,
+        field_mapping=example.field_mapping,
+    )
+
+    job_id, partition_uuid, s3_output_key = create_curve_import_job(
+        session=session,
+        data_template_id=data_template_id,
+        column_id=column_id,
+        csv_mapping=csv_mapping,
+        raw_attachment=raw_attachment,
+        processed_input_key=processed_input_key,
+    )
+
+    return build_curve_import_patch_payload(
+        target_column=target_column,
+        job_id=job_id,
+        csv_mapping=csv_mapping,
+        raw_attachment=raw_attachment,
+        partition_uuid=partition_uuid,
+        s3_output_key=s3_output_key,
+    )
+
+
+def build_image_example(
+    *,
+    session: "AlbertSession",
+    data_template_id: DataTemplateId,
+    example: "ImageExample",
+    target_column: DataColumnValue,
+) -> GeneralPatchPayload:
+    """Construct the patch payload for an image example on a data template."""
+
+    ensure_data_column_accepts_images(target_column=target_column)
+    resolved_path = Path(example.file_path)
+    upload_ext = resolved_path.suffix.lower()
+    if not upload_ext:
+        raise ValueError("File extension is required for image examples.")
+    upload_key = f"imagedata/original/{data_template_id}/{uuid.uuid4().hex[:10]}{upload_ext}"
+    attachment_collection = AttachmentCollection(session=session)
+    attachment = upload_image_example_attachment(
+        attachment_collection=attachment_collection,
+        data_template_id=data_template_id,
+        file_path=example.file_path,
+        attachment_id=None,
+        upload_key=upload_key,
+    )
+    return build_data_column_image_example_payload(
+        target_column=target_column, attachment=attachment
+    )

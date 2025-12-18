@@ -1,17 +1,14 @@
 from collections.abc import Iterator
 from itertools import islice
-from pathlib import Path
 
 from pydantic import Field, validate_call
 
-from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
-from albert.collections.files import FileCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import AttachmentId, DataColumnId, DataTemplateId, UserId
+from albert.core.shared.identifiers import DataColumnId, DataTemplateId, UserId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
     GeneralPatchPayload,
@@ -20,25 +17,21 @@ from albert.core.shared.models.patch import (
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
+    CurveExample,
     DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
+    ImageExample,
     ParameterValue,
 )
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
-from albert.resources.tasks import ImportMode
 from albert.utils._patch import generate_data_template_patches
 from albert.utils.data_template import (
-    build_curve_import_patch_payload,
-    create_curve_import_job,
-    derive_curve_csv_mapping,
-    exec_curve_script,
-    get_script_attachment,
+    add_parameter_enums,
+    build_curve_example,
+    build_image_example,
     get_target_data_column,
-    prepare_curve_input_attachment,
-    validate_data_column_type,
 )
-from albert.utils.tasks import CSV_EXTENSIONS, fetch_csv_table_rows
 
 
 class DCPatchDatum(PGPatchPayload):
@@ -96,255 +89,6 @@ class DataTemplateCollection(BaseCollection):
             return dt
         else:
             return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
-
-    @validate_call
-    def import_curve_data(
-        self,
-        *,
-        data_template_id: DataTemplateId,
-        data_column_id: DataColumnId | None = None,
-        data_column_name: str | None = None,
-        mode: ImportMode = ImportMode.CSV,
-        field_mapping: dict[str, str] | None = None,
-        file_path: str | Path | None = None,
-        attachment_id: AttachmentId | None = None,
-    ) -> DataTemplate:
-        """Import curve data in a data template column.
-
-        Parameters
-        ----------
-        data_template_id : DataTemplateId
-            Target data template Id.
-        data_column_id : DataColumnId | None, optional
-            Specific data column to upload the curve data to. Provide exactly one of ``data_column_id`` or
-            ``data_column_name``.
-        data_column_name : str | None, optional
-            Case-insensitive data column display name. Provide exactly one of the column
-            identifier or name.
-        mode : ImportMode, optional
-            Import mode. ``ImportMode.SCRIPT`` runs the attached automation script and requires
-            a script attachment on the data template; ``ImportMode.CSV`` ingests the
-            uploaded CSV directly. Defaults to ``ImportMode.CSV``.
-        field_mapping : dict[str, str] | None, optional
-            Optional manual mapping from CSV headers to curve result column names on the target column. Example: ``{"visc": "Viscosity"}`` maps the
-            "visc" CSV header to the "Viscosity" curve result column. Mappings are matched
-            case-insensitively and override auto-detection. In ``ImportMode.SCRIPT`` this applies to the headers emitted by the script before ingestion.
-        attachment_id : AttachmentId | None, optional
-            Existing attachment to use. Exactly one of ``attachment_id`` or ``file_path`` must be provided.
-        file_path : str | Path | None, optional
-            Local file to upload and attach to a new note on the data template. Exactly one of
-            ``attachment_id`` or ``file_path`` must be provided.
-        Returns
-        -------
-        DataTemplate
-            The data template refreshed after the curve import job completes.
-
-        Examples
-        --------
-        !!! example "Import curve data from a CSV file"
-            ```python
-            dt = client.data_templates.import_curve_data(
-                data_template_id="DT123",
-                data_column_name="APHA Color",
-                mode=ImportMode.CSV,
-                file_path="path/to/curve.csv",
-                field_mapping={"visc": "Viscosity"},
-            )
-            ```
-        """
-        data_template = self.get_by_id(id=data_template_id)
-        target_column = get_target_data_column(
-            data_template=data_template,
-            data_template_id=data_template_id,
-            data_column_id=data_column_id,
-            data_column_name=data_column_name,
-        )
-        validate_data_column_type(target_column=target_column)
-        column_id = target_column.data_column_id
-        attachment_collection = AttachmentCollection(session=self.session)
-
-        script_attachment_signed_url: str | None = None
-
-        if mode is ImportMode.SCRIPT:
-            script_attachment, script_extensions = get_script_attachment(
-                attachment_collection=attachment_collection,
-                data_template_id=data_template_id,
-                column_id=column_id,
-            )
-            if not script_extensions:
-                raise ValueError("Script attachment must define allowed extensions.")
-            script_attachment_signed_url = script_attachment.signed_url
-            allowed_extensions = set(script_extensions)
-        else:
-            allowed_extensions = set(CSV_EXTENSIONS)
-        raw_attachment = prepare_curve_input_attachment(
-            attachment_collection=attachment_collection,
-            data_template_id=data_template_id,
-            column_id=column_id,
-            allowed_extensions=allowed_extensions,
-            file_path=file_path,
-            attachment_id=attachment_id,
-            require_signed_url=mode is ImportMode.SCRIPT,
-        )
-        raw_key = raw_attachment.key
-        if raw_attachment.id is None:
-            raise ValueError("Curve input attachment did not return an identifier.")
-        resolved_attachment_id = AttachmentId(raw_attachment.id)
-
-        processed_input_key: str = raw_key
-        column_headers: dict[str, str] = {}
-
-        if mode is ImportMode.SCRIPT:
-            file_collection = FileCollection(session=self.session)
-            processed_input_key, column_headers = exec_curve_script(
-                session=self.session,
-                api_version=self._api_version,
-                data_template_id=data_template_id,
-                column_id=column_id,
-                raw_attachment=raw_attachment,
-                file_collection=file_collection,
-                script_attachment_signed_url=script_attachment_signed_url,
-            )
-        else:
-            table_rows = fetch_csv_table_rows(
-                session=self.session,
-                attachment_id=resolved_attachment_id,
-                headers_only=True,
-            )
-            header_row = table_rows[0]
-            if not isinstance(header_row, dict):
-                raise ValueError("Unexpected CSV header format returned by preview endpoint.")
-            column_headers = {
-                key: value
-                for key, value in header_row.items()
-                if isinstance(key, str) and isinstance(value, str) and value
-            }
-
-        csv_mapping = derive_curve_csv_mapping(
-            target_column=target_column,
-            column_headers=column_headers,
-            field_mapping=field_mapping,
-        )
-
-        job_id, partition_uuid, s3_output_key = create_curve_import_job(
-            session=self.session,
-            data_template_id=data_template_id,
-            column_id=column_id,
-            csv_mapping=csv_mapping,
-            raw_attachment=raw_attachment,
-            processed_input_key=processed_input_key,
-        )
-
-        patch_payload = build_curve_import_patch_payload(
-            target_column=target_column,
-            job_id=job_id,
-            csv_mapping=csv_mapping,
-            raw_attachment=raw_attachment,
-            partition_uuid=partition_uuid,
-            s3_output_key=s3_output_key,
-        )
-        self.session.patch(
-            f"{self.base_path}/{data_template_id}",
-            json=patch_payload.model_dump(by_alias=True, mode="json", exclude_none=True),
-        )
-
-        return self.get_by_id(id=data_template_id)
-
-    def _add_param_enums(
-        self,
-        *,
-        data_template_id: DataTemplateId,
-        new_parameters: list[ParameterValue],
-    ) -> list[EnumValidationValue]:
-        """Adds enum values to a parameter."""
-
-        data_template = self.get_by_id(id=data_template_id)
-        existing_parameters = data_template.parameter_values
-        enums_by_sequence = {}
-        for parameter in new_parameters:
-            this_sequence = next(
-                (
-                    p.sequence
-                    for p in existing_parameters
-                    if p.id == parameter.id and p.short_name == parameter.short_name
-                ),
-                None,
-            )
-            enum_patches = []
-            if (
-                parameter.validation
-                and len(parameter.validation) > 0
-                and isinstance(parameter.validation[0].value, list)
-            ):
-                existing_validation = (
-                    [x for x in existing_parameters if x.sequence == parameter.sequence]
-                    if existing_parameters
-                    else []
-                )
-                existing_enums = (
-                    [
-                        x
-                        for x in existing_validation[0].validation[0].value
-                        if isinstance(x, EnumValidationValue) and x.id is not None
-                    ]
-                    if (
-                        existing_validation
-                        and len(existing_validation) > 0
-                        and existing_validation[0].validation
-                        and len(existing_validation[0].validation) > 0
-                        and existing_validation[0].validation[0].value
-                        and isinstance(existing_validation[0].validation[0].value, list)
-                    )
-                    else []
-                )
-                updated_enums = (
-                    [
-                        x
-                        for x in parameter.validation[0].value
-                        if isinstance(x, EnumValidationValue)
-                    ]
-                    if parameter.validation[0].value
-                    else []
-                )
-
-                deleted_enums = [
-                    x for x in existing_enums if x.id not in [y.id for y in updated_enums]
-                ]
-
-                new_enums = [
-                    x for x in updated_enums if x.id not in [y.id for y in existing_enums]
-                ]
-
-                matching_enums = [
-                    x for x in updated_enums if x.id in [y.id for y in existing_enums]
-                ]
-
-                for new_enum in new_enums:
-                    enum_patches.append({"operation": "add", "text": new_enum.text})
-                for deleted_enum in deleted_enums:
-                    enum_patches.append({"operation": "delete", "id": deleted_enum.id})
-                for matching_enum in matching_enums:
-                    if (
-                        matching_enum.text
-                        != [x for x in existing_enums if x.id == matching_enum.id][0].text
-                    ):
-                        enum_patches.append(
-                            {
-                                "operation": "update",
-                                "id": matching_enum.id,
-                                "text": matching_enum.text,
-                            }
-                        )
-
-                if len(enum_patches) > 0:
-                    enum_response = self.session.put(
-                        f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
-                        json=enum_patches,
-                    )
-                    enums_by_sequence[this_sequence] = [
-                        EnumValidationValue(**x) for x in enum_response.json()
-                    ]
-        return enums_by_sequence
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
@@ -496,7 +240,9 @@ class DataTemplateCollection(BaseCollection):
             if param.id in initial_enum_values:
                 param.validation[0].value = initial_enum_values[param.id]
                 param.validation[0].datatype = DataType.ENUM
-                self._add_param_enums(
+                add_parameter_enums(
+                    session=self.session,
+                    base_path=self.base_path,
                     data_template_id=data_template_id,
                     new_parameters=[param],
                 )
@@ -642,7 +388,9 @@ class DataTemplateCollection(BaseCollection):
                     param.validation[0].datatype = DataType.ENUM  # Add this line
 
             # Add enum values to newly created parameters
-            self._add_param_enums(
+            add_parameter_enums(
+                session=self.session,
+                base_path=self.base_path,
                 data_template_id=existing.id,
                 new_parameters=returned_parameters,
             )
@@ -795,3 +543,99 @@ class DataTemplateCollection(BaseCollection):
                 yield from hydrated_templates
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating batch {batch}: {e}")
+
+    @validate_call
+    def set_curve_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+        example: CurveExample,
+    ) -> DataTemplate:
+        """Set a curve example on a single data column.
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            Target data template ID.
+        data_column_id : DataColumnId, optional
+            Target curve column ID (provide exactly one of id or name).
+        data_column_name : str, optional
+            Target curve column name (provide exactly one of id or name).
+        example : CurveExample
+            Curve example payload (column identifier from this call is applied).
+
+        Returns
+        -------
+        DataTemplate
+            The updated data template after the example is applied.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        payload = build_curve_example(
+            session=self.session,
+            data_template_id=data_template_id,
+            example=example,
+            target_column=target_column,
+        )
+        if not payload.data:
+            return data_template
+        self.session.patch(
+            f"{self.base_path}/{data_template_id}",
+            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return self.get_by_id(id=data_template_id)
+
+    @validate_call
+    def set_image_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+        example: ImageExample,
+    ) -> DataTemplate:
+        """Set an image example on a single data column.
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            Target data template ID.
+        data_column_id : DataColumnId, optional
+            Target image column ID (provide exactly one of id or name).
+        data_column_name : str, optional
+            Target image column name (provide exactly one of id or name).
+        example : ImageExample
+            Image example payload (column identifier from this call is applied).
+
+        Returns
+        -------
+        DataTemplate
+            The updated data template after the example is applied.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        payload = build_image_example(
+            session=self.session,
+            data_template_id=data_template_id,
+            example=example,
+            target_column=target_column,
+        )
+        if not payload.data:
+            return data_template
+        self.session.patch(
+            f"{self.base_path}/{data_template_id}",
+            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return self.get_by_id(id=data_template_id)

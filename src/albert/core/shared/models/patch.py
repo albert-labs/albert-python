@@ -43,7 +43,7 @@ class PGPatchDatum(PatchDatum):
 
 class GeneralPatchDatum(PGPatchDatum):
     colId: str | None = Field(default=None)
-    actions: list[PGPatchDatum | DTPatchDatum] | None = None
+    actions: list[PGPatchDatum | DTPatchDatum | PatchDatum] | None = None
     operation: str | None = Field(default=None)
 
 

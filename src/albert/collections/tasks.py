@@ -27,6 +27,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.attachments import AttachmentCategory
+from albert.resources.data_templates import ImportMode
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
@@ -34,7 +35,6 @@ from albert.resources.tasks import (
     CsvTableResponseItem,
     GeneralTask,
     HistoryEntity,
-    ImportMode,
     PropertyTask,
     TaskAdapter,
     TaskCategory,

@@ -67,7 +67,7 @@ project = Project(
 )
 
 # Or pass full object and let SDK convert
-location = client.locations.get_by_id("loc123")
+location = client.locations.get_by_id(id="loc123")
 project = Project(
     description="Example",
     locations=[location]  # Automatically converted
@@ -198,15 +198,15 @@ Tags are searchable and help categorize content.
 
 Concepts you should know:
 
-| Concept                 | Purpose                                      |
-|-------------------------|----------------------------------------------|
-| Resource Models         | Define the structure of data entities        |
-| Resource Collections    | Manage CRUD operations for each model        |
-| EntityLink              | Represents foreign key references            |
-| Custom Fields & Lists   | Add structured metadata to resources         |
-| SerializeAsEntityLink  | Allows transparent references or links       |
-| Authentication          | Supports static token, OAuth2, and SSO       |
-| Partial Records         | Lightweight search results                   |
-| Tags and Metadata       | Categorize and extend data                   |
+| Concept               | Purpose                                |
+| --------------------- | -------------------------------------- |
+| Resource Models       | Define the structure of data entities  |
+| Resource Collections  | Manage CRUD operations for each model  |
+| EntityLink            | Represents foreign key references      |
+| Custom Fields & Lists | Add structured metadata to resources   |
+| SerializeAsEntityLink | Allows transparent references or links |
+| Authentication        | Supports static token, OAuth2, and SSO |
+| Partial Records       | Lightweight search results             |
+| Tags and Metadata     | Categorize and extend data             |
 
 These concepts form the foundation of working effectively with the Albert SDK.

@@ -1,10 +1,12 @@
 from enum import Enum
+from pathlib import Path
+from typing import Annotated, Literal
 
 from pydantic import AliasChoices, Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
-from albert.core.shared.identifiers import DataColumnId, DataTemplateId
+from albert.core.shared.identifiers import AttachmentId, DataColumnId, DataTemplateId
 from albert.core.shared.models.base import (
     AuditFields,
     BaseResource,
@@ -15,7 +17,7 @@ from albert.core.shared.models.base import (
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
-from albert.resources.parameter_groups import ParameterValue, ValueValidation
+from albert.resources.parameter_groups import DataType, ParameterValue, ValueValidation
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.units import Unit
 from albert.resources.users import User
@@ -39,6 +41,9 @@ class StorageKeyReference(BaseAlbertModel):
     rawfile: str | None = None
     s3_input: str | None = Field(default=None, alias="s3Input")
     s3_output: str | None = Field(default=None, alias="s3Output")
+    preview: str | None = None
+    thumb: str | None = None
+    original: str | None = None
 
 
 class JobSummary(BaseAlbertModel):
@@ -129,6 +134,64 @@ class DataTemplate(BaseTaggedResource):
         default=None, alias="originalName", exclude=True, frozen=True
     )
     full_name: str | None = Field(default=None, alias="fullName", exclude=True, frozen=True)
+
+
+class BaseExample(BaseAlbertModel):
+    """Base example scoped to a specific data column when needed."""
+
+    data_column_id: DataColumnId | None = None
+    data_column_name: str | None = None
+
+
+class ImportMode(str, Enum):
+    SCRIPT = "SCRIPT"
+    CSV = "CSV"
+
+
+class CurveExample(BaseExample):
+    """
+    Curve example data for a data template column.
+
+    Parameters
+    ----------
+    data_column_id / data_column_name : str, optional
+        Target curve column (required when using bulk example updates).
+    mode : ImportMode
+        ``ImportMode.CSV`` ingests the CSV directly; ``ImportMode.SCRIPT`` runs the attached
+        script first (requires a script attachment on the column).
+    field_mapping : dict[str, str] | None
+        Optional header-to-curve-result mapping, e.g. ``{"visc": "Viscosity"}``. Overrides
+        auto-detected mappings.
+    file_path / attachment_id
+        Provide exactly one source CSV (local path or existing attachment).
+    """
+
+    type: Literal[DataType.CURVE] = DataType.CURVE
+    mode: ImportMode = ImportMode.CSV
+    field_mapping: dict[str, str] | None = None
+    file_path: str | Path | None = None
+    attachment_id: AttachmentId | None = None
+
+    @model_validator(mode="after")
+    def _require_curve_source(self) -> "CurveExample":
+        if (self.file_path is None) == (self.attachment_id is None):
+            raise ValueError(
+                "Provide exactly one of file_path or attachment_id for curve examples."
+            )
+        return self
+
+
+class ImageExample(BaseExample):
+    """Example data for an image data column."""
+
+    type: Literal[DataType.IMAGE] = DataType.IMAGE
+    file_path: str | Path
+
+
+Example = Annotated[
+    CurveExample | ImageExample,
+    Field(discriminator="type"),
+]
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
