@@ -115,8 +115,14 @@ class EntityTypeCollection(BaseCollection):
                 PatchDatum(
                     operation=PatchOperation.UPDATE,
                     attribute="customFields",
-                    new_value=[x.model_dump(by_alias=True) for x in updated.custom_fields],
-                    old_value=[x.model_dump(by_alias=True) for x in existing.custom_fields],
+                    new_value=[
+                        x.model_dump(by_alias=True, exclude_none=True)
+                        for x in updated.custom_fields
+                    ],
+                    old_value=[
+                        x.model_dump(by_alias=True, exclude_none=True)
+                        for x in existing.custom_fields
+                    ],
                 )
             )
         if updated.custom_fields is not None and existing.custom_fields is None:
@@ -124,7 +130,10 @@ class EntityTypeCollection(BaseCollection):
                 PatchDatum(
                     operation=PatchOperation.ADD,
                     attribute="customFields",
-                    new_value=[x.model_dump(by_alias=True) for x in updated.custom_fields],
+                    new_value=[
+                        x.model_dump(by_alias=True, exclude_none=True)
+                        for x in updated.custom_fields
+                    ],
                 )
             )
 
