@@ -263,7 +263,7 @@ class PropertyDataCollection(BaseCollection):
         Returns
         -------
         CheckPropertyData
-            _description_
+            CheckPropertyData representing the data status of each block + inventory item of the task.
         """
         params = {
             "entity": "block",

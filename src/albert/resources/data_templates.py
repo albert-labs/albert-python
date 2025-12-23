@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import AliasChoices, Field, model_validator
 
@@ -136,33 +136,27 @@ class DataTemplate(BaseTaggedResource):
     full_name: str | None = Field(default=None, alias="fullName", exclude=True, frozen=True)
 
 
-class BaseExample(BaseAlbertModel):
-    """Base example scoped to a specific data column when needed."""
-
-    data_column_id: DataColumnId | None = None
-    data_column_name: str | None = None
-
-
 class ImportMode(str, Enum):
     SCRIPT = "SCRIPT"
     CSV = "CSV"
 
 
-class CurveExample(BaseExample):
+class CurveExample(BaseAlbertModel):
     """
     Curve example data for a data template column.
 
-    Parameters
+    Attributes
     ----------
-    data_column_id / data_column_name : str, optional
-        Target curve column (required when using bulk example updates).
     mode : ImportMode
         ``ImportMode.CSV`` ingests the CSV directly; ``ImportMode.SCRIPT`` runs the attached
         script first (requires a script attachment on the column).
     field_mapping : dict[str, str] | None
         Optional header-to-curve-result mapping, e.g. ``{"visc": "Viscosity"}``. Overrides
         auto-detected mappings.
-    file_path / attachment_id
+    file_path : str | Path | None
+        Local path to source CSV file.
+    attachment_id : AttachmentId | None
+        Existing attachment ID of source CSV file.
         Provide exactly one source CSV (local path or existing attachment).
     """
 
@@ -181,17 +175,11 @@ class CurveExample(BaseExample):
         return self
 
 
-class ImageExample(BaseExample):
+class ImageExample(BaseAlbertModel):
     """Example data for an image data column."""
 
     type: Literal[DataType.IMAGE] = DataType.IMAGE
     file_path: str | Path
-
-
-Example = Annotated[
-    CurveExample | ImageExample,
-    Field(discriminator="type"),
-]
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
