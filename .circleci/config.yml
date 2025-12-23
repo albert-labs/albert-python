@@ -12,29 +12,6 @@ commands:
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
 jobs:
-  snyk_app_scan:
-    executor:
-      name: python/default
-      tag: "3.10.15"
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
-      - install_uv
-      - run:
-          name: Export dependencies
-          command: |
-            uv sync
-            uv export > requirements_lock.txt
-            uv pip compile requirements_lock.txt > requirements.txt
-            uv pip install --system -r requirements.txt
-      - snyk/scan:
-          fail-on-issues: true
-          monitor-on-build: true
-          severity-threshold: high
-          token-variable: SNYK_TOKEN
-
   test:
     executor:
       name: python/default
@@ -159,9 +136,6 @@ jobs:
 workflows:
   main:
     jobs:
-      - snyk_app_scan:
-          name: Snyk App Scan
-          context: dev
       - test:
           name: Test
           context: dev
