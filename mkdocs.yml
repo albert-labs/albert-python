@@ -166,6 +166,7 @@ nav:
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
+          - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
@@ -209,6 +210,7 @@ nav:
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
+          - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md

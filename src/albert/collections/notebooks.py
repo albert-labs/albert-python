@@ -160,6 +160,17 @@ class NotebookCollection(BaseCollection):
         -------
         Notebook
             The updated notebook object as returned by the server.
+
+        Examples
+        --------
+        !!! example "Add a Ketcher block from SMILES"
+            ```python
+            notebook = client.notebooks.get_by_id(id="NTB123")
+            notebook.blocks.append(
+                KetcherBlock(content=KetcherContent(smiles="CCO"))
+            )
+            notebook = client.notebooks.update_block_content(notebook=notebook)
+            ```
         """
         if notebook.id is None:
             raise AlbertException("Notebook id is required to update block content.")
