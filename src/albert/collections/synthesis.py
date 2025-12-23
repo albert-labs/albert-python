@@ -12,12 +12,22 @@ from albert.resources.synthesis import ReactantValues, RowSequence, Synthesis
 
 
 class SynthesisCollection(BaseCollection):
-    """Collection for interacting with synthesis records used by notebook Ketcher blocks."""
+    """
+    Collection for interacting with synthesis records used by notebook Ketcher blocks.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "hide_reaction_worksheet"}
 
     def __init__(self, *, session: AlbertSession):
+        """
+        Initialize the SynthesisCollection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The Albert session information.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{SynthesisCollection._api_version}/synthesis"
 
@@ -25,6 +35,25 @@ class SynthesisCollection(BaseCollection):
     def create(
         self, *, parent_id: NotebookId | str, name: str, block_id: str, smiles: str | None = None
     ) -> Synthesis:
+        """
+        Create a synthesis record for a notebook Ketcher block.
+
+        Parameters
+        ----------
+        parent_id : NotebookId | str
+            The notebook ID that owns the synthesis record.
+        name : str
+            The synthesis name.
+        block_id : str
+            The Ketcher block ID associated with the synthesis.
+        smiles : str | None, optional
+            The initial SMILES string for the synthesis.
+
+        Returns
+        -------
+        Synthesis
+            The created synthesis record.
+        """
         payload = {"name": name, "blockId": block_id, "smiles": smiles}
         response = self.session.post(
             url=self.base_path,
@@ -42,6 +71,25 @@ class SynthesisCollection(BaseCollection):
         include_predictions: bool = False,
         version: str | None = None,
     ) -> Synthesis:
+        """
+        Retrieve a synthesis record by ID.
+
+        Parameters
+        ----------
+        id : SynthesisId
+            The synthesis ID.
+        include_recommendations : bool, optional
+            Whether to include recommendations in the response.
+        include_predictions : bool, optional
+            Whether to include predictions in the response.
+        version : str | None, optional
+            The specific version to retrieve.
+
+        Returns
+        -------
+        Synthesis
+            The requested synthesis record.
+        """
         params: dict[str, Any] = {
             "recommendations": include_recommendations,
             "predictions": include_predictions,
@@ -58,6 +106,25 @@ class SynthesisCollection(BaseCollection):
     def update_canvas_data(
         self, *, synthesis_id: SynthesisId, smiles: str, data: str, png: str
     ) -> Synthesis:
+        """
+        Update the Ketcher canvas data for a synthesis record.
+
+        Parameters
+        ----------
+        synthesis_id : SynthesisId
+            The synthesis ID.
+        smiles : str
+            The updated SMILES string.
+        data : str
+            The serialized canvas data.
+        png : str
+            The base64-encoded PNG for the canvas.
+
+        Returns
+        -------
+        Synthesis
+            The updated synthesis record.
+        """
         payload = {
             "smiles": smiles,
             "canvasData": {"data": data, "png": png},
@@ -70,6 +137,24 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def update(self, *, synthesis: Synthesis) -> Synthesis:
+        """
+        Update a synthesis record.
+
+        Parameters
+        ----------
+        synthesis : Synthesis
+            The synthesis record containing updated fields.
+
+        Returns
+        -------
+        Synthesis
+            The refreshed synthesis record.
+
+        Raises
+        ------
+        AlbertException
+            If the synthesis record is missing an ID.
+        """
         if synthesis.id is None:
             msg = "Synthesis id is required to update the record."
             raise AlbertException(msg)
@@ -91,6 +176,22 @@ class SynthesisCollection(BaseCollection):
         row_id: str,
         values: ReactantValues,
     ) -> None:
+        """
+        Update the values for a reactant row.
+
+        Parameters
+        ----------
+        synthesis_id : SynthesisId
+            The synthesis ID.
+        row_id : str
+            The reactant row ID to update.
+        values : ReactantValues
+            The values to apply to the reactant row.
+
+        Returns
+        -------
+        None
+        """
         payload = {
             "data": [
                 {
@@ -108,6 +209,18 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def create_reactant_productant_table(self, *, synthesis_id: SynthesisId) -> None:
+        """
+        Initialize the reactant/product table for a synthesis.
+
+        Parameters
+        ----------
+        synthesis_id : SynthesisId
+            The synthesis ID.
+
+        Returns
+        -------
+        None
+        """
         synthesis = self.get_by_id(id=synthesis_id)
         row_sequence: RowSequence | None = synthesis.row_sequence
         reactant_row_ids = row_sequence.reactants if row_sequence else []
@@ -153,6 +266,20 @@ class SynthesisCollection(BaseCollection):
         )
 
     def _send_patch(self, *, synthesis_id: SynthesisId, payload: dict[str, Any]) -> None:
+        """
+        Send a PATCH request to the synthesis endpoint.
+
+        Parameters
+        ----------
+        synthesis_id : SynthesisId
+            The synthesis ID.
+        payload : dict[str, Any]
+            The patch payload to send.
+
+        Returns
+        -------
+        None
+        """
         self.session.patch(
             url=f"{self.base_path}/{synthesis_id}",
             json=payload,
