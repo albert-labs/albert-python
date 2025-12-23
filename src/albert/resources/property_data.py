@@ -263,7 +263,7 @@ class TaskPropertyCreate(BaseResource):
         description="The interval combination, which can be found using `Workflow.get_interval_id`.",
     )
     data_column: TaskDataColumn = Field(
-        ..., alias="DataColumns", description="The data column associated with the task property."
+        alias="DataColumns", description="The data column associated with the task property."
     )
     value: str | None = Field(default=None, description="The value of the task property.")
     trial_number: int = Field(

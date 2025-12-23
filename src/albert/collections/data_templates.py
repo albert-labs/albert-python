@@ -313,6 +313,12 @@ class DataTemplateCollection(BaseCollection):
         -------
         DataTemplate
             The Updated DataTemplate object.
+
+        Warnings
+        --------
+        Only scalar data column values (text, number, dropdown) can be updated using this function. Use
+        `set_curve_example` / `set_image_example` to set example values for other data column types.
+
         """
 
         existing = self.get_by_id(id=data_template.id)
@@ -553,7 +559,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name: str | None = None,
         example: CurveExample,
     ) -> DataTemplate:
-        """Set a curve example on a single data column.
+        """Set a curve example on a Curve data column.
 
         Parameters
         ----------
@@ -564,7 +570,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name : str, optional
             Target curve column name (provide exactly one of id or name).
         example : CurveExample
-            Curve example payload (column identifier from this call is applied).
+            Curve example payload
 
         Returns
         -------
@@ -601,7 +607,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name: str | None = None,
         example: ImageExample,
     ) -> DataTemplate:
-        """Set an image example on a single data column.
+        """Set an image example on a Image data column.
 
         Parameters
         ----------
@@ -612,7 +618,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name : str, optional
             Target image column name (provide exactly one of id or name).
         example : ImageExample
-            Image example payload (column identifier from this call is applied).
+            Image example payload
 
         Returns
         -------
