@@ -38,6 +38,7 @@ from albert.collections.roles import RoleCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
+from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
 from albert.collections.tasks import TaskCollection
 from albert.collections.un_numbers import UnNumberCollection
@@ -187,6 +188,10 @@ class Albert:
     @property
     def lots(self) -> LotCollection:
         return LotCollection(session=self.session)
+
+    @property
+    def synthesis(self) -> SynthesisCollection:
+        return SynthesisCollection(session=self.session)
 
     @property
     def units(self) -> UnitCollection:
