@@ -8,7 +8,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import DataTemplateId, UserId
+from albert.core.shared.identifiers import DataColumnId, DataTemplateId, UserId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
     GeneralPatchPayload,
@@ -17,13 +17,21 @@ from albert.core.shared.models.patch import (
 )
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
+    CurveExample,
     DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
+    ImageExample,
     ParameterValue,
 )
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import generate_data_template_patches
+from albert.utils.data_template import (
+    add_parameter_enums,
+    build_curve_example,
+    build_image_example,
+    get_target_data_column,
+)
 
 
 class DCPatchDatum(PGPatchPayload):
@@ -81,102 +89,6 @@ class DataTemplateCollection(BaseCollection):
             return dt
         else:
             return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
-
-    def _add_param_enums(
-        self,
-        *,
-        data_template_id: DataTemplateId,
-        new_parameters: list[ParameterValue],
-    ) -> list[EnumValidationValue]:
-        """Adds enum values to a parameter."""
-
-        data_template = self.get_by_id(id=data_template_id)
-        existing_parameters = data_template.parameter_values
-        enums_by_sequence = {}
-        for parameter in new_parameters:
-            this_sequence = next(
-                (
-                    p.sequence
-                    for p in existing_parameters
-                    if p.id == parameter.id and p.short_name == parameter.short_name
-                ),
-                None,
-            )
-            enum_patches = []
-            if (
-                parameter.validation
-                and len(parameter.validation) > 0
-                and isinstance(parameter.validation[0].value, list)
-            ):
-                existing_validation = (
-                    [x for x in existing_parameters if x.sequence == parameter.sequence]
-                    if existing_parameters
-                    else []
-                )
-                existing_enums = (
-                    [
-                        x
-                        for x in existing_validation[0].validation[0].value
-                        if isinstance(x, EnumValidationValue) and x.id is not None
-                    ]
-                    if (
-                        existing_validation
-                        and len(existing_validation) > 0
-                        and existing_validation[0].validation
-                        and len(existing_validation[0].validation) > 0
-                        and existing_validation[0].validation[0].value
-                        and isinstance(existing_validation[0].validation[0].value, list)
-                    )
-                    else []
-                )
-                updated_enums = (
-                    [
-                        x
-                        for x in parameter.validation[0].value
-                        if isinstance(x, EnumValidationValue)
-                    ]
-                    if parameter.validation[0].value
-                    else []
-                )
-
-                deleted_enums = [
-                    x for x in existing_enums if x.id not in [y.id for y in updated_enums]
-                ]
-
-                new_enums = [
-                    x for x in updated_enums if x.id not in [y.id for y in existing_enums]
-                ]
-
-                matching_enums = [
-                    x for x in updated_enums if x.id in [y.id for y in existing_enums]
-                ]
-
-                for new_enum in new_enums:
-                    enum_patches.append({"operation": "add", "text": new_enum.text})
-                for deleted_enum in deleted_enums:
-                    enum_patches.append({"operation": "delete", "id": deleted_enum.id})
-                for matching_enum in matching_enums:
-                    if (
-                        matching_enum.text
-                        != [x for x in existing_enums if x.id == matching_enum.id][0].text
-                    ):
-                        enum_patches.append(
-                            {
-                                "operation": "update",
-                                "id": matching_enum.id,
-                                "text": matching_enum.text,
-                            }
-                        )
-
-                if len(enum_patches) > 0:
-                    enum_response = self.session.put(
-                        f"{self.base_path}/{data_template_id}/parameters/{this_sequence}/enums",
-                        json=enum_patches,
-                    )
-                    enums_by_sequence[this_sequence] = [
-                        EnumValidationValue(**x) for x in enum_response.json()
-                    ]
-        return enums_by_sequence
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
@@ -325,7 +237,9 @@ class DataTemplateCollection(BaseCollection):
             if param.id in initial_enum_values:
                 param.validation[0].value = initial_enum_values[param.id]
                 param.validation[0].datatype = DataType.ENUM
-                self._add_param_enums(
+                add_parameter_enums(
+                    session=self.session,
+                    base_path=self.base_path,
                     data_template_id=data_template_id,
                     new_parameters=[param],
                 )
@@ -396,6 +310,12 @@ class DataTemplateCollection(BaseCollection):
         -------
         DataTemplate
             The Updated DataTemplate object.
+
+        Warnings
+        --------
+        Only scalar data column values (text, number, dropdown) can be updated using this function. Use
+        `set_curve_example` / `set_image_example` to set example values for other data column types.
+
         """
 
         existing = self.get_by_id(id=data_template.id)
@@ -471,7 +391,9 @@ class DataTemplateCollection(BaseCollection):
                     param.validation[0].datatype = DataType.ENUM  # Add this line
 
             # Add enum values to newly created parameters
-            self._add_param_enums(
+            add_parameter_enums(
+                session=self.session,
+                base_path=self.base_path,
                 data_template_id=existing.id,
                 new_parameters=returned_parameters,
             )
@@ -623,3 +545,99 @@ class DataTemplateCollection(BaseCollection):
                 yield from hydrated_templates
             except AlbertHTTPError as e:
                 logger.warning(f"Error hydrating batch {batch}: {e}")
+
+    @validate_call
+    def set_curve_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+        example: CurveExample,
+    ) -> DataTemplate:
+        """Set a curve example on a Curve data column.
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            Target data template ID.
+        data_column_id : DataColumnId, optional
+            Target curve column ID (provide exactly one of id or name).
+        data_column_name : str, optional
+            Target curve column name (provide exactly one of id or name).
+        example : CurveExample
+            Curve example payload
+
+        Returns
+        -------
+        DataTemplate
+            The updated data template after the example is applied.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        payload = build_curve_example(
+            session=self.session,
+            data_template_id=data_template_id,
+            example=example,
+            target_column=target_column,
+        )
+        if not payload.data:
+            return data_template
+        self.session.patch(
+            f"{self.base_path}/{data_template_id}",
+            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return self.get_by_id(id=data_template_id)
+
+    @validate_call
+    def set_image_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+        example: ImageExample,
+    ) -> DataTemplate:
+        """Set an image example on a Image data column.
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            Target data template ID.
+        data_column_id : DataColumnId, optional
+            Target image column ID (provide exactly one of id or name).
+        data_column_name : str, optional
+            Target image column name (provide exactly one of id or name).
+        example : ImageExample
+            Image example payload
+
+        Returns
+        -------
+        DataTemplate
+            The updated data template after the example is applied.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        payload = build_image_example(
+            session=self.session,
+            data_template_id=data_template_id,
+            example=example,
+            target_column=target_column,
+        )
+        if not payload.data:
+            return data_template
+        self.session.patch(
+            f"{self.base_path}/{data_template_id}",
+            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+        return self.get_by_id(id=data_template_id)
