@@ -175,7 +175,7 @@ class SynthesisCollection(BaseCollection):
         synthesis_id: SynthesisId,
         row_id: str,
         values: ReactantValues,
-    ) -> None:
+    ) -> Synthesis:
         """
         Update the values for a reactant row.
 
@@ -190,7 +190,8 @@ class SynthesisCollection(BaseCollection):
 
         Returns
         -------
-        None
+        Synthesis
+            The updated synthesis record.
         """
         payload = {
             "data": [
@@ -206,9 +207,10 @@ class SynthesisCollection(BaseCollection):
             url=f"{self.base_path}/{synthesis_id}/reactants/rows",
             json=payload,
         )
+        return self.get_by_id(id=synthesis_id)
 
     @validate_call
-    def create_reactant_productant_table(self, *, synthesis_id: SynthesisId) -> None:
+    def create_reactant_productant_table(self, *, synthesis_id: SynthesisId) -> Synthesis:
         """
         Initialize the reactant/product table for a synthesis.
 
@@ -219,7 +221,8 @@ class SynthesisCollection(BaseCollection):
 
         Returns
         -------
-        None
+        Synthesis
+            The synthesis record.
         """
         synthesis = self.get_by_id(id=synthesis_id)
         row_sequence: RowSequence | None = synthesis.row_sequence
@@ -227,7 +230,7 @@ class SynthesisCollection(BaseCollection):
         if not reactant_row_ids and synthesis.reactants:
             reactant_row_ids = [r.row_id for r in synthesis.reactants if r.row_id]
         if not reactant_row_ids:
-            return
+            return synthesis
 
         self.update_reactant_row_values(
             synthesis_id=synthesis_id,
@@ -264,6 +267,7 @@ class SynthesisCollection(BaseCollection):
                 ]
             },
         )
+        return self.get_by_id(id=synthesis_id)
 
     def _send_patch(self, *, synthesis_id: SynthesisId, payload: dict[str, Any]) -> None:
         """
