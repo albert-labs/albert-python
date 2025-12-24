@@ -1,12 +1,16 @@
+import mimetypes
 import re
+import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from enum import Enum
+from pathlib import Path
 
 import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.files import FileCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -26,10 +30,12 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
 from albert.exceptions import NotFoundError
+from albert.resources.files import FileNamespace
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
     DataEntity,
+    ImagePropertyValue,
     InventoryDataColumn,
     InventoryPropertyData,
     InventoryPropertyDataCreate,
@@ -377,12 +383,12 @@ class PropertyDataCollection(BaseCollection):
             A list of TaskPropertyData entities representing the properties within the task.
         """
         if len(patch_payload) > 0:
+            resolved_payload = self._resolve_patch_payload(
+                task_id=task_id, patch_payload=patch_payload
+            )
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
-                json=[
-                    x.model_dump(exclude_none=True, by_alias=True, mode="json")
-                    for x in patch_payload
-                ],
+                json=resolved_payload,
             )
         return self._resolve_return_scope(
             task_id=task_id,
@@ -440,12 +446,17 @@ class PropertyDataCollection(BaseCollection):
             "history": "true",
         }
         params = {k: v for k, v in params.items() if v is not None}
+        payload = (
+            self._resolve_task_property_payload(task_id=task_id, properties=properties)
+            if any(isinstance(prop.value, ImagePropertyValue) for prop in properties)
+            else [x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties]
+        )
         response = self.session.post(
             url=f"{self.base_path}/{task_id}",
-            json=[x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties],
+            json=payload,
             params=params,
         )
-
+        print(response.json())
         registered_properties = [
             TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
         ]
@@ -515,6 +526,7 @@ class PropertyDataCollection(BaseCollection):
             The updated or newly created task properties.
 
         """
+
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
@@ -536,6 +548,53 @@ class PropertyDataCollection(BaseCollection):
                     block_id=block_id,
                     lot_id=lot_id,
                 )
+            if any(isinstance(prop.value, ImagePropertyValue) for prop in new_values):
+                params = {
+                    "blockId": block_id,
+                    "inventoryId": inventory_id,
+                }
+                params = {k: v for k, v in params.items() if v is not None}
+                payload = self._resolve_task_property_payload(
+                    task_id=task_id, properties=new_values
+                )
+                from rich import print
+
+                print(payload)
+                response = self.session.post(
+                    url=f"{self.base_path}/{task_id}",
+                    json=payload,
+                    params=params,
+                )
+                registered_properties = [
+                    TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
+                ]
+                existing_data_rows = self.get_task_block_properties(
+                    inventory_id=inventory_id,
+                    task_id=task_id,
+                    block_id=block_id,
+                    lot_id=lot_id,
+                )
+                patches = self._form_calculated_task_property_patches(
+                    existing_data_rows=existing_data_rows,
+                    properties=registered_properties,
+                )
+                if len(patches) > 0:
+                    return self.update_property_on_task(
+                        task_id=task_id,
+                        patch_payload=patches,
+                        return_scope=return_scope,
+                        inventory_id=inventory_id,
+                        block_id=block_id,
+                        lot_id=lot_id,
+                    )
+                return self._resolve_return_scope(
+                    task_id=task_id,
+                    return_scope=return_scope,
+                    inventory_id=inventory_id,
+                    block_id=block_id,
+                    lot_id=lot_id,
+                    prefetched_block=existing_data_rows,
+                )
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
@@ -554,7 +613,64 @@ class PropertyDataCollection(BaseCollection):
                 lot_id=lot_id,
             )
 
-    @validate_call
+    def _resolve_image_property_value(
+        self, *, task_id: TaskId, image_value: ImagePropertyValue
+    ) -> dict:
+        resolved_path = Path(image_value.file_path).expanduser()
+        if not resolved_path.exists() or not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'.")
+        upload_ext = resolved_path.suffix.lower()
+        if not upload_ext:
+            raise ValueError("File extension is required for image property data.")
+
+        upload_key = f"imagedata/original/{task_id}/{uuid.uuid4().hex[:10]}{upload_ext}"
+        file_name = resolved_path.name
+        content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        file_collection = FileCollection(session=self.session)
+        with resolved_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=upload_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+            )
+
+        return {
+            "fileName": file_name,
+            "s3Key": {
+                "original": upload_key,
+                "thumb": upload_key,
+                "preview": upload_key,
+            },
+        }
+
+    def _resolve_task_property_payload(
+        self, *, task_id: TaskId, properties: list[TaskPropertyCreate]
+    ) -> list[dict]:
+        payload = []
+        for prop in properties:
+            prop_payload = prop.model_dump(exclude_none=True, by_alias=True, mode="json")
+            if isinstance(prop.value, ImagePropertyValue):
+                prop_payload["value"] = self._resolve_image_property_value(
+                    task_id=task_id, image_value=prop.value
+                )
+            payload.append(prop_payload)
+        return payload
+
+    def _resolve_patch_payload(
+        self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
+    ) -> list[dict]:
+        resolved_payload = []
+        for patch in patch_payload:
+            if isinstance(patch.new_value, ImagePropertyValue):
+                patch.new_value = self._resolve_image_property_value(
+                    task_id=task_id, image_value=patch.new_value
+                )
+            resolved_payload.append(
+                patch.model_dump(exclude_none=True, by_alias=True, mode="json")
+            )
+        return resolved_payload
+
     def bulk_load_task_properties(
         self,
         *,
@@ -726,32 +842,68 @@ class PropertyDataCollection(BaseCollection):
         new_properties = []
 
         for prop in properties:
-            if prop.trial_number is None:
+            resolved_trial_number = self._resolve_trial_number(
+                prop=prop, existing_data_rows=existing_data_rows
+            )
+            if resolved_trial_number is None:
                 new_properties.append(prop)
                 continue
 
-            prop_patches = self._process_property(prop, existing_data_rows)
-            if prop_patches:
-                patches.extend(prop_patches)
-            else:
-                new_properties.append(prop)
+            prop_patches = self._process_property(
+                prop, existing_data_rows, trial_number=resolved_trial_number
+            )
+            if prop_patches is not None:
+                if prop_patches:
+                    patches.extend(prop_patches)
+                continue
+            new_properties.append(prop)
         return patches, new_properties
 
     def _process_property(
-        self, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
+        self,
+        prop: TaskPropertyCreate,
+        existing_data_rows: TaskPropertyData,
+        trial_number: int,
     ) -> list | None:
         for interval in existing_data_rows.data:
             if interval.interval_combination != prop.interval_combination:
                 continue
 
             for trial in interval.trials:
-                if trial.trial_number != prop.trial_number:
+                if trial.trial_number != trial_number:
                     continue
 
                 trial_patches = self._process_trial(trial, prop)
-                if trial_patches:
+                if trial_patches is not None:
                     return trial_patches
 
+        return None
+
+    def _resolve_trial_number(
+        self, *, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
+    ) -> int | None:
+        if prop.trial_number is not None:
+            return prop.trial_number
+
+        visible_trial_number = prop.visible_trial_number
+        if visible_trial_number is None:
+            return None
+        if isinstance(visible_trial_number, str):
+            try:
+                visible_trial_number = int(visible_trial_number)
+            except ValueError:
+                return None
+
+        matching_trials = []
+        for interval in existing_data_rows.data:
+            if interval.interval_combination != prop.interval_combination:
+                continue
+            for trial in interval.trials:
+                if trial.visible_trial_number == visible_trial_number:
+                    matching_trials.append(trial.trial_number)
+
+        if len(matching_trials) == 1:
+            return matching_trials[0]
         return None
 
     def _process_trial(self, trial: Trial, prop: TaskPropertyCreate) -> list | None:
@@ -761,9 +913,19 @@ class PropertyDataCollection(BaseCollection):
                 == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
                 and data_column.property_data is not None
             ):
+                if isinstance(prop.value, ImagePropertyValue):
+                    return [
+                        PropertyDataPatchDatum(
+                            id=data_column.property_data.id,
+                            operation=PatchOperation.UPDATE,
+                            attribute="value",
+                            new_value=prop.value,
+                            old_value=data_column.property_data.value,
+                        )
+                    ]
                 if data_column.property_data.value == prop.value:
-                    # No need to update this value
-                    return None
+                    # Row exists with the same value; no patch needed.
+                    return []
                 return [
                     PropertyDataPatchDatum(
                         id=data_column.property_data.id,
