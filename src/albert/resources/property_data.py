@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
@@ -205,6 +206,19 @@ class TaskPropertyValue(BaseAlbertModel):
     value: str | None = Field(default=None)
 
 
+class ImagePropertyValue(BaseAlbertModel):
+    """
+    Image property value input.
+
+    Attributes
+    ----------
+    file_path : str | Path
+        Local path to the image file to upload.
+    """
+
+    file_path: str | Path
+
+
 class TaskDataColumn(BaseAlbertModel):
     data_column_id: DataColumnId = Field(alias="id")
     column_sequence: str | None = Field(default=None, alias="columnId")
@@ -265,7 +279,10 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | None = Field(default=None, description="The value of the task property.")
+    value: str | ImagePropertyValue | None = Field(
+        default=None,
+        description="The value of the task property. Use ImagePropertyValue for image data columns.",
+    )
     trial_number: int = Field(
         alias="trialNo",
         default=None,
