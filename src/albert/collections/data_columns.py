@@ -7,6 +7,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import DataColumnId
+from albert.core.utils import ensure_list
 from albert.resources.data_columns import DataColumn
 
 
@@ -104,10 +105,10 @@ class DataColumnCollection(BaseCollection):
         params = {
             "orderBy": order_by.value,
             "startKey": start_key,
-            "name": [name] if isinstance(name, str) else name,
+            "name": ensure_list(name),
             "exactMatch": exact_match,
             "default": default,
-            "dataColumns": [ids] if isinstance(ids, str) else ids,
+            "dataColumns": ensure_list(ids),
         }
 
         return AlbertPaginator(

@@ -26,6 +26,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
+from albert.core.utils import ensure_list
 from albert.exceptions import NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
@@ -981,10 +982,7 @@ class PropertyDataCollection(BaseCollection):
         def deserialize(items: list[dict]) -> list[PropertyDataSearchItem]:
             return [PropertyDataSearchItem.model_validate(x) for x in items]
 
-        def ensure_list(v):
-            if v is None:
-                return None
-            return [v] if isinstance(v, str | Enum) else v
+        category_values = ensure_list(category)
 
         params = {
             "result": result,
@@ -996,7 +994,11 @@ class PropertyDataCollection(BaseCollection):
             "lotIds": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
-            "category": [c.value for c in ensure_list(category)] if category else None,
+            "category": (
+                [c.value if isinstance(c, Enum) else c for c in category_values]
+                if category_values
+                else None
+            ),
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),
