@@ -32,6 +32,11 @@ class CSVMapping(BaseAlbertModel):
     )
 
 
+class Axis(str, Enum):
+    X = "X"
+    Y = "Y"
+
+
 class CurveDBMetadata(BaseAlbertModel):
     table_name: str | None = Field(default=None, alias="tableName")
     partition_key: str | None = Field(default=None, alias="partitionKey")
@@ -49,11 +54,6 @@ class StorageKeyReference(BaseAlbertModel):
 class JobSummary(BaseAlbertModel):
     id: str | None = None
     state: str | None = None
-
-
-class Axis(str, Enum):
-    X = "X"
-    Y = "Y"
 
 
 class CurveDataEntityLink(EntityLinkWithName):
@@ -105,11 +105,6 @@ class DataColumnValue(BaseResource):
         elif self.data_column_id is None:
             self.data_column_id = self.data_column.id
         return self
-
-
-class Axis(str, Enum):
-    X = "X"
-    Y = "Y"
 
 
 class DataTemplate(BaseTaggedResource):

@@ -178,8 +178,15 @@ def prepare_curve_input_attachment(
     file_path: str | Path | None,
     attachment_id: AttachmentId | None,
     require_signed_url: bool,
+    parent_id: str | None = None,
+    upload_key: str | None = None,
+    auto_upload_key: bool = True,
 ) -> Attachment:
-    """Resolve the input attachment, uploading a file when required, and validate it."""
+    """Resolve the input attachment, uploading a file when required, and validate it.
+
+    When ``parent_id`` is provided, the attachment is created under that parent.
+    Set ``auto_upload_key=False`` to skip curve-input key generation.
+    """
 
     if (attachment_id is None) == (file_path is None):
         raise ValueError("Provide exactly one of 'attachment_id' or 'file_path'.")
@@ -188,7 +195,6 @@ def prepare_curve_input_attachment(
     normalized_extensions = {ext.lower().lstrip(".") for ext in allowed_extensions if ext}
     display_extensions = sorted(allowed_extensions) if allowed_extensions else []
 
-    upload_key: str | None = None
     resolved_path: Path | None = None
     if file_path is not None:
         resolved_path = Path(file_path)
@@ -196,12 +202,15 @@ def prepare_curve_input_attachment(
         if not suffix:
             derived_extension = determine_extension(filename=resolved_path.name)
             suffix = f".{derived_extension}" if derived_extension else ""
-        upload_key = f"curve-input/{data_template_id}/{column_id}/{uuid.uuid4().hex[:10]}{suffix}"
+        if auto_upload_key and upload_key is None:
+            upload_key = (
+                f"curve-input/{data_template_id}/{column_id}/{uuid.uuid4().hex[:10]}{suffix}"
+            )
 
     resolved_attachment_id = AttachmentId(
         resolve_attachment(
             attachment_collection=attachment_collection,
-            task_id=data_template_id,
+            task_id=parent_id or data_template_id,
             file_path=resolved_path or file_path,
             attachment_id=str(attachment_id) if attachment_id else None,
             allowed_extensions=normalized_extensions,
@@ -239,6 +248,8 @@ def exec_curve_script(
     raw_attachment: Attachment,
     file_collection: "FileCollection",
     script_attachment_signed_url: str,
+    task_id: str | None = None,
+    block_id: str | None = None,
 ) -> tuple[str, dict[str, str]]:
     """Execute the curve preprocessing script and return the processed key and column headers."""
 
@@ -246,14 +257,24 @@ def exec_curve_script(
     if not raw_signed_url:
         raise ValueError("Curve input attachment does not include a signed URL.")
 
-    processed_input_key = f"curve-input/{data_template_id}/{column_id}/{uuid.uuid4().hex}.csv"
+    if task_id and block_id:
+        processed_input_key = (
+            f"curve-input/{task_id}/{block_id}/{data_template_id}/"
+            f"{column_id}/{uuid.uuid4().hex[:10]}.csv"
+        )
+    else:
+        processed_input_key = f"curve-input/{data_template_id}/{column_id}/{uuid.uuid4().hex}.csv"
     content_type = raw_attachment.mime_type or "text/csv"
     upload_url = file_collection.get_signed_upload_url(
         name=processed_input_key,
         namespace=FileNamespace.RESULT,
         content_type=content_type,
     )
-    metadata_payload = TaskMetadata(filename=raw_attachment.name or "", task_id=data_template_id)
+    metadata_payload = TaskMetadata(
+        filename=raw_attachment.name or "",
+        task_id=task_id or data_template_id,
+        block_id=block_id,
+    )
     csv_payload = CsvCurveInput(
         script_s3_url=script_attachment_signed_url,
         data_s3_url=raw_signed_url,
@@ -326,13 +347,24 @@ def create_curve_import_job(
     csv_mapping: dict[str, str],
     raw_attachment: Attachment,
     processed_input_key: str,
+    task_id: str | None = None,
+    block_id: str | None = None,
 ) -> tuple[str, str, str]:
     """Create the curve import job and wait for completion."""
     partition_uuid = str(uuid.uuid4())
-    s3_output_key = (
-        f"curve-output/{data_template_id}/{column_id}/"
-        f"parentid=null/blockid=null/datatemplateid={data_template_id}/uuid={partition_uuid}"
-    )
+    if (task_id is None) != (block_id is None):
+        raise ValueError("task_id and block_id must be provided together for curve imports.")
+    if task_id and block_id:
+        s3_output_key = (
+            f"curve-output/{data_template_id}/{column_id}/"
+            f"parentid={task_id}/blockid={block_id}/"
+            f"datatemplateid={data_template_id}/uuid={partition_uuid}"
+        )
+    else:
+        s3_output_key = (
+            f"curve-output/{data_template_id}/{column_id}/"
+            f"parentid=null/blockid=null/datatemplateid={data_template_id}/uuid={partition_uuid}"
+        )
     namespace = raw_attachment.namespace or "result"
     worker_metadata = WorkerJobMetadata(
         parent_type="DAT",

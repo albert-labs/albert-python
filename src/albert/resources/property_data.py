@@ -21,7 +21,12 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.core.shared.types import SerializeAsEntityLink
-from albert.resources.data_templates import DataTemplate
+from albert.resources.data_templates import (
+    CurveDBMetadata,
+    DataTemplate,
+    ImportMode,
+    StorageKeyReference,
+)
 from albert.resources.lots import Lot
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
@@ -219,6 +224,38 @@ class ImagePropertyValue(BaseAlbertModel):
     file_path: str | Path
 
 
+class CurvePropertyValue(BaseAlbertModel):
+    """
+    Curve property value input.
+
+    Attributes
+    ----------
+    file_path : str | Path
+        Local path to the CSV file containing curve data.
+    mode : ImportMode
+        Import mode for the curve data.
+    field_mapping : dict[str, str] | None
+        Optional mapping from CSV headers to curve result identifiers.
+    """
+
+    file_path: str | Path
+    mode: ImportMode = ImportMode.CSV
+    field_mapping: dict[str, str] | None = None
+
+
+class ImagePropertyValuePayload(BaseAlbertModel):
+    file_name: str = Field(alias="fileName")
+    s3_key: StorageKeyReference = Field(alias="s3Key")
+
+
+class CurvePropertyValuePayload(BaseAlbertModel):
+    file_name: str = Field(alias="fileName")
+    s3_key: StorageKeyReference = Field(alias="s3Key")
+    job_id: str = Field(alias="jobId")
+    csv_mapping: dict[str, str] = Field(alias="csvMapping")
+    athena: CurveDBMetadata
+
+
 class TaskDataColumn(BaseAlbertModel):
     data_column_id: DataColumnId = Field(alias="id")
     column_sequence: str | None = Field(default=None, alias="columnId")
@@ -279,9 +316,12 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | ImagePropertyValue | None = Field(
+    value: str | ImagePropertyValue | CurvePropertyValue | None = Field(
         default=None,
-        description="The value of the task property. Use ImagePropertyValue for image data columns.",
+        description=(
+            "The value of the task property. Use ImagePropertyValue for image data columns or "
+            "CurvePropertyValue for curve data columns."
+        ),
     )
     trial_number: int = Field(
         alias="trialNo",

@@ -1,16 +1,11 @@
-import mimetypes
-import re
-import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from enum import Enum
-from pathlib import Path
 
 import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.files import FileCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -27,13 +22,12 @@ from albert.core.shared.identifiers import (
     TaskId,
     UserId,
 )
-from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
 from albert.exceptions import NotFoundError
-from albert.resources.files import FileNamespace
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
+    CurvePropertyValue,
     DataEntity,
     ImagePropertyValue,
     InventoryDataColumn,
@@ -41,14 +35,11 @@ from albert.resources.property_data import (
     InventoryPropertyDataCreate,
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
-    PropertyValue,
     ReturnScope,
-    TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
-    Trial,
 )
-from albert.resources.tasks import PropertyTask
+from albert.utils import property_data as property_data_utils
 
 
 class PropertyDataCollection(BaseCollection):
@@ -67,12 +58,6 @@ class PropertyDataCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{PropertyDataCollection._api_version}/propertydata"
-
-    @validate_call
-    def _get_task_from_id(self, *, id: TaskId) -> PropertyTask:
-        from albert.collections.tasks import TaskCollection
-
-        return TaskCollection(session=self.session).get_by_id(id=id)
 
     @validate_call
     def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
@@ -239,7 +224,7 @@ class PropertyDataCollection(BaseCollection):
         list[CheckPropertyData]
             A list of CheckPropertyData entities representing the data status of each block + inventory item of the task.
         """
-        task_info = self._get_task_from_id(id=task_id)
+        task_info = property_data_utils.get_task_from_id(session=self.session, id=task_id)
 
         params = {
             "entity": "block",
@@ -317,38 +302,6 @@ class PropertyDataCollection(BaseCollection):
         return all_info
 
     @validate_call
-    def _resolve_return_scope(
-        self,
-        *,
-        task_id: TaskId,
-        return_scope: ReturnScope,
-        inventory_id: InventoryId | None,
-        block_id: BlockId | None,
-        lot_id: LotId | None,
-        prefetched_block: TaskPropertyData | None = None,
-    ) -> list[TaskPropertyData]:
-        if return_scope == "task":
-            return self.get_all_task_properties(task_id=task_id)
-
-        if return_scope == "block":
-            if prefetched_block is not None:
-                return [prefetched_block]
-            if inventory_id is None or block_id is None:
-                raise ValueError(
-                    "inventory_id and block_id are required when return_scope='combo'."
-                )
-            return [
-                self.get_task_block_properties(
-                    inventory_id=inventory_id,
-                    task_id=task_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-            ]
-
-        return []
-
-    @validate_call
     def update_property_on_task(
         self,
         *,
@@ -383,19 +336,24 @@ class PropertyDataCollection(BaseCollection):
             A list of TaskPropertyData entities representing the properties within the task.
         """
         if len(patch_payload) > 0:
-            resolved_payload = self._resolve_patch_payload(
-                task_id=task_id, patch_payload=patch_payload
+            resolved_payload = property_data_utils.resolve_patch_payload(
+                session=self.session,
+                task_id=task_id,
+                patch_payload=patch_payload,
             )
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
                 json=resolved_payload,
             )
-        return self._resolve_return_scope(
+        return property_data_utils.resolve_return_scope(
             task_id=task_id,
             return_scope=return_scope,
             inventory_id=inventory_id,
             block_id=block_id,
             lot_id=lot_id,
+            prefetched_block=None,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
         )
 
     @validate_call
@@ -447,8 +405,16 @@ class PropertyDataCollection(BaseCollection):
         }
         params = {k: v for k, v in params.items() if v is not None}
         payload = (
-            self._resolve_task_property_payload(task_id=task_id, properties=properties)
-            if any(isinstance(prop.value, ImagePropertyValue) for prop in properties)
+            property_data_utils.resolve_task_property_payload(
+                session=self.session,
+                task_id=task_id,
+                block_id=block_id,
+                properties=properties,
+            )
+            if any(
+                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
+                for prop in properties
+            )
             else [x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties]
         )
         response = self.session.post(
@@ -456,15 +422,15 @@ class PropertyDataCollection(BaseCollection):
             json=payload,
             params=params,
         )
-        print(response.json())
         registered_properties = [
             TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
         ]
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        patches = self._form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows, properties=registered_properties
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=registered_properties,
         )
         if len(patches) > 0:
             return self.update_property_on_task(
@@ -476,13 +442,15 @@ class PropertyDataCollection(BaseCollection):
                 lot_id=lot_id,
             )
 
-        return self._resolve_return_scope(
+        return property_data_utils.resolve_return_scope(
             task_id=task_id,
             return_scope=return_scope,
             inventory_id=inventory_id,
             block_id=block_id,
             lot_id=lot_id,
             prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
         )
 
     @validate_call
@@ -530,12 +498,17 @@ class PropertyDataCollection(BaseCollection):
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        update_patches, new_values = self._form_existing_row_value_patches(
-            existing_data_rows=existing_data_rows, properties=properties
+        update_patches, new_values = property_data_utils.form_existing_row_value_patches(
+            session=self.session,
+            task_id=task_id,
+            block_id=block_id,
+            existing_data_rows=existing_data_rows,
+            properties=properties,
         )
 
-        calculated_patches = self._form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows, properties=properties
+        calculated_patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=properties,
         )
         all_patches = update_patches + calculated_patches
         if len(new_values) > 0:
@@ -548,18 +521,21 @@ class PropertyDataCollection(BaseCollection):
                     block_id=block_id,
                     lot_id=lot_id,
                 )
-            if any(isinstance(prop.value, ImagePropertyValue) for prop in new_values):
+            if any(
+                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
+                for prop in new_values
+            ):
                 params = {
                     "blockId": block_id,
                     "inventoryId": inventory_id,
                 }
                 params = {k: v for k, v in params.items() if v is not None}
-                payload = self._resolve_task_property_payload(
-                    task_id=task_id, properties=new_values
+                payload = property_data_utils.resolve_task_property_payload(
+                    session=self.session,
+                    task_id=task_id,
+                    block_id=block_id,
+                    properties=new_values,
                 )
-                from rich import print
-
-                print(payload)
                 response = self.session.post(
                     url=f"{self.base_path}/{task_id}",
                     json=payload,
@@ -574,7 +550,7 @@ class PropertyDataCollection(BaseCollection):
                     block_id=block_id,
                     lot_id=lot_id,
                 )
-                patches = self._form_calculated_task_property_patches(
+                patches = property_data_utils.form_calculated_task_property_patches(
                     existing_data_rows=existing_data_rows,
                     properties=registered_properties,
                 )
@@ -587,13 +563,15 @@ class PropertyDataCollection(BaseCollection):
                         block_id=block_id,
                         lot_id=lot_id,
                     )
-                return self._resolve_return_scope(
+                return property_data_utils.resolve_return_scope(
                     task_id=task_id,
                     return_scope=return_scope,
                     inventory_id=inventory_id,
                     block_id=block_id,
                     lot_id=lot_id,
                     prefetched_block=existing_data_rows,
+                    get_all_task_properties=self.get_all_task_properties,
+                    get_task_block_properties=self.get_task_block_properties,
                 )
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
@@ -612,64 +590,6 @@ class PropertyDataCollection(BaseCollection):
                 block_id=block_id,
                 lot_id=lot_id,
             )
-
-    def _resolve_image_property_value(
-        self, *, task_id: TaskId, image_value: ImagePropertyValue
-    ) -> dict:
-        resolved_path = Path(image_value.file_path).expanduser()
-        if not resolved_path.exists() or not resolved_path.is_file():
-            raise FileNotFoundError(f"File not found at '{resolved_path}'.")
-        upload_ext = resolved_path.suffix.lower()
-        if not upload_ext:
-            raise ValueError("File extension is required for image property data.")
-
-        upload_key = f"imagedata/original/{task_id}/{uuid.uuid4().hex[:10]}{upload_ext}"
-        file_name = resolved_path.name
-        content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
-        file_collection = FileCollection(session=self.session)
-        with resolved_path.open("rb") as file_handle:
-            file_collection.sign_and_upload_file(
-                data=file_handle,
-                name=upload_key,
-                namespace=FileNamespace.RESULT,
-                content_type=content_type,
-            )
-
-        return {
-            "fileName": file_name,
-            "s3Key": {
-                "original": upload_key,
-                "thumb": upload_key,
-                "preview": upload_key,
-            },
-        }
-
-    def _resolve_task_property_payload(
-        self, *, task_id: TaskId, properties: list[TaskPropertyCreate]
-    ) -> list[dict]:
-        payload = []
-        for prop in properties:
-            prop_payload = prop.model_dump(exclude_none=True, by_alias=True, mode="json")
-            if isinstance(prop.value, ImagePropertyValue):
-                prop_payload["value"] = self._resolve_image_property_value(
-                    task_id=task_id, image_value=prop.value
-                )
-            payload.append(prop_payload)
-        return payload
-
-    def _resolve_patch_payload(
-        self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
-    ) -> list[dict]:
-        resolved_payload = []
-        for patch in patch_payload:
-            if isinstance(patch.new_value, ImagePropertyValue):
-                patch.new_value = self._resolve_image_property_value(
-                    task_id=task_id, image_value=patch.new_value
-                )
-            resolved_payload.append(
-                patch.model_dump(exclude_none=True, by_alias=True, mode="json")
-            )
-        return resolved_payload
 
     def bulk_load_task_properties(
         self,
@@ -730,51 +650,18 @@ class PropertyDataCollection(BaseCollection):
             {x.data_column_name: x.data_series for x in property_data.columns}
         )
 
-        def _get_column_map(dataframe: pd.DataFrame, property_data: TaskPropertyData):
-            data_col_info = property_data.data[0].trials[0].data_columns  # PropertyValue
-            column_map = {}
-            for col in dataframe.columns:
-                column = [x for x in data_col_info if x.name == col]
-                if len(column) == 1:
-                    column_map[col] = column[0]
-                else:
-                    raise ValueError(
-                        f"Column '{col}' not found in block data columns or multiple matches found."
-                    )
-            return column_map
-
-        def _df_to_task_prop_create_list(
-            dataframe: pd.DataFrame,
-            column_map: dict[str, PropertyValue],
-            data_template_id: DataTemplateId,
-        ) -> list[TaskPropertyCreate]:
-            task_prop_create_list = []
-            for i, row in dataframe.iterrows():
-                for col_name, col_info in column_map.items():
-                    if col_name not in dataframe.columns:
-                        raise ValueError(f"Column '{col_name}' not found in DataFrame.")
-
-                    task_prop_create = TaskPropertyCreate(
-                        data_column=TaskDataColumn(
-                            data_column_id=col_info.id,
-                            column_sequence=col_info.sequence,
-                        ),
-                        value=str(row[col_name]),
-                        visible_trial_number=i + 1,
-                        interval_combination=interval,
-                        data_template=EntityLink(id=data_template_id),
-                    )
-                    task_prop_create_list.append(task_prop_create)
-            return task_prop_create_list
-
         task_prop_data = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        column_map = _get_column_map(property_df, task_prop_data)
-        all_task_prop_create = _df_to_task_prop_create_list(
+        column_map = property_data_utils._get_column_map(
+            dataframe=property_df,
+            property_data=task_prop_data,
+        )
+        all_task_prop_create = property_data_utils._df_to_task_prop_create_list(
             dataframe=property_df,
             column_map=column_map,
             data_template_id=task_prop_data.data_template.id,
+            interval=interval,
         )
         with suppress(NotFoundError):
             # This is expected if the task is new and has no data yet.
@@ -832,233 +719,6 @@ class PropertyDataCollection(BaseCollection):
         }
         params = {k: v for k, v in params.items() if v is not None}
         self.session.delete(f"{self.base_path}/{task_id}", params=params)
-
-    ################### Methods to support Updated Row Value patches #################
-
-    def _form_existing_row_value_patches(
-        self, *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
-    ):
-        patches = []
-        new_properties = []
-
-        for prop in properties:
-            resolved_trial_number = self._resolve_trial_number(
-                prop=prop, existing_data_rows=existing_data_rows
-            )
-            if resolved_trial_number is None:
-                new_properties.append(prop)
-                continue
-
-            prop_patches = self._process_property(
-                prop, existing_data_rows, trial_number=resolved_trial_number
-            )
-            if prop_patches is not None:
-                if prop_patches:
-                    patches.extend(prop_patches)
-                continue
-            new_properties.append(prop)
-        return patches, new_properties
-
-    def _process_property(
-        self,
-        prop: TaskPropertyCreate,
-        existing_data_rows: TaskPropertyData,
-        trial_number: int,
-    ) -> list | None:
-        for interval in existing_data_rows.data:
-            if interval.interval_combination != prop.interval_combination:
-                continue
-
-            for trial in interval.trials:
-                if trial.trial_number != trial_number:
-                    continue
-
-                trial_patches = self._process_trial(trial, prop)
-                if trial_patches is not None:
-                    return trial_patches
-
-        return None
-
-    def _resolve_trial_number(
-        self, *, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
-    ) -> int | None:
-        if prop.trial_number is not None:
-            return prop.trial_number
-
-        visible_trial_number = prop.visible_trial_number
-        if visible_trial_number is None:
-            return None
-        if isinstance(visible_trial_number, str):
-            try:
-                visible_trial_number = int(visible_trial_number)
-            except ValueError:
-                return None
-
-        matching_trials = []
-        for interval in existing_data_rows.data:
-            if interval.interval_combination != prop.interval_combination:
-                continue
-            for trial in interval.trials:
-                if trial.visible_trial_number == visible_trial_number:
-                    matching_trials.append(trial.trial_number)
-
-        if len(matching_trials) == 1:
-            return matching_trials[0]
-        return None
-
-    def _process_trial(self, trial: Trial, prop: TaskPropertyCreate) -> list | None:
-        for data_column in trial.data_columns:
-            if (
-                data_column.data_column_unique_id
-                == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
-                and data_column.property_data is not None
-            ):
-                if isinstance(prop.value, ImagePropertyValue):
-                    return [
-                        PropertyDataPatchDatum(
-                            id=data_column.property_data.id,
-                            operation=PatchOperation.UPDATE,
-                            attribute="value",
-                            new_value=prop.value,
-                            old_value=data_column.property_data.value,
-                        )
-                    ]
-                if data_column.property_data.value == prop.value:
-                    # Row exists with the same value; no patch needed.
-                    return []
-                return [
-                    PropertyDataPatchDatum(
-                        id=data_column.property_data.id,
-                        operation=PatchOperation.UPDATE,
-                        attribute="value",
-                        new_value=prop.value,
-                        old_value=data_column.property_data.value,
-                    )
-                ]
-
-        return None
-
-    ################### Methods to support calculated value patches ##################
-
-    def _form_calculated_task_property_patches(
-        self, *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
-    ):
-        patches = []
-        covered_interval_trials = set()
-        first_row_data_column = existing_data_rows.data[0].trials[0].data_columns
-        columns_used_in_calculations = self._get_all_columns_used_in_calculations(
-            first_row_data_column=first_row_data_column
-        )
-        for posted_prop in properties:
-            this_interval_trial = f"{posted_prop.interval_combination}-{posted_prop.trial_number}"
-            if (
-                this_interval_trial in covered_interval_trials
-                or posted_prop.data_column.column_sequence not in columns_used_in_calculations
-            ):
-                continue  # we don't need to worry about it hence we skip
-            on_platform_row = self._get_on_platform_row(
-                existing_data_rows=existing_data_rows,
-                trial_number=posted_prop.trial_number,
-                interval_combination=posted_prop.interval_combination,
-            )
-            if on_platform_row is not None:
-                these_patches = self._generate_data_patch_payload(trial=on_platform_row)
-                patches.extend(these_patches)
-            covered_interval_trials.add(this_interval_trial)
-        return patches
-
-    def _get_on_platform_row(
-        self, *, existing_data_rows: TaskPropertyData, interval_combination: str, trial_number: int
-    ):
-        for interval in existing_data_rows.data:
-            if interval.interval_combination == interval_combination:
-                for trial in interval.trials:
-                    if trial.trial_number == trial_number:
-                        return trial
-        return None
-
-    def _get_columns_used_in_calculation(self, *, calculation: str | None, used_columns: set[str]):
-        if calculation is None:
-            return used_columns
-        column_pattern = r"COL\d+"
-        matches = re.findall(column_pattern, calculation)
-        used_columns.update(set(matches))
-        return used_columns
-
-    def _get_all_columns_used_in_calculations(self, *, first_row_data_column: list[PropertyValue]):
-        used_columns = set()
-        for calc in [x.calculation for x in first_row_data_column]:
-            used_columns = self._get_columns_used_in_calculation(
-                calculation=calc, used_columns=used_columns
-            )
-        return used_columns
-
-    def _evaluate_calculation(self, *, calculation: str, column_values: dict) -> float | None:
-        calculation = calculation.lstrip("=")  # Remove '=' at the start of the calculation
-        try:
-            if column_values:
-                # Replace column names with their numeric values in the calculation string.
-                # Regex ensures COL1 does not accidentally match COL10, etc.
-                escaped_cols = [re.escape(col) for col in column_values]
-                pattern = re.compile(rf"\b({'|'.join(escaped_cols)})\b")
-
-                def repl(match: re.Match) -> str:
-                    col = match.group(0)
-                    return str(column_values.get(col, match.group(0)))
-
-                calculation = pattern.sub(repl, calculation)
-
-            calculation = calculation.replace(
-                "^", "**"
-            )  # Replace '^' with '**' for exponentiation
-            # Evaluate the resulting expression
-            return eval(calculation)
-        except Exception as e:
-            logger.info(
-                f"Error evaluating calculation '{calculation}': {e}. Likely do not have all values needed."
-            )
-            return None
-
-    def _generate_data_patch_payload(self, *, trial: Trial) -> list[PropertyDataPatchDatum]:
-        column_values = {
-            col.sequence: col.property_data.value
-            for col in trial.data_columns
-            if col.property_data is not None
-        }
-
-        patch_data = []
-        for column in trial.data_columns:
-            if column.calculation:
-                # Evaluate the recalculated value
-                recalculated_value = self._evaluate_calculation(
-                    calculation=column.calculation, column_values=column_values
-                )
-                if recalculated_value is not None:
-                    # Determine whether this is an ADD or UPDATE operation
-                    if column.property_data.value is None:  # No existing value
-                        patch_data.append(
-                            PropertyDataPatchDatum(
-                                id=column.property_data.id,
-                                operation=PatchOperation.ADD,
-                                attribute="value",
-                                new_value=recalculated_value,
-                                old_value=None,
-                            )
-                        )
-                    elif str(column.property_data.value) != str(
-                        recalculated_value
-                    ):  # Existing value differs
-                        patch_data.append(
-                            PropertyDataPatchDatum(
-                                id=column.property_data.id,
-                                operation=PatchOperation.UPDATE,
-                                attribute="value",
-                                new_value=recalculated_value,
-                                old_value=column.property_data.value,
-                            )
-                        )
-
-        return patch_data
 
     @validate_call
     def search(
