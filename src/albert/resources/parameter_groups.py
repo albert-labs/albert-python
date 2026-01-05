@@ -39,6 +39,7 @@ class Operator(str, Enum):
     GREATER_THAN_OR_EQUAL = "gte"
     GREATER_THAN = "gt"
     EQUALS = "eq"
+    NOT_EQUALS = "neq"
 
 
 class EnumValidationValue(BaseAlbertModel):
@@ -64,9 +65,9 @@ class EnumValidationValue(BaseAlbertModel):
 class ValueValidation(BaseAlbertModel):
     # We may want to abstract this out if we end up reusing on Data Templates
     datatype: DataType = Field(...)
-    value: str | list[EnumValidationValue] | None = Field(default=None)
-    min: str | None = Field(default=None)
-    max: str | None = Field(default=None)
+    value: float | int | str | list[EnumValidationValue] | None = Field(default=None)
+    min: int | str | None = Field(default=None)
+    max: int | str | None = Field(default=None)
     operator: Operator | None = Field(default=None)
 
 

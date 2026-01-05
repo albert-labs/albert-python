@@ -6,7 +6,7 @@ from albert.core.shared.types import MetadataItem
 
 class DataColumn(BaseResource):
     name: str
-    defalt: bool = False
+    default: bool = False
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
 
     id: str = Field(default=None, alias="albertId")

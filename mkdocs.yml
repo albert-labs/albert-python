@@ -161,6 +161,7 @@ nav:
           - Product Design: collections/product_design.md
           - Projects: collections/projects.md
           - Property Data: collections/property_data.md
+          - Reference Attributes: collections/reference_attributes.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
           - Storage Classes: collections/storage_classes.md
@@ -204,6 +205,7 @@ nav:
           - Product Design: resources/product_design.md
           - Projects: resources/projects.md
           - Property Data: resources/property_data.md
+          - Reference Attributes: resources/reference_attributes.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
           - Storage Classes: resources/storage_classes.md

@@ -67,8 +67,14 @@ class AlbertPaginator(Iterator[ItemType]):
         while True:
             response = self.session.get(self.path, params=self.params)
             data = response.json()
-            items = data.get("Items", [])
+            items = data.get("Items")
+            if items is None:
+                items = data.get("items", [])
             item_count = len(items)
+
+            from rich import print
+
+            print(items)
 
             if not items and self.mode == PaginationMode.OFFSET:
                 return

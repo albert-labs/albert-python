@@ -32,6 +32,7 @@ from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
 from albert.collections.property_data import PropertyDataCollection
+from albert.collections.reference_attributes import ReferenceAttributeCollection
 from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
@@ -271,6 +272,10 @@ class Albert:
     @property
     def property_data(self) -> PropertyDataCollection:
         return PropertyDataCollection(session=self.session)
+
+    @property
+    def reference_attributes(self) -> ReferenceAttributeCollection:
+        return ReferenceAttributeCollection(session=self.session)
 
     @property
     def product_design(self) -> ProductDesignCollection:
