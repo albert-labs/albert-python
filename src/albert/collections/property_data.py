@@ -309,6 +309,7 @@ class PropertyDataCollection(BaseCollection):
             )
         return all_info
 
+    @validate_call
     def _resolve_return_scope(
         self,
         *,
@@ -552,6 +553,7 @@ class PropertyDataCollection(BaseCollection):
                 lot_id=lot_id,
             )
 
+    @validate_call
     def bulk_load_task_properties(
         self,
         *,
@@ -675,6 +677,7 @@ class PropertyDataCollection(BaseCollection):
             return_scope=return_scope,
         )
 
+    @validate_call
     def bulk_delete_task_data(
         self,
         *,

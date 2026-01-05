@@ -48,6 +48,7 @@ class WorksheetCollection(BaseCollection):
         response_json = self._add_session_to_sheets(response_json)
         return Worksheet(**response_json)
 
+    @validate_call
     def setup_worksheet(self, *, project_id: ProjectId, add_sheet=False) -> Worksheet:
         """Setup a new worksheet for a project.
 
@@ -69,6 +70,7 @@ class WorksheetCollection(BaseCollection):
         self.session.post(path, json=params)
         return self.get_by_project_id(project_id=project_id)
 
+    @validate_call
     def setup_new_sheet_from_template(
         self, *, project_id: ProjectId, sheet_template_id: str, sheet_name: str
     ) -> Worksheet:
@@ -94,6 +96,7 @@ class WorksheetCollection(BaseCollection):
         self.session.post(path, json=payload, params=params)
         return self.get_by_project_id(project_id=project_id)
 
+    @validate_call
     def add_sheet(self, *, project_id: ProjectId, sheet_name: str) -> Worksheet:
         """Create a new blank sheet in the Worksheet with the specified name.
 

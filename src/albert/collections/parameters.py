@@ -98,6 +98,7 @@ class ParameterCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
+    @validate_call
     def get_all(
         self,
         *,

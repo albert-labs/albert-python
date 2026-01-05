@@ -1,5 +1,7 @@
 from collections.abc import Iterator
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
@@ -41,6 +43,7 @@ class EntityTypeCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{EntityTypeCollection._api_version}/entitytypes"
 
+    @validate_call
     def get_by_id(self, *, id: EntityTypeId) -> EntityType:
         """Get an entity type by its ID.
         Parameters
@@ -203,6 +206,7 @@ class EntityTypeCollection(BaseCollection):
 
         return patches
 
+    @validate_call
     def delete(self, *, id: EntityTypeId) -> None:
         """Delete an entity type.
         Parameters
@@ -212,6 +216,7 @@ class EntityTypeCollection(BaseCollection):
         """
         self.session.delete(f"{self.base_path}/{id}")
 
+    @validate_call
     def get_rules(self, *, id: EntityTypeId) -> list[EntityTypeRule]:
         """Get the rules for an entity type.
         Parameters
@@ -222,6 +227,7 @@ class EntityTypeCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/rules/{id}")
         return [EntityTypeRule(**rule) for rule in response.json()]
 
+    @validate_call
     def set_rules(self, *, id: EntityTypeId, rules: list[EntityTypeRule]) -> list[EntityTypeRule]:
         """Create or update the rules for an entity type.
         Parameters
@@ -241,6 +247,7 @@ class EntityTypeCollection(BaseCollection):
         )
         return [EntityTypeRule(**rule) for rule in response.json()]
 
+    @validate_call
     def delete_rules(self, *, id: EntityTypeId) -> None:
         """Delete the rules for an entity type.
         Parameters

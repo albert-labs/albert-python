@@ -1,5 +1,7 @@
 from typing import Any
 
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import ReportId
@@ -136,6 +138,7 @@ class ReportCollection(BaseCollection):
             input_data=input_data,
         )
 
+    @validate_call
     def get_full_report(self, *, report_id: ReportId) -> FullAnalyticalReport:
         """Get a full analytical report by its ID.
 
@@ -192,6 +195,7 @@ class ReportCollection(BaseCollection):
         response = self.session.post(path, json=report_data)
         return FullAnalyticalReport(**response.json())
 
+    @validate_call
     def delete(self, *, id: ReportId) -> None:
         """Delete a report.
 

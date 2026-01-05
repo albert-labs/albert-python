@@ -82,6 +82,7 @@ class DataTemplateCollection(BaseCollection):
         else:
             return self.add_parameters(data_template_id=dt.id, parameters=parameter_values)
 
+    @validate_call
     def _add_param_enums(
         self,
         *,
@@ -195,6 +196,7 @@ class DataTemplateCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{id}")
         return DataTemplate(**response.json())
 
+    @validate_call
     def get_by_ids(self, *, ids: list[DataTemplateId]) -> list[DataTemplate]:
         """Get a list of data templates by their IDs.
 
@@ -234,6 +236,7 @@ class DataTemplateCollection(BaseCollection):
                 return t.hydrate()
         return None
 
+    @validate_call
     def add_data_columns(
         self, *, data_template_id: DataTemplateId, data_columns: list[DataColumnValue]
     ) -> DataTemplate:
@@ -277,6 +280,7 @@ class DataTemplateCollection(BaseCollection):
         )
         return self.get_by_id(id=data_template_id)
 
+    @validate_call
     def add_parameters(
         self, *, data_template_id: DataTemplateId, parameters: list[ParameterValue]
     ) -> DataTemplate:
@@ -555,6 +559,7 @@ class DataTemplateCollection(BaseCollection):
             )
         return self.get_by_id(id=data_template.id)
 
+    @validate_call
     def delete(self, *, id: DataTemplateId) -> None:
         """Deletes a data template by its ID.
 

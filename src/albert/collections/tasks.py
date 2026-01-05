@@ -662,6 +662,7 @@ class TaskCollection(BaseCollection):
 
         return self.get_by_id(id=task.id)
 
+    @validate_call
     def get_history(
         self,
         *,
