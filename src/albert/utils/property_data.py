@@ -47,6 +47,7 @@ from albert.utils.tasks import CSV_EXTENSIONS, fetch_csv_table_rows
 
 
 def get_task_from_id(*, session: AlbertSession, id: TaskId) -> PropertyTask:
+    """Fetch a PropertyTask by id using the task collection."""
     from albert.collections.tasks import TaskCollection
 
     return TaskCollection(session=session).get_by_id(id=id)
@@ -63,6 +64,7 @@ def resolve_return_scope(
     get_all_task_properties: Callable[..., list[TaskPropertyData]],
     get_task_block_properties: Callable[..., TaskPropertyData],
 ) -> list[TaskPropertyData]:
+    """Resolve the return payload based on scope and cached block data."""
     if return_scope == "task":
         return get_all_task_properties(task_id=task_id)
 
@@ -86,6 +88,7 @@ def resolve_return_scope(
 def resolve_image_property_value(
     *, session: AlbertSession, task_id: TaskId, image_value: ImagePropertyValue
 ) -> dict:
+    """Upload an image file and return the resolved payload dict."""
     resolved_path = Path(image_value.file_path).expanduser()
     if not resolved_path.exists() or not resolved_path.is_file():
         raise FileNotFoundError(f"File not found at '{resolved_path}'.")
@@ -124,6 +127,7 @@ def resolve_curve_property_value(
     prop: TaskPropertyCreate,
     curve_value: CurvePropertyValue,
 ) -> dict:
+    """Upload/import curve data and return the resolved payload dict."""
     if block_id is None:
         raise ValueError("block_id is required to import curve data for task properties.")
 
@@ -245,6 +249,7 @@ def resolve_curve_property_value(
 
 
 def resolve_data_template_id(*, prop: TaskPropertyCreate) -> DataTemplateId:
+    """Extract the data template id from a task property."""
     data_template = prop.data_template
     data_template_id = getattr(data_template, "id", None)
     if data_template_id is None and isinstance(data_template, dict):
@@ -261,6 +266,7 @@ def resolve_task_property_payload(
     block_id: BlockId | None,
     properties: list[TaskPropertyCreate],
 ) -> list[dict]:
+    """Build POST payloads for task properties, resolving image/curve values."""
     payload = []
     for prop in properties:
         prop_payload = prop.model_dump(exclude_none=True, by_alias=True, mode="json")
@@ -290,17 +296,13 @@ def resolve_patch_payload(
     task_id: TaskId,
     patch_payload: list[PropertyDataPatchDatum],
 ) -> list[dict]:
+    """Build PATCH payloads."""
     resolved_payload = []
     for patch in patch_payload:
-        if isinstance(patch.new_value, ImagePropertyValue):
-            patch.new_value = resolve_image_property_value(
-                session=session,
-                task_id=task_id,
-                image_value=patch.new_value,
-            )
-        elif isinstance(patch.new_value, CurvePropertyValue):
+        if isinstance(patch.new_value, ImagePropertyValue | CurvePropertyValue):
             raise ValueError(
-                "CurvePropertyValue resolution requires update_or_create_task_properties."
+                "Update ImagePropertyValue and CurvePropertyValue via "
+                "update_or_create_task_properties."
             )
         resolved_payload.append(patch.model_dump(exclude_none=True, by_alias=True, mode="json"))
     return resolved_payload
@@ -309,6 +311,7 @@ def resolve_patch_payload(
 def _get_column_map(
     *, dataframe: pd.DataFrame, property_data: TaskPropertyData
 ) -> dict[str, PropertyValue]:
+    """Map dataframe columns to property data columns for bulk loads."""
     data_col_info = property_data.data[0].trials[0].data_columns
     column_map: dict[str, PropertyValue] = {}
     for col in dataframe.columns:
@@ -329,6 +332,7 @@ def _df_to_task_prop_create_list(
     data_template_id: DataTemplateId,
     interval: str,
 ) -> list[TaskPropertyCreate]:
+    """Convert a dataframe into TaskPropertyCreate entries."""
     task_prop_create_list: list[TaskPropertyCreate] = []
     for i, row in dataframe.iterrows():
         for col_name, col_info in column_map.items():
@@ -358,6 +362,7 @@ def form_existing_row_value_patches(
     existing_data_rows: TaskPropertyData,
     properties: list[TaskPropertyCreate],
 ):
+    """Split incoming properties into patches vs new rows."""
     patches = []
     new_properties = []
 
@@ -396,6 +401,7 @@ def process_property(
     existing_data_rows: TaskPropertyData,
     trial_number: int,
 ) -> list | None:
+    """Resolve patches for a property against existing trials."""
     for interval in existing_data_rows.data:
         if interval.interval_combination != prop.interval_combination:
             continue
@@ -420,6 +426,7 @@ def process_property(
 def resolve_trial_number(
     *, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
 ) -> int | None:
+    """Resolve the trial number for a property using visible trial numbers."""
     if prop.trial_number is not None:
         return prop.trial_number
 
@@ -453,6 +460,7 @@ def process_trial(
     trial: Trial,
     prop: TaskPropertyCreate,
 ) -> list | None:
+    """Generate patch operations for a trial's matching data column."""
     for data_column in trial.data_columns:
         if (
             data_column.data_column_unique_id
@@ -477,12 +485,17 @@ def process_trial(
                     )
                 ]
             if isinstance(prop.value, ImagePropertyValue):
+                resolved_value = resolve_image_property_value(
+                    session=session,
+                    task_id=task_id,
+                    image_value=prop.value,
+                )
                 return [
                     PropertyDataPatchDatum(
                         id=data_column.property_data.id,
                         operation=PatchOperation.UPDATE,
                         attribute="value",
-                        new_value=prop.value,
+                        new_value=resolved_value,
                         old_value=data_column.property_data.value,
                     )
                 ]
@@ -504,6 +517,7 @@ def process_trial(
 def form_calculated_task_property_patches(
     *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
 ):
+    """Build patches for calculated columns after property updates."""
     patches = []
     covered_interval_trials = set()
     first_row_data_column = existing_data_rows.data[0].trials[0].data_columns
@@ -532,6 +546,7 @@ def form_calculated_task_property_patches(
 def get_on_platform_row(
     *, existing_data_rows: TaskPropertyData, interval_combination: str, trial_number: int
 ):
+    """Find the matching trial row by interval and trial number."""
     for interval in existing_data_rows.data:
         if interval.interval_combination == interval_combination:
             for trial in interval.trials:
@@ -541,6 +556,7 @@ def get_on_platform_row(
 
 
 def get_columns_used_in_calculation(*, calculation: str | None, used_columns: set[str]):
+    """Collect column identifiers referenced in a calculation string."""
     if calculation is None:
         return used_columns
     column_pattern = r"COL\d+"
@@ -550,6 +566,7 @@ def get_columns_used_in_calculation(*, calculation: str | None, used_columns: se
 
 
 def get_all_columns_used_in_calculations(*, first_row_data_column: list):
+    """Aggregate column identifiers used in calculation fields."""
     used_columns = set()
     for calc in [x.calculation for x in first_row_data_column]:
         used_columns = get_columns_used_in_calculation(calculation=calc, used_columns=used_columns)
@@ -557,6 +574,7 @@ def get_all_columns_used_in_calculations(*, first_row_data_column: list):
 
 
 def evaluate_calculation(*, calculation: str, column_values: dict) -> float | None:
+    """Evaluate a calculation expression against column values."""
     calculation = calculation.lstrip("=")
     try:
         if column_values:
@@ -564,6 +582,7 @@ def evaluate_calculation(*, calculation: str, column_values: dict) -> float | No
             pattern = re.compile(rf"\b({'|'.join(escaped_cols)})\b")
 
             def repl(match: re.Match) -> str:
+                """Replace column tokens with values in a calculation expression."""
                 col = match.group(0)
                 return str(column_values.get(col, match.group(0)))
 
@@ -581,6 +600,7 @@ def evaluate_calculation(*, calculation: str, column_values: dict) -> float | No
 
 
 def generate_data_patch_payload(*, trial: Trial) -> list[PropertyDataPatchDatum]:
+    """Generate patch payloads for calculated columns in a trial."""
     column_values = {
         col.sequence: col.property_data.value
         for col in trial.data_columns

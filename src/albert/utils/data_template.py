@@ -397,6 +397,7 @@ def create_curve_import_job(
         reraise=True,
     )
     def _poll_worker_job() -> WorkerJob:
+        """Poll a worker job status for completion."""
         status_response = session.get(f"/api/v3/worker-jobs/{job_id}")
         current_job = WorkerJob.model_validate(status_response.json())
         state = current_job.state
@@ -655,10 +656,12 @@ def ensure_data_column_accepts_images(*, target_column: DataColumnValue) -> None
 
 
 def _validation_is_curve(validation: ValueValidation | None) -> bool:
+    """Return True when validation indicates curve data."""
     return isinstance(validation, ValueValidation) and validation.datatype == DataType.CURVE
 
 
 def _validation_is_image(validation: ValueValidation | None) -> bool:
+    """Return True when validation indicates image data."""
     return isinstance(validation, ValueValidation) and validation.datatype == DataType.IMAGE
 
 

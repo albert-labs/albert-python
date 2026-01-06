@@ -319,7 +319,8 @@ class PropertyDataCollection(BaseCollection):
         task_id : TaskId
             The ID of the task.
         patch_payload : list[PropertyDataPatchDatum]
-            The specific patch to make to update the property.
+            The specific patch to make to update the property. ImagePropertyValue and
+            CurvePropertyValue updates require update_or_create_task_properties.
         inventory_id : InventoryId | None, optional
             Required when return_scope="block".
         block_id : BlockId | None, optional
