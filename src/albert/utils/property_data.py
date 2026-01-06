@@ -157,6 +157,10 @@ def resolve_curve_property_value(
     else:
         allowed_extensions = set(CSV_EXTENSIONS)
 
+    upload_key = (
+        f"curve-input/{task_id}/{block_id}/{data_template_id}/"
+        f"{column_id}/{uuid.uuid4().hex[:10]}.csv"
+    )
     raw_attachment = prepare_curve_input_attachment(
         attachment_collection=attachment_collection,
         data_template_id=data_template_id,
@@ -166,7 +170,7 @@ def resolve_curve_property_value(
         attachment_id=None,
         require_signed_url=curve_value.mode is ImportMode.SCRIPT,
         parent_id=task_id,
-        auto_upload_key=False,
+        upload_key=upload_key,
     )
 
     raw_key = raw_attachment.key
@@ -274,6 +278,8 @@ def resolve_task_property_payload(
                 prop=prop,
                 curve_value=prop.value,
             )
+            # For curve property data, remove DataTemplate from payload as it's not needed
+            prop_payload.pop("DataTemplate", None)
         payload.append(prop_payload)
     return payload
 
