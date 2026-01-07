@@ -25,6 +25,8 @@ class CSVMapping(BaseAlbertModel):
 class DataColumnValue(BaseAlbertModel):
     data_column: DataColumn = Field(exclude=True, default=None)
     data_column_id: str = Field(alias="id", default=None)
+    name: str | None = Field(default=None, exclude=True)
+    original_name: str | None = Field(default=None, alias="originalName", exclude=True)
     value: str | None = None
     hidden: bool = False
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")

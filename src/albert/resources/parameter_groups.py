@@ -66,8 +66,8 @@ class ValueValidation(BaseAlbertModel):
     # We may want to abstract this out if we end up reusing on Data Templates
     datatype: DataType = Field(...)
     value: float | int | str | list[EnumValidationValue] | None = Field(default=None)
-    min: int | str | None = Field(default=None)
-    max: int | str | None = Field(default=None)
+    min: float | int | str | None = Field(default=None)
+    max: float | int | str | None = Field(default=None)
     operator: Operator | None = Field(default=None)
 
 

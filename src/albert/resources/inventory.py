@@ -5,7 +5,7 @@ from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
-from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.identifiers import InventoryId, ReferenceAttributeId
 from albert.core.shared.models.base import AuditFields
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -253,31 +253,64 @@ class InventoryItem(BaseTaggedResource):
         return self
 
 
-class InventorySpecValue(BaseAlbertModel):
+class InventoryAttributeRange(BaseAlbertModel):
     min: str | None = Field(default=None)
     max: str | None = Field(default=None)
-    reference: str | None = Field(default=None)
     comparison_operator: str | None = Field(default=None, alias="comparisonOperator")
 
 
-class InventorySpec(BaseAlbertModel):
+class InventoryAttributeValue(BaseAlbertModel):
+    min: str | None = Field(default=None)
+    max: str | None = Field(default=None)
+    reference: str | float | int | None = Field(default=None)
+    comparison_operator: str | None = Field(default=None, alias="comparisonOperator")
+
+
+class InventoryAttribute(BaseAlbertModel):
+    reference_attribute_id: ReferenceAttributeId | None = Field(
+        default=None, alias="referenceAttributeId"
+    )
+    reference_value: str | float | int | None = Field(default=None, alias="referenceValue")
+    range: InventoryAttributeRange | None = None
+
     id: str | None = Field(default=None, alias="albertId")
-    name: str
-    data_column_id: str = Field(..., alias="datacolumnId")
+    name: str | None = None
+    data_column_id: str | None = Field(default=None, alias="datacolumnId")
     data_column_name: str | None = Field(default=None, alias="datacolumnName")
-    data_template_id: str | None = Field(default=None, alias="datatemplateId")
-    data_template_name: str | None = Field(default=None, alias="datatemplateName")
+    workflow_id: str | None = Field(default=None, alias="workflowId")
     unit_id: str | None = Field(default=None, alias="unitId")
     unit_name: str | None = Field(default=None, alias="unitName")
-    workflow_id: str | None = Field(default=None, alias="workflowId")
-    workflow_name: str | None = Field(default=None, alias="workflowName")
-    spec_config: str | None = Field(default=None, alias="specConfig")
-    value: InventorySpecValue | None = Field(default=None, alias="Value")
+    prm_count: int | None = Field(default=None, alias="prmCount")
+    validation: list[dict[str, Any]] | None = None
+    value: InventoryAttributeValue | None = Field(default=None, alias="Value")
 
 
-class InventorySpecList(BaseAlbertModel):
+class InventoryAttributeUpdate(BaseAlbertModel):
+    attribute_id: str = Field(alias="attributeId")
+    reference_value: str | float | int | None = Field(default=None, alias="referenceValue")
+    range: InventoryAttributeRange | None = None
+    clear_reference_value: bool = False
+    clear_range: bool = False
+
+    @model_validator(mode="after")
+    def validate_update(self) -> "InventoryAttributeUpdate":
+        if self.reference_value is not None and self.clear_reference_value:
+            raise ValueError("Set either reference_value or clear_reference_value, not both.")
+        if self.range is not None and self.clear_range:
+            raise ValueError("Set either range or clear_range, not both.")
+        if (
+            self.reference_value is None
+            and self.range is None
+            and not self.clear_reference_value
+            and not self.clear_range
+        ):
+            raise ValueError("At least one update or clear flag must be set.")
+        return self
+
+
+class InventoryAttributeList(BaseAlbertModel):
     parent_id: str = Field(..., alias="parentId")
-    specs: list[InventorySpec] = Field(..., alias="Specs")
+    attributes: list[InventoryAttribute] = Field(default_factory=list, alias="attributes")
 
 
 # TODO: Find other pictogram items across the platform

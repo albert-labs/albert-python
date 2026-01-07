@@ -13,17 +13,19 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
     InventoryId,
     ProjectId,
+    ReferenceAttributeId,
     SearchProjectId,
     WorksheetId,
 )
 from albert.resources.facet import FacetItem
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
+    InventoryAttribute,
+    InventoryAttributeList,
+    InventoryAttributeUpdate,
     InventoryCategory,
     InventoryItem,
     InventorySearchItem,
-    InventorySpec,
-    InventorySpecList,
     MergeInventory,
 )
 from albert.resources.locations import Location
@@ -249,22 +251,25 @@ class InventoryCollection(BaseCollection):
         return inventory
 
     @validate_call
-    def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Get the specs for a list of inventory items.
+    def get_attributes(self, *, ids: list[InventoryId]) -> list[InventoryAttributeList]:
+        """Get inventory attributes for a list of inventory items.
 
         Parameters
         ----------
         ids : list[InventoryId]
-            List of Inventory IDs to get the specs for.
+            List of Inventory IDs to get the attributes for.
 
         Returns
         -------
-        list[InventorySpecList]
-            A list of InventorySpecList entities, each containing the specs for an inventory item.
+        list[InventoryAttributeList]
+            A list of InventoryAttributeList entities, each containing the attributes for an inventory item.
         """
-        url = f"{self.base_path}/specs"
+        url = f"{self.base_path}/attributes"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
-        ta = TypeAdapter(InventorySpecList)
+        ta = TypeAdapter(InventoryAttributeList)
+        for batch in batches:
+            for item in self.session.get(url, params={"id": batch}).json():
+                print(item)
         return [
             ta.validate_python(item)
             for batch in batches
@@ -272,38 +277,130 @@ class InventoryCollection(BaseCollection):
         ]
 
     @validate_call
-    def add_specs(
+    def add_attributes(
         self,
         *,
         inventory_id: InventoryId,
-        specs: InventorySpec | list[InventorySpec],
-    ) -> InventorySpecList:
-        """Add inventory specs to the inventory item.
-
-        An `InventorySpec` is a property that was not directly measured via a task,
-        but is a generic property of that inentory item.
+        attributes: InventoryAttribute | list[InventoryAttribute],
+    ) -> InventoryAttributeList:
+        """Add inventory attributes to the inventory item.
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The Albert ID of the inventory item to add the specs to
-        specs : list[InventorySpec]
-            List of InventorySpec entities to add to the inventory item,
-            which described the value and, optionally,
-            the conditions associated with the value (via workflow).
+            The Albert ID of the inventory item to add attributes for.
+        attributes : list[InventoryAttribute]
+            List of InventoryAttribute entities to add for the inventory item.
 
         Returns
         -------
-        InventorySpecList
-            The list of InventorySpecs attached to the InventoryItem.
+        InventoryAttributeList
+            The list of InventoryAttributes attached to the InventoryItem.
         """
-        if isinstance(specs, InventorySpec):
-            specs = [specs]
+        if isinstance(attributes, InventoryAttribute):
+            attributes = [attributes]
         response = self.session.put(
-            url=f"{self.base_path}/{inventory_id}/specs",
-            json=[x.model_dump(exclude_unset=True, by_alias=True, mode="json") for x in specs],
+            url=f"{self.base_path}/{inventory_id}/attributes",
+            json=[
+                x.model_dump(exclude_unset=True, by_alias=True, mode="json") for x in attributes
+            ],
         )
-        return InventorySpecList(**response.json())
+        return InventoryAttributeList(**response.json())
+
+    @validate_call
+    def update_attributes(
+        self,
+        *,
+        inventory_id: InventoryId,
+        updates: InventoryAttributeUpdate | list[InventoryAttributeUpdate],
+    ) -> InventoryAttributeList:
+        """Update inventory attribute values.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The Albert ID of the inventory item to update attributes for.
+        updates : list[InventoryAttributeUpdate]
+            The attribute updates to apply.
+
+        Returns
+        -------
+        InventoryAttributeList
+            The updated list of InventoryAttributes for the inventory item.
+        """
+        if isinstance(updates, InventoryAttributeUpdate):
+            updates = [updates]
+        if not updates:
+            return self.get_attributes(ids=[inventory_id])[0]
+
+        payload: list[dict[str, object]] = []
+        for update in updates:
+            if update.reference_value is not None:
+                payload.append(
+                    {
+                        "operation": "update",
+                        "attribute": "referenceValue",
+                        "attributeId": update.attribute_id,
+                        "newValue": update.reference_value,
+                    }
+                )
+            if update.clear_reference_value:
+                payload.append(
+                    {
+                        "operation": "delete",
+                        "attribute": "referenceValue",
+                        "attributeId": update.attribute_id,
+                    }
+                )
+            if update.range is not None:
+                payload.append(
+                    {
+                        "operation": "update",
+                        "attribute": "range",
+                        "attributeId": update.attribute_id,
+                        "newValue": update.range.model_dump(
+                            exclude_none=True,
+                            by_alias=True,
+                            mode="json",
+                        ),
+                    }
+                )
+            if update.clear_range:
+                payload.append(
+                    {
+                        "operation": "delete",
+                        "attribute": "range",
+                        "attributeId": update.attribute_id,
+                    }
+                )
+
+        if not payload:
+            return self.get_attributes(ids=[inventory_id])[0]
+
+        self.session.patch(
+            url=f"{self.base_path}/{inventory_id}/attributes",
+            json=payload,
+        )
+        return self.get_attributes(ids=[inventory_id])[0]
+
+    @validate_call
+    def delete_attribute(
+        self, *, inventory_id: InventoryId, attribute_id: ReferenceAttributeId
+    ) -> None:
+        """Delete an inventory attribute row by ID.
+
+        Parameters
+        ----------
+        inventory_id : InventoryId
+            The Albert ID of the inventory item.
+        attribute_id : ReferenceAttributeId
+            The attribute ID to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{inventory_id}/attributes/{attribute_id}")
 
     @validate_call
     def delete(self, *, id: InventoryId) -> None:

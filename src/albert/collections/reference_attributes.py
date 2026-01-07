@@ -100,6 +100,9 @@ class ReferenceAttributeCollection(BaseCollection):
             payload["parameters"] = parameter_payloads
 
         response = self.session.post(self.base_path, json=payload)
+        from rich import print
+
+        print(payload)
         return ReferenceAttribute(**response.json())
 
     @validate_call
@@ -149,3 +152,19 @@ class ReferenceAttributeCollection(BaseCollection):
                 batch_items = data.get("items") or data.get("Items") or []
             items.extend(ReferenceAttribute(**item) for item in batch_items)
         return items
+
+    @validate_call
+    def delete(self, *, id: ReferenceAttributeId) -> None:
+        """
+        Delete a reference attribute by its ID.
+
+        Parameters
+        ----------
+        id : ReferenceAttributeId
+            The reference attribute ID.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")

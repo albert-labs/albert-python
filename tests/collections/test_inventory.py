@@ -9,18 +9,9 @@ from albert.core.shared.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
-from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
-from albert.resources.inventory import (
-    CasAmount,
-    InventoryItem,
-    InventorySpec,
-    InventorySpecValue,
-    InventoryUnitCategory,
-)
+from albert.resources.inventory import CasAmount, InventoryItem, InventoryUnitCategory
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
-from albert.resources.workflows import Workflow
 
 
 def assert_valid_inventory_items(returned_list: list[InventoryItem]):
@@ -188,29 +179,6 @@ def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryIt
         f"Inventory item already exists with name {returned_ii.name} and company {returned_ii.company.name}, returning existing item."
         in caplog.text
     )
-
-
-def test_add_property_to_inv_spec(
-    seed_prefix: str,
-    client: Albert,
-    seeded_inventory: list[InventoryItem],
-    seeded_data_columns: list[DataColumn],
-    seeded_units: list[Unit],
-    seeded_workflows: list[Workflow],
-):
-    specs = []
-    for dc in seeded_data_columns:
-        spec_to_add = InventorySpec(
-            name=f"{seed_prefix} -- {dc.name}",
-            data_column_id=dc.id,
-            unit_id=seeded_units[0].id,
-            value=InventorySpecValue(reference="42"),
-            workflow_id=seeded_workflows[0].id,
-        )
-        specs.append(spec_to_add)
-    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
-    assert len(added_specs.specs) == len(seeded_data_columns)
-    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
 
 
 def test_update_inventory_item_standard_attributes(
