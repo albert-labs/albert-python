@@ -267,9 +267,6 @@ class InventoryCollection(BaseCollection):
         url = f"{self.base_path}/attributes"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
         ta = TypeAdapter(InventoryAttributeList)
-        for batch in batches:
-            for item in self.session.get(url, params={"id": batch}).json():
-                print(item)
         return [
             ta.validate_python(item)
             for batch in batches

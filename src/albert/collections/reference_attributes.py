@@ -100,9 +100,6 @@ class ReferenceAttributeCollection(BaseCollection):
             payload["parameters"] = parameter_payloads
 
         response = self.session.post(self.base_path, json=payload)
-        from rich import print
-
-        print(payload)
         return ReferenceAttribute(**response.json())
 
     @validate_call

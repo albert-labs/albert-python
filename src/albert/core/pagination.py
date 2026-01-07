@@ -71,9 +71,6 @@ class AlbertPaginator(Iterator[ItemType]):
             if items is None:
                 items = data.get("items", [])
             item_count = len(items)
-            print(f"Fetched {item_count} items")
-            # from   rich import print
-            # print(items)
 
             if not items and self.mode == PaginationMode.OFFSET:
                 return

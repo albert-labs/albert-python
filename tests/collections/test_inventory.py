@@ -10,7 +10,14 @@ from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.facet import FacetItem, FacetValue
-from albert.resources.inventory import CasAmount, InventoryItem, InventoryUnitCategory
+from albert.resources.inventory import (
+    CasAmount,
+    InventoryAttribute,
+    InventoryAttributeUpdate,
+    InventoryItem,
+    InventoryUnitCategory,
+)
+from albert.resources.reference_attributes import ReferenceAttribute
 from albert.resources.tags import Tag
 
 
@@ -366,3 +373,54 @@ def test_inventory_search_with_tags(
         tags = [x.tag for x in m.tags]
 
         assert any(t in tags for t in tags_to_check)
+
+
+def test_inventory_attributes_add_update_delete(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_reference_attributes: list[ReferenceAttribute],
+):
+    inventory_item = seeded_inventory[0]
+    reference_attribute = seeded_reference_attributes[0]
+
+    added = client.inventory.add_attributes(
+        inventory_id=inventory_item.id,
+        attributes=InventoryAttribute(
+            reference_attribute_id=reference_attribute.id,
+            reference_value="5",
+        ),
+    )
+    assert added.parent_id == inventory_item.id
+    added_attribute = next(attr for attr in added.attributes if attr.id == reference_attribute.id)
+    assert added_attribute.value is not None
+    assert str(added_attribute.value.reference) == "5"
+
+    updated = client.inventory.update_attributes(
+        inventory_id=inventory_item.id,
+        updates=InventoryAttributeUpdate(
+            attribute_id=reference_attribute.id,
+            reference_value="10",
+        ),
+    )
+    updated_attribute = next(
+        attr for attr in updated.attributes if attr.id == reference_attribute.id
+    )
+    assert updated_attribute.value is not None
+    assert str(updated_attribute.value.reference) == "10"
+
+    cleared = client.inventory.update_attributes(
+        inventory_id=inventory_item.id,
+        updates=InventoryAttributeUpdate(
+            attribute_id=reference_attribute.id,
+            clear_reference_value=True,
+        ),
+    )
+    cleared_attribute = next(
+        attr for attr in cleared.attributes if attr.id == reference_attribute.id
+    )
+    assert cleared_attribute.value is None or cleared_attribute.value.reference is None
+
+    client.inventory.delete_attribute(
+        inventory_id=inventory_item.id,
+        attribute_id=reference_attribute.id,
+    )

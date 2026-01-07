@@ -25,6 +25,7 @@ from albert.resources.lots import Lot
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
+from albert.resources.reference_attributes import ReferenceAttribute
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.roles import Role
 from albert.resources.sheets import Component, Sheet
@@ -59,6 +60,7 @@ from tests.seeding import (
     generate_parameter_seeds,
     generate_pricing_seeds,
     generate_project_seeds,
+    generate_reference_attribute_seeds,
     generate_report_seeds,
     generate_storage_location_seeds,
     generate_tag_seeds,
@@ -352,6 +354,29 @@ def seeded_data_columns(
             NotFoundError, BadRequestError
         ):  # used on deleted InventoryItem properties are blocking. Instead of making static to accomidate the unexpected behavior, doing this instead
             client.data_columns.delete(id=data_column.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_reference_attributes(
+    client: Albert,
+    seed_prefix: str,
+    seeded_data_columns: list[DataColumn],
+) -> Iterator[list[ReferenceAttribute]]:
+    seeded = []
+    for reference_attribute in generate_reference_attribute_seeds(
+        seed_prefix=seed_prefix,
+        seeded_data_columns=seeded_data_columns,
+    ):
+        created_reference_attribute = client.reference_attributes.create(
+            reference_attribute=reference_attribute
+        )
+        seeded.append(created_reference_attribute)
+
+    yield seeded
+
+    for reference_attribute in seeded:
+        with suppress(NotFoundError, BadRequestError):
+            client.reference_attributes.delete(id=reference_attribute.id)
 
 
 @pytest.fixture(scope="session")
