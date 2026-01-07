@@ -358,6 +358,284 @@ class PropertyDataCollection(BaseCollection):
         )
 
     @validate_call
+    def void_task_data(
+        self,
+        *,
+        task_id: TaskId,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Void all property data for a task.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "void",
+            "by": "task",
+            "id": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_task_data(
+        self,
+        *,
+        task_id: TaskId,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Unvoid all property data for a task.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "unvoid",
+            "by": "task",
+            "id": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def void_interval_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+        data_template_id: DataTemplateId | None = None,
+    ) -> None:
+        """Void all property data for a specific interval combination.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        interval_id : str
+            The interval combination identifier (``CheckPropertyData.interval_id``).
+            Use ``check_for_task_data`` to list interval combinations for a task.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+        data_template_id : DataTemplateId | None, optional
+            When provided, limits the voiding to a specific data template.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "void",
+            "by": "intervalCombination",
+            "id": interval_id,
+            "parentId": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+            "dataTemplateId": data_template_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_interval_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+        data_template_id: DataTemplateId | None = None,
+    ) -> None:
+        """Unvoid all property data for a specific interval combination.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        interval_id : str
+            The interval combination identifier (``CheckPropertyData.interval_id``).
+            Use ``check_for_task_data`` to list interval combinations for a task.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+        data_template_id : DataTemplateId | None, optional
+            When provided, limits the unvoiding to a specific data template.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "unvoid",
+            "by": "intervalCombination",
+            "id": interval_id,
+            "parentId": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+            "dataTemplateId": data_template_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def void_trial_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        trial_number: int,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Void property data for a specific trial in an interval combination.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        interval_id : str
+            The interval combination identifier (``CheckPropertyData.interval_id``).
+            Use ``check_for_task_data`` to list interval combinations for a task.
+        trial_number : int
+            The trial number to void.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+
+        Returns
+        -------
+        None
+        """
+        payload = [
+            {
+                "operation": "void",
+                "by": "trial",
+                "trial": trial_number,
+                "id": interval_id,
+                "inventoryId": inventory_id,
+                "blockId": block_id,
+                "lotId": lot_id,
+            }
+        ]
+        payload = [{k: v for k, v in item.items() if v is not None} for item in payload]
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_trial_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        trial_number: int,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Unvoid property data for a specific trial in an interval combination.
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The ID of the task.
+        interval_id : str
+            The interval combination identifier (``CheckPropertyData.interval_id``).
+            Use ``check_for_task_data`` to list interval combinations for a task.
+        trial_number : int
+            The trial number to unvoid.
+        inventory_id : InventoryId
+            The ID of the inventory item.
+        block_id : BlockId
+            The ID of the block.
+        lot_id : LotId | None, optional
+            The ID of the lot, by default None.
+
+        Returns
+        -------
+        None
+        """
+        payload = [
+            {
+                "operation": "unvoid",
+                "by": "trial",
+                "trial": trial_number,
+                "id": interval_id,
+                "inventoryId": inventory_id,
+                "blockId": block_id,
+                "lotId": lot_id,
+            }
+        ]
+        payload = [{k: v for k, v in item.items() if v is not None} for item in payload]
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
     def add_properties_to_task(
         self,
         *,
