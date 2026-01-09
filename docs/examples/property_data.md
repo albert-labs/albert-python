@@ -72,7 +72,7 @@ Property data refers to the results collected from a Property Task in Albert. Th
 
 ## Add a new trial row
 
-!!! example "Add a new row"
+!!! example "Add a new trial row"
     ```python
     from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 
@@ -100,3 +100,85 @@ Property data refers to the results collected from a Property Task in Albert. Th
         return_scope="block",
     )
     ```
+
+## Void data row
+
+!!! example "Void task data"
+    ```python
+    from albert import Albert
+
+    client = Albert.from_client_credentials()
+
+    task_id = "TAS123"
+    inventory_id = "INV123"
+    block_id = "BLK1"
+
+    client.property_data.void_task_data(
+        inventory_id=inventory_id,
+        task_id=task_id,
+        block_id=block_id,
+    )
+    ```
+
+!!! example "Void interval data"
+    ```python
+    from albert import Albert
+
+    client = Albert.from_client_credentials()
+
+    task_id = "TAS123"
+    inventory_id = "INV123"
+    block_id = "BLK1"
+
+    interval_id = next(
+        (
+            combo.interval_id
+            for combo in client.property_data.check_for_task_data(task_id=task_id)
+            if combo.inventory_id == inventory_id and combo.block_id == block_id
+        ),
+        None,
+    )
+    if not interval_id:
+        raise ValueError("No interval data found for the block/inventory combination.")
+
+    client.property_data.void_interval_data(
+        inventory_id=inventory_id,
+        task_id=task_id,
+        block_id=block_id,
+        interval_id=interval_id,
+    )
+    ```
+
+!!! example "Void trial data"
+    ```python
+    from albert import Albert
+
+    client = Albert.from_client_credentials()
+
+    task_id = "TAS123"
+    inventory_id = "INV123"
+    block_id = "BLK1"
+
+    interval_id = next(
+        (
+            combo.interval_id
+            for combo in client.property_data.check_for_task_data(task_id=task_id)
+            if combo.inventory_id == inventory_id and combo.block_id == block_id
+        ),
+        None,
+    )
+    if not interval_id:
+        raise ValueError("No interval data found for the block/inventory combination.")
+
+    client.property_data.void_trial_data(
+        inventory_id=inventory_id,
+        task_id=task_id,
+        block_id=block_id,
+        trial_number=2,
+        interval_id=interval_id,
+    )
+    ```
+
+!!! note
+    Use the corresponding `unvoid_task_data`, `unvoid_interval_data`, and `unvoid_trial_data`
+    methods to unvoid records.

@@ -124,8 +124,6 @@ nav:
       - Configuration: configuration.md
       - Migration Guide: migration.md
       - Contributing: CONTRIBUTING.md
-  - Guides:
-      - Property Data: guides/property_data.md
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
@@ -220,6 +218,9 @@ nav:
           - Worksheets:
               - Worksheets: resources/worksheets.md
               - Sheets: resources/sheets.md
+  - Examples:
+      - Property Data: examples/property_data.md
+      - Tasks: examples/tasks.md
 
 validation:
   omitted_files: warn
