@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 
 from pydantic import Field
@@ -53,7 +55,7 @@ class Cas(BaseResource):
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
 
     @classmethod
-    def from_string(cls, *, number: str) -> "Cas":
+    def from_string(cls, *, number: str) -> Cas:
         """
         Creates a Cas object from a string.
 

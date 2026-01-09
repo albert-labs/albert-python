@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any, ForwardRef, TypedDict, Union
 
@@ -165,7 +167,7 @@ class Component(BaseResource):
     _cell: Cell = None  # read only property set on registrstion
 
     @model_validator(mode="after")
-    def _ensure_inventory_reference(self: "Component") -> "Component":
+    def _ensure_inventory_reference(self: Component) -> Component:
         item = self.inventory_item
         if item is None and self.inventory_id is None:
             raise ValueError("Component requires either 'inventory_item' or 'inventory_id'.")
@@ -217,9 +219,9 @@ class Design(BaseSessionResource):
     id: str = Field(alias="albertId")
     design_type: DesignType = Field(alias="designType")
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
-    _rows: list["Row"] | None = PrivateAttr(default=None)
-    _columns: list["Column"] | None = PrivateAttr(default=None)
-    _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # noqa
+    _rows: list[Row] | None = PrivateAttr(default=None)
+    _columns: list[Column] | None = PrivateAttr(default=None)
+    _sheet: Union[Sheet, None] = PrivateAttr(default=None)  # noqa
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
     def _grid_to_cell_df(self, *, grid_response):
@@ -284,7 +286,7 @@ class Design(BaseSessionResource):
             self._grid = self._get_grid()
         return self._grid
 
-    def _get_columns(self, *, grid_response: dict) -> list["Column"]:
+    def _get_columns(self, *, grid_response: dict) -> list[Column]:
         """
         Normalizes inventory IDs (always prefixed "INV") and—for the
         "Inventory ID" header—falls back to the row's top-level `id`
@@ -358,7 +360,7 @@ class Design(BaseSessionResource):
 
         return cols
 
-    def _get_rows(self, *, grid_response: dict) -> list["Row"]:
+    def _get_rows(self, *, grid_response: dict) -> list[Row]:
         """
         Parse the /grid response into a list of Row models.
 
@@ -413,13 +415,13 @@ class Design(BaseSessionResource):
         return self._grid_to_cell_df(grid_response=resp_json)
 
     @property
-    def columns(self) -> list["Column"]:
+    def columns(self) -> list[Column]:
         if not self._columns:
             self._get_grid()
         return self._columns
 
     @property
-    def rows(self) -> list["Row"]:
+    def rows(self) -> list[Row]:
         if not self._rows:
             self._get_grid()
         return self._rows
@@ -494,7 +496,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return self._process_design
 
     @model_validator(mode="after")
-    def set_sheet_fields(self: "Sheet") -> "Sheet":
+    def set_sheet_fields(self: Sheet) -> Sheet:
         for _idx, d in enumerate(self.designs):  # Instead of creating a new list
             d._sheet = self  # Set the reference to the sheet
             if d.design_type == DesignType.APPS:
@@ -542,12 +544,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return self._leftmost_pinned_column
 
     @property
-    def columns(self) -> list["Column"]:
+    def columns(self) -> list[Column]:
         """The columns of a given sheet"""
         return self.product_design.columns
 
     @property
-    def rows(self) -> list["Row"]:
+    def rows(self) -> list[Row]:
         """The rows of a given sheet"""
         rows = []
         for d in self.designs:
@@ -607,7 +609,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_dicts.append(this_dict)
         return new_dicts
 
-    def _clear_formulation_from_column(self, *, column: "Column"):
+    def _clear_formulation_from_column(self, *, column: Column):
         cleared_cells = []
         for cell in column.cells:
             if cell.type == CellType.INVENTORY:
@@ -674,7 +676,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         inventory_id: InventoryId,
         existing_cells,
         enforce_order,
-        product_rows: list["Row"],
+        product_rows: list[Row],
     ):
         sheet_inv_id = inventory_id
         matching_rows = [row for row in product_rows if row.inventory_id == sheet_inv_id]
@@ -736,7 +738,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         *,
         formulation_names: list[str],
         starting_position: dict | None = None,
-    ) -> list["Column"]:
+    ) -> list[Column]:
         if starting_position is None:
             starting_position = {
                 "reference_id": self.leftmost_pinned_column,

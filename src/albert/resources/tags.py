@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
@@ -45,7 +47,7 @@ class Tag(BaseResource):
     )
 
     @classmethod
-    def from_string(cls, tag: str) -> "Tag":
+    def from_string(cls, tag: str) -> Tag:
         """
         Creates a Tag object from a string.
 

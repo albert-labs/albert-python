@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
@@ -179,7 +181,7 @@ class BulkPropertyData(BaseAlbertModel):
     )
 
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame) -> "BulkPropertyData":
+    def from_dataframe(cls, df: pd.DataFrame) -> BulkPropertyData:
         """
         Converts a DataFrame to a BulkPropertyData object.
 
@@ -340,7 +342,7 @@ class TaskPropertyCreate(BaseResource):
     )
 
     @model_validator(mode="after")
-    def set_visible_trial_number(self) -> "TaskPropertyCreate":
+    def set_visible_trial_number(self) -> TaskPropertyCreate:
         if self.visible_trial_number is None:
             if self.trial_number is not None:
                 self.visible_trial_number = self.trial_number

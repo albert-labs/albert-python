@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
@@ -104,7 +106,7 @@ class CasAmount(BaseAlbertModel):
     )
 
     @model_validator(mode="after")
-    def set_cas_attributes(self: "CasAmount") -> "CasAmount":
+    def set_cas_attributes(self: CasAmount) -> CasAmount:
         """Set attributes after model initialization from the Cas object, if provided."""
         if self.cas is not None:
             object.__setattr__(self, "id", self.cas.id)
@@ -132,7 +134,7 @@ class InventoryMinimum(BaseAlbertModel):
     minimum: float = Field(ge=0, le=1000000000000000)
 
     @model_validator(mode="after")
-    def check_id_or_location(self: "InventoryMinimum") -> "InventoryMinimum":
+    def check_id_or_location(self: InventoryMinimum) -> InventoryMinimum:
         """
         Ensure that either an id or a location is provided.
         """
@@ -235,7 +237,7 @@ class InventoryItem(BaseTaggedResource):
         return value
 
     @model_validator(mode="after")
-    def set_unit_category(self) -> "InventoryItem":
+    def set_unit_category(self) -> InventoryItem:
         """Set unit category from category if not defined."""
         if self.unit_category is None:
             if self.category in [InventoryCategory.RAW_MATERIALS, InventoryCategory.FORMULAS]:
@@ -245,7 +247,7 @@ class InventoryItem(BaseTaggedResource):
         return self
 
     @model_validator(mode="after")
-    def validate_formula_fields(self) -> "InventoryItem":
+    def validate_formula_fields(self) -> InventoryItem:
         """Ensure required fields are present for formulas."""
         if self.category == InventoryCategory.FORMULAS and not self.project_id and not self.id:
             # Some legacy on platform formulas don't have a project_id so check if its already on platform

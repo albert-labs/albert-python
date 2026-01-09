@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 
 from pydantic import Field, model_validator
@@ -34,7 +36,7 @@ class ListItem(BaseResource):
     list_type: str | None = Field(default=None, alias="listType")
 
     @model_validator(mode="after")
-    def validate_list_type(self) -> "ListItem":
+    def validate_list_type(self) -> ListItem:
         if (
             self.category == ListItemCategory.PROJECTS
             and self.list_type is not None

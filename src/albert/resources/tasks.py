@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -576,7 +578,7 @@ class CsvTableInput(BaseAlbertModel):
 
     script_s3_url: str = Field(alias="scriptS3URL")
     data_s3_url: str = Field(alias="dataS3URL")
-    task_metadata: "TaskMetadata" = Field(alias="TaskMetadata")
+    task_metadata: TaskMetadata = Field(alias="TaskMetadata")
 
 
 class CsvTableResponseItem(BaseAlbertModel):
@@ -591,7 +593,7 @@ class CsvCurveInput(BaseAlbertModel):
     script_s3_url: str = Field(alias="scriptS3URL")
     data_s3_url: str = Field(alias="dataS3URL")
     result_s3_url: str = Field(alias="resultS3URL")
-    task_metadata: "TaskMetadata" = Field(alias="TaskMetadata")
+    task_metadata: TaskMetadata = Field(alias="TaskMetadata")
 
 
 class CsvCurveResponse(BaseAlbertModel):

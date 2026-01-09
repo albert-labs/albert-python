@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import Field, PrivateAttr
@@ -21,7 +23,7 @@ class EntityLink(BaseAlbertModel):
     name: str | None = Field(default=None, exclude=True)
     category: str | None = Field(default=None, exclude=True)
 
-    def to_entity_link(self) -> "EntityLink":
+    def to_entity_link(self) -> EntityLink:
         # Convience method to return self, so you can call this method on objects that are already entity links
         return self
 

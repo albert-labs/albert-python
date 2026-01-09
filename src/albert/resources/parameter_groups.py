@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
@@ -123,7 +125,7 @@ class ParameterValue(BaseAlbertModel):
         return value
 
     @model_validator(mode="after")
-    def set_parameter_fields(self) -> "ParameterValue":
+    def set_parameter_fields(self) -> ParameterValue:
         if self.parameter is None and self.id is None:
             raise ValueError("Please provide either an id or an parameter object.")
 

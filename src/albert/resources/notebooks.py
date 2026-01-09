@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import uuid
 from datetime import datetime
@@ -179,7 +181,7 @@ class TableBlock(BaseBlock):
 
 class NotebookListItem(BaseAlbertModel):
     content: str | None
-    items: list["NotebookListItem"] = Field(default_factory=list)
+    items: list[NotebookListItem] = Field(default_factory=list)
 
 
 class BulletedListContent(BaseAlbertModel):
@@ -264,7 +266,7 @@ class PutBlockDatum(BaseAlbertModel):
     previous_block_id: str | None = Field(default=None, alias="previousBlockId")
 
     @model_validator(mode="after")
-    def content_matches_type(self) -> "PutBlockDatum":
+    def content_matches_type(self) -> PutBlockDatum:
         if self.content is None:
             return self  # skip check if there's no content
 

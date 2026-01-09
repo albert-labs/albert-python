@@ -1,5 +1,7 @@
 """Utilities for working with data templates."""
 
+from __future__ import annotations
+
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -131,7 +133,7 @@ def validate_data_column_type(*, target_column: DataColumnValue) -> None:
 
 def get_script_attachment(
     *,
-    attachment_collection: "AttachmentCollection",
+    attachment_collection: AttachmentCollection,
     data_template_id: DataTemplateId,
     column_id: DataColumnId,
 ) -> tuple[Attachment, set[str]]:
@@ -171,7 +173,7 @@ def get_script_attachment(
 
 def prepare_curve_input_attachment(
     *,
-    attachment_collection: "AttachmentCollection",
+    attachment_collection: AttachmentCollection,
     data_template_id: DataTemplateId,
     column_id: DataColumnId,
     allowed_extensions: set[str] | None,
@@ -242,11 +244,11 @@ def prepare_curve_input_attachment(
 
 def exec_curve_script(
     *,
-    session: "AlbertSession",
+    session: AlbertSession,
     data_template_id: DataTemplateId,
     column_id: DataColumnId,
     raw_attachment: Attachment,
-    file_collection: "FileCollection",
+    file_collection: FileCollection,
     script_attachment_signed_url: str,
     task_id: str | None = None,
     block_id: str | None = None,
@@ -341,7 +343,7 @@ def derive_curve_csv_mapping(
 
 def create_curve_import_job(
     *,
-    session: "AlbertSession",
+    session: AlbertSession,
     data_template_id: DataTemplateId,
     column_id: DataColumnId,
     csv_mapping: dict[str, str],
@@ -485,7 +487,7 @@ def build_curve_import_patch_payload(
 
 def add_parameter_enums(
     *,
-    session: "AlbertSession",
+    session: AlbertSession,
     base_path: str,
     data_template_id: DataTemplateId,
     new_parameters: list[ParameterValue],
@@ -576,7 +578,7 @@ def add_parameter_enums(
 
 def upload_image_example_attachment(
     *,
-    attachment_collection: "AttachmentCollection",
+    attachment_collection: AttachmentCollection,
     data_template_id: DataTemplateId,
     file_path: str | Path | None,
     attachment_id: AttachmentId | None,
@@ -667,9 +669,9 @@ def _validation_is_image(validation: ValueValidation | None) -> bool:
 
 def build_curve_example(
     *,
-    session: "AlbertSession",
+    session: AlbertSession,
     data_template_id: DataTemplateId,
-    example: "CurveExample",
+    example: CurveExample,
     target_column: DataColumnValue,
 ) -> GeneralPatchPayload:
     """Construct the patch payload for a curve example on a data template."""
@@ -763,9 +765,9 @@ def build_curve_example(
 
 def build_image_example(
     *,
-    session: "AlbertSession",
+    session: AlbertSession,
     data_template_id: DataTemplateId,
-    example: "ImageExample",
+    example: ImageExample,
     target_column: DataColumnValue,
 ) -> GeneralPatchPayload:
     """Construct the patch payload for an image example on a data template."""

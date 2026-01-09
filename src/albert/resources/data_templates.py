@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from pathlib import Path
 from typing import Literal
@@ -162,7 +164,7 @@ class CurveExample(BaseAlbertModel):
     attachment_id: AttachmentId | None = None
 
     @model_validator(mode="after")
-    def _require_curve_source(self) -> "CurveExample":
+    def _require_curve_source(self) -> CurveExample:
         if (self.file_path is None) == (self.attachment_id is None):
             raise ValueError(
                 "Provide exactly one of file_path or attachment_id for curve examples."

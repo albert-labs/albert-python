@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Annotated, Any, Literal
 
@@ -171,7 +173,7 @@ class CustomField(BaseResource):
     api: CustomFieldAPI | None = Field(default=None)
 
     @model_validator(mode="after")
-    def confirm_field_compatability(self) -> "CustomField":
+    def confirm_field_compatability(self) -> CustomField:
         if self.field_type == FieldType.LIST and self.category is None:
             raise ValueError("Category must be set for list fields")
         return self

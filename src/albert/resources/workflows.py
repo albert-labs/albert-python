@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
 from typing import Any
 
@@ -60,7 +62,7 @@ class Interval(BaseAlbertModel):
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
     @model_validator(mode="after")
-    def validate_interval(self) -> "Interval":
+    def validate_interval(self) -> Interval:
         if not self.value:
             raise ValueError("Interval: 'value' is required.")
         if self.unit and not getattr(self.unit, "id", None):
@@ -133,7 +135,7 @@ class ParameterSetpoint(BaseAlbertModel):
     sequence: str | None = Field(default=None, alias="prgPrmRowId")
 
     @model_validator(mode="after")
-    def validate_shape(self) -> "ParameterSetpoint":
+    def validate_shape(self) -> ParameterSetpoint:
         def has_id(obj: Any) -> bool:
             if isinstance(obj, Mapping):
                 return bool(obj.get("id"))
