@@ -24,6 +24,7 @@ _ALBERT_PREFIXES = {
     "ParameterId": "PRM",
     "ProjectId": "PRO",
     "PropertyDataId": "PTD",
+    "ReferenceAttributeId": "ATR",
     "ReportId": "REP",
     "RowId": "ROW",
     "RuleId": "RUL",
@@ -240,6 +241,13 @@ def ensure_propertydata_id(id: str) -> str:
 
 
 PropertyDataId = Annotated[str, AfterValidator(ensure_propertydata_id)]
+
+
+def ensure_reference_attribute_id(id: str) -> str:
+    return _ensure_albert_id(id, "ReferenceAttributeId")
+
+
+ReferenceAttributeId = Annotated[str, AfterValidator(ensure_reference_attribute_id)]
 
 
 def ensure_task_id(id: str) -> str:

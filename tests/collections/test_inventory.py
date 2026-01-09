@@ -9,18 +9,16 @@ from albert.core.shared.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
-from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
+    InventoryAttribute,
+    InventoryAttributeUpdate,
     InventoryItem,
-    InventorySpec,
-    InventorySpecValue,
     InventoryUnitCategory,
 )
+from albert.resources.reference_attributes import ReferenceAttribute
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
-from albert.resources.workflows import Workflow
 
 
 def assert_valid_inventory_items(returned_list: list[InventoryItem]):
@@ -188,29 +186,6 @@ def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryIt
         f"Inventory item already exists with name {returned_ii.name} and company {returned_ii.company.name}, returning existing item."
         in caplog.text
     )
-
-
-def test_add_property_to_inv_spec(
-    seed_prefix: str,
-    client: Albert,
-    seeded_inventory: list[InventoryItem],
-    seeded_data_columns: list[DataColumn],
-    seeded_units: list[Unit],
-    seeded_workflows: list[Workflow],
-):
-    specs = []
-    for dc in seeded_data_columns:
-        spec_to_add = InventorySpec(
-            name=f"{seed_prefix} -- {dc.name}",
-            data_column_id=dc.id,
-            unit_id=seeded_units[0].id,
-            value=InventorySpecValue(reference="42"),
-            workflow_id=seeded_workflows[0].id,
-        )
-        specs.append(spec_to_add)
-    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
-    assert len(added_specs.specs) == len(seeded_data_columns)
-    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
 
 
 def test_update_inventory_item_standard_attributes(
@@ -398,3 +373,54 @@ def test_inventory_search_with_tags(
         tags = [x.tag for x in m.tags]
 
         assert any(t in tags for t in tags_to_check)
+
+
+def test_inventory_attributes_add_update_delete(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_reference_attributes: list[ReferenceAttribute],
+):
+    inventory_item = seeded_inventory[0]
+    reference_attribute = seeded_reference_attributes[0]
+
+    added = client.inventory.add_attributes(
+        inventory_id=inventory_item.id,
+        attributes=InventoryAttribute(
+            reference_attribute_id=reference_attribute.id,
+            reference_value="5",
+        ),
+    )
+    assert added.parent_id == inventory_item.id
+    added_attribute = next(attr for attr in added.attributes if attr.id == reference_attribute.id)
+    assert added_attribute.value is not None
+    assert str(added_attribute.value.reference) == "5"
+
+    updated = client.inventory.update_attributes(
+        inventory_id=inventory_item.id,
+        updates=InventoryAttributeUpdate(
+            attribute_id=reference_attribute.id,
+            reference_value="10",
+        ),
+    )
+    updated_attribute = next(
+        attr for attr in updated.attributes if attr.id == reference_attribute.id
+    )
+    assert updated_attribute.value is not None
+    assert str(updated_attribute.value.reference) == "10"
+
+    cleared = client.inventory.update_attributes(
+        inventory_id=inventory_item.id,
+        updates=InventoryAttributeUpdate(
+            attribute_id=reference_attribute.id,
+            clear_reference_value=True,
+        ),
+    )
+    cleared_attribute = next(
+        attr for attr in cleared.attributes if attr.id == reference_attribute.id
+    )
+    assert cleared_attribute.value is None or cleared_attribute.value.reference is None
+
+    client.inventory.delete_attribute(
+        inventory_id=inventory_item.id,
+        attribute_id=reference_attribute.id,
+    )

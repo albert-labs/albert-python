@@ -71,6 +71,7 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.reference_attributes import ReferenceAttribute
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
@@ -629,6 +630,32 @@ def generate_data_column_seeds(seed_prefix: str, seeded_units: list[Unit]) -> li
         DataColumn(
             name=f"{seed_prefix} - only calculation",
             calculation="Mass = Density * Volume",
+        ),
+    ]
+
+
+def generate_reference_attribute_seeds(
+    seed_prefix: str,
+    seeded_data_columns: list[DataColumn],
+) -> list[ReferenceAttribute]:
+    """
+    Generates a list of ReferenceAttribute seed objects for testing without IDs.
+
+    Returns
+    -------
+    list[ReferenceAttribute]
+        A list of ReferenceAttribute objects with different permutations.
+    """
+    return [
+        ReferenceAttribute(
+            reference_name=f"{seed_prefix} - Reference Attribute A",
+            data_column_id=seeded_data_columns[0].id,
+            validation=[ValueValidation(datatype=DataType.STRING)],
+        ),
+        ReferenceAttribute(
+            reference_name=f"{seed_prefix} - Reference Attribute B",
+            data_column_id=seeded_data_columns[1].id,
+            validation=[ValueValidation(datatype=DataType.STRING)],
         ),
     ]
 
