@@ -150,6 +150,10 @@ class NotebookCollection(BaseCollection):
         If a block in the Notebook does not already exist on Albert, it will be created.
         *Note: The order of the Blocks in your Notebook matter and will be used in the updated Notebook!*
 
+        !!! warning
+        Updating existing Ketcher blocks is not supported. To change a Ketcher block, delete it and
+        create a new one instead.
+
 
         Parameters
         ----------
@@ -230,7 +234,7 @@ class NotebookCollection(BaseCollection):
                 )
                 raise AlbertException(msg)
 
-            if isinstance(block, KetcherBlock):
+            if isinstance(block, KetcherBlock) and existing_block is None:
                 ketcher_updates.append(self._prepare_ketcher_block(notebook=notebook, block=block))
 
             put_datum = PutBlockDatum(
@@ -253,6 +257,12 @@ class NotebookCollection(BaseCollection):
     def _prepare_ketcher_block(
         self, *, notebook: Notebook, block: KetcherBlock
     ) -> _KetcherUpdateAction:
+        """
+        Prepare a Ketcher block for creation.
+
+        Updates to existing Ketcher blocks are not supported. To change a Ketcher
+        block, delete it and create a new one instead.
+        """
         content = block.content
         smiles = content.smiles or ""
         data = content.data

@@ -223,6 +223,7 @@ nav:
   - Examples:
       - Property Data: examples/property_data.md
       - Tasks: examples/tasks.md
+      - Notebooks: examples/notebook.md
 
 validation:
   omitted_files: warn

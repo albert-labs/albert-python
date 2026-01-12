@@ -225,6 +225,8 @@ class SynthesisCollection(BaseCollection):
             The synthesis record.
         """
         synthesis = self.get_by_id(id=synthesis_id)
+        if synthesis.inventory_id is not None:
+            return synthesis
         row_sequence: RowSequence | None = synthesis.row_sequence
         reactant_row_ids = row_sequence.reactants if row_sequence else []
         if not reactant_row_ids and synthesis.reactants:
