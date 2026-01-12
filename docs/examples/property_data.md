@@ -54,7 +54,7 @@ Property data refers to the results collected from a Property Task in Albert. Th
             data_column=TaskDataColumn(data_column_id="DAC313", column_sequence="COL3"),
             value=CurvePropertyValue(
                 file_path="path/to/curve.csv",
-                field_mapping={"Temperature": "dac1957", " Count": "dac517"},
+                field_mapping={"temperature": "Temperature", "cnt": "Count"},
             ),
             trial_number=1,
             data_template=dt,
