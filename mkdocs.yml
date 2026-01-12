@@ -23,7 +23,7 @@ use_directory_urls: true
 theme:
   name: "material"
   font:
-    text: Poppins
+    text: Aeonik Regular
   logo: assets/Wordmark_White.png
   favicon: assets/Vector_Favicon_Blue.svg
   features:
