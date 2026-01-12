@@ -1,12 +1,19 @@
+import mimetypes
+from pathlib import Path, PurePosixPath
+
 from pydantic import TypeAdapter, validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.files import FileCollection
 from albert.collections.synthesis import SynthesisCollection
 from albert.core.base import BaseAlbertModel
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import NotebookId, ProjectId, SynthesisId, TaskId
 from albert.exceptions import AlbertException
+from albert.resources.files import FileNamespace
 from albert.resources.notebooks import (
+    AttachesBlock,
+    ImageBlock,
     KetcherBlock,
     Notebook,
     NotebookBlock,
@@ -42,6 +49,7 @@ class NotebookCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{NotebookCollection._api_version}/notebooks"
+        self._files = FileCollection(session=session)
         self._synthesis = SynthesisCollection(session=session)
 
     @validate_call
@@ -236,6 +244,8 @@ class NotebookCollection(BaseCollection):
 
             if isinstance(block, KetcherBlock) and existing_block is None:
                 ketcher_updates.append(self._prepare_ketcher_block(notebook=notebook, block=block))
+            elif isinstance(block, (AttachesBlock | ImageBlock)):
+                self._prepare_file_block(notebook=notebook, block=block)
 
             put_datum = PutBlockDatum(
                 id=block.id,
@@ -253,6 +263,46 @@ class NotebookCollection(BaseCollection):
                 data.append(PutBlockDatum(id=block.id, operation=PutOperation.DELETE))
 
         return PutBlockPayload(data=data), ketcher_updates
+
+    def _prepare_file_block(
+        self, *, notebook: Notebook, block: AttachesBlock | ImageBlock
+    ) -> None:
+        content = block.content
+        file_path = content.file_path
+        file_key = content.file_key
+        if file_path is None:
+            if file_key:
+                file_name = PurePosixPath(file_key).name
+                if "/" not in file_key:
+                    content.file_key = f"{notebook.id}/{block.id}/{file_key}"
+                if content.format is None:
+                    content.format = (
+                        mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+                    )
+                if isinstance(block, AttachesBlock) and content.title is None:
+                    content.title = file_name or None
+            return
+
+        path = Path(file_path)
+        if file_key and "/" not in file_key:
+            file_key = f"{notebook.id}/{block.id}/{file_key}"
+        elif not file_key:
+            file_key = f"{notebook.id}/{block.id}/{path.name}"
+
+        content.file_key = file_key
+        file_name = PurePosixPath(file_key).name
+        if content.format is None:
+            content.format = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        if isinstance(block, AttachesBlock) and content.title is None:
+            content.title = file_name or None
+
+        with path.open("rb") as handle:
+            self._files.sign_and_upload_file(
+                data=handle,
+                name=file_key,
+                namespace=FileNamespace(content.namespace),
+                content_type=content.format,
+            )
 
     def _prepare_ketcher_block(
         self, *, notebook: Notebook, block: KetcherBlock

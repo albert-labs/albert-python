@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pandas import DataFrame
@@ -106,6 +107,7 @@ class AttachesContent(BaseAlbertModel):
     namespace: str = Field(default="result")
     file_key: str | None = Field(default=None, alias="fileKey")
     format: str | None = Field(default=None, alias="mimeType")
+    file_path: str | Path | None = Field(default=None, exclude=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
 
 
@@ -122,6 +124,7 @@ class ImageContent(BaseAlbertModel):
     with_border: bool = Field(default=False, alias="withBorder")
     file_key: str | None = Field(default=None, alias="fileKey")
     format: str | None = Field(default=None, alias="mimeType")
+    file_path: str | Path | None = Field(default=None, exclude=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
 
 
