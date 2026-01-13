@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from albert.core.shared.identifiers import CustomFieldId, EntityTypeId, RuleId
 from albert.core.shared.models.base import BaseAlbertModel, BaseResource, EntityLink
@@ -173,8 +175,8 @@ class EntityType(BaseResource):
     ----------
     id : EntityTypeId
         The unique identifier for the entity type.
-    category : EntityCategory
-        The category the entity type belongs to.
+    category : EntityCategory | None
+        The category the entity type belongs to. Required for tasks and inventories.
     custom_category : str | None, optional
         A custom category name for the entity type.
     label : str
@@ -194,7 +196,7 @@ class EntityType(BaseResource):
     """
 
     id: EntityTypeId | None = Field(alias="albertId", default=None)
-    category: EntityCategory
+    category: EntityCategory | None = None
     custom_category: str | None = Field(
         default=None, max_length=100, min_length=1, alias="customCategory"
     )
@@ -214,6 +216,15 @@ class EntityType(BaseResource):
     search_query_string: EntityTypeSearchQueryStrings | None = Field(
         alias="searchQueryString", default=None
     )
+
+    @model_validator(mode="after")
+    def validate_category(self) -> EntityType:
+        if (
+            self.service in {EntityServiceType.TASKS, EntityServiceType.INVENTORIES}
+            and self.category is None
+        ):
+            raise ValueError("category is required for tasks and inventories entity types.")
+        return self
 
 
 class EntityTypeOptionType(str, Enum):
