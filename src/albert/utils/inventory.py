@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from typing import Any
 
+from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.resources.inventory import CasAmount
 
 
@@ -54,6 +55,61 @@ def _build_cas_delete_operation(identifier: str) -> dict[str, Any]:
         "attribute": "casId",
         "oldValue": identifier,
     }
+
+
+def _normalize_inventory_function_ids(
+    value: list[BaseResource | EntityLink | str] | None,
+) -> list[str]:
+    if not value:
+        return []
+    ids: list[str] = []
+    for item in value:
+        if isinstance(item, str):
+            if item:
+                ids.append(item)
+            continue
+        if isinstance(item, BaseResource):
+            if item.id:
+                ids.append(item.id)
+            continue
+        if isinstance(item, EntityLink):
+            if item.id:
+                ids.append(item.id)
+            continue
+    return ids
+
+
+def _build_inventory_function_operations(
+    *,
+    entity_id: str,
+    existing: list[BaseResource | EntityLink | str] | None,
+    updated: list[BaseResource | EntityLink | str] | None,
+) -> list[dict[str, Any]]:
+    existing_ids = set(_normalize_inventory_function_ids(existing))
+    updated_ids = set(_normalize_inventory_function_ids(updated))
+    to_add = sorted(updated_ids - existing_ids)
+    to_delete = sorted(existing_ids - updated_ids)
+
+    operations: list[dict[str, Any]] = []
+    if to_add:
+        operations.append(
+            {
+                "attribute": "inventoryFunction",
+                "entityId": entity_id,
+                "operation": "add",
+                "newValue": to_add,
+            }
+        )
+    if to_delete:
+        operations.append(
+            {
+                "attribute": "inventoryFunction",
+                "entityId": entity_id,
+                "operation": "delete",
+                "oldValue": to_delete,
+            }
+        )
+    return operations
 
 
 def _build_cas_scalar_operation(
@@ -117,6 +173,14 @@ def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> lis
         if operation is not None:
             operations.append(operation)
 
+    operations.extend(
+        _build_inventory_function_operations(
+            entity_id=identifier,
+            existing=existing.inventory_function,
+            updated=updated.inventory_function,
+        )
+    )
+
     return operations
 
 
@@ -159,6 +223,13 @@ def _build_cas_patch_operations(
             )
             if target_operation is not None:
                 operations.append(target_operation)
+        operations.extend(
+            _build_inventory_function_operations(
+                entity_id=identifier,
+                existing=None,
+                updated=cas_amount.inventory_function,
+            )
+        )
 
     removals = [existing_lookup[key] for key in existing_lookup.keys() - updated_lookup.keys()]
     for cas_amount in removals:
