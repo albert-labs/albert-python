@@ -29,6 +29,7 @@ def test_cas_amount_attributes():
         "target",
         "id",
         "cas_category",
+        "inventory_function",
         "created",
         "updated",
         "classification_type",
