@@ -27,7 +27,8 @@ class ListItem(BaseResource):
     category : ListItemCategory | None
         The category of the list item. Allowed values are `businessDefined`, `userDefined`, `projects`, and `extensions`.
     list_type : str | None
-        The type of the list item. Allowed values are `projectState` for `projects` and `extensions` for `extensions`.
+        The type of the list item. Allowed values are `projectState` for `projects`, `extensions` for `extensions`,
+        and `casCategory` or `inventoryFunction` for `inventory`.
     """
 
     name: str
