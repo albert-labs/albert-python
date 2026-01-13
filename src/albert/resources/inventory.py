@@ -14,6 +14,7 @@ from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
+from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
@@ -75,6 +76,8 @@ class CasAmount(BaseAlbertModel):
         The SMILES string of the CAS Number resource. Obtained from the Cas object when provided.
     number: str | None
         The CAS number. Obtained from the Cas object when provided.
+    inventory_function: list[ListItem | EntityLink | str] | None
+        Business-controlled functions associated with the CAS in this inventory context.
 
     !!! tip
     ---
@@ -87,6 +90,9 @@ class CasAmount(BaseAlbertModel):
     target: float | None = Field(default=None, alias="inventoryValue")
     id: str | None = Field(default=None)
     cas_category: str | None = Field(default=None, alias="casCategory")
+    inventory_function: list[SerializeAsEntityLink[ListItem] | str] | None = Field(
+        default=None, alias="inventoryFunction"
+    )
     type: str | None = Field(default=None)
     classification_type: str | None = Field(default=None, alias="classificationType")
 
