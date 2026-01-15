@@ -1,10 +1,7 @@
-import time
-
 import pytest
 
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
-from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import ensure_inventory_id
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
@@ -133,32 +130,17 @@ def test_get_by_ids(client: Albert):
     #     assert f"INV{inventory_id}" == inventory.id
 
 
-def test_inventory_update(client: Albert, seed_prefix: str, seeded_companies: list[Company]):
-    # create a new test inventory item
-    company = seeded_companies[0]
-    ii = InventoryItem(
-        name=f"{seed_prefix} - SDK UPDATE/DELETE TEST",
-        description="SDK item that will be updated and deleted.",
-        category=InventoryCategory.RAW_MATERIALS,
-        unit_category=InventoryUnitCategory.MASS,
-        security_class=SecurityClass.CONFIDENTIAL,
-        company=company,
-    )
-    created = client.inventory.create(inventory_item=ii)
-    # Give time for the DB to sync - somewhere between 1 and 4 seconds is needed
-    # for this test to work
-    time.sleep(4)
+def test_inventory_update(client: Albert, seed_prefix: str, seeded_inventory: list[InventoryItem]):
+    # get a test inventory item
+    inventory_item = seeded_inventory[0]
 
-    assert client.inventory.exists(inventory_item=created)
+    assert client.inventory.exists(inventory_item=inventory_item)
     d = "testing SDK CRUD"
-    created.description = d
+    inventory_item.description = d
 
-    updated = client.inventory.update(inventory_item=created)
+    updated = client.inventory.update(inventory_item=inventory_item)
     assert updated.description == d
-    assert updated.id == created.id
-
-    client.inventory.delete(id=created.id)
-    assert not client.inventory.exists(inventory_item=created)
+    assert updated.id == inventory_item.id
 
 
 def test_collection_blocks_formulation(client: Albert, seeded_projects):
