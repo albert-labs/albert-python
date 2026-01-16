@@ -7,6 +7,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import BTInsightId
+from albert.core.utils import ensure_list
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
 
 
@@ -132,17 +133,17 @@ class BTInsightCollection(BaseCollection):
         """
         params = {
             "offset": offset,
-            "order": OrderBy(order_by).value if order_by else None,
+            "order": order_by,
             "sortBy": sort_by,
             "text": text,
-            "name": name,
+            "name": ensure_list(name),
         }
-        if state:
-            state = state if isinstance(state, list) else [state]
-            params["state"] = [BTInsightState(x).value for x in state]
-        if category:
-            category = category if isinstance(category, list) else [category]
-            params["category"] = [BTInsightCategory(x).value for x in category]
+
+        state_values = ensure_list(state)
+        params["state"] = state_values if state_values else None
+
+        category_values = ensure_list(category)
+        params["category"] = category_values if category_values else None
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

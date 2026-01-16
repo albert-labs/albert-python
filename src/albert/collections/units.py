@@ -8,6 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import UnitId
+from albert.core.utils import ensure_list
 from albert.resources.units import Unit, UnitCategory
 
 
@@ -192,11 +193,11 @@ class UnitCollection(BaseCollection):
             An iterator of Unit entities.
         """
         params = {
-            "orderBy": order_by.value,
-            "name": [name] if isinstance(name, str) else name,
+            "orderBy": order_by,
+            "name": ensure_list(name),
             "exactMatch": exact_match,
             "verified": verified,
-            "category": category.value if isinstance(category, UnitCategory) else category,
+            "category": category,
             "startKey": start_key,
         }
 
