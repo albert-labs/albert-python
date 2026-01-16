@@ -103,7 +103,7 @@ class DataColumnCollection(BaseCollection):
             yield from (DataColumn(**item) for item in items)
 
         params = {
-            "orderBy": order_by.value,
+            "orderBy": order_by,
             "startKey": start_key,
             "name": ensure_list(name),
             "exactMatch": exact_match,

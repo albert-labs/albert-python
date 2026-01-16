@@ -361,9 +361,9 @@ class InventoryCollection(BaseCollection):
 
         params = {
             "text": text,
-            "order": order.value if order is not None else None,
+            "order": order,
             "sortBy": sort_by if sort_by is not None else None,
-            "category": [c.value for c in category] if category is not None else None,
+            "category": category,
             "tags": tags,
             "manufacturer": [c.name for c in company] if company is not None else None,
             "cas": [c.number for c in cas] if cas is not None else None,

@@ -92,7 +92,7 @@ class ListsCollection(BaseCollection):
         params = {
             "startKey": start_key,
             "name": names,
-            "category": category.value if isinstance(category, ListItemCategory) else category,
+            "category": category,
             "listType": list_type,
             "orderBy": order_by,
         }

@@ -193,11 +193,11 @@ class UnitCollection(BaseCollection):
             An iterator of Unit entities.
         """
         params = {
-            "orderBy": order_by.value,
+            "orderBy": order_by,
             "name": ensure_list(name),
             "exactMatch": exact_match,
             "verified": verified,
-            "category": category.value if isinstance(category, UnitCategory) else category,
+            "category": category,
             "startKey": start_key,
         }
 

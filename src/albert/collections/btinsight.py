@@ -133,19 +133,17 @@ class BTInsightCollection(BaseCollection):
         """
         params = {
             "offset": offset,
-            "order": OrderBy(order_by).value if order_by else None,
+            "order": order_by,
             "sortBy": sort_by,
             "text": text,
             "name": ensure_list(name),
         }
 
         state_values = ensure_list(state)
-        params["state"] = [BTInsightState(x).value for x in state_values] if state_values else None
+        params["state"] = state_values if state_values else None
 
         category_values = ensure_list(category)
-        params["category"] = (
-            [BTInsightCategory(x).value for x in category_values] if category_values else None
-        )
+        params["category"] = category_values if category_values else None
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

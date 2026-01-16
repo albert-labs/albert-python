@@ -259,12 +259,13 @@ class TagCollection(BaseCollection):
             An iterator of Tag entities matching the filters.
         """
         params = {
-            "orderBy": order_by.value,
+            "orderBy": order_by,
             "startKey": start_key,
         }
 
-        params["name"] = ensure_list(name)
-        params["exactMatch"] = exact_match
+        if name:
+            params["name"] = ensure_list(name)
+            params["exactMatch"] = exact_match
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,
