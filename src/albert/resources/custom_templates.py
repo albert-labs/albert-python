@@ -325,7 +325,7 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     id: CustomTemplateId = Field(alias="albertId")
     created_by_name: str = Field(..., alias="createdByName")
     created_at: str = Field(..., alias="createdAt")
-    category: str
+    category: str | None = None
     status: Status | None = None
     resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
     data: CustomTemplateSearchItemData | None = None

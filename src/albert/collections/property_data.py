@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from contextlib import suppress
-from enum import Enum
 
 import pandas as pd
 from pydantic import validate_call
@@ -1092,18 +1091,14 @@ class PropertyDataCollection(BaseCollection):
         params = {
             "result": result,
             "text": text,
-            "order": order.value if order else None,
+            "order": order,
             "sortBy": sort_by,
             "inventoryIds": ensure_list(inventory_ids),
             "projectIds": ensure_list(project_ids),
             "lotIds": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
-            "category": (
-                [c.value if isinstance(c, Enum) else c for c in category_values]
-                if category_values
-                else None
-            ),
+            "category": category_values if category_values else None,
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),

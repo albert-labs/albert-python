@@ -98,7 +98,7 @@ class ParameterGroupCollection(BaseCollection):
         """
         params = {
             "offset": offset,
-            "order": order_by.value,
+            "order": order_by,
             "text": text,
             "types": ensure_list(types),
         }

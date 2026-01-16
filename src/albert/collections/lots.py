@@ -10,6 +10,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import InventoryId, LotId, TaskId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
 from albert.resources.lots import Lot, LotSearchItem
 
@@ -188,39 +189,21 @@ class LotCollection(BaseCollection):
 
         search_text = text if (text is None or len(text) < 50) else text[:50]
 
-        def _ensure_list(value):
-            if value is None:
-                return None
-            if isinstance(value, list | tuple | set):
-                return list(value)
-            return [value]
-
-        def _format_categories(value):
-            raw = _ensure_list(value)
-            if raw is None:
-                return None
-            formatted: list[str] = []
-            for category in raw:
-                formatted.append(
-                    category.value if isinstance(category, InventoryCategory) else category
-                )
-            return formatted
-
         params = {
             "offset": offset,
-            "order": order_by.value,
+            "order": order_by,
             "text": search_text,
             "sortBy": sort_by,
             "isDropDown": is_drop_down,
-            "inventoryId": _ensure_list(inventory_id),
-            "locationId": _ensure_list(location_id),
-            "storageLocationId": _ensure_list(storage_location_id),
-            "taskId": _ensure_list(task_id),
-            "category": _format_categories(category),
-            "externalBarcodeId": _ensure_list(external_barcode_id),
-            "searchField": _ensure_list(search_field),
-            "sourceField": _ensure_list(source_field),
-            "additionalField": _ensure_list(additional_field),
+            "inventoryId": ensure_list(inventory_id),
+            "locationId": ensure_list(location_id),
+            "storageLocationId": ensure_list(storage_location_id),
+            "taskId": ensure_list(task_id),
+            "category": ensure_list(category),
+            "externalBarcodeId": ensure_list(external_barcode_id),
+            "searchField": ensure_list(search_field),
+            "sourceField": ensure_list(source_field),
+            "additionalField": ensure_list(additional_field),
         }
         params = {key: value for key, value in params.items() if value is not None}
 

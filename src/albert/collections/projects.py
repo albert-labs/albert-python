@@ -187,7 +187,7 @@ class ProjectCollection(BaseCollection):
             An iterator of matching partial (unhydrated) Project results.
         """
         query_params = {
-            "order": order_by.value,
+            "order": order_by,
             "offset": offset,
             "text": text,
             "sortBy": sort_by,
