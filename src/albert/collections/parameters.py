@@ -138,7 +138,7 @@ class ParameterCollection(BaseCollection):
             yield from (Parameter(**item) for item in items)
 
         params = {
-            "orderBy": order_by.value,
+            "orderBy": order_by,
             "parameters": ids,
             "startKey": start_key,
         }

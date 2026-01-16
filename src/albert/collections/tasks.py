@@ -25,8 +25,6 @@ from albert.core.shared.identifiers import (
     WorkflowId,
     remove_id_prefix,
 )
-from albert.core.shared.models.base import EntityLink, EntityLinkWithName
-from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.attachments import AttachmentCategory
@@ -573,7 +571,7 @@ class TaskCollection(BaseCollection):
 
         params = {
             "offset": offset,
-            "order": order_by.value,
+            "order": order_by,
             "text": text,
             "sortBy": sort_by,
             "tags": tags,
@@ -591,11 +589,7 @@ class TaskCollection(BaseCollection):
         }
 
         category_values = ensure_list(category)
-        params["category"] = (
-            [c.value if isinstance(c, TaskCategory) else c for c in category_values]
-            if category_values
-            else None
-        )
+        params["category"] = category_values if category_values else None
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -758,7 +752,7 @@ class TaskCollection(BaseCollection):
         """Fetch the audit history for the specified task."""
         params = {
             "limit": limit,
-            "orderBy": OrderBy(order).value if order else None,
+            "orderBy": order,
             "entity": entity,
             "blockId": blockId,
             "startKey": startKey,
