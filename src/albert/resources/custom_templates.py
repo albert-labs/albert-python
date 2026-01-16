@@ -7,7 +7,6 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass, Status
 from albert.core.shared.identifiers import CustomTemplateId, EntityTypeId, NotebookId
 from albert.core.shared.models.base import BaseResource, EntityLink
-from albert.core.shared.models.patch import PatchDatum, PatchOperation
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL, AccessControlLevel
@@ -180,78 +179,6 @@ ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discrimin
 class TemplateACL(BaseResource):
     fgclist: list[ACLEntry] = Field(default=None)
     acl_class: str | None = Field(default=None, alias="class")
-
-
-class CustomTemplatePatchAttribute(str, Enum):
-    NAME = "name"
-    CATEGORY = "category"
-    METADATA = "Metadata"
-    DATA = "Data"
-    LOCKED = "locked"
-
-
-class CustomTemplatePatchDatum(PatchDatum):
-    attribute: CustomTemplatePatchAttribute
-    operation: PatchOperation = PatchOperation.UPDATE
-
-
-class CustomTemplateBulkPatchItem(BaseAlbertModel):
-    id: CustomTemplateId
-    data: list[CustomTemplatePatchDatum] = Field(min_length=1, max_length=4)
-
-
-class CustomTemplatePatchResultItem(BaseAlbertModel):
-    message: str | None = None
-    id: CustomTemplateId | None = None
-
-
-class CustomTemplateBulkPatchPartialSuccess(BaseAlbertModel):
-    message: str | None = None
-    failed_items: list[CustomTemplatePatchResultItem] | None = Field(
-        default=None, alias="FailedItems"
-    )
-    updated_items: list[CustomTemplatePatchResultItem] | None = Field(
-        default=None, alias="UpdatedItems"
-    )
-
-
-class CustomTemplateACLAttribute(str, Enum):
-    ACL = "ACL"
-    FGC = "fgc"
-    CLASS = "class"
-
-
-class CustomTemplateACLReference(BaseAlbertModel):
-    id: str
-
-
-class CustomTemplateACLAssignment(BaseAlbertModel):
-    id: str
-    fgc: AccessControlLevel | SecurityClass | None = None
-
-
-class CustomTemplateACLChange(BaseAlbertModel):
-    operation: PatchOperation
-    attribute: CustomTemplateACLAttribute
-    id: str | None = None
-    new_value: AccessControlLevel | SecurityClass | list[CustomTemplateACLAssignment] | None = (
-        Field(default=None, alias="newValue")
-    )
-    old_value: AccessControlLevel | SecurityClass | list[CustomTemplateACLReference] | None = (
-        Field(default=None, alias="oldValue")
-    )
-
-    def model_dump(self, **kwargs) -> dict[str, Any]:
-        kwargs.setdefault("exclude_unset", True)
-        return super().model_dump(**kwargs)
-
-
-class CustomTemplateACLPatchPayload(BaseAlbertModel):
-    data: list[CustomTemplateACLChange]
-
-    def model_dump(self, **kwargs) -> dict[str, Any]:
-        kwargs.setdefault("exclude_unset", True)
-        return super().model_dump(**kwargs)
 
 
 class CustomTemplate(BaseTaggedResource):
