@@ -41,14 +41,14 @@ class CustomTemplatesCollection(BaseCollection):
     def create(
         self,
         *,
-        custom_templates: CustomTemplate | list[CustomTemplate],
+        custom_template: CustomTemplate | list[CustomTemplate],
     ) -> list[CustomTemplate]:
         """
         Creates one or more custom templates.
 
         Parameters
         ----------
-        custom_templates : CustomTemplate | list[CustomTemplate]
+        custom_template : CustomTemplate | list[CustomTemplate]
             The template entities to create.
 
         Returns
@@ -56,9 +56,11 @@ class CustomTemplatesCollection(BaseCollection):
         list[CustomTemplate]
             The created CustomTemplate entities.
         """
-        templates = ensure_list(custom_templates) or []
+        templates = ensure_list(custom_template) or []
         if len(templates) == 0:
             raise ValueError("At least one CustomTemplate must be provided.")
+        if len(templates) > 10:
+            raise ValueError("A maximum of 10 CustomTemplates can be created at once.")
 
         payload = [
             template.model_dump(
@@ -124,7 +126,13 @@ class CustomTemplatesCollection(BaseCollection):
                     joined,
                 )
 
-        return [CustomTemplate(**item) for item in created_payloads]
+        hydrated_templates = []
+        for payload in created_payloads:
+            template = CustomTemplate(**payload)
+            hydrated = self.get_by_id(id=template.id)
+            hydrated_templates.append(hydrated)
+
+        return hydrated_templates
 
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a Custom Template by ID
@@ -297,35 +305,82 @@ class CustomTemplatesCollection(BaseCollection):
     ) -> CustomTemplate:
         """Replace the template's ACL class and/or entries with the provided values and return the updated template."""
 
-        if acl_class is None and not acls:
+        if acl_class is None and acls is None:
             raise ValueError("Provide an ACL class and/or ACL entries to update.")
 
         data = []
+        current_template: CustomTemplate | None = None
 
         if acl_class is not None:
+            acl_class_value = getattr(acl_class, "value", acl_class)
             data.append(
                 {
                     "operation": PatchOperation.UPDATE.value,
                     "attribute": "class",
-                    "newValue": acl_class,
+                    "newValue": acl_class_value,
                 }
             )
 
-        if acls:
-            entries = []
-            for entry in acls:
-                payload: dict[str, str] = {"id": entry.id}
-                if entry.fgc is not None:
-                    payload["fgc"] = getattr(entry.fgc, "value", entry.fgc)
-                entries.append(payload)
-
-            data.append(
-                {
-                    "operation": PatchOperation.UPDATE.value,
-                    "attribute": "ACL",
-                    "newValue": entries,
-                }
+        if acls is not None:
+            current_template = self.get_by_id(id=custom_template_id)
+            current_acl = (
+                current_template.acl.fgclist
+                if current_template.acl and current_template.acl.fgclist
+                else []
             )
+            current_entries = {
+                entry.id: getattr(entry.fgc, "value", entry.fgc) for entry in current_acl
+            }
+
+            desired_entries = {entry.id: getattr(entry.fgc, "value", entry.fgc) for entry in acls}
+
+            to_add = []
+            to_delete = []
+            to_update = []
+
+            for entry_id, new_fgc in desired_entries.items():
+                if entry_id not in current_entries:
+                    payload = {"id": entry_id}
+                    if new_fgc is not None:
+                        payload["fgc"] = new_fgc
+                    to_add.append(payload)
+                else:
+                    old_fgc = current_entries[entry_id]
+                    if new_fgc is not None and old_fgc != new_fgc:
+                        to_update.append(
+                            {
+                                "operation": PatchOperation.UPDATE.value,
+                                "attribute": "fgc",
+                                "id": entry_id,
+                                "oldValue": old_fgc,
+                                "newValue": new_fgc,
+                            }
+                        )
+
+            for entry_id in current_entries:
+                if entry_id not in desired_entries:
+                    to_delete.append({"id": entry_id})
+
+            if to_add:
+                data.append(
+                    {
+                        "operation": PatchOperation.ADD.value,
+                        "attribute": "ACL",
+                        "newValue": to_add,
+                    }
+                )
+            if to_delete:
+                data.append(
+                    {
+                        "operation": PatchOperation.DELETE.value,
+                        "attribute": "ACL",
+                        "oldValue": to_delete,
+                    }
+                )
+            data.extend(to_update)
+
+        if not data:
+            return current_template or self.get_by_id(id=custom_template_id)
 
         url = f"{self.base_path}/{custom_template_id}/acl"
         self.session.patch(url, json={"data": data})

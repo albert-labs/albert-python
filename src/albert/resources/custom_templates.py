@@ -19,10 +19,16 @@ from albert.resources.tasks import TaskSource
 from albert.resources.users import User, UserClass
 
 
+class CustomTemplateInventoryLot(BaseAlbertModel):
+    id: str
+    barcode: str | None = None
+
+
 class DataTemplateInventory(EntityLink):
     batch_size: float | None = Field(default=None, alias="batchSize")
     sheet: list[Sheet | EntityLink] | None = Field(default=None)
     category: InventoryCategory | None = Field(default=None)
+    lots: list[CustomTemplateInventoryLot] | None = Field(default=None, alias="Lots")
 
 
 class DesignLink(EntityLink):
@@ -35,13 +41,11 @@ class TemplateEntityType(BaseAlbertModel):
 
 
 class TemplateCategory(str, Enum):
-    PROPERTY_LIST = "Property Task"
     PROPERTY = "Property"
     BATCH = "Batch"
     SHEET = "Sheet"
     NOTEBOOK = "Notebook"
     GENERAL = "General"
-    QC_BATCH = "BatchWithQC"
 
 
 class Priority(str, Enum):
@@ -60,6 +64,7 @@ class GeneralData(BaseTaggedResource):
     priority: Priority | None = Field(default=None)
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
+    metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
 
 
 class JobStatus(str, Enum):
@@ -93,19 +98,6 @@ class Workflow(BaseResource):
 class Block(BaseTaggedResource):
     workflow: list[Workflow] = Field(default=None, alias="Workflow")
     datatemplate: list[EntityLink] | None = Field(default=None, alias="Datatemplate")
-
-
-# TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
-class QCBatchData(BaseTaggedResource):
-    category: Literal[TemplateCategory.QC_BATCH] = TemplateCategory.QC_BATCH
-    project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
-    inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
-    workflow: list[EntityLink] = Field(default=None, alias="Workflow")
-    location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
-    batch_size_unit: str | None = Field(alias="batchSizeUnit", default=None)
-    batch_size: str | None = Field(alias="batchSize", default=None)
-    priority: Priority  # enum?!
-    name: str | None = Field(default=None)
 
 
 class BatchData(BaseTaggedResource):
@@ -144,44 +136,16 @@ class NotebookData(BaseTaggedResource):
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
-_CustomTemplateDataUnion = (
-    PropertyData | BatchData | SheetData | NotebookData | QCBatchData | GeneralData
-)
+_CustomTemplateDataUnion = PropertyData | BatchData | SheetData | NotebookData | GeneralData
 CustomTemplateData = Annotated[_CustomTemplateDataUnion, Field(discriminator="category")]
 
 
-class ACLType(str, Enum):
-    TEAM = "team"
-    MEMBER = "member"
-    OWNER = "owner"
-    VIEWER = "viewer"
-
-
-class TeamACL(ACL):
-    type: Literal[ACLType.TEAM] = ACLType.TEAM
-
-
-class OwnerACL(ACL):
-    type: Literal[ACLType.OWNER] = ACLType.OWNER
-
-
-class MemberACL(ACL):
-    type: Literal[ACLType.MEMBER] = ACLType.MEMBER
-
-
-class ViewerACL(ACL):
-    type: Literal[ACLType.VIEWER] = ACLType.VIEWER
-
-
-ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discriminator="type")]
-
-
 class TemplateACL(BaseResource):
-    fgclist: list[ACLEntry] = Field(default=None)
-    acl_class: str | None = Field(default=None, alias="class")
+    fgclist: list[ACL] | None = Field(default=None)
+    acl_class: SecurityClass | None = Field(default=None, alias="class")
 
 
-class CustomTemplate(BaseTaggedResource):
+class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     """A custom template entity.
 
     Attributes
@@ -191,7 +155,7 @@ class CustomTemplate(BaseTaggedResource):
     id : str
         The Albert ID of the template. Set when the template is retrieved from Albert.
     category : TemplateCategory
-        The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
+        The category of the template.
     metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
         The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
     data : CustomTemplateData | None
@@ -200,20 +164,20 @@ class CustomTemplate(BaseTaggedResource):
         The entity type associated with the template.
     locked : bool | None
         Whether the template is locked when loaded in the UI.
-    team : List[TeamACL] | None
-        The team of the template.
+    team : List[ACL] | None
+        The team ACL entries for the template.
     acl : TemplateACL | None
 
     """
 
     name: str
-    id: CustomTemplateId = Field(alias="albertId")
+    id: CustomTemplateId | None = Field(default=None, alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
     entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
     locked: bool | None = Field(default=None)
-    team: list[TeamACL] | None = Field(default=None)
+    team: list[ACL] | None = Field(default=None)
     acl: TemplateACL | None = Field(default=None, alias="ACL")
 
     @model_validator(mode="before")  # Must happen before construction so the data are captured
@@ -222,9 +186,13 @@ class CustomTemplate(BaseTaggedResource):
         """
         Initialize private attributes from the incoming data dictionary before the model is fully constructed.
         """
+        if not isinstance(data, dict):
+            return data
 
-        if "Data" in data and "category" in data and "category" not in data["Data"]:
-            data["Data"]["category"] = data["category"]
+        data_payload = data.get("Data")
+        category = data.get("category")
+        if isinstance(data_payload, dict) and category is not None:
+            data_payload.setdefault("category", category)
         return data
 
 
@@ -237,13 +205,13 @@ class CustomTemplateSearchItemData(BaseAlbertModel):
 class CustomTemplateSearchItemACL(ACL):
     name: str | None = None
     user_type: UserClass | None = Field(default=None, alias="userType")
-    type: ACLType
+    type: str | None = None
 
 
 class CustomTemplateSearchItemTeam(BaseAlbertModel):
     id: str
     name: str
-    type: ACLType | None = None
+    type: str | None = None
     fgc: AccessControlLevel | None = Field(default=None)
 
 
