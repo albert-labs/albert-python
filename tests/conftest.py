@@ -14,6 +14,7 @@ from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
+from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.entity_types import EntityType
@@ -309,6 +310,32 @@ def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
     for tag in seeded:
         with suppress(NotFoundError, BadRequestError):
             client.tags.delete(id=tag.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_custom_templates(
+    client: Albert,
+    seed_prefix: str,
+) -> Iterator[list[CustomTemplate]]:
+    seeded: list[CustomTemplate] = []
+    name = f"{seed_prefix}-general"
+    data = GeneralData(name=name)
+    custom_template = CustomTemplate(
+        name=name,
+        data=data,
+        category=TemplateCategory.GENERAL,
+    )
+    created_templates = client.custom_templates.create(custom_template=custom_template)
+    seeded.extend(created_templates)
+
+    # Avoid race condition while it populated through search DBs
+    time.sleep(1.5)
+
+    yield seeded
+
+    for template in seeded:
+        with suppress(NotFoundError):
+            client.custom_templates.delete(id=template.id)
 
 
 @pytest.fixture(scope="session")
