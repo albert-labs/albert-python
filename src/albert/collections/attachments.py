@@ -152,20 +152,30 @@ class AttachmentCollection(BaseCollection):
             The name of the file, by default ""
         upload_key : str | None, optional
             Override the storage key used when signing and uploading the file.
-            Defaults to the provided ``file_name``.
+            Defaults to ``{parent_id}/{note_id}/{file_name}``.
 
         Returns
         -------
         Note
             The created note.
         """
-        upload_name = upload_key or file_name
-        if not upload_name:
+        if not (upload_key or file_name):
             raise ValueError("A file name or upload key must be provided for attachment upload.")
 
-        file_type = mimetypes.guess_type(file_name or upload_name)[0]
-        file_collection = self._get_file_collection()
         note_collection = self._get_note_collection()
+        note = Note(
+            parent_id=parent_id,
+            note=note_text,
+        )
+        registered_note = note_collection.create(note=note)
+        if upload_key:
+            attachment_name = file_name or Path(upload_key).name
+            upload_name = upload_key
+        else:
+            attachment_name = file_name
+            upload_name = f"{parent_id}/{registered_note.id}/{file_name}"
+        file_type = mimetypes.guess_type(attachment_name or upload_name)[0]
+        file_collection = self._get_file_collection()
 
         file_collection.sign_and_upload_file(
             data=file_data,
@@ -176,16 +186,12 @@ class AttachmentCollection(BaseCollection):
         file_info = file_collection.get_by_name(
             name=upload_name, namespace=FileNamespace.RESULT.value
         )
-        note = Note(
-            parent_id=parent_id,
-            note=note_text,
-        )
-        registered_note = note_collection.create(note=note)
         self.attach_file_to_note(
             note_id=registered_note.id,
-            file_name=file_name or Path(upload_name).name,
+            file_name=attachment_name,
             file_key=file_info.name,
         )
+
         return note_collection.get_by_id(id=registered_note.id)
 
     @validate_call
