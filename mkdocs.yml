@@ -221,6 +221,7 @@ nav:
               - Worksheets: resources/worksheets.md
               - Sheets: resources/sheets.md
   - Examples:
+      - Inventory: examples/inventory.md
       - Property Data: examples/property_data.md
       - Tasks: examples/tasks.md
       - Notebooks: examples/notebook.md
