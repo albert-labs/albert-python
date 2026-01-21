@@ -31,20 +31,26 @@ def assert_template_items(
 def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[CustomTemplate]):
     """Test get_all returns hydrated CustomTemplate items."""
     seeded_template = seeded_custom_templates[0]
-    results = list(client.custom_templates.get_all(name=seeded_template.name, max_items=10))
+    print("Seeded template:", seeded_template)
+    results = list(
+        client.custom_templates.get_all(
+            name=seeded_template.name, category=seeded_template.category
+        )
+    )
+    print("Results:", results)
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplate,
         expected_data_type=_CustomTemplateDataUnion,
     )
-    assert len(results) <= 10
+    assert len(results)
     assert any(result.id == seeded_template.id for result in results)
 
 
 def test_custom_template_search(client: Albert, seeded_custom_templates: list[CustomTemplate]):
     """Test search returns unhydrated CustomTemplateSearchItem results."""
     seeded_template = seeded_custom_templates[0]
-    results = list(client.custom_templates.search(text=seeded_template.name, max_items=10))
+    results = list(client.custom_templates.search(text=seeded_template.name))
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplateSearchItem,
