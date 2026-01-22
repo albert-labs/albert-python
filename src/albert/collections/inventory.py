@@ -16,6 +16,7 @@ from albert.core.shared.identifiers import (
     SearchProjectId,
     WorksheetId,
 )
+from albert.core.utils import ensure_list
 from albert.resources.facet import FacetItem
 from albert.resources.inventory import (
     ALL_MERGE_MODULES,
@@ -88,10 +89,10 @@ class InventoryCollection(BaseCollection):
         # define merge endpoint
         url = f"{self.base_path}/merge"
 
-        if isinstance(child_id, list):
-            child_inventories = [{"id": i} for i in child_id]
-        else:
-            child_inventories = [{"id": child_id}]
+        child_ids = ensure_list(child_id) or []
+        if not child_ids:
+            raise ValueError("At least one child inventory id is required for merge operations.")
+        child_inventories = [{"id": i} for i in child_ids]
 
         # define payload using the class
         payload = MergeInventory(
@@ -360,9 +361,9 @@ class InventoryCollection(BaseCollection):
 
         params = {
             "text": text,
-            "order": order.value if order is not None else None,
+            "order": order,
             "sortBy": sort_by if sort_by is not None else None,
-            "category": [c.value for c in category] if category is not None else None,
+            "category": category,
             "tags": tags,
             "manufacturer": [c.name for c in company] if company is not None else None,
             "cas": [c.number for c in cas] if cas is not None else None,
@@ -447,8 +448,7 @@ class InventoryCollection(BaseCollection):
         This can be used for example to fetch all remaining tags as part of an iterative
         refinement of a search.
         """
-        if isinstance(name, str):
-            name = [name]
+        name = ensure_list(name) or []
 
         facets = self.get_all_facets(
             text=text,

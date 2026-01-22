@@ -285,7 +285,7 @@ class DataTemplateCollection(BaseCollection):
         """
         params = {
             "offset": offset,
-            "order": order_by.value,
+            "order": order_by,
             "text": name,
             "userId": user_id,
         }
