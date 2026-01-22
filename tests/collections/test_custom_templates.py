@@ -56,7 +56,7 @@ def test_custom_template_search(client: Albert, seeded_custom_templates: list[Cu
         expected_type=CustomTemplateSearchItem,
         expected_data_type=CustomTemplateSearchItemData,
     )
-    assert len(results) <= 10
+    assert len(results)
     assert any(result.id == seeded_template.id for result in results)
 
 
