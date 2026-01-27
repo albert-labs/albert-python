@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import ast
+import math
 import mimetypes
+import operator
 import re
 import uuid
 from collections.abc import Callable
@@ -573,6 +576,63 @@ def get_all_columns_used_in_calculations(*, first_row_data_column: list):
     return used_columns
 
 
+_ALLOWED_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+_ALLOWED_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+_ALLOWED_FUNCS: dict[str, tuple[Callable[..., float], int]] = {
+    "log10": (math.log10, 1),
+    "ln": (math.log, 1),
+    "sqrt": (math.sqrt, 1),
+    "pi": (lambda: math.pi, 0),
+}
+_ALLOWED_NAMES = {"pi": math.pi}
+
+
+def _safe_eval_math(*, expression: str) -> float:
+    """Safely evaluate supported math expressions without executing arbitrary code."""
+    parsed = ast.parse(expression, mode="eval")
+
+    def _eval(node: ast.AST) -> float:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int | float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in _ALLOWED_BINOPS:
+            return _ALLOWED_BINOPS[type(node.op)](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _ALLOWED_UNARYOPS:
+            return _ALLOWED_UNARYOPS[type(node.op)](_eval(node.operand))
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name):
+                raise ValueError("Unsupported function call.")
+            func_name = node.func.id
+            if func_name not in _ALLOWED_FUNCS:
+                raise ValueError("Unsupported function.")
+            if node.keywords:
+                raise ValueError("Keyword arguments are not supported.")
+            func, arity = _ALLOWED_FUNCS[func_name]
+            if len(node.args) != arity:
+                raise ValueError("Unsupported function arity.")
+            if arity == 0:
+                return func()
+            return func(_eval(node.args[0]))
+        if isinstance(node, ast.Name):
+            if node.id in _ALLOWED_NAMES:
+                return _ALLOWED_NAMES[node.id]
+            raise ValueError("Unsupported name.")
+        raise ValueError("Unsupported expression.")
+
+    return _eval(parsed)
+
+
 def evaluate_calculation(*, calculation: str, column_values: dict) -> float | None:
     """Evaluate a calculation expression against column values."""
     calculation = calculation.lstrip("=")
@@ -589,7 +649,7 @@ def evaluate_calculation(*, calculation: str, column_values: dict) -> float | No
             calculation = pattern.sub(repl, calculation)
 
         calculation = calculation.replace("^", "**")
-        return eval(calculation)
+        return _safe_eval_math(expression=calculation)
     except Exception as e:
         logger.info(
             "Error evaluating calculation '%s': %s. Likely do not have all values needed.",

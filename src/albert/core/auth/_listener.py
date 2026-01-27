@@ -31,6 +31,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         status = "successful" if self.server.token else "failed (no token found)"
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none';",
+        )
         self.end_headers()
         self.wfile.write(
             f"""
@@ -38,8 +42,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             <body>
                 <h1>Authentication {status}</h1>
                 <p>You can close this window now.</p>
-                <script>window.close()</script>
-                <button onclick="window.close()">Close Window</button>
             </body>
             </html>
             """.encode()
