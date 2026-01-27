@@ -598,7 +598,7 @@ _ALLOWED_NAMES = {"pi": math.pi}
 
 
 def _safe_eval_math(*, expression: str) -> float:
-    """Safely evaluate supported math expressions without executing arbitrary code."""
+    """Safely evaluate supported math expressions."""
     parsed = ast.parse(expression, mode="eval")
 
     def _eval(node: ast.AST) -> float:
