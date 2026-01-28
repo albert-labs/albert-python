@@ -25,9 +25,11 @@ class ListItem(BaseResource):
     id : str | None
         The Albert ID of the list item. Set when the list item is retrieved from Albert.
     category : ListItemCategory | None
-        The category of the list item. Allowed values are `businessDefined`, `userDefined`, `projects`, and `extensions`.
+        The category of the list item. Allowed values are `businessDefined`, `userDefined`, `projects`, `extensions`,
+        and `inventory`.
     list_type : str | None
-        The type of the list item. Allowed values are `projectState` for `projects` and `extensions` for `extensions`.
+        The type of the list item. Allowed values are `projectState` for `projects`, `extensions` for `extensions`,
+        and `casCategory` or `inventoryFunction` for `inventory`.
     """
 
     name: str
@@ -37,14 +39,15 @@ class ListItem(BaseResource):
 
     @model_validator(mode="after")
     def validate_list_type(self) -> ListItem:
+        allowed_by_category = {
+            ListItemCategory.PROJECTS: {"projectState"},
+            ListItemCategory.EXTENSIONS: {"extensions"},
+            ListItemCategory.INVENTORY: {"casCategory", "inventoryFunction"},
+        }
         if (
-            self.category == ListItemCategory.PROJECTS
-            and self.list_type is not None
-            and self.list_type != "projectState"
-        ) or (
-            self.category == ListItemCategory.EXTENSIONS
-            and self.list_type is not None
-            and self.list_type != "extensions"
+            self.list_type is not None
+            and self.category in allowed_by_category
+            and self.list_type not in allowed_by_category[self.category]
         ):
             raise ValueError(
                 f"List type {self.list_type} is not allowed for category {self.category}"
