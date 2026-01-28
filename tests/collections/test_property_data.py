@@ -1,4 +1,11 @@
+from contextlib import suppress
+
+import pytest
+
 from albert import Albert
+from albert.exceptions import NotFoundError
+from albert.resources.data_columns import DataColumn
+from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.property_data import (
     BulkPropertyData,
     BulkPropertyDataColumn,
@@ -10,7 +17,13 @@ from albert.resources.property_data import (
     TaskPropertyCreate,
     TaskPropertyData,
 )
-from albert.resources.tasks import BaseTask, PropertyTask
+from albert.resources.tasks import (
+    BaseTask,
+    Block,
+    PropertyTask,
+    TaskCategory,
+    TaskInventoryInformation,
+)
 
 
 def _get_latest_row(task_properties: TaskPropertyData) -> int:
@@ -221,3 +234,141 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].inventory_id == inv.id
     assert r[0].data_columns[0].data_column_id == seeded_data_columns[0].id
     assert r[0].data_columns[0].value == "55.5"
+
+
+def test_task_property_calculation_evaluation(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_projects,
+    seeded_workflows,
+):
+    calc_task_id = None
+    calc_dt_id = None
+    calc_dc_ids = []
+
+    try:
+        dc_one = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - calc col one")
+        )
+        dc_two = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - calc col two")
+        )
+        dc_calc = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - calc col result")
+        )
+        calc_dc_ids = [dc_one.id, dc_two.id, dc_calc.id]
+
+        calc_dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - calc dt",
+                description="Integration test template for calculated columns.",
+                data_column_values=[
+                    DataColumnValue(
+                        data_column=dc_one,
+                    ),
+                    DataColumnValue(
+                        data_column=dc_two,
+                    ),
+                ],
+            )
+        )
+        calc_dt_id = calc_dt.id
+        sequence_by_id = {col.data_column_id: col.sequence for col in calc_dt.data_column_values}
+        seq_one = sequence_by_id[dc_one.id]
+        seq_two = sequence_by_id[dc_two.id]
+        calc_dt = client.data_templates.add_data_columns(
+            data_template_id=calc_dt.id,
+            data_columns=[
+                DataColumnValue(
+                    data_column=dc_calc,
+                    calculation=f"={seq_one}+sqrt({seq_two})",
+                )
+            ],
+        )
+        sequence_by_id = {col.data_column_id: col.sequence for col in calc_dt.data_column_values}
+        seq_calc = sequence_by_id[dc_calc.id]
+
+        lot = next(
+            (l for l in seeded_lots if l.inventory_id == seeded_inventory[0].id),
+            None,
+        )
+        workflow = seeded_workflows[0]
+        interval_id = (
+            workflow.interval_combinations[0].interval_id
+            if workflow.interval_combinations
+            else "default"
+        )
+
+        calc_task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - calc task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[
+                    TaskInventoryInformation(
+                        inventory_id=seeded_inventory[0].id,
+                        lot_id=lot.id if lot else None,
+                    )
+                ],
+                parent_id=seeded_inventory[0].id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[
+                    Block(
+                        workflow=[workflow],
+                        data_template=[calc_dt],
+                    )
+                ],
+            )
+        )
+        calc_task_id = calc_task.id
+        calc_task = client.tasks.get_by_id(id=calc_task_id)
+        block_id = calc_task.blocks[0].id
+
+        result = client.property_data.add_properties_to_task(
+            task_id=calc_task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_one.id,
+                        column_sequence=seq_one,
+                    ),
+                    value="5",
+                ),
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_two.id,
+                        column_sequence=seq_two,
+                    ),
+                    value="16",
+                ),
+            ],
+            return_scope="block",
+        )
+
+        trial = max(
+            (t for t in result[0].data[0].trials if t.data_columns[0].property_data is not None),
+            key=lambda t: t.trial_number,
+        )
+        calc_column = next(c for c in trial.data_columns if c.sequence == seq_calc)
+        assert calc_column.property_data is not None
+        assert float(calc_column.property_data.value) == pytest.approx(9.0)
+    finally:
+        if calc_task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=calc_task_id)
+        if calc_dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=calc_dt_id)
+        for dc_id in calc_dc_ids:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=dc_id)

@@ -1,6 +1,7 @@
 import argparse
+import re
+import subprocess
 import sys
-from os import popen
 from pathlib import Path
 
 from packaging import version
@@ -19,8 +20,15 @@ def main(base_branch: str):
     local_path = Path(__file__).parents[1] / version_file
     local_version = extract_version(local_path.read_text())
 
-    with popen(f"git fetch origin && git show {base_branch}:{version_file}") as fh:
-        base_version = extract_version(fh.read())
+    if not re.fullmatch(r"[A-Za-z0-9._/-]+", base_branch) or base_branch.startswith("-"):
+        raise ValueError(f"Invalid base branch ref: {base_branch!r}")
+
+    subprocess.run(["git", "fetch", "origin"], check=True)
+    base_contents = subprocess.check_output(
+        ["git", "show", f"{base_branch}:{version_file}"],
+        text=True,
+    )
+    base_version = extract_version(base_contents)
 
     if is_version_bump(local_version, base_version):
         print(f"Version bump detected: {base_version} -> {local_version}")
