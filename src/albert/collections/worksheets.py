@@ -1,10 +1,18 @@
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import ProjectId
-from albert.resources.sheets import CellType, Sheet
+from albert.resources.acls import ACLContainer
+from albert.resources.custom_templates import CustomTemplate
 from albert.resources.worksheets import Worksheet
+from albert.utils.worksheets import (
+    get_columns_to_copy,
+    get_prg_rows_to_copy,
+    get_sheet_from_worksheet,
+    get_task_rows_to_copy,
+)
 
 
 class WorksheetCollection(BaseCollection):
@@ -156,10 +164,10 @@ class WorksheetCollection(BaseCollection):
             If True, includes all pinned columns from the source sheet. Default is True.
         copy_all_unpinned_columns : bool, optional
             If True, includes all unpinned columns from the source sheet. Default is True.
-        column_names : list of str, optional
+        column_names : list[str], optional
             A list of column names to explicitly copy. These are resolved internally
             to column IDs using the sheet's product design grid.
-        task_row_names : list of str, optional
+        task_row_names : list[str], optional
             List of task row names to include from the tasks.
 
         Returns
@@ -168,70 +176,15 @@ class WorksheetCollection(BaseCollection):
             The Worksheet entity containing newly created sheet.
         """
 
-        def _get_sheet_from_worksheet(sheet_name: str, worksheet: Worksheet) -> Sheet:
-            """Get the sheet from the worksheet by sheet name."""
-            sheet = next((s for s in worksheet.sheets if s.name == sheet_name), None)
-            if not sheet:
-                raise ValueError(f"Sheet with name {sheet_name} not found in the Worksheet.")
-            return sheet
-
-        def _get_columns_to_copy(sheet: Sheet, input_column_names: list[str] | None) -> list[str]:
-            """Determine which columns to copy based on the provided options."""
-            sheet_columns = sheet.columns
-            # Map column names to IDs
-            all_columns = {col.name: col.column_id for col in sheet_columns}
-
-            # If both flags are true, copy everything
-            if copy_all_pinned_columns and copy_all_unpinned_columns:
-                return set(all_columns.values())
-
-            columns_to_copy: set[str] = set()
-            # Copy pinned columns
-            if copy_all_pinned_columns:
-                columns_to_copy.update(
-                    col.column_id for col in sheet_columns if getattr(col, "pinned", False)
-                )
-
-            # Copy unpinned columns
-            if copy_all_unpinned_columns:
-                columns_to_copy.update(
-                    col.column_id for col in sheet_columns if not getattr(col, "pinned", False)
-                )
-
-            # Add any explicitly specified columns
-            if input_column_names:
-                for name in input_column_names:
-                    if name not in all_columns:
-                        raise ValueError(f"Column name {name!r} not found in sheet {sheet.name!r}")
-                    columns_to_copy.add(all_columns[name])
-
-            return columns_to_copy
-
-        def _get_task_rows_to_copy(sheet: Sheet, input_row_names: list[str] | None) -> list[str]:
-            """Determine which task rows to copy"""
-            task_rows = []
-
-            sheet_rows = sheet.rows
-            if not input_row_names:
-                # Copy all task rows if no input rows specified
-                for row in sheet_rows:
-                    if row.type == CellType.TAS:
-                        task_rows.append(row.row_id)
-                return task_rows
-
-            name_to_id = {row.name: row.row_id for row in sheet_rows}
-            for name in input_row_names:
-                row_id = name_to_id.get(name)
-                if row_id:
-                    task_rows.append(row_id)
-                else:
-                    raise ValueError(f"Task row name '{name}' not found in the grid.")
-            return task_rows
-
         worksheet = self.get_by_project_id(project_id=project_id)
-        sheet = _get_sheet_from_worksheet(sheet_name=source_sheet_name, worksheet=worksheet)
-        columns = _get_columns_to_copy(sheet=sheet, input_column_names=column_names)
-        task_rows = _get_task_rows_to_copy(sheet=sheet, input_row_names=task_row_names)
+        sheet = get_sheet_from_worksheet(sheet_name=source_sheet_name, worksheet=worksheet)
+        columns = get_columns_to_copy(
+            sheet=sheet,
+            copy_all_pinned_columns=copy_all_pinned_columns,
+            copy_all_unpinned_columns=copy_all_unpinned_columns,
+            input_column_names=column_names,
+        )
+        task_rows = get_task_rows_to_copy(sheet=sheet, input_row_names=task_row_names)
 
         payload = {
             "name": new_sheet_name,
@@ -247,3 +200,84 @@ class WorksheetCollection(BaseCollection):
         path = f"{self.base_path}/project/{project_id}/sheets"
         self.session.put(path, json=payload)
         return self.get_by_project_id(project_id=project_id)
+
+    @validate_call
+    def create_sheet_template(
+        self,
+        *,
+        project_id: ProjectId,
+        source_sheet_name: str,
+        template_name: str,
+        copy_all_pd_rows: bool = True,
+        copy_all_pinned_columns: bool = True,
+        copy_all_unpinned_columns: bool = True,
+        column_names: list[str] | None = None,
+        task_row_names: list[str] | None = None,
+        prg_row_names: list[str] | None = None,
+        acl: ACLContainer | None = None,
+    ) -> CustomTemplate:
+        """Create a new sheet template from an existing sheet.
+
+        Parameters
+        ----------
+        project_id : str
+            The project ID under which the sheet exists.
+        source_sheet_name : str
+            The name of the existing sheet to use as the template source.
+        template_name : str
+            The name of the new template.
+        copy_all_pd_rows : bool, optional
+            When True, all PD (Product Design) rows from the source sheet are copied.
+            When False, only rows corresponding to the selected columns will be copied.
+        copy_all_pinned_columns : bool, optional
+            If True, includes all pinned columns from the source sheet. Default is True.
+        copy_all_unpinned_columns : bool, optional
+            If True, includes all unpinned columns from the source sheet. Default is True.
+        column_names : list[str], optional
+            A list of column names to explicitly copy. These are resolved internally
+            to column IDs using the sheet's product design grid.
+        task_row_names : list[str], optional
+            List of task row names to include from the tasks.
+        prg_row_names : list[str], optional
+            List of parameter group row names to include.
+        acl : ACLContainer, optional
+            ACL for the template.
+
+        Returns
+        -------
+        CustomTemplate
+            The CustomTemplate for the created sheet template.
+        """
+        worksheet = self.get_by_project_id(project_id=project_id)
+        sheet = get_sheet_from_worksheet(sheet_name=source_sheet_name, worksheet=worksheet)
+        columns = get_columns_to_copy(
+            sheet=sheet,
+            copy_all_pinned_columns=copy_all_pinned_columns,
+            copy_all_unpinned_columns=copy_all_unpinned_columns,
+            input_column_names=column_names,
+        )
+        if not columns:
+            raise ValueError("At least one column must be selected to create a template.")
+        task_rows = get_task_rows_to_copy(sheet=sheet, input_row_names=task_row_names)
+        prg_rows = get_prg_rows_to_copy(sheet=sheet, input_row_names=prg_row_names)
+
+        payload = {
+            "name": template_name,
+            "sourceData": {
+                "projectId": project_id,
+                "sheetId": sheet.id,
+                "Columns": [{"id": col_id} for col_id in columns],
+                "copyAllPDRows": copy_all_pd_rows,
+                "TaskRows": [{"id": row_id} for row_id in task_rows],
+                "PRGRows": [{"id": row_id} for row_id in prg_rows],
+            },
+        }
+
+        if acl is not None:
+            payload["ACL"] = acl.model_dump(exclude_none=True, by_alias=True, mode="json")
+
+        path = f"{self.base_path}/sheet/template"
+        response = self.session.post(path, json=payload)
+        response_json = response.json()
+        ctp_id = response_json.get("ctpId")
+        return CustomTemplatesCollection(session=self.session).get_by_id(id=ctp_id)
