@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
+import warnings
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -14,7 +15,7 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import LinkId, NotebookId, ProjectId, SynthesisId, TaskId
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.exceptions import AlbertException
-from albert.resources.acls import ACL
+from albert.resources.acls import ACL, ACLContainer
 
 
 class ListBlockStyle(str, Enum):
@@ -297,8 +298,31 @@ class PutBlockPayload(BaseAlbertModel):
 
 
 class NotebookCopyACL(BaseResource):
+    """
+    Access settings applied to a copied notebook.
+
+    Warning
+    -----
+    Deprecated and will be removed in 2.0. Use ``ACLContainer`` instead.
+
+    Attributes
+    ----------
+    fgclist : list[ACL]
+        Specific access rules for users or teams.
+    acl_class : str
+        Default access class (for example, "restricted" or "confidential").
+    """
+
     fgclist: list[ACL] = Field(default=None)
     acl_class: str = Field(alias="class")
+
+    def __init__(self, **data):
+        warnings.warn(
+            "NotebookCopyACL is deprecated and will be removed in 2.0; use ACLContainer instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(**data)
 
 
 class NotebookCopyInfo(BaseAlbertModel):
@@ -306,4 +330,4 @@ class NotebookCopyInfo(BaseAlbertModel):
     parent_id: str = Field(alias="parentId")
     notebook_name: str | None = Field(default=None, alias="notebookName")
     name: str | None = Field(default=None)
-    acl: NotebookCopyACL | None = Field(default=None)
+    acl: ACLContainer | NotebookCopyACL | None = Field(default=None)
