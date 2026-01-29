@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `ACLContainer` model for `{class, fgclist}` ACL payloads.
+- Added `WorksheetCollection.duplicate_sheet` functionality.
+- Added `WorksheetCollection.create_sheet_template` functionality.
 
 ### Deprecated
 
