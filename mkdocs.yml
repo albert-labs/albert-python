@@ -177,6 +177,7 @@ nav:
       - Resources:
           - Activities: resources/activities.md
           - Attachments: resources/attachments.md
+          - ACL: resources/acls.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:
               - Breakthrough Datasets: resources/btdataset.md

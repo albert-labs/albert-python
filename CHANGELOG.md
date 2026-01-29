@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.14.0] - 2025-01-29
+
+### Added
+
+- Added `ACLContainer` model for `{class, fgclist}` ACL payloads.
+- Added `WorksheetCollection.duplicate_sheet` functionality.
+- Added `WorksheetCollection.create_sheet_template` functionality.
+- Added a deprecation warning for `NotebookCopyACL`; formal deprecation planned for 2.0 (use `ACLContainer`).
 
 ## [1.2.0] - 2025-07-25
 

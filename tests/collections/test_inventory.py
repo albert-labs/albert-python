@@ -133,15 +133,16 @@ def test_get_by_ids(client: Albert):
     #     assert f"INV{inventory_id}" == inventory.id
 
 
-def test_inventory_update(client: Albert, seed_prefix: str):
+def test_inventory_update(client: Albert, seed_prefix: str, seeded_companies: list[Company]):
     # create a new test inventory item
+    company = seeded_companies[0]
     ii = InventoryItem(
         name=f"{seed_prefix} - SDK UPDATE/DELETE TEST",
         description="SDK item that will be updated and deleted.",
         category=InventoryCategory.RAW_MATERIALS,
         unit_category=InventoryUnitCategory.MASS,
         security_class=SecurityClass.CONFIDENTIAL,
-        company="",
+        company=company,
     )
     created = client.inventory.create(inventory_item=ii)
     # Give time for the DB to sync - somewhere between 1 and 4 seconds is needed

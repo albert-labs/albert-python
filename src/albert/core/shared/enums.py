@@ -19,6 +19,7 @@ class SecurityClass(str, Enum):
     SHARED = "shared"
     RESTRICTED = "restricted"
     CONFIDENTIAL = "confidential"
+    # only used by "PROJECTS"
     PRIVATE = "private"
 
 
