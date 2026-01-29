@@ -142,17 +142,17 @@ class ProjectCollection(BaseCollection):
         ----------
         text : str, optional
             Full-text search query.
-        status : list of str, optional
+        status : list[str], optional
             Filter by project statuses.
-        market_segment : list of str, optional
+        market_segment : list[str], optional
             Filter by market segment.
-        application : list of str, optional
+        application : list[str], optional
             Filter by application.
-        technology : list of str, optional
+        technology : list[str], optional
             Filter by technology tags.
-        created_by : list of str, optional
+        created_by : list[str], optional
             Filter by user names who created the project.
-        location : list of str, optional
+        location : list[str], optional
             Filter by location(s).
         from_created_at : str, optional
             Earliest creation date in 'YYYY-MM-DD' format.
@@ -162,15 +162,15 @@ class ProjectCollection(BaseCollection):
             Facet field to filter on.
         facet_text : str, optional
             Facet text to search for.
-        contains_field : list of str, optional
+        contains_field : list[str], optional
             Fields to search inside.
-        contains_text : list of str, optional
+        contains_text : list[str], optional
             Values to search for within the `contains_field`.
         linked_to : str, optional
             Entity ID the project is linked to.
         my_project : bool, optional
             If True, return only projects owned by current user.
-        my_role : list of str, optional
+        my_role : list[str], optional
             User roles to filter by.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
