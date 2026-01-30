@@ -24,8 +24,8 @@ theme:
   name: "material"
   font:
     text: Aeonik Regular
-  logo: assets/Wordmark_White.png
-  favicon: assets/Vector_Favicon_Blue.svg
+  logo: assets/Albert_Wordmark_Mono_RGB_White.svg
+  favicon: assets/favicon_bw.svg
   features:
     - content.tabs.link # Tabs can contain links
     - content.code.annotate # Annotated code blocks (tooltips)
