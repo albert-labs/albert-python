@@ -1,6 +1,13 @@
 :root {
-  --md-primary-fg-color: #0149ff;
-  --md-accent-fg-color: #0149ff;
+  --md-primary-fg-color: #7D19FE;
+  --md-accent-fg-color: #7D19FE;
+}
+
+.md-typeset a:hover,
+.md-nav__link:hover,
+.md-nav--primary .md-nav__link:hover,
+.md-nav--secondary .md-nav__link:hover {
+  color: #0b62fe;
 }
 
 .logo-wrapper {

@@ -1,8 +1,8 @@
 # Albert Python
 
 <div class="logo-wrapper">
-  <img src="assets/Wordmark_White.png" class="logo only-dark" alt="Albert Logo">
-  <img src="assets/Wordmark_Black.png" class="logo only-light" alt="Albert Logo">
+  <img src="assets/Albert_Wordmark_Mono_RGB_White.svg" class="logo only-dark" alt="Albert Logo">
+  <img src="assets/Albert_Wordmark_RGB_Colour.svg" class="logo only-light" alt="Albert Logo">
 </div>
 
 [![CI](https://img.shields.io/circleci/build/github/albert-labs/albert-python/main?label=CI)](https://app.circleci.com/pipelines/github/albert-labs/albert-python?branch=main)
