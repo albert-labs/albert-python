@@ -135,7 +135,7 @@ class UserCollection(BaseCollection):
         params = {
             "text": text,
             "sortBy": sort_by,
-            "order": order_by.value,
+            "order": order_by,
             "roles": roles,
             "teams": teams,
             "locations": locations,
@@ -198,7 +198,7 @@ class UserCollection(BaseCollection):
         """
         params = {
             "status": status,
-            "type": type.value if type else None,
+            "type": type,
             "id": id,
             "startKey": start_key,
         }

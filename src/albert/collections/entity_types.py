@@ -282,10 +282,10 @@ class EntityTypeCollection(BaseCollection):
             Returns an iterator of EntityType items matching the search criteria.
         """
         params = {
-            "service": service.value if service else None,
+            "service": service,
             "limit": max_items,
             "startKey": start_key,
-            "orderBy": order.value if order else None,
+            "orderBy": order,
         }
         return AlbertPaginator(
             mode=PaginationMode.KEY,

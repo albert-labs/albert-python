@@ -106,7 +106,7 @@ class CasCollection(BaseCollection):
             An iterator over Cas entities.
         """
 
-        params: dict[str, Any] = {"orderBy": order_by.value}
+        params: dict[str, Any] = {"orderBy": order_by}
         if id is not None:
             yield self.get_by_id(id=id)
             return

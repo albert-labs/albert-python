@@ -7,6 +7,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, PaginationMode
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import CompanyId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
@@ -62,9 +63,8 @@ class CompanyCollection(BaseCollection):
             "dupDetection": "false",
             "startKey": start_key,
         }
-        if name:
-            params["name"] = name if isinstance(name, list) else [name]
-            params["exactMatch"] = str(exact_match).lower()
+        params["name"] = ensure_list(name)
+        params["exactMatch"] = str(exact_match).lower()
 
         return AlbertPaginator(
             mode=PaginationMode.KEY,

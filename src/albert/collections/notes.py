@@ -106,7 +106,7 @@ class NotesCollection(BaseCollection):
         """
         params = {
             "parentId": parent_id,
-            "orderBy": order_by.value,
+            "orderBy": order_by,
         }
         response = self.session.get(
             url=self.base_path,

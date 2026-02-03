@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass, Status
-from albert.core.shared.identifiers import CustomTemplateId, NotebookId
+from albert.core.shared.identifiers import CustomTemplateId, EntityTypeId, NotebookId
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -19,14 +19,25 @@ from albert.resources.tasks import TaskSource
 from albert.resources.users import User, UserClass
 
 
+class CustomTemplateInventoryLot(BaseAlbertModel):
+    id: str
+    barcode: str | None = None
+
+
 class DataTemplateInventory(EntityLink):
     batch_size: float | None = Field(default=None, alias="batchSize")
     sheet: list[Sheet | EntityLink] | None = Field(default=None)
     category: InventoryCategory | None = Field(default=None)
+    lots: list[CustomTemplateInventoryLot] | None = Field(default=None, alias="Lots")
 
 
 class DesignLink(EntityLink):
     type: DesignType
+
+
+class TemplateEntityType(BaseAlbertModel):
+    id: EntityTypeId | None = Field(default=None)
+    custom_category: str | None = Field(default=None, alias="customCategory")
 
 
 class TemplateCategory(str, Enum):
@@ -55,6 +66,7 @@ class GeneralData(BaseTaggedResource):
     priority: Priority | None = Field(default=None)
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
+    metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
 
 
 class JobStatus(str, Enum):
@@ -79,7 +91,7 @@ class SamConfig(BaseResource):
 
 class Workflow(BaseResource):
     id: str
-    name: str
+    name: str | None = Field(default=None)
     # Some workflows may have SamConfig
     sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
 
@@ -176,7 +188,7 @@ class TemplateACL(BaseResource):
     acl_class: str | None = Field(default=None, alias="class")
 
 
-class CustomTemplate(BaseTaggedResource):
+class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     """A custom template entity.
 
     Attributes
@@ -186,11 +198,15 @@ class CustomTemplate(BaseTaggedResource):
     id : str
         The Albert ID of the template. Set when the template is retrieved from Albert.
     category : TemplateCategory
-        The category of the template. Allowed values are `Property Task`, `Property`, `Batch`, `Sheet`, `Notebook`, and `General`.
+        The category of the template.
     metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
         The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
     data : CustomTemplateData | None
         The data of the template.
+    entity_type : TemplateEntityType | None
+        The entity type associated with the template.
+    locked : bool | None
+        Whether the template is locked when loaded in the UI.
     team : List[TeamACL] | None
         The team of the template.
     acl : TemplateACL | None
@@ -198,10 +214,12 @@ class CustomTemplate(BaseTaggedResource):
     """
 
     name: str
-    id: CustomTemplateId = Field(alias="albertId")
+    id: CustomTemplateId | None = Field(default=None, alias="albertId")
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     data: CustomTemplateData | None = Field(default=None, alias="Data")
+    entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
+    locked: bool | None = Field(default=None)
     team: list[TeamACL] | None = Field(default_factory=list)
     acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
 
@@ -211,9 +229,13 @@ class CustomTemplate(BaseTaggedResource):
         """
         Initialize private attributes from the incoming data dictionary before the model is fully constructed.
         """
+        if not isinstance(data, dict):
+            return data
 
-        if "Data" in data and "category" in data and "category" not in data["Data"]:
-            data["Data"]["category"] = data["category"]
+        data_payload = data.get("Data")
+        category = data.get("category")
+        if isinstance(data_payload, dict) and category is not None:
+            data_payload.setdefault("category", category)
         return data
 
 
@@ -241,9 +263,9 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     id: CustomTemplateId = Field(alias="albertId")
     created_by_name: str = Field(..., alias="createdByName")
     created_at: str = Field(..., alias="createdAt")
-    category: str
+    category: str | None = None
     status: Status | None = None
     resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
     data: CustomTemplateSearchItemData | None = None
-    acl: list[CustomTemplateSearchItemACL]
-    team: list[CustomTemplateSearchItemTeam]
+    acl: list[CustomTemplateSearchItemACL] | None = None
+    team: list[CustomTemplateSearchItemTeam] | None = None

@@ -9,6 +9,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import TagId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
 from albert.resources.tags import Tag
 
@@ -258,12 +259,12 @@ class TagCollection(BaseCollection):
             An iterator of Tag entities matching the filters.
         """
         params = {
-            "orderBy": order_by.value,
+            "orderBy": order_by,
             "startKey": start_key,
         }
 
         if name:
-            params["name"] = [name] if isinstance(name, str) else name
+            params["name"] = ensure_list(name)
             params["exactMatch"] = exact_match
 
         return AlbertPaginator(

@@ -10,6 +10,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ParameterGroupId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
     ParameterGroup,
@@ -97,9 +98,9 @@ class ParameterGroupCollection(BaseCollection):
         """
         params = {
             "offset": offset,
-            "order": order_by.value,
+            "order": order_by,
             "text": text,
-            "types": [types] if isinstance(types, PGType) else types,
+            "types": ensure_list(types),
         }
 
         return AlbertPaginator(
