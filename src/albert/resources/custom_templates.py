@@ -157,9 +157,35 @@ _CustomTemplateDataUnion = (
 CustomTemplateData = Annotated[_CustomTemplateDataUnion, Field(discriminator="category")]
 
 
+class ACLType(str, Enum):
+    TEAM = "team"
+    MEMBER = "member"
+    OWNER = "owner"
+    VIEWER = "viewer"
+
+
+class TeamACL(ACL):
+    type: Literal[ACLType.TEAM] = ACLType.TEAM
+
+
+class OwnerACL(ACL):
+    type: Literal[ACLType.OWNER] = ACLType.OWNER
+
+
+class MemberACL(ACL):
+    type: Literal[ACLType.MEMBER] = ACLType.MEMBER
+
+
+class ViewerACL(ACL):
+    type: Literal[ACLType.VIEWER] = ACLType.VIEWER
+
+
+ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discriminator="type")]
+
+
 class TemplateACL(BaseResource):
-    fgclist: list[ACL] | None = Field(default=None)
-    acl_class: SecurityClass | None = Field(default=None, alias="class")
+    fgclist: list[ACLEntry] = Field(default=None)
+    acl_class: str | None = Field(default=None, alias="class")
 
 
 class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
@@ -181,8 +207,8 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
         The entity type associated with the template.
     locked : bool | None
         Whether the template is locked when loaded in the UI.
-    team : List[ACL] | None
-        The team ACL entries for the template.
+    team : List[TeamACL] | None
+        The team of the template.
     acl : TemplateACL | None
 
     """
@@ -194,8 +220,8 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     data: CustomTemplateData | None = Field(default=None, alias="Data")
     entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
     locked: bool | None = Field(default=None)
-    team: list[ACL] | None = Field(default=None)
-    acl: TemplateACL | None = Field(default=None, alias="ACL")
+    team: list[TeamACL] | None = Field(default_factory=list)
+    acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
 
     @model_validator(mode="before")  # Must happen before construction so the data are captured
     @classmethod
@@ -222,13 +248,13 @@ class CustomTemplateSearchItemData(BaseAlbertModel):
 class CustomTemplateSearchItemACL(ACL):
     name: str | None = None
     user_type: UserClass | None = Field(default=None, alias="userType")
-    type: str | None = None
+    type: ACLType
 
 
 class CustomTemplateSearchItemTeam(BaseAlbertModel):
     id: str
     name: str
-    type: str | None = None
+    type: ACLType | None = None
     fgc: AccessControlLevel | None = Field(default=None)
 
 
