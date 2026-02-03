@@ -41,11 +41,13 @@ class TemplateEntityType(BaseAlbertModel):
 
 
 class TemplateCategory(str, Enum):
+    PROPERTY_LIST = "Property Task"
     PROPERTY = "Property"
     BATCH = "Batch"
     SHEET = "Sheet"
     NOTEBOOK = "Notebook"
     GENERAL = "General"
+    QC_BATCH = "BatchWithQC"
 
 
 class Priority(str, Enum):
@@ -100,6 +102,19 @@ class Block(BaseTaggedResource):
     datatemplate: list[EntityLink] | None = Field(default=None, alias="Datatemplate")
 
 
+# TODO: once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
+class QCBatchData(BaseTaggedResource):
+    category: Literal[TemplateCategory.QC_BATCH] = TemplateCategory.QC_BATCH
+    project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
+    inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
+    workflow: list[EntityLink] = Field(default=None, alias="Workflow")
+    location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
+    batch_size_unit: str | None = Field(alias="batchSizeUnit", default=None)
+    batch_size: str | None = Field(alias="batchSize", default=None)
+    priority: Priority  # enum?!
+    name: str | None = Field(default=None)
+
+
 class BatchData(BaseTaggedResource):
     # To Do once Workflows are done, add the option to have a list of Workflow objects (with the right field_serializer)
     name: str | None = Field(default=None)
@@ -136,7 +151,9 @@ class NotebookData(BaseTaggedResource):
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
-_CustomTemplateDataUnion = PropertyData | BatchData | SheetData | NotebookData | GeneralData
+_CustomTemplateDataUnion = (
+    PropertyData | BatchData | SheetData | NotebookData | QCBatchData | GeneralData
+)
 CustomTemplateData = Annotated[_CustomTemplateDataUnion, Field(discriminator="category")]
 
 

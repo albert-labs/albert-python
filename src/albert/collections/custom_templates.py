@@ -290,7 +290,18 @@ class CustomTemplatesCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CustomTemplateId) -> None:
-        """Delete a custom template by id."""
+        """
+        Delete a custom template by id.
+
+        Parameters
+        ----------
+        id : CustomTemplateId
+            The id of the custom template to delete.
+
+        Returns
+        -------
+        None
+        """
 
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -303,7 +314,23 @@ class CustomTemplatesCollection(BaseCollection):
         acl_class: str | None = None,
         acls: list[ACL] | None = None,
     ) -> CustomTemplate:
-        """Replace the template's ACL class and/or entries with the provided values and return the updated template."""
+        """
+        Replace a template's ACL class and/or entries with the provided values.
+
+        Parameters
+        ----------
+        custom_template_id : CustomTemplateId
+            The id of the custom template to update.
+        acl_class : str | None, optional
+            The ACL class to set (if provided).
+        acls : list[ACL] | None, optional
+            The ACL entries to replace on the template.
+
+        Returns
+        -------
+        CustomTemplate
+            The updated CustomTemplate.
+        """
 
         if acl_class is None and acls is None:
             raise ValueError("Provide an ACL class and/or ACL entries to update.")
