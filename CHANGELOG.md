@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-02-04
+
+### Added
+
+- Added `CustomTemplatesCollection.create` to support creating custom templates.
+- Added `CustomTemplatesCollection.update_acl` to support updating custom template ACLs.
+- Added `CustomTemplatesCollection.delete` to support deleting custom templates.
+
+### Changed
+
+- Standardized list-parameter normalization across collection filters so scalars and
+  iterables are handled consistently.
+
+### Fixed
+
+- Resolved custom-template ACL handling and schema parsing issues.
+- Defaulted missing custom-template workflow names to a sensible value.
+- Fixed enum parameter resolution to use session-level enum definitions.
+
 ## [1.14.0] - 2025-01-29
 
 ### Added
