@@ -1,0 +1,6 @@
+# type(scope): subject
+#
+# Allowed types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test
+# Example: chore(changelog): update 1.15.0 entries
+#
+# Body (optional): explain what and why, wrap at 72 chars.
