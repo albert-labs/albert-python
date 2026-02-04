@@ -155,6 +155,7 @@ Do:
 - Keep docstrings Numpy-style for public APIs.
 - Use ruff for formatting/linting and respect line length 99.
 - Follow existing collection/resource patterns and naming.
+- Only add tests when explicitly requested by the user.
 
 Don’t:
 
