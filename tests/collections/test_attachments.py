@@ -1,3 +1,6 @@
+from datetime import date
+from pathlib import Path
+
 import pytest
 
 from albert import Albert
@@ -68,3 +71,22 @@ def test_attachment_create(
     created = client.attachments.create(attachment=attachment)
     assert isinstance(created, Attachment)
     client.attachments.delete(id=created.id)
+
+
+@pytest.mark.slow
+def test_upload_and_attach_sds_to_inventory_item(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    un_numbers = client.un_numbers.get_all(max_items=1)
+    un_number = list(un_numbers)[0]
+    attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
+        inventory_id=seeded_inventory[0].id,
+        file_sds=Path("tests/data/SDS_HCL.pdf"),
+        revision_date=date(2024, 12, 1),
+        storage_class="10-13",
+        un_number=un_number.un_number,
+    )
+    assert isinstance(attachment, Attachment)
+    assert attachment.revision_date == date(2024, 12, 1)
+    client.attachments.delete(id=attachment.id)
