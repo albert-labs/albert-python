@@ -9,7 +9,7 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
-from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId
+from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
 from albert.core.shared.types import MetadataItem
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileCategory, FileNamespace
@@ -284,6 +284,50 @@ class AttachmentCollection(BaseCollection):
             "key": file_key,
             "nameSpace": FileNamespace.RESULT.value,
             "Metadata": metadata,
+        }
+
+        response = self.session.post(self.base_path, json=payload)
+        return Attachment(**response.json())
+
+    @validate_call
+    def upload_and_attach_document_to_project(
+        self,
+        *,
+        project_id: ProjectId,
+        file_path: Path,
+    ) -> Attachment:
+        """Upload a file and attach it as a document to a project.
+
+        Args:
+            project_id: The Albert ID of the project (e.g. "PRO770").
+            file_path: Local path to the file to upload.
+
+        Returns:
+            The created Attachment record.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/octet-stream"
+        encoded_file_name = quote(resolved_path.name)
+        file_key = f"{project_id}/documents/original/{encoded_file_name}"
+
+        file_collection = self._get_file_collection()
+        with resolved_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=file_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+            )
+
+        payload = {
+            "parentId": project_id,
+            "category": AttachmentCategory.OTHER.value,
+            "name": encoded_file_name,
+            "key": file_key,
+            "nameSpace": FileNamespace.RESULT.value,
         }
 
         response = self.session.post(self.base_path, json=payload)

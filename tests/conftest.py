@@ -2,12 +2,14 @@ import time
 import uuid
 from collections.abc import Iterator
 from contextlib import suppress
+from pathlib import Path
 
 import pytest
 
 from albert import Albert, AlbertClientCredentials
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from albert.resources.attachments import Attachment
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
 from albert.resources.btmodel import BTModel, BTModelSession
@@ -262,6 +264,24 @@ def seeded_projects(
     for project in seeded:
         with suppress(NotFoundError):
             client.projects.delete(id=project.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_project_document(
+    client: Albert,
+    seeded_projects: list[Project],
+) -> Iterator[Attachment]:
+    attachment = client.attachments.upload_and_attach_document_to_project(
+        project_id=seeded_projects[0].id,
+        file_path=Path("tests/data/dontpanic.jpg"),
+    )
+    # Allow time for search index to update
+    time.sleep(3)
+
+    yield attachment
+
+    with suppress(NotFoundError):
+        client.attachments.delete(id=attachment.id)
 
 
 @pytest.fixture(scope="session")
