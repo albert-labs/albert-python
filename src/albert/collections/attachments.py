@@ -149,7 +149,8 @@ class AttachmentCollection(BaseCollection):
         note_text : str, optional
             Any additional text to add to the note, by default ""
         file_name : str, optional
-            The name of the file, by default ""
+            The name of the file. Include a file extension to infer the content type;
+            otherwise, the upload defaults to ``application/octet-stream``.
         upload_key : str | None, optional
             Override the storage key used when signing and uploading the file.
             Defaults to ``{parent_id}/{note_id}/{file_name}``.
@@ -175,6 +176,8 @@ class AttachmentCollection(BaseCollection):
             attachment_name = file_name
             upload_name = f"{parent_id}/{registered_note.id}/{file_name}"
         file_type = mimetypes.guess_type(attachment_name or upload_name)[0]
+        if file_type is None:
+            file_type = "application/octet-stream"
         file_collection = self._get_file_collection()
 
         file_collection.sign_and_upload_file(
