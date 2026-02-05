@@ -3,7 +3,7 @@ from enum import Enum
 from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.identifiers import AttachmentId, ProjectId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -110,3 +110,18 @@ class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
     id: ProjectId | None = Field(None, alias="albertId")
     description: str = Field(min_length=1, max_length=2000)
     status: str | None = Field(default=None, exclude=True, frozen=True)
+
+
+class DocumentSearchItem(BaseAlbertModel):
+    """A document (attachment) search result item from a project."""
+
+    id: AttachmentId | None = Field(None, alias="albertId")
+    name: str | None = None
+    mime_type: str | None = Field(default=None, alias="mimeType")
+    file_size: int | None = Field(default=None, alias="fileSize")
+    project_id: str | None = Field(default=None, alias="projectId")
+    key: str | None = None
+    source: str | None = None
+    created_by: str | None = Field(default=None, alias="createdBy")
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    created_at: str | None = Field(default=None, alias="createdAt")
