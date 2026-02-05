@@ -9,7 +9,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId
 from albert.exceptions import AlbertHTTPError
-from albert.resources.projects import Project, ProjectSearchItem
+from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
 class ProjectCollection(BaseCollection):
@@ -217,6 +217,47 @@ class ProjectCollection(BaseCollection):
             deserialize=lambda items: [
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
             ],
+        )
+
+    @validate_call
+    def document_search(
+        self,
+        *,
+        linked_to: str,
+        text: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        sort_by: str | None = None,
+        offset: int | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[DocumentSearchItem]:
+        """Search for documents (attachments) linked to a project.
+
+        Args:
+            linked_to: The project ID to filter documents by (e.g. "P770").
+            text: Full-text search query for document names.
+            order_by: Sort order. Default is DESCENDING.
+            sort_by: Field to sort by (e.g. "createdAt").
+            offset: Pagination offset.
+            max_items: Maximum number of items to return. If None, fetches all.
+
+        Returns:
+            An iterator of DocumentSearchItem results.
+        """
+        query_params = {
+            "linkedTo": linked_to,
+            "text": text,
+            "order": order_by,
+            "sortBy": sort_by,
+            "offset": offset,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/documentsearch",
+            session=self.session,
+            params=query_params,
+            max_items=max_items,
+            deserialize=lambda items: [DocumentSearchItem(**item) for item in items],
         )
 
     @validate_call

@@ -3,7 +3,7 @@ import pytest
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.projects import Project, ProjectSearchItem
+from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
 def assert_valid_project_items(returned_list: list, entity_type: type = Project):
@@ -48,6 +48,22 @@ def test_hydrate_project(client: Albert):
         # identity checks
         assert hydrated.id == project.id
         assert hydrated.description == project.description
+
+
+def test_project_document_search(client: Albert, seeded_projects: list[Project]):
+    """Test document_search returns DocumentSearchItem items for a project."""
+    project_id = seeded_projects[0].id
+    documents = list(
+        client.projects.document_search(
+            linked_to=project_id,
+            sort_by="createdAt",
+            max_items=25,
+        )
+    )
+    for doc in documents:
+        assert isinstance(doc, DocumentSearchItem)
+        assert doc.id is not None
+        assert doc.project_id == project_id
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):
