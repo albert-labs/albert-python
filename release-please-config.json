@@ -1,0 +1,10 @@
+{
+  "release-type": "python",
+  "packages": {
+    ".": {
+      "package-name": "albert",
+      "version-file": "src/albert/__init__.py",
+      "include-v-in-tag": true
+    }
+  }
+}
