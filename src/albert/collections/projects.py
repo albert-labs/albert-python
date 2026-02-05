@@ -7,7 +7,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
@@ -223,7 +223,7 @@ class ProjectCollection(BaseCollection):
     def document_search(
         self,
         *,
-        linked_to: str,
+        linked_to: SearchProjectId,
         text: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
