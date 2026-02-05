@@ -99,3 +99,15 @@ def test_delete_project(client: Albert, seeded_locations):
     # Try to fetch the project, should return None or not found
     with pytest.raises(NotFoundError):
         client.projects.get_by_id(id=created_project.id)
+
+
+@pytest.mark.slow
+def test_upload_document(client: Albert, seeded_projects: list[Project]):
+    with open("tests/data/dontpanic.jpg", "rb") as file:
+        attachment = client.projects.upload_document(
+            project_id=seeded_projects[0].id,
+            file_data=file,
+            file_name="dontpanic.jpg",
+        )
+    assert attachment.id is not None
+    client.attachments.delete(id=attachment.id)

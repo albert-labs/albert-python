@@ -1,6 +1,7 @@
 import pytest
 
 from albert import Albert
+from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileInfo
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
@@ -49,3 +50,21 @@ def test_upload_and_attach_file_as_note(
             note_text="This is a test note",
         )
     assert isinstance(note, Note)
+
+
+@pytest.mark.slow
+def test_attachment_create(
+    client: Albert,
+    static_image_file: FileInfo,
+    seeded_notes: list[Note],
+):
+    attachment = Attachment(
+        parent_id=seeded_notes[0].id,
+        name=static_image_file.name,
+        key=static_image_file.name,
+        namespace="result",
+        category=AttachmentCategory.OTHER,
+    )
+    created = client.attachments.create(attachment=attachment)
+    assert isinstance(created, Attachment)
+    client.attachments.delete(id=created.id)

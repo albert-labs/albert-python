@@ -37,7 +37,7 @@ class Attachment(BaseResource):
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
     signed_url_v2: str | None = Field(default=None, alias="signedURLV2", exclude=True, frozen=True)
     metadata: AttachmentMetadata | dict[str, MetadataItem] | None = Field(
-        default=None, alias="Metadata", exclude=True, frozen=True
+        default=None, alias="Metadata"
     )
 
 

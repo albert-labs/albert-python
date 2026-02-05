@@ -49,6 +49,24 @@ class AttachmentCollection(BaseCollection):
         response = self.session.get(url=f"{self.base_path}/{id}")
         return Attachment(**response.json())
 
+    @validate_call
+    def create(self, *, attachment: Attachment) -> Attachment:
+        """Create a new attachment.
+
+        Parameters
+        ----------
+        attachment : Attachment
+            The attachment to create.
+
+        Returns
+        -------
+        Attachment
+            The created attachment.
+        """
+        payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        response = self.session.post(self.base_path, json=payload)
+        return Attachment(**response.json())
+
     def get_by_parent_ids(
         self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
     ) -> dict[str, list[Attachment]]:
@@ -112,11 +130,7 @@ class AttachmentCollection(BaseCollection):
         attachment = Attachment(
             parent_id=note_id, name=file_name, key=file_key, namespace="result", category=category
         )
-        response = self.session.post(
-            url=self.base_path,
-            json=attachment.model_dump(by_alias=True, mode="json", exclude_unset=True),
-        )
-        return Attachment(**response.json())
+        return self.create(attachment=attachment)
 
     @validate_call
     def delete(self, *, id: AttachmentId) -> None:
@@ -277,14 +291,13 @@ class AttachmentCollection(BaseCollection):
         if wgk is not None:
             metadata["wgk"] = wgk
 
-        payload = {
-            "parentId": inventory_id,
-            "category": AttachmentCategory.SDS.value,
-            "name": encoded_file_name,
-            "key": file_key,
-            "nameSpace": FileNamespace.RESULT.value,
-            "Metadata": metadata,
-        }
-
-        response = self.session.post(self.base_path, json=payload)
-        return Attachment(**response.json())
+        attachment = Attachment(
+            parent_id=inventory_id,
+            name=encoded_file_name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.SDS,
+            metadata=metadata,
+            revision_date=revision_date,
+        )
+        return self.create(attachment=attachment)

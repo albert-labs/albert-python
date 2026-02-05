@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `CustomTemplatesCollection.create` to support creating custom templates.
 - Added `CustomTemplatesCollection.update_acl` to support updating custom template ACLs.
 - Added `CustomTemplatesCollection.delete` to support deleting custom templates.
+- Added `AttachmentCollection.create` for generic attachment creation.
+- Added `ProjectCollection.upload_document` to sign, upload, and attach project documents.
 
 ### Changed
 
