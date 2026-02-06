@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 
-import jwt
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
@@ -40,8 +39,15 @@ class UserCollection(BaseCollection):
         User
             The current User object.
         """
-        claims = jwt.decode(self.session._access_token, options={"verify_signature": False})
-        return self.get_by_id(id=claims["id"])
+        response = self.session.get(
+            "/api/v3/login/validatejwt",
+            params={"includeUserDetails": True},
+        )
+        payload = response.json()
+        user_id = payload.get("userId")
+        if not user_id:
+            raise ValueError("Current user lookup failed.")
+        return self.get_by_id(id=user_id)
 
     @validate_call
     def get_by_id(self, *, id: UserId) -> User:
