@@ -1,13 +1,18 @@
+from datetime import date
+from pathlib import Path
+
 import pytest
 
 from albert import Albert
+from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.files import FileInfo
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
+from albert.resources.projects import Project
 
 
 @pytest.mark.slow
-def test_load_file_to_inventories(
+def test_attach_file_to_note(
     client: Albert,
     static_image_file: FileInfo,
     seeded_notes: list[Note],
@@ -49,3 +54,51 @@ def test_upload_and_attach_file_as_note(
             note_text="This is a test note",
         )
     assert isinstance(note, Note)
+
+
+@pytest.mark.slow
+def test_attachment_create(
+    client: Albert,
+    static_image_file: FileInfo,
+    seeded_notes: list[Note],
+):
+    attachment = Attachment(
+        parent_id=seeded_notes[0].id,
+        name=static_image_file.name,
+        key=static_image_file.name,
+        namespace="result",
+        category=AttachmentCategory.OTHER,
+    )
+    created = client.attachments.create(attachment=attachment)
+    assert isinstance(created, Attachment)
+    client.attachments.delete(id=created.id)
+
+
+@pytest.mark.slow
+def test_upload_and_attach_sds_to_inventory_item(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
+        inventory_id=seeded_inventory[0].id,
+        file_sds=Path("tests/data/SDS_HCL.pdf"),
+        revision_date=date(2024, 12, 1),
+        storage_class="10-13",
+        un_number="N/A",
+    )
+    assert isinstance(attachment, Attachment)
+    assert attachment.revision_date == date(2024, 12, 1)
+    client.attachments.delete(id=attachment.id)
+
+
+@pytest.mark.slow
+def test_upload_document(
+    client: Albert,
+    seeded_projects: list[Project],
+):
+    attachment = client.attachments.upload_and_attach_document_to_project(
+        project_id=seeded_projects[0].id,
+        file_path=Path("tests/data/dontpanic.jpg"),
+    )
+    assert isinstance(attachment, Attachment)
+    client.attachments.delete(id=attachment.id)

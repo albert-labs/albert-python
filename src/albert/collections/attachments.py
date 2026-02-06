@@ -1,5 +1,7 @@
 import mimetypes
+import uuid
 from datetime import date
+from io import IOBase
 from pathlib import Path
 from typing import IO
 from urllib.parse import quote
@@ -47,6 +49,24 @@ class AttachmentCollection(BaseCollection):
             The Attachment object corresponding to the provided ID.
         """
         response = self.session.get(url=f"{self.base_path}/{id}")
+        return Attachment(**response.json())
+
+    @validate_call
+    def create(self, *, attachment: Attachment) -> Attachment:
+        """Create a new attachment.
+
+        Parameters
+        ----------
+        attachment : Attachment
+            The attachment to create.
+
+        Returns
+        -------
+        Attachment
+            The created attachment.
+        """
+        payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        response = self.session.post(self.base_path, json=payload)
         return Attachment(**response.json())
 
     def get_by_parent_ids(
@@ -112,11 +132,7 @@ class AttachmentCollection(BaseCollection):
         attachment = Attachment(
             parent_id=note_id, name=file_name, key=file_key, namespace="result", category=category
         )
-        response = self.session.post(
-            url=self.base_path,
-            json=attachment.model_dump(by_alias=True, mode="json", exclude_unset=True),
-        )
-        return Attachment(**response.json())
+        return self.create(attachment=attachment)
 
     @validate_call
     def delete(self, *, id: AttachmentId) -> None:
@@ -242,8 +258,10 @@ class AttachmentCollection(BaseCollection):
 
         content_type = mimetypes.guess_type(sds_path.name)[0] or "application/pdf"
 
+        extension = sds_path.suffix
+        upload_id = self._generate_upload_id()
         encoded_file_name = quote(sds_path.name)
-        file_key = f"{inventory_id}/SDS/{encoded_file_name}"
+        file_key = f"{inventory_id}/SDS/{upload_id}{extension}"
 
         file_collection = self._get_file_collection()
         with sds_path.open("rb") as file_handle:
@@ -280,17 +298,77 @@ class AttachmentCollection(BaseCollection):
         if wgk is not None:
             metadata["wgk"] = wgk
 
-        payload = {
-            "parentId": inventory_id,
-            "category": AttachmentCategory.SDS.value,
-            "name": encoded_file_name,
-            "key": file_key,
-            "nameSpace": FileNamespace.RESULT.value,
-            "Metadata": metadata,
-        }
+        attachment = Attachment(
+            parent_id=inventory_id,
+            name=encoded_file_name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.SDS,
+            metadata=metadata,
+            revision_date=revision_date,
+        )
+        return self.create(attachment=attachment)
 
-        response = self.session.post(self.base_path, json=payload)
-        return Attachment(**response.json())
+    @staticmethod
+    def _generate_upload_id() -> str:
+        return str(uuid.uuid4())
+
+    @validate_call(config={"arbitrary_types_allowed": True})
+    def upload_document(
+        self,
+        *,
+        project_id: ProjectId,
+        file_data: IOBase | bytes,
+        file_name: str,
+        category: AttachmentCategory = AttachmentCategory.OTHER,
+        namespace: FileNamespace = FileNamespace.RESULT,
+        content_type: str | None = None,
+    ) -> Attachment:
+        """Upload a document and attach it to a project.
+
+        Parameters
+        ----------
+        project_id : ProjectId
+            The project ID to attach the document to.
+        file_data : IOBase | bytes
+            File-like object or bytes containing the document data.
+        file_name : str
+            The original filename (used for the attachment name and extension detection).
+        category : AttachmentCategory, optional
+            The attachment category, by default AttachmentCategory.OTHER.
+        namespace : FileNamespace, optional
+            The file namespace, by default FileNamespace.RESULT.
+        content_type : str | None, optional
+            Explicit content type to use for upload. If not provided, inferred from file_name.
+
+        Returns
+        -------
+        Attachment
+            The created attachment.
+        """
+        extension = Path(file_name).suffix
+        upload_id = self._generate_upload_id()
+        upload_key = f"{project_id}/documents/original/{upload_id}{extension}"
+        resolved_content_type = (
+            content_type or mimetypes.guess_type(file_name)[0] or "application/octet-stream"
+        )
+
+        file_collection = self._get_file_collection()
+        file_collection.sign_and_upload_file(
+            data=file_data,
+            name=upload_key,
+            namespace=namespace,
+            content_type=resolved_content_type,
+        )
+
+        attachment = Attachment(
+            parent_id=project_id,
+            name=file_name,
+            key=upload_key,
+            namespace=namespace.value,
+            category=category,
+        )
+        return self.create(attachment=attachment)
 
     @validate_call
     def upload_and_attach_document_to_project(
@@ -314,7 +392,9 @@ class AttachmentCollection(BaseCollection):
 
         content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/octet-stream"
         encoded_file_name = quote(resolved_path.name)
-        file_key = f"{project_id}/documents/original/{encoded_file_name}"
+        upload_id = self._generate_upload_id()
+        extension = resolved_path.suffix
+        file_key = f"{project_id}/documents/original/{upload_id}{extension}"
 
         file_collection = self._get_file_collection()
         with resolved_path.open("rb") as file_handle:
@@ -325,13 +405,11 @@ class AttachmentCollection(BaseCollection):
                 content_type=content_type,
             )
 
-        payload = {
-            "parentId": project_id,
-            "category": AttachmentCategory.OTHER.value,
-            "name": encoded_file_name,
-            "key": file_key,
-            "nameSpace": FileNamespace.RESULT.value,
-        }
-
-        response = self.session.post(self.base_path, json=payload)
-        return Attachment(**response.json())
+        attachment = Attachment(
+            parent_id=project_id,
+            name=encoded_file_name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.OTHER,
+        )
+        return self.create(attachment=attachment)
