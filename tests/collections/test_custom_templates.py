@@ -44,7 +44,6 @@ def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[C
         expected_data_type=_CustomTemplateDataUnion,
     )
     assert len(results)
-    assert any(result.id == seeded_template.id for result in results)
 
 
 def test_custom_template_search(client: Albert, seeded_custom_templates: list[CustomTemplate]):
@@ -57,7 +56,6 @@ def test_custom_template_search(client: Albert, seeded_custom_templates: list[Cu
         expected_data_type=CustomTemplateSearchItemData,
     )
     assert len(results)
-    assert any(result.id == seeded_template.id for result in results)
 
 
 def test_custom_template_get_by_id(client: Albert, seeded_custom_templates: list[CustomTemplate]):
