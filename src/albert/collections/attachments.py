@@ -1,7 +1,6 @@
 import mimetypes
 import uuid
 from datetime import date
-from io import IOBase
 from pathlib import Path
 from typing import IO
 from urllib.parse import quote
@@ -312,63 +311,6 @@ class AttachmentCollection(BaseCollection):
     @staticmethod
     def _generate_upload_id() -> str:
         return str(uuid.uuid4())
-
-    @validate_call(config={"arbitrary_types_allowed": True})
-    def upload_document(
-        self,
-        *,
-        project_id: ProjectId,
-        file_data: IOBase | bytes,
-        file_name: str,
-        category: AttachmentCategory = AttachmentCategory.OTHER,
-        namespace: FileNamespace = FileNamespace.RESULT,
-        content_type: str | None = None,
-    ) -> Attachment:
-        """Upload a document and attach it to a project.
-
-        Parameters
-        ----------
-        project_id : ProjectId
-            The project ID to attach the document to.
-        file_data : IOBase | bytes
-            File-like object or bytes containing the document data.
-        file_name : str
-            The original filename (used for the attachment name and extension detection).
-        category : AttachmentCategory, optional
-            The attachment category, by default AttachmentCategory.OTHER.
-        namespace : FileNamespace, optional
-            The file namespace, by default FileNamespace.RESULT.
-        content_type : str | None, optional
-            Explicit content type to use for upload. If not provided, inferred from file_name.
-
-        Returns
-        -------
-        Attachment
-            The created attachment.
-        """
-        extension = Path(file_name).suffix
-        upload_id = self._generate_upload_id()
-        upload_key = f"{project_id}/documents/original/{upload_id}{extension}"
-        resolved_content_type = (
-            content_type or mimetypes.guess_type(file_name)[0] or "application/octet-stream"
-        )
-
-        file_collection = self._get_file_collection()
-        file_collection.sign_and_upload_file(
-            data=file_data,
-            name=upload_key,
-            namespace=namespace,
-            content_type=resolved_content_type,
-        )
-
-        attachment = Attachment(
-            parent_id=project_id,
-            name=file_name,
-            key=upload_key,
-            namespace=namespace.value,
-            category=category,
-        )
-        return self.create(attachment=attachment)
 
     @validate_call
     def upload_and_attach_document_to_project(

@@ -8,11 +8,9 @@
 
     client = Albert.from_client_credentials()
 
-    with open("path/to/document.pdf", "rb") as file:
-        attachment = client.attachments.upload_document(
-            project_id="PRO123",
-            file_data=file,
-            file_name="document.pdf",
-        )
+    attachment = client.attachments.upload_and_attach_document_to_project(
+        project_id="PRO123",
+        file_path="path/to/document.pdf",
+    )
     print(attachment)
     ```

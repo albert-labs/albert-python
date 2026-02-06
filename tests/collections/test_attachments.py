@@ -15,6 +15,7 @@ def test_attach_file_to_note(
     static_image_file: FileInfo,
     attachment_note: Note,
 ):
+    """Attach a file to a note and verify it appears on the note."""
     attachment = client.attachments.attach_file_to_note(
         note_id=attachment_note.id,
         file_name=static_image_file.name,
@@ -45,6 +46,7 @@ def test_upload_and_attach_file_as_note(
     static_image_file: FileInfo,
     seeded_inventory: list[InventoryItem],
 ):
+    """Upload a file and attach it to a new note."""
     task = seeded_inventory[0]
     with open("tests/data/dontpanic.jpg", "rb") as file:
         file_data = file.read()
@@ -62,6 +64,7 @@ def test_attachment_create(
     static_image_file: FileInfo,
     attachment_note: Note,
 ):
+    """Create an attachment and validate the response."""
     attachment = Attachment(
         parent_id=attachment_note.id,
         name=static_image_file.name,
@@ -80,6 +83,7 @@ def test_upload_and_attach_sds_to_inventory_item(
     client: Albert,
     seeded_inventory: list[InventoryItem],
 ):
+    """Upload an SDS and attach it to an inventory item."""
     attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
         inventory_id=seeded_inventory[0].id,
         file_sds=Path("tests/data/SDS_HCL.pdf"),
@@ -94,10 +98,11 @@ def test_upload_and_attach_sds_to_inventory_item(
         client.attachments.delete(id=attachment.id)
 
 
-def test_upload_document(
+def test_upload_and_attach_document_to_project(
     client: Albert,
     seeded_projects: list[Project],
 ):
+    """Upload a document and attach it to a project."""
     attachment = client.attachments.upload_and_attach_document_to_project(
         project_id=seeded_projects[0].id,
         file_path=Path("tests/data/dontpanic.jpg"),
