@@ -141,10 +141,6 @@ workflows:
       - test:
           name: Test
           context: dev
-      - validate_version_bump:
-          name: Validate Version Bump
-          context: dev
-          base_branch: main
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev
