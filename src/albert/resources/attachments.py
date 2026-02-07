@@ -1,5 +1,6 @@
 from datetime import date
 from enum import Enum
+from typing import Any
 
 from pydantic import Field
 
@@ -36,8 +37,8 @@ class Attachment(BaseResource):
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
     signed_url_v2: str | None = Field(default=None, alias="signedURLV2", exclude=True, frozen=True)
-    metadata: AttachmentMetadata | dict[str, MetadataItem] | None = Field(
-        default=None, alias="Metadata", exclude=True, frozen=True
+    metadata: AttachmentMetadata | dict[str, MetadataItem | list[dict[str, Any]]] | None = Field(
+        default=None, alias="Metadata"
     )
 
 

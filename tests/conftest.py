@@ -25,6 +25,7 @@ from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import Lot
+from albert.resources.notes import Note
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
@@ -711,6 +712,22 @@ def seeded_notes(
     for note in seeded:
         with suppress(NotFoundError):
             client.notes.delete(id=note.id)
+
+
+@pytest.fixture(scope="session")
+def attachment_note(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seed_prefix: str,
+) -> Iterator[Note]:
+    note = Note(
+        parent_id=seeded_inventory[0].id,
+        note=f"{seed_prefix}-attachments",
+    )
+    created = client.notes.create(note=note)
+    yield created
+    with suppress(NotFoundError):
+        client.notes.delete(id=created.id)
 
 
 @pytest.fixture(scope="session")
