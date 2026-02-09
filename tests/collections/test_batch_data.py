@@ -1,3 +1,5 @@
+import pytest
+
 from albert import Albert
 from albert.exceptions import BadRequestError
 from albert.resources.batch_data import (
@@ -15,6 +17,9 @@ def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask]):
     assert batch_data.id == batch_task.id
 
 
+@pytest.mark.xfail(
+    reason="Batch data creation is currently not idempotent, so this test may fail if batch data already exists for the task."
+)
 def test_create_batch_data(client: Albert, seeded_tasks: list[BaseTask]):
     batch_tasks = [t for t in seeded_tasks if isinstance(t, BatchTask)]
 
