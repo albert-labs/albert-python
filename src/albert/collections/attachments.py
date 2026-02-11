@@ -3,7 +3,6 @@ import uuid
 from datetime import date
 from pathlib import Path
 from typing import IO
-from urllib.parse import quote
 
 from pydantic import validate_call
 
@@ -259,7 +258,6 @@ class AttachmentCollection(BaseCollection):
 
         extension = sds_path.suffix
         upload_id = self._generate_upload_id()
-        encoded_file_name = quote(sds_path.name)
         file_key = f"{inventory_id}/SDS/{upload_id}{extension}"
 
         file_collection = self._get_file_collection()
@@ -299,7 +297,7 @@ class AttachmentCollection(BaseCollection):
 
         attachment = Attachment(
             parent_id=inventory_id,
-            name=encoded_file_name,
+            name=sds_path.name,
             key=file_key,
             namespace=FileNamespace.RESULT.value,
             category=AttachmentCategory.SDS,
@@ -333,7 +331,6 @@ class AttachmentCollection(BaseCollection):
             raise FileNotFoundError(f"File not found at '{resolved_path}'")
 
         content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/octet-stream"
-        encoded_file_name = quote(resolved_path.name)
         upload_id = self._generate_upload_id()
         extension = resolved_path.suffix
         file_key = f"{project_id}/documents/original/{upload_id}{extension}"
@@ -349,7 +346,7 @@ class AttachmentCollection(BaseCollection):
 
         attachment = Attachment(
             parent_id=project_id,
-            name=encoded_file_name,
+            name=resolved_path.name,
             key=file_key,
             namespace=FileNamespace.RESULT.value,
             category=AttachmentCategory.OTHER,
