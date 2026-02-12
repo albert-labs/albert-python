@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterable, Iterator
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
@@ -13,7 +13,7 @@ class AlbertPaginator(Iterator[ItemType]):
     """Helper class for pagination through Albert endpoints.
 
     - Offset-based pagination (`PaginationMode.OFFSET`)
-        - Uses the `offset` query parameter in the request
+        - Uses the `offset` parameter in the request
         - Continues until the response contains no `Items` (i.e., an empty list)
         - The `limit` parameter is set to 1000 by default (applies to most search functions)
 
@@ -35,17 +35,44 @@ class AlbertPaginator(Iterator[ItemType]):
         session: AlbertSession,
         deserialize: Callable[[Iterable[dict]], Iterable[ItemType]],
         params: dict[str, str] | None = None,
+        method: Literal["GET", "POST"] = "GET",
+        json: dict[str, Any] | None = None,
         max_items: int | None = None,
     ):
+        """
+        Initialize a paginator for Albert endpoints.
+
+        Parameters
+        ----------
+        path : str
+            Endpoint path to request.
+        mode : PaginationMode
+            Pagination mode to apply.
+        session : AlbertSession
+            Session used to perform requests.
+        deserialize : Callable[[Iterable[dict]], Iterable[ItemType]]
+            Function to convert response items into objects.
+        params : dict[str, str] | None, optional
+            Query parameters for the request.
+        method : Literal["GET", "POST"], optional
+            HTTP method to use (default is GET).
+        json : dict[str, Any] | None, optional
+            JSON body for POST requests.
+        max_items : int | None, optional
+            Maximum number of items to yield.
+        """
         self.path = path
         self.mode = mode
         self.session = session
         self.deserialize = deserialize
         self.max_items = max_items
+        self.method = method.upper()
         self.params = params or {}
+        self.json = json or {}
+        self._pagination_params = self.params if self.method == "GET" else self.json
 
         if self.mode == PaginationMode.OFFSET:
-            self.params.setdefault("limit", DEFAULT_LIMIT)
+            self._pagination_params.setdefault("limit", DEFAULT_LIMIT)
 
         self._last_key: str | None = None
 
@@ -61,11 +88,12 @@ class AlbertPaginator(Iterator[ItemType]):
         return self._last_key
 
     def _create_iterator(self) -> Iterator[ItemType]:
+        """Create an iterator that yields paginated items."""
         yielded = 0
         seen_keys: set[str] = set()
 
         while True:
-            response = self.session.get(self.path, params=self.params)
+            response = self._request()
             data = response.json()
             items = data.get("Items", [])
             item_count = len(items)
@@ -96,24 +124,50 @@ class AlbertPaginator(Iterator[ItemType]):
                 return
 
     def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        """Update pagination state from a response payload."""
         match self.mode:
             case PaginationMode.OFFSET:
                 offset = data.get("offset")
                 if not offset:
                     return False
-                self.params["offset"] = int(offset) + count
+                self._pagination_params["offset"] = int(offset) + count
             case PaginationMode.KEY:
                 last_key = data.get("lastKey")
                 self._last_key = last_key
                 if not last_key:
                     return False
-                self.params["startKey"] = last_key
+                self._pagination_params["startKey"] = last_key
             case mode:
                 raise AlbertException(f"Unknown pagination mode {mode}.")
         return True
 
     def __iter__(self) -> Iterator[ItemType]:
+        """Return the iterator instance."""
         return self
 
     def __next__(self) -> ItemType:
+        """Return the next item from the iterator."""
         return next(self._iterator)
+
+    def _request(self):
+        """Issue a request for the next page."""
+        if self.method == "GET":
+            return self.session.get(self.path, params=self.params)
+        payload = self._serialize_payload(self.json)
+        return self.session.request(self.method, self.path, params=self.params, json=payload)
+
+    def _serialize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Serialize a JSON payload for a request."""
+
+        def convert(value):
+            if isinstance(value, bool):
+                return value
+            if hasattr(value, "value"):
+                return value.value
+            if isinstance(value, list):
+                return [convert(item) for item in value]
+            if isinstance(value, dict):
+                return {k: convert(v) for k, v in value.items()}
+            return value
+
+        return {k: convert(v) for k, v in payload.items() if v is not None}

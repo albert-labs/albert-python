@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from albert.client import Albert
@@ -38,6 +40,38 @@ def test_project_search_filtered(client: Albert):
     """Test search with status filter."""
     advanced_list = list(client.projects.search(status=["Active"], max_items=10))
     assert_valid_project_items(advanced_list, ProjectSearchItem)
+
+
+def test_project_search_metadata_filters(
+    client: Albert,
+    seeded_projects: list[Project],
+):
+    """Test search accepts metadata filters."""
+    project = next((item for item in seeded_projects if item.metadata), None)
+    if project is None:
+        pytest.skip("No seeded project contains metadata.")
+
+    list_field = None
+    list_name = None
+    for field_name, value in (project.metadata or {}).items():
+        if isinstance(value, list) and value:
+            link = value[0]
+            list_field = field_name
+            list_name = getattr(link, "name", None)
+            break
+    if list_field is None or list_name is None:
+        pytest.skip("No list metadata values with names available for metadata filter test.")
+
+    metadata_filters = {list_field: {"name": [list_name]}}
+
+    time.sleep(2)  # Ensure the seeded project is indexed before searching
+    projects = list(
+        client.projects.search(
+            metadata_filters=metadata_filters,
+            max_items=10,
+        )
+    )
+    assert any(item.id == project.id for item in projects)
 
 
 def test_hydrate_project(client: Albert):

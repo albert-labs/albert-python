@@ -2,6 +2,7 @@ from uuid import uuid4
 
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
+from albert.core.shared.types import MetadataItem
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight, BTInsightCategory
 from albert.resources.btmodel import BTModel, BTModelSession, BTModelSessionCategory, BTModelState
@@ -132,6 +133,7 @@ def generate_custom_fields() -> list[CustomField]:
                 field_type=FieldType.LIST,
                 display_name=f"TEST {service.value.capitalize()} List Field",
                 service=service,
+                searchable=service == ServiceType.PROJECTS,
                 category=FieldCategory.USER_DEFINED,
                 min=1,
                 max=5,
@@ -488,7 +490,12 @@ def generate_storage_location_seeds(seeded_locations: list[Location]) -> list[St
     ]
 
 
-def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -> list[Project]:
+def generate_project_seeds(
+    seed_prefix: str,
+    seeded_locations: list[Location],
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> list[Project]:
     """
     Generates a list of Project seed objects for testing without IDs.
 
@@ -496,6 +503,10 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
     ----------
     seeded_locations : List[Location]
         List of seeded Location objects.
+    static_custom_fields : list[CustomField]
+        Available custom fields for metadata seeding.
+    static_lists : list[ListItem]
+        List items used to populate list-type metadata.
 
     Returns
     -------
@@ -503,7 +514,28 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         A list of Project objects with different permutations.
     """
 
-    return [
+    project_string_fields = [
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.PROJECTS and field.field_type == FieldType.STRING
+    ]
+    project_list_fields = [
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.PROJECTS and field.field_type == FieldType.LIST
+    ]
+    faux_metadata: dict[str, MetadataItem] = {}
+    for i, custom_field in enumerate(project_string_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(project_list_fields):
+        list_items = [item for item in static_lists if item.list_type == custom_field.name]
+        if not list_items:
+            continue
+        faux_metadata[custom_field.name] = [
+            list_items[min(i, len(list_items) - 1)].to_entity_link_with_name()
+        ]
+
+    seeds = [
         # Project with basic metadata and private classification
         Project(
             description=f"{seed_prefix} - A basic development project.",
@@ -526,7 +558,15 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
             ],
             project_class=ProjectClass.PRIVATE,
         ),
+        Project(
+            description=f"{seed_prefix} - Project with metadata",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            project_class=ProjectClass.PRIVATE,
+            metadata=faux_metadata,
+        ),
     ]
+
+    return seeds
 
 
 def generate_tag_seeds(seed_prefix: str) -> list[Tag]:

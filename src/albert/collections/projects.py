@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -118,6 +119,8 @@ class ProjectCollection(BaseCollection):
         technology: list[str] | None = None,
         created_by: list[str] | None = None,
         location: list[str] | None = None,
+        program: list[str] | None = None,
+        technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
         facet_field: str | None = None,
@@ -127,6 +130,7 @@ class ProjectCollection(BaseCollection):
         linked_to: str | None = None,
         my_project: bool | None = None,
         my_role: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -154,6 +158,10 @@ class ProjectCollection(BaseCollection):
             Filter by user names who created the project.
         location : list[str], optional
             Filter by location(s).
+        program : list[str], optional
+            Filter by project program (custom field).
+        technical_lead : list[str], optional
+            Filter by technical lead (custom field).
         from_created_at : str, optional
             Earliest creation date in 'YYYY-MM-DD' format.
         to_created_at : str, optional
@@ -172,6 +180,11 @@ class ProjectCollection(BaseCollection):
             If True, return only projects owned by current user.
         my_role : list[str], optional
             User roles to filter by.
+        metadata_filters : dict[str, Any], optional
+            Filters for custom field values, passed via the `metadataFilters` payload.
+            !!! warning
+                Do not use this for application, technology, program, technical lead, or
+                market segment. Use their corresponding query parameters instead.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -197,6 +210,8 @@ class ProjectCollection(BaseCollection):
             "technology": technology,
             "createdBy": created_by,
             "location": location,
+            "program": program,
+            "technicalLead": technical_lead,
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
             "facetField": facet_field,
@@ -207,6 +222,23 @@ class ProjectCollection(BaseCollection):
             "myProject": my_project,
             "myRole": my_role,
         }
+
+        if metadata_filters is not None:
+            payload: dict[str, Any] = {
+                **query_params,
+                "metadataFilters": {"metadata": metadata_filters},
+            }
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=lambda items: [
+                    ProjectSearchItem(**item)._bind_collection(self) for item in items
+                ],
+                method="POST",
+                json=payload,
+            )
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -271,6 +303,8 @@ class ProjectCollection(BaseCollection):
         technology: list[str] | None = None,
         created_by: list[str] | None = None,
         location: list[str] | None = None,
+        program: list[str] | None = None,
+        technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
         facet_field: str | None = None,
@@ -291,6 +325,53 @@ class ProjectCollection(BaseCollection):
         This method returns complete entity data using `get_by_id`.
         Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
 
+        Parameters
+        ----------
+        text : str, optional
+            Full-text search query.
+        status : list[str], optional
+            Filter by project statuses.
+        market_segment : list[str], optional
+            Filter by market segment.
+        application : list[str], optional
+            Filter by application.
+        technology : list[str], optional
+            Filter by technology tags.
+        created_by : list[str], optional
+            Filter by user names who created the project.
+        location : list[str], optional
+            Filter by location(s).
+        program : list[str], optional
+            Filter by project program (custom field).
+        technical_lead : list[str], optional
+            Filter by technical lead (custom field).
+        from_created_at : str, optional
+            Earliest creation date in 'YYYY-MM-DD' format.
+        to_created_at : str, optional
+            Latest creation date in 'YYYY-MM-DD' format.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within the `contains_field`.
+        linked_to : str, optional
+            Entity ID the project is linked to.
+        my_project : bool, optional
+            If True, return only projects owned by current user.
+        my_role : list[str], optional
+            User roles to filter by.
+        order_by : OrderBy, optional
+            Sort order. Default is DESCENDING.
+        sort_by : str, optional
+            Field to sort by.
+        offset : int, optional
+            Pagination offset.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+
         Returns
         -------
         Iterator[Project]
@@ -304,6 +385,8 @@ class ProjectCollection(BaseCollection):
             technology=technology,
             created_by=created_by,
             location=location,
+            program=program,
+            technical_lead=technical_lead,
             from_created_at=from_created_at,
             to_created_at=to_created_at,
             facet_field=facet_field,
