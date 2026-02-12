@@ -5,17 +5,6 @@ Follow these rules and patterns when making changes.
 
 ## Rules
 
-### Changelog
-
-Any change that impacts SDK users must be added to the changelog under the
-appropriate release version, following Keep a Changelog 1.1.0.
-
-This includes breaking and non-breaking changes, such as API or naming changes,
-payload/behavior changes, deprecations, or internal refactors that affect
-user-visible behavior.
-
-When in doubt, add a changelog entry.
-
 ### Using Numpy-Style Docstrings
 
 Any new public methods and classes in this repository should follow the
@@ -131,8 +120,7 @@ Guidelines:
   - ALBERT_CLIENT_ID_SDK
   - ALBERT_CLIENT_SECRET_SDK
   - ALBERT_BASE_URL
-- The FakeAlbertSession in tests/utils supports unit-style tests without hitting
-  the network. Prefer it for pure behavior/unit tests.
+- Only add integration-style tests. Do not add unit tests that use FakeAlbertSession.
 - Seed helpers live in tests/seeding.py and are reused across fixtures.
 
 ## Documentation
@@ -155,12 +143,45 @@ Do:
 - Keep docstrings Numpy-style for public APIs.
 - Use ruff for formatting/linting and respect line length 99.
 - Follow existing collection/resource patterns and naming.
+- Split diffs into meaningful commits, using Conventional Commits.
+- When squashing multiple logical changes into one commit, add sub-commits as
+  Conventional Commits in the footer so release-please can pick them up.
 
 Don’t:
 
 - Add new public APIs without docstrings and tests.
 - Bypass Conventional Commits in commit messages.
 - Introduce new dependencies without strong justification.
+
+## Commit Guidance
+
+- Prefer multiple meaningful commits over one large commit.
+- Use Conventional Commits for each commit message.
+- If multiple logical changes must be included in a single commit, add sub-commits
+  as footers at the bottom of the commit message so release-please can parse them.
+
+Example:
+
+feat: adds v4 UUID to crypto
+
+This adds support for v4 UUIDs to the library.
+
+fix(utils): unicode no longer throws exception
+  PiperOrigin-RevId: 345559154
+  BREAKING-CHANGE: encode method no longer throws.
+  Source-Link: googleapis/googleapis@5e0dcb2
+
+feat(utils): update encode to support unicode
+  PiperOrigin-RevId: 345559182
+  Source-Link: googleapis/googleapis@e5eef86
+
+The above commit message will contain:
+
+- an entry for the "adds v4 UUID to crypto" feature.
+- an entry for the fix "unicode no longer throws exception", along with a note that it's a breaking change.
+- an entry for the feature "update encode to support unicode".
+
+Important: Additional messages must be added to the bottom of the commit.
 
 ## General Guidelines
 

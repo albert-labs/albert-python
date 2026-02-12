@@ -14,3 +14,28 @@
     )
     print(attachment)
     ```
+
+## Search projects via metadata/custom fields
+
+!!! example "Search projects using metadata filters"
+    ```python
+    from albert import Albert
+
+    client = Albert.from_client_credentials()
+
+    projects = client.projects.search(
+        # application=["Albert"],
+        metadata_filters={
+            "project_description": ["This project is about testing the SDK."],
+            "adpNumber": ["1234", "5678"],
+            "adpType": {"name": ["test-sdk"]},
+        },
+    )
+
+    for project in projects:
+        print(project)
+    ```
+
+Notes:
+- `adpType` is a list-type custom field.
+- `adpNumber` is a string-type custom field.
