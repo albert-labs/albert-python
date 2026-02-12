@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -127,6 +128,7 @@ class ProjectCollection(BaseCollection):
         linked_to: str | None = None,
         my_project: bool | None = None,
         my_role: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -172,6 +174,8 @@ class ProjectCollection(BaseCollection):
             If True, return only projects owned by current user.
         my_role : list[str], optional
             User roles to filter by.
+        metadata_filters : dict[str, Any], optional
+            Filters for custom field values, passed via the `metadataFilters` payload.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -207,6 +211,23 @@ class ProjectCollection(BaseCollection):
             "myProject": my_project,
             "myRole": my_role,
         }
+
+        if metadata_filters is not None:
+            payload: dict[str, Any] = {
+                **query_params,
+                "metadataFilters": {"metadata": metadata_filters},
+            }
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=lambda items: [
+                    ProjectSearchItem(**item)._bind_collection(self) for item in items
+                ],
+                method="POST",
+                json=payload,
+            )
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

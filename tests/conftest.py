@@ -252,10 +252,15 @@ def seeded_projects(
     client: Albert,
     seed_prefix: str,
     seeded_locations: list[Location],
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
 ) -> Iterator[list[Project]]:
     seeded = []
     for project in generate_project_seeds(
-        seed_prefix=seed_prefix, seeded_locations=seeded_locations
+        seed_prefix=seed_prefix,
+        seeded_locations=seeded_locations,
+        static_custom_fields=static_custom_fields,
+        static_lists=static_lists,
     ):
         created_project = client.projects.create(project=project)
         seeded.append(created_project)
