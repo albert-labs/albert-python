@@ -24,18 +24,16 @@
     client = Albert.from_client_credentials()
 
     projects = client.projects.search(
-        # application=["Albert"],
+        application=["Albert"],
         metadata_filters={
             "project_description": ["This project is about testing the SDK."],
             "adpNumber": ["1234", "5678"],
             "adpType": {"name": ["test-sdk"]},
         },
     )
+    # adpType is a list-type custom field.
+    # adpNumber is a string-type custom field.
 
     for project in projects:
         print(project)
     ```
-
-Notes:
-- `adpType` is a list-type custom field.
-- `adpNumber` is a string-type custom field.
