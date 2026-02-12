@@ -61,10 +61,9 @@ class Interval(BaseAlbertModel):
 
     @model_validator(mode="after")
     def validate_interval(self) -> "Interval":
-        if not self.value:
-            raise ValueError("Interval: 'value' is required.")
+        # allow value to be missing/None
         if self.unit and not getattr(self.unit, "id", None):
-            raise ValueError("Interval: 'Unit.id' is required.")
+            raise ValueError("Interval: 'Unit.id' is required when Unit is provided.")
         return self
 
 
@@ -159,14 +158,14 @@ class ParameterSetpoint(BaseAlbertModel):
 
         # Special Parameters
         if self.category == ParameterCategory.SPECIAL:
-            if self.intervals is not None:
-                raise ValueError(f"Parameter {pid}: Special parameters cannot have 'intervals'.")
-            if self.value is None:
-                return self  # presence-only allowed
-            if not has_id(self.value):
-                raise ValueError(
-                    f"Parameter {pid}: Special parameters require an object value with an 'id'."
-                )
+            # Allow intervals OR value OR neither (presence-only)
+            if self.value is not None and self.intervals is not None:
+                raise ValueError(f"Parameter {pid}: provide exactly one of 'value' or 'Intervals'.")
+
+            # If value is provided as an object, still require id (platform needs entity link)
+            if self.value is not None and isinstance(self.value, Mapping) and not has_id(self.value):
+                raise ValueError(f"Parameter {pid}: Special parameters require an object value with an 'id'.")
+
             return self
 
         # Normal Parameters
