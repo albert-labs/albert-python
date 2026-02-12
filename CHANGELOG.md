@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0](https://github.com/albert-labs/albert-python/compare/v1.16.1...v1.17.0) (2026-02-12)
+
+
+### Features
+
+* **projects:** add metadata filter search ([#369](https://github.com/albert-labs/albert-python/issues/369)) ([8e3aa67](https://github.com/albert-labs/albert-python/commit/8e3aa67f44e7b3fa4183e73986c4f4e71b61ee3c))
+
+
+### Bug Fixes
+
+* **attachments:** preserve spaces in upload filenames ([#367](https://github.com/albert-labs/albert-python/issues/367)) ([96b71c8](https://github.com/albert-labs/albert-python/commit/96b71c8df8f60f089c8861767e34b018bc73adfa))
+
 ## [1.16.1](https://github.com/albert-labs/albert-python/compare/v1.16.0...v1.16.1) (2026-02-09)
 
 ### Bug Fixes
