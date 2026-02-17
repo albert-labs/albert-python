@@ -29,6 +29,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.3.2",
+    "pytest-dotenv>=0.5.2",
     "jupyter>=1.1.1",
     "ruff>=0.8.1",
     "mkdocs>=1.5.3",
@@ -74,3 +75,6 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["albert", "tests"]
+
+[tool.pytest.ini_options]
+env_files = [".env"]

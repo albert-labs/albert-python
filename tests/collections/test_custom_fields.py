@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from albert.client import Albert
@@ -58,11 +60,15 @@ def get_or_create_list_items(
 ) -> list[ListItem]:
     names = [f"{custom_field_name} Option {i}" for i in range(0, 2)]
     existing_items = [
-        client.lists.get_matching_item(name=name, list_type=custom_field_name) for name in names
+        item
+        for item in [
+            client.lists.get_matching_item(name=name, list_type=custom_field_name)
+            for name in names
+        ]
+        if item is not None
     ]
-    items_to_create = [
-        name for name in names if name not in [item.name for item in existing_items]
-    ]
+    existing_names = [item.name for item in existing_items]
+    items_to_create = [name for name in names if name not in existing_names]
 
     new_items = []
     for name in items_to_create:
@@ -129,12 +135,18 @@ def test_get_by_name(client: Albert, static_custom_fields: list[CustomField]):
                 "display_name": "Initial String Field",
                 "searchable": False,
                 "hidden": False,
+                "required": False,
+                "editable": True,
+                "pattern": None,
                 "default": None,
             },
             {
                 "display_name": "Updated String Field",
                 "searchable": True,
-                "hidden": True,
+                "hidden": False,
+                "required": True,
+                "editable": False,
+                "pattern": r"^[a-zA-Z0-9_]+$",
                 "default": StringDefault(value="default string"),
             },
         ),
@@ -144,12 +156,20 @@ def test_get_by_name(client: Albert, static_custom_fields: list[CustomField]):
             {
                 "display_name": "Initial Number Field",
                 "hidden": False,
+                "required": False,
+                "editable": True,
+                "min": 0,
+                "max": 10,
                 "default": None,
             },
             {
                 "display_name": "Updated Number Field",
                 "hidden": True,
-                "default": NumberDefault(value=42),
+                "required": False,
+                "editable": False,
+                "min": 1,
+                "max": 20,
+                "default": NumberDefault(value=5),
             },
         ),
     ],
@@ -162,7 +182,7 @@ def test_update_custom_field(
     updated_attributes: dict,
 ):
     """Test updating various attributes of a custom field."""
-    field_name = f"test_update_{field_type.value}_{service.value}"
+    field_name = f"test_update_{field_type.value}_{service.value}_{uuid.uuid4().hex[:8]}"
     custom_field = get_or_create_custom_field(
         client,
         name=field_name,
@@ -194,13 +214,14 @@ def test_update_custom_field_type_list(client: Albert):
     service = ServiceType.PROJECTS
     field_name = f"test_update_{field_type.value}_{service.value}"
     list_items = get_or_create_list_items(
-        client, custom_field_name=field_name, category=FieldCategory.USER_DEFINED
+        client, custom_field_name=field_name, category=FieldCategory.BUSINESS_DEFINED
     )
 
     initial_attributes = {
         "display_name": "Initial List Field",
         "searchable": False,
         "hidden": False,
+        "multiselect": False,
         "default": ListDefault(
             value=ListDefaultValue(id=list_items[0].id, name=list_items[0].name)
         ),
@@ -210,14 +231,25 @@ def test_update_custom_field_type_list(client: Albert):
         "display_name": "Updated List Field",
         "searchable": True,
         "hidden": True,
+        "multiselect": True,
         "default": ListDefault(
-            value=ListDefaultValue(id=list_items[1].id, name=list_items[1].name)
+            value=[ListDefaultValue(id=list_items[1].id, name=list_items[1].name)]
         ),
     }
 
     custom_field = get_or_create_custom_field(
-        client, name=field_name, field_type=field_type, service=service, **initial_attributes
+        client,
+        name=field_name,
+        field_type=field_type,
+        service=service,
+        category=FieldCategory.BUSINESS_DEFINED,
+        **initial_attributes,
     )
+    # Ensure reset starts from non-multiselect mode so scalar default is valid.
+    if custom_field.multiselect:
+        custom_field.multiselect = False
+        custom_field = client.custom_fields.update(custom_field=custom_field)
+
     # Reset to initial state first to ensure a consistent starting point
     for key, value in initial_attributes.items():
         setattr(custom_field, key, value)
@@ -225,10 +257,12 @@ def test_update_custom_field_type_list(client: Albert):
     for key, value in initial_attributes.items():
         assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
 
-    # Apply the updated attributes
-    for key, value in updated_attributes.items():
-        setattr(custom_field, key, value)
+    # API validates default against the current multiselect mode.
+    for key in ("display_name", "searchable", "hidden", "multiselect"):
+        setattr(custom_field, key, updated_attributes[key])
+    custom_field = client.custom_fields.update(custom_field=custom_field)
 
+    custom_field.default = updated_attributes["default"]
     updated_field = client.custom_fields.update(custom_field=custom_field)
 
     for key, value in updated_attributes.items():
