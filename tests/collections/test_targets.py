@@ -7,6 +7,7 @@ from albert.exceptions import AlbertHTTPError
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 
 
+@pytest.xfail(reason="Targets API is not deployed yet.")
 def test_target_create(client: Albert):
     """Test creating a new performance target."""
     name = f"TEST_TAR_{uuid.uuid4()}"
@@ -33,6 +34,7 @@ def test_target_create(client: Albert):
     client.targets.delete(id=created.id)
 
 
+@pytest.xfail(reason="Targets API is not deployed yet.")
 def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     """Test retrieving a target by its ID."""
     target = seeded_targets[0]
@@ -42,6 +44,7 @@ def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     assert fetched.name == target.name
 
 
+@pytest.xfail(reason="Targets API is not deployed yet.")
 def test_target_list(client: Albert, seeded_targets: list[Target]):
     """Test listing targets."""
     results = client.targets.list()
@@ -61,6 +64,7 @@ def test_target_list(client: Albert, seeded_targets: list[Target]):
 #         assert isinstance(target, Target)
 
 
+@pytest.xfail(reason="Targets API is not deployed yet.")
 def test_target_delete(client: Albert, seeded_targets: list[Target]):
     """Test creating and deleting a target."""
 
