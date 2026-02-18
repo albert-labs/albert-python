@@ -168,6 +168,7 @@ nav:
           - Substances: collections/substances.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
+          - Targets: collections/targets.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
@@ -213,6 +214,7 @@ nav:
           - Substances: resources/substances.md
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
+          - Targets: resources/targets.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md

@@ -34,6 +34,7 @@ from albert.resources.roles import Role
 from albert.resources.sheets import Component, Sheet
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
+from albert.resources.targets import Target
 from albert.resources.tasks import BaseTask
 from albert.resources.units import Unit
 from albert.resources.users import User
@@ -66,6 +67,7 @@ from tests.seeding import (
     generate_report_seeds,
     generate_storage_location_seeds,
     generate_tag_seeds,
+    generate_target_seeds,
     generate_task_seeds,
     generate_unit_seeds,
     generate_workflow_seeds,
@@ -808,3 +810,20 @@ def seeded_reports(
     for report in seeded:
         with suppress(NotFoundError):
             client.reports.delete(id=report.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_targets(
+    client: Albert,
+    seed_prefix: str,
+) -> Iterator[list[Target]]:
+    seeded = []
+    for target in generate_target_seeds(
+        seed_prefix=seed_prefix,
+    ):
+        created_target = client.targets.create(target=target)
+        seeded.append(created_target)
+    yield seeded
+    for target in seeded:
+        with suppress(NotFoundError, BadRequestError):
+            client.targets.delete(id=target.id)
