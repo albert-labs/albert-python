@@ -365,11 +365,10 @@ class DataTemplateCollection(BaseCollection):
                 )
                 if not has_existing_enum_validation:
                     continue
-                enums = self.session.put(
+                self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
-                _ = [EnumValidationValue(**x) for x in enums.json()]
         if len(new_parameters) > 0:
             # remove enum types, will become enums after enum adds
             initial_enum_values = {}  # track original enum values by index

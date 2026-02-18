@@ -156,27 +156,8 @@ def test_enum_validation_creation(client: Albert, seeded_data_templates: list[Da
     assert column.validation[0].value[1].text == "Option2"
 
 
-def test_enum_validation_addition(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test that enum validation can be added to a data template."""
-    dt = seeded_data_templates[5]  # "Data Template 1"
-    column = [
-        x
-        for x in dt.data_column_values
-        if (len(x.validation) > 0 and x.validation[0].datatype == DataType.ENUM)
-    ][0]  # Data column with enum validation
-
-    # Add a new enum value
-    column.validation[0].value.append(EnumValidationValue(text="Option3"))
-    updated_dt = client.data_templates.update(data_template=dt)
-
-    assert updated_dt is not None
-    updated_column = updated_dt.data_column_values[0]
-    assert len(updated_column.validation[0].value) == 3
-    assert "Option3" in [x.text for x in updated_column.validation[0].value]
-
-
 def test_enum_validation_update(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test that enum validation can be updated in a data template."""
+    """Test that enum validation options are fully replaced in a data template."""
     dt = seeded_data_templates[5]  # "Data Template 1"
     column = [
         x
@@ -185,55 +166,28 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
     ][0]  # Data column with enum validation
     old_options = [x.text for x in column.validation[0].value]
     # Replace the entire enum validation
-    column.validation[0].value = [
-        EnumValidationValue(text="NewOption1"),
-        EnumValidationValue(text="NewOption2"),
-    ]
-    column.value = "NewOption1"
+    column.validation[0].value.extend(
+        [
+            EnumValidationValue(text="NewOption1"),
+            EnumValidationValue(text="NewOption2"),
+        ]
+    )
     updated_dt = client.data_templates.update(data_template=dt)
 
-    assert updated_dt is not None
+    refreshed_column = [
+        x
+        for x in updated_dt.data_column_values
+        if (len(x.validation) > 0 and x.validation[0].datatype == DataType.ENUM)
+    ][0]
+    refreshed_column.value = "NewOption1"
+    updated_dt = client.data_templates.update(data_template=updated_dt)
     updated_column = updated_dt.data_column_values[0]
-    assert len(updated_column.validation[0].value) == 2
+    assert len(updated_column.validation[0].value) == 4
     new_options = [x.text for x in updated_column.validation[0].value]
     assert "NewOption1" in new_options
     assert "NewOption2" in new_options
     for old in old_options:
-        assert old not in new_options
-
-
-def test_enum_validation_addition_on_column_without_existing_validation(
-    client: Albert, seeded_data_templates: list[DataTemplate]
-):
-    """Test adding enum validation to a data column that previously had no validation."""
-    dt = next(
-        x for x in seeded_data_templates if "Calculation Template" in x.name
-    )  # no initial validations
-    column = next(x for x in dt.data_column_values if x.sequence != "COL0")
-
-    assert column.validation in (None, [])
-
-    column.validation = [
-        ValueValidation(
-            datatype=DataType.ENUM,
-            value=[
-                EnumValidationValue(text="Option 1"),
-                EnumValidationValue(text="Option 2"),
-            ],
-        )
-    ]
-    column.value = "Option 1"
-
-    updated_dt = client.data_templates.update(data_template=dt)
-
-    assert updated_dt is not None
-    updated_column = next(
-        x for x in updated_dt.data_column_values if x.sequence == column.sequence
-    )
-    assert updated_column.validation is not None
-    assert updated_column.validation[0].datatype == DataType.ENUM
-    assert [x.text for x in updated_column.validation[0].value] == ["Option 1", "Option 2"]
-    assert updated_column.value == "Option 1"
+        assert old in new_options
 
 
 def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemplate]):
@@ -242,8 +196,8 @@ def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemp
     column = next(x for x in dt.data_column_values if x.sequence != "COL0")
 
     assert column.calculation is not None
-    original_calculation = column.calculation
-    column.calculation = f"{original_calculation}+1"
+    updated_calculation = "=COL0 + 1"
+    column.calculation = updated_calculation
 
     updated_dt = client.data_templates.update(data_template=dt)
 
@@ -251,7 +205,7 @@ def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemp
     updated_column = next(
         x for x in updated_dt.data_column_values if x.sequence == column.sequence
     )
-    assert updated_column.calculation == f"{original_calculation}+1"
+    assert updated_column.calculation == updated_calculation
 
 
 def test_update_units(

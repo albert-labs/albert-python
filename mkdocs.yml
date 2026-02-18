@@ -222,11 +222,12 @@ nav:
               - Worksheets: resources/worksheets.md
               - Sheets: resources/sheets.md
   - Examples:
+      - Data Templates: examples/data_templates.md
       - Inventory: examples/inventory.md
+      - Notebooks: examples/notebook.md
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
       - Tasks: examples/tasks.md
-      - Notebooks: examples/notebook.md
 
 validation:
   omitted_files: warn
