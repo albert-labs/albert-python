@@ -271,3 +271,18 @@ class CustomFieldCollection(BaseCollection):
         )
         updated_ctf = self.get_by_id(id=custom_field.id)
         return updated_ctf
+
+    @validate_call
+    def delete(self, *, id: CustomFieldId) -> None:
+        """Delete a CustomField item by its ID.
+
+        Parameters
+        ----------
+        id : CustomFieldId
+            The ID of the CustomField item to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")

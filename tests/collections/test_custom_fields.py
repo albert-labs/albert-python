@@ -1,4 +1,4 @@
-import uuid
+from uuid import uuid4
 
 import pytest
 
@@ -182,7 +182,7 @@ def test_update_custom_field(
     updated_attributes: dict,
 ):
     """Test updating various attributes of a custom field."""
-    field_name = f"test_update_{field_type.value}_{service.value}_{uuid.uuid4().hex[:8]}"
+    field_name = f"test_update_{field_type.value}_{service.value}"
     custom_field = get_or_create_custom_field(
         client,
         name=field_name,
@@ -190,6 +190,24 @@ def test_update_custom_field(
         service=service,
         **initial_attributes,
     )
+    if field_type == FieldType.NUMBER:
+        initial_attributes = dict(initial_attributes)
+        updated_attributes = dict(updated_attributes)
+
+        current_min = (
+            custom_field.min if custom_field.min is not None else initial_attributes["min"]
+        )
+        current_max = (
+            custom_field.max if custom_field.max is not None else initial_attributes["max"]
+        )
+
+        initial_attributes["min"] = current_min
+        initial_attributes["max"] = current_max
+        updated_attributes["max"] = current_max + 10
+
+        # API only accepts min updates when new min is smaller than old min.
+        updated_attributes["min"] = current_min - 1 if current_min > 0 else current_min
+        updated_attributes["default"] = NumberDefault(value=updated_attributes["min"])
 
     # Reset to initial state first to ensure a consistent starting point
     for key, value in initial_attributes.items():
@@ -267,3 +285,21 @@ def test_update_custom_field_type_list(client: Albert):
 
     for key, value in updated_attributes.items():
         assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+
+
+def test_delete_custom_field(client: Albert):
+    """Test deleting a custom field by ID."""
+    custom_field = CustomField(
+        name=f"test_delete_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="Delete Test Field",
+    )
+
+    created_field = client.custom_fields.create(custom_field=custom_field)
+    client.custom_fields.delete(id=created_field.id)
+
+    assert (
+        client.custom_fields.get_by_name(name=created_field.name, service=created_field.service)
+        is None
+    )
