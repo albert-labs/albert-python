@@ -193,6 +193,8 @@ class InventoryItem(BaseTaggedResource):
         An alias for the InventoryItem. Optional.
     cas : list[CasAmount] | None
         The CAS numbers associated with the InventoryItem. This is how a compositional breakdown can be provided. Optional.
+    is_formula_override : bool | None
+        Whether formula override is enabled for a formula inventory item. Optional.
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Metadata associated with the InventoryItem. Optional. Allowed metadata fields can be found in the CustomFields documentation.
     project_id : str | None
@@ -213,6 +215,7 @@ class InventoryItem(BaseTaggedResource):
     minimum: list[InventoryMinimum] | None = Field(default=None)  # To do
     alias: str | None = Field(default=None)
     cas: list[CasAmount] | None = Field(default=None, alias="Cas")
+    is_formula_override: bool | None = Field(default=None, alias="isFormulaOverride")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     project_id: str | None = Field(default=None, alias="parentId")
     acls: list[ACL] = Field(default_factory=list, alias="ACL")

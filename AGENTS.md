@@ -139,7 +139,6 @@ Guidelines:
 
 Do:
 
-- Add changelog entries for user-visible changes.
 - Keep docstrings Numpy-style for public APIs.
 - Use ruff for formatting/linting and respect line length 99.
 - Follow existing collection/resource patterns and naming.

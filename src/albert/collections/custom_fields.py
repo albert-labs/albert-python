@@ -1,5 +1,4 @@
 from collections.abc import Iterator
-from copy import deepcopy
 
 from pydantic import validate_call
 
@@ -8,7 +7,6 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import CustomFieldId
-from albert.core.shared.models.patch import PatchOperation
 from albert.resources.custom_fields import (
     CustomField,
     EntityCategory,
@@ -16,6 +14,7 @@ from albert.resources.custom_fields import (
     SearchableCustomField,
     ServiceType,
 )
+from albert.utils.custom_fields import _generate_custom_field_patch_payload
 
 
 class CustomFieldCollection(BaseCollection):
@@ -255,36 +254,11 @@ class CustomFieldCollection(BaseCollection):
         current_object = self.get_by_id(id=custom_field.id)
 
         # generate the patch payload
-        payload = self._generate_patch_payload(
+        payload = _generate_custom_field_patch_payload(
             existing=current_object,
             updated=custom_field,
-            generate_metadata_diff=False,
-            stringify_values=False,
+            updatable_attributes=self._updatable_attributes,
         )
-        new_patches = []
-        for patch in payload.data:
-            if (
-                patch.attribute in ("hidden", "search", "lkpColumn", "lkpRow")
-                and patch.operation == PatchOperation.ADD
-            ):
-                patch.operation = PatchOperation.UPDATE
-                patch.old_value = False
-            if (
-                patch.attribute in ("entityCategory", "customEntityCategory")
-                and patch.operation == PatchOperation.ADD
-                and isinstance(patch.new_value, list)
-            ):
-                if patch.attribute == "customEntityCategory":
-                    patch.operation = PatchOperation.UPDATE
-                    patch.old_value = []
-                for i, v in enumerate(patch.new_value):
-                    if i == 0:
-                        patch.new_value = v
-                    else:
-                        new_patch = deepcopy(patch)
-                        new_patch.new_value = v
-                        new_patches.append(new_patch)
-        payload.data.extend(new_patches)
 
         # run patch
         url = f"{self.base_path}/{custom_field.id}"
@@ -297,3 +271,18 @@ class CustomFieldCollection(BaseCollection):
         )
         updated_ctf = self.get_by_id(id=custom_field.id)
         return updated_ctf
+
+    @validate_call
+    def delete(self, *, id: CustomFieldId) -> None:
+        """Delete a CustomField item by its ID.
+
+        Parameters
+        ----------
+        id : CustomFieldId
+            The ID of the CustomField item to delete.
+
+        Returns
+        -------
+        None
+        """
+        self.session.delete(f"{self.base_path}/{id}")

@@ -43,6 +43,7 @@ class InventoryCollection(BaseCollection):
         "unit_category",
         "security_class",
         "alias",
+        "is_formula_override",
         "metadata",
     }
 
@@ -708,6 +709,13 @@ class InventoryCollection(BaseCollection):
         _updatable_attributes_special = {"company", "tags", "cas", "acls"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
         payload = payload.model_dump(mode="json", by_alias=True)
+        if (
+            existing.category == InventoryCategory.FORMULAS
+            and updated.is_formula_override is not None
+        ):
+            payload["data"] = self._normalize_formula_override_patch(
+                payload["data"], updated.is_formula_override
+            )
         for attribute in _updatable_attributes_special:
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
@@ -820,6 +828,23 @@ class InventoryCollection(BaseCollection):
                         }
                     )
         return payload
+
+    @staticmethod
+    def _normalize_formula_override_patch(
+        patch_data: list[dict], is_formula_override: bool
+    ) -> list[dict]:
+        for change in list(patch_data):
+            if change.get("attribute") != "isFormulaOverride":
+                continue
+            if change.get("operation") != "add":
+                return patch_data
+            if is_formula_override is False:
+                patch_data.remove(change)
+                return patch_data
+            change["operation"] = "update"
+            change["oldValue"] = False
+            return patch_data
+        return patch_data
 
     def update(self, *, inventory_item: InventoryItem) -> InventoryItem:
         """
