@@ -202,6 +202,58 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
         assert old not in new_options
 
 
+def test_enum_validation_addition_on_column_without_existing_validation(
+    client: Albert, seeded_data_templates: list[DataTemplate]
+):
+    """Test adding enum validation to a data column that previously had no validation."""
+    dt = next(
+        x for x in seeded_data_templates if "Calculation Template" in x.name
+    )  # no initial validations
+    column = next(x for x in dt.data_column_values if x.sequence != "COL0")
+
+    assert column.validation in (None, [])
+
+    column.validation = [
+        ValueValidation(
+            datatype=DataType.ENUM,
+            value=[
+                EnumValidationValue(text="Option 1"),
+                EnumValidationValue(text="Option 2"),
+            ],
+        )
+    ]
+    column.value = "Option 1"
+
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.sequence == column.sequence
+    )
+    assert updated_column.validation is not None
+    assert updated_column.validation[0].datatype == DataType.ENUM
+    assert [x.text for x in updated_column.validation[0].value] == ["Option 1", "Option 2"]
+    assert updated_column.value == "Option 1"
+
+
+def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test updating calculation on a data template data column."""
+    dt = next(x for x in seeded_data_templates if "Calculation Template" in x.name)
+    column = next(x for x in dt.data_column_values if x.sequence != "COL0")
+
+    assert column.calculation is not None
+    original_calculation = column.calculation
+    column.calculation = f"{original_calculation}+1"
+
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.sequence == column.sequence
+    )
+    assert updated_column.calculation == f"{original_calculation}+1"
+
+
 def test_update_units(
     client: Albert, seeded_data_templates: list[DataTemplate], seeded_units: list[Unit]
 ):

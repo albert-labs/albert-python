@@ -349,18 +349,27 @@ class DataTemplateCollection(BaseCollection):
                     ],
                 },
             )
-        data_column_enum_sequences = {}
+        existing_columns_by_sequence = {
+            x.sequence: x for x in (existing.data_column_values or []) if x.sequence is not None
+        }
         if len(data_column_enum_patches) > 0:
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
+                    continue
+                existing_column = existing_columns_by_sequence.get(sequence)
+                has_existing_enum_validation = (
+                    existing_column is not None
+                    and existing_column.validation is not None
+                    and len(existing_column.validation) > 0
+                    and existing_column.validation[0].datatype == DataType.ENUM
+                )
+                if not has_existing_enum_validation:
                     continue
                 enums = self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",
                     json=enum_patches,  # these are simple dicts for now
                 )
-                data_column_enum_sequences[sequence] = [
-                    EnumValidationValue(**x) for x in enums.json()
-                ]
+                _ = [EnumValidationValue(**x) for x in enums.json()]
         if len(new_parameters) > 0:
             # remove enum types, will become enums after enum adds
             initial_enum_values = {}  # track original enum values by index
