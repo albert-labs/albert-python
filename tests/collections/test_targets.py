@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from albert.client import Albert
-from albert.exceptions import AlbertHTTPError
+from albert.core.shared.enums import Status
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 
 
@@ -79,8 +79,9 @@ def test_target_delete(client: Albert, seeded_targets: list[Target]):
     )
     created = client.targets.create(target=target)
     assert created.id.startswith("TAR")
+    assert created.status == Status.ACTIVE
 
-    # delete the target and verify it is deleted
+    # delete the target and verify it is inactive
     client.targets.delete(id=created.id)
-    with pytest.raises(AlbertHTTPError):
-        client.targets.get_by_id(id=created.id)
+    deleted = client.targets.get_by_id(id=created.id)
+    assert deleted.status == Status.INACTIVE
