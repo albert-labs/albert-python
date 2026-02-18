@@ -10,7 +10,7 @@ from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
-    """The type (list or string) of the custom field"""
+    """The type of the custom field."""
 
     LIST = "list"
     STRING = "string"
@@ -117,11 +117,13 @@ class CustomField(BaseResource):
     id : str | None
         The Albert ID of the custom field.
     field_type : FieldType
-        The type of the custom field. Allowed values are `list` and `string`. String fields cannot be searchable and are used to set uncontrolled metadata. List fields can be searchable and are used to set controlled metadata.
+        The type of the custom field. Allowed values are `list`, `string`, and `number`.
+        `string` and `list` fields are searchable; `number` fields are not searchable.
     display_name : str
         The display name of the custom field. Can contain spaces.
     searchable : bool | None
-        Whether the custom field is searchable, optional. Defaults to False.
+        Whether the custom field is searchable, optional. Defaults to False. This is supported
+        for `list` and `string` fields; `number` fields can not be searchable.
     service : ServiceType
         The service type the custom field is associated with.
     hidden : bool | None
