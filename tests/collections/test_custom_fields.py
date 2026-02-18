@@ -182,7 +182,7 @@ def test_update_custom_field(
     updated_attributes: dict,
 ):
     """Test updating various attributes of a custom field."""
-    field_name = f"test_update_{field_type.value}_{service.value}"
+    field_name = f"test_update_{field_type.value}_{service.value}_{uuid4().hex[:8]}"
     custom_field = get_or_create_custom_field(
         client,
         name=field_name,
@@ -190,59 +190,58 @@ def test_update_custom_field(
         service=service,
         **initial_attributes,
     )
-    if field_type == FieldType.NUMBER:
-        initial_attributes = dict(initial_attributes)
-        updated_attributes = dict(updated_attributes)
+    try:
+        if field_type == FieldType.NUMBER:
+            initial_attributes = dict(initial_attributes)
+            updated_attributes = dict(updated_attributes)
 
-        current_min = (
-            custom_field.min if custom_field.min is not None else initial_attributes["min"]
-        )
-        current_max = (
-            custom_field.max if custom_field.max is not None else initial_attributes["max"]
-        )
+            current_min = (
+                custom_field.min if custom_field.min is not None else initial_attributes["min"]
+            )
+            current_max = (
+                custom_field.max if custom_field.max is not None else initial_attributes["max"]
+            )
 
-        initial_attributes["min"] = current_min
-        initial_attributes["max"] = current_max
-        updated_attributes["max"] = current_max + 10
+            initial_attributes["min"] = current_min
+            initial_attributes["max"] = current_max
+            updated_attributes["max"] = current_max + 10
 
-        # API only accepts min updates when new min is smaller than old min.
-        updated_attributes["min"] = current_min - 1 if current_min > 0 else current_min
-        updated_attributes["default"] = NumberDefault(value=updated_attributes["min"])
+            # API only accepts min updates when new min is smaller than old min.
+            updated_attributes["min"] = current_min - 1 if current_min > 0 else current_min
+            updated_attributes["default"] = NumberDefault(value=updated_attributes["min"])
 
-    # Reset to initial state first to ensure a consistent starting point
-    for key, value in initial_attributes.items():
-        setattr(custom_field, key, value)
-    custom_field = client.custom_fields.update(custom_field=custom_field)
-    for key, value in initial_attributes.items():
-        assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+        # Reset to initial state first to ensure a consistent starting point
+        for key, value in initial_attributes.items():
+            setattr(custom_field, key, value)
+        custom_field = client.custom_fields.update(custom_field=custom_field)
+        for key, value in initial_attributes.items():
+            assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
 
-    # Apply the updated attributes
-    for key, value in updated_attributes.items():
-        setattr(custom_field, key, value)
+        # Apply the updated attributes
+        for key, value in updated_attributes.items():
+            setattr(custom_field, key, value)
 
-    updated_field = client.custom_fields.update(custom_field=custom_field)
+        updated_field = client.custom_fields.update(custom_field=custom_field)
 
-    for key, value in updated_attributes.items():
-        assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+        for key, value in updated_attributes.items():
+            assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+    finally:
+        if custom_field.id is not None:
+            client.custom_fields.delete(id=custom_field.id)
 
 
 def test_update_custom_field_type_list(client: Albert):
     """Test updating various attributes of a custom field."""
     field_type = FieldType.LIST
     service = ServiceType.PROJECTS
-    field_name = f"test_update_{field_type.value}_{service.value}"
-    list_items = get_or_create_list_items(
-        client, custom_field_name=field_name, category=FieldCategory.BUSINESS_DEFINED
-    )
+    field_name = f"test_update_{field_type.value}_{service.value}_{uuid4().hex[:8]}"
 
     initial_attributes = {
         "display_name": "Initial List Field",
         "searchable": False,
         "hidden": False,
         "multiselect": False,
-        "default": ListDefault(
-            value=ListDefaultValue(id=list_items[0].id, name=list_items[0].name)
-        ),
+        "default": None,
     }
 
     updated_attributes = {
@@ -250,9 +249,7 @@ def test_update_custom_field_type_list(client: Albert):
         "searchable": True,
         "hidden": True,
         "multiselect": True,
-        "default": ListDefault(
-            value=[ListDefaultValue(id=list_items[1].id, name=list_items[1].name)]
-        ),
+        "default": None,
     }
 
     custom_field = get_or_create_custom_field(
@@ -263,28 +260,41 @@ def test_update_custom_field_type_list(client: Albert):
         category=FieldCategory.BUSINESS_DEFINED,
         **initial_attributes,
     )
-    # Ensure reset starts from non-multiselect mode so scalar default is valid.
-    if custom_field.multiselect:
-        custom_field.multiselect = False
+    list_items = get_or_create_list_items(
+        client, custom_field_name=field_name, category=FieldCategory.BUSINESS_DEFINED
+    )
+    initial_attributes["default"] = ListDefault(
+        value=ListDefaultValue(id=list_items[0].id, name=list_items[0].name)
+    )
+    updated_attributes["default"] = ListDefault(
+        value=[ListDefaultValue(id=list_items[1].id, name=list_items[1].name)]
+    )
+    try:
+        # Ensure reset starts from non-multiselect mode so scalar default is valid.
+        if custom_field.multiselect:
+            custom_field.multiselect = False
+            custom_field = client.custom_fields.update(custom_field=custom_field)
+
+        # Reset to initial state first to ensure a consistent starting point
+        for key, value in initial_attributes.items():
+            setattr(custom_field, key, value)
+        custom_field = client.custom_fields.update(custom_field=custom_field)
+        for key, value in initial_attributes.items():
+            assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+
+        # API validates default against the current multiselect mode.
+        for key in ("display_name", "searchable", "hidden", "multiselect"):
+            setattr(custom_field, key, updated_attributes[key])
         custom_field = client.custom_fields.update(custom_field=custom_field)
 
-    # Reset to initial state first to ensure a consistent starting point
-    for key, value in initial_attributes.items():
-        setattr(custom_field, key, value)
-    custom_field = client.custom_fields.update(custom_field=custom_field)
-    for key, value in initial_attributes.items():
-        assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+        custom_field.default = updated_attributes["default"]
+        updated_field = client.custom_fields.update(custom_field=custom_field)
 
-    # API validates default against the current multiselect mode.
-    for key in ("display_name", "searchable", "hidden", "multiselect"):
-        setattr(custom_field, key, updated_attributes[key])
-    custom_field = client.custom_fields.update(custom_field=custom_field)
-
-    custom_field.default = updated_attributes["default"]
-    updated_field = client.custom_fields.update(custom_field=custom_field)
-
-    for key, value in updated_attributes.items():
-        assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+        for key, value in updated_attributes.items():
+            assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+    finally:
+        if custom_field.id is not None:
+            client.custom_fields.delete(id=custom_field.id)
 
 
 def test_delete_custom_field(client: Albert):
