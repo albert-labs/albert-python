@@ -40,7 +40,9 @@ class TargetOperator(str, Enum):
     """
 
     EQ = "eq"
+    GT = "gt"
     GTE = "gte"
+    LT = "lt"
     LTE = "lte"
     BETWEEN = "between"
     IN_SET = "in-set"
