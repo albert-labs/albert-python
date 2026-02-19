@@ -862,12 +862,12 @@ def generate_data_template_seeds(
             data_column_values=[
                 DataColumnValue(
                     data_column=seeded_data_columns[0],
-                    calculation="=A1 + B1",
+                    calculation="=COL0 + COL1",
                     unit=EntityLink(id=seeded_units[0].id),
                 ),
                 DataColumnValue(
                     data_column=seeded_data_columns[1],
-                    calculation="=C1 / 2",
+                    calculation="=COL0",
                     unit=EntityLink(id=seeded_units[1].id),
                 ),
             ],
