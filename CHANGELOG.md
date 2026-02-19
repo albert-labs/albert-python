@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0](https://github.com/albert-labs/albert-python/compare/v1.17.0...v1.18.0) (2026-02-19)
+
+
+### Features
+
+* **inventory:** support formula override updates ([#370](https://github.com/albert-labs/albert-python/issues/370)) ([958fd3e](https://github.com/albert-labs/albert-python/commit/958fd3e85973330cad0e31f5fe4969a3f84da548))
+
+
+### Bug Fixes
+
+* **data-templates:** handle enum and calculation column updates ([#371](https://github.com/albert-labs/albert-python/issues/371)) ([4285a49](https://github.com/albert-labs/albert-python/commit/4285a498f129e12a3a8173675a9ba141880f1c3b))
+
 ## [1.17.0](https://github.com/albert-labs/albert-python/compare/v1.16.1...v1.17.0) (2026-02-12)
 
 
