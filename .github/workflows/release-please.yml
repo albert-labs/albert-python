@@ -3,7 +3,7 @@ name: release-please
 on:
   workflow_dispatch: {}
   push:
-    branches: [main]
+    branches: [main, next]
 
 permissions:
   contents: write
@@ -18,4 +18,4 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }} # or omit if GITHUB_TOKEN works
           release-type: python
           package-name: albert
-          target-branch: main
+          target-branch: ${{ github.ref_name }}
