@@ -75,6 +75,7 @@ from albert.resources.projects import (
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
+from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -1806,5 +1807,57 @@ def generate_report_seeds(
             description=f"{seed_prefix} - A basic analytical report for testing",
             input_data={"project": project_ids},
             project_id=seeded_projects[0].id if seeded_projects else None,
+        ),
+    ]
+
+
+def generate_target_seeds(
+    seed_prefix: str,
+) -> list[Target]:
+    """
+    Generates a list of Target seed objects for testing.
+
+    Parameters
+    ----------
+    seed_prefix : str
+        Prefix to use for generating unique names.
+
+    Returns
+    -------
+    list[Target]
+        A list of Target objects with different configurations.
+    """
+    return [
+        Target(
+            name=f"{seed_prefix} - gte",
+            data_template_id="DAT123",
+            data_column_id="DAC123",
+            type=TargetType.PERFORMANCE,
+            target_value=TargetValue(operator=TargetOperator.GTE, value=10),
+            is_required=True,
+        ),
+        Target(
+            name=f"{seed_prefix} - lte",
+            data_template_id="DAT123",
+            data_column_id="DAC123",
+            type=TargetType.PERFORMANCE,
+            target_value=TargetValue(operator=TargetOperator.LTE, value=10),
+            is_required=True,
+        ),
+        Target(
+            name=f"{seed_prefix} - between",
+            data_template_id="DAT123",
+            data_column_id="DAC123",
+            type=TargetType.PERFORMANCE,
+            target_value=TargetValue(operator=TargetOperator.BETWEEN, value={"min": 5, "max": 15}),
+            is_required=False,
+        ),
+        Target(
+            name=f"{seed_prefix} - in-set",
+            data_template_id="DAT123",
+            data_column_id="DAC123",
+            type=TargetType.PERFORMANCE,
+            target_value=TargetValue(operator=TargetOperator.IN_SET, value=["A", "B", "C"]),
+            is_required=False,
         ),
     ]
