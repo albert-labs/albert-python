@@ -4,6 +4,7 @@ import pytest
 
 from albert.client import Albert
 from albert.core.shared.enums import Status
+from albert.exceptions import NotFoundError
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 
 
@@ -45,23 +46,15 @@ def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
 
 
 @pytest.mark.xfail(reason="Targets API is not deployed yet.")
-def test_target_list(client: Albert, seeded_targets: list[Target]):
-    """Test listing targets."""
-    results = client.targets.list()
+def test_target_get_by_ids(client: Albert, seeded_targets: list[Target]):
+    """Test bulk fetching targets by IDs."""
+    ids = [t.id for t in seeded_targets[:2]]
+    results = client.targets.get_by_ids(ids=ids)
     assert isinstance(results, list)
-    assert len(results) > 0
-    for target in results:
-        assert isinstance(target, Target)
-
-
-# def test_target_list_by_project_id(client: Albert, seeded_targets: list[Target]):
-#     """Test listing targets by project ID."""
-#     # TODO: implement this once the API supports it
-#     results = client.targets.list(project_id="...")
-#     assert isinstance(results, list)
-#     assert len(results) > 0
-#     for target in results:
-#         assert isinstance(target, Target)
+    assert len(results) == 2
+    fetched_ids = {t.id for t in results}
+    for target_id in ids:
+        assert target_id in fetched_ids
 
 
 @pytest.mark.xfail(reason="Targets API is not deployed yet.")
@@ -83,5 +76,6 @@ def test_target_delete(client: Albert, seeded_targets: list[Target]):
 
     # delete the target and verify it is inactive
     client.targets.delete(id=created.id)
-    deleted = client.targets.get_by_id(id=created.id)
-    assert deleted.status == Status.INACTIVE
+
+    with pytest.raises(NotFoundError):
+        client.targets.get_by_id(id=created.id)

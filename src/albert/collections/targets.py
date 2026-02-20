@@ -1,12 +1,13 @@
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import ProjectId
-from albert.core.utils import ensure_list
+from albert.core.shared.identifiers import TargetId
 from albert.resources.targets import Target
 
 
 class TargetCollection(BaseCollection):
     """
+    !!! warning "Beta Feature!"
+
     TargetCollection is a collection class for managing Target entities in the Albert platform.
 
     Parameters
@@ -25,8 +26,10 @@ class TargetCollection(BaseCollection):
         Creates a new target entity.
     get_by_id(id) -> Target
         Retrieves a target by its ID.
-    list(project_id=None) -> list[Target]
-        Lists target entities with an optional project ID filter.
+    get_by_ids(ids) -> list[Target]
+        Fetches multiple targets at once by their IDs.
+    list() -> list[Target]
+        Lists all active target entities.
     delete(id) -> None
         Deletes a target by its ID.
     """
@@ -65,13 +68,13 @@ class TargetCollection(BaseCollection):
         )
         return Target(**response.json())
 
-    def get_by_id(self, *, id: str) -> Target:
+    def get_by_id(self, *, id: TargetId) -> Target:
         """
         Retrieves a target by its ID.
 
         Parameters
         ----------
-        id : str
+        id : TargetId
             The ID of the target to retrieve.
 
         Returns
@@ -83,34 +86,32 @@ class TargetCollection(BaseCollection):
         response = self.session.get(url)
         return Target(**response.json())
 
-    def list(self, *, project_id: ProjectId | None = None) -> list[Target]:
+    def get_by_ids(self, *, ids: list[TargetId]) -> list[Target]:
         """
-        Lists target entities with an optional project ID filter.
+        Fetches multiple targets at once by their IDs.
 
         Parameters
         ----------
-        project_id : ProjectId | None
-            One or more project IDs to filter targets by.
+        ids : list[TargetId]
+            The IDs of the targets to fetch.
 
         Returns
         -------
         list[Target]
             A list of Target entities.
         """
-        params = {}
-        if project_id is not None:
-            params["projectId"] = ensure_list(project_id)
-        response = self.session.get(self.base_path, params=params)
+        url = f"{self.base_path}/ids"
+        response = self.session.get(url, params={"id": ids})
         data = response.json()
         return [Target(**item) for item in data.get("Items", [])]
 
-    def delete(self, *, id: str) -> None:
+    def delete(self, *, id: TargetId) -> None:
         """
         Deletes a target by its ID.
 
         Parameters
         ----------
-        id : str
+        id : TargetId
             The ID of the target to delete.
 
         Returns

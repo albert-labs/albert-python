@@ -5,7 +5,15 @@ from enum import Enum
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import (
+    DataColumnId,
+    DataTemplateId,
+    ParameterGroupId,
+    ParameterId,
+    UnitId,
+)
 from albert.core.shared.models.base import BaseResource
+from albert.resources.parameter_groups import ParameterCategory
 
 
 class TargetType(str, Enum):
@@ -48,30 +56,18 @@ class TargetOperator(str, Enum):
     IN_SET = "in-set"
 
 
-class ParameterCategory(str, Enum):
-    """
-    Enumeration of target parameter categories.
-
-    Attributes
-    ----------
-    NORMAL : str
-        A normal parameter.
-    SPECIAL : str
-        A special parameter (Equipment, Consumeable, etc.).
-    """
-
-    NORMAL = "normal"
-    SPECIAL = "special"
-
-
 class TargetParameter(BaseAlbertModel):
     """
-    Represents a parameter mapping for a target.
+    Represents a parameter value at which a target is measured.
 
     Attributes
     ----------
     id : str
         The parameter ID.
+    parameter_group_id : str | None
+        The parameter group ID.
+    data_template_id : str | None
+        The data template ID.
     category : ParameterCategory
         The parameter category.
     unit_id : str | None
@@ -82,9 +78,11 @@ class TargetParameter(BaseAlbertModel):
         The parameter sequence.
     """
 
-    id: str
+    id: ParameterId
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    data_template_id: DataTemplateId | None = Field(default=None, alias="dataTemplateId")
     category: ParameterCategory
-    unit_id: str | None = Field(default=None, alias="unitId")
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
     value: str | float | None = Field(default=None)
     sequence: str
 
@@ -150,11 +148,11 @@ class Target(BaseResource):
     """
 
     id: str | None = Field(default=None)
-    data_template_id: str = Field(alias="dataTemplateId")
-    data_column_id: str = Field(alias="dataColumnId")
+    data_template_id: DataTemplateId = Field(alias="dataTemplateId")
+    data_column_id: DataColumnId = Field(alias="dataColumnId")
     name: str
     type: TargetType
-    unit_id: str | None = Field(default=None, alias="unitId")
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
     parameters: list[TargetParameter] | None = Field(default=None)
     validation: list[dict] | None = Field(default=None)
     target_value: TargetValue = Field(alias="targetValue")
