@@ -1,9 +1,11 @@
 from collections.abc import Iterator
+from contextlib import suppress
 
 import pytest
 
 from albert.client import Albert
-from albert.resources.lots import Lot
+from albert.exceptions import NotFoundError
+from albert.resources.lots import Lot, LotAdjustmentAction
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
 
@@ -75,3 +77,158 @@ def test_update(
     assert updated_lot.inventory_on_hand == 10
     assert updated_lot.storage_location is not None
     assert updated_lot.storage_location.id == new_storage_location.id
+
+
+def test_adjust_add(client: Albert, seeded_lot: Lot):
+    add_quantity = 10.1234567891
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.ADD,
+        quantity=add_quantity,
+        description="add test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(
+        seeded_lot.inventory_on_hand + add_quantity
+    )
+
+
+def test_adjust_subtract(client: Albert, seeded_lot: Lot):
+    subtract_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.SUBTRACT,
+        quantity=subtract_quantity,
+        description="subtract test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(
+        seeded_lot.inventory_on_hand - subtract_quantity
+    )
+
+
+def test_adjust_set(client: Albert, seeded_lot: Lot):
+    target_quantity = seeded_lot.inventory_on_hand + 7.25
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.SET,
+        quantity=target_quantity,
+        description="set test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(target_quantity)
+
+
+def test_adjust_zero(client: Albert, seeded_lot: Lot):
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.ZERO,
+        description="zero test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(0)
+
+
+@pytest.mark.parametrize(
+    "action, quantity, error_message",
+    [
+        (LotAdjustmentAction.ZERO, 1, "quantity must be omitted for ZERO action."),
+        (
+            LotAdjustmentAction.ADD,
+            None,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+        (
+            LotAdjustmentAction.SUBTRACT,
+            -1,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+        (
+            LotAdjustmentAction.SET,
+            0,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+    ],
+)
+def test_adjust_validation(client: Albert, seeded_lot: Lot, action, quantity, error_message):
+    with pytest.raises(ValueError, match=error_message):
+        client.lots.adjust(
+            lot_id=seeded_lot.id,
+            action=action,
+            quantity=quantity,
+            description="validation",
+        )
+
+
+def test_transfer_with_explicit_owner(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+    static_user,
+):
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    transfer_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    split_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity=transfer_quantity,
+        storage_location_id=destination.id,
+        owner=static_user.id,
+    )
+    try:
+        assert split_lot.inventory_on_hand == pytest.approx(transfer_quantity)
+        assert split_lot.storage_location is not None
+        assert split_lot.storage_location.id == destination.id
+        assert split_lot.owner is not None
+        assert any(o.id == static_user.id for o in split_lot.owner)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=split_lot.id)
+
+
+def test_transfer_defaults_to_current_user(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+):
+    current_user = client.users.get_current_user()
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    transfer_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    split_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity=transfer_quantity,
+        storage_location_id=destination.id,
+    )
+    try:
+        assert split_lot.owner is not None
+        assert any(o.id == current_user.id for o in split_lot.owner)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=split_lot.id)
+
+
+def test_transfer_all_quantity(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+):
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    updated_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity="ALL",
+        storage_location_id=destination.id,
+    )
+    assert updated_lot.id == seeded_lot.id
+    assert updated_lot.inventory_on_hand == pytest.approx(seeded_lot.inventory_on_hand)
+    assert updated_lot.storage_location is not None
+    assert updated_lot.storage_location.id == destination.id

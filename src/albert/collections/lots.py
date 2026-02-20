@@ -1,18 +1,26 @@
 from collections.abc import Iterator
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.users import UserCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import InventoryId, LotId, TaskId
+from albert.core.shared.identifiers import (
+    InventoryId,
+    LotId,
+    StorageLocationId,
+    TaskId,
+    UserId,
+)
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
-from albert.resources.lots import Lot, LotSearchItem
+from albert.resources.lots import Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
@@ -318,6 +326,146 @@ class LotCollection(BaseCollection):
                 datum.old_value = datum.old_value.id if datum.old_value else None
 
         return patch_data
+
+    @staticmethod
+    def _format_inventory_value(value: float) -> str:
+        """Format inventory values without truncating decimal precision."""
+        return format(Decimal(str(value)), "f")
+
+    @staticmethod
+    def _format_inventory_delta(value: Decimal) -> str:
+        """Format inventory deltas to the API-required 14 decimal places."""
+        return format(value.quantize(DECIMAL_DELTA_QUANTIZE), "f")
+
+    @validate_call
+    def adjust(
+        self,
+        *,
+        lot_id: LotId,
+        action: LotAdjustmentAction,
+        quantity: float | None = None,
+        description: str | None = None,
+    ) -> Lot:
+        """Adjust inventory lot.
+
+        Parameters
+        ----------
+        lot_id : LotId
+            The lot to adjust.
+        action : LotAdjustmentAction
+            Adjustment action to apply (ADD, SUBTRACT, SET, ZERO).
+        quantity : float | None, optional
+            Adjustment quantity. Required for ADD/SUBTRACT/SET and disallowed for ZERO.
+        description : str | None, optional
+            Optional description for the adjustment.
+
+        Returns
+        -------
+        Lot
+            The refreshed lot after adjustment.
+        """
+        if action == LotAdjustmentAction.ZERO and quantity is not None:
+            raise ValueError("quantity must be omitted for ZERO action.")
+
+        if action != LotAdjustmentAction.ZERO and (quantity is None or quantity <= 0):
+            raise ValueError("quantity must be greater than zero for ADD, SUBTRACT, and SET.")
+
+        existing_lot = self.get_by_id(id=lot_id)
+        current = Decimal(str(existing_lot.inventory_on_hand))
+        requested_quantity = Decimal(str(quantity)) if quantity is not None else None
+
+        if action == LotAdjustmentAction.ADD:
+            delta = requested_quantity
+        elif action == LotAdjustmentAction.SUBTRACT:
+            delta = -requested_quantity
+        elif action == LotAdjustmentAction.SET:
+            delta = requested_quantity - current
+        else:
+            delta = -current
+
+        patch_payload = PatchPayload(
+            data=[
+                PatchDatum(
+                    operation=PatchOperation.UPDATE,
+                    attribute="inventoryOnHand",
+                    old_value=str(existing_lot.inventory_on_hand),
+                    new_value=self._format_inventory_delta(delta),
+                )
+            ]
+        )
+        payload = patch_payload.model_dump(mode="json", by_alias=True)
+        if description is not None:
+            payload["notes"] = description
+
+        self.session.patch(f"{self.base_path}/{lot_id}", json=payload)
+        return self.get_by_id(id=lot_id)
+
+    @validate_call
+    def transfer(
+        self,
+        *,
+        lot_id: LotId,
+        quantity: float | Literal["ALL"],
+        storage_location_id: StorageLocationId,
+        owner: UserId | None = None,
+    ) -> Lot:
+        """Transfer inventory lot to another location.
+
+        Parameters
+        ----------
+        lot_id : LotId
+            The source lot to transfer.
+        quantity : float | Literal["ALL"]
+            Quantity to transfer from the source lot, or "ALL" to transfer the full current
+            inventory on hand.
+        storage_location_id : StorageLocationId
+            Destination storage location ID.
+        owner : UserId | None, optional
+            User ID of the Owner for the new lot. Defaults to the current user.
+
+        Returns
+        -------
+        Lot
+            The updated source lot for "ALL" transfers, otherwise the lot created by split.
+        """
+        if quantity == "ALL":
+            source_lot = self.get_by_id(id=lot_id)
+            patch_payload = PatchPayload(
+                data=[
+                    PatchDatum(
+                        operation=PatchOperation.UPDATE,
+                        attribute="storageLocation",
+                        old_value=source_lot.storage_location.id
+                        if source_lot.storage_location
+                        else None,
+                        new_value=storage_location_id,
+                    )
+                ]
+            )
+            self.session.patch(
+                f"{self.base_path}/{lot_id}",
+                json=patch_payload.model_dump(mode="json", by_alias=True),
+            )
+            return self.get_by_id(id=lot_id)
+
+        transfer_quantity = quantity
+        if transfer_quantity <= 0:
+            raise ValueError("quantity must be greater than zero for transfer.")
+
+        if owner is None:
+            current_user = UserCollection(session=self.session).get_current_user()
+            owner = current_user.id
+            if owner is None:
+                raise ValueError("Current user lookup failed to return a valid user id.")
+
+        payload = {
+            "action": "splitted",
+            "inventoryOnHand": self._format_inventory_value(transfer_quantity),
+            "StorageLocation": {"id": storage_location_id},
+            "Owner": [{"id": owner}],
+        }
+        response = self.session.post(f"{self.base_path}/{lot_id}/split", json=payload)
+        return Lot(**response.json())
 
     def update(self, *, lot: Lot) -> Lot:
         """Update a lot.
