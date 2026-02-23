@@ -168,6 +168,39 @@ def _data_column_value_patches(
     return None
 
 
+def _data_column_calculation_patches(
+    initial_data_column_value: DataColumnValue, updated_data_column_value: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate a Patch for a data column calculation."""
+    if initial_data_column_value.calculation == updated_data_column_value.calculation:
+        return None
+    elif initial_data_column_value.calculation is None:
+        if updated_data_column_value.calculation is not None:
+            return DTPatchDatum(
+                operation="add",
+                attribute="calculation",
+                newValue=updated_data_column_value.calculation,
+                colId=initial_data_column_value.sequence,
+            )
+    elif updated_data_column_value.calculation is None:
+        if initial_data_column_value.calculation is not None:
+            return DTPatchDatum(
+                operation="delete",
+                attribute="calculation",
+                oldValue=initial_data_column_value.calculation,
+                colId=initial_data_column_value.sequence,
+            )
+    elif initial_data_column_value.calculation != updated_data_column_value.calculation:
+        return DTPatchDatum(
+            operation="update",
+            attribute="calculation",
+            oldValue=initial_data_column_value.calculation,
+            newValue=updated_data_column_value.calculation,
+            colId=initial_data_column_value.sequence,
+        )
+    return None
+
+
 def data_column_validation_patches(
     initial_data_column: DataColumnValue, updated_data_column: DataColumnValue
 ) -> DTPatchDatum | None:
@@ -346,12 +379,15 @@ def generate_data_column_patches(
         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
         # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
+        calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
         curve_data_patch = data_column_curve_data_patches(initial_dc, updated_dc)
         # if unit_patch:
         #     these_actions.append(unit_patch)
         if value_patch:
             these_actions.append(value_patch)
+        if calculation_patch:
+            these_actions.append(calculation_patch)
         if validation_patch:
             these_actions.append(validation_patch)
         if curve_data_patch:
@@ -376,8 +412,15 @@ def generate_data_column_patches(
             and updated_dc.validation != []
             and updated_dc.validation[0].datatype == DataType.ENUM
         ):
+            existing_enums = []
+            if (
+                initial_dc.validation is not None
+                and initial_dc.validation != []
+                and initial_dc.validation[0].datatype == DataType.ENUM
+            ):
+                existing_enums = initial_dc.validation[0].value
             enum_patches[updated_dc.sequence] = generate_enum_patches(
-                existing_enums=initial_dc.validation[0].value,
+                existing_enums=existing_enums,
                 updated_enums=updated_dc.validation[0].value,
             )
     return patches, new_data_columns, enum_patches

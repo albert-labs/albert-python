@@ -31,6 +31,7 @@ _ALBERT_PREFIXES = {
     "TagId": "TAG",
     "TargetId": "TAR",
     "TaskId": "TAS",
+    "StorageLocationId": "STL",
     "UnitId": "UNI",
     "UserId": "USR",
     "WorksheetId": "WKS",
@@ -293,6 +294,13 @@ def ensure_synthesis_id(id: str) -> str:
 
 
 SynthesisId = Annotated[str, AfterValidator(ensure_synthesis_id)]
+
+
+def ensure_storage_location_id(id: str) -> str:
+    return _ensure_albert_id(id, "StorageLocationId")
+
+
+StorageLocationId = Annotated[str, AfterValidator(ensure_storage_location_id)]
 
 
 def ensure_tag_id(id: str) -> str:

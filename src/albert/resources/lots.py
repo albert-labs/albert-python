@@ -22,6 +22,15 @@ class LotStatus(str, Enum):
     QUARANTINED = "quarantined"
 
 
+class LotAdjustmentAction(str, Enum):
+    """Valid lot inventory adjustment actions."""
+
+    ADD = "ADD"
+    SUBTRACT = "SUBTRACT"
+    SET = "SET"
+    ZERO = "ZERO"
+
+
 class Lot(BaseResource):
     """A lot in Albert.
 

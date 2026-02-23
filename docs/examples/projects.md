@@ -1,5 +1,7 @@
 # Projects
 
+Projects in Albert are a way to organize and plan out work. They help promote digital collaboration between teams while also protecting Intellectual Property (IP).
+
 ## Upload a project document
 
 !!! example "Upload a document to a project"
