@@ -1,9 +1,18 @@
 name: release-please
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch to run release-please on (main or next)"
+        required: true
+        default: "main"
+        type: choice
+        options:
+          - main
+          - next
   push:
-    branches: [main, next]
+    branches: [main]
 
 permissions:
   contents: write
@@ -15,7 +24,7 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }} # or omit if GITHUB_TOKEN works
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           release-type: python
           package-name: albert
-          target-branch: ${{ github.ref_name }}
+          target-branch: ${{ inputs.target_branch || github.ref_name }}
