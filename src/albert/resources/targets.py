@@ -127,14 +127,14 @@ class Target(BaseResource):
     ----------
     id : str | None
         The unique identifier of the target. Set when retrieved from Albert.
-    data_template_id : str
-        The ID of the associated data template.
-    data_column_id : str
-        The ID of the associated data column.
     name : str
         The name of the target.
     type : TargetType
         The type of target.
+    data_template_id : str
+        The ID of the associated data template.
+    data_column_id : str
+        The ID of the associated data column.
     unit_id : str | None
         The unit ID for this target.
     parameters : list[TargetParameter] | None
@@ -145,15 +145,17 @@ class Target(BaseResource):
         The target value constraint.
     is_required : bool
         Whether this target is required.
+    validation : list[dict] | None
+        Validation rules for the target.
     """
 
     id: str | None = Field(default=None)
-    data_template_id: DataTemplateId = Field(alias="dataTemplateId")
-    data_column_id: DataColumnId = Field(alias="dataColumnId")
     name: str
     type: TargetType
+    data_template_id: DataTemplateId = Field(alias="dataTemplateId")
+    data_column_id: DataColumnId = Field(alias="dataColumnId")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     parameters: list[TargetParameter] | None = Field(default=None)
-    validation: list[dict] | None = Field(default=None)
     target_value: TargetValue = Field(alias="targetValue")
     is_required: bool = Field(alias="isRequired")
+    validation: list[dict] | None = Field(default=None)
