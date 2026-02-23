@@ -28,8 +28,6 @@ class TargetCollection(BaseCollection):
         Retrieves a target by its ID.
     get_by_ids(ids) -> list[Target]
         Fetches multiple targets at once by their IDs.
-    list() -> list[Target]
-        Lists all active target entities.
     delete(id) -> None
         Deletes a target by its ID.
     """
