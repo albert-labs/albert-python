@@ -67,6 +67,43 @@ def test_parameter_group_search_with_filters(
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
+def test_parameter_group_search_with_post_filters_happy_flow(client: Albert):
+    """Test happy path for POST search with owner, tags, parameters, and additional fields."""
+    baseline = list(client.parameter_groups.search(max_items=10))
+    candidate = next(
+        (
+            pg
+            for pg in baseline
+            if (pg.owner and len(pg.owner) > 0)
+            and (pg.tags and len(pg.tags) > 0)
+            and (pg.parameters and len(pg.parameters) > 0)
+        ),
+        None,
+    )
+    assert candidate is not None, (
+        "Expected at least one parameter group with owner, tags, and parameters"
+    )
+
+    owner = candidate.owner[0].name or candidate.owner[0].id
+    tag = candidate.tags[0].tag or candidate.tags[0].id
+    parameter = candidate.parameters[0].name
+
+    assert owner is not None
+    assert tag is not None
+    assert parameter is not None
+
+    results = list(
+        client.parameter_groups.search(
+            owner=[owner],
+            tags=[tag],
+            parameters=[parameter],
+            additional_field=["owner", "tags", "createdByName"],
+            max_items=10,
+        )
+    )
+    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
+
+
 def test_hydrate_pg(client: Albert):
     pgs = list(client.parameter_groups.search(max_items=5))
     assert pgs, "Expected at least one pg in search results"
