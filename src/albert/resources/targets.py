@@ -66,8 +66,6 @@ class TargetParameter(BaseAlbertModel):
         The parameter ID.
     parameter_group_id : str | None
         The parameter group ID.
-    data_template_id : str | None
-        The data template ID.
     category : ParameterCategory
         The parameter category.
     unit_id : str | None
@@ -80,7 +78,6 @@ class TargetParameter(BaseAlbertModel):
 
     id: ParameterId
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
-    data_template_id: DataTemplateId | None = Field(default=None, alias="dataTemplateId")
     category: ParameterCategory
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     value: str | float | None = Field(default=None)
