@@ -40,6 +40,7 @@ from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
 from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
+from albert.collections.targets import TargetCollection
 from albert.collections.tasks import TaskCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
@@ -176,6 +177,10 @@ class Albert:
     @property
     def tags(self) -> TagCollection:
         return TagCollection(session=self.session)
+
+    @property
+    def targets(self) -> TargetCollection:
+        return TargetCollection(session=self.session)
 
     @property
     def inventory(self) -> InventoryCollection:
