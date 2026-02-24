@@ -67,8 +67,8 @@ def test_parameter_group_search_with_filters(
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
-def test_parameter_group_search_with_post_filters_happy_flow(client: Albert):
-    """Test happy path for POST search with owner, tags, parameters, and additional fields."""
+def test_parameter_group_search(client: Albert):
+    """Test POST search with owner, tags, parameters, and additional fields."""
     baseline = list(client.parameter_groups.search(max_items=10))
     candidate = next(
         (
