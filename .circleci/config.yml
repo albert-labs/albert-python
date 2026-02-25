@@ -160,7 +160,7 @@ jobs:
   lambda_layer_publish:
     machine:
       image: ubuntu-2204:current
-    steps:
+    steps: &lambda_layer_steps
       - checkout
       - run:
           name: Validate lambda layer parameters
@@ -220,11 +220,30 @@ jobs:
               --sdk-version "<< pipeline.parameters.lambda_sdk_version >>" \
               ${ACCOUNT_ARG}
 
+  lambda_layer_publish_arm:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    steps: *lambda_layer_steps
+
 workflows:
-  lambda_layer:
-    when: << pipeline.parameters.lambda_layer >>
+  lambda_layer_x86:
+    when:
+      and:
+        - << pipeline.parameters.lambda_layer >>
+        - equal: ["x86_64", << pipeline.parameters.lambda_arch >>]
     jobs:
       - lambda_layer_publish:
+          name: Lambda Layer Publish
+          context: dev
+
+  lambda_layer_arm:
+    when:
+      and:
+        - << pipeline.parameters.lambda_layer >>
+        - equal: ["arm64", << pipeline.parameters.lambda_arch >>]
+    jobs:
+      - lambda_layer_publish_arm:
           name: Lambda Layer Publish
           context: dev
 
