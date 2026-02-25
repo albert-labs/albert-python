@@ -100,7 +100,7 @@ z = zipfile.ZipFile('/work/${ZIP_NAME}', 'w', zipfile.ZIP_DEFLATED); \
 [(z.write(os.path.join(root, name), os.path.relpath(os.path.join(root, name), '/work'))) \
 for root, _, files in os.walk('/work/python') for name in files]; \
 z.close()\" \
-  "
+  " 1>&2
 
 mv "${TMP_DIR}/${ZIP_NAME}" "${ZIP_PATH}"
 echo "${ZIP_PATH}"
