@@ -226,7 +226,7 @@ workflows:
     jobs:
       - lambda_layer_publish:
           name: Lambda Layer Publish
-          context: aws-lambda-publish
+          context: dev
 
   main:
     jobs:
