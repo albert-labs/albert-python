@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0](https://github.com/albert-labs/albert-python/compare/v1.18.0...v1.20.0) (2026-02-25)
+
+
+### Features
+
+* **lots:** add direct adjust and transfer actions ([#376](https://github.com/albert-labs/albert-python/issues/376)) ([23cc97d](https://github.com/albert-labs/albert-python/commit/23cc97d3793520541c2a64c9507fbba514cb4959))
+* support targets api ([#374](https://github.com/albert-labs/albert-python/issues/374)) ([0a3b915](https://github.com/albert-labs/albert-python/commit/0a3b915b4101cdf4827e5235462ca8af413c2f4a))
+
+
+### Bug Fixes
+
+* **targets:** removed data template id from target parameter ([#384](https://github.com/albert-labs/albert-python/issues/384)) ([9f0bb6b](https://github.com/albert-labs/albert-python/commit/9f0bb6b8df79a80d99ad222fe66e2288da191d17))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([9592714](https://github.com/albert-labs/albert-python/commit/95927146c2c3ab3b692c6034f64c9eab60ed21f4))
+
 ## [1.18.0](https://github.com/albert-labs/albert-python/compare/v1.17.0...v1.18.0) (2026-02-19)
 
 
