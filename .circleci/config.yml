@@ -229,6 +229,8 @@ workflows:
           context: dev
 
   main:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - test:
           name: Test
@@ -242,6 +244,8 @@ workflows:
               only: main
 
   release:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - validate_release_tag:
           name: Validate Release Tag

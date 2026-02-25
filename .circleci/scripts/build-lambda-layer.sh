@@ -56,12 +56,15 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUT_DIR="${ROOT_DIR}/dist/lambda"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
-  rm -rf "$TMP_DIR"
+  rm -rf "$TMP_DIR" 2>/dev/null || true
+  if command -v sudo >/dev/null 2>&1; then
+    sudo -n rm -rf "$TMP_DIR" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT
 
@@ -82,11 +85,11 @@ docker run \
   --rm \
   --platform "${PLATFORM}" \
   --entrypoint /bin/bash \
+  --user "$(id -u):$(id -g)" \
   -v "${TMP_DIR}:/work" \
   "${IMAGE}" \
   -lc "\
     set -euo pipefail; \
-    python -m pip install --upgrade pip; \
     python -m pip install --no-cache-dir --only-binary numpy,pandas albert==${SDK_VERSION} -t /work/python; \
     PYTHONPATH=/work/python python -c 'import albert'; \
     find /work/python -name '__pycache__' -type d -prune -exec rm -rf {} +; \
