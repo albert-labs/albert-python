@@ -1,3 +1,5 @@
+import pytest
+
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.resources.data_columns import DataColumn
@@ -15,6 +17,7 @@ from albert.resources.parameter_groups import (
 from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from albert.resources.users import User
 
 
 def assert_valid_data_template_items(
@@ -88,6 +91,39 @@ def test_update_tags(
     assert updated_dt is not None
     assert new_tag.tag in [x.tag for x in updated_dt.tags]
     assert len(updated_dt.tags) == len(original_tags) + 1
+
+
+def test_update_owner(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    static_user: User,
+):
+    """Test updating owner for data templates."""
+    dt = next(x for x in seeded_data_templates if "ACL Data Template" in x.name)
+    dt = client.data_templates.get_by_id(
+        id=dt.id
+    )  # Get hydrated to ensure users_with_access is populated
+    original_acl = dt.users_with_access or []
+    original_ids = {entry.id for entry in original_acl if getattr(entry, "id", None)}
+
+    user_to_add = None
+    for user in client.users.search(max_items=3):
+        if user.id and user.id != static_user.id and user.id not in original_ids:
+            user_to_add = client.users.get_by_id(id=user.id)
+            break
+
+    if user_to_add is None:
+        pytest.skip("No eligible user returned by users.search() for ACL update.")
+
+    dt.users_with_access = [*original_acl, user_to_add]
+    updated_dt = client.data_templates.update(data_template=dt)
+    assert updated_dt.users_with_access is not None
+    assert user_to_add.id in [entry.id for entry in updated_dt.users_with_access]
+
+    updated_dt.users_with_access = original_acl
+    restored_dt = client.data_templates.update(data_template=updated_dt)
+    assert restored_dt.users_with_access is not None
+    assert user_to_add.id not in [entry.id for entry in restored_dt.users_with_access]
 
 
 def test_update_metadata(client: Albert, seeded_data_templates: list[DataTemplate]):

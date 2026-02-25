@@ -3,6 +3,7 @@ from copy import deepcopy
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
+    GeneralPatchPayload,
     PatchDatum,
     PatchPayload,
     PGPatchDatum,
@@ -640,6 +641,30 @@ def generate_data_template_patches(
         parameter_attribute_name="parameters",
     )
 
+    acl_add_values: list[dict[str, str]] = []
+    acl_delete_values: list[dict[str, str]] = []
+    if updated_data_template.users_with_access is not None:
+        existing_acl = existing_data_template.users_with_access or []
+        updated_acl = updated_data_template.users_with_access or []
+
+        # Keep ID order stable while removing duplicates.
+        existing_ids = list(
+            dict.fromkeys(entry.id for entry in existing_acl if getattr(entry, "id", None))
+        )
+        updated_ids = list(
+            dict.fromkeys(entry.id for entry in updated_acl if getattr(entry, "id", None))
+        )
+
+        existing_set = set(existing_ids)
+        updated_set = set(updated_ids)
+        to_add = updated_set - existing_set
+        to_delete = existing_set - updated_set
+
+        acl_add_values = [{"id": entry_id} for entry_id in updated_ids if entry_id in to_add]
+        acl_delete_values = [
+            {"id": entry_id} for entry_id in existing_ids if entry_id in to_delete
+        ]
+
     return (
         general_patches,
         new_data_columns,
@@ -647,6 +672,22 @@ def generate_data_template_patches(
         new_parameters,
         parameter_enum_patches,
         parameter_patches,
+        acl_add_values,
+        acl_delete_values,
+    )
+
+
+def build_acl_patch_payload(
+    *,
+    operation: str,
+    values: list[dict[str, str]],
+) -> GeneralPatchPayload | None:
+    """Build a DataTemplate ACL patch payload for add/delete operations."""
+    if len(values) == 0:
+        return None
+    datum_kwargs = {"new_value": values} if operation == "add" else {"old_value": values}
+    return GeneralPatchPayload(
+        data=[GeneralPatchDatum(attribute="ACL", operation=operation, **datum_kwargs)]
     )
 
 
