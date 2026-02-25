@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.19.0...v1.20.0-beta1) (2026-02-25)
+
+
+### Features
+
+* support targets api ([#374](https://github.com/albert-labs/albert-python/issues/374)) ([807fbb6](https://github.com/albert-labs/albert-python/commit/807fbb6df3824528a3fd16a3761b2c7374ddce9b))
+
+
+### Bug Fixes
+
+* **targets:** removed data template id from target parameter ([#384](https://github.com/albert-labs/albert-python/issues/384)) ([9a34add](https://github.com/albert-labs/albert-python/commit/9a34add54d20c87e730ef76b1bd5b612e2848522))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([446cae3](https://github.com/albert-labs/albert-python/commit/446cae3ac7b3c45921033b32e045aff361695420))
+
 ## [1.19.0](https://github.com/albert-labs/albert-python/compare/v1.18.0...v1.19.0) (2026-02-23)
 
 
