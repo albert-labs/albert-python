@@ -79,12 +79,12 @@ class ParameterCollection(BaseCollection):
         Parameter
             The existing or newly created parameter.
         """
-        match = next(self.get_all(names=parameter.name, exact_match=True, max_items=1), None)
-        if match:
-            logging.warning(
-                f"Parameter with name {parameter.name} already exists. Returning existing parameter."
-            )
-            return match
+        for match in self.get_all(names=parameter.name, exact_match=False):
+            if match.name == parameter.name:
+                logging.warning(
+                    f"Parameter with name {parameter.name} already exists. Returning existing parameter."
+                )
+                return match
         return self.create(parameter=parameter)
 
     @validate_call
