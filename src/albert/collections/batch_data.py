@@ -68,8 +68,9 @@ class BatchDataCollection(BaseCollection):
             The primary key of the first item that this operation will evaluate.
         order_by : OrderBy, optional
             The order by which to sort the results, by default OrderBy.DESCENDING
+
         Returns
-        ------
+        -------
         BatchData
             The BatchData object.
         """
@@ -95,7 +96,7 @@ class BatchDataCollection(BaseCollection):
         task_id : str
             The ID of the task to update.
         patches : list[BatchValuePatchPayload]
-            The patch payloads containing the data to update.
+            Patch entries describing which batch values to update.
 
         Returns
         -------

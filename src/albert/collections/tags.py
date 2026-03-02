@@ -36,6 +36,8 @@ class TagCollection(BaseCollection):
         Checks if a tag exists by its name.
     create(tag) -> Tag
         Creates a new tag entity.
+    get_or_create(tag) -> Tag
+        Retrieves a tag by name or creates it if it does not exist.
     get_by_id(tag_id) -> Tag
         Retrieves a tag by its ID.
     get_by_ids(tag_ids) -> list[Tag]
@@ -146,6 +148,19 @@ class TagCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[TagId]) -> list[Tag]:
+        """
+        Retrieve tags by their IDs.
+
+        Parameters
+        ----------
+        ids : list[TagId]
+            The tag IDs to fetch.
+
+        Returns
+        -------
+        list[Tag]
+            The tags matching the provided IDs.
+        """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
         return [

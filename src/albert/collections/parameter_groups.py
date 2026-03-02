@@ -58,6 +58,18 @@ class ParameterGroupCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[ParameterGroupId]) -> list[ParameterGroup]:
+        """Get parameter groups by IDs.
+
+        Parameters
+        ----------
+        ids : list[ParameterGroupId]
+            Parameter group IDs to retrieve.
+
+        Returns
+        -------
+        list[ParameterGroup]
+            Parameter groups matching the provided IDs.
+        """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
         return [
@@ -164,6 +176,10 @@ class ParameterGroupCollection(BaseCollection):
         ----------
         id : str
             The ID of the parameter group to delete
+
+        Returns
+        -------
+        None
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

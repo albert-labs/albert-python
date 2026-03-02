@@ -31,6 +31,10 @@ class UnNumberCollection(BaseCollection):
     def create(self) -> None:
         """
         This method is not implemented as UN Numbers cannot be created through the SDK.
+
+        Returns
+        -------
+        None
         """
         raise NotImplementedError()
 

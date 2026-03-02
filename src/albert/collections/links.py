@@ -123,6 +123,10 @@ class LinksCollection(BaseCollection):
         ----------
         id : str
             The ID of the link entity to delete.
+
+        Returns
+        -------
+        None
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

@@ -471,6 +471,10 @@ class TaskCollection(BaseCollection):
         ----------
         id : TaskId
             The ID of the task to delete.
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -749,7 +753,28 @@ class TaskCollection(BaseCollection):
         blockId: str | None = None,
         startKey: str | None = None,
     ) -> TaskHistory:
-        """Fetch the audit history for the specified task."""
+        """Fetch the audit history for the specified task.
+
+        Parameters
+        ----------
+        id : TaskId
+            The ID of the task to inspect.
+        order : OrderBy, optional
+            Sort order for history entries. Default is DESCENDING.
+        limit : int, optional
+            Maximum number of history entries to return.
+        entity : HistoryEntity | None, optional
+            Optional entity scope filter for history entries.
+        blockId : str | None, optional
+            Optional block ID filter for history entries.
+        startKey : str | None, optional
+            Pagination key used to continue a previous history query.
+
+        Returns
+        -------
+        TaskHistory
+            Task history response containing entries and pagination metadata.
+        """
         params = {
             "limit": limit,
             "orderBy": order,

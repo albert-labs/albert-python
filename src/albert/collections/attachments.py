@@ -140,6 +140,10 @@ class AttachmentCollection(BaseCollection):
         ----------
         id : str
             The ID of the attachment to delete.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -246,8 +250,15 @@ class AttachmentCollection(BaseCollection):
             Language code for the SDS (e.g. ``EN``).
         hazard_statements : list[HazardStatement] | None, optional
             Collection of hazard statements.
+        hazard_symbols : list[HazardSymbol] | None, optional
+            Collection of hazard symbols.
         wgk : str | None, optional
             WGK classification metadata.
+
+        Returns
+        -------
+        Attachment
+            The created SDS attachment linked to the inventory item.
         """
 
         sds_path = file_sds.expanduser()
@@ -319,12 +330,17 @@ class AttachmentCollection(BaseCollection):
     ) -> Attachment:
         """Upload a file and attach it as a document to a project.
 
-        Args:
-            project_id: The Albert ID of the project (e.g. "PRO770").
-            file_path: Local path to the file to upload.
+        Parameters
+        ----------
+        project_id : ProjectId
+            The Albert ID of the project (e.g. ``PRO770``).
+        file_path : Path
+            Local path to the file to upload.
 
-        Returns:
-            The created Attachment record.
+        Returns
+        -------
+        Attachment
+            The created attachment record.
         """
         resolved_path = file_path.expanduser()
         if not resolved_path.is_file():

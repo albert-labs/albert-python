@@ -172,6 +172,10 @@ class FileCollection(BaseCollection):
             The content type of the file
         category : FileCategory | None, optional
             The category of the file (E.g., SDS, OTHER), by default None
+
+        Returns
+        -------
+        None
         """
         upload_url = self.get_signed_upload_url(
             name=name,

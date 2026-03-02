@@ -126,6 +126,10 @@ class LotCollection(BaseCollection):
         ----------
         id : str
             The ID of the lot to delete.
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
@@ -294,7 +298,7 @@ class LotCollection(BaseCollection):
         )
 
     def _generate_lots_patch_payload(self, *, existing: Lot, updated: Lot) -> PatchPayload:
-        """Generate a patch payload for a lot, handling inventory_on_hand separately."""
+        """Generate patch request data for a lot, handling inventory_on_hand separately."""
         patch_data = super()._generate_patch_payload(
             existing=existing, updated=updated, generate_metadata_diff=True
         )

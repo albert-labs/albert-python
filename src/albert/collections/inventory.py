@@ -401,6 +401,38 @@ class InventoryCollection(BaseCollection):
     ) -> list[FacetItem]:
         """
         Get available facets for inventory items based on the provided filters.
+
+        Parameters
+        ----------
+        text : str, optional
+            Search text for full-text matching.
+        cas : list[Cas] | Cas | None, optional
+            Filter by CAS values.
+        category : list[InventoryCategory] | InventoryCategory | None, optional
+            Filter by inventory category.
+        company : list[Company] | Company | None, optional
+            Filter by company.
+        location : list[Location] | Location | None, optional
+            Filter by location.
+        storage_location : list[StorageLocation] | StorageLocation | None, optional
+            Filter by storage location.
+        project_id : ProjectId | None, optional
+            Filter by project.
+        sheet_id : WorksheetId | None, optional
+            Filter by worksheet.
+        created_by : list[User] | User | None, optional
+            Filter by creator.
+        lot_owner : list[User] | User | None, optional
+            Filter by lot owner.
+        tags : list[str] | None, optional
+            Filter by tags.
+        match_all_conditions : bool, optional
+            If ``True``, only return results that satisfy all applied filters.
+
+        Returns
+        -------
+        list[FacetItem]
+            Facet groups available for the provided query filters.
         """
 
         params = self._prepare_parameters(
@@ -448,6 +480,40 @@ class InventoryCollection(BaseCollection):
         Returns a specific facet by its name with all the filters applied to the search.
         This can be used for example to fetch all remaining tags as part of an iterative
         refinement of a search.
+
+        Parameters
+        ----------
+        name : str | list[str]
+            Facet name or names to return.
+        text : str, optional
+            Search text for full-text matching.
+        cas : list[Cas] | Cas | None, optional
+            Filter by CAS values.
+        category : list[InventoryCategory] | InventoryCategory | None, optional
+            Filter by inventory category.
+        company : list[Company] | Company | None, optional
+            Filter by company.
+        location : list[Location] | Location | None, optional
+            Filter by location.
+        storage_location : list[StorageLocation] | StorageLocation | None, optional
+            Filter by storage location.
+        project_id : ProjectId | None, optional
+            Filter by project.
+        sheet_id : WorksheetId | None, optional
+            Filter by worksheet.
+        created_by : list[User] | User | None, optional
+            Filter by creator.
+        lot_owner : list[User] | User | None, optional
+            Filter by lot owner.
+        tags : list[str] | None, optional
+            Filter by tags.
+        match_all_conditions : bool, optional
+            If ``True``, only return results that satisfy all applied filters.
+
+        Returns
+        -------
+        list[FacetItem]
+            Matching facet groups for the provided facet name filter.
         """
         name = ensure_list(name) or []
 
@@ -686,7 +752,7 @@ class InventoryCollection(BaseCollection):
         self, *, existing: InventoryItem, updated: InventoryItem
     ) -> dict:
         """
-        Generate the PATCH payload for updating an inventory item.
+        Generate PATCH request data for updating an inventory item.
 
         Parameters
         ----------
@@ -698,7 +764,7 @@ class InventoryCollection(BaseCollection):
         Returns
         -------
         dict
-            The payload for the PATCH request.
+            Request data for the PATCH operation.
         """
 
         def _remove_old_value_on_add(patch_dict):

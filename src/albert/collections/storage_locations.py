@@ -156,6 +156,10 @@ class StorageLocationsCollection(BaseCollection):
         ----------
         id : str
             The ID of the storage location to delete.
+
+        Returns
+        -------
+        None
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

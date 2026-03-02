@@ -128,6 +128,10 @@ class NotebookCollection(BaseCollection):
         ----------
         id : str
             The ID of the notebook to delete.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 

@@ -222,6 +222,10 @@ class CompanyCollection(BaseCollection):
         ----------
         id : str
             The ID of the company to delete.
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

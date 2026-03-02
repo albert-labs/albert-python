@@ -80,6 +80,10 @@ class NotesCollection(BaseCollection):
         ----------
         id : str
             The ID of the note to delete.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 

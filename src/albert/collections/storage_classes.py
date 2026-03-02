@@ -16,6 +16,12 @@ class StorageClassesCollection(BaseCollection):
 
     @validate_call
     def get_all(self) -> list[StorageClass]:
-        """Retrieve storage compatibility information for all storage classes."""
+        """Retrieve storage compatibility information for all storage classes.
+
+        Returns
+        -------
+        list[StorageClass]
+            Storage class compatibility records.
+        """
         response = self.session.get(self.base_path)
         return [StorageClass(**item) for item in response.json()]

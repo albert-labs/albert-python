@@ -16,7 +16,13 @@ class HazardsCollection(BaseCollection):
 
     @validate_call
     def get_symbols(self) -> list[HazardSymbol]:
-        """Fetch the list of hazard symbols."""
+        """Fetch the list of hazard symbols.
+
+        Returns
+        -------
+        list[HazardSymbol]
+            All available hazard symbols.
+        """
 
         response = self.session.get(f"{self.base_path}/hazardsymbols")
         response = response.json()
@@ -25,7 +31,13 @@ class HazardsCollection(BaseCollection):
 
     @validate_call
     def get_statements(self) -> list[HazardStatement]:
-        """Fetch the list of hazard statements."""
+        """Fetch the list of hazard statements.
+
+        Returns
+        -------
+        list[HazardStatement]
+            All available hazard statements.
+        """
 
         response = self.session.get(f"{self.base_path}/hazardstatements")
         response = response.json()
