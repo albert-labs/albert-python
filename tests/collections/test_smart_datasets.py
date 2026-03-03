@@ -2,6 +2,7 @@ import pytest
 
 from albert.client import Albert
 from albert.core.shared.models.base import Status
+from albert.exceptions import NotFoundError
 from albert.resources.smart_datasets import (
     SmartDataset,
     SmartDatasetScope,
@@ -74,5 +75,5 @@ def test_smart_dataset_delete(client: Albert):
 
     # delete and verify
     client.smart_datasets.delete(id=created.id)
-    fetched = client.smart_datasets.get_by_id(id=created.id)
-    assert fetched.status == Status.INACTIVE
+    with pytest.raises(NotFoundError):
+        client.smart_datasets.get_by_id(id=created.id)

@@ -61,7 +61,7 @@ class SmartDatasetCollection(BaseCollection):
         scope : SmartDatasetScope
             The scope of the smart dataset.
         build : bool, optional
-            Whether to trigger an AI artifact build.
+            Whether to populate the smart dataset with data from Albert.
 
         Returns
         -------
@@ -73,7 +73,7 @@ class SmartDatasetCollection(BaseCollection):
             json={"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")},
             params={"build": build},
         )
-        return SmartDataset(**response.json()["dataset"])
+        return SmartDataset(**response.json())
 
     def get_all(self) -> list[SmartDataset]:
         """
@@ -86,7 +86,7 @@ class SmartDatasetCollection(BaseCollection):
         """
         response = self.session.get(self.base_path)
         data = response.json()
-        return [SmartDataset(**item) for item in data.get("items", [])]
+        return [SmartDataset(**item) for item in data.get("Items", [])]
 
     def get_by_id(self, *, id: SmartDatasetId) -> SmartDataset:
         """
