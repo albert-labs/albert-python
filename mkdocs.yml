@@ -163,6 +163,7 @@ nav:
           - Property Data: collections/property_data.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
+          - Smart Datasets: collections/smart_datasets.md
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
@@ -209,6 +210,7 @@ nav:
           - Property Data: resources/property_data.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
+          - Smart Datasets: resources/smart_datasets.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
