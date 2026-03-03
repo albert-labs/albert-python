@@ -126,9 +126,6 @@ def _build_cas_scalar_operation(
         "attribute": attribute,
         "entityId": entity_id,
     }
-    if attribute == "casCategory":
-        print(old_value, "|", new_value)
-        print(payload)
 
     if new_value is None:
         if old_value is None:
