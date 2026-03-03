@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AliasChoices, Field, model_validator
 
@@ -21,6 +21,7 @@ from albert.resources._mixins import HydrationMixin
 from albert.resources.data_columns import DataColumn
 from albert.resources.parameter_groups import DataType, ParameterValue, ValueValidation
 from albert.resources.tagged_base import BaseTaggedResource
+from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
 
@@ -191,3 +192,11 @@ class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
     data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
         alias="dataColumns", default=None
     )
+    owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="owner")
+    tags: list[SerializeAsEntityLink[Tag]] | None = Field(default=None, alias="tags")
+    acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="acl")
+    created_at: str | None = Field(default=None, alias="createdAt")
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    metadata: dict[str, Any] | None = Field(default=None, alias="metadata")
+    team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")
+    standards: list[dict[str, Any]] | None = Field(default=None, alias="standards")

@@ -15,6 +15,7 @@ from albert.core.shared.models.patch import (
     PGPatchDatum,
     PGPatchPayload,
 )
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import (
     CurveExample,
@@ -32,6 +33,17 @@ from albert.utils.data_template import (
     build_image_example,
     get_target_data_column,
 )
+
+DEFAULT_ADDITIONAL_FIELDS = [
+    "acl",
+    "createdAt",
+    "createdByName",
+    "metadata",
+    "owner",
+    "tags",
+    "standards",
+    "team",
+]
 
 
 class DCPatchDatum(PGPatchPayload):
@@ -255,6 +267,11 @@ class DataTemplateCollection(BaseCollection):
         *,
         name: str | None = None,
         user_id: UserId | None = None,
+        owner: str | list[str] | None = None,
+        tags: str | list[str] | None = None,
+        data_columns: str | list[str] | None = None,
+        standard_organization: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -271,6 +288,17 @@ class DataTemplateCollection(BaseCollection):
             The name of the data template to filter by.
         user_id : str, optional
             The user ID to filter by.
+        owner : str or list[str], optional
+            Filter by owner names.
+        tags : str or list[str], optional
+            Filter by tag names.
+        data_columns : str or list[str], optional
+            Filter by data column names.
+        standard_organization : str or list[str], optional
+            Filter by standards organization names.
+        additional_field : str or list[str], optional
+            Additional fields to include in response items. If omitted, a default set of fields
+            is requested from search.
         order_by : OrderBy, optional
             The order in which to sort the results. Default is DESCENDING.
         max_items : int, optional
@@ -283,18 +311,28 @@ class DataTemplateCollection(BaseCollection):
         Iterator[DataTemplateSearchItem]
             An iterator of matching DataTemplateSearchItem entities.
         """
-        params = {
+        payload = {
             "offset": offset,
             "order": order_by,
             "text": name,
             "userId": user_id,
+            "owner": ensure_list(owner),
+            "tags": ensure_list(tags),
+            "dataColumns": ensure_list(data_columns),
+            "standardOrganization": ensure_list(standard_organization),
+            "additionalField": (
+                ensure_list(additional_field)
+                if additional_field is not None
+                else list(DEFAULT_ADDITIONAL_FIELDS)
+            ),
         }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
+            method="POST",
+            json=payload,
             max_items=max_items,
             deserialize=lambda items: [
                 DataTemplateSearchItem.model_validate(x)._bind_collection(self) for x in items

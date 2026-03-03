@@ -43,6 +43,49 @@ def test_data_template_search_basic(client: Albert, seeded_data_templates: list[
     assert_valid_data_template_items(results, DataTemplateSearchItem)
 
 
+def test_data_template_search(client: Albert):
+    """Test search with owner, tags, data columns, and additional fields."""
+    baseline = list(client.data_templates.search(max_items=10))
+    candidate = next(
+        (
+            dt
+            for dt in baseline
+            if (dt.owner and len(dt.owner) > 0)
+            and (dt.tags and len(dt.tags) > 0)
+            and (dt.data_columns and len(dt.data_columns) > 0)
+        ),
+        None,
+    )
+    assert candidate is not None, (
+        "Expected at least one data template with owner, tags, and data columns"
+    )
+
+    owner = candidate.owner[0].name or candidate.owner[0].id
+    tag = candidate.tags[0].tag or candidate.tags[0].id
+    data_column = candidate.data_columns[0].name or candidate.data_columns[0].id
+
+    assert owner is not None
+    assert tag is not None
+    assert data_column is not None
+
+    standard_org = None
+    if candidate.standards and len(candidate.standards) > 0:
+        standard_org = candidate.standards[0].get("standardOrganization")
+
+    results = list(
+        client.data_templates.search(
+            name="DT SDK",
+            owner=[owner],
+            tags=[tag],
+            data_columns=[data_column],
+            standard_organization=[standard_org] if standard_org else None,
+            additional_field=["owner", "tags", "createdByName", "standards"],
+            max_items=10,
+        )
+    )
+    assert_valid_data_template_items(results, DataTemplateSearchItem)
+
+
 def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test get_by_name returns a hydrated match or None if not found."""
     name = seeded_data_templates[0].name
