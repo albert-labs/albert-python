@@ -73,6 +73,7 @@ from albert.resources.projects import (
     ProjectClass,
 )
 from albert.resources.reports import FullAnalyticalReport
+from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
@@ -1859,5 +1860,22 @@ def generate_target_seeds(
             type=TargetType.PERFORMANCE,
             target_value=TargetValue(operator=TargetOperator.IN_SET, value=["A", "B", "C"]),
             is_required=False,
+        ),
+    ]
+
+
+def generate_smart_dataset_seeds() -> list[SmartDatasetScope]:
+    """
+    Generates a list of SmartDatasetScope seed objects for testing.
+
+    Returns
+    -------
+    list[SmartDatasetScope]
+        A list of SmartDatasetScope objects with different configurations.
+    """
+    return [
+        SmartDatasetScope(
+            project_ids=["PRO123"],
+            target_ids=["TAR123"],
         ),
     ]

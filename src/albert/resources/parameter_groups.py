@@ -13,6 +13,7 @@ from albert.resources._mixins import HydrationMixin
 from albert.resources.inventory import InventoryItem
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.tagged_base import BaseTaggedResource
+from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
 
@@ -170,3 +171,10 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     parameters: list[ParameterSearchItemParameter] = Field(
         default_factory=list, alias="parameters"
     )
+    owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="owner")
+    tags: list[SerializeAsEntityLink[Tag]] | None = Field(default=None, alias="tags")
+    acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="acl")
+    created_at: str | None = Field(default=None, alias="createdAt")
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    metadata: dict[str, MetadataItem] | None = Field(default=None, alias="metadata")
+    team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")

@@ -19,6 +19,16 @@ from albert.resources.parameter_groups import (
 )
 from albert.utils._patch import generate_parameter_group_patches
 
+DEFAULT_ADDITIONAL_FIELDS = [
+    "acl",
+    "createdAt",
+    "createdByName",
+    "metadata",
+    "owner",
+    "tags",
+    "team",
+]
+
 
 class ParameterGroupCollection(BaseCollection):
     """ParameterGroupCollection is a collection class for managing ParameterGroup entities in the Albert platform."""
@@ -71,6 +81,10 @@ class ParameterGroupCollection(BaseCollection):
         *,
         text: str | None = None,
         types: PGType | list[PGType] | None = None,
+        owner: str | list[str] | None = None,
+        tags: str | list[str] | None = None,
+        parameters: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -84,6 +98,15 @@ class ParameterGroupCollection(BaseCollection):
             Text to search for.
         types : PGType or list of PGType, optional
             Filter by Parameter Group types.
+        owner : str or list[str], optional
+            Filter by owner names.
+        tags : str or list[str], optional
+            Filter by tag names.
+        parameters : str or list[str], optional
+            Filter by parameter names.
+        additional_field : str or list[str], optional
+            Additional fields to include in response items. If omitted, a default set of fields
+            is requested from search.
         order_by : OrderBy, optional
             Order of results. Default is DESCENDING.
         offset : int, optional
@@ -96,18 +119,27 @@ class ParameterGroupCollection(BaseCollection):
         Iterator[ParameterGroupSearchItem]
             Iterator of ParameterGroupSearchItem entities, which are partial representations of Parameter Groups.
         """
-        params = {
+        payload = {
             "offset": offset,
             "order": order_by,
             "text": text,
             "types": ensure_list(types),
+            "owner": ensure_list(owner),
+            "tags": ensure_list(tags),
+            "parameters": ensure_list(parameters),
+            "additionalField": (
+                ensure_list(additional_field)
+                if additional_field is not None
+                else list(DEFAULT_ADDITIONAL_FIELDS)
+            ),
         }
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
+            method="POST",
+            json=payload,
             max_items=max_items,
             deserialize=lambda items: [
                 ParameterGroupSearchItem(**item)._bind_collection(self) for item in items
