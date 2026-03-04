@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0](https://github.com/albert-labs/albert-python/compare/v1.19.0...v1.20.0) (2026-03-04)
+
+
+### Features
+
+* add advanced search capabilities to datatemplates, parametergroups ([#383](https://github.com/albert-labs/albert-python/issues/383)) ([fc14149](https://github.com/albert-labs/albert-python/commit/fc14149a1da6dec67358422c6e062c9b19446564))
+
+
+### Bug Fixes
+
+* **cas_amount:** adding block for cas_caegory update ([#395](https://github.com/albert-labs/albert-python/issues/395)) ([9ab7fb3](https://github.com/albert-labs/albert-python/commit/9ab7fb3e13bf049c996cc9357261575925294f80))
+* **parameters:** ensure get_or_create matches name exactly ([#380](https://github.com/albert-labs/albert-python/issues/380)) ([f741c8b](https://github.com/albert-labs/albert-python/commit/f741c8b7e1df6722db4e462300423c4374cf9f9c))
+
 ## [1.19.0](https://github.com/albert-labs/albert-python/compare/v1.18.0...v1.19.0) (2026-02-23)
 
 
