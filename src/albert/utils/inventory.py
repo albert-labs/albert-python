@@ -223,6 +223,15 @@ def _build_cas_patch_operations(
             )
             if target_operation is not None:
                 operations.append(target_operation)
+        if cas_amount.cas_category is not None:
+            cas_category_operation = _build_cas_scalar_operation(
+                attribute="casCategory",
+                entity_id=identifier,
+                old_value=None,
+                new_value=cas_amount.cas_category,
+            )
+            if cas_category_operation is not None:
+                operations.append(cas_category_operation)
         operations.extend(
             _build_inventory_function_operations(
                 entity_id=identifier,
