@@ -2,16 +2,19 @@ import mimetypes
 import uuid
 from datetime import date
 from pathlib import Path
-from typing import IO
+from typing import IO, Any
 
-from pydantic import validate_call
+from pydantic import ValidationError, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
+from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.resources.attachments import Attachment, AttachmentCategory
+from albert.exceptions import BadRequestError
+from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.notes import Note
@@ -21,6 +24,19 @@ class AttachmentCollection(BaseCollection):
     """AttachmentCollection is a collection class for managing Attachment entities in the Albert platform."""
 
     _api_version: str = "v3"
+    _updatable_attributes = {"name", "revision_date", "parent_id"}
+    _updatable_attributes = {"name", "revision_date", "parent_id"}
+    _updatable_metadata_attributes = {
+        "Symbols",
+        "unNumber",
+        "storageClass",
+        "hazardStatement",
+        "jurisdictionCode",
+        "languageCode",
+        "wgk",
+        "description",
+        "extensions",
+    }
 
     def __init__(self, *, session):
         super().__init__(session=session)
@@ -66,6 +82,169 @@ class AttachmentCollection(BaseCollection):
         payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         return Attachment(**response.json())
+
+    @validate_call
+    def update(self, *, attachment: Attachment) -> Attachment:
+        """Update an attachment by diffing the current server state.
+
+        Parameters
+        ----------
+        attachment : Attachment
+            Attachment object containing the desired final state. The attachment must include ``id``.
+
+        Returns
+        -------
+        Attachment
+            The updated attachment returned by the API.
+        """
+        if attachment.id is None:
+            raise ValueError("Attachment ID is required for update.")
+
+        existing_attachment = self.get_by_id(id=attachment.id)
+        payload = self._generate_attachment_patch_payload(
+            existing=existing_attachment, updated=attachment
+        )
+        if len(payload.data) == 0:
+            return existing_attachment
+
+        for datum in payload.data:
+            try:
+                self.session.patch(
+                    f"{self.base_path}/{attachment.id}",
+                    json={"data": [datum.model_dump(by_alias=True, mode="json")]},
+                )
+            except BadRequestError as error:
+                if not self._should_retry_as_add(datum=datum, error=error):
+                    raise
+
+                retry_datum = PatchDatum(
+                    operation=PatchOperation.ADD,
+                    attribute=datum.attribute,
+                    new_value=datum.new_value,
+                )
+                self.session.patch(
+                    f"{self.base_path}/{attachment.id}",
+                    json={"data": [retry_datum.model_dump(by_alias=True, mode="json")]},
+                )
+        return self.get_by_id(id=attachment.id)
+
+    def _should_retry_as_add(self, *, datum: PatchDatum, error: BadRequestError) -> bool:
+        is_update = str(datum.operation) == PatchOperation.UPDATE.value
+        is_metadata_field = datum.attribute in self._updatable_metadata_attributes
+        not_found_msg = "does not exist" in str(error)
+        return is_update and is_metadata_field and not_found_msg
+
+    @staticmethod
+    def _serialize_patch_value(value: Any) -> Any:
+        if isinstance(value, date):
+            return value.isoformat()
+        if isinstance(value, BaseAlbertModel):
+            return value.model_dump(by_alias=True, mode="json", exclude_none=True)
+        return value
+
+    @staticmethod
+    def _normalize_metadata_item(value: Any) -> Any:
+        value = AttachmentCollection._serialize_patch_value(value)
+        if isinstance(value, dict):
+            if value.get("id") is not None:
+                return value["id"]
+            if value.get("name") is not None:
+                return value["name"]
+        return value
+
+    @staticmethod
+    def _get_metadata_dict(*, attachment: Attachment) -> dict[str, Any]:
+        metadata = attachment.metadata
+        if metadata is None:
+            return {}
+        if isinstance(metadata, BaseAlbertModel):
+            return metadata.model_dump(by_alias=True, mode="json", exclude_none=True)
+        metadata_dict = dict(metadata)
+        try:
+            normalized = AttachmentMetadata.model_validate(metadata_dict)
+            return normalized.model_dump(by_alias=True, mode="json", exclude_none=True)
+        except ValidationError:
+            return metadata_dict
+
+    def _generate_attachment_patch_payload(
+        self, *, existing: Attachment, updated: Attachment
+    ) -> PatchPayload:
+        patch_data: list[PatchDatum] = list(
+            self._generate_patch_payload(
+                existing=existing,
+                updated=updated,
+                generate_metadata_diff=False,
+            ).data
+        )
+
+        existing_metadata = self._get_metadata_dict(attachment=existing)
+        updated_metadata = self._get_metadata_dict(attachment=updated)
+        metadata_keys = set(existing_metadata) | set(updated_metadata)
+        for key in metadata_keys:
+            if key not in self._updatable_metadata_attributes:
+                continue
+
+            old_value = existing_metadata.get(key)
+            new_value = updated_metadata.get(key)
+            old_is_list = isinstance(old_value, list)
+            new_is_list = isinstance(new_value, list)
+            if old_is_list or new_is_list:
+                old_items = old_value if old_is_list else []
+                new_items = new_value if new_is_list else []
+                old_norm = [self._normalize_metadata_item(value=x) for x in old_items]
+                new_norm = [self._normalize_metadata_item(value=x) for x in new_items]
+
+                for old_item in old_norm:
+                    if old_item not in new_norm:
+                        old_patch_value = [{"id": old_item}] if key == "Symbols" else old_item
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=key,
+                                operation=PatchOperation.DELETE,
+                                old_value=old_patch_value,
+                            )
+                        )
+                for new_item in new_norm:
+                    if new_item not in old_norm:
+                        new_patch_value = [{"id": new_item}] if key == "Symbols" else new_item
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=key,
+                                operation=PatchOperation.ADD,
+                                new_value=new_patch_value,
+                            )
+                        )
+                continue
+
+            old_norm = self._normalize_metadata_item(value=old_value)
+            new_norm = self._normalize_metadata_item(value=new_value)
+            if old_norm is None and new_norm is not None:
+                patch_data.append(
+                    PatchDatum(
+                        attribute=key,
+                        operation=PatchOperation.ADD,
+                        new_value=new_norm,
+                    )
+                )
+            elif old_norm is not None and new_norm is None:
+                patch_data.append(
+                    PatchDatum(
+                        attribute=key,
+                        operation=PatchOperation.DELETE,
+                        old_value=old_norm,
+                    )
+                )
+            elif old_norm is not None and new_norm != old_norm:
+                patch_data.append(
+                    PatchDatum(
+                        attribute=key,
+                        operation=PatchOperation.UPDATE,
+                        old_value=old_norm,
+                        new_value=new_norm,
+                    )
+                )
+
+        return PatchPayload(data=patch_data)
 
     def get_by_parent_ids(
         self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
