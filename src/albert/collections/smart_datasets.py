@@ -127,7 +127,7 @@ class SmartDatasetCollection(BaseCollection):
             by_alias=True,
             exclude_none=True,
             mode="json",
-            include={"status", "storage_key", "scope", "schema_"},
+            include={"build_state", "storage_key", "scope", "schema_"},
         )
         response = self.session.patch(url, json=payload)
         return SmartDataset(**response.json())
