@@ -35,11 +35,13 @@ from albert.collections.property_data import PropertyDataCollection
 from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
+from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
 from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
+from albert.collections.targets import TargetCollection
 from albert.collections.tasks import TaskCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
@@ -178,6 +180,10 @@ class Albert:
         return TagCollection(session=self.session)
 
     @property
+    def targets(self) -> TargetCollection:
+        return TargetCollection(session=self.session)
+
+    @property
     def inventory(self) -> InventoryCollection:
         return InventoryCollection(session=self.session)
 
@@ -312,6 +318,10 @@ class Albert:
     @property
     def btinsights(self) -> BTInsightCollection:
         return BTInsightCollection(session=self.session)
+
+    @property
+    def smart_datasets(self) -> SmartDatasetCollection:
+        return SmartDatasetCollection(session=self.session)
 
     @property
     def substances(self) -> SubstanceCollection:
