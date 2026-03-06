@@ -146,7 +146,7 @@ class BaseCollection:
         generate_metadata_diff: bool = True,
         stringify_values: bool = False,
     ) -> PatchPayload:
-        """Generate a payload for PATCH requests based on the changes.
+        """Generate PATCH request data based on the changes.
 
         This is overriden for some clases with more compex patch formation.
         """

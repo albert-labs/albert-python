@@ -280,7 +280,7 @@ class SynthesisCollection(BaseCollection):
         synthesis_id : SynthesisId
             The synthesis ID.
         payload : dict[str, Any]
-            The patch payload to send.
+            Patch request data to send.
 
         Returns
         -------

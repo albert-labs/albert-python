@@ -204,6 +204,10 @@ class ReportCollection(BaseCollection):
         id : ReportId
             The ID of the report to delete.
 
+        Returns
+        -------
+        None
+
         Examples
         --------
         >>> client.reports.delete(id="REP14")

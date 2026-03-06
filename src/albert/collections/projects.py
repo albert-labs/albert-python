@@ -181,7 +181,7 @@ class ProjectCollection(BaseCollection):
         my_role : list[str], optional
             User roles to filter by.
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, passed via the `metadataFilters` payload.
+            Filters for custom field values, sent in the `metadataFilters` request body field.
             !!! warning
                 Do not use this for application, technology, program, technical lead, or
                 market segment. Use their corresponding query parameters instead.
@@ -264,16 +264,25 @@ class ProjectCollection(BaseCollection):
     ) -> Iterator[DocumentSearchItem]:
         """Search for documents (attachments) linked to a project.
 
-        Args:
-            linked_to: The project ID to filter documents by (e.g. "P770").
-            text: Full-text search query for document names.
-            order_by: Sort order. Default is DESCENDING.
-            sort_by: Field to sort by (e.g. "createdAt").
-            offset: Pagination offset.
-            max_items: Maximum number of items to return. If None, fetches all.
+        Parameters
+        ----------
+        linked_to : SearchProjectId
+            The project ID to filter documents by (e.g. ``P770``).
+        text : str, optional
+            Full-text search query for document names.
+        order_by : OrderBy, optional
+            Sort order. Default is DESCENDING.
+        sort_by : str, optional
+            Field to sort by (for example ``createdAt``).
+        offset : int, optional
+            Pagination offset.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all.
 
-        Returns:
-            An iterator of DocumentSearchItem results.
+        Returns
+        -------
+        Iterator[DocumentSearchItem]
+            Matching document search results.
         """
         query_params = {
             "linkedTo": linked_to,

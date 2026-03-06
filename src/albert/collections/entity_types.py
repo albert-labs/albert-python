@@ -46,20 +46,32 @@ class EntityTypeCollection(BaseCollection):
     @validate_call
     def get_by_id(self, *, id: EntityTypeId) -> EntityType:
         """Get an entity type by its ID.
+
         Parameters
         ----------
         id : EntityTypeId
             The ID of the entity type to get.
+
+        Returns
+        -------
+        EntityType
+            The matching entity type.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return EntityType(**response.json())
 
     def create(self, *, entity_type: EntityType) -> EntityType:
         """Create an entity type.
+
         Parameters
         ----------
         entity_type : EntityType
             The entity type to create.
+
+        Returns
+        -------
+        EntityType
+            The created entity type.
         """
         response = self.session.post(
             self.base_path, json=entity_type.model_dump(by_alias=True, exclude_none=True)
@@ -68,10 +80,16 @@ class EntityTypeCollection(BaseCollection):
 
     def update(self, *, entity_type: EntityType) -> EntityType:
         """Update an entity type.
+
         Parameters
         ----------
         entity_type : EntityType
             The entity type to update.
+
+        Returns
+        -------
+        EntityType
+            The updated entity type.
         """
         current_entity_type = self.get_by_id(id=entity_type.id)
         patch = self._generate_patch_payload(
@@ -209,20 +227,31 @@ class EntityTypeCollection(BaseCollection):
     @validate_call
     def delete(self, *, id: EntityTypeId) -> None:
         """Delete an entity type.
+
         Parameters
         ----------
         id : EntityTypeId
             The ID of the entity type to delete.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 
     @validate_call
     def get_rules(self, *, id: EntityTypeId) -> list[EntityTypeRule]:
         """Get the rules for an entity type.
+
         Parameters
         ----------
         id : EntityTypeId
             The ID of the entity type to get the rules for.
+
+        Returns
+        -------
+        list[EntityTypeRule]
+            The configured rules for the entity type.
         """
         response = self.session.get(f"{self.base_path}/rules/{id}")
         return [EntityTypeRule(**rule) for rule in response.json()]
@@ -250,10 +279,15 @@ class EntityTypeCollection(BaseCollection):
     @validate_call
     def delete_rules(self, *, id: EntityTypeId) -> None:
         """Delete the rules for an entity type.
+
         Parameters
         ----------
         id : EntityTypeId
             The ID of the entity type to delete the rules for.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/rules/{id}")
 

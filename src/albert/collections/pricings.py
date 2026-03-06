@@ -138,6 +138,10 @@ class PricingCollection(BaseCollection):
         ----------
         id : str
             The ID of the Pricing entity to delete.
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

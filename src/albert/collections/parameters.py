@@ -95,6 +95,10 @@ class ParameterCollection(BaseCollection):
         ----------
         id : str
             The ID of the parameter to delete.
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

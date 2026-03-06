@@ -534,6 +534,10 @@ class DataTemplateCollection(BaseCollection):
         ----------
         id : str
             The ID of the data template to delete.
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -616,7 +620,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name : str, optional
             Target curve column name (provide exactly one of id or name).
         example : CurveExample
-            Curve example payload
+            Curve example data.
 
         Returns
         -------
@@ -664,7 +668,7 @@ class DataTemplateCollection(BaseCollection):
         data_column_name : str, optional
             Target image column name (provide exactly one of id or name).
         example : ImageExample
-            Image example payload
+            Image example data.
 
         Returns
         -------
