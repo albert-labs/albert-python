@@ -5,10 +5,11 @@ from albert.resources.targets import Target
 
 
 class TargetCollection(BaseCollection):
-    """
-    !!! warning "Beta Feature!"
+    """A collection for managing targets in the Albert platform (🧪Beta).
 
-    TargetCollection is a collection class for managing Target entities in the Albert platform.
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Parameters
     ----------

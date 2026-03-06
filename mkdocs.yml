@@ -145,7 +145,7 @@ nav:
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
-          - Entity Types (🧪Beta): collections/entity_types.md
+          - Entity Types: collections/entity_types.md
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
@@ -163,13 +163,13 @@ nav:
           - Property Data: collections/property_data.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
-          - Smart Datasets: collections/smart_datasets.md
+          - Smart Datasets (🧪Beta): collections/smart_datasets.md
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
-          - Targets: collections/targets.md
+          - Targets (🧪Beta): collections/targets.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
@@ -191,7 +191,7 @@ nav:
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
-          - Entity Types (🧪Beta): resources/entity_types.md
+          - Entity Types: resources/entity_types.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
@@ -210,13 +210,13 @@ nav:
           - Property Data: resources/property_data.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
-          - Smart Datasets: resources/smart_datasets.md
+          - Smart Datasets (🧪Beta): resources/smart_datasets.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
-          - Targets: resources/targets.md
+          - Targets (🧪Beta): resources/targets.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md

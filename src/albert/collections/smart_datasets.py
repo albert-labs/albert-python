@@ -5,9 +5,11 @@ from albert.resources.smart_datasets import SmartDataset, SmartDatasetScope
 
 
 class SmartDatasetCollection(BaseCollection):
-    """
-    SmartDatasetCollection is a collection class for managing SmartDataset entities
-    in the Albert platform.
+    """A collection for managing smart datasets in the Albert platform (🧪Beta).
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Parameters
     ----------
