@@ -1,6 +1,7 @@
+from enum import Enum
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -10,6 +11,14 @@ from albert.core.shared.identifiers import (
     WorksheetId,
 )
 from albert.core.shared.models.base import BaseResource
+
+
+class SmartDatasetBuildState(str, Enum):
+    """The build state of a smart dataset."""
+
+    BUILDING = "building"
+    READY = "ready"
+    FAILED = "failed"
 
 
 class SmartDatasetScope(BaseAlbertModel):
@@ -30,6 +39,15 @@ class SmartDatasetScope(BaseAlbertModel):
     target_ids: list[TargetId] = Field(default_factory=list, alias="targetIds")
     sheet_ids: list[WorksheetId] | None = Field(default=None, alias="sheetIds")
 
+    # NOTE: temporary filter to remove invalid sheet IDs due to invalid legacy data
+    @field_validator("sheet_ids", mode="before")
+    @classmethod
+    def filter_invalid_sheet_ids(cls, v):
+        if v is None:
+            return v
+        valid = [sid for sid in v if isinstance(sid, str) and sid.upper().startswith("WKS")]
+        return valid or None
+
 
 class SmartDataset(BaseResource):
     """
@@ -49,6 +67,7 @@ class SmartDataset(BaseResource):
 
     type: Literal["smart"] = "smart"
     id: SmartDatasetId | None = Field(default=None)
+    build_state: SmartDatasetBuildState | None = Field(default=None, alias="buildState")
     scope: SmartDatasetScope | None = Field(default=None)
     schema_: dict | None = Field(default=None, alias="schema")
     storage_key: str | None = Field(default=None, alias="storageKey")
