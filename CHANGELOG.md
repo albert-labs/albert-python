@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0-beta2](https://github.com/albert-labs/albert-python/compare/v1.20.0...v1.21.0-beta2) (2026-03-06)
+
+
+### Features
+
+* SDK support for Smart Datasets API ([#394](https://github.com/albert-labs/albert-python/issues/394)) ([d523667](https://github.com/albert-labs/albert-python/commit/d52366763e1030ea3a832a574908392cc99166a5))
+* support targets api ([#374](https://github.com/albert-labs/albert-python/issues/374)) ([012b3e4](https://github.com/albert-labs/albert-python/commit/012b3e422c7b16adb0b44003aa512c6c548f0f52))
+
+
+### Bug Fixes
+
+* **smartdatasets:** added build_state field to smartdataset record ([#407](https://github.com/albert-labs/albert-python/issues/407)) ([ba804fe](https://github.com/albert-labs/albert-python/commit/ba804fee537296861f2995f7ea71957d37dd2bbf))
+* **targets:** removed data template id from target parameter ([#384](https://github.com/albert-labs/albert-python/issues/384)) ([7a12d13](https://github.com/albert-labs/albert-python/commit/7a12d13ad0c6ea0c01d22a8cc26099f3be9bead4))
+
+
+### Documentation
+
+* **collections:** improve public method docstrings ([#392](https://github.com/albert-labs/albert-python/issues/392)) ([6888c9b](https://github.com/albert-labs/albert-python/commit/6888c9b0a694310fc3205f7247ed26852781bd17))
+* update beta features ([6d1dec9](https://github.com/albert-labs/albert-python/commit/6d1dec9839ec6f878224134519077a9427c47ea6))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([c9a88da](https://github.com/albert-labs/albert-python/commit/c9a88da88131152ffaf2fd66976f2ecf6af72d5b))
+* prepare beta ([#397](https://github.com/albert-labs/albert-python/issues/397)) ([7239cfb](https://github.com/albert-labs/albert-python/commit/7239cfb9b24a2ec120b2f84643240412704da563))
+* prepare beta ([#400](https://github.com/albert-labs/albert-python/issues/400)) ([4f5a1ad](https://github.com/albert-labs/albert-python/commit/4f5a1ad7f0688cae4b86ed06e0b518ac64d22e09))
+* prepare beta ([#403](https://github.com/albert-labs/albert-python/issues/403)) ([e7cf3c7](https://github.com/albert-labs/albert-python/commit/e7cf3c76918d663d18af3d7d22b8fb7492678ac9))
+* prepare beta ([#408](https://github.com/albert-labs/albert-python/issues/408)) ([8c6fb27](https://github.com/albert-labs/albert-python/commit/8c6fb273d045708adfff13c6def61e75e20cdcc5))
+
 ## [1.20.0](https://github.com/albert-labs/albert-python/compare/v1.19.0...v1.20.0) (2026-03-04)
 
 
