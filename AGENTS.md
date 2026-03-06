@@ -122,6 +122,7 @@ Guidelines:
   - ALBERT_BASE_URL
 - Only add integration-style tests. Do not add unit tests that use FakeAlbertSession.
 - Seed helpers live in tests/seeding.py and are reused across fixtures.
+- Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
 
 ## Documentation
 
