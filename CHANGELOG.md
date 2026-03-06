@@ -5,41 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.21.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.20.0-beta1...v1.21.0-beta1) (2026-03-04)
-
-### Features
-
-* SDK support for Smart Datasets API ([#394](https://github.com/albert-labs/albert-python/issues/394)) ([d5117c9](https://github.com/albert-labs/albert-python/commit/d5117c9757360ccc5c8126b06b1327a36a8d17d1))
-
-### Miscellaneous Chores
-
-* prepare beta ([#397](https://github.com/albert-labs/albert-python/issues/397)) ([31ef790](https://github.com/albert-labs/albert-python/commit/31ef7908599b38b1464c0a5ad50b1ada0421fcd9))
-* prepare beta ([#400](https://github.com/albert-labs/albert-python/issues/400)) ([41dcf9e](https://github.com/albert-labs/albert-python/commit/41dcf9e30d86ba83303de4b42b685aec4c50d94f))
-* prepare beta ([#403](https://github.com/albert-labs/albert-python/issues/403)) ([4bdb376](https://github.com/albert-labs/albert-python/commit/4bdb37624b92aa460ac5488dd05f0eb11f5ae402))
-
 ## [1.20.0](https://github.com/albert-labs/albert-python/compare/v1.19.0...v1.20.0) (2026-03-04)
+
 
 ### Features
 
 * add advanced search capabilities to datatemplates, parametergroups ([#383](https://github.com/albert-labs/albert-python/issues/383)) ([fc14149](https://github.com/albert-labs/albert-python/commit/fc14149a1da6dec67358422c6e062c9b19446564))
 
-## [1.20.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.19.0...v1.20.0-beta1) (2026-02-25)
-
-### Features
-
-* support targets api ([#374](https://github.com/albert-labs/albert-python/issues/374)) ([807fbb6](https://github.com/albert-labs/albert-python/commit/807fbb6df3824528a3fd16a3761b2c7374ddce9b))
 
 ### Bug Fixes
 
 * **cas_amount:** adding block for cas_caegory update ([#395](https://github.com/albert-labs/albert-python/issues/395)) ([9ab7fb3](https://github.com/albert-labs/albert-python/commit/9ab7fb3e13bf049c996cc9357261575925294f80))
 * **parameters:** ensure get_or_create matches name exactly ([#380](https://github.com/albert-labs/albert-python/issues/380)) ([f741c8b](https://github.com/albert-labs/albert-python/commit/f741c8b7e1df6722db4e462300423c4374cf9f9c))
-* **targets:** removed data template id from target parameter ([#384](https://github.com/albert-labs/albert-python/issues/384)) ([9a34add](https://github.com/albert-labs/albert-python/commit/9a34add54d20c87e730ef76b1bd5b612e2848522))
-
-### Miscellaneous Chores
-
-* prepare beta ([446cae3](https://github.com/albert-labs/albert-python/commit/446cae3ac7b3c45921033b32e045aff361695420))
 
 ## [1.19.0](https://github.com/albert-labs/albert-python/compare/v1.18.0...v1.19.0) (2026-02-23)
+
 
 ### Features
 
@@ -47,9 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.18.0](https://github.com/albert-labs/albert-python/compare/v1.17.0...v1.18.0) (2026-02-19)
 
+
 ### Features
 
 * **inventory:** support formula override updates ([#370](https://github.com/albert-labs/albert-python/issues/370)) ([958fd3e](https://github.com/albert-labs/albert-python/commit/958fd3e85973330cad0e31f5fe4969a3f84da548))
+
 
 ### Bug Fixes
 
@@ -57,9 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.17.0](https://github.com/albert-labs/albert-python/compare/v1.16.1...v1.17.0) (2026-02-12)
 
+
 ### Features
 
 * **projects:** add metadata filter search ([#369](https://github.com/albert-labs/albert-python/issues/369)) ([8e3aa67](https://github.com/albert-labs/albert-python/commit/8e3aa67f44e7b3fa4183e73986c4f4e71b61ee3c))
+
 
 ### Bug Fixes
 
