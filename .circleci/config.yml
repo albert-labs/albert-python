@@ -1,8 +1,30 @@
 version: 2.1
 
+parameters:
+  lambda_layer:
+    type: boolean
+    default: false
+  lambda_sdk_version:
+    type: string
+    default: ""
+  lambda_runtime:
+    type: string
+    default: "3.10"
+  lambda_arch:
+    type: enum
+    enum: ["x86_64", "arm64"]
+    default: "x86_64"
+  lambda_region:
+    type: string
+    default: "us-east-1"
+  lambda_account_id:
+    type: string
+    default: ""
+
 orbs:
   python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
+  aws-cli: circleci/aws-cli@4.0
 
 commands:
   install_uv:
@@ -135,8 +157,99 @@ jobs:
               fi
             fi
 
+  lambda_layer_publish:
+    machine:
+      image: ubuntu-2204:current
+    steps: &lambda_layer_steps
+      - checkout
+      - run:
+          name: Validate lambda layer parameters
+          command: |
+            set -euo pipefail
+
+            if [[ -z "<< pipeline.parameters.lambda_sdk_version >>" ]]; then
+              echo "lambda_sdk_version is required when triggering lambda_layer workflow."
+              exit 1
+            fi
+
+            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]] && \
+              ! [[ "<< pipeline.parameters.lambda_account_id >>" =~ ^[0-9]{12}$ ]]; then
+              echo "lambda_account_id must be a 12-digit AWS account ID."
+              exit 1
+            fi
+
+      - aws-cli/setup:
+          aws-access-key-id: AWS_ACCESS_KEY_ID
+          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
+          aws-region: AWS_REGION
+
+      - run:
+          name: Build lambda layer zip
+          command: |
+            set -euo pipefail
+            .circleci/scripts/build-lambda-layer.sh \
+              --version "<< pipeline.parameters.lambda_sdk_version >>" \
+              --runtime "<< pipeline.parameters.lambda_runtime >>" \
+              --arch "<< pipeline.parameters.lambda_arch >>"
+
+      - store_artifacts:
+          path: dist/lambda
+          destination: lambda-layer
+
+      - run:
+          name: Publish lambda layer
+          command: |
+            set -euo pipefail
+
+            ZIP_PATH="dist/lambda/albert-layer-<< pipeline.parameters.lambda_sdk_version >>-py<< pipeline.parameters.lambda_runtime >>-<< pipeline.parameters.lambda_arch >>.zip"
+            if [[ ! -f "${ZIP_PATH}" ]]; then
+              echo "Layer zip not found at ${ZIP_PATH}"
+              exit 1
+            fi
+
+            ACCOUNT_ARG=""
+            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]]; then
+              ACCOUNT_ARG="--account-id << pipeline.parameters.lambda_account_id >>"
+            fi
+
+            .circleci/scripts/publish-lambda-layer.sh \
+              --zip "${ZIP_PATH}" \
+              --region "<< pipeline.parameters.lambda_region >>" \
+              --runtime "<< pipeline.parameters.lambda_runtime >>" \
+              --arch "<< pipeline.parameters.lambda_arch >>" \
+              --sdk-version "<< pipeline.parameters.lambda_sdk_version >>" \
+              ${ACCOUNT_ARG}
+
+  lambda_layer_publish_arm:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    steps: *lambda_layer_steps
+
 workflows:
+  lambda_layer_x86:
+    when:
+      and:
+        - << pipeline.parameters.lambda_layer >>
+        - equal: ["x86_64", << pipeline.parameters.lambda_arch >>]
+    jobs:
+      - lambda_layer_publish:
+          name: Lambda Layer Publish
+          context: dev
+
+  lambda_layer_arm:
+    when:
+      and:
+        - << pipeline.parameters.lambda_layer >>
+        - equal: ["arm64", << pipeline.parameters.lambda_arch >>]
+    jobs:
+      - lambda_layer_publish_arm:
+          name: Lambda Layer Publish
+          context: dev
+
   main:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - test:
           name: Test
@@ -150,6 +263,8 @@ workflows:
               only: main
 
   release:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - validate_release_tag:
           name: Validate Release Tag
