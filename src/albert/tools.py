@@ -53,6 +53,8 @@ from typing import Callable
 
 import griffe
 
+_griffe_logger = logging.getLogger("griffe")
+
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
 
@@ -170,27 +172,21 @@ def parse_param_descriptions(fn: Callable) -> dict[str, str]:
 
     doc = griffe.Docstring(raw)
 
-    # Suppress griffe's "no type annotation" warnings — we don't require
-    # type annotations in the docstring (they come from Python type hints).
-    import io
-    import logging
-    griffe_logger = logging.getLogger("griffe")
-    prev_level = griffe_logger.level
-    griffe_logger.setLevel(logging.ERROR)
-
+    # Suppress griffe's "no type annotation" warnings — type hints come from
+    # Python signatures, not docstrings.
+    prev_level = _griffe_logger.level
+    _griffe_logger.setLevel(logging.ERROR)
     try:
         sections = griffe.parse_auto(doc)
     finally:
-        griffe_logger.setLevel(prev_level)
+        _griffe_logger.setLevel(prev_level)
 
     descriptions: dict[str, str] = {}
     for section in sections:
-        if section.kind == griffe.DocstringSectionKind.parameters:
-            for param in section.value:
-                if param.description:
-                    descriptions[param.name] = param.description
-        # Also capture "other parameters" (NumPy style uses this for optional params)
-        elif section.kind == griffe.DocstringSectionKind.other_parameters:
+        if section.kind in (
+            griffe.DocstringSectionKind.parameters,
+            griffe.DocstringSectionKind.other_parameters,
+        ):
             for param in section.value:
                 if param.description:
                     descriptions[param.name] = param.description
@@ -258,7 +254,6 @@ def validate_albert_tool(fn: Callable) -> None:
                 stacklevel=2,
             )
 
-    # Return annotation check
     if sig.return_annotation is inspect.Parameter.empty:
         warnings.warn(
             f"{fn.__name__}: return type is unannotated. "
