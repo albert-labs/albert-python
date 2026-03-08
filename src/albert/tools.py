@@ -32,14 +32,12 @@ Example usage in a collection:
             \"""
             ...
 
-Docstring parsing uses griffe (already a transitive dependency via griffe-pydantic).
-Supports Google-style (Args:) and NumPy-style (Parameters\\n---) out of the box.
+Docstring parsing and validation require the optional ``tools`` extra::
 
-Validation rules (enforced by validate_albert_tool, called by the scanner):
-  - Decorated methods MUST have a docstring
-  - All required parameters (no default) MUST have a description in the Args section
-  - Optional parameters (have a default) SHOULD have descriptions — warning only
-  - Unannotated return type — warning only
+    pip install albert[tools]
+
+This installs griffe, used to parse Args sections from method docstrings.
+SDK users who don't need validation or scanning do not need this extra.
 """
 
 from __future__ import annotations
@@ -49,11 +47,14 @@ import inspect
 import logging
 import warnings
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-import griffe
-
-_griffe_logger = logging.getLogger("griffe")
+try:
+    import griffe as _griffe
+    _GRIFFE_AVAILABLE = True
+except ImportError:
+    _griffe = None  # type: ignore[assignment]
+    _GRIFFE_AVAILABLE = False
 
 
 # ── Metadata ──────────────────────────────────────────────────────────────────
@@ -147,14 +148,18 @@ def is_albert_tool(fn: object) -> bool:
     return hasattr(fn, "_albert_tool_meta")
 
 
-# ── Docstring parsing (via griffe) ────────────────────────────────────────────
+# ── Docstring parsing ─────────────────────────────────────────────────────────
 
 def parse_param_descriptions(fn: Callable) -> dict[str, str]:
     """
-    Parse parameter descriptions from a method docstring using griffe.
+    Parse parameter descriptions from a method docstring.
 
     Supports Google-style (``Args:``) and NumPy-style (``Parameters\\n---``)
-    docstrings. Auto-detects style.
+    docstrings via griffe. Auto-detects style.
+
+    Requires the ``tools`` optional dependency::
+
+        pip install albert[tools]
 
     Parameters
     ----------
@@ -165,27 +170,41 @@ def parse_param_descriptions(fn: Callable) -> dict[str, str]:
     -------
     dict[str, str]
         Mapping of parameter name to description. Empty dict if no Args section.
+
+    Raises
+    ------
+    ImportError
+        If ``griffe`` is not installed (i.e. ``albert[tools]`` not installed).
     """
+    if not _GRIFFE_AVAILABLE:
+        raise ImportError(
+            "Docstring parsing requires the 'tools' optional dependency. "
+            "Install it with: pip install albert[tools]"
+        )
+
     raw = inspect.getdoc(fn)
     if not raw:
         return {}
 
-    doc = griffe.Docstring(raw)
+    doc = _griffe.Docstring(raw)
 
-    # Suppress griffe's "no type annotation" warnings — type hints come from
-    # Python signatures, not docstrings.
-    prev_level = _griffe_logger.level
-    _griffe_logger.setLevel(logging.ERROR)
+    # griffe emits warnings when docstring params lack type annotations.
+    # These are expected — type information comes from Python signatures,
+    # not docstrings. Suppress only griffe's own logger, only for this call,
+    # and restore the original level immediately after.
+    griffe_logger = logging.getLogger("griffe")
+    prev_level = griffe_logger.level
+    griffe_logger.setLevel(logging.ERROR)
     try:
-        sections = griffe.parse_auto(doc)
+        sections = _griffe.parse_auto(doc)
     finally:
-        _griffe_logger.setLevel(prev_level)
+        griffe_logger.setLevel(prev_level)
 
     descriptions: dict[str, str] = {}
     for section in sections:
         if section.kind in (
-            griffe.DocstringSectionKind.parameters,
-            griffe.DocstringSectionKind.other_parameters,
+            _griffe.DocstringSectionKind.parameters,
+            _griffe.DocstringSectionKind.other_parameters,
         ):
             for param in section.value:
                 if param.description:
@@ -201,8 +220,14 @@ def validate_albert_tool(fn: Callable) -> None:
     Validate that a method decorated with @albert_tool meets the requirements
     for safe MCP tool registration.
 
+    Requires the ``tools`` optional dependency::
+
+        pip install albert[tools]
+
     Raises
     ------
+    ImportError
+        If ``griffe`` is not installed.
     AlbertToolValidationError
         - Not decorated with @albert_tool
         - Missing or empty docstring
@@ -214,6 +239,12 @@ def validate_albert_tool(fn: Callable) -> None:
         - Optional parameter has no description
         - Return type is unannotated (``-> None`` is valid, no warning)
     """
+    if not _GRIFFE_AVAILABLE:
+        raise ImportError(
+            "validate_albert_tool requires the 'tools' optional dependency. "
+            "Install it with: pip install albert[tools]"
+        )
+
     if not is_albert_tool(fn):
         raise AlbertToolValidationError(
             f"{fn.__name__}: not decorated with @albert_tool"

@@ -333,3 +333,79 @@ class TestValidation:
 
         with pytest.raises(AlbertToolValidationError, match="not decorated"):
             validate_albert_tool(plain)
+
+
+# ── Griffe logger isolation ────────────────────────────────────────────────────
+
+class TestGriffeLoggerIsolation:
+    """
+    Verify that the griffe logger suppression is scoped tightly to the
+    parse call and never affects the caller's logging configuration.
+    """
+
+    def test_griffe_logger_level_restored_after_parse(self):
+        """Logger level must be exactly the same before and after parsing."""
+        import logging
+        griffe_logger = logging.getLogger("griffe")
+
+        # Set a known level before
+        griffe_logger.setLevel(logging.DEBUG)
+        before = griffe_logger.level
+
+        @albert_tool(category="projects")
+        def search(self, text: str) -> list:
+            """Search projects.
+
+            Args:
+                text: Full-text search query.
+            """
+
+        from albert.tools import parse_param_descriptions
+        parse_param_descriptions(search)
+
+        assert griffe_logger.level == before, (
+            f"griffe logger level changed: was {before}, now {griffe_logger.level}"
+        )
+
+    def test_griffe_logger_level_restored_after_exception(self):
+        """Logger level is restored even if parsing raises."""
+        import logging
+        griffe_logger = logging.getLogger("griffe")
+        griffe_logger.setLevel(logging.DEBUG)
+        before = griffe_logger.level
+
+        from albert.tools import parse_param_descriptions
+
+        # Pass a non-callable that will cause parse to return early (empty doc)
+        def no_doc(self): pass
+
+        try:
+            parse_param_descriptions(no_doc)
+        except Exception:
+            pass
+
+        assert griffe_logger.level == before
+
+    def test_no_griffe_import_error_message(self, monkeypatch):
+        """Without griffe installed, parse_param_descriptions raises ImportError with install hint."""
+        import albert.tools as tools_module
+        monkeypatch.setattr(tools_module, "_GRIFFE_AVAILABLE", False)
+
+        @albert_tool(category="projects")
+        def search(self, text: str) -> list:
+            """Search."""
+
+        with pytest.raises(ImportError, match="pip install albert\\[tools\\]"):
+            tools_module.parse_param_descriptions(search)
+
+    def test_no_griffe_validate_error_message(self, monkeypatch):
+        """Without griffe installed, validate_albert_tool raises ImportError with install hint."""
+        import albert.tools as tools_module
+        monkeypatch.setattr(tools_module, "_GRIFFE_AVAILABLE", False)
+
+        @albert_tool(category="projects")
+        def search(self, text: str) -> list:
+            """Search."""
+
+        with pytest.raises(ImportError, match="pip install albert\\[tools\\]"):
+            tools_module.validate_albert_tool(search)

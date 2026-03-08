@@ -26,6 +26,13 @@ dependencies = [
     "tenacity>=8.2.3",
 ]
 
+[project.optional-dependencies]
+# Install with: pip install albert[tools]
+# Required by the MCP scanner and SDK validation tooling (not needed by SDK users).
+tools = [
+    "griffe>=1.0.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.3.2",
