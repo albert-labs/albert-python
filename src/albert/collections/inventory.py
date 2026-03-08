@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from pydantic import TypeAdapter, validate_call
 
 from albert.collections.base import BaseCollection
+from albert.tools import albert_tool
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
 from albert.collections.tags import TagCollection
@@ -209,6 +210,7 @@ class InventoryCollection(BaseCollection):
         return self.get_by_id(id=response.json()["albertId"])
 
     @validate_call
+    @albert_tool(category="inventory")
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
         """
         Retrieve an inventory item by its ID.
@@ -539,6 +541,7 @@ class InventoryCollection(BaseCollection):
         return filtered_facets
 
     @validate_call
+    @albert_tool(category="inventory")
     def search(
         self,
         *,
@@ -643,6 +646,7 @@ class InventoryCollection(BaseCollection):
             deserialize=deserialize,
         )
 
+    @albert_tool(category="inventory")
     @validate_call
     def get_all(
         self,

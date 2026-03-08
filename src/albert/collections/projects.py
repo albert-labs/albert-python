@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.tools import albert_tool
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -50,6 +51,7 @@ class ProjectCollection(BaseCollection):
         )
         return Project(**response.json())
 
+    @albert_tool(category="projects")
     @validate_call
     def get_by_id(self, *, id: ProjectId) -> Project:
         """
@@ -108,6 +110,7 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
+    @albert_tool(category="projects")
     @validate_call
     def search(
         self,
@@ -301,6 +304,7 @@ class ProjectCollection(BaseCollection):
             deserialize=lambda items: [DocumentSearchItem(**item) for item in items],
         )
 
+    @albert_tool(category="projects")
     @validate_call
     def get_all(
         self,
