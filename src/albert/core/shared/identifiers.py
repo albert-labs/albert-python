@@ -29,6 +29,8 @@ _ALBERT_PREFIXES = {
     "RuleId": "RUL",
     "SynthesisId": "SYN",
     "TagId": "TAG",
+    "SmartDatasetId": "SDT",
+    "TargetId": "TAR",
     "TaskId": "TAS",
     "StorageLocationId": "STL",
     "UnitId": "UNI",
@@ -349,6 +351,20 @@ def ensure_report_id(id: str) -> str:
 
 
 ReportId = Annotated[str, AfterValidator(ensure_report_id)]
+
+
+def ensure_smart_dataset_id(id: str) -> str:
+    return _ensure_albert_id(id, "SmartDatasetId")
+
+
+SmartDatasetId = Annotated[str, AfterValidator(ensure_smart_dataset_id)]
+
+
+def ensure_target_id(id: str) -> str:
+    return _ensure_albert_id(id, "TargetId")
+
+
+TargetId = Annotated[str, AfterValidator(ensure_target_id)]
 
 
 def remove_id_prefix(id: str, id_type: str) -> str:
