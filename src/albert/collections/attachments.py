@@ -13,7 +13,6 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.exceptions import BadRequestError
 from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
@@ -24,7 +23,6 @@ class AttachmentCollection(BaseCollection):
     """AttachmentCollection is a collection class for managing Attachment entities in the Albert platform."""
 
     _api_version: str = "v3"
-    _updatable_attributes = {"name", "revision_date", "parent_id"}
     _updatable_attributes = {"name", "revision_date", "parent_id"}
     _updatable_metadata_attributes = {
         "Symbols",
@@ -107,32 +105,11 @@ class AttachmentCollection(BaseCollection):
         if len(payload.data) == 0:
             return existing_attachment
 
-        for datum in payload.data:
-            try:
-                self.session.patch(
-                    f"{self.base_path}/{attachment.id}",
-                    json={"data": [datum.model_dump(by_alias=True, mode="json")]},
-                )
-            except BadRequestError as error:
-                if not self._should_retry_as_add(datum=datum, error=error):
-                    raise
-
-                retry_datum = PatchDatum(
-                    operation=PatchOperation.ADD,
-                    attribute=datum.attribute,
-                    new_value=datum.new_value,
-                )
-                self.session.patch(
-                    f"{self.base_path}/{attachment.id}",
-                    json={"data": [retry_datum.model_dump(by_alias=True, mode="json")]},
-                )
+        self.session.patch(
+            f"{self.base_path}/{attachment.id}",
+            json=payload.model_dump(by_alias=True, mode="json"),
+        )
         return self.get_by_id(id=attachment.id)
-
-    def _should_retry_as_add(self, *, datum: PatchDatum, error: BadRequestError) -> bool:
-        is_update = str(datum.operation) == PatchOperation.UPDATE.value
-        is_metadata_field = datum.attribute in self._updatable_metadata_attributes
-        not_found_msg = "does not exist" in str(error)
-        return is_update and is_metadata_field and not_found_msg
 
     @staticmethod
     def _serialize_patch_value(value: Any) -> Any:
