@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from collections.abc import Iterator
@@ -5,8 +6,9 @@ from contextlib import suppress
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
-from albert import Albert, AlbertClientCredentials
+from albert import Albert, AlbertClientCredentials, AsyncAlbert
 from albert.collections.worksheets import WorksheetCollection
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.attachments import Attachment
@@ -88,6 +90,20 @@ def client() -> Albert:
         auth_manager=credentials,
         retries=3,
     )
+
+
+@pytest_asyncio.fixture(scope="session")
+async def async_client() -> AsyncAlbert:
+    from pydantic import SecretStr
+
+    credentials = AlbertClientCredentials(
+        id=os.environ["ALBERT_CLIENT_ID_SDK"],
+        secret=SecretStr(os.environ["ALBERT_CLIENT_SECRET_SDK"]),
+        base_url="https://dev.albertinventdev.com",
+    )
+    client = AsyncAlbert(auth_manager=credentials)
+    yield client
+    await client.aclose()
 
 
 @pytest.fixture
