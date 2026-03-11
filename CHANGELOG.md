@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0](https://github.com/albert-labs/albert-python/compare/v1.20.0...v1.21.0) (2026-03-11)
+
+
+### Features
+
+* **data-templates:** support owner updates ([#390](https://github.com/albert-labs/albert-python/issues/390)) ([8bfa94d](https://github.com/albert-labs/albert-python/commit/8bfa94dd7067ffa79795c290e7fc759b4291aa0e))
+* support targets + smartdatasets ([#389](https://github.com/albert-labs/albert-python/issues/389)) ([1e488d0](https://github.com/albert-labs/albert-python/commit/1e488d00a9bdfcf83c40756f3765995e11f32e8a))
+
+
+### Bug Fixes
+
+* **notebooks:** support CustomTemplateId (CTP) as a valid parentId ([#411](https://github.com/albert-labs/albert-python/issues/411)) ([ec7b17b](https://github.com/albert-labs/albert-python/commit/ec7b17bfcba074db8b1837f9c3eb741530d1f7d3))
+* **sheets:** fixing calculation for total cell in worksheet ([#413](https://github.com/albert-labs/albert-python/issues/413)) ([b2a2a2a](https://github.com/albert-labs/albert-python/commit/b2a2a2aa0c09d7c031291a72f440fc5a137dbcc5))
+* **total-cell:** fixing total cell ([b2a2a2a](https://github.com/albert-labs/albert-python/commit/b2a2a2aa0c09d7c031291a72f440fc5a137dbcc5))
+
+
+### Documentation
+
+* **collections:** improve public method docstrings ([#392](https://github.com/albert-labs/albert-python/issues/392)) ([6888c9b](https://github.com/albert-labs/albert-python/commit/6888c9b0a694310fc3205f7247ed26852781bd17))
+
 ## [1.21.0-beta2](https://github.com/albert-labs/albert-python/compare/v1.20.0...v1.21.0-beta2) (2026-03-06)
 
 
