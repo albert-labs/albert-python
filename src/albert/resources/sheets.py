@@ -612,7 +612,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def _clear_formulation_from_column(self, *, column: Column):
         cleared_cells = []
         for cell in column.cells:
-            if cell.type == CellType.INVENTORY:
+            if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL:
                 cell_copy = cell.model_copy(update={"value": "", "calculation": ""})
                 cleared_cells.append(cell_copy)
         self.update_cells(cells=cleared_cells)
@@ -638,6 +638,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         self.grid = None  # reset the grid for saftey
         product_rows = list(self.product_design.rows)
+        initial_row_ids = {row.row_id for row in product_rows}
 
         for component in components:
             component_inventory_id = component.inventory_item_id
@@ -667,7 +668,72 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
             all_cells.append(this_cell)
 
-        self.update_cells(cells=all_cells)
+        new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
+
+        total_row = next((r for r in product_rows if r.type == CellType.TOTAL), None)
+        if total_row is not None:
+            ingredient_row_ids = [
+                row.row_id
+                for row in product_rows
+                if row.inventory_id is not None and row.row_id != total_row.row_id
+            ]
+            calculation = "=" + "+".join(f"{column_id}{row_id}" for row_id in ingredient_row_ids)
+            total_cell = Cell(
+                column_id=column_id,
+                row_id=total_row.row_id,
+                value=str(sum(component.amount for component in components)),
+                calculation=calculation,
+                type=CellType.TOTAL,
+                design_id=self.product_design.id,
+                name=formulation_name,
+                inventory_id=col.inventory_id,
+            )
+            all_cells.append(total_cell)
+
+            # When new ingredient rows were added to the sheet, every other existing
+            # inventory column's Total cell must also include those rows in its
+            # calculation formula.
+            if new_row_ids:
+                all_ingredient_row_ids = [
+                    row.row_id
+                    for row in product_rows
+                    if row.inventory_id is not None and row.row_id != total_row.row_id
+                ]
+                for other_col in self.columns:
+                    if other_col.column_id == column_id or other_col.type != CellType.INVENTORY:
+                        continue
+                    other_total_cell = next(
+                        (
+                            c
+                            for c in other_col.cells
+                            if isinstance(c, Cell) and c.row_id == total_row.row_id
+                        ),
+                        None,
+                    )
+                    if other_total_cell is None:
+                        continue
+                    new_calculation = "=" + "+".join(
+                        f"{other_col.column_id}{rid}" for rid in all_ingredient_row_ids
+                    )
+                    all_cells.append(
+                        other_total_cell.model_copy(update={"calculation": new_calculation})
+                    )
+
+        # Send ingredient cells first, then Total cells in a separate call.
+        def _is_total_cell(c: Cell) -> bool:
+            return c.row_type == CellType.TOTAL or c.type == CellType.TOTAL
+
+        ingredient_cells = [c for c in all_cells if not _is_total_cell(c)]
+        total_cells = [c for c in all_cells if _is_total_cell(c)]
+
+        if ingredient_cells:
+            self.update_cells(cells=ingredient_cells)
+
+        if total_cells:
+            # grid reset for safety
+            self.grid = None
+            self.update_cells(cells=total_cells)
+
         return self.get_column(column_id=column_id)
 
     def _get_row_id_for_component(
@@ -870,7 +936,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         for row in filtered_rows:
             for col in filtered_columns:
-                return self.grid.loc[row, col]
+                # grid.loc may return numpy.NaN for missing cells
+                value = self.grid.loc[row, col]
+                if isinstance(value, Cell):
+                    return value
         return None
 
     def _generate_attribute_change(
@@ -906,7 +975,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def _get_cell_changes(self, *, cell: Cell) -> CellChangePayload | None:
         current_cell = self._get_current_cell(cell=cell)
         if current_cell is None:
-            return None
+            # New cell not yet in grid; blank baseline generates "add" operations.
+            current_cell = Cell(
+                column_id=cell.column_id,
+                row_id=cell.row_id,
+                design_id=cell.design_id,
+                type=cell.type,
+            )
 
         data: list[PatchDatum] = []
 
@@ -946,7 +1021,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             ("min_value", "minValue"),
             ("max_value", "maxValue"),
         ]
-        if cell.calculation is None or cell.calculation == "":
+        if cell.calculation is None or cell.calculation == "" or cell.row_type == CellType.TOTAL:
             for attr, api_attr in value_attributes:
                 if not self._compare_cell_attributes(
                     cell=cell, existing_cell=current_cell, attribute=attr
