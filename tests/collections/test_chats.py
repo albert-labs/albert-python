@@ -1,7 +1,11 @@
+from collections.abc import AsyncGenerator
+from contextlib import suppress
+
 import pytest
 import pytest_asyncio
 
 from albert import AsyncAlbert
+from albert.exceptions import NotFoundError
 from albert.resources.chats import (
     ChatComponentType,
     ChatFolder,
@@ -19,24 +23,34 @@ pytestmark = pytest.mark.xfail(reason="Chat API is not deployed yet.")
 
 
 @pytest_asyncio.fixture(scope="function")
-async def seeded_folder(async_client: AsyncAlbert, seed_prefix: str) -> ChatFolder:
-    return await async_client.chat_folders.create(
+async def seeded_folder(
+    async_client: AsyncAlbert, seed_prefix: str
+) -> AsyncGenerator[ChatFolder, None]:
+    folder = await async_client.chat_folders.create(
         folder=ChatFolder(name=f"{seed_prefix} Chat Folder")
     )
+    yield folder
+    with suppress(NotFoundError):
+        await async_client.chat_folders.delete(id=folder.id)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def seeded_session(
     async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
-) -> ChatSession:
-    return await async_client.chat_sessions.create(
+) -> AsyncGenerator[ChatSession, None]:
+    session = await async_client.chat_sessions.create(
         session=ChatSession(name=f"{seed_prefix} Chat Session", parent_id=seeded_folder.id)
     )
+    yield session
+    with suppress(NotFoundError):
+        await async_client.chat_sessions.delete(id=session.id)
 
 
 @pytest_asyncio.fixture(scope="function")
-async def seeded_message(async_client: AsyncAlbert, seeded_session: ChatSession) -> ChatMessage:
-    return await async_client.chat_messages.create(
+async def seeded_message(
+    async_client: AsyncAlbert, seeded_session: ChatSession
+) -> AsyncGenerator[ChatMessage, None]:
+    message = await async_client.chat_messages.create(
         message=ChatMessage(
             component_type=ChatComponentType.TEXT,
             user_type=ChatUserType.USER,
@@ -46,6 +60,7 @@ async def seeded_message(async_client: AsyncAlbert, seeded_session: ChatSession)
             sequence="000",
         )
     )
+    yield message
 
 
 # ---------------------------------------------------------------------------
@@ -95,11 +110,15 @@ async def test_chat_session_get_by_source_session_id(
             source_session_id=source_id,
         )
     )
-    fetched = await async_client.chat_sessions.get_by_source_session_id(
-        source_session_id=source_id
-    )
-    assert fetched.id == session.id
-    assert fetched.source_session_id == source_id
+    try:
+        fetched = await async_client.chat_sessions.get_by_source_session_id(
+            source_session_id=source_id
+        )
+        assert fetched.id == session.id
+        assert fetched.source_session_id == source_id
+    finally:
+        with suppress(NotFoundError):
+            await async_client.chat_sessions.delete(id=session.id)
 
 
 async def test_chat_session_get_all(async_client: AsyncAlbert, seeded_session: ChatSession):

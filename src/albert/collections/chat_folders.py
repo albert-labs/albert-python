@@ -10,20 +10,21 @@ from albert.resources.chats import ChatFolder
 
 
 class ChatFolderCollection:
-    """
-    Async collection for managing chat folders.
-
-    Parameters
-    ----------
-    session : AsyncAlbertSession
-        The async session used to make API requests.
-    """
+    """Async collection for managing chat folders."""
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
+        """
+        Initializes the ChatFolderCollection with the provided session.
+
+        Parameters
+        ----------
+        session : AsyncAlbertSession
+            The async session used to make API requests.
+        """
         self._session = session
-        self.base_path = f"/api/{self._api_version}/chats/folders"
+        self.base_path: str = f"/api/{self._api_version}/chats/folders"
 
     @validate_call
     async def create(self, *, folder: ChatFolder) -> ChatFolder:
@@ -38,7 +39,7 @@ class ChatFolderCollection:
         Returns
         -------
         ChatFolder
-            The created folder as returned by the server.
+            The created folder.
         """
         response = await self._session.post(
             self.base_path,
@@ -87,7 +88,7 @@ class ChatFolderCollection:
         exact_match : bool, optional
             Whether name filtering uses exact matching (default False).
         max_items : int | None, optional
-            Stop iteration after yielding this many items.
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
@@ -112,3 +113,19 @@ class ChatFolderCollection:
             max_items=max_items,
         ):
             yield folder
+
+    @validate_call
+    async def delete(self, *, id: str) -> None:
+        """
+        Delete a chat folder by ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the folder to delete.
+
+        Returns
+        -------
+        None
+        """
+        await self._session.delete(f"{self.base_path}/{id}")

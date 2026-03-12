@@ -431,7 +431,22 @@ class AsyncAlbert:
 
     @classmethod
     def from_token(cls, *, base_url: str | None = None, token: str) -> AsyncAlbert:
-        """Create an AsyncAlbert client using a static token for authentication."""
+        """
+        Create an AsyncAlbert client using a static token for authentication.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        token : str
+            A static JWT token used for all requests.
+
+        Returns
+        -------
+        AsyncAlbert
+            A configured async client authenticated with the given token.
+        """
         return cls(base_url=base_url, token=token)
 
     @classmethod
@@ -442,7 +457,24 @@ class AsyncAlbert:
         client_id: str,
         client_secret: str,
     ) -> AsyncAlbert:
-        """Create an AsyncAlbert client using client credentials authentication."""
+        """
+        Create an AsyncAlbert client using client credentials authentication.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        client_id : str
+            The OAuth2 client ID.
+        client_secret : str
+            The OAuth2 client secret.
+
+        Returns
+        -------
+        AsyncAlbert
+            A configured async client that refreshes tokens automatically.
+        """
         resolved_base_url = base_url or default_albert_base_url()
         creds = AlbertClientCredentials(
             id=client_id,

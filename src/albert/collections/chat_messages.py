@@ -11,18 +11,19 @@ from albert.resources.chats import ChatComponentType, ChatMessage
 
 
 class ChatMessageCollection:
-    """
-    Async collection for managing messages within a chat session.
-
-    Parameters
-    ----------
-    session : AsyncAlbertSession
-        The async session used to make API requests.
-    """
+    """Async collection for managing messages within a chat session."""
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
+        """
+        Initializes the ChatMessageCollection with the provided session.
+
+        Parameters
+        ----------
+        session : AsyncAlbertSession
+            The async session used to make API requests.
+        """
         self._session = session
         self._sessions_base = f"/api/{self._api_version}/chats/sessions"
 
@@ -40,7 +41,7 @@ class ChatMessageCollection:
         Returns
         -------
         ChatMessage
-            The created message as returned by the server.
+            The created message.
         """
         payload = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
         # parentId is encoded in the URL path, not the request body
@@ -99,7 +100,7 @@ class ChatMessageCollection:
         session_id : str
             The ID of the session whose messages to list.
         max_items : int | None, optional
-            Stop iteration after yielding this many messages.
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
@@ -107,12 +108,10 @@ class ChatMessageCollection:
             Messages in the session, oldest first.
         """
         url = f"{self._sessions_base}/{session_id}/messages"
-        params: dict = {}
         async for message in AsyncAlbertPaginator(
             session=self._session,
             path=url,
             deserialize=lambda item: ChatMessage(**item),
-            params=params,
             max_items=max_items,
         ):
             yield message
