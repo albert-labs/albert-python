@@ -5,8 +5,7 @@ from typing import Any
 
 from pydantic import Field
 
-from albert.core.base import BaseAlbertModel
-from albert.core.shared.models.base import AuditFields, BaseResource
+from albert.core.shared.models.base import BaseResource
 
 
 class ChatComponentType(str, Enum):
@@ -32,15 +31,6 @@ class ChatRole(str, Enum):
 
     USER = "user"
     ASSISTANT = "assistant"
-
-
-class ChatFlagType(str, Enum):
-    """Flag types that can be applied to a chat message."""
-
-    STARRED = "starred"
-    DOWNLOADED = "downloaded"
-    REQUESTED = "requested"
-    HALLUCINATED = "hallucinated"
 
 
 class ChatFolderType(str, Enum):
@@ -145,31 +135,3 @@ class ChatFolder(BaseResource):
     name: str
     folder_type: ChatFolderType | None = Field(default=None, alias="type")
     parent_id: str | None = Field(default=None, alias="parentId")
-
-
-class ChatFlag(BaseAlbertModel):
-    """
-    Flag state record for a chat message.
-
-    Attributes
-    ----------
-    source_request_id : str
-        The request trace identifier of the flagged message.
-    starred : bool
-        Whether the message has been starred.
-    requested : bool
-        Whether the message has been marked as requested.
-    downloaded : bool
-        Whether the message has been marked as downloaded.
-    hallucinated : bool
-        Whether the message has been marked as hallucinated.
-    created : AuditFields | None
-        Audit metadata for when the flag was created.
-    """
-
-    source_request_id: str = Field(alias="sourceRequestId")
-    starred: bool = False
-    requested: bool = False
-    downloaded: bool = False
-    hallucinated: bool = False
-    created: AuditFields | None = Field(default=None, alias="Created")

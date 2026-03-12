@@ -10,20 +10,21 @@ from albert.resources.chats import ChatSession
 
 
 class ChatSessionCollection:
-    """
-    Async collection for managing chat sessions.
-
-    Parameters
-    ----------
-    session : AsyncAlbertSession
-        The async session used to make API requests.
-    """
+    """Async collection for managing chat sessions."""
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
+        """
+        Initializes the ChatSessionCollection with the provided session.
+
+        Parameters
+        ----------
+        session : AsyncAlbertSession
+            The async session used to make API requests.
+        """
         self._session = session
-        self.base_path = f"/api/{self._api_version}/chats/sessions"
+        self.base_path: str = f"/api/{self._api_version}/chats/sessions"
 
     @validate_call
     async def create(self, *, session: ChatSession) -> ChatSession:
@@ -38,7 +39,7 @@ class ChatSessionCollection:
         Returns
         -------
         ChatSession
-            The created session as returned by the server.
+            The created session.
         """
         response = await self._session.post(
             self.base_path,
@@ -105,7 +106,7 @@ class ChatSessionCollection:
         exact_match : bool, optional
             Whether name filtering uses exact matching (default False).
         max_items : int | None, optional
-            Stop iteration after yielding this many items.
+            Maximum number of items to return in total. If None, fetches all available items.
 
         Yields
         ------
@@ -130,3 +131,19 @@ class ChatSessionCollection:
             max_items=max_items,
         ):
             yield session
+
+    @validate_call
+    async def delete(self, *, id: str) -> None:
+        """
+        Delete a chat session by ID.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the session to delete.
+
+        Returns
+        -------
+        None
+        """
+        await self._session.delete(f"{self.base_path}/{id}")
