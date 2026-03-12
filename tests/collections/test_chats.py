@@ -1,3 +1,4 @@
+import pytest
 import pytest_asyncio
 
 from albert import AsyncAlbert
@@ -9,6 +10,8 @@ from albert.resources.chats import (
     ChatSession,
     ChatUserType,
 )
+
+pytestmark = pytest.mark.xfail(reason="Chat API is not deployed yet.")
 
 # ---------------------------------------------------------------------------
 # Fixtures
