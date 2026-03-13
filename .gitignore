@@ -90,3 +90,5 @@ site/
 # IDE
 .vscode/launch.json
 
+# Claude Code
+.claude/

@@ -1,0 +1,81 @@
+name: Claude Code Review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  claude-review:
+    if: |
+      (github.event.action == 'opened' && github.event.pull_request.draft == false) ||
+      github.event.action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--model claude-sonnet-4-6 --allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            ## First Steps
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to see the actual changes
+            2. Read CLAUDE.md and AGENTS.md for project standards
+            3. Only review the changed code - not the entire codebase
+
+            ## Your Role
+            Catch bugs and correctness issues before human review.
+
+            ## MUST FLAG (Real Bugs Only)
+            - `@validate_call` missing on public collection methods
+            - `model_dump()` called without `by_alias=True` or `mode="json"` (breaks API serialization)
+            - Wrong pagination mode (KEY vs OFFSET) for an endpoint
+            - Catching generic `Exception` instead of `AlbertHTTPError` subclasses
+            - Old-style type hints (`Optional[X]`, `List[X]`) instead of `X | None`, `list[X]`
+            - Type errors that would fail at runtime
+            - Resource leaks (unclosed connections, files, sessions)
+            - Missing or incorrect Numpy-style docstrings on new public methods/classes
+            - Docstrings describing implementation internals (e.g. "by diffing", "by batching") instead of behavior/contract
+            - Version bump in any file (e.g. `pyproject.toml`, `__init__.py`) unless the PR is opened by release-please (identified by title matching `chore(main): release x.x.x` or branch matching `release-please--branches--main*` or `release-please--branches--next*`)
+            - PR title does not follow conventional commit structure (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, etc.)
+            - PR title uses a breaking change marker (`feat!`, `fix!`, `refactor!`, etc.) — breaking changes are not allowed in this repo
+
+            ## MENTION BRIEFLY (If Clear Pattern Violation)
+            - Deviations from existing collection or resource patterns
+            - PR title prefix does not accurately reflect the actual change type (e.g. titled `fix:` but adds new functionality)
+
+            ## IGNORE COMPLETELY
+            - Style preferences (ruff handles this)
+            - Minor optimizations
+            - "Could also do X" alternatives
+
+            ## Output Rules
+            **If no issues found:** Post a single short comment: "Looks good - no bugs or correctness issues found."
+
+            **If issues found:** Post ONE comment with this format:
+            ```
+            ## Code Review
+
+            ### Issues Found
+            - **[file:line]** Brief description of the bug and why it matters
+
+            ### Summary
+            X issue(s) found. [One sentence on severity/impact]
+            ```
+
+            Be direct. State what needs to change and why. No preamble, no sign-offs, no pleasantries, no "nice to haves."
+
+            Use `gh pr comment` to post your review.
