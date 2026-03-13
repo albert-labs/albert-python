@@ -10,8 +10,9 @@ from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.resources.attachments import Attachment, AttachmentCategory
+from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.notes import Note
@@ -21,6 +22,18 @@ class AttachmentCollection(BaseCollection):
     """AttachmentCollection is a collection class for managing Attachment entities in the Albert platform."""
 
     _api_version: str = "v3"
+    _updatable_attributes = {"name", "revision_date", "parent_id"}
+    _updatable_metadata_attributes = {
+        "Symbols",
+        "unNumber",
+        "storageClass",
+        "hazardStatement",
+        "jurisdictionCode",
+        "languageCode",
+        "wgk",
+        "description",
+        "extensions",
+    }
 
     def __init__(self, *, session):
         super().__init__(session=session)
@@ -66,6 +79,109 @@ class AttachmentCollection(BaseCollection):
         payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
         return Attachment(**response.json())
+
+    @validate_call
+    def update(self, *, attachment: Attachment) -> Attachment:
+        """Update an attachment.
+
+        Parameters
+        ----------
+        attachment : Attachment
+            The attachment with updated fields. Must include ``id``.
+
+        Returns
+        -------
+        Attachment
+            The updated Attachment.
+        """
+        if attachment.id is None:
+            raise ValueError("Attachment ID is required for update.")
+
+        existing_attachment = self.get_by_id(id=attachment.id)
+        payload = self._generate_attachment_patch_payload(
+            existing=existing_attachment, updated=attachment
+        )
+        if len(payload.data) == 0:
+            return existing_attachment
+
+        self.session.patch(
+            f"{self.base_path}/{attachment.id}",
+            json=payload.model_dump(by_alias=True, mode="json"),
+        )
+        return self.get_by_id(id=attachment.id)
+
+    def _generate_attachment_patch_payload(
+        self, *, existing: Attachment, updated: Attachment
+    ) -> PatchPayload:
+        # Diff top-level fields (name, revision_date, parent_id)
+        patch_data: list[PatchDatum] = list(
+            self._generate_patch_payload(
+                existing=existing,
+                updated=updated,
+                generate_metadata_diff=False,
+            ).data
+        )
+
+        existing_meta = existing.metadata or AttachmentMetadata()
+        updated_meta = updated.metadata or AttachmentMetadata()
+
+        existing_dump = existing_meta.model_dump(by_alias=True, mode="json")
+        updated_dump = updated_meta.model_dump(by_alias=True, mode="json")
+
+        for attribute in self._updatable_metadata_attributes:
+            old_value = existing_dump.get(attribute)
+            new_value = updated_dump.get(attribute)
+
+            if isinstance(old_value, list) or isinstance(new_value, list):
+                # Diff list fields item-by-item using id. The Symbols field requires
+                # the patch value wrapped as [{"id": ...}].
+                old_ids = [x["id"] for x in (old_value or [])]
+                new_ids = [x["id"] for x in (new_value or [])]
+                for item_id in old_ids:
+                    if item_id not in new_ids:
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.DELETE,
+                                old_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
+                            )
+                        )
+                for item_id in new_ids:
+                    if item_id not in old_ids:
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.ADD,
+                                new_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
+                            )
+                        )
+            else:
+                # Diff scalar fields
+                if old_value is None and new_value is not None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute, operation=PatchOperation.ADD, new_value=new_value
+                        )
+                    )
+                elif old_value is not None and new_value is None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.DELETE,
+                            old_value=old_value,
+                        )
+                    )
+                elif old_value is not None and new_value != old_value:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.UPDATE,
+                            old_value=old_value,
+                            new_value=new_value,
+                        )
+                    )
+
+        return PatchPayload(data=patch_data)
 
     def get_by_parent_ids(
         self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
