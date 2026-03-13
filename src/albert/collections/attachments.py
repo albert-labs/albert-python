@@ -83,17 +83,17 @@ class AttachmentCollection(BaseCollection):
 
     @validate_call
     def update(self, *, attachment: Attachment) -> Attachment:
-        """Update an attachment by diffing the current server state.
+        """Update an attachment.
 
         Parameters
         ----------
         attachment : Attachment
-            Attachment object containing the desired final state. The attachment must include ``id``.
+            The attachment with updated fields. Must include ``id``.
 
         Returns
         -------
         Attachment
-            The updated attachment returned by the API.
+            The updated Attachment.
         """
         if attachment.id is None:
             raise ValueError("Attachment ID is required for update.")
