@@ -2,14 +2,13 @@ import mimetypes
 import uuid
 from datetime import date
 from pathlib import Path
-from typing import IO, Any
+from typing import IO
 
-from pydantic import ValidationError, validate_call
+from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.notes import NotesCollection
-from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
@@ -111,41 +110,10 @@ class AttachmentCollection(BaseCollection):
         )
         return self.get_by_id(id=attachment.id)
 
-    @staticmethod
-    def _serialize_patch_value(value: Any) -> Any:
-        if isinstance(value, date):
-            return value.isoformat()
-        if isinstance(value, BaseAlbertModel):
-            return value.model_dump(by_alias=True, mode="json", exclude_none=True)
-        return value
-
-    @staticmethod
-    def _normalize_metadata_item(value: Any) -> Any:
-        value = AttachmentCollection._serialize_patch_value(value)
-        if isinstance(value, dict):
-            if value.get("id") is not None:
-                return value["id"]
-            if value.get("name") is not None:
-                return value["name"]
-        return value
-
-    @staticmethod
-    def _get_metadata_dict(*, attachment: Attachment) -> dict[str, Any]:
-        metadata = attachment.metadata
-        if metadata is None:
-            return {}
-        if isinstance(metadata, BaseAlbertModel):
-            return metadata.model_dump(by_alias=True, mode="json", exclude_none=True)
-        metadata_dict = dict(metadata)
-        try:
-            normalized = AttachmentMetadata.model_validate(metadata_dict)
-            return normalized.model_dump(by_alias=True, mode="json", exclude_none=True)
-        except ValidationError:
-            return metadata_dict
-
     def _generate_attachment_patch_payload(
         self, *, existing: Attachment, updated: Attachment
     ) -> PatchPayload:
+        # Diff top-level fields (name, revision_date, parent_id)
         patch_data: list[PatchDatum] = list(
             self._generate_patch_payload(
                 existing=existing,
@@ -154,72 +122,64 @@ class AttachmentCollection(BaseCollection):
             ).data
         )
 
-        existing_metadata = self._get_metadata_dict(attachment=existing)
-        updated_metadata = self._get_metadata_dict(attachment=updated)
-        metadata_keys = set(existing_metadata) | set(updated_metadata)
-        for key in metadata_keys:
-            if key not in self._updatable_metadata_attributes:
-                continue
+        existing_meta = existing.metadata or AttachmentMetadata()
+        updated_meta = updated.metadata or AttachmentMetadata()
 
-            old_value = existing_metadata.get(key)
-            new_value = updated_metadata.get(key)
-            old_is_list = isinstance(old_value, list)
-            new_is_list = isinstance(new_value, list)
-            if old_is_list or new_is_list:
-                old_items = old_value if old_is_list else []
-                new_items = new_value if new_is_list else []
-                old_norm = [self._normalize_metadata_item(value=x) for x in old_items]
-                new_norm = [self._normalize_metadata_item(value=x) for x in new_items]
+        existing_dump = existing_meta.model_dump(by_alias=True, mode="json")
+        updated_dump = updated_meta.model_dump(by_alias=True, mode="json")
 
-                for old_item in old_norm:
-                    if old_item not in new_norm:
-                        old_patch_value = [{"id": old_item}] if key == "Symbols" else old_item
+        for attribute in self._updatable_metadata_attributes:
+            old_value = existing_dump.get(attribute)
+            new_value = updated_dump.get(attribute)
+
+            if isinstance(old_value, list) or isinstance(new_value, list):
+                # Diff list fields item-by-item using id. The Symbols field requires
+                # the patch value wrapped as [{"id": ...}].
+                old_ids = [x["id"] for x in (old_value or [])]
+                new_ids = [x["id"] for x in (new_value or [])]
+                for item_id in old_ids:
+                    if item_id not in new_ids:
                         patch_data.append(
                             PatchDatum(
-                                attribute=key,
+                                attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=old_patch_value,
+                                old_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
                             )
                         )
-                for new_item in new_norm:
-                    if new_item not in old_norm:
-                        new_patch_value = [{"id": new_item}] if key == "Symbols" else new_item
+                for item_id in new_ids:
+                    if item_id not in old_ids:
                         patch_data.append(
                             PatchDatum(
-                                attribute=key,
+                                attribute=attribute,
                                 operation=PatchOperation.ADD,
-                                new_value=new_patch_value,
+                                new_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
                             )
                         )
-                continue
-
-            old_norm = self._normalize_metadata_item(value=old_value)
-            new_norm = self._normalize_metadata_item(value=new_value)
-            if old_norm is None and new_norm is not None:
-                patch_data.append(
-                    PatchDatum(
-                        attribute=key,
-                        operation=PatchOperation.ADD,
-                        new_value=new_norm,
+            else:
+                # Diff scalar fields
+                if old_value is None and new_value is not None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute, operation=PatchOperation.ADD, new_value=new_value
+                        )
                     )
-                )
-            elif old_norm is not None and new_norm is None:
-                patch_data.append(
-                    PatchDatum(
-                        attribute=key,
-                        operation=PatchOperation.DELETE,
-                        old_value=old_norm,
+                elif old_value is not None and new_value is None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.DELETE,
+                            old_value=old_value,
+                        )
                     )
-                )
-            elif old_norm is not None and new_norm != old_norm:
-                patch_data.append(
-                    PatchDatum(
-                        attribute=key,
-                        operation=PatchOperation.UPDATE,
-                        old_value=old_norm,
-                        new_value=new_norm,
+                elif old_value is not None and new_value != old_value:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.UPDATE,
+                            old_value=old_value,
+                            new_value=new_value,
+                        )
                     )
-                )
 
         return PatchPayload(data=patch_data)
 

@@ -1,13 +1,11 @@
 from datetime import date
 from enum import Enum
-from typing import Any
 
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId
 from albert.core.shared.models.base import BaseResource, EntityLinkWithName
-from albert.core.shared.types import MetadataItem
 from albert.resources.hazards import HazardStatement, HazardSymbol
 
 
@@ -48,9 +46,7 @@ class Attachment(BaseResource):
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
     signed_url: str | None = Field(default=None, alias="signedURL", exclude=True, frozen=True)
     signed_url_v2: str | None = Field(default=None, alias="signedURLV2", exclude=True, frozen=True)
-    metadata: AttachmentMetadata | dict[str, MetadataItem | list[dict[str, Any]]] | None = Field(
-        default=None, alias="Metadata"
-    )
+    metadata: AttachmentMetadata | None = Field(default=None, alias="Metadata")
 
 
 # TO DO: Script and SDS attachment
