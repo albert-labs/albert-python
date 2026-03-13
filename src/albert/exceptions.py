@@ -1,6 +1,7 @@
 import contextlib
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 
+import httpx
 import requests
 
 from albert.core.logging import logger
@@ -96,6 +97,32 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return AlbertServerError
         case _:
             raise AlbertHTTPError
+
+
+@contextlib.asynccontextmanager
+async def handle_async_http_errors() -> AsyncIterator[None]:
+    try:
+        yield
+    except httpx.HTTPStatusError as e:
+        response = e.response
+        try:
+            payload = response.json()
+            errors = payload.get("errors") or payload
+        except Exception:
+            errors = response.text.strip()
+        reason = getattr(response, "reason_phrase", str(response.status_code))
+        message = (
+            f"{response.request.method} '{response.request.url}' failed with status code "
+            f"{response.status_code} ({reason})."
+        )
+        if errors:
+            message = f"{message} Errors: {errors}"
+        error_cls = _get_http_error_cls(response.status_code)
+        # Bypass AlbertHTTPError.__init__ (requires requests.Response) — use
+        # Exception.__new__ which sets exc.args and is safe in Python 3.12+.
+        exc = Exception.__new__(error_cls, message)
+        exc.message = message
+        raise exc from e
 
 
 @contextlib.contextmanager
