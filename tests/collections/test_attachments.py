@@ -1,7 +1,6 @@
 from contextlib import suppress
 from datetime import date
 from pathlib import Path
-from typing import Any
 
 from albert import Albert
 from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
@@ -10,14 +9,6 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 from albert.resources.projects import Project
-
-
-def _metadata_as_dict(metadata: AttachmentMetadata | dict[str, Any] | None) -> dict[str, Any]:
-    if metadata is None:
-        return {}
-    if isinstance(metadata, AttachmentMetadata):
-        return metadata.model_dump(by_alias=True, mode="json", exclude_none=True)
-    return dict(metadata)
 
 
 def test_attach_file_to_note(
@@ -145,7 +136,9 @@ def test_attachment_update(
 
         assert updated.name == "updated-sds.pdf"
         assert updated.revision_date == date(2024, 12, 2)
-        updated_metadata = _metadata_as_dict(updated.metadata)
+        updated_metadata = (updated.metadata or AttachmentMetadata()).model_dump(
+            by_alias=True, mode="json", exclude_none=True
+        )
         assert updated_metadata.get("storageClass") == "10"
         assert updated_metadata.get("jurisdictionCode") == "BR"
         assert updated_metadata.get("languageCode") == "ES"
