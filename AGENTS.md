@@ -72,6 +72,11 @@ Expose a `max_items` parameter on public list/search methods where appropriate t
 - When adding a new collection, add a docs page under `docs/collections/` and link it in `mkdocs.yml` (alphabetical in nav).
 - When adding a new resource, add a docs page under `docs/resources/` and link it in `mkdocs.yml` (alphabetical in nav).
 - Keep docstrings Numpy-style for all public APIs.
+- Docstrings must describe **what** a method does from the caller's perspective — never mention internal implementation details or backend API specifics (e.g. diffing, patching, HTTP methods, "returned by the API").
+  - Wrong: `"""Update an attachment by diffing the current server state."""`
+  - Right: `"""Update an attachment."""`
+  - Wrong: `The updated attachment returned by the API.`
+  - Right: `The updated Attachment.`
 - Every collection class docstring must include a `Methods` section listing all public methods:
 
 ```python
