@@ -56,7 +56,7 @@ class CasPaginator(AlbertPaginator):
 class CasCollection(BaseCollection):
     "CasCollection is a collection class for managing Cas entities on the Albert Platform."
 
-    _updatable_attributes = {"notes", "description", "smiles"}
+    _updatable_attributes = {"notes", "description", "smiles", "metadata"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
