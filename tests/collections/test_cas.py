@@ -1,11 +1,13 @@
 import uuid
+from contextlib import suppress
 
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.enums import OrderBy
-from albert.exceptions import AlbertHTTPError
+from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.cas import Cas
+from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 
 
 def assert_valid_cas_items(items: list[Cas]):
@@ -74,6 +76,28 @@ def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
     updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
 
     assert updated_cas.description == updated_description
+
+
+def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
+    """Test that updating CAS metadata reflects changes."""
+    field_name = f"test_cas_meta_{seed_prefix.replace('-', '_')[:20]}".lower()
+    custom_field = client.custom_fields.create(
+        custom_field=CustomField(
+            name=field_name,
+            display_name=f"TEST CAS Meta {seed_prefix[:10]}",
+            field_type=FieldType.STRING,
+            service=ServiceType.CAS,
+        )
+    )
+    try:
+        cas_to_update = seeded_cas[0]
+        new_value = f"{seed_prefix} - metadata test"
+        cas_to_update.metadata = {**cas_to_update.metadata, field_name: new_value}
+        updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
+        assert updated_cas.metadata.get(field_name) == new_value
+    finally:
+        with suppress(NotFoundError):
+            client.custom_fields.delete(id=custom_field.id)
 
 
 def test_get_by_number(client: Albert, seeded_cas: list[Cas]):
