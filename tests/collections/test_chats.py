@@ -1,67 +1,16 @@
-from collections.abc import AsyncGenerator
 from contextlib import suppress
 
 import pytest
-import pytest_asyncio
 
 from albert import AsyncAlbert
 from albert.exceptions import NotFoundError
 from albert.resources.chats import (
-    ChatComponentType,
     ChatFolder,
     ChatMessage,
-    ChatRole,
     ChatSession,
-    ChatUserType,
 )
 
 pytestmark = pytest.mark.xfail(reason="Chat API is not deployed yet.")
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_folder(
-    async_client: AsyncAlbert, seed_prefix: str
-) -> AsyncGenerator[ChatFolder, None]:
-    folder = await async_client.chat_folders.create(
-        folder=ChatFolder(name=f"{seed_prefix} Chat Folder")
-    )
-    yield folder
-    with suppress(NotFoundError):
-        await async_client.chat_folders.delete(id=folder.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_session(
-    async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
-) -> AsyncGenerator[ChatSession, None]:
-    session = await async_client.chat_sessions.create(
-        session=ChatSession(name=f"{seed_prefix} Chat Session", parent_id=seeded_folder.id)
-    )
-    yield session
-    with suppress(NotFoundError):
-        await async_client.chat_sessions.delete(id=session.id)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def seeded_message(
-    async_client: AsyncAlbert, seeded_session: ChatSession
-) -> AsyncGenerator[ChatMessage, None]:
-    message = await async_client.chat_messages.create(
-        message=ChatMessage(
-            component_type=ChatComponentType.TEXT,
-            user_type=ChatUserType.USER,
-            role=ChatRole.USER,
-            content={"message": "Hello from SDK tests"},
-            parent_id=seeded_session.id,
-            sequence="000",
-        )
-    )
-    yield message
-
 
 # ---------------------------------------------------------------------------
 # Chat folders
