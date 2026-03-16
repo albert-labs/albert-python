@@ -127,6 +127,7 @@ nav:
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
+          - AsyncAlbert Client: async_albert.md
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md
@@ -140,6 +141,10 @@ nav:
               - Breakthrough Insights: collections/btinsight.md
               - Breakthrough Model: collections/btmodel.md
           - Cas: collections/cas.md
+          - Chat:
+              - Chat Folders: collections/chat_folders.md
+              - Chat Messages: collections/chat_messages.md
+              - Chat Sessions: collections/chat_sessions.md
           - Companies: collections/companies.md
           - Custom Fields: collections/custom_fields.md
           - Custom Templates: collections/custom_templates.md
@@ -187,6 +192,7 @@ nav:
               - Breakthrough Insights: resources/btinsight.md
               - Breakthrough Model: resources/btmodel.md
           - Cas: resources/cas.md
+          - Chats: resources/chats.md
           - Companies: resources/companies.md
           - Custom Fields: resources/custom_fields.md
           - Custom Templates: resources/custom_templates.md
