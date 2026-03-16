@@ -1,6 +1,7 @@
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from typing import Any, Literal, TypeVar
 
+from albert.core.async_session import AsyncAlbertSession
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
@@ -171,3 +172,60 @@ class AlbertPaginator(Iterator[ItemType]):
             return value
 
         return {k: convert(v) for k, v in payload.items() if v is not None}
+
+
+class AsyncAlbertPaginator(AsyncIterator[ItemType]):
+    """
+    Async iterator for key-based paginated Albert endpoints.
+
+    Parameters
+    ----------
+    session : AsyncAlbertSession
+        The async session used to make requests.
+    path : str
+        Endpoint path to paginate.
+    deserialize : Callable[[dict], ItemType]
+        Function to convert each raw item dict into a model instance.
+    params : dict[str, Any] | None, optional
+        Initial query parameters.
+    max_items : int | None, optional
+        Stop after yielding this many items.
+    """
+
+    def __init__(
+        self,
+        *,
+        session: AsyncAlbertSession,
+        path: str,
+        deserialize: Callable[[dict], ItemType],
+        params: dict[str, Any] | None = None,
+        max_items: int | None = None,
+    ):
+        self._session = session
+        self._path = path
+        self._deserialize = deserialize
+        self._params = dict(params or {})
+        self._max_items = max_items
+        self._iterator = self._create_iterator()
+
+    async def _create_iterator(self) -> AsyncIterator[ItemType]:
+        yielded = 0
+        while True:
+            response = await self._session.get(self._path, params=self._params)
+            data = response.json()
+            items = data.get("Items", [])
+            for item in items:
+                if self._max_items is not None and yielded >= self._max_items:
+                    return
+                yield self._deserialize(item)
+                yielded += 1
+            key = data.get("lastKey")
+            if not key or not items:
+                break
+            self._params["startKey"] = key
+
+    def __aiter__(self) -> AsyncIterator[ItemType]:
+        return self
+
+    async def __anext__(self) -> ItemType:
+        return await self._iterator.__anext__()
