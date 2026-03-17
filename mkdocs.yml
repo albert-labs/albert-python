@@ -234,6 +234,7 @@ nav:
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
       - Tasks: examples/tasks.md
+      - Teams: examples/teams.md
 
 validation:
   omitted_files: warn
