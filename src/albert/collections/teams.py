@@ -28,7 +28,7 @@ class TeamCollection(BaseCollection):
 
     Methods
     -------
-    get_all(name, exact_match, created_by, updated_by, user_id, limit, max_items) -> Iterator[Team]
+    get_all(name, exact_match, created_by, updated_by, user_id, max_items) -> Iterator[Team]
         Lists all teams with optional filters.
     get_by_id(id) -> Team
         Retrieves a team by its ID.
@@ -71,7 +71,6 @@ class TeamCollection(BaseCollection):
         created_by: str | None = None,
         updated_by: str | None = None,
         user_id: str | list[str] | None = None,
-        limit: int = 100,
         max_items: int | None = None,
     ) -> Iterator[Team]:
         """List all teams with optional filters.
@@ -88,8 +87,6 @@ class TeamCollection(BaseCollection):
             Filter teams by the user ID of their last updater.
         user_id : str or list[str], optional
             Filter teams by user membership.
-        limit : int, optional
-            Number of items per page. Default is 100, max 200.
         max_items : int, optional
             Maximum total number of items to return. If None, fetches all available items.
 
@@ -98,7 +95,7 @@ class TeamCollection(BaseCollection):
         Iterator[Team]
             An iterator of Team entities matching the filters.
         """
-        params: dict = {"limit": limit}
+        params: dict = {}
         if name is not None:
             params["name"] = ensure_list(name)
             params["exactMatch"] = exact_match
