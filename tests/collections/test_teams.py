@@ -65,7 +65,7 @@ def test_get_all(client: Albert, seeded_team: Team):
     assert by_name[0].id == seeded_team.id
 
 
-def test_update(client: Albert, seed_prefix: str, static_user: User, second_user: User):
+def test_update(client: Albert, seed_prefix: str, second_user: User):
     """Test update: rename, add/remove via members list."""
     team = client.teams.create(name=f"{seed_prefix}-update")
     try:
