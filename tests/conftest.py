@@ -8,6 +8,7 @@ import pytest
 
 from albert import Albert, AlbertClientCredentials
 from albert.collections.worksheets import WorksheetCollection
+from albert.core.shared.enums import Status
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from albert.resources.attachments import Attachment
 from albert.resources.btdataset import BTDataset
@@ -37,6 +38,7 @@ from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.targets import Target
 from albert.resources.tasks import BaseTask
+from albert.resources.teams import Team, TeamMember
 from albert.resources.units import Unit
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
@@ -210,6 +212,31 @@ def static_lists(
                 raise e
         seeded.append(created_list)
     return seeded
+
+
+### TEAM FIXTURES
+
+
+@pytest.fixture(scope="session")
+def second_user(client: Albert, static_user: User) -> User:
+    """Get a second active user distinct from the static SDK bot user."""
+    for user in client.users.search(max_items=50):
+        hydrated = client.users.get_by_id(id=user.id)
+        if hydrated.id != static_user.id and hydrated.status == Status.ACTIVE:
+            return hydrated
+    pytest.skip("No second active user available for team tests")
+
+
+@pytest.fixture(scope="session")
+def seeded_team(client: Albert, seed_prefix: str, static_user: User) -> Iterator[Team]:
+    """Create a team with a member for testing and clean up after."""
+    team = client.teams.create(
+        name=f"{seed_prefix}-team-seeded",
+        members=[TeamMember(id=static_user.id, role="TeamOwner")],
+    )
+    yield team
+    with suppress(Exception):
+        client.teams.delete(id=team.id)
 
 
 ### SEEDED RESOURCES -- CREATED ONCE PER SESSION, CAN BE DELETED
