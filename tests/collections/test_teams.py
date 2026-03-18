@@ -91,11 +91,11 @@ def test_update(client: Albert, seed_prefix: str, second_user: User):
             client.teams.delete(id=team.id)
 
 
-def test_add_users(client: Albert, seed_prefix: str, second_user: User):
-    """Test adding users and duplicate detection."""
-    team = client.teams.create(name=f"{seed_prefix}-add-users")
+def test_add_and_remove_users(client: Albert, seed_prefix: str, second_user: User):
+    """Test adding and removing users, including duplicate and non-member error cases."""
+    team = client.teams.create(name=f"{seed_prefix}-add-remove-users")
     try:
-        # Add a user (creator is already a member, so add second_user)
+        # Add second_user
         team = client.teams.add_users(
             id=team.id,
             members=[TeamMember(id=second_user.id, role="TeamViewer")],
@@ -108,22 +108,8 @@ def test_add_users(client: Albert, seed_prefix: str, second_user: User):
                 id=team.id,
                 members=[TeamMember(id=second_user.id, role="TeamOwner")],
             )
-    finally:
-        with suppress(Exception):
-            client.teams.delete(id=team.id)
 
-
-def test_remove_users(client: Albert, seed_prefix: str, second_user: User):
-    """Test removing users and non-member detection."""
-    team = client.teams.create(name=f"{seed_prefix}-remove-users")
-    try:
-        # Add second_user explicitly so they're in the ACL
-        client.teams.add_users(
-            id=team.id,
-            members=[TeamMember(id=second_user.id, role="TeamViewer")],
-        )
-
-        # Remove the viewer (creator/owner stays)
+        # Remove second_user
         team = client.teams.remove_users(id=team.id, users=[second_user.id])
         assert second_user.id not in [m.id for m in team.members or []]
 
