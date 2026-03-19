@@ -170,6 +170,7 @@ nav:
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
           - Targets (🧪Beta): collections/targets.md
+          - Teams: collections/teams.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
@@ -217,6 +218,7 @@ nav:
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
           - Targets (🧪Beta): resources/targets.md
+          - Teams: resources/teams.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md
@@ -232,6 +234,7 @@ nav:
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
       - Tasks: examples/tasks.md
+      - Teams: examples/teams.md
 
 validation:
   omitted_files: warn
