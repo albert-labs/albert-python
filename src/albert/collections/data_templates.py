@@ -105,7 +105,7 @@ class DataTemplateCollection(BaseCollection):
                 ),
                 None,
             )
-            rowId = f"ROW{index}"
+            rowId = this_sequence
             enum_patches = []
             if (
                 parameter.validation
