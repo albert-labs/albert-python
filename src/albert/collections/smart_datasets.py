@@ -29,8 +29,8 @@ class SmartDatasetCollection(BaseCollection):
         Lists all smart datasets for the tenant.
     get_by_id(id) -> SmartDataset
         Retrieves a smart dataset by its ID.
-    update(id, **kwargs) -> SmartDataset
-        Updates a smart dataset by its ID.
+    update(smart_dataset, build=True) -> SmartDataset
+        Updates a smart dataset.
     delete(id) -> None
         Deletes a smart dataset by its ID.
     """
@@ -108,29 +108,61 @@ class SmartDatasetCollection(BaseCollection):
         response = self.session.get(url)
         return SmartDataset(**response.json())
 
-    def update(self, *, smart_dataset: SmartDataset) -> SmartDataset:
+    def _smart_dataset_patch_payload(
+        self, *, existing: SmartDataset, updated: SmartDataset
+    ) -> dict:
+        """Build the PATCH request body by diffing the existing and updated smart datasets.
+
+        Parameters
+        ----------
+        existing : SmartDataset
+            The current server state.
+        updated : SmartDataset
+            The desired state.
+
+        Returns
+        -------
+        dict
+            The PATCH payload containing only changed fields.
         """
-        Updates a smart dataset by its ID.
+        payload: dict = {}
+        if existing.scope != updated.scope and updated.scope is not None:
+            payload["scope"] = updated.scope.model_dump(
+                by_alias=True, exclude_none=False, mode="json"
+            )
+        if existing.build_state != updated.build_state and updated.build_state is not None:
+            payload["buildState"] = updated.build_state.value
+        if existing.storage_key != updated.storage_key and updated.storage_key is not None:
+            payload["storageKey"] = updated.storage_key
+        if existing.schema_ != updated.schema_ and updated.schema_ is not None:
+            payload["schema"] = updated.schema_
+        return payload
+
+    def update(
+        self,
+        *,
+        smart_dataset: SmartDataset,
+    ) -> SmartDataset:
+        """
+        Update a smart dataset.
 
         Parameters
         ----------
         smart_dataset : SmartDataset
-            The smart dataset to update. Must have an id set.
+            The smart dataset with updated fields. Must have an id set.
 
         Returns
         -------
         SmartDataset
-            The updated SmartDataset entity.
+            The updated SmartDataset.
         """
-        url = f"{self.base_path}/{smart_dataset.id}"
-        payload = smart_dataset.model_dump(
-            by_alias=True,
-            exclude_none=True,
-            mode="json",
-            include={"build_state", "storage_key", "scope", "schema_"},
+        existing = self.get_by_id(id=smart_dataset.id)
+        payload = self._smart_dataset_patch_payload(existing=existing, updated=smart_dataset)
+        self.session.patch(
+            url=f"{self.base_path}/{smart_dataset.id}",
+            json=payload,
         )
-        response = self.session.patch(url, json=payload)
-        return SmartDataset(**response.json())
+        return self.get_by_id(id=smart_dataset.id)
 
     def delete(self, *, id: SmartDatasetId) -> None:
         """

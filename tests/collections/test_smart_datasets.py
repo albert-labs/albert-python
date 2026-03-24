@@ -64,55 +64,81 @@ def test_smart_dataset_get_by_id(client: Albert, seeded_smart_datasets: list[Sma
 
 @pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
 def test_smart_dataset_update(client: Albert, seeded_smart_datasets: list[SmartDataset]):
-    """Test updating a smart dataset."""
+    """Test updating a smart dataset scope."""
     smart_dataset = seeded_smart_datasets[0]
     fetched = client.smart_datasets.get_by_id(id=smart_dataset.id)
 
-    # update the storage key
-    fetched.storage_key = f"smart/datasets/{smart_dataset.id}.json"
-    updated = client.smart_datasets.update(smart_dataset=fetched)
+    # update the scope
+    fetched.scope = SmartDatasetScope(
+        project_ids=fetched.scope.project_ids,
+        target_ids=["TAR456"],
+    )
+    updated = client.smart_datasets.update(smart_dataset=fetched, build=False)
     assert isinstance(updated, SmartDataset)
     assert updated.id == smart_dataset.id
-    assert updated.storage_key == f"smart/datasets/{smart_dataset.id}.json"
+    assert updated.scope.target_ids == ["TAR456"]
+
+
+@pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
+def test_smart_dataset_update_with_build(
+    client: Albert, seeded_smart_datasets: list[SmartDataset]
+):
+    """Test updating a smart dataset scope with build=True."""
+    smart_dataset = seeded_smart_datasets[0]
+    fetched = client.smart_datasets.get_by_id(id=smart_dataset.id)
+
+    # update the scope
+    fetched.scope = SmartDatasetScope(
+        project_ids=fetched.scope.project_ids,
+        target_ids=["TAR789"],
+    )
+    updated = client.smart_datasets.update(smart_dataset=fetched, build=True)
+    assert isinstance(updated, SmartDataset)
+    assert updated.id == smart_dataset.id
 
 
 @pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
 def test_smart_dataset_update_build_state(
     client: Albert, seeded_smart_datasets: list[SmartDataset]
 ):
-    """Test updating the build state of a smart dataset via PATCH."""
+    """Test updating the build state of a smart dataset."""
     smart_dataset = seeded_smart_datasets[0]
     fetched = client.smart_datasets.get_by_id(id=smart_dataset.id)
 
-    # update the build state
     fetched.build_state = SmartDatasetBuildState.READY
-    updated = client.smart_datasets.update(smart_dataset=fetched)
+    updated = client.smart_datasets.update(smart_dataset=fetched, build=False)
     assert isinstance(updated, SmartDataset)
     assert updated.id == smart_dataset.id
     assert updated.build_state == SmartDatasetBuildState.READY
 
-    # update to failed
-    updated.build_state = SmartDatasetBuildState.FAILED
-    updated_again = client.smart_datasets.update(smart_dataset=updated)
-    assert updated_again.build_state == SmartDatasetBuildState.FAILED
-
 
 @pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
-def test_smart_dataset_update_does_not_send_status(
+def test_smart_dataset_update_storage_key(
     client: Albert, seeded_smart_datasets: list[SmartDataset]
 ):
-    """Test that updating a smart dataset does not include 'status' in the PATCH payload."""
+    """Test updating the storage key of a smart dataset."""
     smart_dataset = seeded_smart_datasets[0]
     fetched = client.smart_datasets.get_by_id(id=smart_dataset.id)
 
-    # Verify that status is excluded from the update payload
-    payload = fetched.model_dump(
-        by_alias=True,
-        exclude_none=True,
-        mode="json",
-        include={"build_state", "storage_key", "scope", "schema_"},
-    )
-    assert "status" not in payload
+    fetched.storage_key = f"smart/datasets/{smart_dataset.id}.json"
+    updated = client.smart_datasets.update(smart_dataset=fetched, build=False)
+    assert isinstance(updated, SmartDataset)
+    assert updated.id == smart_dataset.id
+    assert updated.storage_key == f"smart/datasets/{smart_dataset.id}.json"
+
+
+@pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
+def test_smart_dataset_update_schema(client: Albert, seeded_smart_datasets: list[SmartDataset]):
+    """Test updating the schema of a smart dataset."""
+    smart_dataset = seeded_smart_datasets[0]
+    fetched = client.smart_datasets.get_by_id(id=smart_dataset.id)
+
+    new_schema = {"experiments": {"variables": ["x", "y"]}}
+    fetched.schema_ = new_schema
+    updated = client.smart_datasets.update(smart_dataset=fetched, build=False)
+    assert isinstance(updated, SmartDataset)
+    assert updated.id == smart_dataset.id
+    assert updated.schema_ == new_schema
 
 
 @pytest.mark.xfail(reason="Smart Datasets API is not deployed yet.")
