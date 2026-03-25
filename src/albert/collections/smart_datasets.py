@@ -131,10 +131,11 @@ class SmartDatasetCollection(BaseCollection):
         """
         existing = self.get_by_id(id=smart_dataset.id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
-        self.session.patch(
-            url=f"{self.base_path}/{smart_dataset.id}",
-            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
-        )
+        if payload.data:
+            self.session.patch(
+                url=f"{self.base_path}/{smart_dataset.id}",
+                json=payload.model_dump(mode="json", by_alias=True, exclude_none=False),
+            )
         return self.get_by_id(id=smart_dataset.id)
 
     def delete(self, *, id: SmartDatasetId) -> None:
@@ -163,13 +164,6 @@ class SmartDatasetCollection(BaseCollection):
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)
             new_value = getattr(updated, attribute, None)
-            # Sometimes None and empty lists/dicts are serilized/deserilized to the same value, but wont look the same here
-            if old_value is None and (new_value == [] or new_value == {}):
-                # Avoid updating None to an empty list
-                new_value = None
-            elif (old_value == [] or old_value == {}) and new_value is None:
-                # Avoid updating an empty list to None
-                old_value = None
 
             # Get the serialization alias name for the attribute, if it exists
             field_info = existing.__class__.model_fields[attribute]
