@@ -22,12 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **attachments:** add attachment update support ([#404](https://github.com/albert-labs/albert-python/issues/404)) ([e7c35c0](https://github.com/albert-labs/albert-python/commit/e7c35c0b0d6253e53c35e595560221e47d033631))
 * **cas:** support updating CAS metadata ([#415](https://github.com/albert-labs/albert-python/issues/415)) ([389508f](https://github.com/albert-labs/albert-python/commit/389508fe1c2e649de3c682981823c879b13b6484))
-* **chat:** add AsyncAlbert client with chat collections ([#414](https://github.com/albert-labs/albert-python/issues/414)) ([0153410](https://github.com/albert-labs/albert-python/commit/0153410135aaa8eba8b8ef6e5e0f4c0c977e746d))
-
-
-### Miscellaneous Chores
-
-* prepare beta ([a2886dd](https://github.com/albert-labs/albert-python/commit/a2886ddc8af0b09218d533d6475f8fe5d712876a))
 * **task:** adding option for team assignment ([#419](https://github.com/albert-labs/albert-python/issues/419)) ([7882ef3](https://github.com/albert-labs/albert-python/commit/7882ef36fc5f78ce262dbf87f0f449ba86776896))
 * **teams:** add TeamsCollection for managing teams and membership ([#418](https://github.com/albert-labs/albert-python/issues/418)) ([9dfe703](https://github.com/albert-labs/albert-python/commit/9dfe703d990b4ff1c837d9aff9e55d84d2df01ba))
 
