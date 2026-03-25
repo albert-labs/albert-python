@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta3](https://github.com/albert-labs/albert-python/compare/v1.22.0...v1.23.0-beta3) (2026-03-25)
+
+
+### Features
+
+* **chat:** add AsyncAlbert client with chat collections ([#414](https://github.com/albert-labs/albert-python/issues/414)) ([2814e82](https://github.com/albert-labs/albert-python/commit/2814e823eabb7adc052440d2c1911acc12f334f6))
+
+
+### Bug Fixes
+
+* patch smartdatasets ([#422](https://github.com/albert-labs/albert-python/issues/422)) ([564310c](https://github.com/albert-labs/albert-python/commit/564310cf2ffa23747902223db2696fc5666a8bab))
+* **release:** pass versioning-strategy as action input and apply skip-changelog at package level ([e79ab73](https://github.com/albert-labs/albert-python/commit/e79ab73ffcde725c922dfe9704321ab449171132))
+* **smartdatasets:** allowed no-op patch ([#430](https://github.com/albert-labs/albert-python/issues/430)) ([8a0ea7e](https://github.com/albert-labs/albert-python/commit/8a0ea7e8a43ad048d2b0ebf8db5ed3b83332978f))
+* **smartdatasets:** updated PATCH contract ([#426](https://github.com/albert-labs/albert-python/issues/426)) ([b50b685](https://github.com/albert-labs/albert-python/commit/b50b685366f8846de0e13f984a5835522ee100a4))
+* **something:** test commit ([a33c3e4](https://github.com/albert-labs/albert-python/commit/a33c3e49b473fdf86b7c670cb810378f90883261))
+* **something:** test pre-release autobump version ([689d4d8](https://github.com/albert-labs/albert-python/commit/689d4d80271f683d7fc8fdeab7bfbad9809544a9))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([e0a400e](https://github.com/albert-labs/albert-python/commit/e0a400e2cb024773ee0f517987fc3c2cf29ed19e))
+* prepare beta ([53e61ef](https://github.com/albert-labs/albert-python/commit/53e61ef809d6d71b41ecf1e0f772716331a922e6))
+* prepare beta ([#423](https://github.com/albert-labs/albert-python/issues/423)) ([dd0f6db](https://github.com/albert-labs/albert-python/commit/dd0f6db1e551a7d6319397a0deda5282cabb71d8))
+
 ## [1.22.0](https://github.com/albert-labs/albert-python/compare/v1.21.0...v1.22.0) (2026-03-20)
 
 
