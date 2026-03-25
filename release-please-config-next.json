@@ -8,7 +8,8 @@
       "package-name": "albert",
       "version-file": "src/albert/__init__.py",
       "include-v-in-tag": true,
-      "changelog-path": "CHANGELOG-beta.md"
+      "changelog-path": "CHANGELOG-beta.md",
+      "skip-changelog": true
     }
   }
 }
