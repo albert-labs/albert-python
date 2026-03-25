@@ -1,6 +1,7 @@
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.smart_datasets import SmartDataset, SmartDatasetScope
 
 
@@ -36,6 +37,8 @@ class SmartDatasetCollection(BaseCollection):
     """
 
     _api_version = "v3"
+
+    _updatable_attributes = {"scope", "build_state", "storage_key", "schema_"}
 
     def __init__(self, *, session: AlbertSession):
         """
@@ -108,36 +111,6 @@ class SmartDatasetCollection(BaseCollection):
         response = self.session.get(url)
         return SmartDataset(**response.json())
 
-    def _smart_dataset_patch_payload(
-        self, *, existing: SmartDataset, updated: SmartDataset
-    ) -> dict:
-        """Build the PATCH request body by diffing the existing and updated smart datasets.
-
-        Parameters
-        ----------
-        existing : SmartDataset
-            The current server state.
-        updated : SmartDataset
-            The desired state.
-
-        Returns
-        -------
-        dict
-            The PATCH payload containing only changed fields.
-        """
-        payload: dict = {}
-        if existing.scope != updated.scope and updated.scope is not None:
-            payload["scope"] = updated.scope.model_dump(
-                by_alias=True, exclude_none=False, mode="json"
-            )
-        if existing.build_state != updated.build_state and updated.build_state is not None:
-            payload["buildState"] = updated.build_state.value
-        if existing.storage_key != updated.storage_key and updated.storage_key is not None:
-            payload["storageKey"] = updated.storage_key
-        if existing.schema_ != updated.schema_ and updated.schema_ is not None:
-            payload["schema"] = updated.schema_
-        return payload
-
     def update(
         self,
         *,
@@ -157,10 +130,10 @@ class SmartDatasetCollection(BaseCollection):
             The updated SmartDataset.
         """
         existing = self.get_by_id(id=smart_dataset.id)
-        payload = self._smart_dataset_patch_payload(existing=existing, updated=smart_dataset)
+        payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
         self.session.patch(
             url=f"{self.base_path}/{smart_dataset.id}",
-            json=payload,
+            json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         return self.get_by_id(id=smart_dataset.id)
 
@@ -179,3 +152,40 @@ class SmartDatasetCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+    def _generate_patch_payload(
+        self,
+        *,
+        existing: SmartDataset,
+        updated: SmartDataset,
+    ) -> PatchPayload:
+        data = []
+        for attribute in self._updatable_attributes:
+            old_value = getattr(existing, attribute, None)
+            new_value = getattr(updated, attribute, None)
+            # Sometimes None and empty lists/dicts are serilized/deserilized to the same value, but wont look the same here
+            if old_value is None and (new_value == [] or new_value == {}):
+                # Avoid updating None to an empty list
+                new_value = None
+            elif (old_value == [] or old_value == {}) and new_value is None:
+                # Avoid updating an empty list to None
+                old_value = None
+
+            # Get the serialization alias name for the attribute, if it exists
+            field_info = existing.__class__.model_fields[attribute]
+            alias = (
+                getattr(field_info, "serialization_alias", None) or field_info.alias or attribute
+            )
+
+            if new_value != old_value:
+                # Update existing attribute
+                data.append(
+                    PatchDatum(
+                        attribute=alias,
+                        operation=PatchOperation.UPDATE,
+                        old_value=old_value,
+                        new_value=new_value,
+                    )
+                )
+
+        return PatchPayload(data=data)
