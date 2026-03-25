@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.23.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta1...v1.23.0-beta1) (2026-03-25)
 
 
+### Bug Fixes
+
+* **smartdatasets:** updated PATCH contract ([#426](https://github.com/albert-labs/albert-python/issues/426)) ([f9c5a3d](https://github.com/albert-labs/albert-python/commit/f9c5a3de664cd9223730c311de16fff1fdebc456))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([#423](https://github.com/albert-labs/albert-python/issues/423)) ([696bef0](https://github.com/albert-labs/albert-python/commit/696bef0b3c79449b083402546927236357dea3a6))
+
+## [1.23.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta1...v1.23.0-beta1) (2026-03-25)
+
+
 ### Miscellaneous Chores
 
 * prepare beta ([#423](https://github.com/albert-labs/albert-python/issues/423)) ([696bef0](https://github.com/albert-labs/albert-python/commit/696bef0b3c79449b083402546927236357dea3a6))
