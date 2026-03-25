@@ -1,15 +1,14 @@
 {
   "release-type": "python",
-"prerelease": true,
+  "prerelease": true,
   "versioning-strategy": "prerelease",
   "prerelease-type": "beta",
-  "skip-changelog": true,
   "packages": {
     ".": {
       "package-name": "albert",
       "version-file": "src/albert/__init__.py",
       "include-v-in-tag": true,
-      "skip-changelog": true
+      "changelog-path": "CHANGELOG-beta.md"
     }
   }
 }
