@@ -1,7 +1,6 @@
 {
   "release-type": "python",
-  "last-release-sha": "df6c0cadb3a60e378f8a4d8b158a7a4b0a08e5be",
-  "prerelease": true,
+"prerelease": true,
   "versioning-strategy": "prerelease",
   "prerelease-type": "beta",
   "skip-changelog": true,
