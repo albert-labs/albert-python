@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta4](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta3...v1.23.0-beta4) (2026-03-25)
+
+
+### Bug Fixes
+
+* **release:** add last-release-sha to anchor next branch beta releases ([1894d4b](https://github.com/albert-labs/albert-python/commit/1894d4b000d6b9d66b82fffe22a09f2832fc5d8b))
+* **release:** pass versioning-strategy as action input and apply skip-changelog at package level ([e79ab73](https://github.com/albert-labs/albert-python/commit/e79ab73ffcde725c922dfe9704321ab449171132))
+* **something:** test commit ([a33c3e4](https://github.com/albert-labs/albert-python/commit/a33c3e49b473fdf86b7c670cb810378f90883261))
+* **something:** test pre-release autobump version ([689d4d8](https://github.com/albert-labs/albert-python/commit/689d4d80271f683d7fc8fdeab7bfbad9809544a9))
+
 ## [1.22.0](https://github.com/albert-labs/albert-python/compare/v1.21.0...v1.22.0) (2026-03-20)
 
 
