@@ -31,9 +31,19 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: |
             ${{ github.event.repository.name }}
+      - name: Set config file
+        id: config
+        run: |
+          TARGET_BRANCH="${{ inputs.target_branch || github.ref_name }}"
+          if [ "$TARGET_BRANCH" = "next" ]; then
+            echo "file=release-please-config-next.json" >> $GITHUB_OUTPUT
+          else
+            echo "file=release-please-config.json" >> $GITHUB_OUTPUT
+          fi
       - uses: googleapis/release-please-action@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-type: python
           package-name: albert
           target-branch: ${{ inputs.target_branch || github.ref_name }}
+          config-file: ${{ steps.config.outputs.file }}
