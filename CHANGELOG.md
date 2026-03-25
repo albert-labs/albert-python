@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Miscellaneous Chores
 
 * prepare beta ([a2886dd](https://github.com/albert-labs/albert-python/commit/a2886ddc8af0b09218d533d6475f8fe5d712876a))
+* **task:** adding option for team assignment ([#419](https://github.com/albert-labs/albert-python/issues/419)) ([7882ef3](https://github.com/albert-labs/albert-python/commit/7882ef36fc5f78ce262dbf87f0f449ba86776896))
+* **teams:** add TeamsCollection for managing teams and membership ([#418](https://github.com/albert-labs/albert-python/issues/418)) ([9dfe703](https://github.com/albert-labs/albert-python/commit/9dfe703d990b4ff1c837d9aff9e55d84d2df01ba))
 
 ## [1.21.0](https://github.com/albert-labs/albert-python/compare/v1.20.0...v1.21.0) (2026-03-11)
 
