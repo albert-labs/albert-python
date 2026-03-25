@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta3](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta2...v1.23.0-beta3) (2026-03-25)
+
+
+### Bug Fixes
+
+* **smartdatasets:** allowed no-op patch ([#430](https://github.com/albert-labs/albert-python/issues/430)) ([ad2fa99](https://github.com/albert-labs/albert-python/commit/ad2fa991c5ba6b1736c3f495457802f155d85954))
+
 ## [1.23.0-beta2](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta1...v1.23.0-beta2) (2026-03-25)
 
 
