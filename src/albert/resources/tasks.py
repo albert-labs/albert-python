@@ -20,6 +20,7 @@ from albert.resources.data_templates import DataTemplate
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.tagged_base import BaseTaggedResource
+from albert.resources.teams import Team
 from albert.resources.users import User
 from albert.resources.workflows import Workflow
 
@@ -220,9 +221,9 @@ class BaseTask(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
     )
-    assigned_to: SerializeAsEntityLinkWithName[User] | None = Field(
-        default=None, alias="AssignedTo"
-    )
+    assigned_to: (
+        SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
+    ) = Field(default=None, alias="AssignedTo")
     page_state: PageState | None = Field(
         alias="PageState",
         default=None,

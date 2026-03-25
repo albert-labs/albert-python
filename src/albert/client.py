@@ -46,6 +46,7 @@ from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
 from albert.collections.targets import TargetCollection
 from albert.collections.tasks import TaskCollection
+from albert.collections.teams import TeamCollection
 from albert.collections.un_numbers import UnNumberCollection
 from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
@@ -182,6 +183,10 @@ class Albert:
     @property
     def tags(self) -> TagCollection:
         return TagCollection(session=self.session)
+
+    @property
+    def teams(self) -> TeamCollection:
+        return TeamCollection(session=self.session)
 
     @property
     def targets(self) -> TargetCollection:
