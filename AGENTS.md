@@ -50,7 +50,7 @@ def get_by_id(self, *, id: str) -> Cas:
 Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`). Two modes:
 
 - **Offset** (`PaginationMode.OFFSET`) — uses `offset` param, defaults to `limit=1000`, stops when `Items` is empty.
-- **Key** (`PaginationMode.KEY`) — uses `startKey`, expects `lastKey` in response.
+- **Key** (`PaginationMode.KEY`) — uses `startKey`, expects `lastKey` in response. Do not pass `limit` from the SDK; the backend controls page size.
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
