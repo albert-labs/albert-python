@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 from pydantic import AfterValidator
@@ -277,7 +278,15 @@ def ensure_link_id(id: str) -> str:
 LinkId = Annotated[str, AfterValidator(ensure_link_id)]
 
 
+_LOT_DISPLAY_ID_RE = re.compile(r"^(B?)(\d+)-(\d+)$", re.IGNORECASE)
+
+
 def ensure_lot_id(id: str) -> str:
+    if id:
+        match = _LOT_DISPLAY_ID_RE.match(id.strip())
+        if match:
+            batch_prefix, _, lot_num = match.groups()
+            return f"LOT{batch_prefix.upper()}{lot_num}"
     return _ensure_albert_id(id, "LotId")
 
 
