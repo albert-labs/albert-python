@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta2](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta1...v1.23.0-beta2) (2026-03-25)
+
+
+### Bug Fixes
+
+* patch smartdatasets ([#422](https://github.com/albert-labs/albert-python/issues/422)) ([a0d00fa](https://github.com/albert-labs/albert-python/commit/a0d00fa26f5a79274ccbd5e472dea9864cd517a7))
+* **smartdatasets:** updated PATCH contract ([#426](https://github.com/albert-labs/albert-python/issues/426)) ([5f3c581](https://github.com/albert-labs/albert-python/commit/5f3c5810c47f974db7d1cc1136c5ee051ad4d261))
+
+
+### Miscellaneous Chores
+
+* prepare beta ([10932f9](https://github.com/albert-labs/albert-python/commit/10932f94615c29227490d31a163a3c1cb0a060b2))
+* prepare beta ([#423](https://github.com/albert-labs/albert-python/issues/423)) ([1e607a7](https://github.com/albert-labs/albert-python/commit/1e607a7aca9723b9b3e82bf0fe8cfc7d257c85e5))
+
 ## [1.23.0-beta1](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta1...v1.23.0-beta1) (2026-03-25)
 
 
