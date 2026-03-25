@@ -16,6 +16,7 @@ from albert.core.shared.models.base import BaseResource
 class SmartDatasetBuildState(str, Enum):
     """The build state of a smart dataset."""
 
+    BUILDING = "building"
     READY = "ready"
     FAILED = "failed"
 
