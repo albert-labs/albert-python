@@ -46,6 +46,7 @@ jobs:
       - uses: googleapis/release-please-action@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
+          release-type: python
           target-branch: ${{ inputs.target_branch || github.ref_name }}
           config-file: ${{ steps.config.outputs.file }}
           versioning-strategy: ${{ steps.config.outputs.versioning_strategy }}
