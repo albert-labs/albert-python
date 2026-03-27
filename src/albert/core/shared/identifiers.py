@@ -34,6 +34,7 @@ _ALBERT_PREFIXES = {
     "TaskId": "TAS",
     "StorageLocationId": "STL",
     "UnitId": "UNI",
+    "TeamId": "TEM",
     "UserId": "USR",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
@@ -309,6 +310,13 @@ def ensure_tag_id(id: str) -> str:
 
 
 TagId = Annotated[str, AfterValidator(ensure_tag_id)]
+
+
+def ensure_team_id(id: str) -> str:
+    return _ensure_albert_id(id, "TeamId")
+
+
+TeamId = Annotated[str, AfterValidator(ensure_team_id)]
 
 
 def ensure_worksheet_id(id: str) -> str:

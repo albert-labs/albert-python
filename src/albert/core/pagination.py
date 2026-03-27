@@ -101,6 +101,16 @@ class AlbertPaginator(Iterator[ItemType]):
             if not items and self.mode == PaginationMode.OFFSET:
                 return
 
+            # Detect repeated keys before yielding to avoid duplicates.
+            # Some backends always return lastKey even on the final page.
+            # TODO: remove when pagination is fixed in the backend.
+            # https://linear.app/albert-invent/issue/TAS-564/inconsistent-cas-pagination-behaviour
+            current_key = data.get("lastKey")
+            if self.mode == PaginationMode.KEY and current_key is not None:
+                if current_key in seen_keys:
+                    return
+                seen_keys.add(current_key)
+
             deserialized = list(self.deserialize(items))
 
             for item in deserialized:
@@ -109,17 +119,8 @@ class AlbertPaginator(Iterator[ItemType]):
                 if self.max_items is not None and yielded >= self.max_items:
                     return
 
-            # Track repeated keys in KEY pagination
-            # TODO: remove when pagination is fixed in the backend.
-            # https://linear.app/albert-invent/issue/TAS-564/inconsistent-cas-pagination-behaviour
-            current_key = data.get("lastKey")
-
-            if self.mode == PaginationMode.KEY:
-                if current_key is None:
-                    return
-                if current_key in seen_keys:
-                    return
-                seen_keys.add(current_key)
+            if self.mode == PaginationMode.KEY and current_key is None:
+                return
             if not self._update_params(data=data, count=item_count):
                 return
 

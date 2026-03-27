@@ -1,6 +1,5 @@
-import time
-
 import pytest
+from tenacity import retry, stop_after_delay, wait_fixed
 
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
@@ -64,14 +63,17 @@ def test_project_search_metadata_filters(
 
     metadata_filters = {list_field: {"name": [list_name]}}
 
-    time.sleep(2)  # Ensure the seeded project is indexed before searching
-    projects = list(
-        client.projects.search(
-            metadata_filters=metadata_filters,
-            max_items=10,
+    @retry(stop=stop_after_delay(10), wait=wait_fixed(2), reraise=True)
+    def _search_and_assert():
+        projects = list(
+            client.projects.search(
+                metadata_filters=metadata_filters,
+                max_items=10,
+            )
         )
-    )
-    assert any(item.id == project.id for item in projects)
+        assert any(item.id == project.id for item in projects)
+
+    _search_and_assert()
 
 
 def test_hydrate_project(client: Albert):
