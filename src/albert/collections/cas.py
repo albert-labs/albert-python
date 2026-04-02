@@ -13,7 +13,7 @@ from albert.resources.cas import Cas
 
 
 class CasPaginator(AlbertPaginator):
-    """Paginator that treats `startKey` as a numeric offset for CAS listings."""
+    """Paginator for CAS filtered search using self-managed integer offset pagination."""
 
     def __init__(
         self,
@@ -24,16 +24,7 @@ class CasPaginator(AlbertPaginator):
         max_items: int | None = None,
     ):
         params = dict(params or {})
-        start_key = params.get("startKey")
-
-        if start_key in (None, ""):
-            self._cas_offset = 0
-        else:
-            try:
-                self._cas_offset = int(start_key)
-            except (TypeError, ValueError) as exc:
-                raise ValueError("CAS startKey must be an integer offset.") from exc
-        params["startKey"] = self._cas_offset
+        params["startKey"] = self._cas_offset = int(params.get("startKey", 0))
         params["limit"] = 50
         super().__init__(
             path=path,
@@ -45,9 +36,6 @@ class CasPaginator(AlbertPaginator):
         )
 
     def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
-        if count == 0:
-            return False
-
         self._cas_offset += count
         self.params["startKey"] = self._cas_offset
         return True
@@ -79,7 +67,7 @@ class CasCollection(BaseCollection):
         cas: list[str] | None = None,
         id: CasId | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
-        start_key: int | str | None = None,
+        start_key: str | int | None = None,
         max_items: int | None = None,
     ) -> Iterator[Cas]:
         """
@@ -95,8 +83,10 @@ class CasCollection(BaseCollection):
             Filter CAS entities by Albert CAS ID.
         order_by : OrderBy, optional
             Sort direction (ascending or descending). Default is DESCENDING.
-        start_key : int | str, optional
-            Integer offset to start fetching from. Defaults to 0.
+        start_key : str | int, optional
+            Pagination resume key. For unfiltered listing, pass the string key
+            returned by a previous page. For filtered search (``number`` or ``cas``),
+            pass an integer offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -111,27 +101,41 @@ class CasCollection(BaseCollection):
             yield self.get_by_id(id=id)
             return
 
-        start_offset = 0
-        if start_key is not None:
-            try:
-                start_offset = int(start_key)
-            except (TypeError, ValueError) as exc:
-                raise ValueError("CAS pagination start_key must be an integer.") from exc
-
-        params["startKey"] = start_offset
-        if number is not None:
-            params["number"] = number
-        if cas:
-            params["cas"] = cas
-
-        cas_items = CasPaginator(
-            path=self.base_path,
-            session=self.session,
-            params=params,
-            max_items=max_items,
-        )
-
-        yield from cas_items
+        if number is not None or cas:
+            # Filtered search path: self-managed integer offset pagination.
+            # The backend has a bug where it overwrites the numeric lastKey with a
+            # string key — we must ignore lastKey and use integer offsets. (TAS-564)
+            start_offset = 0
+            if start_key is not None:
+                try:
+                    start_offset = int(start_key)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "start_key must be an integer for filtered CAS search."
+                    ) from exc
+            params["startKey"] = start_offset
+            if number is not None:
+                params["number"] = number
+            if cas:
+                params["cas"] = cas
+            yield from CasPaginator(
+                path=self.base_path,
+                session=self.session,
+                params=params,
+                max_items=max_items,
+            )
+        else:
+            # Unfiltered listing path: string key pagination via lastKey in response.
+            if start_key is not None:
+                params["startKey"] = start_key
+            yield from AlbertPaginator(
+                mode=PaginationMode.KEY,
+                path=self.base_path,
+                session=self.session,
+                params=params,
+                max_items=max_items,
+                deserialize=lambda items: [Cas(**item) for item in items],
+            )
 
     def exists(self, *, number: str, exact_match: bool = True) -> bool:
         """
