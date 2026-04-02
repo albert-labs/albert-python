@@ -57,7 +57,10 @@ def test_get_by_ids(client: Albert, seeded_lots: list[Lot]):
 
 
 def test_update(
-    client: Albert, seeded_lot: Lot, seeded_storage_locations: Iterator[list[StorageLocation]]
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+    second_user,
 ):
     lot = seeded_lot.model_copy()
     marker = "TEST"
@@ -72,11 +75,14 @@ def test_update(
         "Expected an alternate storage location for update test"
     )
     lot.storage_location = new_storage_location
+    lot.owner = [second_user]
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
     assert updated_lot.storage_location is not None
     assert updated_lot.storage_location.id == new_storage_location.id
+    assert updated_lot.owner is not None
+    assert any(o.id == second_user.id for o in updated_lot.owner)
 
 
 def test_adjust_add(client: Albert, seeded_lot: Lot):
