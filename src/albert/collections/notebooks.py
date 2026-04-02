@@ -147,6 +147,10 @@ class NotebookCollection(BaseCollection):
         -------
         Notebook
             The updated notebook object as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``.
         """
         existing_notebook = self.get_by_id(id=notebook.id)
         patch_data = self._generate_patch_payload(existing=existing_notebook, updated=notebook)

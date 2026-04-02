@@ -41,6 +41,7 @@ class LotCollection(BaseCollection):
         "status",
         "pack_size",
         "barcode_id",
+        "owner",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -329,6 +330,21 @@ class LotCollection(BaseCollection):
                 datum.new_value = datum.new_value.id if datum.new_value else None
                 datum.old_value = datum.old_value.id if datum.old_value else None
 
+        # Owner is a list of users, but the API expects a single user ID string
+        for datum in patch_data.data:
+            if datum.attribute == "Owner":
+                if datum.new_value and len(datum.new_value) > 1:
+                    raise ValueError("A lot can only have one owner.")
+                datum.new_value = datum.new_value[0].id if datum.new_value else None
+                datum.old_value = datum.old_value[0].id if datum.old_value else None
+
+        # Drop no-op owner updates where old and new values are identical after ID extraction
+        patch_data.data = [
+            d
+            for d in patch_data.data
+            if not (d.attribute == "Owner" and d.old_value == d.new_value)
+        ]
+
         return patch_data
 
     @staticmethod
@@ -482,7 +498,11 @@ class LotCollection(BaseCollection):
         Returns
         -------
         Lot
-            The updated Lot entity as returned by the server.
+            The updated Lot.
+
+        Notes
+        -----
+        The following fields can be updated: ``barcode_id``, ``cost``, ``expiration_date``, ``initial_quantity``, ``inventory_on_hand``, ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``, ``status``, ``storage_location``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

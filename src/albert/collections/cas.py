@@ -297,6 +297,10 @@ class CasCollection(BaseCollection):
         -------
         Cas
             The updated Cas object as it appears in Albert
+
+        Notes
+        -----
+        The following fields can be updated: ``description``, ``metadata``, ``notes``, ``smiles``.
         """
         # Fetch the current object state from the server or database
         existing_cas = self.get_by_id(id=updated_object.id)

@@ -259,6 +259,10 @@ class UserCollection(BaseCollection):
         -------
         User
             The updated User entity as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``email``, ``metadata``, ``name``, ``status``.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)

@@ -84,6 +84,10 @@ class EntityTypeCollection(BaseCollection):
         -------
         EntityType
             The updated entity type.
+
+        Notes
+        -----
+        The following fields can be updated: ``custom_fields``, ``label``, ``locked_template``, ``search_query_string``, ``standard_field_required``, ``standard_field_visibility``, ``template_based``.
         """
         current_entity_type = self.get_by_id(id=entity_type.id)
         patch = self._generate_patch_payload(

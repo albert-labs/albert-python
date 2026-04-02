@@ -130,6 +130,10 @@ class UnitCollection(BaseCollection):
         -------
         Unit
             The updated Unit
+
+        Notes
+        -----
+        The following fields can be updated: ``category``, ``symbol``, ``synonyms``.
         """
         unit_id = unit.id
         original_unit = self.get_by_id(id=unit_id)

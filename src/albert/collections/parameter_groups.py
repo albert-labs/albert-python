@@ -267,6 +267,10 @@ class ParameterGroupCollection(BaseCollection):
         -------
         ParameterGroup
             The updated ParameterGroup as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``description``, ``metadata``, ``name``.
         """
         existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"

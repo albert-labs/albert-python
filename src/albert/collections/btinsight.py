@@ -167,6 +167,10 @@ class BTInsightCollection(BaseCollection):
         -------
         BTInsight
             The updated BTInsight.
+
+        Notes
+        -----
+        The following fields can be updated: ``content_edited``, ``end_time``, ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``, ``registry``, ``start_time``, ``state``, ``total_time``.
         """
         path = f"{self.base_path}/{insight.id}"
         payload = self._generate_patch_payload(

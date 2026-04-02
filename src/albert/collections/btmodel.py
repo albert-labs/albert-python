@@ -74,6 +74,10 @@ class BTModelSessionCollection(BaseCollection):
         -------
         BTModelSession
             The updated BTModelSession instance.
+
+        Notes
+        -----
+        The following fields can be updated: ``flag``, ``name``, ``registry``.
         """
 
         path = f"{self.base_path}/{model_session.id}"
@@ -197,6 +201,10 @@ class BTModelCollection(BaseCollection):
         -------
         BTModel
             The updated BTModel instance.
+
+        Notes
+        -----
+        The following fields can be updated: ``end_time``, ``metadata``, ``model_binary_key``, ``name``, ``start_time``, ``state``, ``target``, ``total_time``, ``type``.
         """
         base_path = self._get_base_path(parent_id)
         payload = self._generate_patch_payload(

@@ -93,6 +93,10 @@ class AttachmentCollection(BaseCollection):
         -------
         Attachment
             The updated Attachment.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``parent_id``, ``revision_date``.
         """
         if attachment.id is None:
             raise ValueError("Attachment ID is required for update.")

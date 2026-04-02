@@ -175,6 +175,10 @@ class PricingCollection(BaseCollection):
         -------
         Pricing
             The updated Pricing entity as it appears in Albert.
+
+        Notes
+        -----
+        The following fields can be updated: ``currency``, ``description``, ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)

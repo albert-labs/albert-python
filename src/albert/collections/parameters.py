@@ -185,6 +185,10 @@ class ParameterCollection(BaseCollection):
         -------
         Parameter
             The updated parameter as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``metadata``, ``name``.
         """
         existing = self.get_by_id(id=parameter.id)
         payload = self._generate_patch_payload(

@@ -62,6 +62,10 @@ class NotesCollection(BaseCollection):
         -------
         Note
             The updated note as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``note``, ``parent_id``.
         """
         patch = self._generate_patch_payload(
             existing=self.get_by_id(id=note.id), updated=note, generate_metadata_diff=False

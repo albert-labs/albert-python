@@ -249,6 +249,10 @@ class CustomFieldCollection(BaseCollection):
         -------
         CustomField
             The updated CustomField item as registered in Albert.
+
+        Notes
+        -----
+        The following fields can be updated: ``custom_entity_categories``, ``default``, ``display_name``, ``editable``, ``entity_categories``, ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``, ``multiselect``, ``pattern``, ``required``, ``searchable``, ``ui_components``.
         """
         # fetch current object state
         current_object = self.get_by_id(id=custom_field.id)

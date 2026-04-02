@@ -82,6 +82,10 @@ class ProjectCollection(BaseCollection):
         -------
         Project
             The updated project object as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``description``, ``grid``, ``metadata``, ``state``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
