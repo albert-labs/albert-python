@@ -7588,6 +7588,11 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
     </table>
 
 
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>The following fields can be updated: <code>due_date</code>, <code>metadata</code>, <code>name</code>, <code>priority</code>, <code>state</code>.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/tasks.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-711">711</a></span>
@@ -7622,7 +7627,11 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 <span class="normal"><a href="#__codelineno-0-740">740</a></span>
 <span class="normal"><a href="#__codelineno-0-741">741</a></span>
 <span class="normal"><a href="#__codelineno-0-742">742</a></span>
-<span class="normal"><a href="#__codelineno-0-743">743</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-711"><a id="__codelineno-0-711" name="__codelineno-0-711"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">BaseTask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseTask</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-743">743</a></span>
+<span class="normal"><a href="#__codelineno-0-744">744</a></span>
+<span class="normal"><a href="#__codelineno-0-745">745</a></span>
+<span class="normal"><a href="#__codelineno-0-746">746</a></span>
+<span class="normal"><a href="#__codelineno-0-747">747</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-711"><a id="__codelineno-0-711" name="__codelineno-0-711"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">BaseTask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseTask</span><span class="p">:</span>
 </span><span id="__span-0-712"><a id="__codelineno-0-712" name="__codelineno-0-712"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Update a task.</span>
 </span><span id="__span-0-713"><a id="__codelineno-0-713" name="__codelineno-0-713"></a>
 </span><span id="__span-0-714"><a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="sd">    Parameters</span>
@@ -7634,27 +7643,31 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 </span><span id="__span-0-720"><a id="__codelineno-0-720" name="__codelineno-0-720"></a><span class="sd">    -------</span>
 </span><span id="__span-0-721"><a id="__codelineno-0-721" name="__codelineno-0-721"></a><span class="sd">    BaseTask</span>
 </span><span id="__span-0-722"><a id="__codelineno-0-722" name="__codelineno-0-722"></a><span class="sd">        The updated Task object as it exists in the Albert platform.</span>
-</span><span id="__span-0-723"><a id="__codelineno-0-723" name="__codelineno-0-723"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-724"><a id="__codelineno-0-724" name="__codelineno-0-724"></a>    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-725"><a id="__codelineno-0-725" name="__codelineno-0-725"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">generate_adv_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-726"><a id="__codelineno-0-726" name="__codelineno-0-726"></a>        <span class="n">collection</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-727"><a id="__codelineno-0-727" name="__codelineno-0-727"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
-</span><span id="__span-0-728"><a id="__codelineno-0-728" name="__codelineno-0-728"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">existing</span><span class="p">,</span>
-</span><span id="__span-0-729"><a id="__codelineno-0-729" name="__codelineno-0-729"></a>    <span class="p">)</span>
-</span><span id="__span-0-730"><a id="__codelineno-0-730" name="__codelineno-0-730"></a>
-</span><span id="__span-0-731"><a id="__codelineno-0-731" name="__codelineno-0-731"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="__span-0-732"><a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is already up to date&quot;</span><span class="p">)</span>
-</span><span id="__span-0-733"><a id="__codelineno-0-733" name="__codelineno-0-733"></a>        <span class="k">return</span> <span class="n">task</span>
-</span><span id="__span-0-734"><a id="__codelineno-0-734" name="__codelineno-0-734"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="__span-0-735"><a id="__codelineno-0-735" name="__codelineno-0-735"></a>
-</span><span id="__span-0-736"><a id="__codelineno-0-736" name="__codelineno-0-736"></a>    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
-</span><span id="__span-0-737"><a id="__codelineno-0-737" name="__codelineno-0-737"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">TaskPatchPayload</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">datum</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-738"><a id="__codelineno-0-738" name="__codelineno-0-738"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
-</span><span id="__span-0-739"><a id="__codelineno-0-739" name="__codelineno-0-739"></a>            <span class="n">url</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-</span><span id="__span-0-740"><a id="__codelineno-0-740" name="__codelineno-0-740"></a>            <span class="n">json</span><span class="o">=</span><span class="p">[</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
-</span><span id="__span-0-741"><a id="__codelineno-0-741" name="__codelineno-0-741"></a>        <span class="p">)</span>
-</span><span id="__span-0-742"><a id="__codelineno-0-742" name="__codelineno-0-742"></a>
-</span><span id="__span-0-743"><a id="__codelineno-0-743" name="__codelineno-0-743"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-723"><a id="__codelineno-0-723" name="__codelineno-0-723"></a>
+</span><span id="__span-0-724"><a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">    Notes</span>
+</span><span id="__span-0-725"><a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">    -----</span>
+</span><span id="__span-0-726"><a id="__codelineno-0-726" name="__codelineno-0-726"></a><span class="sd">    The following fields can be updated: ``due_date``, ``metadata``, ``name``, ``priority``, ``state``.</span>
+</span><span id="__span-0-727"><a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-728"><a id="__codelineno-0-728" name="__codelineno-0-728"></a>    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-729"><a id="__codelineno-0-729" name="__codelineno-0-729"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">generate_adv_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-730"><a id="__codelineno-0-730" name="__codelineno-0-730"></a>        <span class="n">collection</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-731"><a id="__codelineno-0-731" name="__codelineno-0-731"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+</span><span id="__span-0-732"><a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">existing</span><span class="p">,</span>
+</span><span id="__span-0-733"><a id="__codelineno-0-733" name="__codelineno-0-733"></a>    <span class="p">)</span>
+</span><span id="__span-0-734"><a id="__codelineno-0-734" name="__codelineno-0-734"></a>
+</span><span id="__span-0-735"><a id="__codelineno-0-735" name="__codelineno-0-735"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="__span-0-736"><a id="__codelineno-0-736" name="__codelineno-0-736"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> is already up to date&quot;</span><span class="p">)</span>
+</span><span id="__span-0-737"><a id="__codelineno-0-737" name="__codelineno-0-737"></a>        <span class="k">return</span> <span class="n">task</span>
+</span><span id="__span-0-738"><a id="__codelineno-0-738" name="__codelineno-0-738"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-739"><a id="__codelineno-0-739" name="__codelineno-0-739"></a>
+</span><span id="__span-0-740"><a id="__codelineno-0-740" name="__codelineno-0-740"></a>    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">patch_payload</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="__span-0-741"><a id="__codelineno-0-741" name="__codelineno-0-741"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="n">TaskPatchPayload</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">datum</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-742"><a id="__codelineno-0-742" name="__codelineno-0-742"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
+</span><span id="__span-0-743"><a id="__codelineno-0-743" name="__codelineno-0-743"></a>            <span class="n">url</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+</span><span id="__span-0-744"><a id="__codelineno-0-744" name="__codelineno-0-744"></a>            <span class="n">json</span><span class="o">=</span><span class="p">[</span><span class="n">patch_payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
+</span><span id="__span-0-745"><a id="__codelineno-0-745" name="__codelineno-0-745"></a>        <span class="p">)</span>
+</span><span id="__span-0-746"><a id="__codelineno-0-746" name="__codelineno-0-746"></a>
+</span><span id="__span-0-747"><a id="__codelineno-0-747" name="__codelineno-0-747"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7821,11 +7834,7 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/tasks.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-745">745</a></span>
-<span class="normal"><a href="#__codelineno-0-746">746</a></span>
-<span class="normal"><a href="#__codelineno-0-747">747</a></span>
-<span class="normal"><a href="#__codelineno-0-748">748</a></span>
-<span class="normal"><a href="#__codelineno-0-749">749</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-749">749</a></span>
 <span class="normal"><a href="#__codelineno-0-750">750</a></span>
 <span class="normal"><a href="#__codelineno-0-751">751</a></span>
 <span class="normal"><a href="#__codelineno-0-752">752</a></span>
@@ -7863,49 +7872,53 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 <span class="normal"><a href="#__codelineno-0-784">784</a></span>
 <span class="normal"><a href="#__codelineno-0-785">785</a></span>
 <span class="normal"><a href="#__codelineno-0-786">786</a></span>
-<span class="normal"><a href="#__codelineno-0-787">787</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-745"><a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="nd">@validate_call</span>
-</span><span id="__span-0-746"><a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_history</span><span class="p">(</span>
-</span><span id="__span-0-747"><a id="__codelineno-0-747" name="__codelineno-0-747"></a>    <span class="bp">self</span><span class="p">,</span>
-</span><span id="__span-0-748"><a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="o">*</span><span class="p">,</span>
-</span><span id="__span-0-749"><a id="__codelineno-0-749" name="__codelineno-0-749"></a>    <span class="nb">id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span>
-</span><span id="__span-0-750"><a id="__codelineno-0-750" name="__codelineno-0-750"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
-</span><span id="__span-0-751"><a id="__codelineno-0-751" name="__codelineno-0-751"></a>    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
-</span><span id="__span-0-752"><a id="__codelineno-0-752" name="__codelineno-0-752"></a>    <span class="n">entity</span><span class="p">:</span> <span class="n">HistoryEntity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-753"><a id="__codelineno-0-753" name="__codelineno-0-753"></a>    <span class="n">blockId</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-754"><a id="__codelineno-0-754" name="__codelineno-0-754"></a>    <span class="n">startKey</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-755"><a id="__codelineno-0-755" name="__codelineno-0-755"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskHistory</span><span class="p">:</span>
-</span><span id="__span-0-756"><a id="__codelineno-0-756" name="__codelineno-0-756"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch the audit history for the specified task.</span>
-</span><span id="__span-0-757"><a id="__codelineno-0-757" name="__codelineno-0-757"></a>
-</span><span id="__span-0-758"><a id="__codelineno-0-758" name="__codelineno-0-758"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-759"><a id="__codelineno-0-759" name="__codelineno-0-759"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-760"><a id="__codelineno-0-760" name="__codelineno-0-760"></a><span class="sd">    id : TaskId</span>
-</span><span id="__span-0-761"><a id="__codelineno-0-761" name="__codelineno-0-761"></a><span class="sd">        The ID of the task to inspect.</span>
-</span><span id="__span-0-762"><a id="__codelineno-0-762" name="__codelineno-0-762"></a><span class="sd">    order : OrderBy, optional</span>
-</span><span id="__span-0-763"><a id="__codelineno-0-763" name="__codelineno-0-763"></a><span class="sd">        Sort order for history entries. Default is DESCENDING.</span>
-</span><span id="__span-0-764"><a id="__codelineno-0-764" name="__codelineno-0-764"></a><span class="sd">    limit : int, optional</span>
-</span><span id="__span-0-765"><a id="__codelineno-0-765" name="__codelineno-0-765"></a><span class="sd">        Maximum number of history entries to return.</span>
-</span><span id="__span-0-766"><a id="__codelineno-0-766" name="__codelineno-0-766"></a><span class="sd">    entity : HistoryEntity | None, optional</span>
-</span><span id="__span-0-767"><a id="__codelineno-0-767" name="__codelineno-0-767"></a><span class="sd">        Optional entity scope filter for history entries.</span>
-</span><span id="__span-0-768"><a id="__codelineno-0-768" name="__codelineno-0-768"></a><span class="sd">    blockId : str | None, optional</span>
-</span><span id="__span-0-769"><a id="__codelineno-0-769" name="__codelineno-0-769"></a><span class="sd">        Optional block ID filter for history entries.</span>
-</span><span id="__span-0-770"><a id="__codelineno-0-770" name="__codelineno-0-770"></a><span class="sd">    startKey : str | None, optional</span>
-</span><span id="__span-0-771"><a id="__codelineno-0-771" name="__codelineno-0-771"></a><span class="sd">        Pagination key used to continue a previous history query.</span>
-</span><span id="__span-0-772"><a id="__codelineno-0-772" name="__codelineno-0-772"></a>
-</span><span id="__span-0-773"><a id="__codelineno-0-773" name="__codelineno-0-773"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-774"><a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">    -------</span>
-</span><span id="__span-0-775"><a id="__codelineno-0-775" name="__codelineno-0-775"></a><span class="sd">    TaskHistory</span>
-</span><span id="__span-0-776"><a id="__codelineno-0-776" name="__codelineno-0-776"></a><span class="sd">        Task history response containing entries and pagination metadata.</span>
-</span><span id="__span-0-777"><a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-778"><a id="__codelineno-0-778" name="__codelineno-0-778"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-779"><a id="__codelineno-0-779" name="__codelineno-0-779"></a>        <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span>
-</span><span id="__span-0-780"><a id="__codelineno-0-780" name="__codelineno-0-780"></a>        <span class="s2">&quot;orderBy&quot;</span><span class="p">:</span> <span class="n">order</span><span class="p">,</span>
-</span><span id="__span-0-781"><a id="__codelineno-0-781" name="__codelineno-0-781"></a>        <span class="s2">&quot;entity&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="p">,</span>
-</span><span id="__span-0-782"><a id="__codelineno-0-782" name="__codelineno-0-782"></a>        <span class="s2">&quot;blockId&quot;</span><span class="p">:</span> <span class="n">blockId</span><span class="p">,</span>
-</span><span id="__span-0-783"><a id="__codelineno-0-783" name="__codelineno-0-783"></a>        <span class="s2">&quot;startKey&quot;</span><span class="p">:</span> <span class="n">startKey</span><span class="p">,</span>
-</span><span id="__span-0-784"><a id="__codelineno-0-784" name="__codelineno-0-784"></a>    <span class="p">}</span>
-</span><span id="__span-0-785"><a id="__codelineno-0-785" name="__codelineno-0-785"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">/history&quot;</span>
-</span><span id="__span-0-786"><a id="__codelineno-0-786" name="__codelineno-0-786"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
-</span><span id="__span-0-787"><a id="__codelineno-0-787" name="__codelineno-0-787"></a>    <span class="k">return</span> <span class="n">TaskHistory</span><span class="p">(</span><span class="o">**</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+<span class="normal"><a href="#__codelineno-0-787">787</a></span>
+<span class="normal"><a href="#__codelineno-0-788">788</a></span>
+<span class="normal"><a href="#__codelineno-0-789">789</a></span>
+<span class="normal"><a href="#__codelineno-0-790">790</a></span>
+<span class="normal"><a href="#__codelineno-0-791">791</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-749"><a id="__codelineno-0-749" name="__codelineno-0-749"></a><span class="nd">@validate_call</span>
+</span><span id="__span-0-750"><a id="__codelineno-0-750" name="__codelineno-0-750"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_history</span><span class="p">(</span>
+</span><span id="__span-0-751"><a id="__codelineno-0-751" name="__codelineno-0-751"></a>    <span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-0-752"><a id="__codelineno-0-752" name="__codelineno-0-752"></a>    <span class="o">*</span><span class="p">,</span>
+</span><span id="__span-0-753"><a id="__codelineno-0-753" name="__codelineno-0-753"></a>    <span class="nb">id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span>
+</span><span id="__span-0-754"><a id="__codelineno-0-754" name="__codelineno-0-754"></a>    <span class="n">order</span><span class="p">:</span> <span class="n">OrderBy</span> <span class="o">=</span> <span class="n">OrderBy</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">,</span>
+</span><span id="__span-0-755"><a id="__codelineno-0-755" name="__codelineno-0-755"></a>    <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+</span><span id="__span-0-756"><a id="__codelineno-0-756" name="__codelineno-0-756"></a>    <span class="n">entity</span><span class="p">:</span> <span class="n">HistoryEntity</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-757"><a id="__codelineno-0-757" name="__codelineno-0-757"></a>    <span class="n">blockId</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-758"><a id="__codelineno-0-758" name="__codelineno-0-758"></a>    <span class="n">startKey</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-759"><a id="__codelineno-0-759" name="__codelineno-0-759"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskHistory</span><span class="p">:</span>
+</span><span id="__span-0-760"><a id="__codelineno-0-760" name="__codelineno-0-760"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch the audit history for the specified task.</span>
+</span><span id="__span-0-761"><a id="__codelineno-0-761" name="__codelineno-0-761"></a>
+</span><span id="__span-0-762"><a id="__codelineno-0-762" name="__codelineno-0-762"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-763"><a id="__codelineno-0-763" name="__codelineno-0-763"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-764"><a id="__codelineno-0-764" name="__codelineno-0-764"></a><span class="sd">    id : TaskId</span>
+</span><span id="__span-0-765"><a id="__codelineno-0-765" name="__codelineno-0-765"></a><span class="sd">        The ID of the task to inspect.</span>
+</span><span id="__span-0-766"><a id="__codelineno-0-766" name="__codelineno-0-766"></a><span class="sd">    order : OrderBy, optional</span>
+</span><span id="__span-0-767"><a id="__codelineno-0-767" name="__codelineno-0-767"></a><span class="sd">        Sort order for history entries. Default is DESCENDING.</span>
+</span><span id="__span-0-768"><a id="__codelineno-0-768" name="__codelineno-0-768"></a><span class="sd">    limit : int, optional</span>
+</span><span id="__span-0-769"><a id="__codelineno-0-769" name="__codelineno-0-769"></a><span class="sd">        Maximum number of history entries to return.</span>
+</span><span id="__span-0-770"><a id="__codelineno-0-770" name="__codelineno-0-770"></a><span class="sd">    entity : HistoryEntity | None, optional</span>
+</span><span id="__span-0-771"><a id="__codelineno-0-771" name="__codelineno-0-771"></a><span class="sd">        Optional entity scope filter for history entries.</span>
+</span><span id="__span-0-772"><a id="__codelineno-0-772" name="__codelineno-0-772"></a><span class="sd">    blockId : str | None, optional</span>
+</span><span id="__span-0-773"><a id="__codelineno-0-773" name="__codelineno-0-773"></a><span class="sd">        Optional block ID filter for history entries.</span>
+</span><span id="__span-0-774"><a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">    startKey : str | None, optional</span>
+</span><span id="__span-0-775"><a id="__codelineno-0-775" name="__codelineno-0-775"></a><span class="sd">        Pagination key used to continue a previous history query.</span>
+</span><span id="__span-0-776"><a id="__codelineno-0-776" name="__codelineno-0-776"></a>
+</span><span id="__span-0-777"><a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-778"><a id="__codelineno-0-778" name="__codelineno-0-778"></a><span class="sd">    -------</span>
+</span><span id="__span-0-779"><a id="__codelineno-0-779" name="__codelineno-0-779"></a><span class="sd">    TaskHistory</span>
+</span><span id="__span-0-780"><a id="__codelineno-0-780" name="__codelineno-0-780"></a><span class="sd">        Task history response containing entries and pagination metadata.</span>
+</span><span id="__span-0-781"><a id="__codelineno-0-781" name="__codelineno-0-781"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-782"><a id="__codelineno-0-782" name="__codelineno-0-782"></a>    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-783"><a id="__codelineno-0-783" name="__codelineno-0-783"></a>        <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="n">limit</span><span class="p">,</span>
+</span><span id="__span-0-784"><a id="__codelineno-0-784" name="__codelineno-0-784"></a>        <span class="s2">&quot;orderBy&quot;</span><span class="p">:</span> <span class="n">order</span><span class="p">,</span>
+</span><span id="__span-0-785"><a id="__codelineno-0-785" name="__codelineno-0-785"></a>        <span class="s2">&quot;entity&quot;</span><span class="p">:</span> <span class="n">entity</span><span class="p">,</span>
+</span><span id="__span-0-786"><a id="__codelineno-0-786" name="__codelineno-0-786"></a>        <span class="s2">&quot;blockId&quot;</span><span class="p">:</span> <span class="n">blockId</span><span class="p">,</span>
+</span><span id="__span-0-787"><a id="__codelineno-0-787" name="__codelineno-0-787"></a>        <span class="s2">&quot;startKey&quot;</span><span class="p">:</span> <span class="n">startKey</span><span class="p">,</span>
+</span><span id="__span-0-788"><a id="__codelineno-0-788" name="__codelineno-0-788"></a>    <span class="p">}</span>
+</span><span id="__span-0-789"><a id="__codelineno-0-789" name="__codelineno-0-789"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">/history&quot;</span>
+</span><span id="__span-0-790"><a id="__codelineno-0-790" name="__codelineno-0-790"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+</span><span id="__span-0-791"><a id="__codelineno-0-791" name="__codelineno-0-791"></a>    <span class="k">return</span> <span class="n">TaskHistory</span><span class="p">(</span><span class="o">**</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

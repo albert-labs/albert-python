@@ -5506,6 +5506,11 @@ If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory
     </table>
 
 
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>The following fields can be updated: <code>custom_entity_categories</code>, <code>default</code>, <code>display_name</code>, <code>editable</code>, <code>entity_categories</code>, <code>hidden</code>, <code>lookup_column</code>, <code>lookup_row</code>, <code>max</code>, <code>min</code>, <code>multiselect</code>, <code>pattern</code>, <code>required</code>, <code>searchable</code>, <code>ui_components</code>.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/custom_fields.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-240">240</a></span>
@@ -5541,7 +5546,11 @@ If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory
 <span class="normal"><a href="#__codelineno-0-270">270</a></span>
 <span class="normal"><a href="#__codelineno-0-271">271</a></span>
 <span class="normal"><a href="#__codelineno-0-272">272</a></span>
-<span class="normal"><a href="#__codelineno-0-273">273</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">custom_field</span><span class="p">:</span> <span class="n">CustomField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CustomField</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-273">273</a></span>
+<span class="normal"><a href="#__codelineno-0-274">274</a></span>
+<span class="normal"><a href="#__codelineno-0-275">275</a></span>
+<span class="normal"><a href="#__codelineno-0-276">276</a></span>
+<span class="normal"><a href="#__codelineno-0-277">277</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">custom_field</span><span class="p">:</span> <span class="n">CustomField</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CustomField</span><span class="p">:</span>
 </span><span id="__span-0-241"><a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Update a CustomField item.</span>
 </span><span id="__span-0-242"><a id="__codelineno-0-242" name="__codelineno-0-242"></a>
 </span><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">    Parameters</span>
@@ -5553,28 +5562,32 @@ If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory
 </span><span id="__span-0-249"><a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">    -------</span>
 </span><span id="__span-0-250"><a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">    CustomField</span>
 </span><span id="__span-0-251"><a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">        The updated CustomField item as registered in Albert.</span>
-</span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a>    <span class="c1"># fetch current object state</span>
-</span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a>
-</span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a>    <span class="c1"># generate the patch payload</span>
-</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="n">_generate_custom_field_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span>
-</span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">custom_field</span><span class="p">,</span>
-</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="n">updatable_attributes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_updatable_attributes</span><span class="p">,</span>
-</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="p">)</span>
-</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a>
-</span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="c1"># run patch</span>
-</span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a>
-</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
-</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="n">url</span><span class="p">,</span>
-</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span>
-</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a>            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_unset</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span>
-</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="p">),</span>
-</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="p">)</span>
-</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="n">updated_ctf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a>    <span class="k">return</span> <span class="n">updated_ctf</span>
+</span><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a>
+</span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    Notes</span>
+</span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">    -----</span>
+</span><span id="__span-0-255"><a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    The following fields can be updated: ``custom_entity_categories``, ``default``, ``display_name``, ``editable``, ``entity_categories``, ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``, ``multiselect``, ``pattern``, ``required``, ``searchable``, ``ui_components``.</span>
+</span><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a>    <span class="c1"># fetch current object state</span>
+</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-259"><a id="__codelineno-0-259" name="__codelineno-0-259"></a>
+</span><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a>    <span class="c1"># generate the patch payload</span>
+</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="n">_generate_custom_field_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span>
+</span><span id="__span-0-263"><a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">custom_field</span><span class="p">,</span>
+</span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264"></a>        <span class="n">updatable_attributes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_updatable_attributes</span><span class="p">,</span>
+</span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="p">)</span>
+</span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266"></a>
+</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="c1"># run patch</span>
+</span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269"></a>
+</span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span>
+</span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">url</span><span class="p">,</span>
+</span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span>
+</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a>            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_unset</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span>
+</span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="p">),</span>
+</span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="p">)</span>
+</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a>    <span class="n">updated_ctf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">custom_field</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-277"><a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="k">return</span> <span class="n">updated_ctf</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5653,11 +5666,7 @@ If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/custom_fields.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-275">275</a></span>
-<span class="normal"><a href="#__codelineno-0-276">276</a></span>
-<span class="normal"><a href="#__codelineno-0-277">277</a></span>
-<span class="normal"><a href="#__codelineno-0-278">278</a></span>
-<span class="normal"><a href="#__codelineno-0-279">279</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-279">279</a></span>
 <span class="normal"><a href="#__codelineno-0-280">280</a></span>
 <span class="normal"><a href="#__codelineno-0-281">281</a></span>
 <span class="normal"><a href="#__codelineno-0-282">282</a></span>
@@ -5666,20 +5675,24 @@ If the <code>FieldType</code> is <code>LIST</code>, then the <code>FieldCategory
 <span class="normal"><a href="#__codelineno-0-285">285</a></span>
 <span class="normal"><a href="#__codelineno-0-286">286</a></span>
 <span class="normal"><a href="#__codelineno-0-287">287</a></span>
-<span class="normal"><a href="#__codelineno-0-288">288</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="nd">@validate_call</span>
-</span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">CustomFieldId</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-277"><a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete a CustomField item by its ID.</span>
-</span><span id="__span-0-278"><a id="__codelineno-0-278" name="__codelineno-0-278"></a>
-</span><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">    id : CustomFieldId</span>
-</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        The ID of the CustomField item to delete.</span>
-</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a>
-</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    -------</span>
-</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">    None</span>
-</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-288">288</a></span>
+<span class="normal"><a href="#__codelineno-0-289">289</a></span>
+<span class="normal"><a href="#__codelineno-0-290">290</a></span>
+<span class="normal"><a href="#__codelineno-0-291">291</a></span>
+<span class="normal"><a href="#__codelineno-0-292">292</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-279"><a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="nd">@validate_call</span>
+</span><span id="__span-0-280"><a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">CustomFieldId</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-281"><a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete a CustomField item by its ID.</span>
+</span><span id="__span-0-282"><a id="__codelineno-0-282" name="__codelineno-0-282"></a>
+</span><span id="__span-0-283"><a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-284"><a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-285"><a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    id : CustomFieldId</span>
+</span><span id="__span-0-286"><a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        The ID of the CustomField item to delete.</span>
+</span><span id="__span-0-287"><a id="__codelineno-0-287" name="__codelineno-0-287"></a>
+</span><span id="__span-0-288"><a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-289"><a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">    -------</span>
+</span><span id="__span-0-290"><a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">    None</span>
+</span><span id="__span-0-291"><a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-292"><a id="__codelineno-0-292" name="__codelineno-0-292"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

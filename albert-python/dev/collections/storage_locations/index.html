@@ -5338,6 +5338,11 @@
     </table>
 
 
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>The following fields can be updated: <code>name</code>.</p>
+</details>
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/storage_locations.py</code></summary>
               <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-167">167</a></span>
@@ -5359,7 +5364,11 @@
 <span class="normal"><a href="#__codelineno-0-183">183</a></span>
 <span class="normal"><a href="#__codelineno-0-184">184</a></span>
 <span class="normal"><a href="#__codelineno-0-185">185</a></span>
-<span class="normal"><a href="#__codelineno-0-186">186</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">storage_location</span><span class="p">:</span> <span class="n">StorageLocation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StorageLocation</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-186">186</a></span>
+<span class="normal"><a href="#__codelineno-0-187">187</a></span>
+<span class="normal"><a href="#__codelineno-0-188">188</a></span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span>
+<span class="normal"><a href="#__codelineno-0-190">190</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">storage_location</span><span class="p">:</span> <span class="n">StorageLocation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StorageLocation</span><span class="p">:</span>
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Update a storage location.</span>
 </span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>
 </span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a><span class="sd">    Parameters</span>
@@ -5371,14 +5380,18 @@
 </span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">    -------</span>
 </span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a><span class="sd">    StorageLocation</span>
 </span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">        The updated storage location as returned by the server.</span>
-</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a>        <span class="n">existing</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
-</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
-</span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184"></a>    <span class="p">)</span>
-</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-</span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-179"><a id="__codelineno-0-179" name="__codelineno-0-179"></a>
+</span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180"></a><span class="sd">    Notes</span>
+</span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="sd">    -----</span>
+</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="sd">    The following fields can be updated: ``name``.</span>
+</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186"></a>        <span class="n">existing</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+</span><span id="__span-0-187"><a id="__codelineno-0-187" name="__codelineno-0-187"></a>        <span class="n">updated</span><span class="o">=</span><span class="n">storage_location</span><span class="p">,</span>
+</span><span id="__span-0-188"><a id="__codelineno-0-188" name="__codelineno-0-188"></a>    <span class="p">)</span>
+</span><span id="__span-0-189"><a id="__codelineno-0-189" name="__codelineno-0-189"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</span><span id="__span-0-190"><a id="__codelineno-0-190" name="__codelineno-0-190"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">storage_location</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
