@@ -95,6 +95,10 @@ class BTDatasetCollection(BaseCollection):
         -------
         BTDataset
             The updated BTDataset object.
+
+        Notes
+        -----
+        The following fields can be updated: ``file_name``, ``key``, ``name``, ``references``.
         """
         path = f"{self.base_path}/{dataset.id}"
         payload = self._generate_patch_payload(

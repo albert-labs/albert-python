@@ -150,6 +150,10 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The refreshed synthesis record.
 
+        Notes
+        -----
+        The following fields can be updated: ``hide_reaction_worksheet``, ``name``, ``status``.
+
         Raises
         ------
         AlbertException

@@ -107,6 +107,10 @@ class LocationCollection(BaseCollection):
         -------
         Location
             The updated Location entity as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``address``, ``country``, ``latitude``, ``longitude``, ``name``.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=location.id)

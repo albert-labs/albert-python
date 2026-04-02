@@ -192,6 +192,10 @@ class ListsCollection(BaseCollection):
         -------
         ListItem
             The updated list item.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``.
         """
         existing = self.get_by_id(id=list_item.id)
         patches = self._generate_patch_payload(

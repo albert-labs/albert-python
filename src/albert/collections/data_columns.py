@@ -182,6 +182,10 @@ class DataColumnCollection(BaseCollection):
         -------
         DataColumn
             The updated data column object as registered in Albert.
+
+        Notes
+        -----
+        The following fields can be updated: ``metadata``, ``name``.
         """
         existing = self.get_by_id(id=data_column.id)
         payload = self._generate_patch_payload(

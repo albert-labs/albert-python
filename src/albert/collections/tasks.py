@@ -720,6 +720,10 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The updated Task object as it exists in the Albert platform.
+
+        Notes
+        -----
+        The following fields can be updated: ``due_date``, ``metadata``, ``name``, ``priority``, ``state``.
         """
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(

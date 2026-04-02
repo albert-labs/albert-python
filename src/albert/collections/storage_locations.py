@@ -176,6 +176,10 @@ class StorageLocationsCollection(BaseCollection):
         -------
         StorageLocation
             The updated storage location as returned by the server.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``.
         """
         path = f"{self.base_path}/{storage_location.id}"
         payload = self._generate_patch_payload(

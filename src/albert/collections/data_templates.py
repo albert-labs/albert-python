@@ -352,6 +352,10 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The Updated DataTemplate object.
 
+        Notes
+        -----
+        The following fields can be updated: ``description``, ``metadata``, ``name``.
+
         Warnings
         --------
         Only scalar data column values (text, number, dropdown) can be updated using this function. Use

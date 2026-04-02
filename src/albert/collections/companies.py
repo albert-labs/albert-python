@@ -279,6 +279,10 @@ class CompanyCollection(BaseCollection):
         -------
         Company
             The updated Company object as registered in Albert.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)
