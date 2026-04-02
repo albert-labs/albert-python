@@ -77,6 +77,14 @@ Expose a `max_items` parameter on public list/search methods where appropriate t
   - Right: `"""Update an attachment."""`
   - Wrong: `The updated attachment returned by the API.`
   - Right: `The updated Attachment.`
+- Every `update()` method must have a `Notes` section listing the fields that can be updated. Keep it in sync whenever a field is added to or removed from `updatable_attributes`:
+
+```python
+Notes
+-----
+The following fields can be updated: ``field_a``, ``field_b``, ``field_c``.
+```
+
 - Every collection class docstring must include a `Methods` section listing all public methods:
 
 ```python
