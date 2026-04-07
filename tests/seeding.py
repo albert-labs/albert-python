@@ -1814,6 +1814,7 @@ def generate_report_seeds(
 
 def generate_target_seeds(
     seed_prefix: str,
+    seeded_data_templates: list[DataTemplate],
 ) -> list[Target]:
     """
     Generates a list of Target seed objects for testing.
@@ -1822,41 +1823,54 @@ def generate_target_seeds(
     ----------
     seed_prefix : str
         Prefix to use for generating unique names.
+    seeded_data_templates : list[DataTemplate]
+        List of seeded DataTemplate objects to reference in targets.
 
     Returns
     -------
     list[Target]
         A list of Target objects with different configurations.
     """
+    enum_template = [
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Enum Validation Template"
+    ].pop()
+
+    enum_data_column = enum_template.data_column_values[0]
+
+    number_template = [
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Number Validation Template"
+    ].pop()
+    number_data_column = number_template.data_column_values[0]
+
     return [
         Target(
             name=f"{seed_prefix} - gte",
-            data_template_id="DAT123",
-            data_column_id="DAC123",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
             target_value=TargetValue(operator=TargetOperator.GTE, value=10),
             is_required=True,
         ),
         Target(
             name=f"{seed_prefix} - lte",
-            data_template_id="DAT123",
-            data_column_id="DAC123",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
             target_value=TargetValue(operator=TargetOperator.LTE, value=10),
             is_required=True,
         ),
         Target(
             name=f"{seed_prefix} - between",
-            data_template_id="DAT123",
-            data_column_id="DAC123",
+            data_template_id=number_template.id,
+            data_column_id=number_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
             target_value=TargetValue(operator=TargetOperator.BETWEEN, value={"min": 5, "max": 15}),
             is_required=False,
         ),
         Target(
             name=f"{seed_prefix} - in-set",
-            data_template_id="DAT123",
-            data_column_id="DAC123",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
             target_value=TargetValue(operator=TargetOperator.IN_SET, value=["A", "B", "C"]),
             is_required=False,
@@ -1864,18 +1878,26 @@ def generate_target_seeds(
     ]
 
 
-def generate_smart_dataset_seeds() -> list[SmartDatasetScope]:
+def generate_smart_dataset_seed(
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> SmartDatasetScope:
     """
-    Generates a list of SmartDatasetScope seed objects for testing.
+    Generates a SmartDatasetScope seed object for testing.
+
+    Parameters
+    ----------
+    seeded_projects : list[Project]
+        List of seeded Project objects.
+    seeded_targets : list[Target]
+        List of seeded Target objects.
 
     Returns
     -------
-    list[SmartDatasetScope]
-        A list of SmartDatasetScope objects with different configurations.
+    SmartDatasetScope
+        A SmartDatasetScope object with different configurations.
     """
-    return [
-        SmartDatasetScope(
-            project_ids=["PRO123"],
-            target_ids=["TAR123"],
-        ),
-    ]
+    return SmartDatasetScope(
+        project_ids=[project.id for project in seeded_projects],
+        target_ids=[target.id for target in seeded_targets],
+    )

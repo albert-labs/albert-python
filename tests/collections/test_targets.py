@@ -1,21 +1,27 @@
-import uuid
-
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.enums import Status
 from albert.exceptions import NotFoundError
+from albert.resources.data_templates import DataTemplate
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
-def test_target_create(client: Albert):
+def test_target_create(
+    client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
+):
     """Test creating a new performance target."""
-    name = f"TEST_TAR_{uuid.uuid4()}"
+
+    number_template = [
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Number Validation Template"
+    ].pop()
+    number_data_column = number_template.data_column_values[0]
+
+    name = f"{seed_prefix} - Test Target"
     target = Target(
         name=name,
-        data_template_id="DAT123",
-        data_column_id="DAC123",
+        data_template_id=number_template.id,
+        data_column_id=number_data_column.data_column_id,
         type=TargetType.PERFORMANCE,
         target_value=TargetValue(operator=TargetOperator.LTE, value=100),
         is_required=True,
@@ -24,8 +30,8 @@ def test_target_create(client: Albert):
     assert isinstance(created, Target)
     assert created.id.startswith("TAR")
     assert created.name == name
-    assert created.data_template_id == "DAT123"
-    assert created.data_column_id == "DAC123"
+    assert created.data_template_id == number_template.id
+    assert created.data_column_id == number_data_column.data_column_id
     assert created.type == TargetType.PERFORMANCE
     assert created.target_value.operator == TargetOperator.LTE
     assert created.target_value.value == 100
@@ -35,7 +41,6 @@ def test_target_create(client: Albert):
     client.targets.delete(id=created.id)
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     """Test retrieving a target by its ID."""
     target = seeded_targets[0]
@@ -45,7 +50,6 @@ def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     assert fetched.name == target.name
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_get_by_ids(client: Albert, seeded_targets: list[Target]):
     """Test bulk fetching targets by IDs."""
     ids = [t.id for t in seeded_targets[:2]]
@@ -57,13 +61,12 @@ def test_target_get_by_ids(client: Albert, seeded_targets: list[Target]):
         assert target_id in fetched_ids
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
-def test_target_delete(client: Albert, seeded_targets: list[Target]):
+def test_target_delete(client: Albert, seed_prefix: str, seeded_targets: list[Target]):
     """Test creating and deleting a target."""
 
     # create a new target
     target = Target(
-        name=f"TEST_TAR_{uuid.uuid4()}",
+        name=f"{seed_prefix} - Test Target",
         data_template_id=seeded_targets[0].data_template_id,
         data_column_id=seeded_targets[0].data_column_id,
         type=TargetType.PERFORMANCE,
