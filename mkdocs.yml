@@ -141,10 +141,11 @@ nav:
               - Breakthrough Insights: collections/btinsight.md
               - Breakthrough Model: collections/btmodel.md
           - Cas: collections/cas.md
-          - Chat:
-              - Chat Folders: collections/chat_folders.md
-              - Chat Messages: collections/chat_messages.md
-              - Chat Sessions: collections/chat_sessions.md
+          - Chat (🧪Beta):
+              - Chat Flags (🧪Beta): collections/chat_flags.md
+              - Chat Folders (🧪Beta): collections/chat_folders.md
+              - Chat Messages (🧪Beta): collections/chat_messages.md
+              - Chat Sessions (🧪Beta): collections/chat_sessions.md
           - Companies: collections/companies.md
           - Custom Fields: collections/custom_fields.md
           - Custom Templates: collections/custom_templates.md
@@ -192,7 +193,7 @@ nav:
               - Breakthrough Insights: resources/btinsight.md
               - Breakthrough Model: resources/btmodel.md
           - Cas: resources/cas.md
-          - Chats: resources/chats.md
+          - Chats (🧪Beta): resources/chats.md
           - Companies: resources/companies.md
           - Custom Fields: resources/custom_fields.md
           - Custom Templates: resources/custom_templates.md
