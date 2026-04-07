@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta6](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta5...v1.23.0-beta6) (2026-04-07)
+
+
+### Features
+
+* **chats:** add update, delete, flags, and session/folder enhancements ([#453](https://github.com/albert-labs/albert-python/issues/453)) ([ebde070](https://github.com/albert-labs/albert-python/commit/ebde0702763a7c3ef0a5c955a1a79243cc58b47d))
+
 ## [1.23.0-beta5](https://github.com/albert-labs/albert-python/compare/v1.22.1...v1.23.0-beta5) (2026-04-07)
 
 
