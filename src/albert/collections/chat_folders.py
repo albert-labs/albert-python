@@ -10,7 +10,32 @@ from albert.resources.chats import ChatFolder
 
 
 class ChatFolderCollection:
-    """Async collection for managing chat folders."""
+    """
+    Async collection for managing chat folders.
+
+    Parameters
+    ----------
+    session : AsyncAlbertSession
+        The Albert async session instance.
+
+    Attributes
+    ----------
+    base_path : str
+        The base URL for chat folder API requests.
+
+    Methods
+    -------
+    create(folder) -> ChatFolder
+        Creates a new chat folder.
+    get_by_id(id) -> ChatFolder
+        Retrieves a chat folder by its ID.
+    get_all(name, exact_match, max_items) -> AsyncIterator[ChatFolder]
+        Iterates over chat folders with optional filters.
+    update(id, ...) -> ChatFolder
+        Updates a chat folder by ID.
+    delete(id) -> None
+        Deletes a chat folder by its ID.
+    """
 
     _api_version = "v3"
 
@@ -69,8 +94,6 @@ class ChatFolderCollection:
         self,
         *,
         name: list[str] | None = None,
-        created_by: str | None = None,
-        updated_by: str | None = None,
         exact_match: bool = False,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatFolder]:
@@ -81,10 +104,6 @@ class ChatFolderCollection:
         ----------
         name : list[str] | None, optional
             Filter by folder name(s).
-        created_by : str | None, optional
-            Filter by the user who created the folder.
-        updated_by : str | None, optional
-            Filter by the user who last updated the folder.
         exact_match : bool, optional
             Whether name filtering uses exact matching (default False).
         max_items : int | None, optional
@@ -95,13 +114,9 @@ class ChatFolderCollection:
         ChatFolder
             Folders matching the given filters.
         """
-        params: dict = {}
+        params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
-        if created_by is not None:
-            params["createdBy"] = created_by
-        if updated_by is not None:
-            params["updatedBy"] = updated_by
         if exact_match:
             params["exactMatch"] = "true"
 
@@ -113,6 +128,45 @@ class ChatFolderCollection:
             max_items=max_items,
         ):
             yield folder
+
+    @validate_call
+    async def update(
+        self,
+        *,
+        id: str,
+        name: str | None = None,
+        sequence: list[str] | None = None,
+    ) -> ChatFolder:
+        """
+        Update a chat folder.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the folder to update.
+        name : str | None, optional
+            New display name for the folder.
+        sequence : list | None, optional
+            New ordering of child sessions or folders.
+
+        Returns
+        -------
+        ChatFolder
+            The updated folder.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``sequence``.
+        """
+        data = []
+        if name is not None:
+            data.append({"operation": "update", "attribute": "name", "newValue": name})
+        if sequence is not None:
+            data.append({"operation": "update", "attribute": "sequence", "newValue": sequence})
+        if not data:
+            return await self.get_by_id(id=id)
+        await self._session.patch(f"{self.base_path}/{id}", json={"data": data})
+        return await self.get_by_id(id=id)
 
     @validate_call
     async def delete(self, *, id: str) -> None:

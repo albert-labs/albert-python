@@ -11,7 +11,27 @@ from albert.resources.chats import ChatComponentType, ChatMessage
 
 
 class ChatMessageCollection:
-    """Async collection for managing messages within a chat session."""
+    """
+    Async collection for managing messages within a chat session.
+
+    Parameters
+    ----------
+    session : AsyncAlbertSession
+        The Albert async session instance.
+
+    Methods
+    -------
+    create(message) -> ChatMessage
+        Adds a message to a chat session.
+    get_by_id(session_id, source_request_id, sequence, component_type) -> ChatMessage
+        Retrieves a single message by its source request ID and sequence.
+    get_all(session_id, ...) -> AsyncIterator[ChatMessage]
+        Iterates over messages in a session.
+    update(session_id, source_request_id, sequence, content) -> ChatMessage
+        Updates the content of a message.
+    delete(session_id, source_request_id, sequence) -> None
+        Deletes a message from a session.
+    """
 
     _api_version = "v3"
 
@@ -49,6 +69,10 @@ class ChatMessageCollection:
         payload.setdefault("sourceRequestId", str(uuid.uuid4()))
         url = f"{self._sessions_base}/{message.parent_id}/messages"
         response = await self._session.post(url, json=payload)
+        # TODO(backend): POST /sessions/{id}/messages response does not include the
+        # Content field, so message.content will be None after create. The create
+        # response should mirror the full message object including Content so callers
+        # don't need a follow-up get_by_id to access the payload they just sent.
         return ChatMessage(**response.json())
 
     @validate_call
@@ -115,3 +139,71 @@ class ChatMessageCollection:
             max_items=max_items,
         ):
             yield message
+
+    @validate_call
+    async def update(
+        self,
+        *,
+        session_id: str,
+        source_request_id: str,
+        sequence: str,
+        content: str | dict,
+    ) -> ChatMessage:
+        """
+        Update the content of a message.
+
+        Parameters
+        ----------
+        session_id : str
+            The ID of the parent session.
+        source_request_id : str
+            The request trace identifier of the message.
+        sequence : str
+            The zero-padded sequence of the message (e.g. "000").
+        content : str | dict
+            The new content for the message.
+
+        Returns
+        -------
+        ChatMessage
+            The updated message.
+
+        Notes
+        -----
+        The following fields can be updated: ``content``.
+        """
+        url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
+        payload = {"data": [{"operation": "update", "attribute": "Content", "newValue": content}]}
+        await self._session.patch(url, params={"sequence": sequence}, json=payload)
+        return await self.get_by_id(
+            session_id=session_id,
+            source_request_id=source_request_id,
+            sequence=sequence,
+        )
+
+    @validate_call
+    async def delete(
+        self,
+        *,
+        session_id: str,
+        source_request_id: str,
+        sequence: str,
+    ) -> None:
+        """
+        Delete a message from a session.
+
+        Parameters
+        ----------
+        session_id : str
+            The ID of the parent session.
+        source_request_id : str
+            The request trace identifier of the message.
+        sequence : str
+            The zero-padded sequence of the message (e.g. "000").
+
+        Returns
+        -------
+        None
+        """
+        url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
+        await self._session.delete(url, params={"sequence": sequence})

@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from collections.abc import AsyncGenerator, Iterator
@@ -103,12 +104,10 @@ def client() -> Albert:
 
 @pytest_asyncio.fixture(scope="session")
 async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
-    credentials = AlbertClientCredentials.from_env(
-        client_id_env="ALBERT_CLIENT_ID_SDK",
-        client_secret_env="ALBERT_CLIENT_SECRET_SDK",
-        base_url_env="ALBERT_BASE_URL",
+    client = AsyncAlbert.from_token(
+        base_url=os.getenv("ALBERT_BASE_URL"),
+        token=os.getenv("ALBERT_TOKEN"),
     )
-    client = AsyncAlbert(auth_manager=credentials)
     yield client
     await client.aclose()
 

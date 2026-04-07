@@ -10,7 +10,34 @@ from albert.resources.chats import ChatSession
 
 
 class ChatSessionCollection:
-    """Async collection for managing chat sessions."""
+    """
+    Async collection for managing chat sessions.
+
+    Parameters
+    ----------
+    session : AsyncAlbertSession
+        The Albert async session instance.
+
+    Attributes
+    ----------
+    base_path : str
+        The base URL for chat session API requests.
+
+    Methods
+    -------
+    create(session) -> ChatSession
+        Creates a new chat session.
+    get_by_id(id) -> ChatSession
+        Retrieves a chat session by its ID.
+    get_by_source_session_id(source_session_id) -> ChatSession
+        Retrieves a chat session by its external source session ID.
+    get_all(name, exact_match, parent_id, max_items) -> AsyncIterator[ChatSession]
+        Iterates over chat sessions with optional filters.
+    update(id, ...) -> ChatSession
+        Updates a chat session by ID.
+    delete(id) -> None
+        Deletes a chat session by its ID.
+    """
 
     _api_version = "v3"
 
@@ -87,9 +114,8 @@ class ChatSessionCollection:
         self,
         *,
         name: list[str] | None = None,
-        created_by: str | None = None,
-        updated_by: str | None = None,
         exact_match: bool = False,
+        parent_id: str | None = None,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatSession]:
         """
@@ -99,12 +125,10 @@ class ChatSessionCollection:
         ----------
         name : list[str] | None, optional
             Filter by session name(s).
-        created_by : str | None, optional
-            Filter by the user who created the session.
-        updated_by : str | None, optional
-            Filter by the user who last updated the session.
         exact_match : bool, optional
             Whether name filtering uses exact matching (default False).
+        parent_id : str | None, optional
+            Filter sessions by folder ID.
         max_items : int | None, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -113,15 +137,13 @@ class ChatSessionCollection:
         ChatSession
             Sessions matching the given filters.
         """
-        params: dict = {}
+        params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
-        if created_by is not None:
-            params["createdBy"] = created_by
-        if updated_by is not None:
-            params["updatedBy"] = updated_by
         if exact_match:
             params["exactMatch"] = "true"
+        if parent_id is not None:
+            params["parentId"] = parent_id
 
         async for session in AsyncAlbertPaginator(
             session=self._session,
@@ -131,6 +153,45 @@ class ChatSessionCollection:
             max_items=max_items,
         ):
             yield session
+
+    @validate_call
+    async def update(
+        self,
+        *,
+        id: str,
+        name: str | None = None,
+        parent_id: str | None = None,
+    ) -> ChatSession:
+        """
+        Update a chat session.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the session to update.
+        name : str | None, optional
+            New display name for the session.
+        parent_id : str | None, optional
+            New parent folder ID for the session.
+
+        Returns
+        -------
+        ChatSession
+            The updated session.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``parent_id``.
+        """
+        data = []
+        if name is not None:
+            data.append({"operation": "update", "attribute": "name", "newValue": name})
+        if parent_id is not None:
+            data.append({"operation": "update", "attribute": "parentId", "newValue": parent_id})
+        if not data:
+            return await self.get_by_id(id=id)
+        await self._session.patch(f"{self.base_path}/{id}", json={"data": data})
+        return await self.get_by_id(id=id)
 
     @validate_call
     async def delete(self, *, id: str) -> None:

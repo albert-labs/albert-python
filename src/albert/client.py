@@ -11,6 +11,7 @@ from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
 from albert.collections.btmodel import BTModelCollection, BTModelSessionCollection
 from albert.collections.cas import CasCollection
+from albert.collections.chat_flags import ChatFlagCollection
 from albert.collections.chat_folders import ChatFolderCollection
 from albert.collections.chat_messages import ChatMessageCollection
 from albert.collections.chat_sessions import ChatSessionCollection
@@ -386,6 +387,8 @@ class AsyncAlbert:
         Access to chat message API methods.
     chat_folders : ChatFolderCollection
         Access to chat folder API methods.
+    chat_flags : ChatFlagCollection
+        Access to chat flag API methods.
 
     Examples
     --------
@@ -499,6 +502,10 @@ class AsyncAlbert:
     @property
     def chat_folders(self) -> ChatFolderCollection:
         return ChatFolderCollection(session=self.session)
+
+    @property
+    def chat_flags(self) -> ChatFlagCollection:
+        return ChatFlagCollection(session=self.session)
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
