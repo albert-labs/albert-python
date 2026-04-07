@@ -69,6 +69,10 @@ class ChatMessageCollection:
         payload.setdefault("sourceRequestId", str(uuid.uuid4()))
         url = f"{self._sessions_base}/{message.parent_id}/messages"
         response = await self._session.post(url, json=payload)
+        # TODO(backend): POST /sessions/{id}/messages response does not include the
+        # Content field, so message.content will be None after create. The create
+        # response should mirror the full message object including Content so callers
+        # don't need a follow-up get_by_id to access the payload they just sent.
         return ChatMessage(**response.json())
 
     @validate_call

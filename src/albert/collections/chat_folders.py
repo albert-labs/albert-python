@@ -114,7 +114,7 @@ class ChatFolderCollection:
         ChatFolder
             Folders matching the given filters.
         """
-        params: dict = {}
+        params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
         if exact_match:
@@ -135,7 +135,7 @@ class ChatFolderCollection:
         *,
         id: str,
         name: str | None = None,
-        sequence: list | None = None,
+        sequence: list[str] | None = None,
     ) -> ChatFolder:
         """
         Update a chat folder.
@@ -163,6 +163,8 @@ class ChatFolderCollection:
             data.append({"operation": "update", "attribute": "name", "newValue": name})
         if sequence is not None:
             data.append({"operation": "update", "attribute": "sequence", "newValue": sequence})
+        if not data:
+            return await self.get_by_id(id=id)
         await self._session.patch(f"{self.base_path}/{id}", json={"data": data})
         return await self.get_by_id(id=id)
 

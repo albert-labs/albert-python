@@ -137,7 +137,7 @@ class ChatSessionCollection:
         ChatSession
             Sessions matching the given filters.
         """
-        params: dict = {}
+        params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
         if exact_match:
@@ -188,6 +188,8 @@ class ChatSessionCollection:
             data.append({"operation": "update", "attribute": "name", "newValue": name})
         if parent_id is not None:
             data.append({"operation": "update", "attribute": "parentId", "newValue": parent_id})
+        if not data:
+            return await self.get_by_id(id=id)
         await self._session.patch(f"{self.base_path}/{id}", json={"data": data})
         return await self.get_by_id(id=id)
 

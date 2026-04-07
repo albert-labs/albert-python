@@ -89,7 +89,7 @@ class ChatFlagCollection:
             The flags set on the message.
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
-        params: dict = {}
+        params: dict[str, str] = {}
         if sequence is not None:
             params["sequence"] = sequence
         response = await self._session.get(url, params=params)
@@ -127,7 +127,7 @@ class ChatFlagCollection:
             The created flag.
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
-        params: dict = {"sequence": sequence, "type": type.value}
+        params: dict[str, str] = {"sequence": sequence, "type": type.value}
         if component_type is not None:
             params["componentType"] = component_type.value
         response = await self._session.post(url, params=params)
@@ -164,7 +164,7 @@ class ChatFlagCollection:
         None
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
-        params: dict = {"sequence": sequence, "type": type.value}
+        params: dict[str, str] = {"sequence": sequence, "type": type.value}
         if component_type is not None:
             params["componentType"] = component_type.value
         await self._session.delete(url, params=params)
