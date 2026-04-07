@@ -866,10 +866,12 @@ def seeded_reports(
 def seeded_targets(
     client: Albert,
     seed_prefix: str,
+    seeded_data_templates: list[DataTemplate],
 ) -> Iterator[list[Target]]:
     seeded = []
     for target in generate_target_seeds(
         seed_prefix=seed_prefix,
+        seeded_data_templates=seeded_data_templates,
     ):
         created_target = client.targets.create(target=target)
         seeded.append(created_target)
