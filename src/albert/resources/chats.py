@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import Field
 
+from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
 
 
@@ -113,6 +114,7 @@ class ChatMessage(BaseResource):
     span_id: str | None = Field(default=None, alias="spanId")
     is_visible: bool | None = Field(default=None, alias="isVisible")
     display_feedback: bool | None = Field(default=None, alias="displayFeedback")
+    value: list[dict] | None = Field(default=None)
 
 
 class ChatFolder(BaseResource):
@@ -135,3 +137,71 @@ class ChatFolder(BaseResource):
     name: str
     folder_type: ChatFolderType | None = Field(default=None, alias="type")
     parent_id: str | None = Field(default=None, alias="parentId")
+
+
+class ChatFlagType(str, Enum):
+    """Type of flag that can be applied to a chat message."""
+
+    STARRED = "starred"
+    DOWNLOADED = "downloaded"
+    REQUESTED = "requested"
+    HALLUCINATED = "hallucinated"
+
+
+class ChatFlag(BaseResource):
+    """
+    A flag applied to a chat message.
+
+    Attributes
+    ----------
+    source_request_id : str | None
+        Request/trace identifier for the flagged message.
+    id : str | None
+        Message identifier.
+    parent_id : str | None
+        Parent session ID of the flagged message.
+    type : ChatFlagType | None
+        The type of flag.
+    component_type : ChatComponentType | None
+        Component type of the flagged message.
+    sequence : str | None
+        Zero-padded sequence of the flagged message.
+    starred : bool | None
+        Whether the message is starred.
+    requested : bool | None
+        Whether the message is marked as requested.
+    downloaded : bool | None
+        Whether the message is marked as downloaded.
+    hallucinated : bool | None
+        Whether the message is marked as hallucinated.
+    """
+
+    source_request_id: str | None = Field(default=None, alias="sourceRequestId")
+    id: str | None = Field(default=None)
+    parent_id: str | None = Field(default=None, alias="parentId")
+    type: ChatFlagType | None = Field(default=None)
+    component_type: ChatComponentType | None = Field(default=None, alias="componentType")
+    sequence: str | None = Field(default=None)
+    starred: bool | None = Field(default=None)
+    requested: bool | None = Field(default=None)
+    downloaded: bool | None = Field(default=None)
+    hallucinated: bool | None = Field(default=None)
+
+
+class ChatFlagsInMessage(BaseAlbertModel):
+    """
+    The set of flags applied to a specific chat message.
+
+    Attributes
+    ----------
+    source_request_id : str | None
+        Request/trace identifier for the message.
+    total : int | None
+        Total number of flags on the message.
+    flags : list[ChatFlagType] | None
+        List of flag types set on the message.
+    """
+
+    source_request_id: str | None = Field(default=None, alias="sourceRequestId")
+    total: int | None = None
+    flags: list[ChatFlagType] | None = None
