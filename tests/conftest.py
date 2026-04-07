@@ -77,7 +77,7 @@ from tests.seeding import (
     generate_pricing_seeds,
     generate_project_seeds,
     generate_report_seeds,
-    generate_smart_dataset_seeds,
+    generate_smart_dataset_seed,
     generate_storage_location_seeds,
     generate_tag_seeds,
     generate_target_seeds,
@@ -880,17 +880,19 @@ def seeded_targets(
 
 
 @pytest.fixture(scope="session")
-def seeded_smart_datasets(
+def seeded_smart_dataset(
     client: Albert,
-) -> Iterator[list[SmartDataset]]:
-    seeded = []
-    for scope in generate_smart_dataset_seeds():
-        created = client.smart_datasets.create(scope=scope, build=False)
-        seeded.append(created)
-    yield seeded
-    for smart_dataset in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.smart_datasets.delete(id=smart_dataset.id)
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> Iterator[SmartDataset]:
+    scope = generate_smart_dataset_seed(
+        seeded_projects=seeded_projects,
+        seeded_targets=seeded_targets,
+    )
+    created = client.smart_datasets.create(scope=scope, build=False)
+    yield created
+    with suppress(NotFoundError, BadRequestError):
+        client.smart_datasets.delete(id=created.id)
 
 
 @pytest_asyncio.fixture(scope="function")

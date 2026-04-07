@@ -8,7 +8,6 @@ from albert.exceptions import NotFoundError
 from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_create(client: Albert):
     """Test creating a new performance target."""
     name = f"TEST_TAR_{uuid.uuid4()}"
@@ -35,7 +34,6 @@ def test_target_create(client: Albert):
     client.targets.delete(id=created.id)
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     """Test retrieving a target by its ID."""
     target = seeded_targets[0]
@@ -45,7 +43,6 @@ def test_target_get_by_id(client: Albert, seeded_targets: list[Target]):
     assert fetched.name == target.name
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_get_by_ids(client: Albert, seeded_targets: list[Target]):
     """Test bulk fetching targets by IDs."""
     ids = [t.id for t in seeded_targets[:2]]
@@ -57,7 +54,6 @@ def test_target_get_by_ids(client: Albert, seeded_targets: list[Target]):
         assert target_id in fetched_ids
 
 
-@pytest.mark.xfail(reason="Targets API is not deployed yet.")
 def test_target_delete(client: Albert, seeded_targets: list[Target]):
     """Test creating and deleting a target."""
 

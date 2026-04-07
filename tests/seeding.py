@@ -1864,18 +1864,26 @@ def generate_target_seeds(
     ]
 
 
-def generate_smart_dataset_seeds() -> list[SmartDatasetScope]:
+def generate_smart_dataset_seed(
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> SmartDatasetScope:
     """
-    Generates a list of SmartDatasetScope seed objects for testing.
+    Generates a SmartDatasetScope seed object for testing.
+
+    Parameters
+    ----------
+    seeded_projects : list[Project]
+        List of seeded Project objects.
+    seeded_targets : list[Target]
+        List of seeded Target objects.
 
     Returns
     -------
-    list[SmartDatasetScope]
-        A list of SmartDatasetScope objects with different configurations.
+    SmartDatasetScope
+        A SmartDatasetScope object with different configurations.
     """
-    return [
-        SmartDatasetScope(
-            project_ids=["PRO123"],
-            target_ids=["TAR123"],
-        ),
-    ]
+    return SmartDatasetScope(
+        project_ids=[project.id for project in seeded_projects],
+        target_ids=[target.id for target in seeded_targets],
+    )
