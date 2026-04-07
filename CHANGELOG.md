@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.1](https://github.com/albert-labs/albert-python/compare/v1.22.0...v1.22.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* add parent id to btinsight and btdataset ([#449](https://github.com/albert-labs/albert-python/issues/449)) ([0d17179](https://github.com/albert-labs/albert-python/commit/0d17179c3a940e95ce337bd3975ae44b509e161e))
+* **cas:** fix pagination for unfiltered listing and filtered search paths ([#445](https://github.com/albert-labs/albert-python/issues/445)) ([73f5418](https://github.com/albert-labs/albert-python/commit/73f5418e03977113078b689c36f3434732aedee5))
+* **lots:** support display ID format in ensure_lot_id ([#432](https://github.com/albert-labs/albert-python/issues/432)) ([a458ba4](https://github.com/albert-labs/albert-python/commit/a458ba4e9b62a62a4e02d5ad0f6bc27a7f3ecfa7))
+* **lots:** support owner updates via update() ([#420](https://github.com/albert-labs/albert-python/issues/420)) ([50bbeb2](https://github.com/albert-labs/albert-python/commit/50bbeb2958c4d870a6408f2bb6f91944021f5655))
+
 ## [1.22.0](https://github.com/albert-labs/albert-python/compare/v1.21.0...v1.22.0) (2026-03-20)
 
 
