@@ -9,6 +9,7 @@ from albert.core.shared.identifiers import (
     BTInsightId,
     BTModelId,
     BTModelSessionId,
+    ProjectId,
 )
 from albert.core.shared.models.base import BaseResource
 
@@ -53,6 +54,7 @@ class BTInsight(BaseResource, protected_namespaces=()):
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
     state: BTInsightState | None = Field(default=None)
     id: BTInsightId | None = Field(default=None, alias="albertId")
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
     dataset_id: BTDatasetId | None = Field(default=None, alias="datasetId")
     model_session_id: BTModelSessionId | None = Field(default=None, alias="modelSessionId")
     model_id: BTModelId | None = Field(default=None, alias="modelId")

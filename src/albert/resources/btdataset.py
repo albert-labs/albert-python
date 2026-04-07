@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import BTDatasetId
+from albert.core.shared.identifiers import BTDatasetId, ProjectId
 from albert.core.shared.models.base import BaseResource, EntityLink
 
 
@@ -17,6 +17,7 @@ class BTDatasetReferences(BaseAlbertModel):
 class BTDataset(BaseResource):
     name: str
     id: BTDatasetId | None = Field(default=None, alias="albertId")
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
     key: str | None = Field(default=None)
     file_name: str | None = Field(default=None, alias="fileName")
     report: EntityLink | None = Field(default=None, alias="Report")
