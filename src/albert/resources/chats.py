@@ -53,14 +53,17 @@ class ChatSession(BaseResource):
         The display name of the session.
     parent_id : str | None
         Optional folder ID that contains this session.
-    source_session_id : str | None
-        Optional external session identifier for linking to a source system.
+    source_session_id : str
+        External session identifier for linking to a source system.
+    last_message_at : str | None
+        ISO 8601 timestamp of the most recent message in the session.
     """
 
     id: str | None = Field(default=None)
     name: str
     parent_id: str | None = Field(default=None, alias="parentId")
-    source_session_id: str | None = Field(default=None, alias="sourceSessionId")
+    source_session_id: str = Field(alias="sourceSessionId")
+    last_message_at: str | None = Field(default=None, alias="lastMessageAt")
 
 
 class ChatMessage(BaseResource):
