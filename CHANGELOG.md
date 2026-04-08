@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta7](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta6...v1.23.0-beta7) (2026-04-08)
+
+
+### Features
+
+* **chat:** added a new field into session response called last_messa… ([#463](https://github.com/albert-labs/albert-python/issues/463)) ([3e3f3d9](https://github.com/albert-labs/albert-python/commit/3e3f3d9faab1daa3b234b76936dfada67d9fcd96))
+
+
+### Bug Fixes
+
+* **chats:** align beta warnings and use client credentials in async_client fixture ([#458](https://github.com/albert-labs/albert-python/issues/458)) ([2247ea1](https://github.com/albert-labs/albert-python/commit/2247ea159392e75ab9721c06d349229bfe97ecea))
+
 ## [1.23.0-beta6](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta5...v1.23.0-beta6) (2026-04-07)
 
 
