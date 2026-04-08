@@ -1,4 +1,4 @@
-!!! warning ":material-test-tube: Beta"
-    This collection is in beta. The API is subject to change.
+!!! warning "Beta Feature!"
+    Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience. This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
 ::: albert.collections.chat_messages.ChatMessageCollection
