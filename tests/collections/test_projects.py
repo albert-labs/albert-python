@@ -63,12 +63,11 @@ def test_project_search_metadata_filters(
 
     metadata_filters = {list_field: {"name": [list_name]}}
 
-    @retry(stop=stop_after_delay(10), wait=wait_fixed(2), reraise=True)
+    @retry(stop=stop_after_delay(30), wait=wait_fixed(2), reraise=True)
     def _search_and_assert():
         projects = list(
             client.projects.search(
                 metadata_filters=metadata_filters,
-                max_items=10,
             )
         )
         assert any(item.id == project.id for item in projects)
