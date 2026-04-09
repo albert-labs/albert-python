@@ -173,6 +173,7 @@ nav:
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
+          - Substances V4 (🧪Beta): collections/substances_v4.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
           - Targets (🧪Beta): collections/targets.md
@@ -222,6 +223,7 @@ nav:
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
+          - Substances V4: resources/substances_v4.md
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
           - Targets (🧪Beta): resources/targets.md
