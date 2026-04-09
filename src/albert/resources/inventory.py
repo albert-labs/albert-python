@@ -78,6 +78,8 @@ class CasAmount(BaseAlbertModel):
         The CAS number. Obtained from the Cas object when provided.
     inventory_function: list[ListItem | EntityLink | str] | None
         Business-controlled functions associated with the CAS in this inventory context.
+    substance_id : str | None
+        The substance ID linked to this CAS entry.
 
     !!! tip
     ---
@@ -95,6 +97,7 @@ class CasAmount(BaseAlbertModel):
     )
     type: str | None = Field(default=None)
     classification_type: str | None = Field(default=None, alias="classificationType")
+    substance_id: str | None = Field(default=None, alias="substanceId")
 
     # Read-only fields
     cas: Cas | None = Field(default=None, exclude=True)
