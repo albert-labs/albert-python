@@ -334,4 +334,5 @@ class SubstanceCollectionV4(BaseCollection):
         if not operations:
             return
 
-        self.session.patch(f"{self.base_path}/metadata/{id}", json={"data": operations})
+        sub_id = id if id.startswith("SUB") else f"SUB{id}"
+        self.session.patch(f"{self.base_path}/metadata/{sub_id}", json={"data": operations})
