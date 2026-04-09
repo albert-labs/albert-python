@@ -403,21 +403,22 @@ class LotCollection(BaseCollection):
         else:
             delta = -current
 
-        patch_payload = PatchPayload(
-            data=[
-                PatchDatum(
-                    operation=PatchOperation.UPDATE,
-                    attribute="inventoryOnHand",
-                    old_value=str(existing_lot.inventory_on_hand),
-                    new_value=self._format_inventory_delta(delta),
-                )
-            ]
-        )
-        payload = patch_payload.model_dump(mode="json", by_alias=True)
-        if description is not None:
-            payload["notes"] = description
+        if delta != 0:
+            patch_payload = PatchPayload(
+                data=[
+                    PatchDatum(
+                        operation=PatchOperation.UPDATE,
+                        attribute="inventoryOnHand",
+                        old_value=str(existing_lot.inventory_on_hand),
+                        new_value=self._format_inventory_delta(delta),
+                    )
+                ]
+            )
+            payload = patch_payload.model_dump(mode="json", by_alias=True)
+            if description is not None:
+                payload["notes"] = description
 
-        self.session.patch(f"{self.base_path}/{lot_id}", json=payload)
+            self.session.patch(f"{self.base_path}/{lot_id}", json=payload)
         return self.get_by_id(id=lot_id)
 
     @validate_call
@@ -450,22 +451,24 @@ class LotCollection(BaseCollection):
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
-            patch_payload = PatchPayload(
-                data=[
-                    PatchDatum(
-                        operation=PatchOperation.UPDATE,
-                        attribute="storageLocation",
-                        old_value=source_lot.storage_location.id
-                        if source_lot.storage_location
-                        else None,
-                        new_value=storage_location_id,
-                    )
-                ]
+            current_location_id = (
+                source_lot.storage_location.id if source_lot.storage_location else None
             )
-            self.session.patch(
-                f"{self.base_path}/{lot_id}",
-                json=patch_payload.model_dump(mode="json", by_alias=True),
-            )
+            if current_location_id != storage_location_id:
+                patch_payload = PatchPayload(
+                    data=[
+                        PatchDatum(
+                            operation=PatchOperation.UPDATE,
+                            attribute="storageLocation",
+                            old_value=current_location_id,
+                            new_value=storage_location_id,
+                        )
+                    ]
+                )
+                self.session.patch(
+                    f"{self.base_path}/{lot_id}",
+                    json=patch_payload.model_dump(mode="json", by_alias=True),
+                )
             return self.get_by_id(id=lot_id)
 
         transfer_quantity = quantity
