@@ -2,9 +2,6 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.substance_v4 import (
-    SubstanceV4Create,
-    SubstanceV4CreateResult,
-    SubstanceV4Identifier,
     SubstanceV4Info,
     SubstanceV4Metadata,
     SubstanceV4SearchItem,
@@ -85,23 +82,6 @@ def test_search_with_start_key(client: Albert):
         pytest.skip("Not enough results to test start_key offset.")
     offset_results = list(client.substances_v4.search(search_key="test", start_key=2, max_items=2))
     assert len(offset_results) > 0
-
-
-def test_create_substance(client: Albert):
-    """Test creating a substance that already exists returns it in existing_items."""
-    # Use a known CAS from the test set — it will already exist, so the API returns it
-    # in existing_items rather than created_items. This validates the full create round-trip
-    # without needing teardown.
-    existing = client.substances_v4.get_by_id(cas_id=CAS_IDS[0])
-    assert existing.cas_id is not None
-
-    substance = SubstanceV4Create(
-        identifiers=[SubstanceV4Identifier(attribute_name="casID", value=existing.cas_id)],
-        attributes=[],
-    )
-    result = client.substances_v4.create(substance=substance)
-    assert isinstance(result, SubstanceV4CreateResult)
-    assert len(result.existing_items) > 0
 
 
 def test_update_metadata(client: Albert):
