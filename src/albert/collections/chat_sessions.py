@@ -2,11 +2,25 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from pydantic import validate_call
+from pydantic import GetCoreSchemaHandler, validate_call
+from pydantic_core import core_schema
 
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.pagination import AsyncAlbertPaginator
 from albert.resources.chats import ChatSession
+
+
+class _UnsetType:
+    """Sentinel type for distinguishing unset parameters from explicit None."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, _source_type: object, _handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.is_instance_schema(cls)
+
+
+_UNSET = _UnsetType()
 
 
 class ChatSessionCollection:
@@ -160,7 +174,7 @@ class ChatSessionCollection:
         *,
         id: str,
         name: str | None = None,
-        parent_id: str | None = None,
+        parent_id: str | None | _UnsetType = _UNSET,
     ) -> ChatSession:
         """
         Update a chat session.
@@ -172,7 +186,8 @@ class ChatSessionCollection:
         name : str | None, optional
             New display name for the session.
         parent_id : str | None, optional
-            New parent folder ID for the session.
+            New parent folder ID for the session. Pass ``None`` to remove the session from its
+            current folder.
 
         Returns
         -------
@@ -186,7 +201,7 @@ class ChatSessionCollection:
         data = []
         if name is not None:
             data.append({"operation": "update", "attribute": "name", "newValue": name})
-        if parent_id is not None:
+        if parent_id is not _UNSET:
             data.append({"operation": "update", "attribute": "parentId", "newValue": parent_id})
         if not data:
             return await self.get_by_id(id=id)
