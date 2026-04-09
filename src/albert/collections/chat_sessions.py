@@ -157,6 +157,7 @@ class ChatSessionCollection:
         ):
             yield session
 
+    @validate_call
     async def update(
         self,
         *,
