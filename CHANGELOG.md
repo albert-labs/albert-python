@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta9](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta8...v1.23.0-beta9) (2026-04-09)
+
+
+### Features
+
+* **chats:** add last_message_at field to ChatSession ([#467](https://github.com/albert-labs/albert-python/issues/467)) ([a25fa63](https://github.com/albert-labs/albert-python/commit/a25fa63f27cf4170de54de7d4a3d318b770ef7ce))
+
 ## [1.23.0-beta8](https://github.com/albert-labs/albert-python/compare/v1.22.1...v1.23.0-beta8) (2026-04-09)
 
 
