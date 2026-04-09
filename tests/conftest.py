@@ -913,7 +913,11 @@ async def seeded_session(
     async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
 ) -> AsyncGenerator[ChatSession, None]:
     session = await async_client.chat_sessions.create(
-        session=ChatSession(name=f"{seed_prefix} Chat Session", parent_id=seeded_folder.id)
+        session=ChatSession(
+            name=f"{seed_prefix} Chat Session",
+            parent_id=seeded_folder.id,
+            source_session_id=str(uuid.uuid4()),
+        )
     )
     yield session
     with suppress(NotFoundError):
