@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import Any
 
 from pydantic import validate_call
 
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.pagination import AsyncAlbertPaginator
 from albert.resources.chats import ChatSession
+
+_UNSET: Any = object()
 
 
 class ChatSessionCollection:
@@ -154,13 +157,12 @@ class ChatSessionCollection:
         ):
             yield session
 
-    @validate_call
     async def update(
         self,
         *,
         id: str,
         name: str | None = None,
-        parent_id: str | None = None,
+        parent_id: str | None = _UNSET,
     ) -> ChatSession:
         """
         Update a chat session.
@@ -172,7 +174,8 @@ class ChatSessionCollection:
         name : str | None, optional
             New display name for the session.
         parent_id : str | None, optional
-            New parent folder ID for the session.
+            New parent folder ID for the session. Pass ``None`` to remove the session from its
+            current folder.
 
         Returns
         -------
@@ -186,7 +189,7 @@ class ChatSessionCollection:
         data = []
         if name is not None:
             data.append({"operation": "update", "attribute": "name", "newValue": name})
-        if parent_id is not None:
+        if parent_id is not _UNSET:
             data.append({"operation": "update", "attribute": "parentId", "newValue": parent_id})
         if not data:
             return await self.get_by_id(id=id)
