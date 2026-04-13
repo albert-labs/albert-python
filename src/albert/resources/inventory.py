@@ -270,6 +270,13 @@ class InventorySpecValue(BaseAlbertModel):
     reference: str | None = Field(default=None)
     comparison_operator: str | None = Field(default=None, alias="comparisonOperator")
 
+    @field_validator("min", "max", "reference", mode="before")
+    @classmethod
+    def cast_float_to_str(cls, v: Any) -> Any:
+        if isinstance(v, float):
+            return str(v)
+        return v
+
 
 class InventorySpec(BaseAlbertModel):
     id: str | None = Field(default=None, alias="albertId")
