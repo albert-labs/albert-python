@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0-beta10](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta9...v1.23.0-beta10) (2026-04-13)
+
+
+### Bug Fixes
+
+* **specs:** allowed float reference values ([#469](https://github.com/albert-labs/albert-python/issues/469)) ([0063dfb](https://github.com/albert-labs/albert-python/commit/0063dfb44ff3707bf8b4012b8c7e1c81d92dac11))
+
 ## [1.23.0-beta9](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta8...v1.23.0-beta9) (2026-04-09)
 
 
