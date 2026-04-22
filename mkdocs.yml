@@ -122,7 +122,10 @@ nav:
       - Authentication: authentication.md
       - Concepts: concepts.md
       - Configuration: configuration.md
-      - Migration Guide: migration.md
+      - Migration Guides:
+          - Overview: migration/index.md
+          - Alpha → v1.0: migration/alpha-to-v1.md
+          - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
