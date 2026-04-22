@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -156,3 +157,97 @@ class Target(BaseResource):
     target_value: TargetValue = Field(alias="targetValue")
     is_required: bool = Field(alias="isRequired")
     validation: list[dict] | None = Field(default=None)
+
+
+class AggregateBy(str, Enum):
+    """Aggregation dimension for target line data queries.
+
+    Attributes
+    ----------
+    MEASUREMENT : str
+        Aggregate by individual measurement.
+    WORKFLOW : str
+        Aggregate by workflow run.
+    INVENTORY : str
+        Aggregate by inventory item.
+    LOT : str
+        Aggregate by lot.
+    """
+
+    MEASUREMENT = "measurement"
+    WORKFLOW = "workflow"
+    INVENTORY = "inventory"
+    LOT = "lot"
+
+
+class TargetLineBetweenValue(BaseAlbertModel):
+    """Target value for a 'between' range constraint.
+
+    Attributes
+    ----------
+    operator : Literal["between"]
+        The comparison operator.
+    min : float
+        Lower bound of the range.
+    max : float
+        Upper bound of the range.
+    """
+
+    operator: Literal["between"]
+    min: float
+    max: float
+
+
+class TargetLineScalarValue(BaseAlbertModel):
+    """Target value for a scalar comparison constraint.
+
+    Attributes
+    ----------
+    operator : Literal["lt", "lte", "gt", "gte", "eq"]
+        The comparison operator.
+    value : float
+        The scalar threshold.
+    """
+
+    operator: Literal["lt", "lte", "gt", "gte", "eq"]
+    value: float
+
+
+class TargetLineSetValue(BaseAlbertModel):
+    """Target value for an in-set constraint.
+
+    Attributes
+    ----------
+    operator : Literal["in-set"]
+        The comparison operator.
+    values : list[str | float]
+        The set of allowed values.
+    """
+
+    operator: Literal["in-set"]
+    values: list[str | float]
+
+
+TargetLineValue = Annotated[
+    TargetLineBetweenValue | TargetLineScalarValue | TargetLineSetValue,
+    Field(discriminator="operator"),
+]
+"""Discriminated union of target line value shapes, keyed on ``operator``."""
+
+
+class TargetLineData(BaseAlbertModel):
+    """Response payload for a target line data request.
+
+    Attributes
+    ----------
+    target_id : str
+        The target ID.
+    target_value : TargetLineValue
+        The target constraint and its operator.
+    data_points : list[float]
+        The data points associated with this target.
+    """
+
+    target_id: str = Field(alias="targetId")
+    target_value: TargetLineValue = Field(alias="targetValue")
+    data_points: list[float] = Field(alias="dataPoints")
