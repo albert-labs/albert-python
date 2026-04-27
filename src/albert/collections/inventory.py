@@ -929,6 +929,7 @@ class InventoryCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``alias``, ``description``, ``is_formula_override``, ``metadata``, ``name``, ``security_class``, ``unit_category``.
+        On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``, ``cas_category``, ``substance_id``, ``inventory_function``.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

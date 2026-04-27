@@ -43,6 +43,7 @@ from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
+from albert.collections.substance_v4 import SubstanceCollectionV4
 from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
 from albert.collections.targets import TargetCollection
@@ -336,6 +337,10 @@ class Albert:
     @property
     def substances(self) -> SubstanceCollection:
         return SubstanceCollection(session=self.session)
+
+    @property
+    def substances_v4(self) -> SubstanceCollectionV4:
+        return SubstanceCollectionV4(session=self.session)
 
     @property
     def links(self) -> LinksCollection:

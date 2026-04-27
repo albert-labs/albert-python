@@ -122,7 +122,10 @@ nav:
       - Authentication: authentication.md
       - Concepts: concepts.md
       - Configuration: configuration.md
-      - Migration Guide: migration.md
+      - Migration Guides:
+          - Overview: migration/index.md
+          - Alpha → v1.0: migration/alpha-to-v1.md
+          - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
@@ -173,6 +176,7 @@ nav:
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
+          - Substances V4 (🧪Beta): collections/substances_v4.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
           - Targets (🧪Beta): collections/targets.md
@@ -222,6 +226,7 @@ nav:
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
+          - Substances V4: resources/substances_v4.md
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
           - Targets (🧪Beta): resources/targets.md
