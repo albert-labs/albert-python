@@ -6,6 +6,7 @@ from pydantic import SecretStr
 
 from albert.collections.activities import ActivityCollection
 from albert.collections.attachments import AttachmentCollection
+from albert.collections.attributes import AttributeCollection
 from albert.collections.batch_data import BatchDataCollection
 from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
@@ -180,6 +181,10 @@ class Albert:
     @property
     def attachments(self) -> AttachmentCollection:
         return AttachmentCollection(session=self.session)
+
+    @property
+    def attributes(self) -> AttributeCollection:
+        return AttributeCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
