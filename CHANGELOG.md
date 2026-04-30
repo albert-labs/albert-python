@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.22.2](https://github.com/albert-labs/albert-python/compare/v1.22.1...v1.22.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* **lots:** skip no-op patches in adjust() and transfer() ([#447](https://github.com/albert-labs/albert-python/issues/447)) ([09ea79c](https://github.com/albert-labs/albert-python/commit/09ea79ca27d442be83b66ea762ee4055fb521e1e))
+
 ## [1.22.1](https://github.com/albert-labs/albert-python/compare/v1.22.0...v1.22.1) (2026-04-07)
 
 
