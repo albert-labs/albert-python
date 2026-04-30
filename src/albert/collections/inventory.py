@@ -280,7 +280,7 @@ class InventoryCollection(BaseCollection):
 
     @deprecated(
         "add_specs() is deprecated and will be removed in 2.0. "
-        "Use client.attributes.set_values() instead."
+        "Use client.attributes.add_values() instead."
     )
     @validate_call
     def add_specs(

@@ -153,6 +153,7 @@ class AttributeCollection(BaseCollection):
         items = data.get("Items") or data.get("items") or []
         return [Attribute(**item) for item in items]
 
+    @validate_call
     def create(self, *, attribute: Attribute) -> Attribute:
         """Create a new attribute.
 
@@ -172,11 +173,9 @@ class AttributeCollection(BaseCollection):
         response = self.session.post(self.base_path, json=payload)
         return Attribute(**response.json())
 
+    @validate_call
     def update(self, *, attribute: Attribute) -> Attribute:
         """Update an existing attribute.
-
-        Enum value changes are handled transparently via a separate enums
-        endpoint before applying any field-level patches.
 
         Parameters
         ----------
@@ -187,6 +186,11 @@ class AttributeCollection(BaseCollection):
         -------
         Attribute
             The updated Attribute.
+
+        Notes
+        -----
+        The following fields can be updated: ``reference_name``, ``parameters``,
+        ``validation``, ``unit_id``.
         """
         if attribute.id is None:
             raise ValueError("Attribute ID is required for update.")
