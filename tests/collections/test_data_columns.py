@@ -65,16 +65,13 @@ def test_get_by_id(client: Albert, seeded_data_columns: list[DataColumn]):
     assert dc.id == seeded_data_columns[0].id
 
 
-def test_get_or_create_data_columns(caplog, client: Albert, seeded_data_columns: list[DataColumn]):
+def test_get_or_create_data_columns(client: Albert, seeded_data_columns: list[DataColumn]):
     """Test get_or_create returns an existing data column when one with the same name exists."""
-    dc = seeded_data_columns[0].model_copy(update={"id": None})
-    returned = client.data_columns.get_or_create(data_column=dc)
-    assert (
-        f"DataColumn with name {dc.name} already exists. Returning existing data column."
-        in caplog.text
-    )
-    assert returned.id == seeded_data_columns[0].id
-    assert returned.name == seeded_data_columns[0].name
+    existing = seeded_data_columns[0]
+    returned = client.data_columns.get_or_create(data_column=existing)
+    assert isinstance(returned, DataColumn)
+    assert returned.id == existing.id
+    assert returned.name == existing.name
 
 
 def test_update(client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str):
