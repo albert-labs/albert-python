@@ -78,21 +78,23 @@ class ParameterValue(BaseAlbertModel):
 
     Attributes
     ----------
-    parameter : Parameter | None
+    parameter : Parameter or None
         The Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
-    id : str | None
+    id : str or None
         The Albert ID of the Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.
-    category: ParameterCategory
+    category : ParameterCategory or None
         The category of the parameter.
-    short_name : str | None
+    short_name : str or None
         The short name of the parameter value.
-    value : str | None
-        The default value of the parameter. Can be a string or an InventoryItem (if, for example, the parameter is an instrumnt choice).
-    unit : Unit | None
+    value : str or InventoryItem or None
+        The value of the parameter. Can be a plain string or an InventoryItem (e.g. when the parameter represents an instrument choice).
+    unit : Unit or None
         The unit of measure for the provided parameter value.
-    name : str
+    validation : list[ValueValidation] or None
+        Validation rules applied to the parameter value.
+    name : str or None
         The name of the parameter. Read-only.
-    sequence : int
+    sequence : str or None
         The sequence of the parameter. Read-only.
     """
 
