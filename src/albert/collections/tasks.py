@@ -533,13 +533,13 @@ class TaskCollection(BaseCollection):
         tags : list[str], optional
             Filter by tags associated with tasks.
         task_id : list[str], optional
-            Specific task IDs to search for.
+            Filter by task IDs (e.g., ``["TAS123", "TAS456"]``).
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
             Task category filter (e.g., Experiment, Analysis).
         albert_id : list[str], optional
-            Albert-specific task identifiers.
+            Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``["A46", "A50"]``).
         data_template : list[str], optional
             Data template names associated with tasks.
         assigned_to : list[str], optional
@@ -642,13 +642,13 @@ class TaskCollection(BaseCollection):
         tags : list[str], optional
             Filter by tags associated with tasks.
         task_id : list[str], optional
-            Specific task IDs to search for.
+            Filter by task IDs (e.g., ``["TAS123", "TAS456"]``).
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
             Task category filter (e.g., Experiment, Analysis).
         albert_id : list[str], optional
-            Albert-specific task identifiers.
+            Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``["A46", "A50"]``).
         data_template : list[str], optional
             Data template names associated with tasks.
         assigned_to : list[str], optional
