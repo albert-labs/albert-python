@@ -23,6 +23,17 @@ that simply do not exist in v3.
 
 Migrating now means your code is ready for 2.0 with only a rename.
 
+!!! danger "CAS is obsolete in SDK 2.0"
+    Starting with SDK 2.0 (v4 substances), **all write operations target the Substance entity
+    exclusively**. CAS is no longer updated by any SDK write call.
+
+    This means downstream systems that are fed from CAS — including **reports** and
+    **SQL Data Warehouse tables** — will **not** reflect changes made through the SDK once
+    you are on v4. Only the Substance entity and its associated tables are updated.
+
+    If your pipeline reads from CAS-based DWH tables or CAS-backed reports, you must
+    update those consumers to read from the Substance entity tables before migrating.
+
 ---
 
 ## What's new in v4
