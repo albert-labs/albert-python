@@ -354,7 +354,7 @@ class DataTemplateCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``metadata``, ``name``.
+        The following fields can be updated: ``description``, ``metadata``, ``name``, and per-parameter ``value``, ``unit``, ``required``, ``validation``.
 
         Warnings
         --------

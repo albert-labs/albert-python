@@ -270,7 +270,7 @@ class ParameterGroupCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``metadata``, ``name``.
+        The following fields can be updated: ``description``, ``metadata``, ``name``, and per-parameter ``value``, ``unit``, ``required``, ``validation``.
         """
         existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"

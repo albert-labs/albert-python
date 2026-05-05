@@ -90,6 +90,8 @@ class ParameterValue(BaseAlbertModel):
         The value of the parameter. Can be a plain string or an InventoryItem (e.g. when the parameter represents an instrument choice).
     unit : Unit or None
         The unit of measure for the provided parameter value.
+    required : bool or None
+        Whether this parameter is required. Defaults to False.
     validation : list[ValueValidation] or None
         Validation rules applied to the parameter value.
     name : str or None
@@ -105,6 +107,7 @@ class ParameterValue(BaseAlbertModel):
     value: str | SerializeAsEntityLink[InventoryItem] | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
     added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
+    required: bool | None = Field(default=None)
     validation: list[ValueValidation] | None = Field(default_factory=list)
 
     # Read-only fields
