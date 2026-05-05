@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta10...v1.23.0) (2026-05-05)
+
+
+### Bug Fixes
+
+* **chat:** add missing [@validate](https://github.com/validate)_call on get_all, remove unsupported retries param, revert beta version ([55401c6](https://github.com/albert-labs/albert-python/commit/55401c6850d53d2753cad3c9c982872f3334bed4))
+
+
+### Documentation
+
+* **async:** add beta warning to AsyncAlbert docs ([b9ca28c](https://github.com/albert-labs/albert-python/commit/b9ca28cf493fb5e8a0ec4eff50c5ad82c19460af))
+* **chat:** use consistent beta warning in chat collection and AsyncAlbert docstrings ([719cb5f](https://github.com/albert-labs/albert-python/commit/719cb5fa6675c62aa7aa8d220e0171f111d59d3b))
+
 ## [1.23.0-beta10](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta9...v1.23.0-beta10) (2026-04-13)
 
 
