@@ -5836,7 +5836,7 @@ is requested from search.</p>
 
 <details class="note" open>
   <summary>Notes</summary>
-  <p>The following fields can be updated: <code>description</code>, <code>metadata</code>, <code>name</code>.</p>
+  <p>The following fields can be updated: <code>description</code>, <code>metadata</code>, <code>name</code>, and per-parameter <code>value</code>, <code>unit</code>, <code>required</code>, <code>validation</code>.</p>
 </details>
 
             <details class="mkdocstrings-source">
@@ -5917,7 +5917,7 @@ is requested from search.</p>
 </span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>
 </span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">    Notes</span>
 </span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    -----</span>
-</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    The following fields can be updated: ``description``, ``metadata``, ``name``.</span>
+</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    The following fields can be updated: ``description``, ``metadata``, ``name``, and per-parameter ``value``, ``unit``, ``required``, ``validation``.</span>
 </span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">parameter_group</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a>    <span class="n">path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">existing</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>

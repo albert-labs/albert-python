@@ -3529,6 +3529,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.parameter_groups.ParameterValue.required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.parameter_groups.ParameterValue.validation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5349,6 +5360,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.parameter_groups.ParameterValue.required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        required
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.parameter_groups.ParameterValue.validation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7020,6 +7042,17 @@
             <td>
               <div class="doc-md-description">
                 <p>The unit of measure for the provided parameter value.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.parameter_groups.ParameterValue.required">required</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> or None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether this parameter is required. Defaults to False.</p>
               </div>
             </td>
           </tr>
@@ -8851,7 +8884,7 @@
 </span><span id="__span-0-1789"><a id="__codelineno-0-1789" name="__codelineno-0-1789" href="#__codelineno-0-1789"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span>
 </span><span id="__span-0-1790"><a id="__codelineno-0-1790" name="__codelineno-0-1790" href="#__codelineno-0-1790"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-1791"><a id="__codelineno-0-1791" name="__codelineno-0-1791" href="#__codelineno-0-1791"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-1792"><a id="__codelineno-0-1792" name="__codelineno-0-1792" href="#__codelineno-0-1792"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The value of a parameter in a parameter group.\n\nAttributes\n----------\nparameter : Parameter or None\n    The Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.\nid : str or None\n    The Albert ID of the Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.\ncategory : ParameterCategory or None\n    The category of the parameter.\nshort_name : str or None\n    The short name of the parameter value.\nvalue : str or InventoryItem or None\n    The value of the parameter. Can be a plain string or an InventoryItem (e.g. when the parameter represents an instrument choice).\nunit : Unit or None\n    The unit of measure for the provided parameter value.\nvalidation : list[ValueValidation] or None\n    Validation rules applied to the parameter value.\nname : str or None\n    The name of the parameter. Read-only.\nsequence : str or None\n    The sequence of the parameter. Read-only.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-1792"><a id="__codelineno-0-1792" name="__codelineno-0-1792" href="#__codelineno-0-1792"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The value of a parameter in a parameter group.\n\nAttributes\n----------\nparameter : Parameter or None\n    The Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.\nid : str or None\n    The Albert ID of the Parameter resource this value is associated with. Provide either an id or a parameter keyword argument.\ncategory : ParameterCategory or None\n    The category of the parameter.\nshort_name : str or None\n    The short name of the parameter value.\nvalue : str or InventoryItem or None\n    The value of the parameter. Can be a plain string or an InventoryItem (e.g. when the parameter represents an instrument choice).\nunit : Unit or None\n    The unit of measure for the provided parameter value.\nrequired : bool or None\n    Whether this parameter is required. Defaults to False.\nvalidation : list[ValueValidation] or None\n    Validation rules applied to the parameter value.\nname : str or None\n    The name of the parameter. Read-only.\nsequence : str or None\n    The sequence of the parameter. Read-only.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-1793"><a id="__codelineno-0-1793" name="__codelineno-0-1793" href="#__codelineno-0-1793"></a><span class="w">  </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1794"><a id="__codelineno-0-1794" name="__codelineno-0-1794" href="#__codelineno-0-1794"></a><span class="w">    </span><span class="nt">&quot;parameter&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1795"><a id="__codelineno-0-1795" name="__codelineno-0-1795" href="#__codelineno-0-1795"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -8943,33 +8976,33 @@
 </span><span id="__span-0-1881"><a id="__codelineno-0-1881" name="__codelineno-0-1881" href="#__codelineno-0-1881"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-1882"><a id="__codelineno-0-1882" name="__codelineno-0-1882" href="#__codelineno-0-1882"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span>
 </span><span id="__span-0-1883"><a id="__codelineno-0-1883" name="__codelineno-0-1883" href="#__codelineno-0-1883"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884" href="#__codelineno-0-1884"></a><span class="w">    </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1884"><a id="__codelineno-0-1884" name="__codelineno-0-1884" href="#__codelineno-0-1884"></a><span class="w">    </span><span class="nt">&quot;required&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1885"><a id="__codelineno-0-1885" name="__codelineno-0-1885" href="#__codelineno-0-1885"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-1886"><a id="__codelineno-0-1886" name="__codelineno-0-1886" href="#__codelineno-0-1886"></a><span class="w">        </span><span class="p">{</span>
-</span><span id="__span-0-1887"><a id="__codelineno-0-1887" name="__codelineno-0-1887" href="#__codelineno-0-1887"></a><span class="w">          </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-1888"><a id="__codelineno-0-1888" name="__codelineno-0-1888" href="#__codelineno-0-1888"></a><span class="w">            </span><span class="nt">&quot;$ref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#/$defs/ValueValidation&quot;</span>
-</span><span id="__span-0-1889"><a id="__codelineno-0-1889" name="__codelineno-0-1889" href="#__codelineno-0-1889"></a><span class="w">          </span><span class="p">},</span>
-</span><span id="__span-0-1890"><a id="__codelineno-0-1890" name="__codelineno-0-1890" href="#__codelineno-0-1890"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;array&quot;</span>
-</span><span id="__span-0-1891"><a id="__codelineno-0-1891" name="__codelineno-0-1891" href="#__codelineno-0-1891"></a><span class="w">        </span><span class="p">},</span>
-</span><span id="__span-0-1892"><a id="__codelineno-0-1892" name="__codelineno-0-1892" href="#__codelineno-0-1892"></a><span class="w">        </span><span class="p">{</span>
-</span><span id="__span-0-1893"><a id="__codelineno-0-1893" name="__codelineno-0-1893" href="#__codelineno-0-1893"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;null&quot;</span>
-</span><span id="__span-0-1894"><a id="__codelineno-0-1894" name="__codelineno-0-1894" href="#__codelineno-0-1894"></a><span class="w">        </span><span class="p">}</span>
-</span><span id="__span-0-1895"><a id="__codelineno-0-1895" name="__codelineno-0-1895" href="#__codelineno-0-1895"></a><span class="w">      </span><span class="p">],</span>
-</span><span id="__span-0-1896"><a id="__codelineno-0-1896" name="__codelineno-0-1896" href="#__codelineno-0-1896"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Validation&quot;</span>
-</span><span id="__span-0-1897"><a id="__codelineno-0-1897" name="__codelineno-0-1897" href="#__codelineno-0-1897"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-1898"><a id="__codelineno-0-1898" name="__codelineno-0-1898" href="#__codelineno-0-1898"></a><span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-1899"><a id="__codelineno-0-1899" name="__codelineno-0-1899" href="#__codelineno-0-1899"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-0-1900"><a id="__codelineno-0-1900" name="__codelineno-0-1900" href="#__codelineno-0-1900"></a><span class="w">        </span><span class="p">{</span>
-</span><span id="__span-0-1901"><a id="__codelineno-0-1901" name="__codelineno-0-1901" href="#__codelineno-0-1901"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
-</span><span id="__span-0-1902"><a id="__codelineno-0-1902" name="__codelineno-0-1902" href="#__codelineno-0-1902"></a><span class="w">        </span><span class="p">},</span>
-</span><span id="__span-0-1903"><a id="__codelineno-0-1903" name="__codelineno-0-1903" href="#__codelineno-0-1903"></a><span class="w">        </span><span class="p">{</span>
-</span><span id="__span-0-1904"><a id="__codelineno-0-1904" name="__codelineno-0-1904" href="#__codelineno-0-1904"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;null&quot;</span>
-</span><span id="__span-0-1905"><a id="__codelineno-0-1905" name="__codelineno-0-1905" href="#__codelineno-0-1905"></a><span class="w">        </span><span class="p">}</span>
-</span><span id="__span-0-1906"><a id="__codelineno-0-1906" name="__codelineno-0-1906" href="#__codelineno-0-1906"></a><span class="w">      </span><span class="p">],</span>
-</span><span id="__span-0-1907"><a id="__codelineno-0-1907" name="__codelineno-0-1907" href="#__codelineno-0-1907"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1908"><a id="__codelineno-0-1908" name="__codelineno-0-1908" href="#__codelineno-0-1908"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Name&quot;</span>
+</span><span id="__span-0-1887"><a id="__codelineno-0-1887" name="__codelineno-0-1887" href="#__codelineno-0-1887"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;boolean&quot;</span>
+</span><span id="__span-0-1888"><a id="__codelineno-0-1888" name="__codelineno-0-1888" href="#__codelineno-0-1888"></a><span class="w">        </span><span class="p">},</span>
+</span><span id="__span-0-1889"><a id="__codelineno-0-1889" name="__codelineno-0-1889" href="#__codelineno-0-1889"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-1890"><a id="__codelineno-0-1890" name="__codelineno-0-1890" href="#__codelineno-0-1890"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;null&quot;</span>
+</span><span id="__span-0-1891"><a id="__codelineno-0-1891" name="__codelineno-0-1891" href="#__codelineno-0-1891"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-0-1892"><a id="__codelineno-0-1892" name="__codelineno-0-1892" href="#__codelineno-0-1892"></a><span class="w">      </span><span class="p">],</span>
+</span><span id="__span-0-1893"><a id="__codelineno-0-1893" name="__codelineno-0-1893" href="#__codelineno-0-1893"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+</span><span id="__span-0-1894"><a id="__codelineno-0-1894" name="__codelineno-0-1894" href="#__codelineno-0-1894"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Required&quot;</span>
+</span><span id="__span-0-1895"><a id="__codelineno-0-1895" name="__codelineno-0-1895" href="#__codelineno-0-1895"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-1896"><a id="__codelineno-0-1896" name="__codelineno-0-1896" href="#__codelineno-0-1896"></a><span class="w">    </span><span class="nt">&quot;validation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1897"><a id="__codelineno-0-1897" name="__codelineno-0-1897" href="#__codelineno-0-1897"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-1898"><a id="__codelineno-0-1898" name="__codelineno-0-1898" href="#__codelineno-0-1898"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-1899"><a id="__codelineno-0-1899" name="__codelineno-0-1899" href="#__codelineno-0-1899"></a><span class="w">          </span><span class="nt">&quot;items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1900"><a id="__codelineno-0-1900" name="__codelineno-0-1900" href="#__codelineno-0-1900"></a><span class="w">            </span><span class="nt">&quot;$ref&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;#/$defs/ValueValidation&quot;</span>
+</span><span id="__span-0-1901"><a id="__codelineno-0-1901" name="__codelineno-0-1901" href="#__codelineno-0-1901"></a><span class="w">          </span><span class="p">},</span>
+</span><span id="__span-0-1902"><a id="__codelineno-0-1902" name="__codelineno-0-1902" href="#__codelineno-0-1902"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;array&quot;</span>
+</span><span id="__span-0-1903"><a id="__codelineno-0-1903" name="__codelineno-0-1903" href="#__codelineno-0-1903"></a><span class="w">        </span><span class="p">},</span>
+</span><span id="__span-0-1904"><a id="__codelineno-0-1904" name="__codelineno-0-1904" href="#__codelineno-0-1904"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-1905"><a id="__codelineno-0-1905" name="__codelineno-0-1905" href="#__codelineno-0-1905"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;null&quot;</span>
+</span><span id="__span-0-1906"><a id="__codelineno-0-1906" name="__codelineno-0-1906" href="#__codelineno-0-1906"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-0-1907"><a id="__codelineno-0-1907" name="__codelineno-0-1907" href="#__codelineno-0-1907"></a><span class="w">      </span><span class="p">],</span>
+</span><span id="__span-0-1908"><a id="__codelineno-0-1908" name="__codelineno-0-1908" href="#__codelineno-0-1908"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Validation&quot;</span>
 </span><span id="__span-0-1909"><a id="__codelineno-0-1909" name="__codelineno-0-1909" href="#__codelineno-0-1909"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-1910"><a id="__codelineno-0-1910" name="__codelineno-0-1910" href="#__codelineno-0-1910"></a><span class="w">    </span><span class="nt">&quot;sequence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1910"><a id="__codelineno-0-1910" name="__codelineno-0-1910" href="#__codelineno-0-1910"></a><span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1911"><a id="__codelineno-0-1911" name="__codelineno-0-1911" href="#__codelineno-0-1911"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-1912"><a id="__codelineno-0-1912" name="__codelineno-0-1912" href="#__codelineno-0-1912"></a><span class="w">        </span><span class="p">{</span>
 </span><span id="__span-0-1913"><a id="__codelineno-0-1913" name="__codelineno-0-1913" href="#__codelineno-0-1913"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
@@ -8979,9 +9012,9 @@
 </span><span id="__span-0-1917"><a id="__codelineno-0-1917" name="__codelineno-0-1917" href="#__codelineno-0-1917"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-1918"><a id="__codelineno-0-1918" name="__codelineno-0-1918" href="#__codelineno-0-1918"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-1919"><a id="__codelineno-0-1919" name="__codelineno-0-1919" href="#__codelineno-0-1919"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1920"><a id="__codelineno-0-1920" name="__codelineno-0-1920" href="#__codelineno-0-1920"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sequence&quot;</span>
+</span><span id="__span-0-1920"><a id="__codelineno-0-1920" name="__codelineno-0-1920" href="#__codelineno-0-1920"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Name&quot;</span>
 </span><span id="__span-0-1921"><a id="__codelineno-0-1921" name="__codelineno-0-1921" href="#__codelineno-0-1921"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922" href="#__codelineno-0-1922"></a><span class="w">    </span><span class="nt">&quot;originalShortName&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1922"><a id="__codelineno-0-1922" name="__codelineno-0-1922" href="#__codelineno-0-1922"></a><span class="w">    </span><span class="nt">&quot;sequence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1923"><a id="__codelineno-0-1923" name="__codelineno-0-1923" href="#__codelineno-0-1923"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-1924"><a id="__codelineno-0-1924" name="__codelineno-0-1924" href="#__codelineno-0-1924"></a><span class="w">        </span><span class="p">{</span>
 </span><span id="__span-0-1925"><a id="__codelineno-0-1925" name="__codelineno-0-1925" href="#__codelineno-0-1925"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
@@ -8991,9 +9024,9 @@
 </span><span id="__span-0-1929"><a id="__codelineno-0-1929" name="__codelineno-0-1929" href="#__codelineno-0-1929"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-1930"><a id="__codelineno-0-1930" name="__codelineno-0-1930" href="#__codelineno-0-1930"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-1931"><a id="__codelineno-0-1931" name="__codelineno-0-1931" href="#__codelineno-0-1931"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932" href="#__codelineno-0-1932"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Originalshortname&quot;</span>
+</span><span id="__span-0-1932"><a id="__codelineno-0-1932" name="__codelineno-0-1932" href="#__codelineno-0-1932"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Sequence&quot;</span>
 </span><span id="__span-0-1933"><a id="__codelineno-0-1933" name="__codelineno-0-1933" href="#__codelineno-0-1933"></a><span class="w">    </span><span class="p">},</span>
-</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934" href="#__codelineno-0-1934"></a><span class="w">    </span><span class="nt">&quot;originalName&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1934"><a id="__codelineno-0-1934" name="__codelineno-0-1934" href="#__codelineno-0-1934"></a><span class="w">    </span><span class="nt">&quot;originalShortName&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-1935"><a id="__codelineno-0-1935" name="__codelineno-0-1935" href="#__codelineno-0-1935"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-1936"><a id="__codelineno-0-1936" name="__codelineno-0-1936" href="#__codelineno-0-1936"></a><span class="w">        </span><span class="p">{</span>
 </span><span id="__span-0-1937"><a id="__codelineno-0-1937" name="__codelineno-0-1937" href="#__codelineno-0-1937"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
@@ -9003,12 +9036,24 @@
 </span><span id="__span-0-1941"><a id="__codelineno-0-1941" name="__codelineno-0-1941" href="#__codelineno-0-1941"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-1942"><a id="__codelineno-0-1942" name="__codelineno-0-1942" href="#__codelineno-0-1942"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-1943"><a id="__codelineno-0-1943" name="__codelineno-0-1943" href="#__codelineno-0-1943"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-1944"><a id="__codelineno-0-1944" name="__codelineno-0-1944" href="#__codelineno-0-1944"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Originalname&quot;</span>
-</span><span id="__span-0-1945"><a id="__codelineno-0-1945" name="__codelineno-0-1945" href="#__codelineno-0-1945"></a><span class="w">    </span><span class="p">}</span>
-</span><span id="__span-0-1946"><a id="__codelineno-0-1946" name="__codelineno-0-1946" href="#__codelineno-0-1946"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-1947"><a id="__codelineno-0-1947" name="__codelineno-0-1947" href="#__codelineno-0-1947"></a><span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ParameterValue&quot;</span><span class="p">,</span>
-</span><span id="__span-0-1948"><a id="__codelineno-0-1948" name="__codelineno-0-1948" href="#__codelineno-0-1948"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span>
-</span><span id="__span-0-1949"><a id="__codelineno-0-1949" name="__codelineno-0-1949" href="#__codelineno-0-1949"></a><span class="p">}</span>
+</span><span id="__span-0-1944"><a id="__codelineno-0-1944" name="__codelineno-0-1944" href="#__codelineno-0-1944"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Originalshortname&quot;</span>
+</span><span id="__span-0-1945"><a id="__codelineno-0-1945" name="__codelineno-0-1945" href="#__codelineno-0-1945"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-0-1946"><a id="__codelineno-0-1946" name="__codelineno-0-1946" href="#__codelineno-0-1946"></a><span class="w">    </span><span class="nt">&quot;originalName&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-1947"><a id="__codelineno-0-1947" name="__codelineno-0-1947" href="#__codelineno-0-1947"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-0-1948"><a id="__codelineno-0-1948" name="__codelineno-0-1948" href="#__codelineno-0-1948"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-1949"><a id="__codelineno-0-1949" name="__codelineno-0-1949" href="#__codelineno-0-1949"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
+</span><span id="__span-0-1950"><a id="__codelineno-0-1950" name="__codelineno-0-1950" href="#__codelineno-0-1950"></a><span class="w">        </span><span class="p">},</span>
+</span><span id="__span-0-1951"><a id="__codelineno-0-1951" name="__codelineno-0-1951" href="#__codelineno-0-1951"></a><span class="w">        </span><span class="p">{</span>
+</span><span id="__span-0-1952"><a id="__codelineno-0-1952" name="__codelineno-0-1952" href="#__codelineno-0-1952"></a><span class="w">          </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;null&quot;</span>
+</span><span id="__span-0-1953"><a id="__codelineno-0-1953" name="__codelineno-0-1953" href="#__codelineno-0-1953"></a><span class="w">        </span><span class="p">}</span>
+</span><span id="__span-0-1954"><a id="__codelineno-0-1954" name="__codelineno-0-1954" href="#__codelineno-0-1954"></a><span class="w">      </span><span class="p">],</span>
+</span><span id="__span-0-1955"><a id="__codelineno-0-1955" name="__codelineno-0-1955" href="#__codelineno-0-1955"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+</span><span id="__span-0-1956"><a id="__codelineno-0-1956" name="__codelineno-0-1956" href="#__codelineno-0-1956"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Originalname&quot;</span>
+</span><span id="__span-0-1957"><a id="__codelineno-0-1957" name="__codelineno-0-1957" href="#__codelineno-0-1957"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-0-1958"><a id="__codelineno-0-1958" name="__codelineno-0-1958" href="#__codelineno-0-1958"></a><span class="w">  </span><span class="p">},</span>
+</span><span id="__span-0-1959"><a id="__codelineno-0-1959" name="__codelineno-0-1959" href="#__codelineno-0-1959"></a><span class="w">  </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ParameterValue&quot;</span><span class="p">,</span>
+</span><span id="__span-0-1960"><a id="__codelineno-0-1960" name="__codelineno-0-1960" href="#__codelineno-0-1960"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;object&quot;</span>
+</span><span id="__span-0-1961"><a id="__codelineno-0-1961" name="__codelineno-0-1961" href="#__codelineno-0-1961"></a><span class="p">}</span>
 </span></code></pre></div>
       </details>
     
@@ -9042,6 +9087,10 @@
             <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.parameter_groups.ParameterValue.added">added</a></code>
                 (<code><span title="albert.core.shared.models.base.AuditFields">AuditFields</span> | None</code>)
+            </li>
+            <li>
+              <code><a class="autorefs autorefs-internal" href="#albert.resources.parameter_groups.ParameterValue.required">required</a></code>
+                (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> | None</code>)
             </li>
             <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.parameter_groups.ParameterValue.validation">validation</a></code>
@@ -9218,6 +9267,24 @@
 
 
 
+<h4 id="albert.resources.parameter_groups.ParameterValue.required" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">required</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">required</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h4 id="albert.resources.parameter_groups.ParameterValue.validation" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">validation</span>
 
@@ -9323,23 +9390,23 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/parameter_groups.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-120">120</a></span>
-<span class="normal"><a href="#__codelineno-0-121">121</a></span>
-<span class="normal"><a href="#__codelineno-0-122">122</a></span>
-<span class="normal"><a href="#__codelineno-0-123">123</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-123">123</a></span>
 <span class="normal"><a href="#__codelineno-0-124">124</a></span>
 <span class="normal"><a href="#__codelineno-0-125">125</a></span>
 <span class="normal"><a href="#__codelineno-0-126">126</a></span>
 <span class="normal"><a href="#__codelineno-0-127">127</a></span>
-<span class="normal"><a href="#__codelineno-0-128">128</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
-</span><span id="__span-0-121"><a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="nd">@classmethod</span>
-</span><span id="__span-0-122"><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_parameter_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123"></a>    <span class="c1"># Bug in ParameterGroups sometimes returns incorrect JSON from batch endpoint</span>
-</span><span id="__span-0-124"><a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="c1"># Set to None if value is a dict but no ID field</span>
-</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125"></a>    <span class="c1"># Reference: https://linear.app/albert-invent/issue/IN-10</span>
-</span><span id="__span-0-126"><a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;id&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
-</span><span id="__span-0-127"><a id="__codelineno-0-127" name="__codelineno-0-127"></a>        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a>    <span class="k">return</span> <span class="n">value</span>
+<span class="normal"><a href="#__codelineno-0-128">128</a></span>
+<span class="normal"><a href="#__codelineno-0-129">129</a></span>
+<span class="normal"><a href="#__codelineno-0-130">130</a></span>
+<span class="normal"><a href="#__codelineno-0-131">131</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+</span><span id="__span-0-124"><a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="nd">@classmethod</span>
+</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_parameter_value</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-126"><a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="c1"># Bug in ParameterGroups sometimes returns incorrect JSON from batch endpoint</span>
+</span><span id="__span-0-127"><a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="c1"># Set to None if value is a dict but no ID field</span>
+</span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a>    <span class="c1"># Reference: https://linear.app/albert-invent/issue/IN-10</span>
+</span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;id&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="p">:</span>
+</span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a>        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9362,27 +9429,27 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/parameter_groups.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-130">130</a></span>
-<span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-133">133</a></span>
 <span class="normal"><a href="#__codelineno-0-134">134</a></span>
 <span class="normal"><a href="#__codelineno-0-135">135</a></span>
 <span class="normal"><a href="#__codelineno-0-136">136</a></span>
 <span class="normal"><a href="#__codelineno-0-137">137</a></span>
 <span class="normal"><a href="#__codelineno-0-138">138</a></span>
 <span class="normal"><a href="#__codelineno-0-139">139</a></span>
-<span class="normal"><a href="#__codelineno-0-140">140</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
-</span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_parameter_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParameterValue</span><span class="p">:</span>
-</span><span id="__span-0-132"><a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please provide either an id or an parameter object.&quot;</span><span class="p">)</span>
-</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134"></a>
-</span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">category</span><span class="p">)</span>
-</span><span id="__span-0-138"><a id="__codelineno-0-138" name="__codelineno-0-138"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="__span-0-139"><a id="__codelineno-0-139" name="__codelineno-0-139"></a>
-</span><span id="__span-0-140"><a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="k">return</span> <span class="bp">self</span>
+<span class="normal"><a href="#__codelineno-0-140">140</a></span>
+<span class="normal"><a href="#__codelineno-0-141">141</a></span>
+<span class="normal"><a href="#__codelineno-0-142">142</a></span>
+<span class="normal"><a href="#__codelineno-0-143">143</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+</span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="k">def</span><span class="w"> </span><span class="nf">set_parameter_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ParameterValue</span><span class="p">:</span>
+</span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please provide either an id or an parameter object.&quot;</span><span class="p">)</span>
+</span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137"></a>
+</span><span id="__span-0-138"><a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-139"><a id="__codelineno-0-139" name="__codelineno-0-139"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-140"><a id="__codelineno-0-140" name="__codelineno-0-140"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;category&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">category</span><span class="p">)</span>
+</span><span id="__span-0-141"><a id="__codelineno-0-141" name="__codelineno-0-141"></a>        <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-0-142"><a id="__codelineno-0-142" name="__codelineno-0-142"></a>
+</span><span id="__span-0-143"><a id="__codelineno-0-143" name="__codelineno-0-143"></a>    <span class="k">return</span> <span class="bp">self</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
