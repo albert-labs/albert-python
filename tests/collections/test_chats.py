@@ -15,7 +15,7 @@ from albert.resources.chats import (
     ChatUserType,
 )
 
-pytestmark = pytest.mark.skip(reason="Chat API is not yet deployed on prod.")
+pytestmark = pytest.mark.skip(reason="Chats API is not yet available in the test environment.")
 
 # ---------------------------------------------------------------------------
 # Chat folders
