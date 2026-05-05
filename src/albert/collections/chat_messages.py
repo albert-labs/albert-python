@@ -114,6 +114,7 @@ class ChatMessageCollection:
         response = await self._session.get(url, params=params)
         return ChatMessage(**response.json())
 
+    @validate_call
     async def get_all(
         self,
         *,

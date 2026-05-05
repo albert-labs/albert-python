@@ -94,6 +94,7 @@ class ChatFolderCollection:
         response = await self._session.get(f"{self.base_path}/{id}")
         return ChatFolder(**response.json())
 
+    @validate_call
     async def get_all(
         self,
         *,

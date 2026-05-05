@@ -110,7 +110,6 @@ async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
     )
     client = AsyncAlbert(
         auth_manager=credentials,
-        retries=3,
     )
     yield client
     await client.aclose()

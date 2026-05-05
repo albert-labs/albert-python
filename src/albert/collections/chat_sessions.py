@@ -128,6 +128,7 @@ class ChatSessionCollection:
         response = await self._session.get(f"{self.base_path}/source/{source_session_id}")
         return ChatSession(**response.json())
 
+    @validate_call
     async def get_all(
         self,
         *,
