@@ -13,6 +13,10 @@
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/async_albert/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/authentication/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
@@ -70,6 +74,22 @@
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/cas/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/chat_flags/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/chat_folders/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/chat_messages/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/chat_sessions/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
@@ -278,6 +298,10 @@
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/cas/</loc>
+         <lastmod>2026-05-05</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/chats/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
