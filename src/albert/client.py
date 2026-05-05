@@ -356,7 +356,11 @@ class Albert:
 
 class AsyncAlbert:
     """
-    Async client for interacting with the Albert chat API.
+    Async client for interacting with the Albert chat API (🧪Beta).
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Uses ``httpx.AsyncClient`` under the hood and must be closed when no longer
     needed — either by calling ``await client.aclose()`` or by using the client
