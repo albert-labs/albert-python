@@ -3,6 +3,7 @@ from uuid import uuid4
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
 from albert.core.shared.types import MetadataItem
+from albert.resources.attributes import Attribute, AttributeCategory, ValidationItem
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight, BTInsightCategory
 from albert.resources.btmodel import BTModel, BTModelSession, BTModelSessionCategory, BTModelState
@@ -1901,3 +1902,48 @@ def generate_smart_dataset_seed(
         project_ids=[project.id for project in seeded_projects],
         target_ids=[target.id for target in seeded_targets],
     )
+
+
+def generate_attribute_seeds(
+    seed_prefix: str,
+    seeded_data_columns: list[DataColumn],
+) -> list[Attribute]:
+    """
+    Generates a list of Attribute seed objects for testing.
+
+    Returns
+    -------
+    list[Attribute]
+        A list of Attribute objects with different validation types.
+    """
+    return [
+        # NUMBER validation attribute
+        Attribute(
+            datacolumn_id=seeded_data_columns[0].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-number",
+            validation=[ValidationItem(datatype=DataType.NUMBER)],
+        ),
+        # ENUM validation attribute
+        Attribute(
+            datacolumn_id=seeded_data_columns[1].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-enum",
+            validation=[
+                ValidationItem(
+                    datatype=DataType.ENUM,
+                    value=[
+                        EnumValidationValue(text="Option1"),
+                        EnumValidationValue(text="Option2"),
+                    ],
+                )
+            ],
+        ),
+        # STRING validation attribute (for update tests)
+        Attribute(
+            datacolumn_id=seeded_data_columns[2].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-string",
+            validation=[ValidationItem(datatype=DataType.STRING)],
+        ),
+    ]

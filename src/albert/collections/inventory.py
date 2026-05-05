@@ -2,6 +2,7 @@ import logging
 from collections.abc import Iterator
 
 from pydantic import TypeAdapter, validate_call
+from typing_extensions import deprecated
 
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
@@ -251,6 +252,10 @@ class InventoryCollection(BaseCollection):
         return inventory
 
     @validate_call
+    @deprecated(
+        "get_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.get_values() instead."
+    )
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
         """Get the specs for a list of inventory items.
 
@@ -273,6 +278,10 @@ class InventoryCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
+    @deprecated(
+        "add_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.add_values() instead."
+    )
     @validate_call
     def add_specs(
         self,
