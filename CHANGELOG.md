@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0](https://github.com/albert-labs/albert-python/compare/v1.22.1...v1.23.0) (2026-05-05)
+
+
+### Features
+
+* AsyncAlbert client, chat collections, and smart datasets ([#482](https://github.com/albert-labs/albert-python/issues/482)) ([e0efaeb](https://github.com/albert-labs/albert-python/commit/e0efaeb3dd8138cfa0fe6deb4b0e0bbaccbee57c))
+* **data_columns:** add get_or_create method to DataColumnCollection ([#478](https://github.com/albert-labs/albert-python/issues/478)) ([d838de9](https://github.com/albert-labs/albert-python/commit/d838de932533ee866ceebab612f6a2f6927fd17d))
+* **parameter_groups:** add required field to ParameterValue with patch support ([#480](https://github.com/albert-labs/albert-python/issues/480)) ([5101fc4](https://github.com/albert-labs/albert-python/commit/5101fc4a92c22ddf6d3f62dc8c7de51ef5b6a4af)), closes [#479](https://github.com/albert-labs/albert-python/issues/479)
+
+
+### Bug Fixes
+
+* **lots:** skip no-op patches in adjust() and transfer() ([#447](https://github.com/albert-labs/albert-python/issues/447)) ([09ea79c](https://github.com/albert-labs/albert-python/commit/09ea79ca27d442be83b66ea762ee4055fb521e1e))
+
+
+### Documentation
+
+* **parameter_groups:** fix ParameterValue docstring accuracy ([#477](https://github.com/albert-labs/albert-python/issues/477)) ([5520198](https://github.com/albert-labs/albert-python/commit/552019893c28be5bf7b519a6dd2010c7b2a657b0))
+* **tasks:** clarify task_id and albert_id search parameters ([#476](https://github.com/albert-labs/albert-python/issues/476)) ([df70231](https://github.com/albert-labs/albert-python/commit/df70231b4ff9ddc9b36326a2ff32a68773ac78a1))
+
 ## [1.23.0-beta10](https://github.com/albert-labs/albert-python/compare/v1.23.0-beta9...v1.23.0-beta10) (2026-04-13)
 
 
