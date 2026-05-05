@@ -11,6 +11,10 @@ from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
 from albert.collections.btmodel import BTModelCollection, BTModelSessionCollection
 from albert.collections.cas import CasCollection
+from albert.collections.chat_flags import ChatFlagCollection
+from albert.collections.chat_folders import ChatFolderCollection
+from albert.collections.chat_messages import ChatMessageCollection
+from albert.collections.chat_sessions import ChatSessionCollection
 from albert.collections.companies import CompanyCollection
 from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
@@ -49,6 +53,7 @@ from albert.collections.units import UnitCollection
 from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
+from albert.core.async_session import AsyncAlbertSession
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 from albert.core.session import AlbertSession
@@ -347,3 +352,171 @@ class Albert:
     @property
     def hazards(self) -> HazardsCollection:
         return HazardsCollection(session=self.session)
+
+
+class AsyncAlbert:
+    """
+    Async client for interacting with the Albert chat API (🧪Beta).
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
+    Uses ``httpx.AsyncClient`` under the hood and must be closed when no longer
+    needed — either by calling ``await client.aclose()`` or by using the client
+    as an async context manager (``async with AsyncAlbert(...) as client``).
+
+    Parameters
+    ----------
+    base_url : str, optional
+        The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+        environment variable or "https://app.albertinvent.com".
+    token : str, optional
+        A static JWT token. Ignored when ``auth_manager`` is provided.
+        Defaults to the ``ALBERT_TOKEN`` environment variable.
+    auth_manager : AlbertClientCredentials | AlbertSSOClient, optional
+        An authentication manager for OAuth2-based token refresh.
+        Ignored if ``token`` is provided.
+    session : AsyncAlbertSession, optional
+        A fully configured async session. When provided, ``base_url``, ``token``,
+        and ``auth_manager`` are all ignored.
+
+    Attributes
+    ----------
+    session : AsyncAlbertSession
+        The internal async session used for authenticated requests.
+    chat_sessions : ChatSessionCollection
+        Access to chat session API methods.
+    chat_messages : ChatMessageCollection
+        Access to chat message API methods.
+    chat_folders : ChatFolderCollection
+        Access to chat folder API methods.
+    chat_flags : ChatFlagCollection
+        Access to chat flag API methods.
+
+    Examples
+    --------
+    One-off usage with an async context manager:
+
+    ```python
+    async with AsyncAlbert(base_url=..., token=...) as client:
+        sessions = [s async for s in client.chat_sessions.get_all()]
+    ```
+
+    Long-lived client via FastAPI lifespan:
+
+    ```python
+    @asynccontextmanager
+    async def lifespan(app):
+        app.state.albert = AsyncAlbert(base_url=..., token=...)
+        yield
+        await app.state.albert.aclose()
+    ```
+    """
+
+    def __init__(
+        self,
+        *,
+        base_url: str | None = None,
+        token: str | None = None,
+        auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        session: AsyncAlbertSession | None = None,
+    ):
+        if session is not None:
+            self.session = session
+            return
+
+        if auth_manager and base_url and base_url != auth_manager.base_url:
+            raise ValueError("`base_url` must match the URL used by the auth manager.")
+
+        resolved_base_url = (
+            base_url
+            or (auth_manager.base_url if auth_manager else None)
+            or default_albert_base_url()
+        )
+
+        self.session = AsyncAlbertSession(
+            base_url=resolved_base_url,
+            token=token or os.getenv("ALBERT_TOKEN"),
+            auth_manager=auth_manager,
+        )
+
+    @classmethod
+    def from_token(cls, *, base_url: str | None = None, token: str) -> AsyncAlbert:
+        """
+        Create an AsyncAlbert client using a static token for authentication.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        token : str
+            A static JWT token used for all requests.
+
+        Returns
+        -------
+        AsyncAlbert
+            A configured async client authenticated with the given token.
+        """
+        return cls(base_url=base_url, token=token)
+
+    @classmethod
+    def from_client_credentials(
+        cls,
+        *,
+        base_url: str | None = None,
+        client_id: str,
+        client_secret: str,
+    ) -> AsyncAlbert:
+        """
+        Create an AsyncAlbert client using client credentials authentication.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        client_id : str
+            The OAuth2 client ID.
+        client_secret : str
+            The OAuth2 client secret.
+
+        Returns
+        -------
+        AsyncAlbert
+            A configured async client that refreshes tokens automatically.
+        """
+        resolved_base_url = base_url or default_albert_base_url()
+        creds = AlbertClientCredentials(
+            id=client_id,
+            secret=SecretStr(client_secret),
+            base_url=resolved_base_url,
+        )
+        return cls(auth_manager=creds)
+
+    @property
+    def chat_sessions(self) -> ChatSessionCollection:
+        return ChatSessionCollection(session=self.session)
+
+    @property
+    def chat_messages(self) -> ChatMessageCollection:
+        return ChatMessageCollection(session=self.session)
+
+    @property
+    def chat_folders(self) -> ChatFolderCollection:
+        return ChatFolderCollection(session=self.session)
+
+    @property
+    def chat_flags(self) -> ChatFlagCollection:
+        return ChatFlagCollection(session=self.session)
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+        await self.session.aclose()
+
+    async def __aenter__(self) -> AsyncAlbert:
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.aclose()

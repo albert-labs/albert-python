@@ -1,12 +1,13 @@
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator, Iterator
 from contextlib import suppress
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
-from albert import Albert, AlbertClientCredentials
+from albert import Albert, AlbertClientCredentials, AsyncAlbert
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.shared.enums import Status
 from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
@@ -15,6 +16,14 @@ from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
 from albert.resources.btmodel import BTModel, BTModelSession
 from albert.resources.cas import Cas
+from albert.resources.chats import (
+    ChatComponentType,
+    ChatFolder,
+    ChatMessage,
+    ChatRole,
+    ChatSession,
+    ChatUserType,
+)
 from albert.resources.companies import Company
 from albert.resources.custom_fields import CustomField
 from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
@@ -68,7 +77,7 @@ from tests.seeding import (
     generate_pricing_seeds,
     generate_project_seeds,
     generate_report_seeds,
-    generate_smart_dataset_seeds,
+    generate_smart_dataset_seed,
     generate_storage_location_seeds,
     generate_tag_seeds,
     generate_target_seeds,
@@ -90,6 +99,20 @@ def client() -> Albert:
         auth_manager=credentials,
         retries=3,
     )
+
+
+@pytest_asyncio.fixture(scope="session")
+async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
+    credentials = AlbertClientCredentials.from_env(
+        client_id_env="ALBERT_CLIENT_ID_SDK",
+        client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+        base_url_env="ALBERT_BASE_URL",
+    )
+    client = AsyncAlbert(
+        auth_manager=credentials,
+    )
+    yield client
+    await client.aclose()
 
 
 @pytest.fixture
@@ -845,10 +868,12 @@ def seeded_reports(
 def seeded_targets(
     client: Albert,
     seed_prefix: str,
+    seeded_data_templates: list[DataTemplate],
 ) -> Iterator[list[Target]]:
     seeded = []
     for target in generate_target_seeds(
         seed_prefix=seed_prefix,
+        seeded_data_templates=seeded_data_templates,
     ):
         created_target = client.targets.create(target=target)
         seeded.append(created_target)
@@ -859,14 +884,61 @@ def seeded_targets(
 
 
 @pytest.fixture(scope="session")
-def seeded_smart_datasets(
+def seeded_smart_dataset(
     client: Albert,
-) -> Iterator[list[SmartDataset]]:
-    seeded = []
-    for scope in generate_smart_dataset_seeds():
-        created = client.smart_datasets.create(scope=scope, build=False)
-        seeded.append(created)
-    yield seeded
-    for smart_dataset in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.smart_datasets.delete(id=smart_dataset.id)
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> Iterator[SmartDataset]:
+    scope = generate_smart_dataset_seed(
+        seeded_projects=seeded_projects,
+        seeded_targets=seeded_targets,
+    )
+    created = client.smart_datasets.create(scope=scope, build=False)
+    yield created
+    with suppress(NotFoundError, BadRequestError):
+        client.smart_datasets.delete(id=created.id)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def seeded_folder(
+    async_client: AsyncAlbert, seed_prefix: str
+) -> AsyncGenerator[ChatFolder, None]:
+    folder = await async_client.chat_folders.create(
+        folder=ChatFolder(name=f"{seed_prefix} Chat Folder")
+    )
+    yield folder
+    with suppress(NotFoundError):
+        await async_client.chat_folders.delete(id=folder.id)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def seeded_session(
+    async_client: AsyncAlbert, seed_prefix: str, seeded_folder: ChatFolder
+) -> AsyncGenerator[ChatSession, None]:
+    session = await async_client.chat_sessions.create(
+        session=ChatSession(
+            name=f"{seed_prefix} Chat Session",
+            parent_id=seeded_folder.id,
+            source_session_id=str(uuid.uuid4()),
+        )
+    )
+    yield session
+    with suppress(NotFoundError):
+        await async_client.chat_sessions.delete(id=session.id)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def seeded_message(
+    async_client: AsyncAlbert, seeded_session: ChatSession
+) -> AsyncGenerator[ChatMessage, None]:
+    message = await async_client.chat_messages.create(
+        message=ChatMessage(
+            component_type=ChatComponentType.TEXT,
+            user_type=ChatUserType.USER,
+            role=ChatRole.USER,
+            content={"message": "Hello from SDK tests"},
+            parent_id=seeded_session.id,
+            sequence="000",
+        )
+    )
+    yield message
