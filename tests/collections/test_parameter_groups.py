@@ -271,3 +271,20 @@ def test_update_units(
     updated_param = updated_pg.parameters[0]
     assert updated_param.unit.id == new_unit.id
     assert updated_param.unit.id != original_unit.id
+
+
+def test_update_required(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    """Test setting and unsetting the required flag on a parameter in a parameter group."""
+    pg = client.parameter_groups.get_by_id(id=seeded_parameter_groups[0].id)
+    param = pg.parameters[0]
+    assert not param.required
+
+    param.required = True
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+    updated_param = next(x for x in updated_pg.parameters if x.id == param.id)
+    assert updated_param.required is True
+
+    updated_param.required = False
+    restored_pg = client.parameter_groups.update(parameter_group=updated_pg)
+    restored_param = next(x for x in restored_pg.parameters if x.id == param.id)
+    assert not restored_param.required

@@ -460,3 +460,28 @@ def test_hydrate_data_template(client: Albert):
         # identity checks
         assert hydrated.id == data_template.id
         assert hydrated.name == data_template.name
+
+
+def test_update_required_parameter(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+):
+    """Test setting and unsetting the required flag on a parameter in a data template."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
+        None,
+    )
+    assert dt is not None and dt.parameter_values
+
+    param = dt.parameter_values[0]
+    assert not param.required
+
+    param.required = True
+    updated_dt = client.data_templates.update(data_template=dt)
+    updated_param = next(x for x in updated_dt.parameter_values if x.id == param.id)
+    assert updated_param.required is True
+
+    updated_param.required = False
+    restored_dt = client.data_templates.update(data_template=updated_dt)
+    restored_param = next(x for x in restored_dt.parameter_values if x.id == param.id)
+    assert not restored_param.required
