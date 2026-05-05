@@ -6448,7 +6448,7 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Specific task IDs to search for.</p>
+                <p>Filter by task IDs (e.g., <code>["TAS123", "TAS456"]</code>).</p>
               </div>
             </td>
             <td>
@@ -6496,7 +6496,7 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Albert-specific task identifiers.</p>
+                <p>Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like <code>["A46", "A50"]</code>).</p>
               </div>
             </td>
             <td>
@@ -6867,13 +6867,13 @@ To retrieve fully detailed entities, use :meth:<code>get_all</code> instead.</p>
 </span><span id="__span-0-533"><a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="sd">    tags : list[str], optional</span>
 </span><span id="__span-0-534"><a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">        Filter by tags associated with tasks.</span>
 </span><span id="__span-0-535"><a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">    task_id : list[str], optional</span>
-</span><span id="__span-0-536"><a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">        Specific task IDs to search for.</span>
+</span><span id="__span-0-536"><a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">        Filter by task IDs (e.g., ``[&quot;TAS123&quot;, &quot;TAS456&quot;]``).</span>
 </span><span id="__span-0-537"><a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="sd">    linked_task : list[str], optional</span>
 </span><span id="__span-0-538"><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
 </span><span id="__span-0-539"><a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="sd">    category : TaskCategory, optional</span>
 </span><span id="__span-0-540"><a id="__codelineno-0-540" name="__codelineno-0-540"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
 </span><span id="__span-0-541"><a id="__codelineno-0-541" name="__codelineno-0-541"></a><span class="sd">    albert_id : list[str], optional</span>
-</span><span id="__span-0-542"><a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">        Albert-specific task identifiers.</span>
+</span><span id="__span-0-542"><a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">        Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``[&quot;A46&quot;, &quot;A50&quot;]``).</span>
 </span><span id="__span-0-543"><a id="__codelineno-0-543" name="__codelineno-0-543"></a><span class="sd">    data_template : list[str], optional</span>
 </span><span id="__span-0-544"><a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">        Data template names associated with tasks.</span>
 </span><span id="__span-0-545"><a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="sd">    assigned_to : list[str], optional</span>
@@ -7035,7 +7035,7 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Specific task IDs to search for.</p>
+                <p>Filter by task IDs (e.g., <code>["TAS123", "TAS456"]</code>).</p>
               </div>
             </td>
             <td>
@@ -7083,7 +7083,7 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Albert-specific task identifiers.</p>
+                <p>Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like <code>["A46", "A50"]</code>).</p>
               </div>
             </td>
             <td>
@@ -7447,13 +7447,13 @@ Use :meth:<code>search</code> for faster retrieval when you only need lightweigh
 </span><span id="__span-0-642"><a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    tags : list[str], optional</span>
 </span><span id="__span-0-643"><a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">        Filter by tags associated with tasks.</span>
 </span><span id="__span-0-644"><a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">    task_id : list[str], optional</span>
-</span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">        Specific task IDs to search for.</span>
+</span><span id="__span-0-645"><a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">        Filter by task IDs (e.g., ``[&quot;TAS123&quot;, &quot;TAS456&quot;]``).</span>
 </span><span id="__span-0-646"><a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">    linked_task : list[str], optional</span>
 </span><span id="__span-0-647"><a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">        Task IDs linked to the ones being searched.</span>
 </span><span id="__span-0-648"><a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">    category : TaskCategory, optional</span>
 </span><span id="__span-0-649"><a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        Task category filter (e.g., Experiment, Analysis).</span>
 </span><span id="__span-0-650"><a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">    albert_id : list[str], optional</span>
-</span><span id="__span-0-651"><a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        Albert-specific task identifiers.</span>
+</span><span id="__span-0-651"><a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``[&quot;A46&quot;, &quot;A50&quot;]``).</span>
 </span><span id="__span-0-652"><a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">    data_template : list[str], optional</span>
 </span><span id="__span-0-653"><a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">        Data template names associated with tasks.</span>
 </span><span id="__span-0-654"><a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">    assigned_to : list[str], optional</span>
