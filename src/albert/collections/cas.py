@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from pydantic import validate_call
+from typing_extensions import deprecated
 
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
@@ -41,6 +42,12 @@ class CasPaginator(AlbertPaginator):
         return True
 
 
+@deprecated(
+    "CasCollection is deprecated and will be removed in SDK 2.0. "
+    "Use client.substances_v4 instead. "
+    "In SDK 2.0, all write operations target the Substance entity exclusively — "
+    "CAS entities, reports, and SQL DWH tables backed by CAS will no longer be updated."
+)
 class CasCollection(BaseCollection):
     "CasCollection is a collection class for managing Cas entities on the Albert Platform."
 
