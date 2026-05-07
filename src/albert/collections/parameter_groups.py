@@ -15,9 +15,15 @@ from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
     ParameterGroup,
     ParameterGroupSearchItem,
+    ParameterValue,
     PGType,
 )
-from albert.utils._patch import generate_parameter_group_patches
+from albert.utils._patch import (
+    generate_parameter_group_patches,
+    push_new_parameter_enums,
+    restore_new_parameter_enums,
+    strip_new_parameter_enums,
+)
 
 DEFAULT_ADDITIONAL_FIELDS = [
     "acl",
@@ -288,7 +294,8 @@ class ParameterGroupCollection(BaseCollection):
         # add new parameters
         new_param_url = f"{self.base_path}/{parameter_group.id}/parameters"
         if len(new_parameter_values) > 0:
-            self.session.put(
+            saved_enums = strip_new_parameter_enums(new_parameter_values)
+            response = self.session.put(
                 url=new_param_url,
                 json={
                     "Parameters": [
@@ -297,16 +304,22 @@ class ParameterGroupCollection(BaseCollection):
                     ],
                 },
             )
+            returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
+            restore_new_parameter_enums(returned_parameters, saved_enums)
+            push_new_parameter_enums(
+                session=self.session,
+                parameters_base_url=new_param_url,
+                parameters=returned_parameters,
+            )
+
         new_param_sequences = [x.sequence for x in new_parameter_values]
-        # handle enum updates
+        # handle enum updates for existing parameters
         for sequence, ep in enum_patches.items():
             if sequence in new_param_sequences:
-                # we don't need to handle enum updates for new parameters
                 continue
             if len(ep) > 0:
-                enum_url = f"{self.base_path}/{parameter_group.id}/parameters/{sequence}/enums"
                 self.session.put(
-                    url=enum_url,
+                    url=f"{self.base_path}/{parameter_group.id}/parameters/{sequence}/enums",
                     json=ep,
                 )
         if len(general_patches.data) > 0:

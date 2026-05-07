@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from albert.core.session import AlbertSession
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -699,6 +700,88 @@ def build_acl_patch_payload(
     return GeneralPatchPayload(
         data=[GeneralPatchDatum(attribute="ACL", operation=operation, **datum_kwargs)]
     )
+
+
+def strip_new_parameter_enums(
+    parameters: list[ParameterValue],
+) -> dict[int, list[EnumValidationValue]]:
+    """Strip ENUM validations from parameters in-place before a PUT request.
+
+    Parameters
+    ----------
+    parameters : list[ParameterValue]
+        The parameters to strip.
+
+    Returns
+    -------
+    dict[int, list[EnumValidationValue]]
+        Mapping of parameter index to its original enum values, for use with
+        ``restore_new_parameter_enums``.
+    """
+    saved: dict[int, list[EnumValidationValue]] = {}
+    for i, p in enumerate(parameters):
+        if p.validation and len(p.validation) > 0 and p.validation[0].datatype == DataType.ENUM:
+            saved[i] = p.validation[0].value
+            p.validation[0].datatype = DataType.STRING
+            p.validation[0].value = None
+    return saved
+
+
+def restore_new_parameter_enums(
+    parameters: list[ParameterValue],
+    saved: dict[int, list[EnumValidationValue]],
+) -> None:
+    """Restore ENUM validations onto parameters returned from a PUT request.
+
+    Parameters
+    ----------
+    parameters : list[ParameterValue]
+        The parameters returned by the server (with server-assigned sequences).
+    saved : dict[int, list[EnumValidationValue]]
+        The saved enum values from ``strip_new_parameter_enums``.
+    """
+    for i, param in enumerate(parameters):
+        if i in saved:
+            param.validation[0].value = saved[i]
+            param.validation[0].datatype = DataType.ENUM
+
+
+def push_new_parameter_enums(
+    *,
+    session: AlbertSession,
+    parameters_base_url: str,
+    parameters: list[ParameterValue],
+) -> None:
+    """Push enum options for newly created parameters to get server-assigned IDs.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    parameters_base_url : str
+        Base URL for the parameters endpoint, e.g.
+        ``/api/v3/parametergroups/{id}/parameters``.
+    parameters : list[ParameterValue]
+        Parameters with server-assigned sequences and restored ENUM validations.
+    """
+    for param in parameters:
+        if (
+            param.validation
+            and len(param.validation) > 0
+            and param.validation[0].datatype == DataType.ENUM
+            and isinstance(param.validation[0].value, list)
+            and param.sequence is not None
+        ):
+            enum_ops = [
+                {"operation": "add", "text": v.text}
+                for v in param.validation[0].value
+                if isinstance(v, EnumValidationValue)
+            ]
+            if enum_ops:
+                session.put(
+                    url=f"{parameters_base_url}/{param.sequence}/enums",
+                    json=enum_ops,
+                )
 
 
 def generate_parameter_group_patches(
