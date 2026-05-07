@@ -705,7 +705,7 @@ def build_acl_patch_payload(
 def strip_new_parameter_enums(
     parameters: list[ParameterValue],
 ) -> dict[int, list[EnumValidationValue]]:
-    """Strip ENUM validations from parameters in-place before a PUT request.
+    """Strip ENUM validations from new parameters, returning the saved values.
 
     Parameters
     ----------
@@ -731,7 +731,7 @@ def restore_new_parameter_enums(
     parameters: list[ParameterValue],
     saved: dict[int, list[EnumValidationValue]],
 ) -> None:
-    """Restore ENUM validations onto parameters returned from a PUT request.
+    """Restore previously stripped ENUM validations onto parameters.
 
     Parameters
     ----------
@@ -759,8 +759,7 @@ def push_new_parameter_enums(
     session : AlbertSession
         The active session.
     parameters_base_url : str
-        Base URL for the parameters endpoint, e.g.
-        ``/api/v3/parametergroups/{id}/parameters``.
+        Base URL for the parameters resource.
     parameters : list[ParameterValue]
         Parameters with server-assigned sequences and restored ENUM validations.
     """
