@@ -8,6 +8,7 @@ from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
     ParameterGroupSearchItem,
+    ParameterValue,
     ValueValidation,
 )
 from albert.resources.tags import Tag
@@ -288,3 +289,35 @@ def test_update_required(client: Albert, seeded_parameter_groups: list[Parameter
     restored_pg = client.parameter_groups.update(parameter_group=updated_pg)
     restored_param = next(x for x in restored_pg.parameters if x.id == param.id)
     assert not restored_param.required
+
+
+def test_new_parameter_enum_ids_populated(
+    client: Albert,
+    seeded_parameter_groups: list[ParameterGroup],
+    seeded_parameters,
+):
+    """Test that enum IDs are assigned when a new parameter with ENUM validation is added via update."""
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    pg = client.parameter_groups.get_by_id(id=pg.id)
+
+    pg.parameters.append(
+        ParameterValue(
+            parameter=seeded_parameters[4],
+            validation=[
+                ValueValidation(
+                    datatype=DataType.ENUM,
+                    value=[
+                        EnumValidationValue(text="EnumRepro1"),
+                        EnumValidationValue(text="EnumRepro2"),
+                    ],
+                )
+            ],
+        )
+    )
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    new_param = next(p for p in updated_pg.parameters if p.id == seeded_parameters[4].id)
+    assert new_param.validation[0].datatype == DataType.ENUM
+    assert len(new_param.validation[0].value) == 2
+    for v in new_param.validation[0].value:
+        assert v.id is not None, f"Enum value '{v.text}' has no ID"
