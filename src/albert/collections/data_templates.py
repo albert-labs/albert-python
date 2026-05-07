@@ -26,9 +26,14 @@ from albert.resources.data_templates import (
     ParameterValue,
 )
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
-from albert.utils._patch import build_acl_patch_payload, generate_data_template_patches
+from albert.utils._patch import (
+    build_acl_patch_payload,
+    generate_data_template_patches,
+    push_new_parameter_enums,
+    restore_new_parameter_enums,
+    strip_new_parameter_enums,
+)
 from albert.utils.data_template import (
-    add_parameter_enums,
     build_curve_example,
     build_image_example,
     get_target_data_column,
@@ -221,43 +226,25 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated DataTemplate object.
         """
-        # make sure the parameter values have a default validaion of string type.
-        initial_enum_values = {}  # use parameter ID to track the enum values
-        cleaned_params = []
         if parameters is None or len(parameters) == 0:
             return self.get_by_id(id=data_template_id)
-        for param in parameters:
-            if (
-                param.validation
-                and len(param.validation) > 0
-                and param.validation[0].datatype == DataType.ENUM
-            ):
-                initial_enum_values[param.id] = param.validation[0].value
-                param.validation[0].value = None
-                param.validation[0].datatype = DataType.STRING
-            cleaned_params.append(param)
 
-        payload = {
-            "Parameters": [
-                x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in cleaned_params
-            ]
-        }
-        # if there are enum values, we need to add them as an allowed enum
+        saved_enums = strip_new_parameter_enums(parameters)
         response = self.session.put(
             f"{self.base_path}/{data_template_id}/parameters",
-            json=payload,
+            json={
+                "Parameters": [
+                    x.model_dump(mode="json", by_alias=True, exclude_none=True) for x in parameters
+                ]
+            },
         )
         returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
-        for param in returned_parameters:
-            if param.id in initial_enum_values:
-                param.validation[0].value = initial_enum_values[param.id]
-                param.validation[0].datatype = DataType.ENUM
-                add_parameter_enums(
-                    session=self.session,
-                    base_path=self.base_path,
-                    data_template_id=data_template_id,
-                    new_parameters=[param],
-                )
+        restore_new_parameter_enums(returned_parameters, saved_enums)
+        push_new_parameter_enums(
+            session=self.session,
+            parameters_base_url=f"{self.base_path}/{data_template_id}/parameters",
+            parameters=returned_parameters,
+        )
 
         return self.get_by_id(id=data_template_id)
 
@@ -413,43 +400,22 @@ class DataTemplateCollection(BaseCollection):
                     json=enum_patches,  # these are simple dicts for now
                 )
         if len(new_parameters) > 0:
-            # remove enum types, will become enums after enum adds
-            initial_enum_values = {}  # track original enum values by index
-            no_enum_params = []
-            for i, p in enumerate(new_parameters):
-                if (
-                    p.validation
-                    and len(p.validation) > 0
-                    and p.validation[0].datatype == DataType.ENUM
-                ):
-                    initial_enum_values[i] = p.validation[0].value
-                    p.validation[0].datatype = DataType.STRING
-                    p.validation[0].value = None
-                no_enum_params.append(p)
-
+            saved_enums = strip_new_parameter_enums(new_parameters)
             response = self.session.put(
                 f"{self.base_path}/{existing.id}/parameters",
                 json={
                     "Parameters": [
                         x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                        for x in no_enum_params
+                        for x in new_parameters
                     ],
                 },
             )
-
-            # Get returned parameters with sequences and restore enum values
             returned_parameters = [ParameterValue(**x) for x in response.json()["Parameters"]]
-            for i, param in enumerate(returned_parameters):
-                if i in initial_enum_values:
-                    param.validation[0].value = initial_enum_values[i]
-                    param.validation[0].datatype = DataType.ENUM  # Add this line
-
-            # Add enum values to newly created parameters
-            add_parameter_enums(
+            restore_new_parameter_enums(returned_parameters, saved_enums)
+            push_new_parameter_enums(
                 session=self.session,
-                base_path=self.base_path,
-                data_template_id=existing.id,
-                new_parameters=returned_parameters,
+                parameters_base_url=f"{self.base_path}/{existing.id}/parameters",
+                parameters=returned_parameters,
             )
         enum_sequences = {}
         if len(parameter_enum_patches) > 0:
