@@ -4,12 +4,40 @@ Data Templates in Albert Invent define how results are captured and structured. 
 
 ## Add numeric data column
 
-!!! example "Create a data column, add it, then set NUMBER datatype"
+!!! info "Default validation"
+    Data columns added to a template without explicit validation automatically receive `number` as the default datatype. No additional update step is required for basic numeric columns.
+
+!!! example "Create a data column and add it — defaults to NUMBER datatype"
     ```python
     from albert import Albert
     from albert.resources.data_columns import DataColumn
     from albert.resources.data_templates import DataColumnValue
-    from albert.resources.parameter_groups import DataType, ValueValidation
+
+    client = Albert.from_client_credentials()
+
+    data_template_id = "DT123"
+
+    # 1) Create data column
+    created_column = client.data_columns.create(
+        data_column=DataColumn(name="Viscosity Number"),
+    )
+
+    # 2) Add data column to template — validation defaults to NUMBER
+    dt = client.data_templates.add_data_columns(
+        data_template_id=data_template_id,
+        data_columns=[DataColumnValue(data_column_id=created_column.id)],
+    )
+    print(dt.id)
+    ```
+
+## Add numeric data column with range validation
+
+!!! example "Create a data column with a specific numeric range constraint"
+    ```python
+    from albert import Albert
+    from albert.resources.data_columns import DataColumn
+    from albert.resources.data_templates import DataColumnValue
+    from albert.resources.parameter_groups import DataType, Operator, ValueValidation
 
     client = Albert.from_client_credentials()
 
@@ -26,9 +54,9 @@ Data Templates in Albert Invent define how results are captured and structured. 
         data_columns=[DataColumnValue(data_column_id=created_column.id)],
     )
 
-    # 3) Update template and set NUMBER datatype
+    # 3) Update template with a range constraint (must be between 0 and 100)
     target = next(x for x in (dt.data_column_values or []) if x.data_column_id == created_column.id)
-    target.validation = [ValueValidation(datatype=DataType.NUMBER)]
+    target.validation = [ValueValidation(datatype=DataType.NUMBER, operator=Operator.BETWEEN, min="0", max="100")]
 
     updated_dt = client.data_templates.update(data_template=dt)
     print(updated_dt.id)
@@ -36,7 +64,7 @@ Data Templates in Albert Invent define how results are captured and structured. 
 
 ## Add dropdown data column with validation
 
-!!! example "Add two data columns, then set ENUM and NUMBER validations"
+!!! example "Add two data columns, then set ENUM validation on one"
     ```python
     from albert import Albert
     from albert.resources.data_columns import DataColumn
@@ -59,7 +87,7 @@ Data Templates in Albert Invent define how results are captured and structured. 
         data_column=DataColumn(name="Viscosity Number"),
     )
 
-    # 2) Add both columns to template
+    # 2) Add both columns to template — viscosity defaults to NUMBER validation
     dt = client.data_templates.add_data_columns(
         data_template_id=data_template_id,
         data_columns=[
@@ -72,9 +100,8 @@ Data Templates in Albert Invent define how results are captured and structured. 
         ],
     )
 
-    # 3) Update template with dropdown (enum) + number validations
+    # 3) Update appearance column with dropdown (enum) validation
     appearance = next(x for x in (dt.data_column_values or []) if x.data_column_id == appearance_column.id)
-    viscosity = next(x for x in (dt.data_column_values or []) if x.data_column_id == viscosity_column.id)
 
     appearance.validation = [
         ValueValidation(
@@ -86,7 +113,6 @@ Data Templates in Albert Invent define how results are captured and structured. 
             ],
         )
     ]
-    viscosity.validation = [ValueValidation(datatype=DataType.NUMBER)]
 
     updated_dt = client.data_templates.update(data_template=dt)
     print(updated_dt.id)
