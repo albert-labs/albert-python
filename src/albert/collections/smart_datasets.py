@@ -1,8 +1,16 @@
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
-from albert.resources.smart_datasets import SmartDataset, SmartDatasetScope
+from albert.resources.smart_datasets import (
+    SmartDataset,
+    SmartDatasetAggregateBy,
+    SmartDatasetBuildState,
+    SmartDatasetData,
+    SmartDatasetScope,
+)
 
 
 class SmartDatasetCollection(BaseCollection):
@@ -34,6 +42,8 @@ class SmartDatasetCollection(BaseCollection):
         Updates a smart dataset.
     delete(id) -> None
         Deletes a smart dataset by its ID.
+    get_experiment_data(id, aggregate_by=None, ids=None, variables=None) -> SmartDatasetData
+        Retrieves the experiment data matrix for a smart dataset.
     """
 
     _api_version = "v3"
@@ -138,22 +148,6 @@ class SmartDatasetCollection(BaseCollection):
             )
         return self.get_by_id(id=smart_dataset.id)
 
-    def delete(self, *, id: SmartDatasetId) -> None:
-        """
-        Deletes a smart dataset by its ID.
-
-        Parameters
-        ----------
-        id : SmartDatasetId
-            The ID of the smart dataset to delete.
-
-        Returns
-        -------
-        None
-        """
-        url = f"{self.base_path}/{id}"
-        self.session.delete(url)
-
     def _generate_patch_payload(
         self,
         *,
@@ -183,3 +177,63 @@ class SmartDatasetCollection(BaseCollection):
                 )
 
         return PatchPayload(data=data)
+
+    def delete(self, *, id: SmartDatasetId) -> None:
+        """
+        Deletes a smart dataset by its ID.
+
+        Parameters
+        ----------
+        id : SmartDatasetId
+            The ID of the smart dataset to delete.
+
+        Returns
+        -------
+        None
+        """
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)
+
+    @validate_call
+    def get_data(
+        self,
+        *,
+        id: SmartDatasetId,
+        aggregate_by: SmartDatasetAggregateBy = SmartDatasetAggregateBy.PTD,
+        ids: list[str] | None = None,
+        variables: list[str] | None = None,
+    ) -> SmartDatasetData:
+        """
+        Retrieves the experiment data for a smart dataset.
+
+        Parameters
+        ----------
+        id : SmartDatasetId
+            The ID of the smart dataset.
+        aggregate_by : SmartDatasetAggregateBy, optional
+            The aggregation level for the returned data. Defaults to ``ptd``.
+        ids : list[str], optional
+            Filter results to these identifier keys.
+        variables : list[str], optional
+            Filter results to these variable keys.
+
+        Returns
+        -------
+        SmartDatasetData
+            The experiment data matrix.
+        """
+        smart_dataset = self.get_by_id(id=id)
+        if smart_dataset.build_state != SmartDatasetBuildState.READY:
+            raise ValueError("Smart dataset is not ready")
+        params: dict = {"aggregate_by": aggregate_by.to_api_value()}
+        if ids is not None:
+            params["id"] = ids
+        if variables is not None:
+            params["variable"] = variables
+        response = self.session.get(
+            f"{self.base_path}/{id}/experiments/data",
+            params=params,
+        )
+        data = response.json()
+        data["aggregate_by"] = aggregate_by.from_api_value(data["aggregate_by"])
+        return SmartDatasetData(**data)
