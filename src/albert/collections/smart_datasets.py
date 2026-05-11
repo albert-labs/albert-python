@@ -42,8 +42,8 @@ class SmartDatasetCollection(BaseCollection):
         Updates a smart dataset.
     delete(id) -> None
         Deletes a smart dataset by its ID.
-    get_experiment_data(id, aggregate_by=None, ids=None, variables=None) -> SmartDatasetData
-        Retrieves the experiment data matrix for a smart dataset.
+    get_data(id, aggregate_by=None, ids=None, variables=None) -> SmartDatasetData
+        Retrieves the data for a smart dataset.
     """
 
     _api_version = "v3"

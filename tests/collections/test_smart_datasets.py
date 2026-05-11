@@ -26,7 +26,6 @@ def seeded_smart_dataset_scope(
     )
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_create(client: Albert, seeded_smart_dataset_scope: SmartDatasetScope):
     """Test creating a new smart dataset."""
 
@@ -41,7 +40,6 @@ def test_smart_dataset_create(client: Albert, seeded_smart_dataset_scope: SmartD
     client.smart_datasets.delete(id=created.id)
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_create_with_build(
     client: Albert, seeded_smart_dataset_scope: SmartDatasetScope
 ):
@@ -56,7 +54,6 @@ def test_smart_dataset_create_with_build(
     client.smart_datasets.delete(id=created.id)
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_get_all(client: Albert):
     """Test listing smart datasets."""
     results = client.smart_datasets.get_all()
@@ -65,7 +62,6 @@ def test_smart_dataset_get_all(client: Albert):
     assert all(isinstance(r, SmartDataset) for r in results)
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_get_by_id(client: Albert, seeded_smart_dataset: SmartDataset):
     """Test retrieving a smart dataset by its ID."""
     fetched = client.smart_datasets.get_by_id(id=seeded_smart_dataset.id)
@@ -73,7 +69,6 @@ def test_smart_dataset_get_by_id(client: Albert, seeded_smart_dataset: SmartData
     assert fetched.id == seeded_smart_dataset.id
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_update(client: Albert, seeded_smart_dataset: SmartDataset):
     """Test updating a smart dataset scope."""
     fetched = client.smart_datasets.get_by_id(id=seeded_smart_dataset.id)
@@ -96,7 +91,6 @@ def test_smart_dataset_update(client: Albert, seeded_smart_dataset: SmartDataset
     assert updated.schema_ == new_schema
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_delete(
     client: Albert,
     seeded_smart_dataset_scope: SmartDatasetScope,
@@ -112,7 +106,6 @@ def test_smart_dataset_delete(
         client.smart_datasets.get_by_id(id=created.id)
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_get_data(client: Albert, seeded_smart_dataset: SmartDataset):
     """Test retrieving the experiment data matrix for a smart dataset."""
     result = client.smart_datasets.get_data(id=seeded_smart_dataset.id)
@@ -120,7 +113,6 @@ def test_smart_dataset_get_data(client: Albert, seeded_smart_dataset: SmartDatas
     assert result.aggregate_by == SmartDatasetAggregateBy.PTD
 
 
-# @pytest.mark.skip(reason="Smart Datasets API is not yet available in the test environment.")
 def test_smart_dataset_get_data_with_filters(client: Albert, seeded_smart_dataset: SmartDataset):
     """Test retrieving experiment data with aggregation and identifier/variable filters."""
     result = client.smart_datasets.get_data(

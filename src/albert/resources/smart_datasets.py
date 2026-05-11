@@ -90,7 +90,8 @@ class SmartDatasetAggregateBy(str, Enum):
             SmartDatasetAggregateBy.PTD: "measurement",
         }[self.value]
 
-    def from_api_value(self, value: str) -> "SmartDatasetAggregateBy":
+    @staticmethod
+    def from_api_value(value: str) -> "SmartDatasetAggregateBy":
         return {
             "inventory": SmartDatasetAggregateBy.INV,
             "lot": SmartDatasetAggregateBy.LOT,
@@ -193,7 +194,7 @@ class SmartDatasetData(BaseAlbertModel):
     ----------
     aggregate_by : SmartDatasetAggregateBy
         The aggregation level of the returned data.
-    identifiers : list[SmartDatasetIdentifier]
+    identifiers : list[SmartDatasetRecordIdentifier]
         The identifier metadata for each row index entry.
     variables : list[SmartDatasetVariable]
         The variable metadata for each column entry.
