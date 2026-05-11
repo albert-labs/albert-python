@@ -179,9 +179,8 @@ def _data_column_calculation_patches(
             )
     elif initial_data_column_value.calculation != updated_data_column_value.calculation:
         return DTPatchDatum(
-            operation="update",
+            operation="add",
             attribute="calculation",
-            oldValue=initial_data_column_value.calculation,
             newValue=updated_data_column_value.calculation,
             colId=initial_data_column_value.sequence,
         )
@@ -385,13 +384,10 @@ def generate_data_column_patches(
     for updated_dc in updated_data_columns:
         these_actions = []
         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
-        # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
         calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
         curve_data_patch = data_column_curve_data_patches(initial_dc, updated_dc)
-        # if unit_patch:
-        #     these_actions.append(unit_patch)
         if value_patch:
             these_actions.append(value_patch)
         if calculation_patch:
@@ -400,16 +396,16 @@ def generate_data_column_patches(
             these_actions.append(validation_patch)
         if curve_data_patch:
             these_actions.append(curve_data_patch)
-        # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
         if len(these_actions) > 0:
-            this_patch = GeneralPatchDatum(
-                attribute="datacolumn",
-                actions=these_actions,
-                colId=updated_dc.sequence,
+            patches.append(
+                GeneralPatchDatum(
+                    attribute="datacolumn",
+                    actions=these_actions,
+                    colId=updated_dc.sequence,
+                )
             )
-            patches.append(this_patch)
 
         unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         if unit_patch:
