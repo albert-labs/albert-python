@@ -46,6 +46,16 @@ if [[ -z "$SDK_VERSION" || -z "$RUNTIME" || -z "$ARCH" ]]; then
   exit 1
 fi
 
+if [[ ! "$SDK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.?(a|b|rc|dev)[0-9]+)?$ ]]; then
+  echo "Invalid --version. Expected semver (e.g. 1.2.3)." >&2
+  exit 1
+fi
+
+if [[ ! "$RUNTIME" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "Invalid --runtime. Expected format: 3.12" >&2
+  exit 1
+fi
+
 if [[ "$ARCH" != "x86_64" && "$ARCH" != "arm64" ]]; then
   echo "Invalid --arch. Expected x86_64 or arm64." >&2
   exit 1
@@ -81,28 +91,46 @@ fi
 ZIP_NAME="albert-layer-${SDK_VERSION}-py${RUNTIME}-${ARCH_SUFFIX}.zip"
 ZIP_PATH="${OUT_DIR}/${ZIP_NAME}"
 
+# Install packages inside the Lambda image (only step that needs Docker)
 docker run \
   --rm \
   --platform "${PLATFORM}" \
   --entrypoint /bin/bash \
   --user "$(id -u):$(id -g)" \
+  --network host \
   -v "${TMP_DIR}:/work" \
   "${IMAGE}" \
-  -lc "\
-    set -euo pipefail; \
-    python -m pip install --no-cache-dir --only-binary numpy,pandas albert==${SDK_VERSION} -t /work/python; \
-    PYTHONPATH=/work/python python -c 'import albert'; \
-    python -c \"\
-import os, shutil; \
-[shutil.rmtree(os.path.join(r, d)) for r, ds, _ in os.walk('/work/python') for d in ds if d == '__pycache__']; \
-[os.remove(os.path.join(r, f)) for r, _, fs in os.walk('/work/python') for f in fs if f.endswith(('.pyc', '.pyo')) or '/tests/' in r]; \
-\"; \
-    python -c \"import os, zipfile; \
-z = zipfile.ZipFile('/work/${ZIP_NAME}', 'w', zipfile.ZIP_DEFLATED); \
-[(z.write(os.path.join(root, name), os.path.relpath(os.path.join(root, name), '/work'))) \
-for root, _, files in os.walk('/work/python') for name in files]; \
-z.close()\" \
+  -c "
+    set -euo pipefail
+    python -m pip install --no-cache-dir --only-binary numpy,pandas albert==${SDK_VERSION} -t /work/python 1>&2
+    PYTHONPATH=/work/python python -c 'import albert' 1>&2
   " 1>&2
+
+# Cleanup and zip on the host — no dependency on tools inside the Lambda image
+python3 - "${TMP_DIR}/python" "${TMP_DIR}/${ZIP_NAME}" <<'PYEOF'
+import os
+import shutil
+import sys
+import zipfile
+
+pkg_dir, zip_path = sys.argv[1], sys.argv[2]
+
+# Walk bottom-up so parent dirs are processed after children
+for dirpath, dirnames, filenames in os.walk(pkg_dir, topdown=False):
+    for d in dirnames:
+        full = os.path.join(dirpath, d)
+        if d in ("__pycache__", "tests", "test"):
+            shutil.rmtree(full)
+    for f in filenames:
+        if f.endswith((".pyc", ".pyo")):
+            os.remove(os.path.join(dirpath, f))
+
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+    for dirpath, _, filenames in os.walk(pkg_dir):
+        for f in filenames:
+            full = os.path.join(dirpath, f)
+            zf.write(full, os.path.relpath(full, os.path.dirname(pkg_dir)))
+PYEOF
 
 mv "${TMP_DIR}/${ZIP_NAME}" "${ZIP_PATH}"
 echo "${ZIP_PATH}"
