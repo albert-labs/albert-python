@@ -191,6 +191,7 @@ jobs:
               --output     /tmp/lambda_continuation.yml
       - continuation/continue:
           configuration_path: /tmp/lambda_continuation.yml
+          parameters: "{}"
 
 workflows:
   lambda_layer_matrix:
