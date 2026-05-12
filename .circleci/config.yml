@@ -178,6 +178,10 @@ jobs:
               exit 1
             fi
 
+      - run:
+          name: Set AWS default region
+          command: echo "export AWS_DEFAULT_REGION=${AWS_REGION}" >> $BASH_ENV
+
       - aws-cli/setup
 
       - run:
