@@ -1,5 +1,7 @@
 version: 2.1
 
+setup: true
+
 parameters:
   lambda_layer:
     type: boolean
@@ -7,12 +9,11 @@ parameters:
   lambda_sdk_version:
     type: string
     default: ""
-  lambda_runtime:
+  lambda_runtimes:
     type: string
     default: "3.10"
-  lambda_arch:
-    type: enum
-    enum: ["x86_64", "arm64"]
+  lambda_archs:
+    type: string
     default: "x86_64"
   lambda_region:
     type: string
@@ -22,6 +23,7 @@ parameters:
     default: ""
 
 orbs:
+  continuation: circleci/continuation@1.0.0
   python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
   aws-cli: circleci/aws-cli@4.0
@@ -157,10 +159,10 @@ jobs:
               fi
             fi
 
-  lambda_layer_publish:
-    machine:
-      image: ubuntu-2204:current
-    steps: &lambda_layer_steps
+  lambda_layer_setup:
+    docker:
+      - image: cimg/python:3.12
+    steps:
       - checkout
       - run:
           name: Validate lambda layer parameters
@@ -177,75 +179,25 @@ jobs:
               echo "lambda_account_id must be a 12-digit AWS account ID."
               exit 1
             fi
-
       - run:
-          name: Set AWS default region
-          command: echo "export AWS_DEFAULT_REGION=${AWS_REGION}" >> $BASH_ENV
-
-      - aws-cli/setup
-
-      - run:
-          name: Build lambda layer zip
+          name: Generate continuation config
           command: |
-            set -euo pipefail
-            .circleci/scripts/build-lambda-layer.sh \
-              --version "<< pipeline.parameters.lambda_sdk_version >>" \
-              --runtime "<< pipeline.parameters.lambda_runtime >>" \
-              --arch "<< pipeline.parameters.lambda_arch >>"
-
-      - store_artifacts:
-          path: dist/lambda
-          destination: lambda-layer
-
-      - run:
-          name: Publish lambda layer
-          command: |
-            set -euo pipefail
-
-            ZIP_PATH="dist/lambda/albert-layer-<< pipeline.parameters.lambda_sdk_version >>-py<< pipeline.parameters.lambda_runtime >>-<< pipeline.parameters.lambda_arch >>.zip"
-            if [[ ! -f "${ZIP_PATH}" ]]; then
-              echo "Layer zip not found at ${ZIP_PATH}"
-              exit 1
-            fi
-
-            ACCOUNT_ARG=""
-            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]]; then
-              ACCOUNT_ARG="--account-id << pipeline.parameters.lambda_account_id >>"
-            fi
-
-            .circleci/scripts/publish-lambda-layer.sh \
-              --zip "${ZIP_PATH}" \
-              --region "<< pipeline.parameters.lambda_region >>" \
-              --runtime "<< pipeline.parameters.lambda_runtime >>" \
-              --arch "<< pipeline.parameters.lambda_arch >>" \
+            python .circleci/scripts/generate_lambda_matrix.py \
+              --runtimes   "<< pipeline.parameters.lambda_runtimes >>" \
+              --archs      "<< pipeline.parameters.lambda_archs >>" \
               --sdk-version "<< pipeline.parameters.lambda_sdk_version >>" \
-              ${ACCOUNT_ARG}
-
-  lambda_layer_publish_arm:
-    machine:
-      image: ubuntu-2204:current
-    resource_class: arm.medium
-    steps: *lambda_layer_steps
+              --region     "<< pipeline.parameters.lambda_region >>" \
+              --account-id "<< pipeline.parameters.lambda_account_id >>" \
+              --output     /tmp/lambda_continuation.yml
+      - continuation/continue:
+          configuration_path: /tmp/lambda_continuation.yml
 
 workflows:
-  lambda_layer_x86:
-    when:
-      and:
-        - << pipeline.parameters.lambda_layer >>
-        - equal: ["x86_64", << pipeline.parameters.lambda_arch >>]
+  lambda_layer_matrix:
+    when: << pipeline.parameters.lambda_layer >>
     jobs:
-      - lambda_layer_publish:
-          name: Lambda Layer Publish
-          context: dev
-
-  lambda_layer_arm:
-    when:
-      and:
-        - << pipeline.parameters.lambda_layer >>
-        - equal: ["arm64", << pipeline.parameters.lambda_arch >>]
-    jobs:
-      - lambda_layer_publish_arm:
-          name: Lambda Layer Publish
+      - lambda_layer_setup:
+          name: Lambda Layer Matrix Setup
           context: dev
 
   main:
