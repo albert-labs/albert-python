@@ -92,9 +92,11 @@ docker run \
     set -euo pipefail; \
     python -m pip install --no-cache-dir --only-binary numpy,pandas albert==${SDK_VERSION} -t /work/python; \
     PYTHONPATH=/work/python python -c 'import albert'; \
-    find /work/python -name '__pycache__' -type d -prune -exec rm -rf {} +; \
-    find /work/python -name '*.pyc' -o -name '*.pyo' | xargs -r rm -f; \
-    find /work/python -path '*/tests/*' -type f -delete; \
+    python -c \"\
+import os, shutil; \
+[shutil.rmtree(os.path.join(r, d)) for r, ds, _ in os.walk('/work/python') for d in ds if d == '__pycache__']; \
+[os.remove(os.path.join(r, f)) for r, _, fs in os.walk('/work/python') for f in fs if f.endswith(('.pyc', '.pyo')) or '/tests/' in r]; \
+\"; \
     python -c \"import os, zipfile; \
 z = zipfile.ZipFile('/work/${ZIP_NAME}', 'w', zipfile.ZIP_DEFLATED); \
 [(z.write(os.path.join(root, name), os.path.relpath(os.path.join(root, name), '/work'))) \
