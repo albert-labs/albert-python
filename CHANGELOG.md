@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.1](https://github.com/albert-labs/albert-python/compare/v1.23.0...v1.23.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* **session:** handle None params in _encode_query_params ([#490](https://github.com/albert-labs/albert-python/issues/490)) ([2baea92](https://github.com/albert-labs/albert-python/commit/2baea9205177e15c1ea0c71c863e58b7412bf493))
+
 ## [1.23.0](https://github.com/albert-labs/albert-python/compare/v1.22.1...v1.23.0) (2026-05-05)
 
 
