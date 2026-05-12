@@ -77,7 +77,7 @@ class AlbertSession(requests.Session):
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
         self.headers["Authorization"] = f"Bearer {self._access_token}"
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
-        params = self._encode_query_params(kwargs.pop("params", {}))
+        params = self._encode_query_params(kwargs.pop("params", None) or {})
         # The requests library internally uses urllib.parse.urlencode() with the quote_via parameter set to quote_plus, which breaks CAS pagination.
         # Encoding parameters manually (via quote) to avoid this issue.
         if params:
