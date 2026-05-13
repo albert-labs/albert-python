@@ -7,6 +7,8 @@ Single source of truth for coding-agent guidance in this repo.
 - Python: >=3.10 (use modern type hint syntax: `list[str]`, `str | None`).
 - Formatting and linting: Ruff (line length 99).
 - Commit style: Conventional Commits (`type(scope): summary`), enforced by hooks.
+- `feat` is for new methods, parameters, or caller-visible capabilities. Adding a missing field to an existing model is `fix` — the field already exists in the API response; the SDK was just incomplete.
+- `docs` is for documentation-only changes (e.g. edits to AGENTS.md, docstrings, guides). `chore` is for maintenance tasks (dependency bumps, CI config, build tooling) — not doc edits.
 
 ## Repo Layout
 
