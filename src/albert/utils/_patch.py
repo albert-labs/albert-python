@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from albert.core.session import AlbertSession
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
@@ -699,6 +700,155 @@ def build_acl_patch_payload(
     return GeneralPatchPayload(
         data=[GeneralPatchDatum(attribute="ACL", operation=operation, **datum_kwargs)]
     )
+
+
+def create_parameters_with_enums(
+    *,
+    session: AlbertSession,
+    parameters_base_url: str,
+    patch_url: str,
+    parameters: list[ParameterValue],
+) -> list[ParameterValue]:
+    """Create parameters, including any ENUM validation options.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    parameters_base_url : str
+        Base URL for the parameters resource.
+    patch_url : str
+        URL of the parent resource to patch after enum options are registered.
+    parameters : list[ParameterValue]
+        Parameters to create.
+
+    Returns
+    -------
+    list[ParameterValue]
+        The created parameters with sequences assigned.
+    """
+    if not parameters:
+        return []
+
+    pending: dict[str, list[EnumValidationValue]] = {}
+    payloads: list[dict] = []
+    for p in parameters:
+        d = p.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if (
+            p.id is not None
+            and p.validation
+            and p.validation[0].datatype == DataType.ENUM
+            and isinstance(p.validation[0].value, list)
+        ):
+            pending[p.id] = p.validation[0].value
+            d["validation"] = [{"datatype": DataType.STRING}]
+        payloads.append(d)
+
+    response = session.put(parameters_base_url, json={"Parameters": payloads})
+    returned = [ParameterValue(**x) for x in response.json()["Parameters"]]
+
+    for param in returned:
+        enum_values = pending.get(param.id)
+        if not enum_values or param.sequence is None:
+            continue
+        enum_ops = [{"operation": "add", "text": v.text} for v in enum_values]
+        returned_enums = session.put(
+            f"{parameters_base_url}/{param.sequence}/enums",
+            json=enum_ops,
+        ).json()
+        patch_payload = PGPatchPayload(
+            data=[
+                PGPatchDatum(
+                    operation="update",
+                    attribute="enumSequence",
+                    rowId=param.sequence,
+                    new_value=[{"id": e["id"]} for e in returned_enums],
+                )
+            ]
+        )
+        session.patch(
+            patch_url,
+            json=patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+
+    return returned
+
+
+def create_data_columns_with_enums(
+    *,
+    session: AlbertSession,
+    data_columns_base_url: str,
+    data_template_url: str,
+    data_columns: list[DataColumnValue],
+) -> list[DataColumnValue]:
+    """Create data columns, including any ENUM validation options.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    data_columns_base_url : str
+        Base URL for the data columns resource.
+    data_template_url : str
+        URL of the parent data template.
+    data_columns : list[DataColumnValue]
+        Data columns to create.
+
+    Returns
+    -------
+    list[DataColumnValue]
+        The created data columns with sequences assigned.
+    """
+    if not data_columns:
+        return []
+
+    pending: dict[str, list[EnumValidationValue]] = {}
+    payloads: list[dict] = []
+    for col in data_columns:
+        d = col.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if (
+            col.data_column_id is not None
+            and col.validation
+            and col.validation[0].datatype == DataType.ENUM
+            and isinstance(col.validation[0].value, list)
+        ):
+            pending[col.data_column_id] = col.validation[0].value
+            d["validation"] = [{"datatype": DataType.STRING}]
+        payloads.append(d)
+
+    response = session.put(data_columns_base_url, json={"DataColumns": payloads})
+    returned = [DataColumnValue(**x) for x in response.json()["DataColumns"]]
+
+    for col in returned:
+        enum_values = pending.get(col.data_column_id)
+        if not enum_values or col.sequence is None:
+            continue
+        enum_ops = [{"operation": "add", "text": v.text} for v in enum_values]
+        returned_enums = session.put(
+            f"{data_columns_base_url}/{col.sequence}/enums",
+            json=enum_ops,
+        ).json()
+        patch_payload = GeneralPatchPayload(
+            data=[
+                GeneralPatchDatum(
+                    attribute="datacolumn",
+                    colId=col.sequence,
+                    actions=[
+                        PatchDatum(
+                            operation="update",
+                            attribute="enumSequence",
+                            new_value=[{"id": e["id"]} for e in returned_enums],
+                        )
+                    ],
+                )
+            ]
+        )
+        session.patch(
+            data_template_url,
+            json=patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+
+    return returned
 
 
 def generate_parameter_group_patches(

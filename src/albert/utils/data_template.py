@@ -24,8 +24,6 @@ from albert.resources.data_templates import DataColumnValue, DataTemplate, Impor
 from albert.resources.files import FileNamespace
 from albert.resources.parameter_groups import (
     DataType,
-    EnumValidationValue,
-    ParameterValue,
     ValueValidation,
 )
 from albert.resources.tasks import CsvCurveInput, CsvCurveResponse, TaskMetadata
@@ -483,97 +481,6 @@ def build_curve_import_patch_payload(
             )
         ]
     )
-
-
-def add_parameter_enums(
-    *,
-    session: AlbertSession,
-    base_path: str,
-    data_template_id: DataTemplateId,
-    new_parameters: list[ParameterValue],
-) -> dict[str, list[EnumValidationValue]]:
-    """Add enum values to newly created parameters and return updated enum sequences."""
-
-    data_template = DataTemplate(**session.get(f"{base_path}/{data_template_id}").json())
-    existing_parameters = data_template.parameter_values or []
-    enums_by_sequence: dict[str, list[EnumValidationValue]] = {}
-    for parameter in new_parameters:
-        this_sequence = next(
-            (
-                p.sequence
-                for p in existing_parameters
-                if p.id == parameter.id and p.short_name == parameter.short_name
-            ),
-            None,
-        )
-        enum_patches: list[dict[str, str]] = []
-        if (
-            parameter.validation
-            and len(parameter.validation) > 0
-            and isinstance(parameter.validation[0].value, list)
-        ):
-            existing_validation = (
-                [x for x in existing_parameters if x.sequence == parameter.sequence]
-                if existing_parameters
-                else []
-            )
-            existing_enums = (
-                [
-                    x
-                    for x in existing_validation[0].validation[0].value
-                    if isinstance(x, EnumValidationValue) and x.id is not None
-                ]
-                if (
-                    existing_validation
-                    and len(existing_validation) > 0
-                    and existing_validation[0].validation
-                    and len(existing_validation[0].validation) > 0
-                    and existing_validation[0].validation[0].value
-                    and isinstance(existing_validation[0].validation[0].value, list)
-                )
-                else []
-            )
-            updated_enums = (
-                [x for x in parameter.validation[0].value if isinstance(x, EnumValidationValue)]
-                if parameter.validation[0].value
-                else []
-            )
-
-            deleted_enums = [
-                x for x in existing_enums if x.id not in [y.id for y in updated_enums]
-            ]
-
-            new_enums = [x for x in updated_enums if x.id not in [y.id for y in existing_enums]]
-
-            matching_enums = [x for x in updated_enums if x.id in [y.id for y in existing_enums]]
-
-            for new_enum in new_enums:
-                enum_patches.append({"operation": "add", "text": new_enum.text})
-            for deleted_enum in deleted_enums:
-                enum_patches.append({"operation": "delete", "id": deleted_enum.id})
-            for matching_enum in matching_enums:
-                if (
-                    matching_enum.text
-                    != [x for x in existing_enums if x.id == matching_enum.id][0].text
-                ):
-                    enum_patches.append(
-                        {
-                            "operation": "update",
-                            "id": matching_enum.id,
-                            "text": matching_enum.text,
-                        }
-                    )
-
-            if enum_patches and this_sequence:
-                enum_response = session.put(
-                    f"{base_path}/{data_template_id}/parameters/{this_sequence}/enums",
-                    json=enum_patches,
-                )
-                enums_by_sequence[this_sequence] = [
-                    EnumValidationValue(**x) for x in enum_response.json()
-                ]
-
-    return enums_by_sequence
 
 
 def upload_image_example_attachment(
