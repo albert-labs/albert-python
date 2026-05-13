@@ -448,6 +448,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Whether the sheet is hidden.
     is_column_right : bool | None
         When True, copied columns are placed to the right of the source column; when False, to the left.
+    col_size_mode : str | None
+        Column width sizing mode. Allowed values are ``"minimum"`` and ``"fitToColumn"``.
+        ``None`` resets to the default grid width.
     designs : list[Design]
         The designs of the sheet.
     project_id : str
@@ -466,6 +469,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     formulations: list[SheetFormulationRef] = Field(default_factory=list, alias="Formulas")
     hidden: bool
     is_column_right: bool | None = Field(default=None, alias="isColumnRight")
+    col_size_mode: str | None = Field(default=None, alias="colSizeMode")
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
