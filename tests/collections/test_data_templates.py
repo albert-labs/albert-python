@@ -288,7 +288,7 @@ def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_p
     )
 
     # Step 2: add calculation via PATCH — backend clears validation to [] on this path
-    col = next(c for c in dt.data_column_values if c.sequence not in ("COL0", "COL1"))
+    col = next(c for c in dt.data_column_values if c.data_column_id == seeded_data_columns[2].id)
     col.calculation = "=COL1"
     dt = client.data_templates.update(data_template=dt)
 
