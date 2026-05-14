@@ -161,7 +161,7 @@ class ParameterGroup(BaseTaggedResource):
 
 
 class ParameterSearchItemParameter(BaseAlbertModel):
-    name: str
+    name: str | None = None
     id: str
     localized_names: LocalizedNames = Field(alias="localizedNames")
 

@@ -239,6 +239,7 @@ nav:
       - Data Templates: examples/data_templates.md
       - Inventory: examples/inventory.md
       - Notebooks: examples/notebook.md
+      - Parameter Groups: examples/parameter_groups.md
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
       - Tasks: examples/tasks.md
