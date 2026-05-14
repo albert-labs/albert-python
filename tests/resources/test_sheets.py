@@ -259,10 +259,13 @@ def test_add_formulation_no_clear_adds_new_column(
 
 
 def test_recolor_column(seeded_sheet: Sheet):
+    product_design_id = seeded_sheet.product_design.id
     for col in seeded_sheet.columns:
         if col.type == CellType.LKP:
             col.recolor_cells(color=CellColor.RED)
-            for c in col.cells:
+            product_cells = [c for c in col.cells if c.design_id == product_design_id]
+            assert product_cells
+            for c in product_cells:
                 assert c.color == CellColor.RED
 
 
