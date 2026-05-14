@@ -269,16 +269,43 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
         assert old in new_options
 
 
-def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test updating calculation on a data template data column."""
-    dt = next(x for x in seeded_data_templates if "Calculation Template" in x.name)
-    column = next(x for x in dt.data_column_values if x.sequence != "COL0")
+@pytest.fixture
+def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str):
+    from contextlib import suppress
 
-    assert column.calculation is not None
-    updated_calculation = "=COL0 + 1"
+    from albert.exceptions import NotFoundError
+    from albert.resources.data_templates import DataColumnValue
+
+    # Step 1: create without calculation so the backend doesn't lock in validation=[number]
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Calculation Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[2]),
+            ],
+        )
+    )
+
+    # Step 2: add calculation via PATCH — backend clears validation to [] on this path
+    col = next(c for c in dt.data_column_values if c.sequence not in ("COL0", "COL1"))
+    col.calculation = "=COL1"
+    dt = client.data_templates.update(data_template=dt)
+
+    yield dt
+
+    with suppress(NotFoundError):
+        client.data_templates.delete(id=dt.id)
+
+
+def test_update_calculation(client: Albert, calculation_dt: DataTemplate):
+    """Test updating calculation on a data template data column."""
+    column = next(x for x in calculation_dt.data_column_values if x.calculation is not None)
+
+    updated_calculation = "=COL1 * 2"
     column.calculation = updated_calculation
 
-    updated_dt = client.data_templates.update(data_template=dt)
+    updated_dt = client.data_templates.update(data_template=calculation_dt)
 
     assert updated_dt is not None
     updated_column = next(

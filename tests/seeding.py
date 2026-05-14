@@ -857,23 +857,6 @@ def generate_data_template_seeds(
             ],
             tags=[seeded_tags[0]],
         ),
-        # Data Template with calculations and no validations
-        DataTemplate(
-            name=f"{seed_prefix} - Calculation Template",
-            description="A data template with calculations and no validations.",
-            data_column_values=[
-                DataColumnValue(
-                    data_column=seeded_data_columns[0],
-                    calculation="=COL0 + COL1",
-                    unit=EntityLink(id=seeded_units[0].id),
-                ),
-                DataColumnValue(
-                    data_column=seeded_data_columns[1],
-                    calculation="=COL0",
-                    unit=EntityLink(id=seeded_units[1].id),
-                ),
-            ],
-        ),
         # Data Template with parameters (for PATCH /parameters testing)
         DataTemplate(
             name=f"{seed_prefix} - Parameters Data Template",
