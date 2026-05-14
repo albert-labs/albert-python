@@ -512,3 +512,44 @@ def test_update_required_parameter(
     restored_dt = client.data_templates.update(data_template=updated_dt)
     restored_param = next(x for x in restored_dt.parameter_values if x.id == param.id)
     assert not restored_param.required
+
+
+def test_add_parameters_enum_ids_populated(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter],
+):
+    """Test that enum IDs are assigned when parameters with ENUM validation are added via add_parameters."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
+        None,
+    )
+    assert dt is not None
+
+    updated_dt = client.data_templates.add_parameters(
+        data_template_id=dt.id,
+        parameters=[
+            ParameterValue(
+                id=seeded_parameters[3].id,
+                validation=[
+                    ValueValidation(
+                        datatype=DataType.ENUM,
+                        value=[
+                            EnumValidationValue(text="EnumA"),
+                            EnumValidationValue(text="EnumB"),
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    added_param = next(
+        (p for p in updated_dt.parameter_values if p.id == seeded_parameters[3].id),
+        None,
+    )
+    assert added_param is not None
+    assert added_param.validation[0].datatype == DataType.ENUM
+    assert len(added_param.validation[0].value) == 2
+    for v in added_param.validation[0].value:
+        assert v.id is not None, f"Enum value '{v.text}' has no ID"

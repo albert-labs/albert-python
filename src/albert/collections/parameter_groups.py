@@ -17,7 +17,10 @@ from albert.resources.parameter_groups import (
     ParameterGroupSearchItem,
     PGType,
 )
-from albert.utils._patch import generate_parameter_group_patches
+from albert.utils._patch import (
+    create_parameters_with_enums,
+    generate_parameter_group_patches,
+)
 
 DEFAULT_ADDITIONAL_FIELDS = [
     "acl",
@@ -286,27 +289,25 @@ class ParameterGroupCollection(BaseCollection):
         )
 
         # add new parameters
-        new_param_url = f"{self.base_path}/{parameter_group.id}/parameters"
         if len(new_parameter_values) > 0:
-            self.session.put(
-                url=new_param_url,
-                json={
-                    "Parameters": [
-                        x.model_dump(mode="json", by_alias=True, exclude_none=True)
-                        for x in new_parameter_values
-                    ],
-                },
+            create_parameters_with_enums(
+                session=self.session,
+                parameters_base_url=f"{self.base_path}/{parameter_group.id}/parameters",
+                patch_url=f"{self.base_path}/{parameter_group.id}",
+                parameters=new_parameter_values,
             )
+
+        # new_parameter_values have sequence=None before being sent, so this
+        # guard never matches in practice — enum updates on new params are
+        # handled above by create_parameters_with_enums.
         new_param_sequences = [x.sequence for x in new_parameter_values]
-        # handle enum updates
+        # handle enum updates for existing parameters
         for sequence, ep in enum_patches.items():
             if sequence in new_param_sequences:
-                # we don't need to handle enum updates for new parameters
                 continue
             if len(ep) > 0:
-                enum_url = f"{self.base_path}/{parameter_group.id}/parameters/{sequence}/enums"
                 self.session.put(
-                    url=enum_url,
+                    url=f"{self.base_path}/{parameter_group.id}/parameters/{sequence}/enums",
                     json=ep,
                 )
         if len(general_patches.data) > 0:
