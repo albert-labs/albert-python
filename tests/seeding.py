@@ -1693,6 +1693,30 @@ def generate_task_seeds(
             start_date="2024-10-01",
             due_date="2024-10-31",
         ),
+        # Batch Task with property blocks
+        BatchTask(
+            name=f"{seed_prefix} - Batch Task With Blocks",
+            category=TaskCategory.BATCH,
+            batch_size_unit=BatchSizeUnit.GRAMS,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_products[0].id,
+                    batch_size=50.0,
+                )
+            ],
+            location=seeded_locations[0],
+            priority=TaskPriority.LOW,
+            project=formulation_proj,
+            parent_id=formulation_proj.id,
+            assigned_to=user,
+            due_date="2024-10-31",
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[0]],
+                    data_template=[seeded_data_templates[0]],
+                )
+            ],
+        ),
     ]
 
 
