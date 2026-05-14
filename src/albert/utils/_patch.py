@@ -19,20 +19,6 @@ from albert.resources.parameter_groups import (
 from albert.resources.tags import Tag
 
 
-def _normalize_validation(validation: list[EnumValidationValue]) -> list[EnumValidationValue]:
-    """Normalize validation objects for comparison. Ignore original_text for enum values."""
-    normalized = []
-    for v in validation:
-        if isinstance(v.value, list):
-            normalized_value = [
-                EnumValidationValue(text=enum.text, id=enum.id, original_text=None)
-                for enum in v.value
-            ]
-            v.value = normalized_value
-        normalized.append(v)
-    return normalized
-
-
 def _parameter_unit_patches(
     initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
 ) -> PGPatchDatum | None:
@@ -279,6 +265,27 @@ def data_column_curve_data_patches(
         attribute="curveData",
         oldValue=initial_data_column.curve_data,
         newValue=updated_data_column.curve_data,
+    )
+
+
+def _parameter_required_patch(
+    initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
+) -> PGPatchDatum | None:
+    """Generate a patch for a parameter required flag."""
+    updated_required = updated_parameter_value.required
+    if updated_required is None:
+        return None
+    initial_required = (
+        initial_parameter_value.required if initial_parameter_value.required is not None else False
+    )
+    if initial_required == updated_required:
+        return None
+    return PGPatchDatum(
+        operation="update",
+        attribute="required",
+        oldValue=initial_required,
+        newValue=updated_required,
+        rowId=updated_parameter_value.sequence,
     )
 
 
@@ -538,12 +545,15 @@ def generate_parameter_patches(
     for existing_param, updated_param in updated_param_pairs:
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
+        required_patch = _parameter_required_patch(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
 
         if unit_patch:
             parameter_patches.append(unit_patch)
         if value_patch:
             parameter_patches.append(value_patch)
+        if required_patch:
+            parameter_patches.append(required_patch)
         # Check if this parameter will have enum patches
         will_have_enum_patches = (
             updated_param.validation is not None

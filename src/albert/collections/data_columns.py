@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 
 from pydantic import validate_call
@@ -12,7 +13,35 @@ from albert.resources.data_columns import DataColumn
 
 
 class DataColumnCollection(BaseCollection):
-    """DataColumnCollection is a collection class for managing DataColumn entities in the Albert platform."""
+    """DataColumnCollection is a collection class for managing DataColumn entities in the Albert platform.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The Albert session instance.
+
+    Attributes
+    ----------
+    base_path : str
+        The base URL for data column API requests.
+
+    Methods
+    -------
+    get_all(...) -> Iterator[DataColumn]
+        Get all data column entities with optional filters.
+    get_by_id(id) -> DataColumn
+        Get a data column by its ID.
+    get_by_name(name) -> DataColumn | None
+        Get a data column by its name.
+    create(data_column) -> DataColumn
+        Create a new data column entity.
+    get_or_create(data_column) -> DataColumn
+        Retrieve an existing data column by name or create it if not found.
+    update(data_column) -> DataColumn
+        Update a data column entity.
+    delete(id) -> None
+        Delete a data column entity.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "metadata"}
@@ -138,6 +167,27 @@ class DataColumnCollection(BaseCollection):
         response = self.session.post(self.base_path, json=payload)
 
         return DataColumn(**response.json()[0])
+
+    def get_or_create(self, *, data_column: DataColumn) -> DataColumn:
+        """Retrieve an existing data column by name or create it if not found.
+
+        Parameters
+        ----------
+        data_column : DataColumn
+            The data column to get or create.
+
+        Returns
+        -------
+        DataColumn
+            The existing or newly created data column.
+        """
+        for match in self.get_all(name=data_column.name, exact_match=False):
+            if match.name == data_column.name:
+                logging.warning(
+                    f"DataColumn with name {data_column.name} already exists. Returning existing data column."
+                )
+                return match
+        return self.create(data_column=data_column)
 
     @validate_call
     def delete(self, *, id: DataColumnId) -> None:
