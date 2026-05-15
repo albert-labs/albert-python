@@ -18,6 +18,8 @@ class ChatComponentType(str, Enum):
     NOTEBOOK_CITATION = "notebook_citation"
     PRODUCT_CARD = "product_card"
     INGREDIENT_CARD = "ingredient_card"
+    TOOL_CALL = "tool_call"
+    ERROR = "error"
 
 
 class ChatUserType(str, Enum):
