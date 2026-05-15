@@ -34,6 +34,7 @@ def test_cas_amount_attributes():
         "updated",
         "classification_type",
         "type",
+        "substance_id",
     }
 
 

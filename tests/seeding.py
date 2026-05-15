@@ -113,6 +113,7 @@ def generate_custom_fields() -> list[CustomField]:
         ServiceType.PARAMETER_GROUPS,
         ServiceType.DATA_TEMPLATES,
         ServiceType.CAS,
+        ServiceType.SUBSTANCES,
     ]
 
     seeds = []

@@ -30,6 +30,7 @@ class ServiceType(str, Enum):
     DATA_TEMPLATES = "datatemplates"
     PARAMETER_GROUPS = "parametergroups"
     CAS = "cas"
+    SUBSTANCES = "substances"
 
 
 class FieldCategory(str, Enum):

@@ -1,4 +1,5 @@
 import re
+import warnings
 from collections.abc import Iterator
 from typing import Any
 
@@ -56,6 +57,14 @@ class CasCollection(BaseCollection):
         session : AlbertSession
             The Albert session instance.
         """
+        warnings.warn(
+            "CasCollection is deprecated and will be removed in SDK 2.0. "
+            "Use client.substances_v4 instead. "
+            "In SDK 2.0, all write operations target the Substance entity exclusively — "
+            "CAS entities, reports, and SQL DWH tables backed by CAS will no longer be updated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
 
