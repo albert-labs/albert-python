@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0](https://github.com/albert-labs/albert-python/compare/v1.23.1...v1.24.0) (2026-05-15)
+
+
+### Features
+
+* **chats:** add TOOL_CALL and ERROR to ChatComponentType ([#503](https://github.com/albert-labs/albert-python/issues/503)) ([5af1082](https://github.com/albert-labs/albert-python/commit/5af108241e1c5f4729fda9d0a8669c4db8b25640))
+* **chats:** add TOOL_CALL and ERROR to ChatComponentType [SDK-50] ([#502](https://github.com/albert-labs/albert-python/issues/502)) ([5af1082](https://github.com/albert-labs/albert-python/commit/5af108241e1c5f4729fda9d0a8669c4db8b25640))
+
+
+### Bug Fixes
+
+* **data_templates:** workaround backend s3key bug in calculation update test ([#498](https://github.com/albert-labs/albert-python/issues/498)) ([669a1db](https://github.com/albert-labs/albert-python/commit/669a1dbe89025fe54a10d3b6cc610f7dd57ec4fc))
+* **parameter_groups:** assign enum IDs and fix search item model ([#485](https://github.com/albert-labs/albert-python/issues/485)) ([5d13cb9](https://github.com/albert-labs/albert-python/commit/5d13cb9efac31e847a4207c3a9b1f781131ceb54))
+* **sheets:** scope recolor_column test to product design cells ([#500](https://github.com/albert-labs/albert-python/issues/500)) ([a37156b](https://github.com/albert-labs/albert-python/commit/a37156bcfcd9cd14ee59d9344110b9f2b6bbdbc9))
+
+
+### Documentation
+
+* **agents:** clarify conventional commit type usage ([7de25ba](https://github.com/albert-labs/albert-python/commit/7de25babcba56f8b646870a3dc3f02ea4a3583fb))
+* **enums:** document shared enums and add to SDK reference ([#496](https://github.com/albert-labs/albert-python/issues/496)) ([56b5452](https://github.com/albert-labs/albert-python/commit/56b5452b5fc60286ac4e077c8e94775c17756eb5)), closes [#489](https://github.com/albert-labs/albert-python/issues/489)
+
 ## [1.23.1](https://github.com/albert-labs/albert-python/compare/v1.23.0...v1.23.1) (2026-05-12)
 
 
