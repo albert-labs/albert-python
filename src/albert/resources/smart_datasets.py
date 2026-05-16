@@ -42,7 +42,7 @@ class SmartDatasetScope(BaseAlbertModel):
     target_ids: list[TargetId] = Field(default_factory=list, alias="targetIds")
     sheet_ids: list[WorksheetId] | None = Field(default=None, alias="sheetIds")
     target_parent_ids: dict[TargetId, ProjectId] | None = Field(
-        default=None, alias="targetParentIds"
+        default_factory=dict, alias="targetParentIds"
     )
 
     # NOTE: temporary filter to remove invalid sheet IDs due to invalid legacy data
