@@ -3,6 +3,7 @@ from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
+    BatchTask,
     PropertyTask,
     TaskCategory,
     TaskSearchItem,
@@ -121,6 +122,53 @@ def test_update_block_workflow(
     assert len(updated_task.blocks) == starting_blocks
     updated_block = [x for x in updated_task.blocks if x.id == block_id][0]
     assert new_workflow.id in [x.id for x in updated_block.workflow]
+
+
+def test_add_block_to_batch_task(
+    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+):
+    """Test that a property block can be added to a batch task."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    starting_blocks = len(task.blocks)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    updated_task = client.tasks.get_by_id(id=task.id)
+    assert len(updated_task.blocks) == starting_blocks + 1
+
+
+def test_update_block_workflow_on_batch_task(
+    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+):
+    """Test that the workflow of a block on a batch task can be updated."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    starting_blocks = len(task.blocks)
+    block_id = task.blocks[0].id
+    current_workflow_id = task.blocks[0].workflow[0].id
+    new_workflow = next(x for x in seeded_workflows if x.id != current_workflow_id)
+    client.tasks.update_block_workflow(
+        task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
+    )
+    updated_task = client.tasks.get_by_id(id=task.id)
+    assert len(updated_task.blocks) == starting_blocks
+    updated_block = next(x for x in updated_task.blocks if x.id == block_id)
+    assert new_workflow.id in [x.id for x in updated_block.workflow]
+
+
+def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):
+    """Test that a property block can be removed from a batch task."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    starting_blocks = len(task.blocks)
+    block_id = task.blocks[0].id
+    client.tasks.remove_block(task_id=task.id, block_id=block_id)
+    updated_task = client.tasks.get_by_id(id=task.id)
+    assert len(updated_task.blocks) == starting_blocks - 1
+    assert block_id not in [x.id for x in (updated_task.blocks or [])]
 
 
 def test_task_get_history(client: Albert, seeded_tasks):

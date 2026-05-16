@@ -1,6 +1,8 @@
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import TargetId
+from albert.core.shared.identifiers import ProjectId, TargetId
 from albert.resources.targets import Target
 
 
@@ -67,7 +69,8 @@ class TargetCollection(BaseCollection):
         )
         return Target(**response.json())
 
-    def get_by_id(self, *, id: TargetId) -> Target:
+    @validate_call
+    def get_by_id(self, *, id: TargetId, parent_id: ProjectId | None = None) -> Target:
         """
         Retrieves a target by its ID.
 
@@ -75,6 +78,9 @@ class TargetCollection(BaseCollection):
         ----------
         id : TargetId
             The ID of the target to retrieve.
+        parent_id : ProjectId, optional
+            The ID of the parent project to inherit the ACL policy from when
+            the caller does not own the target record.
 
         Returns
         -------
@@ -82,7 +88,8 @@ class TargetCollection(BaseCollection):
             The Target entity.
         """
         url = f"{self.base_path}/{id}"
-        response = self.session.get(url)
+        params = {"parentId": parent_id} if parent_id is not None else None
+        response = self.session.get(url, params=params)
         return Target(**response.json())
 
     def get_by_ids(self, *, ids: list[TargetId]) -> list[Target]:

@@ -34,11 +34,17 @@ class SmartDatasetScope(BaseAlbertModel):
         List of target IDs.
     sheet_ids : list[WorksheetId] | None
         List of worksheet IDs. If None, all worksheets in the projects will be used.
+    target_parent_ids : dict[TargetId, ProjectId] | None
+        Optional mapping from target ID to a parent project ID. When set, the target
+        inherits its ACL policy from the referenced project.
     """
 
     project_ids: list[ProjectId] = Field(default_factory=list, alias="projectIds")
     target_ids: list[TargetId] = Field(default_factory=list, alias="targetIds")
     sheet_ids: list[WorksheetId] | None = Field(default=None, alias="sheetIds")
+    target_parent_ids: dict[TargetId, ProjectId] | None = Field(
+        default_factory=dict, alias="targetParentIds"
+    )
 
     # NOTE: temporary filter to remove invalid sheet IDs due to invalid legacy data
     @field_validator("sheet_ids", mode="before")

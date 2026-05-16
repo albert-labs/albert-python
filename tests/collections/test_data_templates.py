@@ -269,16 +269,43 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
         assert old in new_options
 
 
-def test_update_calculation(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test updating calculation on a data template data column."""
-    dt = next(x for x in seeded_data_templates if "Calculation Template" in x.name)
-    column = next(x for x in dt.data_column_values if x.sequence != "COL0")
+@pytest.fixture
+def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str):
+    from contextlib import suppress
 
-    assert column.calculation is not None
-    updated_calculation = "=COL0 + 1"
+    from albert.exceptions import NotFoundError
+    from albert.resources.data_templates import DataColumnValue
+
+    # Step 1: create without calculation so the backend doesn't lock in validation=[number]
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Calculation Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[2]),
+            ],
+        )
+    )
+
+    # Step 2: add calculation via PATCH — backend clears validation to [] on this path
+    col = next(c for c in dt.data_column_values if c.data_column_id == seeded_data_columns[2].id)
+    col.calculation = "=COL1"
+    dt = client.data_templates.update(data_template=dt)
+
+    yield dt
+
+    with suppress(NotFoundError):
+        client.data_templates.delete(id=dt.id)
+
+
+def test_update_calculation(client: Albert, calculation_dt: DataTemplate):
+    """Test updating calculation on a data template data column."""
+    column = next(x for x in calculation_dt.data_column_values if x.calculation is not None)
+
+    updated_calculation = "=COL1 * 2"
     column.calculation = updated_calculation
 
-    updated_dt = client.data_templates.update(data_template=dt)
+    updated_dt = client.data_templates.update(data_template=calculation_dt)
 
     assert updated_dt is not None
     updated_column = next(
@@ -485,3 +512,44 @@ def test_update_required_parameter(
     restored_dt = client.data_templates.update(data_template=updated_dt)
     restored_param = next(x for x in restored_dt.parameter_values if x.id == param.id)
     assert not restored_param.required
+
+
+def test_add_parameters_enum_ids_populated(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter],
+):
+    """Test that enum IDs are assigned when parameters with ENUM validation are added via add_parameters."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
+        None,
+    )
+    assert dt is not None
+
+    updated_dt = client.data_templates.add_parameters(
+        data_template_id=dt.id,
+        parameters=[
+            ParameterValue(
+                id=seeded_parameters[3].id,
+                validation=[
+                    ValueValidation(
+                        datatype=DataType.ENUM,
+                        value=[
+                            EnumValidationValue(text="EnumA"),
+                            EnumValidationValue(text="EnumB"),
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    added_param = next(
+        (p for p in updated_dt.parameter_values if p.id == seeded_parameters[3].id),
+        None,
+    )
+    assert added_param is not None
+    assert added_param.validation[0].datatype == DataType.ENUM
+    assert len(added_param.validation[0].value) == 2
+    for v in added_param.validation[0].value:
+        assert v.id is not None, f"Enum value '{v.text}' has no ID"

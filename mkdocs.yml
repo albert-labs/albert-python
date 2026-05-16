@@ -200,6 +200,7 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Entity Types: resources/entity_types.md
+          - Enums: resources/enums.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
@@ -238,6 +239,7 @@ nav:
       - Data Templates: examples/data_templates.md
       - Inventory: examples/inventory.md
       - Notebooks: examples/notebook.md
+      - Parameter Groups: examples/parameter_groups.md
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
       - Tasks: examples/tasks.md

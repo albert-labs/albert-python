@@ -857,23 +857,6 @@ def generate_data_template_seeds(
             ],
             tags=[seeded_tags[0]],
         ),
-        # Data Template with calculations and no validations
-        DataTemplate(
-            name=f"{seed_prefix} - Calculation Template",
-            description="A data template with calculations and no validations.",
-            data_column_values=[
-                DataColumnValue(
-                    data_column=seeded_data_columns[0],
-                    calculation="=COL0 + COL1",
-                    unit=EntityLink(id=seeded_units[0].id),
-                ),
-                DataColumnValue(
-                    data_column=seeded_data_columns[1],
-                    calculation="=COL0",
-                    unit=EntityLink(id=seeded_units[1].id),
-                ),
-            ],
-        ),
         # Data Template with parameters (for PATCH /parameters testing)
         DataTemplate(
             name=f"{seed_prefix} - Parameters Data Template",
@@ -1709,6 +1692,30 @@ def generate_task_seeds(
             assigned_to=user,
             start_date="2024-10-01",
             due_date="2024-10-31",
+        ),
+        # Batch Task with property blocks
+        BatchTask(
+            name=f"{seed_prefix} - Batch Task With Blocks",
+            category=TaskCategory.BATCH,
+            batch_size_unit=BatchSizeUnit.GRAMS,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_products[0].id,
+                    batch_size=50.0,
+                )
+            ],
+            location=seeded_locations[0],
+            priority=TaskPriority.LOW,
+            project=formulation_proj,
+            parent_id=formulation_proj.id,
+            assigned_to=user,
+            due_date="2024-10-31",
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[0]],
+                    data_template=[seeded_data_templates[0]],
+                )
+            ],
         ),
     ]
 
