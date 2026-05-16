@@ -4822,7 +4822,7 @@
               <td><code><a class="autorefs autorefs-internal" href="#albert.collections.tasks.TaskCollection.add_block">add_block</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>Add a block to a Property task.</p>
+                  <p>Add a block to a Property or Batch task.</p>
                 </div>
               </td>
             </tr>
@@ -4838,7 +4838,7 @@
               <td><code><a class="autorefs autorefs-internal" href="#albert.collections.tasks.TaskCollection.remove_block">remove_block</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>Remove a block from a Property task.</p>
+                  <p>Remove a block from a Property or Batch task.</p>
                 </div>
               </td>
             </tr>
@@ -5119,7 +5119,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Add a block to a Property task.</p>
+        <p>Add a block to a Property or Batch task.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5248,7 +5248,7 @@
 </span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="k">def</span><span class="w"> </span><span class="nf">add_block</span><span class="p">(</span>
 </span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span> <span class="n">data_template_id</span><span class="p">:</span> <span class="n">DataTemplateId</span><span class="p">,</span> <span class="n">workflow_id</span><span class="p">:</span> <span class="n">WorkflowId</span>
 </span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a block to a Property task.</span>
+</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a block to a Property or Batch task.</span>
 </span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a>
 </span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">    ----------</span>
@@ -5396,7 +5396,7 @@
 <details class="note" open>
   <summary>Notes</summary>
   <ul>
-<li>The method asserts that the retrieved task is an instance of <code>PropertyTask</code>.</li>
+<li>The method requires the task to be a PropertyTask or BatchTask.</li>
 <li>If the block's current workflow matches the new workflow ID, no update is performed.</li>
 <li>The method handles the case where the block has a default workflow named "No Parameter Group".</li>
 </ul>
@@ -5486,15 +5486,15 @@
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">    Notes</span>
 </span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">    -----</span>
-</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">    - The method asserts that the retrieved task is an instance of `PropertyTask`.</span>
+</span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">    - The method requires the task to be a PropertyTask or BatchTask.</span>
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">    - If the block&#39;s current workflow matches the new workflow ID, no update is performed.</span>
 </span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">    - The method handles the case where the block has a default workflow named &quot;No Parameter Group&quot;.</span>
 </span><span id="__span-0-166"><a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span>
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a>    <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">task_id</span><span class="p">)</span>
-</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">PropertyTask</span><span class="p">):</span>
-</span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> is not an instance of PropertyTask&quot;</span><span class="p">)</span>
-</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> is not an instance of PropertyTask&quot;</span><span class="p">)</span>
+</span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">PropertyTask</span> <span class="o">|</span> <span class="n">BatchTask</span><span class="p">):</span>
+</span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> is not a PropertyTask or BatchTask&quot;</span><span class="p">)</span>
+</span><span id="__span-0-171"><a id="__codelineno-0-171" name="__codelineno-0-171"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> is not a PropertyTask or BatchTask&quot;</span><span class="p">)</span>
 </span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">blocks</span><span class="p">:</span>
 </span><span id="__span-0-173"><a id="__codelineno-0-173" name="__codelineno-0-173"></a>        <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">id</span> <span class="o">!=</span> <span class="n">block_id</span><span class="p">:</span>
 </span><span id="__span-0-174"><a id="__codelineno-0-174" name="__codelineno-0-174"></a>            <span class="k">continue</span>
@@ -5540,7 +5540,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Remove a block from a Property task.</p>
+        <p>Remove a block from a Property or Batch task.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -5645,7 +5645,7 @@
 <span class="normal"><a href="#__codelineno-0-226">226</a></span>
 <span class="normal"><a href="#__codelineno-0-227">227</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="nd">@validate_call</span>
 </span><span id="__span-0-200"><a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="k">def</span><span class="w"> </span><span class="nf">remove_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">TaskId</span><span class="p">,</span> <span class="n">block_id</span><span class="p">:</span> <span class="n">BlockId</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-201"><a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove a block from a Property task.</span>
+</span><span id="__span-0-201"><a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove a block from a Property or Batch task.</span>
 </span><span id="__span-0-202"><a id="__codelineno-0-202" name="__codelineno-0-202"></a>
 </span><span id="__span-0-203"><a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-204"><a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">    ----------</span>
