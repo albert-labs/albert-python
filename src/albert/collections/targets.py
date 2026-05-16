@@ -1,3 +1,5 @@
+from pydantic import validate_call
+
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import ProjectId, TargetId
@@ -67,6 +69,7 @@ class TargetCollection(BaseCollection):
         )
         return Target(**response.json())
 
+    @validate_call
     def get_by_id(self, *, id: TargetId, parent_id: ProjectId | None = None) -> Target:
         """
         Retrieves a target by its ID.
