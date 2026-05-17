@@ -1,8 +1,32 @@
 version: 2.1
 
+setup: true
+
+parameters:
+  lambda_layer:
+    type: boolean
+    default: false
+  lambda_sdk_version:
+    type: string
+    default: ""
+  lambda_runtimes:
+    type: string
+    default: "3.10,3.11,3.12"
+  lambda_archs:
+    type: string
+    default: "x86_64,arm64"
+  lambda_region:
+    type: string
+    default: "us-east-1"
+  lambda_account_id:
+    type: string
+    default: ""
+
 orbs:
+  continuation: circleci/continuation@1.0.0
   python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
+  aws-cli: circleci/aws-cli@4.0
 
 commands:
   install_uv:
@@ -135,8 +159,51 @@ jobs:
               fi
             fi
 
+  lambda_layer_setup:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Validate lambda layer parameters
+          command: |
+            set -euo pipefail
+
+            if [[ -z "<< pipeline.parameters.lambda_sdk_version >>" ]]; then
+              echo "lambda_sdk_version is required when triggering lambda_layer workflow."
+              exit 1
+            fi
+
+            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]] && \
+              ! [[ "<< pipeline.parameters.lambda_account_id >>" =~ ^[0-9]{12}$ ]]; then
+              echo "lambda_account_id must be a 12-digit AWS account ID."
+              exit 1
+            fi
+      - run:
+          name: Generate continuation config
+          command: |
+            python .circleci/scripts/generate_lambda_matrix.py \
+              --runtimes   "<< pipeline.parameters.lambda_runtimes >>" \
+              --archs      "<< pipeline.parameters.lambda_archs >>" \
+              --sdk-version "<< pipeline.parameters.lambda_sdk_version >>" \
+              --region     "<< pipeline.parameters.lambda_region >>" \
+              --account-id "<< pipeline.parameters.lambda_account_id >>" \
+              --output     /tmp/lambda_continuation.yml
+      - continuation/continue:
+          configuration_path: /tmp/lambda_continuation.yml
+          parameters: "{}"
+
 workflows:
+  lambda_layer_matrix:
+    when: << pipeline.parameters.lambda_layer >>
+    jobs:
+      - lambda_layer_setup:
+          name: Lambda Layer Matrix Setup
+          context: dev
+
   main:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - test:
           name: Test
@@ -150,6 +217,8 @@ workflows:
               only: main
 
   release:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - validate_release_tag:
           name: Validate Release Tag
