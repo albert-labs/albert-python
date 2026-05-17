@@ -14,6 +14,11 @@ from albert.resources.smart_datasets import (
 from albert.resources.targets import Target
 from tests.seeding import generate_smart_dataset_seed
 
+pytestmark = pytest.mark.xfail(
+    reason="SmartDatasets API is not yet deployed to prod.",
+    strict=False,
+)
+
 
 @pytest.fixture(scope="session")
 def seeded_smart_dataset_scope(
