@@ -2,7 +2,7 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import SmartDatasetId
+from albert.core.shared.identifiers import ProjectId, SmartDatasetId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.smart_datasets import (
     SmartDataset,
@@ -62,10 +62,12 @@ class SmartDatasetCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{SmartDatasetCollection._api_version}/smartdatasets"
 
+    @validate_call
     def create(
         self,
         *,
         scope: SmartDatasetScope,
+        parent_id: ProjectId | None = None,
         build: bool = True,
     ) -> SmartDataset:
         """
@@ -75,6 +77,9 @@ class SmartDatasetCollection(BaseCollection):
         ----------
         scope : SmartDatasetScope
             The scope of the smart dataset.
+        parent_id : ProjectId, optional
+            The ID of the parent project to inherit the ACL policy from. When set,
+            the smart dataset inherits its ACL policy from the referenced project.
         build : bool, optional
             Whether to populate the smart dataset with data from Albert.
 
@@ -83,9 +88,12 @@ class SmartDatasetCollection(BaseCollection):
         SmartDataset
             The created smart dataset entity.
         """
+        body = {"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")}
+        if parent_id is not None:
+            body["parentId"] = parent_id
         response = self.session.post(
             self.base_path,
-            json={"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")},
+            json=body,
             params={"build": build},
         )
         return SmartDataset(**response.json())
@@ -103,7 +111,8 @@ class SmartDatasetCollection(BaseCollection):
         data = response.json()
         return [SmartDataset(**item) for item in data.get("Items", [])]
 
-    def get_by_id(self, *, id: SmartDatasetId) -> SmartDataset:
+    @validate_call
+    def get_by_id(self, *, id: SmartDatasetId, parent_id: ProjectId | None = None) -> SmartDataset:
         """
         Retrieves a smart dataset by its ID.
 
@@ -111,6 +120,9 @@ class SmartDatasetCollection(BaseCollection):
         ----------
         id : SmartDatasetId
             The ID of the smart dataset to retrieve.
+        parent_id : ProjectId, optional
+            The ID of the parent project to inherit the ACL policy from when
+            the caller does not own the smart dataset record.
 
         Returns
         -------
@@ -118,7 +130,8 @@ class SmartDatasetCollection(BaseCollection):
             The SmartDataset entity.
         """
         url = f"{self.base_path}/{id}"
-        response = self.session.get(url)
+        params = {"parentId": parent_id} if parent_id is not None else None
+        response = self.session.get(url, params=params)
         return SmartDataset(**response.json())
 
     def update(
@@ -139,14 +152,14 @@ class SmartDatasetCollection(BaseCollection):
         SmartDataset
             The updated SmartDataset.
         """
-        existing = self.get_by_id(id=smart_dataset.id)
+        existing = self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
         if payload.data:
             self.session.patch(
                 url=f"{self.base_path}/{smart_dataset.id}",
                 json=payload.model_dump(mode="json", by_alias=True, exclude_none=False),
             )
-        return self.get_by_id(id=smart_dataset.id)
+        return self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
 
     def _generate_patch_payload(
         self,
@@ -202,6 +215,7 @@ class SmartDatasetCollection(BaseCollection):
         aggregate_by: SmartDatasetAggregateBy = SmartDatasetAggregateBy.PTD,
         ids: list[str] | None = None,
         variables: list[str] | None = None,
+        parent_id: ProjectId | None = None,
     ) -> SmartDatasetData:
         """
         Retrieves the experiment data for a smart dataset.
@@ -216,13 +230,16 @@ class SmartDatasetCollection(BaseCollection):
             Filter results to these identifier keys.
         variables : list[str], optional
             Filter results to these variable keys.
+        parent_id : ProjectId, optional
+            The ID of the parent project to inherit the ACL policy from when
+            the caller does not own the smart dataset record.
 
         Returns
         -------
         SmartDatasetData
             The experiment data matrix.
         """
-        smart_dataset = self.get_by_id(id=id)
+        smart_dataset = self.get_by_id(id=id, parent_id=parent_id)
         if smart_dataset.build_state != SmartDatasetBuildState.READY:
             raise ValueError("Smart dataset is not ready")
         params: dict = {"aggregate_by": aggregate_by.to_api_value()}
