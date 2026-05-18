@@ -134,6 +134,7 @@ class SmartDatasetCollection(BaseCollection):
         response = self.session.get(url, params=params)
         return SmartDataset(**response.json())
 
+    @validate_call
     def update(
         self,
         *,
@@ -191,6 +192,7 @@ class SmartDatasetCollection(BaseCollection):
 
         return PatchPayload(data=data)
 
+    @validate_call
     def delete(self, *, id: SmartDatasetId) -> None:
         """
         Deletes a smart dataset by its ID.
