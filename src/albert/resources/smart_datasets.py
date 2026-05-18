@@ -105,7 +105,7 @@ class SmartDatasetAggregateBy(str, Enum):
         return {
             "inventory": SmartDatasetAggregateBy.INV,
             "lot": SmartDatasetAggregateBy.LOT,
-            "workflow_interval": SmartDatasetAggregateBy.WFL,
+            "workflow": SmartDatasetAggregateBy.WFL,
             "measurement": SmartDatasetAggregateBy.PTD,
         }[value]
 
