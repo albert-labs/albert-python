@@ -214,10 +214,10 @@ class SmartDatasetCollection(BaseCollection):
         self,
         *,
         id: SmartDatasetId,
+        parent_id: ProjectId | None = None,
         aggregate_by: SmartDatasetAggregateBy = SmartDatasetAggregateBy.PTD,
         ids: list[str] | None = None,
         variables: list[str] | None = None,
-        parent_id: ProjectId | None = None,
     ) -> SmartDatasetData:
         """
         Retrieves the experiment data for a smart dataset.
@@ -226,15 +226,15 @@ class SmartDatasetCollection(BaseCollection):
         ----------
         id : SmartDatasetId
             The ID of the smart dataset.
+        parent_id : ProjectId, optional
+            The ID of the parent project to inherit the ACL policy from when
+            the caller does not own the smart dataset record.
         aggregate_by : SmartDatasetAggregateBy, optional
             The aggregation level for the returned data. Defaults to ``ptd``.
         ids : list[str], optional
             Filter results to these identifier keys.
         variables : list[str], optional
             Filter results to these variable keys.
-        parent_id : ProjectId, optional
-            The ID of the parent project to inherit the ACL policy from when
-            the caller does not own the smart dataset record.
 
         Returns
         -------
