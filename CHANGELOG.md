@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0](https://github.com/albert-labs/albert-python/compare/v1.23.1...v1.24.0) (2026-05-18)
+
+
+### Features
+
+* **cas:** cap get_by_number partial-match pagination to avoid OpenSearch 500 ([#505](https://github.com/albert-labs/albert-python/issues/505)) ([cc4f03c](https://github.com/albert-labs/albert-python/commit/cc4f03cc8956a35c6b520041979767e798dfcf3d))
+* **chats:** add TOOL_CALL and ERROR to ChatComponentType [SDK-50] ([#502](https://github.com/albert-labs/albert-python/issues/502)) ([5c21d50](https://github.com/albert-labs/albert-python/commit/5c21d50dac091c2a1788899eafb183f458bbe5da))
+* **sheets:** add is_column_right field to Sheet model ([75327db](https://github.com/albert-labs/albert-python/commit/75327dbcf95f8226c081efa23f102bd9503302fa))
+* support parent id on targets ([#504](https://github.com/albert-labs/albert-python/issues/504)) ([fcc40a0](https://github.com/albert-labs/albert-python/commit/fcc40a084e1982a14c5cb3492db3c5b9871d1f5d))
+
+
+### Bug Fixes
+
+* **data_templates:** workaround backend s3key bug in calculation update test ([#498](https://github.com/albert-labs/albert-python/issues/498)) ([669a1db](https://github.com/albert-labs/albert-python/commit/669a1dbe89025fe54a10d3b6cc610f7dd57ec4fc))
+* **parameter_groups:** assign enum IDs and fix search item model ([#485](https://github.com/albert-labs/albert-python/issues/485)) ([5d13cb9](https://github.com/albert-labs/albert-python/commit/5d13cb9efac31e847a4207c3a9b1f781131ceb54))
+* **sheets:** add is_column_right field to Sheet model ([#484](https://github.com/albert-labs/albert-python/issues/484)) ([75327db](https://github.com/albert-labs/albert-python/commit/75327dbcf95f8226c081efa23f102bd9503302fa))
+* **sheets:** scope recolor_column test to product design cells ([#500](https://github.com/albert-labs/albert-python/issues/500)) ([a37156b](https://github.com/albert-labs/albert-python/commit/a37156bcfcd9cd14ee59d9344110b9f2b6bbdbc9))
+* **tasks:** add property blocks support to BatchTask ([#499](https://github.com/albert-labs/albert-python/issues/499)) ([e1b4fa0](https://github.com/albert-labs/albert-python/commit/e1b4fa0077e0d610b344c954956d40b2c426ed00))
+
+
+### Documentation
+
+* **agents:** clarify conventional commit type usage ([7de25ba](https://github.com/albert-labs/albert-python/commit/7de25babcba56f8b646870a3dc3f02ea4a3583fb))
+* **enums:** document shared enums and add to SDK reference ([#496](https://github.com/albert-labs/albert-python/issues/496)) ([56b5452](https://github.com/albert-labs/albert-python/commit/56b5452b5fc60286ac4e077c8e94775c17756eb5)), closes [#489](https://github.com/albert-labs/albert-python/issues/489)
+
 ## [1.23.1](https://github.com/albert-labs/albert-python/compare/v1.23.0...v1.23.1) (2026-05-12)
 
 

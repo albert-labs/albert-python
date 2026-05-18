@@ -137,7 +137,8 @@ class CasCollection(BaseCollection):
                 deserialize=lambda items: [Cas(**item) for item in items],
             )
 
-    def exists(self, *, number: str, exact_match: bool = True) -> bool:
+    @validate_call
+    def exists(self, *, number: str, exact_match: bool = True, max_items: int | None = 50) -> bool:
         """
         Checks if a CAS exists by its number.
 
@@ -147,14 +148,19 @@ class CasCollection(BaseCollection):
             The number of the CAS to check.
         exact_match : bool, optional
             Whether to match the number exactly, by default True.
+        max_items : int | None, optional
+            Maximum number of results to search through when ``exact_match`` is False.
+            Defaults to 50 (one page). Pass ``None`` for unbounded search.
 
         Returns
         -------
         bool
             True if the CAS exists, False otherwise.
         """
-        cas_list = self.get_by_number(number=number, exact_match=exact_match)
-        return cas_list is not None
+        return (
+            self.get_by_number(number=number, exact_match=exact_match, max_items=max_items)
+            is not None
+        )
 
     def create(self, *, cas: str | Cas) -> Cas:
         """
@@ -239,7 +245,10 @@ class CasCollection(BaseCollection):
 
         return cleaned_text
 
-    def get_by_number(self, *, number: str, exact_match: bool = True) -> Cas | None:
+    @validate_call
+    def get_by_number(
+        self, *, number: str, exact_match: bool = True, max_items: int | None = 50
+    ) -> Cas | None:
         """
         Retrieves a CAS by its number.
 
@@ -249,6 +258,9 @@ class CasCollection(BaseCollection):
             The number of the CAS to retrieve.
         exact_match : bool, optional
             Whether to match the number exactly, by default True.
+        max_items : int | None, optional
+            Maximum number of results to search through when ``exact_match`` is False.
+            Defaults to 50 (one page). Pass ``None`` for unbounded search.
 
         Returns
         -------
@@ -263,7 +275,7 @@ class CasCollection(BaseCollection):
                     return candidate
             return None
 
-        for candidate in self.get_all(number=cleaned_number):
+        for candidate in self.get_all(number=cleaned_number, max_items=max_items):
             if cleaned_number in self._clean_cas_number(candidate.number):
                 return candidate
         return None
