@@ -111,17 +111,19 @@ def test_smart_dataset_delete(
         client.smart_datasets.get_by_id(id=created.id)
 
 
-def test_smart_dataset_get_data(client: Albert, seeded_smart_dataset: SmartDataset):
+def test_smart_dataset_get_data(client: Albert, seeded_built_smart_dataset: SmartDataset):
     """Test retrieving the experiment data matrix for a smart dataset."""
-    result = client.smart_datasets.get_data(id=seeded_smart_dataset.id)
+    result = client.smart_datasets.get_data(id=seeded_built_smart_dataset.id)
     assert isinstance(result, SmartDatasetData)
     assert result.aggregate_by == SmartDatasetAggregateBy.PTD
 
 
-def test_smart_dataset_get_data_with_filters(client: Albert, seeded_smart_dataset: SmartDataset):
+def test_smart_dataset_get_data_with_filters(
+    client: Albert, seeded_built_smart_dataset: SmartDataset
+):
     """Test retrieving experiment data with aggregation and identifier/variable filters."""
     result = client.smart_datasets.get_data(
-        id=seeded_smart_dataset.id,
+        id=seeded_built_smart_dataset.id,
         aggregate_by=SmartDatasetAggregateBy.WFL,
     )
     assert isinstance(result, SmartDatasetData)
@@ -130,7 +132,7 @@ def test_smart_dataset_get_data_with_filters(client: Albert, seeded_smart_datase
     identifier_keys = [i.key for i in result.identifiers[:1]]
     variable_keys = [v.key for v in result.variables[:1]]
     filtered = client.smart_datasets.get_data(
-        id=seeded_smart_dataset.id,
+        id=seeded_built_smart_dataset.id,
         aggregate_by=SmartDatasetAggregateBy.WFL,
         ids=identifier_keys,
         variables=variable_keys,

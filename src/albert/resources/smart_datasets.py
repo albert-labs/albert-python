@@ -64,6 +64,9 @@ class SmartDataset(BaseResource):
     ----------
     id : SmartDatasetId | None
         The unique identifier of the smart dataset.
+    parent_id : ProjectId | None
+        The ID of the parent project this smart dataset belongs to. When set,
+        the smart dataset inherits its ACL policy from the referenced project.
     scope : SmartDatasetScope | None
         The dataset scope containing project, target, and sheet IDs.
     schema_ : dict | None
@@ -74,6 +77,7 @@ class SmartDataset(BaseResource):
 
     type: Literal["smart"] = "smart"
     id: SmartDatasetId | None = Field(default=None)
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
     build_state: SmartDatasetBuildState | None = Field(default=None, alias="buildState")
     scope: SmartDatasetScope | None = Field(default=None)
     schema_: dict | None = Field(default=None, alias="schema")
@@ -92,7 +96,7 @@ class SmartDatasetAggregateBy(str, Enum):
         return {
             SmartDatasetAggregateBy.INV: "inventory",
             SmartDatasetAggregateBy.LOT: "lot",
-            SmartDatasetAggregateBy.WFL: "workflow_interval",
+            SmartDatasetAggregateBy.WFL: "workflow",
             SmartDatasetAggregateBy.PTD: "measurement",
         }[self.value]
 
@@ -101,7 +105,7 @@ class SmartDatasetAggregateBy(str, Enum):
         return {
             "inventory": SmartDatasetAggregateBy.INV,
             "lot": SmartDatasetAggregateBy.LOT,
-            "workflow_interval": SmartDatasetAggregateBy.WFL,
+            "workflow": SmartDatasetAggregateBy.WFL,
             "measurement": SmartDatasetAggregateBy.PTD,
         }[value]
 
