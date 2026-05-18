@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0](https://github.com/albert-labs/albert-python/compare/v1.24.0...v1.25.0) (2026-05-18)
+
+
+### Features
+
+* add support for get_data ([#488](https://github.com/albert-labs/albert-python/issues/488)) ([f6e5ae8](https://github.com/albert-labs/albert-python/commit/f6e5ae8249cec8b0acbe52866ea22657bec56185))
+* **smartdatasets:** adds optional parent-id to smartdatasets for inheriting project ACL policy ([#506](https://github.com/albert-labs/albert-python/issues/506)) ([29600d1](https://github.com/albert-labs/albert-python/commit/29600d1387a34b5bacbfbaed38c0c9f1377f45ca))
+
 ## [1.24.0](https://github.com/albert-labs/albert-python/compare/v1.23.1...v1.24.0) (2026-05-18)
 
 
