@@ -137,6 +137,7 @@ class CasCollection(BaseCollection):
                 deserialize=lambda items: [Cas(**item) for item in items],
             )
 
+    @validate_call
     def exists(self, *, number: str, exact_match: bool = True, max_items: int | None = 50) -> bool:
         """
         Checks if a CAS exists by its number.
@@ -244,6 +245,7 @@ class CasCollection(BaseCollection):
 
         return cleaned_text
 
+    @validate_call
     def get_by_number(
         self, *, number: str, exact_match: bool = True, max_items: int | None = 50
     ) -> Cas | None:
