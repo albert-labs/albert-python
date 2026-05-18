@@ -3760,6 +3760,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.smart_datasets.SmartDataset.parent_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parent_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.smart_datasets.SmartDataset.build_state" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5264,6 +5275,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#albert.resources.smart_datasets.SmartDataset.parent_id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parent_id
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.smart_datasets.SmartDataset.build_state" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6444,6 +6466,18 @@ inherits its ACL policy from the referenced project.</p>
             </td>
           </tr>
           <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.smart_datasets.SmartDataset.parent_id">parent_id</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" href="../identifiers/#albert.core.shared.identifiers.ProjectId">ProjectId</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The ID of the parent project this smart dataset belongs to. When set,
+the smart dataset inherits its ACL policy from the referenced project.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
             <td><code><a class="autorefs autorefs-internal" href="#albert.resources.smart_datasets.SmartDataset.scope">scope</a></code></td>
             <td>
                   <code><a class="autorefs autorefs-internal" href="#albert.resources.smart_datasets.SmartDatasetScope">SmartDatasetScope</a> | None</code>
@@ -6528,6 +6562,26 @@ inherits its ACL policy from the referenced project.</p>
 
 </h4>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" href="../identifiers/#albert.core.shared.identifiers.SmartDatasetId">SmartDatasetId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.smart_datasets.SmartDataset.parent_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">parent_id</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">parent_id</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" href="../identifiers/#albert.core.shared.identifiers.ProjectId">ProjectId</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><span title="pydantic.Field(default)">default</span></span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(alias)">alias</span></span><span class="o">=</span><span class="s2">&quot;parentId&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6837,19 +6891,19 @@ inherits its ACL policy from the referenced project.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/smart_datasets.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-91">91</a></span>
-<span class="normal"><a href="#__codelineno-0-92">92</a></span>
-<span class="normal"><a href="#__codelineno-0-93">93</a></span>
-<span class="normal"><a href="#__codelineno-0-94">94</a></span>
-<span class="normal"><a href="#__codelineno-0-95">95</a></span>
-<span class="normal"><a href="#__codelineno-0-96">96</a></span>
-<span class="normal"><a href="#__codelineno-0-97">97</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_api_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92"></a>    <span class="k">return</span> <span class="p">{</span>
-</span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">INV</span><span class="p">:</span> <span class="s2">&quot;inventory&quot;</span><span class="p">,</span>
-</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">LOT</span><span class="p">:</span> <span class="s2">&quot;lot&quot;</span><span class="p">,</span>
-</span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">WFL</span><span class="p">:</span> <span class="s2">&quot;workflow_interval&quot;</span><span class="p">,</span>
-</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">PTD</span><span class="p">:</span> <span class="s2">&quot;measurement&quot;</span><span class="p">,</span>
-</span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a>    <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">]</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-95"> 95</a></span>
+<span class="normal"><a href="#__codelineno-0-96"> 96</a></span>
+<span class="normal"><a href="#__codelineno-0-97"> 97</a></span>
+<span class="normal"><a href="#__codelineno-0-98"> 98</a></span>
+<span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
+<span class="normal"><a href="#__codelineno-0-100">100</a></span>
+<span class="normal"><a href="#__codelineno-0-101">101</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_api_value</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">INV</span><span class="p">:</span> <span class="s2">&quot;inventory&quot;</span><span class="p">,</span>
+</span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">LOT</span><span class="p">:</span> <span class="s2">&quot;lot&quot;</span><span class="p">,</span>
+</span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">WFL</span><span class="p">:</span> <span class="s2">&quot;workflow&quot;</span><span class="p">,</span>
+</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100"></a>        <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">PTD</span><span class="p">:</span> <span class="s2">&quot;measurement&quot;</span><span class="p">,</span>
+</span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">]</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6872,21 +6926,21 @@ inherits its ACL policy from the referenced project.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/smart_datasets.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-99"> 99</a></span>
-<span class="normal"><a href="#__codelineno-0-100">100</a></span>
-<span class="normal"><a href="#__codelineno-0-101">101</a></span>
-<span class="normal"><a href="#__codelineno-0-102">102</a></span>
-<span class="normal"><a href="#__codelineno-0-103">103</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-103">103</a></span>
 <span class="normal"><a href="#__codelineno-0-104">104</a></span>
 <span class="normal"><a href="#__codelineno-0-105">105</a></span>
-<span class="normal"><a href="#__codelineno-0-106">106</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="nd">@staticmethod</span>
-</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_api_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SmartDatasetAggregateBy&quot;</span><span class="p">:</span>
-</span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="k">return</span> <span class="p">{</span>
-</span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="s2">&quot;inventory&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">INV</span><span class="p">,</span>
-</span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="s2">&quot;lot&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">LOT</span><span class="p">,</span>
-</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="s2">&quot;workflow_interval&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">WFL</span><span class="p">,</span>
-</span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>        <span class="s2">&quot;measurement&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">PTD</span><span class="p">,</span>
-</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a>    <span class="p">}[</span><span class="n">value</span><span class="p">]</span>
+<span class="normal"><a href="#__codelineno-0-106">106</a></span>
+<span class="normal"><a href="#__codelineno-0-107">107</a></span>
+<span class="normal"><a href="#__codelineno-0-108">108</a></span>
+<span class="normal"><a href="#__codelineno-0-109">109</a></span>
+<span class="normal"><a href="#__codelineno-0-110">110</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="nd">@staticmethod</span>
+</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_api_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SmartDatasetAggregateBy&quot;</span><span class="p">:</span>
+</span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">return</span> <span class="p">{</span>
+</span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="s2">&quot;inventory&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">INV</span><span class="p">,</span>
+</span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="s2">&quot;lot&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">LOT</span><span class="p">,</span>
+</span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a>        <span class="s2">&quot;workflow&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">WFL</span><span class="p">,</span>
+</span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a>        <span class="s2">&quot;measurement&quot;</span><span class="p">:</span> <span class="n">SmartDatasetAggregateBy</span><span class="o">.</span><span class="n">PTD</span><span class="p">,</span>
+</span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a>    <span class="p">}[</span><span class="n">value</span><span class="p">]</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
