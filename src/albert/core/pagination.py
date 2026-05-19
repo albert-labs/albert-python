@@ -138,7 +138,7 @@ class AlbertPaginator(Iterator[ItemType]):
             response = self._request()
             data = response.json()
             self._record_total(data)
-            items = data.get("Items", [])
+            items = data.get("Items") or data.get("items") or []
             item_count = len(items)
 
             if not items and self.mode == PaginationMode.OFFSET:
