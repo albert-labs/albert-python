@@ -355,11 +355,9 @@ class BatchTask(BaseTask):
     qc_task: bool | None = Field(alias="qcTask", default=None)
     batch_task_id: str | None = Field(alias="batchTaskId", default=None)
     target: str | None = Field(default=None)
-    target: str | None = Field(default=None)
     qc_task_data: list[QCTaskData] | None = Field(alias="QCTaskData", default=None)
-    workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(
-        alias="Workflow", default=None
-    )  # not sure what QuantityUsed in the API docs means here.
+    workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(alias="Workflow", default=None)
+    blocks: list[Block] | None = Field(alias="Blocks", default=None)
 
 
 class GeneralTask(BaseTask):

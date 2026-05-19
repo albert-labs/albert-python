@@ -104,7 +104,7 @@ class TaskCollection(BaseCollection):
     def add_block(
         self, *, task_id: TaskId, data_template_id: DataTemplateId, workflow_id: WorkflowId
     ) -> None:
-        """Add a block to a Property task.
+        """Add a block to a Property or Batch task.
 
         Parameters
         ----------
@@ -160,15 +160,15 @@ class TaskCollection(BaseCollection):
 
         Notes
         -----
-        - The method asserts that the retrieved task is an instance of `PropertyTask`.
+        - The method requires the task to be a PropertyTask or BatchTask.
         - If the block's current workflow matches the new workflow ID, no update is performed.
         - The method handles the case where the block has a default workflow named "No Parameter Group".
         """
         url = f"{self.base_path}/{task_id}"
         task = self.get_by_id(id=task_id)
-        if not isinstance(task, PropertyTask):
-            logger.error(f"Task {task_id} is not an instance of PropertyTask")
-            raise TypeError(f"Task {task_id} is not an instance of PropertyTask")
+        if not isinstance(task, PropertyTask | BatchTask):
+            logger.error(f"Task {task_id} is not a PropertyTask or BatchTask")
+            raise TypeError(f"Task {task_id} is not a PropertyTask or BatchTask")
         for b in task.blocks:
             if b.id != block_id:
                 continue
@@ -198,7 +198,7 @@ class TaskCollection(BaseCollection):
 
     @validate_call
     def remove_block(self, *, task_id: TaskId, block_id: BlockId) -> None:
-        """Remove a block from a Property task.
+        """Remove a block from a Property or Batch task.
 
         Parameters
         ----------

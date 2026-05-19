@@ -42,7 +42,7 @@ from albert.resources.projects import Project
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.roles import Role
 from albert.resources.sheets import Component, Sheet
-from albert.resources.smart_datasets import SmartDataset
+from albert.resources.smart_datasets import SmartDataset, SmartDatasetBuildState
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.targets import Target
@@ -894,6 +894,26 @@ def seeded_smart_dataset(
         seeded_targets=seeded_targets,
     )
     created = client.smart_datasets.create(scope=scope, build=False)
+    yield created
+    with suppress(NotFoundError, BadRequestError):
+        client.smart_datasets.delete(id=created.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_built_smart_dataset(
+    client: Albert,
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> Iterator[SmartDataset]:
+    scope = generate_smart_dataset_seed(
+        seeded_projects=seeded_projects,
+        seeded_targets=seeded_targets,
+    )
+    created = client.smart_datasets.create(scope=scope, build=True)
+    deadline = time.monotonic() + 10
+    while created.build_state != SmartDatasetBuildState.READY and time.monotonic() < deadline:
+        time.sleep(2)
+        created = client.smart_datasets.get_by_id(id=created.id)
     yield created
     with suppress(NotFoundError, BadRequestError):
         client.smart_datasets.delete(id=created.id)

@@ -10,6 +10,7 @@ from albert.core.shared.identifiers import (
     DataTemplateId,
     ParameterGroupId,
     ParameterId,
+    ProjectId,
     UnitId,
 )
 from albert.core.shared.models.base import BaseResource
@@ -128,6 +129,9 @@ class Target(BaseResource):
         The name of the target.
     type : TargetType
         The type of target.
+    parent_id : str | None
+        The ID of the project this target belongs to. When set, the target
+        inherits its ACL policy from the referenced project.
     data_template_id : str
         The ID of the associated data template.
     data_column_id : str
@@ -149,6 +153,7 @@ class Target(BaseResource):
     id: str | None = Field(default=None)
     name: str
     type: TargetType
+    parent_id: ProjectId | None = Field(default=None, alias="parentId")
     data_template_id: DataTemplateId = Field(alias="dataTemplateId")
     data_column_id: DataColumnId = Field(alias="dataColumnId")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
