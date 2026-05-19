@@ -46,6 +46,8 @@ def _build_cas_add_operation(cas_amount: CasAmount) -> dict[str, Any]:
         operation["type"] = cas_amount.type
     if cas_amount.classification_type:
         operation["classificationType"] = cas_amount.classification_type
+    if cas_amount.substance_id:
+        operation["substanceId"] = cas_amount.substance_id
     return operation
 
 
@@ -160,6 +162,7 @@ def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> lis
         ("min", existing.min, updated.min),
         ("inventoryValue", existing.target, updated.target),
         ("casCategory", existing.cas_category, updated.cas_category),
+        ("substanceId", existing.substance_id, updated.substance_id),
     ]
 
     operations: list[dict[str, Any]] = []
