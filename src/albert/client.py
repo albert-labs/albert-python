@@ -6,6 +6,7 @@ from pydantic import SecretStr
 
 from albert.collections.activities import ActivityCollection
 from albert.collections.attachments import AttachmentCollection
+from albert.collections.attributes import AttributeCollection
 from albert.collections.batch_data import BatchDataCollection
 from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
@@ -43,6 +44,7 @@ from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
+from albert.collections.substance_v4 import SubstanceV4Collection
 from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
 from albert.collections.targets import TargetCollection
@@ -195,6 +197,10 @@ class Albert:
     @property
     def attachments(self) -> AttachmentCollection:
         return AttachmentCollection(session=self.session)
+
+    @property
+    def attributes(self) -> AttributeCollection:
+        return AttributeCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
@@ -351,6 +357,10 @@ class Albert:
     @property
     def substances(self) -> SubstanceCollection:
         return SubstanceCollection(session=self.session)
+
+    @property
+    def substances_v4(self) -> SubstanceV4Collection:
+        return SubstanceV4Collection(session=self.session)
 
     @property
     def links(self) -> LinksCollection:
