@@ -3,9 +3,10 @@
   "prerelease": true,
   "versioning-strategy": "prerelease",
   "prerelease-type": "beta",
+  "include-component-in-tag": false,
+  "last-release-sha": "4bf2f50e4992da48b1391ec3356920a45bf62d9f",
   "packages": {
     ".": {
-      "package-name": "albert",
       "version-file": "src/albert/__init__.py",
       "include-v-in-tag": true,
       "skip-changelog": true

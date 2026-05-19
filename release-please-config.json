@@ -1,8 +1,8 @@
 {
   "release-type": "python",
+  "include-component-in-tag": false,
   "packages": {
     ".": {
-      "package-name": "albert",
       "version-file": "src/albert/__init__.py",
       "include-v-in-tag": true
     }
