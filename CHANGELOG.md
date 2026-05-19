@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0](https://github.com/albert-labs/albert-python/compare/v1.25.0...v1.26.0) (2026-05-19)
+
+
+### Features
+
+* **substance_v4:** add SubstanceCollectionV4 wrapping v4 substance API ([#460](https://github.com/albert-labs/albert-python/issues/460)) ([231e689](https://github.com/albert-labs/albert-python/commit/231e689fd2e1060451f3d22df17c86f1fad38766))
+* **substance_v4:** add SubstanceV4Collection wrapping v4 substance API ([231e689](https://github.com/albert-labs/albert-python/commit/231e689fd2e1060451f3d22df17c86f1fad38766))
+
 ## [1.25.0](https://github.com/albert-labs/albert-python/compare/v1.24.0...v1.25.0) (2026-05-18)
 
 
