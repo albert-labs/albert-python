@@ -66,7 +66,7 @@ If you run into any issues, please open a [GitHub issue](https://github.com/albe
 
 *For advanced scenarios, you can still construct an auth manager manually and pass it to* `Albert(auth_manager=...)`.
 
-For complete details, see the [Authentication Guide](./authentication.md).
+For complete details, see the [Authentication Guide](../authentication.md).
 
 ---
 
