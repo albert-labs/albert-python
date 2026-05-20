@@ -72,7 +72,7 @@ class AlbertSSOTokenExchange(BaseAlbertModel, AuthManager):
                 timeout=30,
             )
             response.raise_for_status()
-        data = response.json()
+            data = response.json()
         access_token = data.get("jwt")
         refresh_token = data.get("refreshtoken")
         if not access_token or not refresh_token:
