@@ -17,9 +17,13 @@ class AlbertSSOTokenExchange(BaseAlbertModel, AuthManager):
     """
     Auth manager for server-to-server OIDC token exchange with the Albert API.
 
-    Exchanges an OpenID Connect ID token for an Albert access token without
-    any browser interaction. Suitable for custom applications that already
-    authenticate users via their own OIDC identity provider (e.g. Okta, Azure AD).
+    Exchanges an OpenID Connect (OIDC) ID token for an Albert access token without
+    any browser interaction. Suitable for custom applications that already authenticate
+    users via an OIDC-compliant identity provider.
+
+    The identity provider must emit the ``preferred_username`` claim in the ID token,
+    which Albert uses to look up the corresponding user. Most enterprise IdPs include
+    this claim by default; see the authentication guide for provider-specific notes.
 
     Requires tenant-level OIDC configuration: the OpenID Connect ``aud`` claim
     must be registered with Albert for the target tenant. Contact Albert support
@@ -39,14 +43,14 @@ class AlbertSSOTokenExchange(BaseAlbertModel, AuthManager):
     Usage
     -----
     ```python
-    def get_okta_token() -> str:
-        resp = requests.post("https://mycompany.okta.com/oauth2/token", data={...})
-        return resp.json()["id_token"]
+    def get_oidc_token() -> str:
+        # Acquire an ID token from your identity provider
+        ...
 
     auth = AlbertSSOTokenExchange(
         base_url="https://mycompany.albertinvent.com",
         subdomain="mycompany",
-        oidc_token_provider=get_okta_token,
+        oidc_token_provider=get_oidc_token,
     )
     client = Albert(auth_manager=auth)
     ```

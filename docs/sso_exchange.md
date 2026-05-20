@@ -1,3 +1,3 @@
-# Azure AD SSO Token Exchange
+# OIDC Token Exchange
 
 ::: albert.AlbertSSOTokenExchange

@@ -187,8 +187,8 @@ class Albert:
         """Create an Albert client using server-to-server OIDC token exchange.
 
         Exchanges an OpenID Connect ID token for an Albert access token without
-        any browser interaction. Suitable for custom applications that already
-        authenticate users via their own identity provider (e.g. Okta, Azure AD).
+        any browser interaction. Works with any OIDC-compliant identity provider
+        that emits the ``preferred_username`` claim.
 
         Requires tenant-level OIDC configuration — the OpenID Connect ``aud`` claim
         must be registered with Albert for the target tenant.
@@ -202,7 +202,7 @@ class Albert:
             The tenant subdomain (e.g. ``"mycompany"``).
         oidc_token_provider : Callable[[], str]
             A zero-argument callable that returns a fresh OIDC ID token on demand.
-            Called on the first request and again if the Albert refresh token expires.
+            Called on the first request and on every token renewal.
             A lambda returning a static string works for short-lived sessions.
         retries : int | None, optional
             Maximum number of retries for failed HTTP requests.
@@ -215,14 +215,14 @@ class Albert:
         Examples
         --------
         ```python
-        def get_okta_token() -> str:
-            resp = requests.post("https://mycompany.okta.com/oauth2/token", data={...})
-            return resp.json()["id_token"]
+        def get_oidc_token() -> str:
+            # Acquire an ID token from your identity provider
+            ...
 
         client = Albert.from_sso_exchange(
             base_url="https://mycompany.albertinvent.com",
             subdomain="mycompany",
-            oidc_token_provider=get_okta_token,
+            oidc_token_provider=get_oidc_token,
         )
         ```
         """
@@ -573,6 +573,10 @@ class AsyncAlbert:
     ) -> AsyncAlbert:
         """
         Create an AsyncAlbert client using server-to-server OIDC token exchange.
+
+        Works with any OIDC-compliant identity provider that emits the
+        ``preferred_username`` claim. Requires tenant-level OIDC configuration —
+        contact Albert support to enable.
 
         Parameters
         ----------
