@@ -8,6 +8,8 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.types import _UNSET, MetadataItem, _UnsetType
+from albert.exceptions import AlbertHTTPError
 from albert.resources.substance_v4 import (
     SubstanceV4Create,
     SubstanceV4CreateResult,
@@ -91,8 +93,8 @@ class SubstanceV4Collection(BaseCollection):
         Searches substances by keyword or advanced filters.
     create(substance) -> SubstanceV4CreateResult
         Creates a new substance record.
-    update_metadata(id, current_metadata, updated_metadata) -> None
-        Updates metadata fields on a substance by diffing current vs updated state.
+    update_metadata(id, ...) -> None
+        Updates metadata fields on a substance.
     """
 
     _api_version = "v4"
@@ -316,32 +318,100 @@ class SubstanceV4Collection(BaseCollection):
         self,
         *,
         id: str,
-        current_metadata: SubstanceV4Metadata,
-        updated_metadata: SubstanceV4Metadata,
+        notes: str | _UnsetType = _UNSET,
+        description: str | _UnsetType = _UNSET,
+        cas_smiles: str | _UnsetType = _UNSET,
+        inchi_key: str | _UnsetType = _UNSET,
+        iupac_name: str | _UnsetType = _UNSET,
+        cactus_status: str | _UnsetType = _UNSET,
+        metadata: dict[str, MetadataItem | None] | _UnsetType = _UNSET,
     ) -> None:
         """Update metadata fields on a substance.
 
-        Diffs ``current_metadata`` against ``updated_metadata`` and sends only the
-        changed fields. Scalar fields support ``add`` and ``update``; custom tenant
-        metadata fields also support ``delete`` (set the key to ``None`` in
-        ``updated_metadata`` with a value in ``current_metadata``).
+        Only the keyword arguments you pass are updated — all others are left unchanged.
+        The current state is fetched automatically.
 
         Parameters
         ----------
         id : str
             The substance ID to update.
-        current_metadata : SubstanceV4Metadata
-            The current metadata state of the substance.
-        updated_metadata : SubstanceV4Metadata
-            The desired metadata state of the substance.
+        notes : str, optional
+            Free-text notes.
+        description : str, optional
+            Substance description.
+        cas_smiles : str, optional
+            SMILES notation for the structure.
+        inchi_key : str, optional
+            InChIKey identifier.
+        iupac_name : str, optional
+            IUPAC name.
+        cactus_status : str, optional
+            CACTUS resolver status.
+        metadata : dict[str, MetadataItem | None], optional
+            Custom tenant metadata fields to update. Only the keys listed in this dict
+            are touched; all other custom fields on the substance are left unchanged.
+
+            Value types by field kind:
+
+            - **String / number fields** — pass the value directly (``"5 mg/mL"``, ``42``).
+            - **Single-select fields** — pass an ``EntityLink``; use
+              ``client.lists.get_matching_item()`` to look up the ID.
+            - **Multi-select fields** — pass a list of ``EntityLink`` objects; only the
+              changed items are sent.
+            - **Delete a field** — pass ``None`` as the value (works for all field types).
 
         Notes
         -----
         The following fields can be updated: ``notes``, ``description``, ``cas_smiles``,
         ``inchi_key``, ``iupac_name``, ``cactus_status``, and any custom metadata fields
         configured for the tenant.
+
+        Examples
+        --------
+        Update a scalar field and a custom string field:
+
+            client.substances_v4.update_metadata(
+                id="SUB123",
+                notes="new notes",
+                metadata={"solubility": "5 mg/mL"},
+            )
+
+        Set a single-select custom field:
+
+            client.substances_v4.update_metadata(
+                id="SUB123",
+                metadata={"cmr_eu": EntityLink(id="LST1253")},
+            )
+
+        Update a multi-select custom field (becomes exactly this set):
+
+            client.substances_v4.update_metadata(
+                id="SUB123",
+                metadata={"amide_category": [EntityLink(id="LST1256"), EntityLink(id="LST1257")]},
+            )
+
+        Delete a custom field:
+
+            client.substances_v4.update_metadata(id="SUB123", metadata={"old_key": None})
         """
+        scalar_kwargs = {
+            "notes": notes,
+            "description": description,
+            "cas_smiles": cas_smiles,
+            "inchi_key": inchi_key,
+            "iupac_name": iupac_name,
+            "cactus_status": cactus_status,
+        }
+        if all(v is _UNSET for v in scalar_kwargs.values()) and metadata is _UNSET:
+            return
+
         sub_id = id if id.startswith("SUB") else f"SUB{id}"
+        try:
+            substance = self.get_by_id(sub_id=sub_id, catch_errors=True)
+        except AlbertHTTPError:
+            # Substance exists but can't be fetched (e.g. no hazard data yet).
+            # Treat the current state as empty so all operations become adds.
+            substance = None
         operations = []
 
         for attr, wire_name in [
@@ -352,13 +422,15 @@ class SubstanceV4Collection(BaseCollection):
             ("iupac_name", "iUpacName"),
             ("cactus_status", "cactusStatus"),
         ]:
-            old = getattr(current_metadata, attr)
-            new = getattr(updated_metadata, attr)
+            new = scalar_kwargs[attr]
+            if new is _UNSET:
+                continue
+            old = getattr(substance, attr) if substance is not None else None
             if old == new:
                 continue
-            if old is None and new is not None:
+            if old is None:
                 operations.append({"operation": "add", "attribute": wire_name, "newValue": new})
-            elif old is not None and new is not None:
+            else:
                 operations.append(
                     {
                         "operation": "update",
@@ -367,15 +439,23 @@ class SubstanceV4Collection(BaseCollection):
                         "newValue": new,
                     }
                 )
-            # spec does not support delete for scalar fields — skip old→None case
 
-        metadata_patches = self._generate_metadata_diff(
-            existing_metadata=current_metadata.metadata or {},
-            updated_metadata=updated_metadata.metadata or {},
-        )
-        operations.extend(
-            p.model_dump(by_alias=True, mode="json", exclude_none=True) for p in metadata_patches
-        )
+        if metadata is not _UNSET and metadata:
+            # Coerce raw JSON dicts to EntityLink objects so _generate_metadata_diff
+            # can call .id on single/multi-select values.
+            raw_meta = substance.metadata if substance is not None else {}
+            coerced = SubstanceV4Metadata.model_validate({"metadata": raw_meta or {}})
+            current_meta = coerced.metadata or {}
+            relevant_existing = {k: v for k, v in current_meta.items() if k in metadata}
+            non_null_updates = {k: v for k, v in metadata.items() if v is not None}
+            metadata_patches = self._generate_metadata_diff(
+                existing_metadata=relevant_existing,
+                updated_metadata=non_null_updates,
+            )
+            operations.extend(
+                p.model_dump(by_alias=True, mode="json", exclude_none=True)
+                for p in metadata_patches
+            )
 
         if not operations:
             return
