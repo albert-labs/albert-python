@@ -1,11 +1,25 @@
 from typing import Annotated, TypeVar
 
-from pydantic import PlainSerializer
+from pydantic import GetCoreSchemaHandler, PlainSerializer
+from pydantic_core import core_schema
 
 from albert.core.shared.models.base import BaseResource, EntityLink, EntityLinkWithName
 
 EntityType = TypeVar("EntityType", bound=BaseResource)
 MetadataItem = float | int | str | EntityLink | list[EntityLink]
+
+
+class _UnsetType:
+    """Sentinel type for distinguishing unset parameters from explicit ``None``."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, _source_type: object, _handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.is_instance_schema(cls)
+
+
+_UNSET = _UnsetType()
 
 
 def convert_to_entity_link(value: BaseResource | EntityLink) -> EntityLink:
