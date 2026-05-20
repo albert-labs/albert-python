@@ -9,7 +9,6 @@ from albert.resources.substance_v4 import (
     SubstanceV4Create,
     SubstanceV4Identifier,
     SubstanceV4Info,
-    SubstanceV4Metadata,
 )
 
 CAS_IDS = [
@@ -83,15 +82,11 @@ def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]
     sub_id = result.created_items[0].substance_id
     assert sub_id
 
-    # All fields start as None → all operations are "add"
     client.substances_v4.update_metadata(
         id=sub_id,
-        current_metadata=SubstanceV4Metadata(),
-        updated_metadata=SubstanceV4Metadata(
-            notes="sdk test note",
-            cas_smiles="CCO",
-            metadata={substance_string_field.name: "sdk test value"},
-        ),
+        notes="sdk test note",
+        cas_smiles="CCO",
+        metadata={substance_string_field.name: "sdk test value"},
     )
 
 
