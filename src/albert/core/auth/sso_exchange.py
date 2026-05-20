@@ -9,7 +9,7 @@ from pydantic import Field
 
 from albert.core.auth._manager import AuthManager, OAuthTokenInfo
 from albert.core.base import BaseAlbertModel
-from albert.exceptions import handle_http_errors
+from albert.exceptions import AlbertAuthError, handle_http_errors
 from albert.utils._auth import default_albert_base_url
 
 
@@ -69,15 +69,21 @@ class AlbertSSOTokenExchange(BaseAlbertModel, AuthManager):
             response = requests.post(
                 self.exchange_url,
                 json={"jwt": self.oidc_token_provider(), "subdomain": self.subdomain},
+                timeout=30,
             )
             response.raise_for_status()
         data = response.json()
-        expires_in = data.get(
-            "expires_in", 3300
-        )  # fallback: 55 min until backend ships expires_in
+        access_token = data.get("jwt")
+        refresh_token = data.get("refreshtoken")
+        if not access_token or not refresh_token:
+            raise AlbertAuthError(
+                "SSO exchange failed: unexpected response from server. "
+                f"Expected 'jwt' and 'refreshtoken' fields, got: {list(data.keys())}"
+            )
+        expires_in = data.get("expires_in", 3300)  # fallback: 55 min until backend ships field
         self._token_info = OAuthTokenInfo(
-            access_token=data["jwt"],
-            refresh_token=data["refreshtoken"],
+            access_token=access_token,
+            refresh_token=refresh_token,
             expires_in=expires_in,
         )
         self._refresh_time = (

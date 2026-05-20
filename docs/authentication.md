@@ -95,58 +95,37 @@ token is supported. This includes:
 Provide a callable that returns a fresh OIDC ID token on demand. The SDK calls it on the
 first request and again whenever the Albert access token needs to be renewed.
 
-=== "Microsoft Entra ID (Azure AD)"
+```python
+from albert import Albert
+import requests
 
-    ```python
-    from albert import Albert
-    from msal import ConfidentialClientApplication
-
-    app = ConfidentialClientApplication(
-        client_id="your-azure-app-id",
-        client_credential="your-azure-client-secret",
-        authority="https://login.microsoftonline.com/your-tenant-id",
+def get_token() -> str:
+    resp = requests.post(
+        "https://mycompany.okta.com/oauth2/default/v1/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": "your-okta-client-id",
+            "client_secret": "your-okta-client-secret",
+            "scope": "openid",
+        },
     )
+    return resp.json()["id_token"]
 
-    def get_token() -> str:
-        result = app.acquire_token_for_client(scopes=["api://your-albert-audience/.default"])
-        return result["id_token"]
-
-    client = Albert.from_sso_exchange(
-        base_url="https://mycompany.albertinvent.com",
-        subdomain="mycompany",
-        oidc_token_provider=get_token,
-    )
-    ```
-
-=== "Okta"
-
-    ```python
-    from albert import Albert
-    import requests
-
-    def get_token() -> str:
-        resp = requests.post(
-            "https://mycompany.okta.com/oauth2/default/v1/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": "your-okta-client-id",
-                "client_secret": "your-okta-client-secret",
-                "scope": "openid",
-            },
-        )
-        return resp.json()["id_token"]
-
-    client = Albert.from_sso_exchange(
-        base_url="https://mycompany.albertinvent.com",
-        subdomain="mycompany",
-        oidc_token_provider=get_token,
-    )
-    ```
+client = Albert.from_sso_exchange(
+    base_url="https://mycompany.albertinvent.com",
+    subdomain="mycompany",
+    oidc_token_provider=get_token,
+)
+```
 
 Or wire it up manually using `AlbertSSOTokenExchange` directly:
 
 ```python
 from albert import Albert, AlbertSSOTokenExchange
+
+def get_token() -> str:
+    # Acquire an ID token from your identity provider
+    ...
 
 auth = AlbertSSOTokenExchange(
     base_url="https://mycompany.albertinvent.com",
