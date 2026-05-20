@@ -425,7 +425,7 @@ class SubstanceV4Collection(BaseCollection):
             new = scalar_kwargs[attr]
             if new is _UNSET:
                 continue
-            old = getattr(substance, attr) if substance is not None else None
+            old = getattr(substance, attr, None) if substance is not None else None
             if old == new:
                 continue
             if old is None:
