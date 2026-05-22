@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import AfterValidator
 
 _ALBERT_PREFIXES = {
+    "AttributeId": "ATR",
     "AttachmentId": "ATT",
     "BlockId": "BLK",
     "BTInsightId": "INS",
@@ -82,6 +83,13 @@ def _ensure_albert_id(id: str, id_type: str) -> str:
         raise ValueError(f"{id_type} {id} has invalid prefix. Expected: {prefix}")
 
     return f"{prefix}{id.upper()}"
+
+
+def ensure_attribute_id(id: str) -> str:
+    return _ensure_albert_id(id, "AttributeId")
+
+
+AttributeId = Annotated[str, AfterValidator(ensure_attribute_id)]
 
 
 def ensure_attachment_id(id: str) -> str:
