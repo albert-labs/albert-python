@@ -126,6 +126,7 @@ nav:
           - Overview: migration/index.md
           - Alpha → v1.0: migration/alpha-to-v1.md
           - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
+          - Specs → Attributes (🧪 Beta): migration/specs-to-attributes.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
@@ -137,6 +138,7 @@ nav:
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
+          - Attributes: collections/attributes.md
           - Batch Data: collections/batch_data.md
           - Base: collections/base.md
           - Breakthrough:
@@ -190,6 +192,7 @@ nav:
       - Resources:
           - Activities: resources/activities.md
           - Attachments: resources/attachments.md
+          - Attributes: resources/attributes.md
           - ACL: resources/acls.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:

@@ -42,6 +42,7 @@ class Operator(str, Enum):
     GREATER_THAN_OR_EQUAL = "gte"
     GREATER_THAN = "gt"
     EQUALS = "eq"
+    NOT_EQUALS = "neq"
 
 
 class EnumValidationValue(BaseAlbertModel):

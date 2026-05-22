@@ -117,6 +117,13 @@ class TagCollection(BaseCollection):
     """
 ```
 
+## Deprecations
+
+- Deprecating a **method**: use `@deprecated("... will be removed in 2.0. Use X instead.")` from `typing_extensions`. This gives IDE strike-through and static analysis warnings at the call site.
+- Deprecating a **class**: call `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__`. This fires a runtime warning at instantiation time.
+- Message format: `"thing() is deprecated and will be removed in 2.0. Use client.x.y() instead."`
+- Note: `@deprecated` alone does **not** emit a runtime `DeprecationWarning` — it is a static analysis hint only.
+
 ## After Every Code Edit
 
 ```bash

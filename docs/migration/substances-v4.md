@@ -130,20 +130,13 @@ print(result.created_items)
 
 ### `update_metadata` (new in v4)
 
+Pass only the keyword arguments you want to change — all others are left unchanged.
+
 ```python
-from albert.resources.substance_v4 import SubstanceV4Metadata
-
-current = SubstanceV4Metadata(notes="Old note", description="Common solvent")
-updated = SubstanceV4Metadata(
-    notes="Reviewed 2026-04",   # update
-    description="Common solvent",  # unchanged — not sent
-    cas_smiles="CCO",           # add (was None)
-)
-
 client.substances_v4.update_metadata(
     id="SUB00001",
-    current_metadata=current,
-    updated_metadata=updated,
+    notes="Reviewed 2026-04",
+    cas_smiles="CCO",
 )
 ```
 
