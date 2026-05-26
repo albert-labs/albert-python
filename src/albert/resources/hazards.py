@@ -1,13 +1,20 @@
+from enum import Enum
+
 from pydantic import Field
 
-from albert.core.shared.enums import Status
 from albert.core.shared.models.base import EntityLinkWithName
+
+
+class HazardSymbolStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ADDED_MANUALLY = "Added Manually"
 
 
 class HazardSymbol(EntityLinkWithName):
     """Model representing a hazard symbol."""
 
-    status: Status | None = Field(default=None)
+    status: HazardSymbolStatus | None = Field(default=None)
 
 
 class HazardStatement(EntityLinkWithName):
