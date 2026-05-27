@@ -156,6 +156,12 @@ class CasCollection(BaseCollection):
         cas_list = self.get_by_number(number=number, exact_match=exact_match)
         return cas_list is not None
 
+    # TODO(albert-sdk): POST /api/v3/cas can return 400 with msg "Error creating substance"
+    # for valid CAS numbers that are not yet in the tenant (e.g. 584-08-7 / potassium
+    # carbonate on dev). get_by_number returns None; create fails in platform substance
+    # provisioning, not in the SDK payload. get_or_create therefore cannot bootstrap some
+    # CAS records until the API is fixed or the CAS is seeded manually.
+
     def create(self, *, cas: str | Cas) -> Cas:
         """
         Creates a new CAS entity.
