@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 
 from pydantic import SecretStr
 
@@ -56,6 +57,7 @@ from albert.collections.worksheets import WorksheetCollection
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
+from albert.core.auth.sso_exchange import AlbertSSOTokenExchange
 from albert.core.session import AlbertSession
 from albert.utils._auth import default_albert_base_url
 
@@ -76,7 +78,7 @@ class Albert:
     token : str, optional
         A static token for authentication. If provided, it overrides any `auth_manager`.
         Defaults to the "ALBERT_TOKEN" environment variable.
-    auth_manager : AlbertClientCredentials | AlbertSSOClient, optional
+    auth_manager : AlbertClientCredentials | AlbertSSOClient | AlbertSSOTokenExchange, optional
         An authentication manager for OAuth2-based authentication flows.
         Ignored if `token` is provided.
     retries : int, optional
@@ -103,6 +105,7 @@ class Albert:
     - `from_token` — Create a client using a static token.
     - `from_sso` — Create a client using interactive browser-based SSO login.
     - `from_client_credentials` — Create a client using OAuth2 client credentials.
+    - `from_sso_exchange` — Create a client using server-to-server OIDC token exchange.
     """
 
     def __init__(
@@ -110,7 +113,10 @@ class Albert:
         *,
         base_url: str | None = None,
         token: str | None = None,
-        auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        auth_manager: AlbertClientCredentials
+        | AlbertSSOClient
+        | AlbertSSOTokenExchange
+        | None = None,
         retries: int | None = None,
         session: AlbertSession | None = None,
     ):
@@ -168,6 +174,65 @@ class Albert:
             base_url=resolved_base_url,
         )
         return cls(auth_manager=creds, retries=retries)
+
+    @classmethod
+    def from_sso_exchange(
+        cls,
+        *,
+        base_url: str | None = None,
+        subdomain: str,
+        oidc_token_provider: Callable[[], str],
+        retries: int | None = None,
+    ) -> Albert:
+        """Create an Albert client using server-to-server OIDC token exchange.
+
+        Exchanges an OpenID Connect ID token for an Albert access token without
+        any browser interaction. Works with any OIDC-compliant identity provider
+        that emits the ``preferred_username`` claim.
+
+        Requires tenant-level OIDC configuration — the OpenID Connect ``aud`` claim
+        must be registered with Albert for the target tenant.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        subdomain : str
+            The tenant subdomain (e.g. ``"mycompany"``).
+        oidc_token_provider : Callable[[], str]
+            A zero-argument callable that returns a fresh OIDC ID token on demand.
+            Called on the first request and on every token renewal.
+            A lambda returning a static string works for short-lived sessions.
+        retries : int | None, optional
+            Maximum number of retries for failed HTTP requests.
+
+        Returns
+        -------
+        Albert
+            A configured client that exchanges and refreshes tokens automatically.
+
+        Examples
+        --------
+        ```python
+        def get_oidc_token() -> str:
+            # Acquire an ID token from your identity provider
+            ...
+
+        client = Albert.from_sso_exchange(
+            base_url="https://mycompany.albertinvent.com",
+            subdomain="mycompany",
+            oidc_token_provider=get_oidc_token,
+        )
+        ```
+        """
+        resolved_base_url = base_url or default_albert_base_url()
+        auth = AlbertSSOTokenExchange(
+            base_url=resolved_base_url,
+            subdomain=subdomain,
+            oidc_token_provider=oidc_token_provider,
+        )
+        return cls(auth_manager=auth, retries=retries)
 
     @property
     def projects(self) -> ProjectCollection:
@@ -374,7 +439,7 @@ class AsyncAlbert:
     token : str, optional
         A static JWT token. Ignored when ``auth_manager`` is provided.
         Defaults to the ``ALBERT_TOKEN`` environment variable.
-    auth_manager : AlbertClientCredentials | AlbertSSOClient, optional
+    auth_manager : AlbertClientCredentials | AlbertSSOClient | AlbertSSOTokenExchange, optional
         An authentication manager for OAuth2-based token refresh.
         Ignored if ``token`` is provided.
     session : AsyncAlbertSession, optional
@@ -419,7 +484,10 @@ class AsyncAlbert:
         *,
         base_url: str | None = None,
         token: str | None = None,
-        auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        auth_manager: AlbertClientCredentials
+        | AlbertSSOClient
+        | AlbertSSOTokenExchange
+        | None = None,
         session: AsyncAlbertSession | None = None,
     ):
         if session is not None:
@@ -494,6 +562,44 @@ class AsyncAlbert:
             base_url=resolved_base_url,
         )
         return cls(auth_manager=creds)
+
+    @classmethod
+    def from_sso_exchange(
+        cls,
+        *,
+        base_url: str | None = None,
+        subdomain: str,
+        oidc_token_provider: Callable[[], str],
+    ) -> AsyncAlbert:
+        """
+        Create an AsyncAlbert client using server-to-server OIDC token exchange.
+
+        Works with any OIDC-compliant identity provider that emits the
+        ``preferred_username`` claim. Requires tenant-level OIDC configuration —
+        contact Albert support to enable.
+
+        Parameters
+        ----------
+        base_url : str | None, optional
+            The base URL of the Albert API. Falls back to the ``ALBERT_BASE_URL``
+            environment variable or "https://app.albertinvent.com".
+        subdomain : str
+            The tenant subdomain (e.g. ``"mycompany"``).
+        oidc_token_provider : Callable[[], str]
+            A zero-argument callable that returns a fresh OIDC ID token on demand.
+
+        Returns
+        -------
+        AsyncAlbert
+            A configured async client that exchanges and refreshes tokens automatically.
+        """
+        resolved_base_url = base_url or default_albert_base_url()
+        auth = AlbertSSOTokenExchange(
+            base_url=resolved_base_url,
+            subdomain=subdomain,
+            oidc_token_provider=oidc_token_provider,
+        )
+        return cls(auth_manager=auth)
 
     @property
     def chat_sessions(self) -> ChatSessionCollection:
