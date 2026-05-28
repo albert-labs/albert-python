@@ -60,6 +60,9 @@ class TaskCollection(BaseCollection):
     """TaskCollection is a collection class for managing Task entities in the Albert platform."""
 
     _api_version = "v3"
+    # TODO(albert-sdk): Post-create project attach/move uses PATCH attribute ``projectId``
+    # (add when unlinked, update with oldValue/newValue when moving). Create uses ``parentId``
+    # query param. update() should emit projectId patches when parent_id/project changes.
     _updatable_attributes = {
         "metadata",
         "name",
