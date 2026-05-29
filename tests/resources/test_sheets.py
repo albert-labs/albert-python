@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from albert.exceptions import AlbertException
+from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.sheets import (
     Cell,
     CellColor,
@@ -324,6 +325,17 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         new_row = seeded_sheet.add_blank_row(
             row_name="TEST results Design", design=DesignType.RESULTS
         )
+
+
+def test_add_and_remove_parameter_group_row(
+    seeded_sheet: Sheet,
+    seeded_parameter_groups: list[ParameterGroup],
+):
+    parameter_group = seeded_parameter_groups[0]
+    new_row = seeded_sheet.add_parameter_group_row(parameter_group_id=parameter_group.id)
+    assert isinstance(new_row, Row)
+    assert new_row.type == CellType.PRG
+    seeded_sheet.delete_row(row_id=new_row.row_id, design_id=seeded_sheet.process_design.id)
 
 
 ########################## CELLS ##########################
