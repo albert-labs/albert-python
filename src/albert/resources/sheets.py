@@ -942,21 +942,23 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The newly created PRG row.
         """
         if position is None:
-            position = {"reference_id": "ROW1", "position": "above"}
+            position = {"position": "above"}
         design_id = self.process_design.id
-        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        endpoint = f"/api/v3/designs/{design_id}/rows"
 
         payload = {
             "type": "PRG",
             "id": parameter_group_id,
-            "referenceId": position["reference_id"],
             "position": position["position"],
         }
 
-        response = self.session.post(endpoint, json=payload)
+        if "reference_id" in position:
+            payload["referenceId"] = position["reference_id"]
+
+        response = self.session.post(endpoint, json=[payload])
 
         self.grid = None
-        row_dict = response.json()
+        row_dict = response.json()[0]
         return Row(
             rowId=row_dict["rowId"],
             type=row_dict["type"],
