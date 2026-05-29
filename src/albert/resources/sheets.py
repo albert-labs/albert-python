@@ -1253,7 +1253,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             self.grid = None
 
     def delete_row(self, *, row_id: str, design_id: str) -> None:
-        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        endpoint = f"/api/v3/designs/{design_id}/rows"
         payload = [{"rowId": row_id}]
         self.session.delete(endpoint, json=payload)
 
