@@ -934,7 +934,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         position : dict | None
             Insertion position relative to an existing row. Shape:
             ``{"reference_id": "ROW1", "position": "above"}``. Defaults to
-            ``{"reference_id": "ROW1", "position": "above"}``.
+            ``{"position": "above"}``.
 
         Returns
         -------
