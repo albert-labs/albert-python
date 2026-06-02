@@ -63,7 +63,7 @@ class SmartProject(BaseSessionResource):
             self.last_refresh_at = refreshed.last_refresh_at
         return self
 
-    def update(self, *, data: list[PatchDatum]) -> SmartProject:
+    def _update(self, *, data: list[PatchDatum]) -> SmartProject:
         """Update this smart project in place.
 
         Parameters
@@ -109,7 +109,7 @@ class SmartProject(BaseSessionResource):
 
         # If the target is an existing target, add it to the scope.
         target_id = target.id if isinstance(target, Target) else target
-        return self.update(
+        return self._update(
             data=[
                 PatchDatum(
                     operation=PatchOperation.ADD,
@@ -165,7 +165,7 @@ class SmartProject(BaseSessionResource):
         # Existing dataset ID (SmartDatasetId is an Annotated[str, ...] alias, so check str)
         # -> attach that dataset to the smart record.
         if isinstance(dataset, str):
-            return self.update(
+            return self._update(
                 data=[
                     PatchDatum(
                         operation=PatchOperation.UPDATE,
@@ -190,6 +190,6 @@ class SmartProject(BaseSessionResource):
 
         _ = self.session.post(
             f"/api/v3/projects/{self.project_id}/addDatasetToProject",
-            json={"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")},
+            json={"scope": scope.model_dump(by_alias=True, exclude_none=True, mode="json")},
         )
         return self._refresh()
