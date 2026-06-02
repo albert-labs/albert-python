@@ -112,7 +112,13 @@ class Project(BaseSessionResource):
 
     @property
     def smart(self) -> SmartProject | None:
-        """Return the smart project resource for this project. If no smart project is found, returns None."""
+        """Return the smart project resource for this project.
+
+        Returns
+        -------
+        SmartProject or None
+            The smart project associated with this project, or None if no smart project exists.
+        """
         if self._smart is None:
             response = self.session.get(f"/api/v3/projects/{self.id}/getSmartProject")
             smart = response.json().get("smart", [])
