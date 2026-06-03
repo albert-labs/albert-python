@@ -202,7 +202,9 @@ class AttachmentCollection(BaseCollection):
         Parameters
         ----------
         parent_ids : list[str]
-            Parent IDs of the objects to which the attachments are linked.
+            Parent IDs of the objects to which the attachments are linked. Unlike most
+            other collection methods, these IDs are passed as-is with no validation or
+            normalisation.
 
         Returns
         -------
