@@ -204,8 +204,7 @@ class AttachmentCollection(BaseCollection):
         parent_ids : list[str]
             Parent IDs of the objects to which the attachments are linked. IDs must
             include the full entity prefix (e.g. ``"INVA123"`` for an inventory item,
-            ``"PRO123"`` for a project). Unlike most other collection methods, no prefix
-            inference or ID normalisation is applied.
+            ``"PRO123"`` for a project).
 
         Returns
         -------
