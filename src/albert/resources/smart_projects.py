@@ -190,6 +190,6 @@ class SmartProject(BaseSessionResource):
 
         _ = self.session.post(
             f"/api/v3/projects/{self.project_id}/addDatasetToProject",
-            json={"scope": scope.model_dump(by_alias=True, exclude_none=True, mode="json")},
+            json={"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")},
         )
         return self._refresh()
