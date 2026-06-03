@@ -202,9 +202,10 @@ class AttachmentCollection(BaseCollection):
         Parameters
         ----------
         parent_ids : list[str]
-            Parent IDs of the objects to which the attachments are linked. Unlike most
-            other collection methods, these IDs are passed as-is with no validation or
-            normalisation.
+            Parent IDs of the objects to which the attachments are linked. IDs must
+            include the full entity prefix (e.g. ``"INVA123"`` for an inventory item,
+            ``"PRO123"`` for a project). Unlike most other collection methods, no prefix
+            inference or ID normalisation is applied.
 
         Returns
         -------
