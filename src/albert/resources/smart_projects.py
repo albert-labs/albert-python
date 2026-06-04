@@ -13,6 +13,8 @@ from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPay
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.targets import Target
 
+_PROJECTS_BASE_PATH = "/api/v3/projects"
+
 
 class SmartProjectScope(BaseAlbertModel):
     """Scope of a smart project. This is the default state used to build a smart dataset."""
@@ -43,6 +45,15 @@ class SmartProject(BaseSessionResource):
         Build logs for the smart dataset.
     last_refresh_at : datetime | None
         When the smart dataset was last refreshed.
+
+    Methods
+    -------
+    add_target(target) -> SmartProject
+        Add a target to this smart project's scope.
+    remove_target(target, delete) -> SmartProject
+        Remove a target from this smart project's scope.
+    update_dataset(dataset) -> SmartProject
+        Update the smart dataset attached to this smart project.
     """
 
     project_id: ProjectId
@@ -53,7 +64,7 @@ class SmartProject(BaseSessionResource):
 
     def _refresh(self) -> SmartProject:
         """Re-fetch the smart project and update this instance in place."""
-        response = self.session.get(f"/api/v3/projects/{self.project_id}/getSmartProject")
+        response = self.session.get(f"{_PROJECTS_BASE_PATH}/{self.project_id}/getSmartProject")
         smart = response.json().get("smart", [])
         if smart:
             refreshed = SmartProject(**smart[0], session=self.session, project_id=self.project_id)
@@ -78,7 +89,7 @@ class SmartProject(BaseSessionResource):
         """
         payload = PatchPayload(data=data)
         _ = self.session.patch(
-            f"/api/v3/projects/{self.project_id}/smart",
+            f"{_PROJECTS_BASE_PATH}/{self.project_id}/smart",
             json=payload.model_dump(mode="json", by_alias=True),
         )
         return self._refresh()
@@ -102,7 +113,7 @@ class SmartProject(BaseSessionResource):
         # If the target is a new target, create it and add it to the scope.
         if isinstance(target, Target) and target.id is None:
             self.session.post(
-                f"/api/v3/projects/{self.project_id}/addTargetToProject",
+                f"{_PROJECTS_BASE_PATH}/{self.project_id}/addTargetToProject",
                 json=target.model_dump(by_alias=True, exclude_none=True, mode="json"),
             )
             return self._refresh()
@@ -137,7 +148,7 @@ class SmartProject(BaseSessionResource):
         """
         target_id = target.id if isinstance(target, Target) else target
         self.session.delete(
-            f"/api/v3/projects/{self.project_id}/deleteTarget/{target_id}",
+            f"{_PROJECTS_BASE_PATH}/{self.project_id}/deleteTarget/{target_id}",
             params={"delete": delete},
         )
         return self._refresh()
@@ -179,8 +190,6 @@ class SmartProject(BaseSessionResource):
         if isinstance(dataset, SmartDatasetScope):
             scope = dataset
         else:
-            if self.scope is None:
-                raise ValueError("Smart project has no scope to build a smart dataset from.")
             scope = SmartDatasetScope(
                 project_ids=[self.project_id],
                 target_ids=self.scope.targets,
@@ -189,7 +198,7 @@ class SmartProject(BaseSessionResource):
             )
 
         _ = self.session.post(
-            f"/api/v3/projects/{self.project_id}/addDatasetToProject",
+            f"{_PROJECTS_BASE_PATH}/{self.project_id}/addDatasetToProject",
             json={"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")},
         )
         return self._refresh()

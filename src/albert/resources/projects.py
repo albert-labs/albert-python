@@ -11,7 +11,7 @@ from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.locations import Location
-from albert.resources.smart_projects import SmartProject
+from albert.resources.smart_projects import _PROJECTS_BASE_PATH, SmartProject
 
 
 class ProjectClass(str, Enum):
@@ -75,8 +75,6 @@ class Project(BaseSessionResource):
         The state/status of the project. Allowed states are customizeable using the entitystatus API. Optional.
     application_engineering_inventory_ids : list[str] | None
         Inventory Ids to be added as application engineering. Optional.
-    smart : SmartProject | None
-        Smart project metadata for the project. Optional.
     """
 
     description: str = Field(min_length=1, max_length=2000)
@@ -120,7 +118,7 @@ class Project(BaseSessionResource):
             The smart project associated with this project, or None if no smart project exists.
         """
         if self._smart is None:
-            response = self.session.get(f"/api/v3/projects/{self.id}/getSmartProject")
+            response = self.session.get(f"{_PROJECTS_BASE_PATH}/{self.id}/getSmartProject")
             smart = response.json().get("smart", [])
             self._smart = [
                 SmartProject(**item, session=self.session, project_id=self.id) for item in smart
