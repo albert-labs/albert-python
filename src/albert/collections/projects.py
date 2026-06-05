@@ -48,7 +48,7 @@ class ProjectCollection(BaseCollection):
         response = self.session.post(
             self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
         )
-        return Project(**response.json())
+        return Project(**response.json(), session=self.session)
 
     @validate_call
     def get_by_id(self, *, id: ProjectId) -> Project:
@@ -68,7 +68,7 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
 
-        return Project(**response.json())
+        return Project(**response.json(), session=self.session)
 
     def update(self, *, project: Project) -> Project:
         """Update a project.
