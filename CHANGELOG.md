@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0](https://github.com/albert-labs/albert-python/compare/v1.25.1...v1.26.0) (2026-06-05)
+
+
+### Features
+
+* support smart projects ([#523](https://github.com/albert-labs/albert-python/issues/523)) ([5d42f9a](https://github.com/albert-labs/albert-python/commit/5d42f9a302553eab6f4236bd3f2a28104d8e5523))
+
+
+### Bug Fixes
+
+* **HazardSymbol:** fixing hazard symbol status ([#519](https://github.com/albert-labs/albert-python/issues/519)) ([be64a05](https://github.com/albert-labs/albert-python/commit/be64a05e58cc104f43b749267528e4a8f7119eea))
+* **sheets:** add colSizeMode field to Sheet model ([#497](https://github.com/albert-labs/albert-python/issues/497)) ([b53604e](https://github.com/albert-labs/albert-python/commit/b53604e2c4e62b0eaf34f04ce2f1b26f3cb229e2))
+
 ## [1.25.1](https://github.com/albert-labs/albert-python/compare/v1.25.0...v1.25.1) (2026-05-22)
 
 
