@@ -268,6 +268,7 @@ def generate_adv_patch_payload(
         "inventory_information",
         "assigned_to",
         "tags",
+        "project",
     }
     if updated.assigned_to is not None:
         updated.assigned_to = EntityLinkWithName(
@@ -379,6 +380,43 @@ def generate_adv_patch_payload(
                         "operation": PatchOperation.DELETE,
                         "attribute": "tagId",
                         "oldValue": [tag_id],
+                    }
+                )
+
+        if attribute == "project":
+            old_project = getattr(existing, "project", None)
+            new_project = getattr(updated, "project", None)
+            if isinstance(old_project, list) or isinstance(new_project, list):
+                raise ValueError(
+                    "Updating project is not supported for tasks with multiple associated projects."
+                )
+            old_id = getattr(old_project, "id", None)
+            new_id = getattr(new_project, "id", None)
+            if new_id == old_id:
+                continue
+            if old_id is None and new_id is not None:
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.ADD,
+                        "attribute": "projectId",
+                        "newValue": new_id,
+                    }
+                )
+            elif old_id is not None and new_id is not None:
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.UPDATE,
+                        "attribute": "projectId",
+                        "oldValue": old_id,
+                        "newValue": new_id,
+                    }
+                )
+            elif old_id is not None and new_id is None:
+                base_payload.data.append(
+                    {
+                        "operation": PatchOperation.DELETE,
+                        "attribute": "projectId",
+                        "oldValue": old_id,
                     }
                 )
 
