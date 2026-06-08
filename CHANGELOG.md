@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0](https://github.com/albert-labs/albert-python/compare/v1.26.0...v1.27.0) (2026-06-08)
+
+
+### Features
+
+* **attachments:** add get_jurisdiction_codes and get_language_codes methods ([#524](https://github.com/albert-labs/albert-python/issues/524)) ([1f75c33](https://github.com/albert-labs/albert-python/commit/1f75c330904bcc74595c6581146ab1437d22d545))
+* **tasks:** support updating project via tasks.update() ([#529](https://github.com/albert-labs/albert-python/issues/529)) ([16f4feb](https://github.com/albert-labs/albert-python/commit/16f4feb9011f95b4db6d68e2529d8d7cc5a5c8e3))
+
+
+### Bug Fixes
+
+* **custom_fields:** align customEntityCategory patch ops with new API semantics ([#526](https://github.com/albert-labs/albert-python/issues/526)) ([9692d8b](https://github.com/albert-labs/albert-python/commit/9692d8bb117280054d7a15d7953743adc97dafa5))
+* **sheets:** fix leftmost_pinned_column causing silent wksSequence drop ([#525](https://github.com/albert-labs/albert-python/issues/525)) ([55d3a32](https://github.com/albert-labs/albert-python/commit/55d3a32d878cf64c18b36e2586c54da28d40fcb0))
+
 ## [1.26.0](https://github.com/albert-labs/albert-python/compare/v1.25.1...v1.26.0) (2026-06-05)
 
 
