@@ -67,6 +67,7 @@ class GeneralData(BaseTaggedResource):
     sources: list[TaskSource] | None = Field(alias="Sources", default=None)
     parent_id: str | None = Field(alias="parentId", default=None)
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+    notes: str | None = Field(default=None)
 
 
 class JobStatus(str, Enum):
@@ -126,6 +127,8 @@ class BatchData(BaseTaggedResource):
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     priority: Priority  # enum?!
     workflow: list[EntityLink] = Field(default=None, alias="Workflow")
+    notes: str | None = Field(default=None)
+    due_date: str | None = Field(alias="dueDate", default=None)
 
 
 class PropertyData(BaseTaggedResource):
@@ -138,6 +141,7 @@ class PropertyData(BaseTaggedResource):
     project: SerializeAsEntityLink[Project] | None = Field(alias="Project", default=None)
     inventories: list[DataTemplateInventory] | None = Field(default=None, alias="Inventories")
     due_date: str | None = Field(alias="dueDate", default=None)
+    notes: str | None = Field(default=None)
 
 
 class SheetData(BaseTaggedResource):
@@ -148,6 +152,7 @@ class SheetData(BaseTaggedResource):
 
 
 class NotebookData(BaseTaggedResource):
+    id: str | None = Field(default=None, alias="albertId")
     category: Literal[TemplateCategory.NOTEBOOK] = TemplateCategory.NOTEBOOK
 
 
@@ -165,19 +170,19 @@ class ACLType(str, Enum):
 
 
 class TeamACL(ACL):
-    type: Literal[ACLType.TEAM] = ACLType.TEAM
+    type: Literal[ACLType.TEAM, "CustomTemplateTeam"] = ACLType.TEAM
 
 
 class OwnerACL(ACL):
-    type: Literal[ACLType.OWNER] = ACLType.OWNER
+    type: Literal[ACLType.OWNER, "CustomTemplateOwner"] = ACLType.OWNER
 
 
 class MemberACL(ACL):
-    type: Literal[ACLType.MEMBER] = ACLType.MEMBER
+    type: Literal[ACLType.MEMBER, "CustomTemplateMember"] = ACLType.MEMBER
 
 
 class ViewerACL(ACL):
-    type: Literal[ACLType.VIEWER] = ACLType.VIEWER
+    type: Literal[ACLType.VIEWER, "CustomTemplateViewer"] = ACLType.VIEWER
 
 
 ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discriminator="type")]
