@@ -10,7 +10,7 @@ from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import DataColumnId, InventoryId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
-from albert.exceptions import AlbertException
+from albert.exceptions import AlbertException, AlbertHTTPError
 from albert.resources.inventory import InventoryItem
 
 # Define forward references
@@ -541,8 +541,9 @@ class Design(BaseSessionResource):
         if self._groups_cache is not None and not refresh:
             return self._groups_cache
 
-        response = self.session.get(f"/api/v3/worksheet/design/{self.id}/rows/sequence")
-        if response.status_code >= 400:
+        try:
+            response = self.session.get(f"/api/v3/worksheet/design/{self.id}/rows/sequence")
+        except AlbertHTTPError:
             self._groups_cache = []
             return []
 
@@ -881,6 +882,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         return self.get_column(column_id=column_id)
 
+    @validate_call
     def add_components_to_formulation(
         self,
         *,
@@ -1228,7 +1230,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             "position": position.value,
         }
         if config is not None:
-            payload["config"] = config.model_dump(exclude_none=True)
+            payload["config"] = config.model_dump(by_alias=True, mode="json", exclude_none=True)
 
         response = self.session.post(
             f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload]
