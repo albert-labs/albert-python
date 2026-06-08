@@ -273,7 +273,7 @@ class InventorySpecValue(BaseAlbertModel):
     @field_validator("min", "max", "reference", mode="before")
     @classmethod
     def cast_float_to_str(cls, v: Any) -> Any:
-        if isinstance(v, float):
+        if isinstance(v, (int, float)):
             return str(v)
         return v
 
