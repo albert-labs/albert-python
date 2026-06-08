@@ -386,6 +386,10 @@ def generate_adv_patch_payload(
         if attribute == "project":
             old_project = getattr(existing, "project", None)
             new_project = getattr(updated, "project", None)
+            if isinstance(old_project, list) or isinstance(new_project, list):
+                raise ValueError(
+                    "Updating project is not supported for tasks with multiple associated projects."
+                )
             old_id = getattr(old_project, "id", None)
             new_id = getattr(new_project, "id", None)
             if new_id == old_id:
