@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.identifiers import InventoryId, ParameterGroupId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException
@@ -914,6 +914,62 @@ class Sheet(BaseSessionResource):  # noqa:F811
             manufacturer=row_dict["manufacturer"],
         )
 
+    @validate_call
+    def add_parameter_group_row(
+        self,
+        *,
+        parameter_group_id: ParameterGroupId,
+        position: dict | None = None,
+    ) -> Row:
+        """Add a parameter group row to the sheet's process design.
+
+        The platform expands a parameter-group row into one underlying PRM row
+        per parameter in the group; the returned Row corresponds to the PRG
+        row that anchors them.
+
+        Parameters
+        ----------
+        parameter_group_id : ParameterGroupId
+            The ID of the ParameterGroup to add as a row.
+        position : dict | None
+            Insertion position relative to an existing row. Shape:
+            ``{"reference_id": "ROW1", "position": "above"}``. Defaults to
+            ``{"position": "above"}``.
+
+        Returns
+        -------
+        Row
+            The newly created PRG row.
+        """
+        if position is None:
+            position = {"position": "above"}
+        design_id = self.process_design.id
+        endpoint = f"/api/v3/designs/{design_id}/rows"
+
+        payload = {
+            "type": "PRG",
+            "id": parameter_group_id,
+            "position": position["position"],
+        }
+
+        if "reference_id" in position:
+            payload["referenceId"] = position["reference_id"]
+
+        response = self.session.post(endpoint, json=[payload])
+
+        self.grid = None
+        row_dict = response.json()[0]
+        return Row(
+            rowId=row_dict["rowId"],
+            type=row_dict["type"],
+            session=self.session,
+            design=self.process_design,
+            sheet=self,
+            name=row_dict.get("name"),
+            id=row_dict.get("id"),
+            manufacturer=row_dict.get("manufacturer"),
+        )
+
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
         updated = []
         failed = []
@@ -1197,7 +1253,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             self.grid = None
 
     def delete_row(self, *, row_id: str, design_id: str) -> None:
-        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        endpoint = f"/api/v3/designs/{design_id}/rows"
         payload = [{"rowId": row_id}]
         self.session.delete(endpoint, json=payload)
 
