@@ -265,13 +265,15 @@ class Design(BaseSessionResource):
 
             records.append(row_cells)
 
-        # Determine the leftmost pinned column
+        # Determine the leftmost pinned column (last pinned col before first unpinned col).
+        # Guard i > 0: if the very first formula is unpinned there are no pinned columns
+        # and Formulas[i - 1] would wrap to the last element (Python negative index).
         for i, fmt in enumerate(grid_response.get("Formulas", [])):
             state = fmt.get("state", {})
             if state.get("pinned") is None:
-                # use the previous formula's colId
-                prev = grid_response["Formulas"][i - 1]
-                self._leftmost_pinned_column = prev["colId"]
+                if i > 0:
+                    prev = grid_response["Formulas"][i - 1]
+                    self._leftmost_pinned_column = prev["colId"]
                 break
 
         return pd.DataFrame.from_records(records, index=index)
@@ -813,6 +815,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position: dict | None = None,
     ) -> list[Column]:
         if starting_position is None:
+            # Ensure pinned-column state is resolved before computing the reference position.
+            if self.app_design is not None:
+                _ = self.app_design.grid
             starting_position = {
                 "reference_id": self.leftmost_pinned_column,
                 "position": "rightOf",
