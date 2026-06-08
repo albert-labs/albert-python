@@ -202,7 +202,9 @@ class AttachmentCollection(BaseCollection):
         Parameters
         ----------
         parent_ids : list[str]
-            Parent IDs of the objects to which the attachments are linked.
+            Parent IDs of the objects to which the attachments are linked. IDs must
+            include the full entity prefix (e.g. ``"INVA123"`` for an inventory item,
+            ``"PRO123"`` for a project).
 
         Returns
         -------
@@ -251,6 +253,32 @@ class AttachmentCollection(BaseCollection):
             parent_id=note_id, name=file_name, key=file_key, namespace="result", category=category
         )
         return self.create(attachment=attachment)
+
+    def get_jurisdiction_codes(self) -> dict[str, str]:
+        """Return available jurisdiction codes.
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of jurisdiction name to code (e.g. ``{"Germany": "DE", "USA": "US"}``).
+        """
+        response = self.session.get(
+            f"{self.base_path}/jurisdictionslanguages", params={"type": "jurisdiction"}
+        )
+        return response.json()
+
+    def get_language_codes(self) -> dict[str, str]:
+        """Return available language codes.
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of language name to code (e.g. ``{"English": "EN", "German": "DE"}``).
+        """
+        response = self.session.get(
+            f"{self.base_path}/jurisdictionslanguages", params={"type": "language"}
+        )
+        return response.json()
 
     @validate_call
     def delete(self, *, id: AttachmentId) -> None:
@@ -364,10 +392,12 @@ class AttachmentCollection(BaseCollection):
             The UN number.
         storage_class : str
             The Storage Class number.
-        jurisdiction_code : str | None, optional
-            Jurisdiction code associated with the SDS (e.g. ``US``).
+        jurisdiction_code : str, optional
+            Jurisdiction code for the SDS (e.g. ``"US"``). Use
+            ``get_jurisdiction_codes()`` to retrieve the full list of available codes.
         language_code : str, optional
-            Language code for the SDS (e.g. ``EN``).
+            Language code for the SDS (e.g. ``"EN"``). Use
+            ``get_language_codes()`` to retrieve the full list of available codes.
         hazard_statements : list[HazardStatement] | None, optional
             Collection of hazard statements.
         hazard_symbols : list[HazardSymbol] | None, optional
