@@ -277,7 +277,10 @@ class Workflow(BaseResource):
     """
 
     name: str
-    parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(alias="ParameterGroups")
+    # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
+    parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
+        alias="ParameterGroups", default_factory=list
+    )
     interval_combinations: list[IntervalCombination] | None = Field(
         default=None, alias="IntervalCombinations"
     )

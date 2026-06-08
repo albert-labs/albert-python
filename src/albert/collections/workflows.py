@@ -31,8 +31,13 @@ class WorkflowCollection(BaseCollection):
         self.base_path = f"/api/{WorkflowCollection._api_version}/workflows"
 
     def create(self, *, workflows: list[Workflow]) -> list[Workflow]:
-        """Create or return matching workflows for the provided list of workflows.
-        This endpoint automatically tries to find an existing workflow with the same parameter setpoints, and will either return the existing workflow or create a new one.
+        """Create workflows, or return existing ones if a match is found.
+
+        Deduplicates by parameter setpoints — if a workflow with identical
+        setpoints already exists, it is returned instead of creating a new one.
+        Returned workflows will have an empty ``parameter_group_setpoints`` list
+        regardless of whether they were created or matched; use ``get_by_id`` to
+        fetch the full setpoints if needed.
 
         Parameters
         ----------
@@ -42,7 +47,7 @@ class WorkflowCollection(BaseCollection):
         Returns
         -------
         list[Workflow]
-            A list of created or found Workflow entities.
+            A list of created or matched Workflow entities.
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
