@@ -98,28 +98,6 @@ def _generate_entity_category_patches(
 def _generate_custom_entity_category_patches(
     *, attribute: str, old_value: list | None, new_value: list | None
 ) -> list[PatchDatum]:
-    # Initial population is sent as UPDATE with [] oldValue.
-    if old_value is None and isinstance(new_value, list):
-        return [
-            PatchDatum(
-                attribute=attribute,
-                operation=PatchOperation.UPDATE,
-                old_value=[],
-                new_value=value,
-            )
-            for value in new_value
-        ]
-    if old_value is not None and new_value is None:
-        return [
-            PatchDatum(attribute=attribute, operation=PatchOperation.DELETE, old_value=old_value)
-        ]
-    if old_value != new_value:
-        return [
-            PatchDatum(
-                attribute=attribute,
-                operation=PatchOperation.UPDATE,
-                old_value=old_value,
-                new_value=new_value,
-            )
-        ]
-    return []
+    return _generate_entity_category_patches(
+        attribute=attribute, old_value=old_value, new_value=new_value
+    )
