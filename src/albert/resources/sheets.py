@@ -815,6 +815,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position: dict | None = None,
     ) -> list[Column]:
         if starting_position is None:
+            # Ensure pinned-column state is resolved before computing the reference position.
             if self.app_design is not None:
                 _ = self.app_design.grid
             starting_position = {
