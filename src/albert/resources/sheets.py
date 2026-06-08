@@ -815,10 +815,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position: dict | None = None,
     ) -> list[Column]:
         if starting_position is None:
-            # Load the app-design grid now so leftmost_pinned_column reflects real pinned state.
-            # Without this, _leftmost_pinned_column is None and the server falls back to its
-            # internal defaultAPPCols constant, which may not be present in wksSequence for
-            # every sheet — causing findAndInsertElement to silently skip the column insertion.
             if self.app_design is not None:
                 _ = self.app_design.grid
             starting_position = {
