@@ -203,6 +203,8 @@ class InventoryItem(BaseTaggedResource):
         The formula ID associated with the InventoryItem. Read Only.
     tags : list[str|Tag] | None
         The tags associated with the InventoryItem. Optional. If a string is provided, a Tag object with the name of the provided string will be first-or-created.
+    inventory_on_hand : float
+        The total amount of this item currently on hand across all lots. Read Only.
     """
 
     name: str | None = None
@@ -221,6 +223,7 @@ class InventoryItem(BaseTaggedResource):
     acls: list[ACL] = Field(default_factory=list, alias="ACL")
 
     # Read-only fields
+    inventory_on_hand: float = Field(default=0.0, alias="onHand", exclude=True, frozen=True)
     task_config: list[dict] | None = Field(
         default=None, alias="TaskConfig", exclude=True, frozen=True
     )
