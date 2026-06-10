@@ -869,13 +869,11 @@ def seeded_targets(
     client: Albert,
     seed_prefix: str,
     seeded_data_templates: list[DataTemplate],
-    seeded_parameters: list[Parameter],
 ) -> Iterator[list[Target]]:
     seeded = []
     for target in generate_target_seeds(
         seed_prefix=seed_prefix,
         seeded_data_templates=seeded_data_templates,
-        seeded_parameters=seeded_parameters,
     ):
         created_target = client.targets.create(target=target)
         seeded.append(created_target)
