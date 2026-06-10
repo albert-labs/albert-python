@@ -4,7 +4,15 @@ from albert.client import Albert
 from albert.core.shared.enums import Status
 from albert.exceptions import NotFoundError
 from albert.resources.data_templates import DataTemplate
-from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
+from albert.resources.parameters import Parameter
+from albert.resources.targets import (
+    Target,
+    TargetOperator,
+    TargetParameter,
+    TargetRangeValue,
+    TargetType,
+    TargetValue,
+)
 
 
 def test_target_create(
@@ -82,3 +90,123 @@ def test_target_delete(client: Albert, seed_prefix: str, seeded_targets: list[Ta
 
     with pytest.raises(NotFoundError):
         client.targets.get_by_id(id=created.id)
+
+
+class TestTargetParameterCoercion:
+    """Test that TargetParameter.value tolerantly coerces legacy bare scalars."""
+
+    def _validate_target(self, param_value: object) -> Target:
+        """Build a minimal Target payload with a parameter carrying the given value."""
+        return Target.model_validate(
+            {
+                "id": "TAR1",
+                "name": "test",
+                "type": "performance",
+                "dataTemplateId": "DAT1",
+                "dataColumnId": "DAC1",
+                "targetValue": {"operator": "gte", "value": 0},
+                "isRequired": True,
+                "parameters": [
+                    {
+                        "id": "PRM1",
+                        "category": "Normal",
+                        "sequence": "ROW1",
+                        "value": param_value,
+                    }
+                ],
+            }
+        )
+
+    def test_numeric_scalar_coerces_to_eq(self):
+        """Test that a legacy numeric scalar is coerced to operator=eq."""
+        target = self._validate_target(25.0)
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.EQ
+        assert pf.value == 25.0
+
+    def test_integer_scalar_coerces_to_eq(self):
+        """Test that a legacy integer scalar is coerced to operator=eq."""
+        target = self._validate_target(80)
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.EQ
+        assert pf.value == 80
+
+    def test_string_scalar_coerces_to_in_set(self):
+        """Test that a legacy string scalar is coerced to operator=in-set with a single-item list."""
+        target = self._validate_target("high")
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.IN_SET
+        assert pf.value == ["high"]
+
+    def test_bool_scalar_coerces_to_in_set_not_eq(self):
+        """Test that a bool is not mistaken for a numeric and becomes operator=in-set."""
+        target = self._validate_target(True)
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.IN_SET
+
+    def test_none_passes_through(self):
+        """Test that None is preserved as None (no filter)."""
+        target = self._validate_target(None)
+        assert target.parameters[0].value is None
+
+    def test_dict_passes_through_as_new_shape(self):
+        """Test that an already-structured dict is accepted as the new shape."""
+        target = self._validate_target({"operator": "between", "value": {"min": 20, "max": 30}})
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.BETWEEN
+        assert isinstance(pf.value, TargetRangeValue)
+        assert pf.value.min == 20
+        assert pf.value.max == 30
+
+    def test_in_set_list_passes_through(self):
+        """Test that a new-shape in-set dict passes through correctly."""
+        target = self._validate_target({"operator": "in-set", "value": ["A", "B"]})
+        pf = target.parameters[0].value
+        assert pf.operator == TargetOperator.IN_SET
+        assert pf.value == ["A", "B"]
+
+
+def test_target_create_with_between_parameter_filter(
+    client: Albert,
+    seed_prefix: str,
+    seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter],
+):
+    """Test creating a target with a between parameter filter and reading it back."""
+    params_template = next(
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Parameters Data Template"
+    )
+    params_col = params_template.data_column_values[0]
+
+    target = Target(
+        name=f"{seed_prefix} - Test Target With Between Param",
+        data_template_id=params_template.id,
+        data_column_id=params_col.data_column_id,
+        type=TargetType.PERFORMANCE,
+        target_value=TargetValue(operator=TargetOperator.GTE, value=0),
+        is_required=False,
+        parameters=[
+            TargetParameter(
+                id=seeded_parameters[0].id,
+                category=seeded_parameters[0].category,
+                value=TargetValue(
+                    operator=TargetOperator.BETWEEN,
+                    value=TargetRangeValue(min=20, max=30),
+                ),
+                sequence="ROW1",
+            )
+        ],
+    )
+    created = client.targets.create(target=target)
+    assert isinstance(created, Target)
+    assert created.parameters is not None
+    assert len(created.parameters) == 1
+    pf = created.parameters[0].value
+    assert pf is not None
+    assert pf.operator == TargetOperator.BETWEEN
+    assert isinstance(pf.value, TargetRangeValue)
+    assert pf.value.min == 20
+    assert pf.value.max == 30
+
+    # cleanup
+    client.targets.delete(id=created.id)

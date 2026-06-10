@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -57,34 +57,6 @@ class TargetOperator(str, Enum):
     IN_SET = "in-set"
 
 
-class TargetParameter(BaseAlbertModel):
-    """
-    Represents a parameter value at which a target is measured.
-
-    Attributes
-    ----------
-    id : str
-        The parameter ID.
-    parameter_group_id : str | None
-        The parameter group ID.
-    category : ParameterCategory
-        The parameter category.
-    unit_id : str | None
-        The unit ID for this parameter.
-    value : str | float | None
-        The parameter value.
-    sequence : str
-        The parameter sequence.
-    """
-
-    id: ParameterId
-    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
-    category: ParameterCategory
-    unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: str | float | None = Field(default=None)
-    sequence: str
-
-
 class TargetRangeValue(BaseAlbertModel):
     """
     Represents a range value for a target (used with the 'between' operator).
@@ -117,6 +89,61 @@ class TargetValue(BaseAlbertModel):
     value: TargetRangeValue | str | float | list
 
 
+# Parameter filters use the same operator/value-pair schema as target values.
+ParameterFilter = TargetValue
+
+
+class TargetParameter(BaseAlbertModel):
+    """
+    Represents a parameter filter condition at which a target is measured.
+
+    Attributes
+    ----------
+    id : str
+        The parameter ID.
+    parameter_group_id : str | None
+        The parameter group ID.
+    category : ParameterCategory
+        The parameter category.
+    unit_id : str | None
+        The unit ID for this parameter.
+    value : TargetValue | None
+        The parameter filter. Accepts an operator/value-pair object with one of the
+        following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
+        For ``between``, the value must be ``{"min": ..., "max": ...}``.
+        For ``in-set``, the value must be a list.
+        Legacy bare scalars (numeric or string) are coerced on read: a numeric
+        scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes
+        ``{"operator": "in-set", "value": [<s>]}``.
+    sequence : str
+        The parameter sequence.
+    """
+
+    id: ParameterId
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    category: ParameterCategory
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
+    value: TargetValue | None = Field(default=None)
+    sequence: str
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _coerce_legacy_value(cls, v: object) -> object:
+        # Tolerant reader: legacy targets stored a bare scalar before the
+        # operator/value-pair migration (lazy backfill may not have run yet).
+        if v is None:
+            return v
+        if isinstance(v, (dict, TargetValue)):
+            return v
+        if isinstance(v, bool):  # guard: bool is a subclass of int
+            return {"operator": "in-set", "value": [v]}
+        if isinstance(v, (int, float)):
+            return {"operator": "eq", "value": v}
+        if isinstance(v, str):
+            return {"operator": "in-set", "value": [v]}
+        return v
+
+
 class Target(BaseResource):
     """
     Represents a target entity.
@@ -139,7 +166,7 @@ class Target(BaseResource):
     unit_id : str | None
         The unit ID for this target.
     parameters : list[TargetParameter] | None
-        Parameter mappings for the target.
+        Parameter filter conditions for the target.
     validation : list[dict] | None
         Validation rules for the target value.
     target_value : TargetValue

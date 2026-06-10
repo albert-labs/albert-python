@@ -76,7 +76,14 @@ from albert.resources.reports import FullAnalyticalReport
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
-from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
+from albert.resources.targets import (
+    Target,
+    TargetOperator,
+    TargetParameter,
+    TargetRangeValue,
+    TargetType,
+    TargetValue,
+)
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -1822,6 +1829,7 @@ def generate_report_seeds(
 def generate_target_seeds(
     seed_prefix: str,
     seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter] | None = None,
 ) -> list[Target]:
     """
     Generates a list of Target seed objects for testing.
@@ -1849,7 +1857,7 @@ def generate_target_seeds(
     ].pop()
     number_data_column = number_template.data_column_values[0]
 
-    return [
+    seeds = [
         Target(
             name=f"{seed_prefix} - gte",
             data_template_id=enum_template.id,
@@ -1883,6 +1891,41 @@ def generate_target_seeds(
             is_required=False,
         ),
     ]
+
+    if seeded_parameters is not None:
+        params_template = next(
+            (
+                x
+                for x in seeded_data_templates
+                if x.name == f"{seed_prefix} - Parameters Data Template"
+            ),
+            None,
+        )
+        if params_template is not None:
+            params_col = params_template.data_column_values[0]
+            seeds.append(
+                Target(
+                    name=f"{seed_prefix} - between-with-param-filter",
+                    data_template_id=params_template.id,
+                    data_column_id=params_col.data_column_id,
+                    type=TargetType.PERFORMANCE,
+                    target_value=TargetValue(operator=TargetOperator.GTE, value=0),
+                    is_required=False,
+                    parameters=[
+                        TargetParameter(
+                            id=seeded_parameters[0].id,
+                            category=seeded_parameters[0].category,
+                            value=TargetValue(
+                                operator=TargetOperator.BETWEEN,
+                                value=TargetRangeValue(min=0, max=200),
+                            ),
+                            sequence="ROW1",
+                        )
+                    ],
+                )
+            )
+
+    return seeds
 
 
 def generate_smart_dataset_seed(
