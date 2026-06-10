@@ -166,6 +166,10 @@ class TestTargetParameterCoercion:
         assert pf.value == ["A", "B"]
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason="Requires api-targets backend to accept operator/value-pair TargetParameter.value (ML-1207). Remove decorator once deployed.",
+)
 def test_target_create_with_between_parameter_filter(
     client: Albert,
     seed_prefix: str,
