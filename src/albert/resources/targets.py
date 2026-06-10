@@ -90,7 +90,7 @@ class TargetValue(BaseAlbertModel):
 
 
 # Parameter filters use the same operator/value-pair schema as target values.
-ParameterFilter = TargetValue
+ParameterValue = TargetValue
 
 
 class TargetParameter(BaseAlbertModel):
@@ -107,7 +107,7 @@ class TargetParameter(BaseAlbertModel):
         The parameter category.
     unit_id : str | None
         The unit ID for this parameter.
-    value : TargetValue | None
+    value : ParameterValue | None
         The parameter filter. Accepts an operator/value-pair object with one of the
         following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
         For ``between``, the value must be ``{"min": ..., "max": ...}``.
@@ -123,17 +123,17 @@ class TargetParameter(BaseAlbertModel):
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     category: ParameterCategory
     unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: TargetValue | None = Field(default=None)
+    value: ParameterValue | None = Field(default=None)
     sequence: str
 
     @field_validator("value", mode="before")
     @classmethod
     def _coerce_legacy_value(cls, v: object) -> object:
-        # Tolerant reader: legacy targets stored a bare scalar before the
+        # Tolerant reader: legacy parameter values stored a bare scalar before the
         # operator/value-pair migration (lazy backfill may not have run yet).
         if v is None:
             return v
-        if isinstance(v, (dict, TargetValue)):
+        if isinstance(v, (dict, ParameterValue)):
             return v
         if isinstance(v, bool):  # guard: bool is a subclass of int
             return {"operator": "in-set", "value": [v]}
