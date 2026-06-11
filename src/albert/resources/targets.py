@@ -30,7 +30,7 @@ class TargetType(str, Enum):
     PERFORMANCE = "performance"
 
 
-class TargetOperator(str, Enum):
+class ComparisonOperator(str, Enum):
     """
     Enumeration of target value comparison operators.
 
@@ -79,18 +79,14 @@ class TargetValue(BaseAlbertModel):
 
     Attributes
     ----------
-    operator : TargetOperator
+    operator : ComparisonOperator
         The comparison operator.
     value : TargetRangeValue | str | float | list
         The target value. Can be a range, single value, or list of values.
     """
 
-    operator: TargetOperator
+    operator: ComparisonOperator
     value: TargetRangeValue | str | float | list
-
-
-# Parameter filters use the same operator/value-pair schema as target values.
-ParameterValue = TargetValue
 
 
 class TargetParameter(BaseAlbertModel):
@@ -107,7 +103,7 @@ class TargetParameter(BaseAlbertModel):
         The parameter category.
     unit_id : str | None
         The unit ID for this parameter.
-    value : ParameterValue | None
+    value : TargetValue | None
         The parameter filter. Accepts an operator/value-pair object with one of the
         following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
         For ``between``, the value must be ``{"min": ..., "max": ...}``.
@@ -123,7 +119,7 @@ class TargetParameter(BaseAlbertModel):
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     category: ParameterCategory
     unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: ParameterValue | None = Field(default=None)
+    value: TargetValue | None = Field(default=None)
     sequence: str
 
     @field_validator("value", mode="before")
@@ -133,7 +129,7 @@ class TargetParameter(BaseAlbertModel):
         # operator/value-pair migration (lazy backfill may not have run yet).
         if v is None:
             return v
-        if isinstance(v, (dict, ParameterValue)):
+        if isinstance(v, (dict, TargetValue)):
             return v
         if isinstance(v, bool):  # guard: bool is a subclass of int
             return {"operator": "in-set", "value": [v]}
