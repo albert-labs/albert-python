@@ -73,7 +73,7 @@ class NumericRange(BaseAlbertModel):
     max: float
 
 
-class ValueFilter(BaseAlbertModel):
+class Criterion(BaseAlbertModel):
     """
     Represents the target value constraint.
 
@@ -103,8 +103,8 @@ class TargetParameter(BaseAlbertModel):
         The parameter category.
     unit_id : str | None
         The unit ID for this parameter.
-    value : ValueFilter | None
-        The parameter filter. Accepts an operator/value-pair object with one of the
+    value : Criterion | None
+        The value filter. Accepts an operator/value-pair object with one of the
         following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
         For ``between``, the value must be ``{"min": ..., "max": ...}``.
         For ``in-set``, the value must be a list.
@@ -119,7 +119,7 @@ class TargetParameter(BaseAlbertModel):
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     category: ParameterCategory
     unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: ValueFilter | None = Field(default=None)
+    value: Criterion | None = Field(default=None)
     sequence: str
 
     @field_validator("value", mode="before")
@@ -129,7 +129,7 @@ class TargetParameter(BaseAlbertModel):
         # operator/value-pair migration (lazy backfill may not have run yet).
         if v is None:
             return v
-        if isinstance(v, (dict, ValueFilter)):
+        if isinstance(v, (dict, Criterion)):
             return v
         if isinstance(v, bool):  # guard: bool is a subclass of int
             return {"operator": "in-set", "value": [v]}
@@ -165,7 +165,7 @@ class Target(BaseResource):
         Parameter filter conditions for the target.
     validation : list[dict] | None
         Validation rules for the target value.
-    target_value : ValueFilter
+    target_value : Criterion
         The target value constraint.
     is_required : bool
         Whether this target is required.
@@ -181,6 +181,6 @@ class Target(BaseResource):
     data_column_id: DataColumnId = Field(alias="dataColumnId")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     parameters: list[TargetParameter] | None = Field(default=None)
-    target_value: ValueFilter = Field(alias="targetValue")
+    target_value: Criterion = Field(alias="targetValue")
     is_required: bool = Field(alias="isRequired")
     validation: list[dict] | None = Field(default=None)

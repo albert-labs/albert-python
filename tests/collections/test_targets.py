@@ -7,11 +7,11 @@ from albert.resources.data_templates import DataTemplate
 from albert.resources.parameters import Parameter
 from albert.resources.targets import (
     ComparisonOperator,
+    Criterion,
     NumericRange,
     Target,
     TargetParameter,
     TargetType,
-    ValueFilter,
 )
 
 
@@ -31,7 +31,7 @@ def test_target_create(
         data_template_id=number_template.id,
         data_column_id=number_data_column.data_column_id,
         type=TargetType.PERFORMANCE,
-        target_value=ValueFilter(operator=ComparisonOperator.LTE, value=100),
+        target_value=Criterion(operator=ComparisonOperator.LTE, value=100),
         is_required=True,
     )
     created = client.targets.create(target=target)
@@ -78,7 +78,7 @@ def test_target_delete(client: Albert, seed_prefix: str, seeded_targets: list[Ta
         data_template_id=seeded_targets[0].data_template_id,
         data_column_id=seeded_targets[0].data_column_id,
         type=TargetType.PERFORMANCE,
-        target_value=ValueFilter(operator=ComparisonOperator.EQ, value=42),
+        target_value=Criterion(operator=ComparisonOperator.EQ, value=42),
         is_required=False,
     )
     created = client.targets.create(target=target)
@@ -187,13 +187,13 @@ def test_target_create_with_between_parameter_filter(
         data_template_id=params_template.id,
         data_column_id=params_col.data_column_id,
         type=TargetType.PERFORMANCE,
-        target_value=ValueFilter(operator=ComparisonOperator.GTE, value=0),
+        target_value=Criterion(operator=ComparisonOperator.GTE, value=0),
         is_required=False,
         parameters=[
             TargetParameter(
                 id=seeded_parameters[0].id,
                 category=seeded_parameters[0].category,
-                value=ValueFilter(
+                value=Criterion(
                     operator=ComparisonOperator.BETWEEN,
                     value=NumericRange(min=20, max=30),
                 ),
