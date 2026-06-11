@@ -32,7 +32,7 @@ class TargetType(str, Enum):
 
 class ComparisonOperator(str, Enum):
     """
-    Enumeration of target value comparison operators.
+    Enumeration of value comparison operators.
 
     Attributes
     ----------
@@ -57,7 +57,7 @@ class ComparisonOperator(str, Enum):
     IN_SET = "in-set"
 
 
-class TargetRangeValue(BaseAlbertModel):
+class NumericRange(BaseAlbertModel):
     """
     Represents a range value for a target (used with the 'between' operator).
 
@@ -73,7 +73,7 @@ class TargetRangeValue(BaseAlbertModel):
     max: float
 
 
-class TargetValue(BaseAlbertModel):
+class ValueFilter(BaseAlbertModel):
     """
     Represents the target value constraint.
 
@@ -81,12 +81,12 @@ class TargetValue(BaseAlbertModel):
     ----------
     operator : ComparisonOperator
         The comparison operator.
-    value : TargetRangeValue | str | float | list
+    value : NumericRange | str | float | list
         The target value. Can be a range, single value, or list of values.
     """
 
     operator: ComparisonOperator
-    value: TargetRangeValue | str | float | list
+    value: NumericRange | str | float | list
 
 
 class TargetParameter(BaseAlbertModel):
@@ -103,7 +103,7 @@ class TargetParameter(BaseAlbertModel):
         The parameter category.
     unit_id : str | None
         The unit ID for this parameter.
-    value : TargetValue | None
+    value : ValueFilter | None
         The parameter filter. Accepts an operator/value-pair object with one of the
         following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
         For ``between``, the value must be ``{"min": ..., "max": ...}``.
@@ -119,7 +119,7 @@ class TargetParameter(BaseAlbertModel):
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     category: ParameterCategory
     unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: TargetValue | None = Field(default=None)
+    value: ValueFilter | None = Field(default=None)
     sequence: str
 
     @field_validator("value", mode="before")
@@ -129,7 +129,7 @@ class TargetParameter(BaseAlbertModel):
         # operator/value-pair migration (lazy backfill may not have run yet).
         if v is None:
             return v
-        if isinstance(v, (dict, TargetValue)):
+        if isinstance(v, (dict, ValueFilter)):
             return v
         if isinstance(v, bool):  # guard: bool is a subclass of int
             return {"operator": "in-set", "value": [v]}
@@ -165,7 +165,7 @@ class Target(BaseResource):
         Parameter filter conditions for the target.
     validation : list[dict] | None
         Validation rules for the target value.
-    target_value : TargetValue
+    target_value : ValueFilter
         The target value constraint.
     is_required : bool
         Whether this target is required.
@@ -181,6 +181,6 @@ class Target(BaseResource):
     data_column_id: DataColumnId = Field(alias="dataColumnId")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     parameters: list[TargetParameter] | None = Field(default=None)
-    target_value: TargetValue = Field(alias="targetValue")
+    target_value: ValueFilter = Field(alias="targetValue")
     is_required: bool = Field(alias="isRequired")
     validation: list[dict] | None = Field(default=None)

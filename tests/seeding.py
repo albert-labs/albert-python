@@ -78,11 +78,11 @@ from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.targets import (
     ComparisonOperator,
+    NumericRange,
     Target,
     TargetParameter,
-    TargetRangeValue,
     TargetType,
-    TargetValue,
+    ValueFilter,
 )
 from albert.resources.tasks import (
     BaseTask,
@@ -1863,7 +1863,7 @@ def generate_target_seeds(
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=ComparisonOperator.GTE, value=10),
+            target_value=ValueFilter(operator=ComparisonOperator.GTE, value=10),
             is_required=True,
         ),
         Target(
@@ -1871,7 +1871,7 @@ def generate_target_seeds(
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=ComparisonOperator.LTE, value=10),
+            target_value=ValueFilter(operator=ComparisonOperator.LTE, value=10),
             is_required=True,
         ),
         Target(
@@ -1879,7 +1879,7 @@ def generate_target_seeds(
             data_template_id=number_template.id,
             data_column_id=number_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(
+            target_value=ValueFilter(
                 operator=ComparisonOperator.BETWEEN, value={"min": 5, "max": 15}
             ),
             is_required=False,
@@ -1889,7 +1889,7 @@ def generate_target_seeds(
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=ComparisonOperator.IN_SET, value=["A", "B", "C"]),
+            target_value=ValueFilter(operator=ComparisonOperator.IN_SET, value=["A", "B", "C"]),
             is_required=False,
         ),
     ]
@@ -1911,15 +1911,15 @@ def generate_target_seeds(
                     data_template_id=params_template.id,
                     data_column_id=params_col.data_column_id,
                     type=TargetType.PERFORMANCE,
-                    target_value=TargetValue(operator=ComparisonOperator.GTE, value=0),
+                    target_value=ValueFilter(operator=ComparisonOperator.GTE, value=0),
                     is_required=False,
                     parameters=[
                         TargetParameter(
                             id=seeded_parameters[0].id,
                             category=seeded_parameters[0].category,
-                            value=TargetValue(
+                            value=ValueFilter(
                                 operator=ComparisonOperator.BETWEEN,
-                                value=TargetRangeValue(min=0, max=200),
+                                value=NumericRange(min=0, max=200),
                             ),
                             sequence="ROW1",
                         )
