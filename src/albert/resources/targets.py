@@ -17,19 +17,6 @@ from albert.core.shared.models.base import BaseResource
 from albert.resources.parameter_groups import ParameterCategory
 
 
-class TargetType(str, Enum):
-    """
-    Enumeration of target types.
-
-    Attributes
-    ----------
-    PERFORMANCE : str
-        A performance target.
-    """
-
-    PERFORMANCE = "performance"
-
-
 class ComparisonOperator(str, Enum):
     """
     Enumeration of value comparison operators.
@@ -87,6 +74,19 @@ class Criterion(BaseAlbertModel):
 
     operator: ComparisonOperator
     value: NumericRange | str | float | list
+
+
+class TargetType(str, Enum):
+    """
+    Enumeration of target types.
+
+    Attributes
+    ----------
+    PERFORMANCE : str
+        A performance target.
+    """
+
+    PERFORMANCE = "performance"
 
 
 class TargetParameter(BaseAlbertModel):
