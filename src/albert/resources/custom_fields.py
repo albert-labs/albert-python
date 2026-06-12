@@ -74,16 +74,46 @@ class CustomFieldAPI(BaseAlbertModel):
 
 
 class ListDefaultValue(BaseAlbertModel):
+    """An item from a list-type custom field used as a default value.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the list item.
+    name : str
+        The display name of the list item.
+    """
+
     id: str = Field(alias="albertId")
     name: str
 
 
 class StringDefault(BaseAlbertModel):
+    """A default value for a string-type custom field.
+
+    Attributes
+    ----------
+    type : FieldType
+        Always ``FieldType.STRING``.
+    value : str
+        The default string value.
+    """
+
     type: Literal[FieldType.STRING] = FieldType.STRING
     value: str
 
 
 class NumberDefault(BaseAlbertModel):
+    """A default value for a number-type custom field.
+
+    Attributes
+    ----------
+    type : FieldType
+        Always ``FieldType.NUMBER``.
+    value : int | float
+        The default numeric value.
+    """
+
     type: Literal[FieldType.NUMBER] = FieldType.NUMBER
     value: int | float
 
@@ -105,51 +135,52 @@ Default = Annotated[
 
 
 class CustomField(BaseResource):
-    """A custom field for an entity in Albert.
+    """A custom field that can be attached as metadata to an entity in Albert.
 
-    Returns
-    -------
-    CustomField
-        A CustomField that can be used to attach Metadata to an entity in Albert.
     Attributes
-    ------
+    ----------
     name : str
-        The name of the custom field. Cannot contain spaces.
+        The internal name of the custom field. Cannot contain spaces.
     id : str | None
         The Albert ID of the custom field.
     field_type : FieldType
-        The type of the custom field. Allowed values are `list`, `string`, and `number`.
-        `string` and `list` fields are searchable; `number` fields are not searchable.
+        The data type of the field. Allowed values are ``list``, ``string``, and ``number``.
+        ``string`` and ``list`` fields are searchable; ``number`` fields are not.
     display_name : str
-        The display name of the custom field. Can contain spaces.
+        The human-readable label for the field. Can contain spaces (max 40 chars).
     searchable : bool | None
-        Whether the custom field is searchable, optional. Defaults to False. This is supported
-        for `list` and `string` fields; `number` fields can not be searchable.
+        Whether the field is searchable. Supported for ``list`` and ``string`` fields only.
     service : ServiceType
-        The service type the custom field is associated with.
+        The entity type this field is associated with (e.g. inventories, lots, tasks).
     hidden : bool | None
-        Whether the custom field is hidden, optional. Defaults to False.
+        Whether the field is hidden in the UI.
     lookup_column : bool | None
-        Whether the custom field is a lookup column, optional. Defaults to False. Only allowed for inventories.
+        Whether the field is a lookup column. Only allowed for inventories.
     lookup_row : bool | None
-        Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
+        Whether the field is a lookup row. Only allowed for formula inventories.
     category : FieldCategory | None
-        The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
+        The ACL category of the field. Required for ``list`` fields.
     min : int | float | None
-        The minimum value of the custom field, optional. Defaults to None.
+        The minimum allowed value for number fields.
     max : int | float | None
-        The maximum value of the custom field, optional. Defaults to None.
+        The maximum allowed value for number fields.
     entity_categories : list[EntityCategory] | None
-        The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
+        The entity categories where this field applies. Required for lookup row fields.
     custom_entity_categories : list[str] | None
-        Custom entity categories that define where the field is valid.
+        Custom entity category names where the field is valid.
     ui_components : list[UIComponent] | None
-        The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
-    default: Default | None
-        The default value of the custom field, optional. Defaults to None.
-    editable: bool | None
-        Decides whether the field should be editable on UI or not.
-    api: CustomFieldAPI | None
+        The UI contexts where this field appears (e.g. ``create``, ``details``).
+    required : bool | None
+        Whether the field is required when creating an entity.
+    multiselect : bool | None
+        Whether multiple values can be selected for list fields.
+    editable : bool | None
+        Whether the field is editable in the UI.
+    pattern : str | None
+        A validation regex pattern for string fields.
+    default : Default | None
+        The default value for the field.
+    api : CustomFieldAPI | None
         API configuration for fields backed by remote data sources.
     """
 

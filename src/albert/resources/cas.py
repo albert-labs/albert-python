@@ -31,7 +31,43 @@ class Hazard(BaseAlbertModel):
 
 
 class Cas(BaseResource):
-    """Represents a CAS entity."""
+    """A CAS (Chemical Abstracts Service) registry entry.
+
+    Attributes
+    ----------
+    number : str
+        The CAS registry number (e.g. ``"7732-18-5"``).
+    name : str | None
+        The primary name of the chemical.
+    description : str | None
+        An additional description or alternate name.
+    notes : str | None
+        Free-text notes about the CAS entry.
+    category : CasCategory | None
+        The category of the CAS entry (e.g. User, Verisk, TSCA - Public).
+    smiles : str | None
+        SMILES notation for the chemical structure.
+    inchi_key : str | None
+        InChIKey for the chemical structure.
+    iupac_name : str | None
+        IUPAC name of the chemical.
+    id : str | None
+        The Albert ID of the CAS entry.
+    hazards : list[Hazard] | None
+        Hazard classifications associated with the chemical.
+    wgk : str | None
+        German Water Hazard Class (WGK) number.
+    ec_number : str | None
+        European Community (EC) inventory number.
+    type : str | None
+        Internal classification type reference.
+    classification_type : str | None
+        Classification type of the CAS entry.
+    order : str | None
+        Sort order of the CAS entry.
+    metadata : dict[str, MetadataItem]
+        Custom metadata attached to the CAS entry.
+    """
 
     number: str = Field(..., description="The CAS number.")
     name: str | None = Field(None, description="Name of the CAS.")

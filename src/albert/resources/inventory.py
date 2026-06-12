@@ -268,6 +268,20 @@ class InventoryItem(BaseTaggedResource):
 
 
 class InventorySpecValue(BaseAlbertModel):
+    """The target value bounds for an inventory specification.
+
+    Attributes
+    ----------
+    min : str | None
+        The minimum acceptable value.
+    max : str | None
+        The maximum acceptable value.
+    reference : str | None
+        The reference (target) value.
+    comparison_operator : str | None
+        The comparison operator for the specification (e.g. ``"between"``, ``"gt"``).
+    """
+
     min: str | None = Field(default=None)
     max: str | None = Field(default=None)
     reference: str | None = Field(default=None)
@@ -276,12 +290,42 @@ class InventorySpecValue(BaseAlbertModel):
     @field_validator("min", "max", "reference", mode="before")
     @classmethod
     def cast_float_to_str(cls, v: Any) -> Any:
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return str(v)
         return v
 
 
 class InventorySpec(BaseAlbertModel):
+    """A quality specification attached to an inventory item.
+
+    Attributes
+    ----------
+    id : str | None
+        The Albert ID of the specification.
+    name : str
+        The display name of the specification.
+    data_column_id : str
+        The Albert ID of the data column this spec measures.
+    data_column_name : str | None
+        The name of the data column.
+    data_template_id : str | None
+        The Albert ID of the data template this spec belongs to.
+    data_template_name : str | None
+        The name of the data template.
+    unit_id : str | None
+        The Albert ID of the unit of measure.
+    unit_name : str | None
+        The name of the unit of measure.
+    workflow_id : str | None
+        The Albert ID of the workflow this spec is tied to.
+    workflow_name : str | None
+        The name of the workflow.
+    spec_config : str | None
+        Additional specification configuration string.
+    value : InventorySpecValue | None
+        The target value bounds for this specification.
+    """
+
     id: str | None = Field(default=None, alias="albertId")
     name: str
     data_column_id: str = Field(..., alias="datacolumnId")
@@ -297,6 +341,16 @@ class InventorySpec(BaseAlbertModel):
 
 
 class InventorySpecList(BaseAlbertModel):
+    """A collection of quality specifications for an inventory item.
+
+    Attributes
+    ----------
+    parent_id : str
+        The Albert ID of the inventory item these specs belong to.
+    specs : list[InventorySpec]
+        The list of specifications.
+    """
+
     parent_id: str = Field(..., alias="parentId")
     specs: list[InventorySpec] = Field(..., alias="Specs")
 
@@ -305,6 +359,18 @@ class InventorySpecList(BaseAlbertModel):
 # and see if this is unique to the search endpoint or a
 # common resource
 class InventorySearchPictogramItem(BaseAlbertModel):
+    """A hazard pictogram entry within an inventory search result.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the pictogram.
+    name : str
+        The display name of the pictogram.
+    status : str | None
+        The status of the pictogram (e.g. active or inactive).
+    """
+
     id: str
     name: str
     status: str | None = Field(default=None)
@@ -315,6 +381,22 @@ class InventorySearchPictogramItem(BaseAlbertModel):
 # if UnNumber doesn't require all fields we can
 # merge these two classes together
 class InventorySearchSDSItem(BaseAlbertModel):
+    """SDS (Safety Data Sheet) summary within an inventory search result.
+
+    Attributes
+    ----------
+    un_number : str | None
+        The UN number for the hazardous material.
+    storage_class_name : str | None
+        The name of the storage class.
+    shipping_description : str | None
+        The shipping description for the material.
+    storage_class_number : str | None
+        The storage class number.
+    un_classification : str | None
+        The UN classification of the material.
+    """
+
     un_number: str | None = Field(default=None, alias="unNumber")
     storage_class_name: str | None = Field(default=None, alias="storageClassName")
     shipping_description: str | None = Field(default=None, alias="shippingDescription")
@@ -323,6 +405,32 @@ class InventorySearchSDSItem(BaseAlbertModel):
 
 
 class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
+    """Lightweight representation of an InventoryItem returned from search.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the inventory item.
+    name : str
+        The name of the inventory item.
+    description : str
+        The description of the inventory item.
+    category : InventoryCategory
+        The inventory category (RawMaterials, Consumables, Equipment, Formulas).
+    unit : InventoryUnitCategory
+        The unit category used by this inventory item.
+    lots : list[dict[str, Any]]
+        Summary information about lots associated with this item.
+    tags : list[Tag]
+        Tags associated with this inventory item.
+    pictogram : list[InventorySearchPictogramItem]
+        Hazard pictograms for this inventory item.
+    inventory_on_hand : float
+        The total quantity currently on hand across all lots.
+    sds : InventorySearchSDSItem | None
+        SDS summary for this inventory item, if available.
+    """
+
     id: str = Field(alias="albertId")
     name: str = Field(default="")
     description: str = Field(default="")
@@ -337,6 +445,19 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 
 
 class MergeInventory(BaseAlbertModel):
+    """Payload for merging one or more inventory items into a parent item.
+
+    Attributes
+    ----------
+    parent_id : InventoryId
+        The Albert ID of the target parent inventory item to merge into.
+    child_inventories : list[dict[str, InventoryId]]
+        The inventory items to be merged into the parent.
+    modules : list[str] | None
+        The data modules to copy during the merge (e.g. ``"SDS"``, ``"LOT"``).
+        Defaults to all modules when ``None``.
+    """
+
     parent_id: InventoryId = Field(alias="parentId")
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
     modules: list[str] | None = Field(default=None)

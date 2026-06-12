@@ -157,7 +157,31 @@ class Lot(BaseResource):
 
 
 class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
-    """Lightweight representation of a Lot returned from search()."""
+    """Lightweight representation of a Lot returned from search.
+
+    Attributes
+    ----------
+    id : LotId
+        The Albert ID of the lot.
+    inventory_id : InventoryId | None
+        The Albert ID of the inventory item this lot belongs to.
+    parent_name : str | None
+        The name of the parent inventory item.
+    parent_unit : str | None
+        The unit category of the parent inventory item.
+    parent_category : InventoryCategory | None
+        The inventory category of the parent item.
+    task_id : str | None
+        The Albert ID of the task that created this lot.
+    barcode_id : str | None
+        The barcode identifier of the lot.
+    expiration_date : str | None
+        The expiration date of the lot (YYYY-MM-DD format).
+    manufacturer_lot_number : str | None
+        The manufacturer-assigned lot number.
+    lot_number : str | None
+        The internal lot number.
+    """
 
     id: LotId = Field(alias="albertId")
     inventory_id: InventoryId | None = Field(default=None, alias="parentId")

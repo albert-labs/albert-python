@@ -4,7 +4,21 @@ from albert.core.shared.models.base import BaseResource, EntityLinkWithName
 
 
 class NoteAttachmentEntityLink(EntityLinkWithName):
-    """Entity link for a note attachment w/ an optional signed download URL."""
+    """An entity link to a file attachment on a note, including download metadata.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the attachment.
+    name : str | None
+        The display name of the attachment.
+    key : str | None
+        The storage key of the attached file.
+    file_size : int | None
+        The size of the file in bytes.
+    signed_url : str | None
+        A pre-signed download URL for the attachment.
+    """
 
     key: str | None = None
     file_size: int | None = Field(default=None, alias="fileSize")
@@ -12,8 +26,21 @@ class NoteAttachmentEntityLink(EntityLinkWithName):
 
 
 class Note(BaseResource):
-    """Represents a Note on the Albert Platform. Users can be mentioned in notes by using f-string and the User.to_note_mention() method.
-    This allows for easy tagging and referencing of users within notes. example: f"Hello {tagged_user.to_note_mention()}!"
+    """A note attached to an entity such as a Task, Project, or Inventory item.
+
+    Users can be @-mentioned by embedding ``User.to_note_mention()`` in the note text,
+    for example: ``f"Hello {user.to_note_mention()}!"``.
+
+    Attributes
+    ----------
+    parent_id : str
+        The Albert ID of the entity this note belongs to.
+    note : str
+        The note content. May contain @-mention markers.
+    id : str | None
+        The Albert ID of the note.
+    attachments : list[NoteAttachmentEntityLink] | None
+        Files attached to this note. Read-only.
     """
 
     parent_id: str = Field(..., alias="parentId")

@@ -65,6 +65,22 @@ class EnumValidationValue(BaseAlbertModel):
 
 
 class ValueValidation(BaseAlbertModel):
+    """A validation rule applied to a parameter or data column value.
+
+    Attributes
+    ----------
+    datatype : DataType
+        The data type the validation applies to.
+    value : str | list[EnumValidationValue] | None
+        The allowed value or list of allowed enum values.
+    min : str | None
+        The minimum allowed value (for range validations).
+    max : str | None
+        The maximum allowed value (for range validations).
+    operator : Operator | None
+        The comparison operator for the validation rule.
+    """
+
     # We may want to abstract this out if we end up reusing on Data Templates
     datatype: DataType = Field(...)
     value: str | list[EnumValidationValue] | None = Field(default=None)
@@ -144,7 +160,33 @@ class ParameterValue(BaseAlbertModel):
 
 
 class ParameterGroup(BaseTaggedResource):
-    """Use 'Standards' key in metadata to store standards"""
+    """A group of parameters defining the conditions for a measurement workflow.
+
+    Use the ``"Standards"`` key in ``metadata`` to store associated standards.
+
+    Attributes
+    ----------
+    name : str
+        The name of the parameter group.
+    type : PGType | None
+        The type of parameter group (general, batch, or property).
+    id : str | None
+        The Albert ID of the parameter group.
+    description : str | None
+        A description of the parameter group.
+    security_class : SecurityClass
+        The security classification. Defaults to ``RESTRICTED``.
+    acl : list[User] | None
+        Users with explicit access to this parameter group.
+    metadata : dict[str, MetadataItem]
+        Custom metadata attached to the parameter group.
+    parameters : list[ParameterValue]
+        The parameter definitions and their values/intervals.
+    verified : bool
+        Whether the parameter group has been verified. Read-only.
+    documents : list[EntityLink]
+        Documents linked to this parameter group. Read-only.
+    """
 
     name: str
     type: PGType | None = Field(default=None)
@@ -161,13 +203,53 @@ class ParameterGroup(BaseTaggedResource):
 
 
 class ParameterSearchItemParameter(BaseAlbertModel):
+    """A lightweight parameter reference within a parameter group search result.
+
+    Attributes
+    ----------
+    name : str | None
+        The name of the parameter.
+    id : str
+        The Albert ID of the parameter.
+    localized_names : LocalizedNames
+        Localized name variants for the parameter.
+    """
+
     name: str | None = None
     id: str
     localized_names: LocalizedNames = Field(alias="localizedNames")
 
 
 class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
-    """Lightweight representation of a ParameterGroup returned from unhydrated search()."""
+    """Lightweight representation of a ParameterGroup returned from search.
+
+    Attributes
+    ----------
+    name : str
+        The name of the parameter group.
+    type : PGType | None
+        The type of parameter group.
+    id : str | None
+        The Albert ID of the parameter group.
+    description : str | None
+        A description of the parameter group.
+    parameters : list[ParameterSearchItemParameter]
+        Summary of the parameters in the group.
+    owner : list[User] | None
+        Owners of the parameter group.
+    tags : list[User] | None
+        Tags associated with the parameter group.
+    acl : list[User] | None
+        Users with explicit access to the parameter group.
+    created_at : str | None
+        ISO 8601 timestamp of when the parameter group was created.
+    created_by_name : str | None
+        The name of the user who created the parameter group.
+    metadata : dict[str, MetadataItem] | None
+        Custom metadata attached to the parameter group.
+    team : list[User] | None
+        Team members associated with the parameter group.
+    """
 
     name: str
     type: PGType | None = Field(default=None)

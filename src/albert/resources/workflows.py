@@ -262,18 +262,27 @@ class ParameterGroupSetpoints(BaseAlbertModel):
 
 
 class Workflow(BaseResource):
-    """A Pydantic Class representing a workflow in Albert.
+    """A workflow in Albert, combining parameter groups and their setpoints.
 
-    Workflows are combinations of Data Templates and Parameter groups and their associated setpoints.
+    Workflows define the measurement conditions for property tasks. They link
+    parameter groups with specific setpoints (values or intervals) to create
+    reproducible experimental conditions.
 
     Attributes
     ----------
     name : str
         The name of the workflow.
     parameter_group_setpoints : list[ParameterGroupSetpoints]
-        The setpoints to apply to the parameter groups in the workflow.
+        The parameter groups and their associated setpoints for this workflow.
+    interval_combinations : list[IntervalCombination] | None
+        The interval combinations present in this workflow, representing the
+        Cartesian product of intervalized parameters.
     id : str | None
-        The AlbertID of the workflow. This is set when a workflow is retrived from the platform.
+        The Albert ID of the workflow. Excluded from serialization.
+    block_mapping : str | None
+        Internal block mapping identifier.
+    category : str | None
+        The category of the workflow. Read-only.
     """
 
     name: str

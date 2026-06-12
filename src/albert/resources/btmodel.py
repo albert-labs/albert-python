@@ -30,23 +30,23 @@ class BTModelSession(BaseResource, protected_namespaces=()):
     name : str
         The name of the model session.
     category : BTModelSessionCategory
-        The category of the model session (e.g., userModel, albertModel).
+        The category of the model session (e.g. userModel, albertModel).
     id : BTModelSessionId | None
         The unique identifier for the model session.
     dataset_id : BTDatasetId
         The identifier for the dataset associated with the model session.
     default_model : str | None
-        The default model name for the session, if applicable.
+        The default model name for the session.
     total_time : str | None
-        The total time taken for the session, if applicable.
+        The total elapsed time for the session.
     model_count : int | None
-        The number of models in the session, if applicable.
+        The number of models in the session.
     target : list[str] | None
-        The target variables for the models in the session, if applicable.
+        The target variable names for the models in this session.
     registry : BTModelRegistry | None
-        The registry containing build logs and metrics for the session, if applicable.
+        Build logs and metrics for the session.
     albert_model_details : dict[str, Any] | None
-        Details specific to the Albert model, if applicable.
+        Details specific to the Albert-generated model.
     """
 
     name: str
@@ -82,7 +82,7 @@ class BTModelState(str, Enum):
 class BTModel(BaseResource, protected_namespaces=()):
     """A single Breakthrough model.
 
-    A BTModel may have a `parent_id` or be a detached, standalone model.
+    A BTModel may belong to a parent session or be a detached standalone model.
 
     Attributes
     ----------
@@ -91,25 +91,25 @@ class BTModel(BaseResource, protected_namespaces=()):
     id : BTModelId | None
         The unique identifier for the model.
     dataset_id : BTDatasetId | None
-        The identifier for the dataset associated with the model.
+        The identifier for the dataset used to train this model.
     parent_id : BTModelSessionId | None
-        The identifier for the parent model session, if applicable.
+        The identifier for the parent model session, if this model belongs to a session.
     metadata : dict[str, Any] | None
-        Metadata associated with the model, if applicable.
+        Metadata associated with the model.
     type : BTModelType | None
-        The type of the model (e.g., Session, Detached).
+        The type of the model (Session or Detached).
     state : BTModelState | None
-        The current state of the model (e.g., Queued, Building Models, Complete).
+        The current state of the model (e.g. Queued, Building Models, Complete, Error).
     target : list[str] | None
-        The target variables for the model, if applicable.
+        The target variable names for this model.
     start_time : str | None
-        The start time of the model creation, if applicable.
+        The time the model build started.
     end_time : str | None
-        The end time of the model creation, if applicable.
+        The time the model build finished.
     total_time : str | None
-        The total time taken for the model creation, if applicable.
+        The total elapsed time for the model build.
     model_binary_key : str | None
-        The storage key for the model data, if applicable.
+        The storage key for the serialised model binary.
     """
 
     name: str

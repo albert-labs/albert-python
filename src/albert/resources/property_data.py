@@ -56,6 +56,28 @@ class PropertyDataStorageKey(BaseAlbertModel):
 
 
 class PropertyData(BaseAlbertModel):
+    """A stored property data value for a single data column result.
+
+    Attributes
+    ----------
+    id : PropertyDataId | None
+        The Albert ID of the property data entry.
+    value : str | None
+        The stored value.
+    value_type : str | None
+        The data type of the stored value.
+    storage_key : PropertyDataStorageKey | dict | None
+        S3 storage keys for file-backed results (e.g. images or curves).
+    job : dict[str, Any] | None
+        Background job information for async data processing.
+    csv_mapping : dict[str, str] | None
+        CSV column-to-data-column mapping for CSV-imported results.
+    curve_remarks : dict[str, Any] | None
+        Additional remarks or metadata for curve data results.
+    athena : dict[str, Any] | None
+        Athena/database metadata for curve data results.
+    """
+
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
     value_type: str | None = Field(default=None, alias="valueType")
@@ -126,6 +148,24 @@ class PropertyDataInventoryInformation(BaseAlbertModel):
 
 
 class CheckPropertyData(BaseResource):
+    """Response from checking whether property data exists for a given combination.
+
+    Attributes
+    ----------
+    block_id : str | None
+        The block ID that was checked.
+    interval_id : str | None
+        The interval ID that was checked.
+    inventory_id : str | None
+        The inventory ID that was checked.
+    lot_id : str | None
+        The lot ID that was checked.
+    data_exists : bool | None
+        Whether property data exists for the given combination.
+    message : str | None
+        An informational message about the check result.
+    """
+
     block_id: str | None = Field(default=None, alias="blockId")
     interval_id: str | None = Field(default=None, alias="interval")
     inventory_id: str | None = Field(default=None, alias="inventoryId")
@@ -135,6 +175,20 @@ class CheckPropertyData(BaseResource):
 
 
 class InventoryPropertyData(BaseResource):
+    """All property data associated with a specific inventory item.
+
+    Attributes
+    ----------
+    inventory_id : str
+        The Albert ID of the inventory item.
+    inventory_name : str | None
+        The name of the inventory item.
+    task_property_data : list[TaskData]
+        Property data collected via tasks.
+    custom_property_data : list[CustomData]
+        Property data entered directly without a task.
+    """
+
     inventory_id: str = Field(alias="inventoryId")
     inventory_name: str | None = Field(default=None, alias="inventoryName")
     task_property_data: list[TaskData] = Field(default_factory=list, alias="Task")

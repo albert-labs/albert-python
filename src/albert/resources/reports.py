@@ -10,6 +10,20 @@ ReportItem = dict[str, Any] | list[dict[str, Any]] | None
 
 
 class ReportInfo(BaseAlbertModel):
+    """Summary metadata about a report type available in Albert.
+
+    Attributes
+    ----------
+    report_type_id : str
+        The unique identifier of the report type.
+    report_type : str
+        The name of the report type.
+    category : str
+        The category the report type belongs to.
+    items : list[ReportItem]
+        The report data items.
+    """
+
     report_type_id: str = Field(..., alias="reportTypeId")
     report_type: str = Field(..., alias="reportType")
     category: str

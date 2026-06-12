@@ -27,23 +27,24 @@ class UserFilterType(str, Enum):
 
 
 class User(BaseResource):
-    """Represents a User on the Albert Platform
+    """A user on the Albert platform.
 
     Attributes
     ----------
     name : str
-        The name of the user.
+        The display name of the user.
     id : str | None
-        The Albert ID of the user. Set when the user is retrieved from Albert.
+        The Albert ID of the user.
     location : Location | None
-        The location of the user.
+        The physical location associated with the user.
     email : EmailStr | None
-        The email of the user.
+        The email address of the user.
     roles : list[Role]
-        The roles of the user.
+        The roles assigned to the user (max one role).
     user_class : UserClass
-        The ACL class level of the user.
-    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
+        The ACL class level of the user. Defaults to ``standard``.
+    metadata : dict[str, MetadataItem] | None
+        Custom metadata attached to the user.
     """
 
     name: str
@@ -68,12 +69,44 @@ class User(BaseResource):
 
 
 class UserSearchRoleItem(BaseAlbertModel):
+    """A role summary within a user search result.
+
+    Attributes
+    ----------
+    roleId : str
+        The Albert ID of the role.
+    roleName : str
+        The display name of the role.
+    """
+
     roleId: str
     roleName: str
 
 
 class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
-    """Partial user entity as returned by the search."""
+    """Lightweight representation of a User returned from search.
+
+    Attributes
+    ----------
+    name : str
+        The display name of the user.
+    id : UserId | None
+        The Albert ID of the user.
+    email : EmailStr | None
+        The email address of the user.
+    user_class : UserClass
+        The ACL class level of the user.
+    last_login_time : datetime | None
+        The timestamp of the user's last login.
+    location : str | None
+        The location name associated with the user.
+    location_id : str | None
+        The Albert ID of the user's location.
+    roles : list[UserSearchRoleItem]
+        The roles assigned to the user (max one).
+    subscription : str | None
+        The subscription type of the user.
+    """
 
     name: str
     id: UserId | None = Field(None, alias="albertId")

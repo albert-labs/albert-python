@@ -24,12 +24,30 @@ class HazardSymbolStatus(str, Enum):
 
 
 class HazardSymbol(EntityLinkWithName):
-    """Model representing a hazard symbol."""
+    """A GHS hazard pictogram symbol.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the hazard symbol.
+    name : str | None
+        The display name of the hazard symbol.
+    status : HazardSymbolStatus | None
+        Whether the symbol is active, inactive, or manually added.
+    """
 
     status: HazardSymbolStatus | None = Field(default=None)
 
 
 class HazardStatement(EntityLinkWithName):
-    """Model representing a hazard statement."""
+    """A GHS hazard statement (H-statement) linked to a chemical or SDS.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the hazard statement.
+    name : str | None
+        The hazard statement text (e.g. ``"H301: Toxic if swallowed"``).
+    """
 
     pass

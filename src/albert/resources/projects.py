@@ -129,13 +129,49 @@ class Project(BaseSessionResource):
 
 
 class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
+    """Lightweight representation of a Project returned from search.
+
+    Attributes
+    ----------
+    id : ProjectId | None
+        The Albert ID of the project.
+    description : str
+        The name/description of the project.
+    status : str | None
+        The status of the project. Read-only.
+    """
+
     id: ProjectId | None = Field(None, alias="albertId")
     description: str = Field(min_length=1, max_length=2000)
     status: str | None = Field(default=None, exclude=True, frozen=True)
 
 
 class DocumentSearchItem(BaseAlbertModel):
-    """A document (attachment) search result item from a project."""
+    """A document (attachment) search result item from a project.
+
+    Attributes
+    ----------
+    id : AttachmentId | None
+        The Albert ID of the attachment.
+    name : str | None
+        The file name of the document.
+    mime_type : str | None
+        The MIME type of the document.
+    file_size : int | None
+        The file size in bytes.
+    project_id : str | None
+        The Albert ID of the project this document belongs to.
+    key : str | None
+        The storage key of the document.
+    source : str | None
+        The source namespace or origin of the document.
+    created_by : str | None
+        The Albert ID of the user who uploaded the document.
+    created_by_name : str | None
+        The display name of the user who uploaded the document.
+    created_at : str | None
+        ISO 8601 timestamp of when the document was uploaded.
+    """
 
     id: AttachmentId | None = Field(None, alias="albertId")
     name: str | None = None

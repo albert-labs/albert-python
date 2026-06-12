@@ -232,6 +232,24 @@ NotebookBlock = Annotated[_NotebookBlockUnion, Field(discriminator="type")]
 
 
 class Notebook(BaseResource):
+    """A notebook entity belonging to a project, task, or template.
+
+    Attributes
+    ----------
+    id : NotebookId | None
+        The Albert ID of the notebook.
+    name : str
+        The display name of the notebook. Defaults to ``"Untitled Notebook"``.
+    parent_id : ProjectId | TaskId | CustomTemplateId
+        The Albert ID of the entity this notebook belongs to.
+    version : datetime | None
+        The last-modified timestamp of the notebook.
+    blocks : list[NotebookBlock]
+        The ordered list of content blocks in the notebook.
+    links : list[NotebookLink] | None
+        Entity links referenced within the notebook.
+    """
+
     id: NotebookId | None = Field(default=None, alias="albertId")
     name: str = Field(default="Untitled Notebook")
     parent_id: ProjectId | TaskId | CustomTemplateId = Field(..., alias="parentId")

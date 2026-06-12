@@ -14,18 +14,25 @@ class ParameterCategory(str, Enum):
 
 
 class Parameter(BaseResource):
-    """A parameter in Albert.
+    """A parameter definition in Albert.
+
+    Parameters are named variables used in workflows and parameter groups to describe
+    experimental conditions. Names must be unique.
 
     Attributes
     ----------
     name : str
-        The name of the parameter. Names must be unique.
+        The name of the parameter. Must be unique across the tenant.
     id : str | None
-        The Albert ID of the parameter. Set when the parameter is retrieved from Albert.
-    category : ParameterCategory
-        The category of the parameter. Allowed values are `Normal` and `Special`. Read-only.
-    rank : int
-        The rank of the returned parameter. Read-only.
+        The Albert ID of the parameter.
+    metadata : dict[str, MetadataItem] | None
+        Custom metadata attached to the parameter.
+    category : ParameterCategory | None
+        The parameter category (Normal or Special). Read-only.
+    rank : int | None
+        The sort rank returned from a search. Read-only.
+    required : bool | None
+        Whether the parameter is required in its context. Read-only.
     """
 
     name: str

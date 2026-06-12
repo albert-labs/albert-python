@@ -195,7 +195,57 @@ class TaskEntityType(BaseAlbertModel):
 
 
 class BaseTask(BaseTaggedResource):
-    """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
+    """Base class for all task types. Use ``PropertyTask``, ``BatchTask``, or ``GeneralTask`` for specific task types.
+
+    Attributes
+    ----------
+    id : str | None
+        The Albert ID of the task.
+    name : str
+        The name of the task.
+    category : TaskCategory
+        The task category (Property, Batch, General, or BatchWithQC).
+    parent_id : str | None
+        The Albert ID of the project this task belongs to.
+    metadata : dict[str, MetadataItem]
+        Custom metadata attached to the task.
+    sources : list[TaskSource] | None
+        The templates or tasks this task was created from.
+    inventory_information : list[TaskInventoryInformation]
+        Inventory items associated with the task.
+    location : Location | None
+        The location where the task is performed.
+    priority : TaskPriority | None
+        The priority of the task (High, Medium, Low).
+    security_class : SecurityClass | None
+        The security classification of the task.
+    pass_fail : bool | None
+        Whether the task is evaluated as pass/fail.
+    notes : str | None
+        Free-text notes on the task.
+    start_date : str | None
+        The start date of the task (YYYY-MM-DD). Read-only.
+    due_date : str | None
+        The due date of the task (YYYY-MM-DD).
+    claimed_date : str | None
+        The date the task was claimed. Read-only.
+    completed_date : str | None
+        The date the task was completed. Read-only.
+    closed_date : str | None
+        The date the task was closed. Read-only.
+    result : str | None
+        The result of the task (e.g. pass/fail).
+    state : TaskState | None
+        The current state of the task.
+    project : Project | list[Project] | None
+        The project(s) this task is associated with.
+    assigned_to : User | Team | None
+        The user or team assigned to this task.
+    page_state : PageState | None
+        The UI page state for the task.
+    entity_type : TaskEntityType | None
+        The entity type associated with this task.
+    """
 
     id: str | None = Field(alias="albertId", default=None)
     name: str
@@ -361,6 +411,14 @@ class BatchTask(BaseTask):
 
 
 class GeneralTask(BaseTask):
+    """A general-purpose task not tied to a specific batch or property workflow.
+
+    Attributes
+    ----------
+    category : TaskCategory
+        Always ``TaskCategory.GENERAL``.
+    """
+
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL
 
 

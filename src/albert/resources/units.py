@@ -79,25 +79,22 @@ class UnitCategory(str, Enum):
 
 
 class Unit(BaseResource):
-    """
-    Unit is a Pydantic model representing a unit entity.
+    """A unit of measure in Albert.
 
     Attributes
     ----------
     id : str | None
-        The Albert ID of the unit. Set when the unit is retrieved from Albert.
+        The Albert ID of the unit.
     name : str
-        The name of the unit.
+        The name of the unit (e.g. ``"kilogram"``).
     symbol : str | None
-        The symbol of the unit.
-    synonyms : List[str] | None
-        The list of synonyms for the unit.
-    category : UnitCategory
-        The category of the unit.
+        The symbol for the unit (e.g. ``"kg"``).
+    synonyms : list[str] | None
+        Alternative names or abbreviations for the unit.
+    category : UnitCategory | None
+        The measurement category (e.g. Mass, Volume, Temperature).
     verified : bool | None
-        Whether the unit is verified.
-    status : Status | None
-        The status of the unit. Allowed values are `active`, and `inactive`
+        Whether the unit has been verified. Read-only.
     """
 
     id: str | None = Field(None, alias="albertId")

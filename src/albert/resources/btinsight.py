@@ -49,6 +49,46 @@ class BTInsightRegistry(BaseAlbertModel):
 
 
 class BTInsight(BaseResource, protected_namespaces=()):
+    """A Breakthrough insight result generated from a model or optimization run.
+
+    Attributes
+    ----------
+    name : str
+        The name of the insight.
+    category : BTInsightCategory
+        The category of the insight (e.g. Optimizer, Impact Chart, Smart DOE).
+    metadata : dict[str, Any] | None
+        Metadata associated with the insight run.
+    state : BTInsightState | None
+        The current state of the insight (e.g. Queued, Building Models, Complete, Error).
+    id : BTInsightId | None
+        The Albert ID of the insight.
+    parent_id : ProjectId | None
+        The ID of the project this insight belongs to.
+    dataset_id : BTDatasetId | None
+        The ID of the dataset used to generate this insight.
+    model_session_id : BTModelSessionId | None
+        The ID of the model session associated with this insight.
+    model_id : BTModelId | None
+        The ID of the model used to generate this insight.
+    output_key : str | None
+        The storage key for the insight output file.
+    start_time : str | None
+        The time the insight run started.
+    end_time : str | None
+        The time the insight run finished.
+    total_time : str | None
+        The total elapsed time for the insight run.
+    raw_payload : dict[str, Any] | None
+        The raw result payload from the insight run.
+    payload_type : BTInsightPayloadType | None
+        The type of payload (Breakthrough or Alberto).
+    registry : BTInsightRegistry | None
+        Build logs, metrics, and settings for the insight.
+    content_edited : bool | None
+        Whether the insight content has been manually edited.
+    """
+
     name: str
     category: BTInsightCategory
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
