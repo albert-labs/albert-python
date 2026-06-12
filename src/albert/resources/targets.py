@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -17,22 +17,9 @@ from albert.core.shared.models.base import BaseResource
 from albert.resources.parameter_groups import ParameterCategory
 
 
-class TargetType(str, Enum):
+class ComparisonOperator(str, Enum):
     """
-    Enumeration of target types.
-
-    Attributes
-    ----------
-    PERFORMANCE : str
-        A performance target.
-    """
-
-    PERFORMANCE = "performance"
-
-
-class TargetOperator(str, Enum):
-    """
-    Enumeration of target value comparison operators.
+    Enumeration of value comparison operators.
 
     Attributes
     ----------
@@ -57,35 +44,7 @@ class TargetOperator(str, Enum):
     IN_SET = "in-set"
 
 
-class TargetParameter(BaseAlbertModel):
-    """
-    Represents a parameter value at which a target is measured.
-
-    Attributes
-    ----------
-    id : str
-        The parameter ID.
-    parameter_group_id : str | None
-        The parameter group ID.
-    category : ParameterCategory
-        The parameter category.
-    unit_id : str | None
-        The unit ID for this parameter.
-    value : str | float | None
-        The parameter value.
-    sequence : str
-        The parameter sequence.
-    """
-
-    id: ParameterId
-    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
-    category: ParameterCategory
-    unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: str | float | None = Field(default=None)
-    sequence: str
-
-
-class TargetRangeValue(BaseAlbertModel):
+class NumericRange(BaseAlbertModel):
     """
     Represents a range value for a target (used with the 'between' operator).
 
@@ -101,20 +60,84 @@ class TargetRangeValue(BaseAlbertModel):
     max: float
 
 
-class TargetValue(BaseAlbertModel):
+class Criterion(BaseAlbertModel):
     """
     Represents the target value constraint.
 
     Attributes
     ----------
-    operator : TargetOperator
+    operator : ComparisonOperator
         The comparison operator.
-    value : TargetRangeValue | str | float | list
+    value : NumericRange | str | float | list
         The target value. Can be a range, single value, or list of values.
     """
 
-    operator: TargetOperator
-    value: TargetRangeValue | str | float | list
+    operator: ComparisonOperator
+    value: NumericRange | str | float | list
+
+
+class TargetType(str, Enum):
+    """
+    Enumeration of target types.
+
+    Attributes
+    ----------
+    PERFORMANCE : str
+        A performance target.
+    """
+
+    PERFORMANCE = "performance"
+
+
+class TargetParameter(BaseAlbertModel):
+    """
+    Represents a parameter filter condition at which a target is measured.
+
+    Attributes
+    ----------
+    id : str
+        The parameter ID.
+    parameter_group_id : str | None
+        The parameter group ID.
+    category : ParameterCategory
+        The parameter category.
+    unit_id : str | None
+        The unit ID for this parameter.
+    value : Criterion | None
+        The value filter. Accepts an operator/value-pair object with one of the
+        following operators: ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
+        For ``between``, the value must be ``{"min": ..., "max": ...}``.
+        For ``in-set``, the value must be a list.
+        Legacy bare scalars (numeric or string) are coerced on read: a numeric
+        scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes
+        ``{"operator": "in-set", "value": [<s>]}``.
+    sequence : str
+        The parameter sequence.
+    """
+
+    id: ParameterId
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    category: ParameterCategory
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
+    value: Criterion | None = Field(default=None)
+    sequence: str
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _coerce_legacy_value(cls, v: object) -> object:
+        # Tolerant reader: legacy parameter values stored a bare scalar before the
+        # operator/value-pair migration (lazy backfill may not have run yet).
+        if v is None:
+            return v
+        if isinstance(v, (dict, Criterion)):
+            return v
+        if isinstance(v, bool):  # guard: bool is a subclass of int
+            return {"operator": "in-set", "value": [v]}
+        if isinstance(v, (int, float)):
+            return {"operator": "eq", "value": v}
+        if isinstance(v, str):
+            return {"operator": "in-set", "value": [v]}
+        return v
 
 
 class Target(BaseResource):
@@ -139,10 +162,10 @@ class Target(BaseResource):
     unit_id : str | None
         The unit ID for this target.
     parameters : list[TargetParameter] | None
-        Parameter mappings for the target.
+        Parameter filter conditions for the target.
     validation : list[dict] | None
         Validation rules for the target value.
-    target_value : TargetValue
+    target_value : Criterion
         The target value constraint.
     is_required : bool
         Whether this target is required.
@@ -158,6 +181,6 @@ class Target(BaseResource):
     data_column_id: DataColumnId = Field(alias="dataColumnId")
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     parameters: list[TargetParameter] | None = Field(default=None)
-    target_value: TargetValue = Field(alias="targetValue")
+    target_value: Criterion = Field(alias="targetValue")
     is_required: bool = Field(alias="isRequired")
     validation: list[dict] | None = Field(default=None)

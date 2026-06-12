@@ -2,7 +2,7 @@ from albert.client import Albert
 from albert.resources.data_templates import DataTemplate
 from albert.resources.projects import Project
 from albert.resources.smart_projects import SmartProject
-from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
+from albert.resources.targets import ComparisonOperator, Criterion, Target, TargetType
 
 
 def _scope_target_ids(smart: SmartProject) -> set[str]:
@@ -50,7 +50,7 @@ def test_add_target(
         data_template_id=number_template.id,
         data_column_id=number_data_column.data_column_id,
         type=TargetType.PERFORMANCE,
-        target_value=TargetValue(operator=TargetOperator.LTE, value=50),
+        target_value=Criterion(operator=ComparisonOperator.LTE, value=50),
         is_required=True,
     )
     target_id = _add_new_target(smart, target)
@@ -80,7 +80,7 @@ def test_update_smart_dataset(
             data_template_id=number_template.id,
             data_column_id=number_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.EQ, value=1),
+            target_value=Criterion(operator=ComparisonOperator.EQ, value=1),
             is_required=False,
         ),
     )
@@ -123,7 +123,7 @@ def test_remove_and_readd_target(
             data_template_id=number_template.id,
             data_column_id=number_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.GTE, value=1),
+            target_value=Criterion(operator=ComparisonOperator.GTE, value=1),
             is_required=False,
         ),
     )
