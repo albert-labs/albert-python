@@ -86,8 +86,8 @@ class ParameterValue(BaseAlbertModel):
         The category of the parameter.
     short_name : str or None
         The short name of the parameter value.
-    value : str or InventoryItem or None
-        The value of the parameter. Can be a plain string or an InventoryItem (e.g. when the parameter represents an instrument choice).
+    value : str or InventoryItem or User or None
+        The value of the parameter. Can be a plain string, an InventoryItem (e.g. when the parameter represents an instrument choice), or a User (e.g. when the parameter represents a user reference such as "Performed By").
     unit : Unit or None
         The unit of measure for the provided parameter value.
     required : bool or None
@@ -104,7 +104,9 @@ class ParameterValue(BaseAlbertModel):
     id: str | None = Field(default=None)
     category: ParameterCategory | None = Field(default=None)
     short_name: str | None = Field(alias="shortName", default=None)
-    value: str | SerializeAsEntityLink[InventoryItem] | None = Field(default=None)
+    value: str | SerializeAsEntityLink[InventoryItem] | SerializeAsEntityLink[User] | None = Field(
+        default=None
+    )
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
     added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
     required: bool | None = Field(default=None)
