@@ -19,19 +19,49 @@ from albert.resources.locations import Location
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
 
-ALL_MERGE_MODULES = [
-    "PRICING",
-    "NOTES",
-    "SDS",
-    "PD",
-    "BD",
-    "LOT",
-    "CAS",
-    "TAS",
-    "WFL",
-    "PRG",
-    "PTD",
-]
+
+class InventoryMergeModule(str, Enum):
+    """
+    Modules available for an inventory merge operation.
+
+    Attributes
+    ----------
+    PRICING : str
+        Pricing data.
+    NOTES : str
+        Notes.
+    SDS : str
+        Safety Data Sheets.
+    PD : str
+    BD : str
+    LOT : str
+        Lot data.
+    CAS : str
+        CAS numbers.
+    TAS : str
+        Tasks.
+    WFL : str
+        Workflows.
+    PRG : str
+        Parameter groups.
+    PTD : str
+        Property data.
+    """
+
+    PRICING = "PRICING"
+    NOTES = "NOTES"
+    SDS = "SDS"
+    PD = "PD"
+    BD = "BD"
+    LOT = "LOT"
+    CAS = "CAS"
+    TAS = "TAS"
+    WFL = "WFL"
+    PRG = "PRG"
+    PTD = "PTD"
+
+
+ALL_MERGE_MODULES: list[InventoryMergeModule] = list(InventoryMergeModule)
 """All modules selectable for inventory merge."""
 
 
@@ -336,4 +366,4 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 class MergeInventory(BaseAlbertModel):
     parent_id: InventoryId = Field(alias="parentId")
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
-    modules: list[str] | None = Field(default=None)
+    modules: list[InventoryMergeModule] | None = Field(default=None)
