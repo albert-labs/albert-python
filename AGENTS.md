@@ -28,6 +28,7 @@ Single source of truth for coding-agent guidance in this repo.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
 - Public collection methods use `@validate_call` for runtime validation.
 - Resources use `BaseAlbertModel`/`BaseResource` with Pydantic `Field` and aliases.
+- **Search result models must be named `<Resource>SearchItem`** (e.g. `ActivitySearchItem`, `UserSearchItem`) when the shape returned by the search endpoint differs from the main resource model. Never reuse the main resource model for search results if the fields differ, and never name the search model `<Resource>Item` or anything else.
 - Keep API payloads in wire format (camelCase) via `Field(alias=...)` and `model_dump(by_alias=True, mode="json", exclude_none=True)`.
 - All new public methods and classes must have Numpy-style docstrings:
 
@@ -55,6 +56,8 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 - **Key** (`PaginationMode.KEY`) — uses `startKey`, expects `lastKey` in response. Do not pass `limit` from the SDK; the backend controls page size.
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
+
+**`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 ## Testing
 
