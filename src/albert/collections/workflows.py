@@ -72,12 +72,14 @@ class WorkflowCollection(BaseCollection):
         return [Workflow(**x) for x in response.json()]
 
     def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
-        """Populate parameter setpoints when only an ID is provided."""
+        """Ensure parameter setpoints are fully populated for each parameter group with an id.
+
+        When setpoints are user-supplied, missing sequence values are back-filled to prevent
+        mismatches when a parameter appears multiple times within the same group.
+        """
         dt_collection = DataTemplateCollection(session=self.session)
         pg_collection = ParameterGroupCollection(session=self.session)
         for pg_setpoint in workflow.parameter_group_setpoints:
-            if pg_setpoint.parameter_setpoints:
-                continue
             pg_id = pg_setpoint.id
             if pg_id is None:
                 continue
@@ -91,9 +93,16 @@ class WorkflowCollection(BaseCollection):
                 pg_setpoint.parameter_group_name = group.name
                 params = group.parameters or []
 
-            pg_setpoint.parameter_setpoints = [
-                self._parameter_value_to_setpoint(pv) for pv in params
-            ]
+            if pg_setpoint.parameter_setpoints:
+                # User supplied explicit setpoints — only fill in missing sequences.
+                sequence_by_param_id = {pv.id: pv.sequence for pv in params if pv.id}
+                for sp in pg_setpoint.parameter_setpoints:
+                    if sp.sequence is None and sp.parameter_id in sequence_by_param_id:
+                        sp.sequence = sequence_by_param_id[sp.parameter_id]
+            else:
+                pg_setpoint.parameter_setpoints = [
+                    self._parameter_value_to_setpoint(pv) for pv in params
+                ]
 
     @staticmethod
     def _parameter_value_to_setpoint(parameter_value: ParameterValue) -> ParameterSetpoint:

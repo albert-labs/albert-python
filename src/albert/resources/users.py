@@ -43,6 +43,8 @@ class User(BaseResource):
         The roles of the user.
     user_class : UserClass
         The ACL class level of the user.
+    witnesser : bool | None
+        Whether the user is a witnesser.
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
     """
 
@@ -54,6 +56,7 @@ class User(BaseResource):
         max_length=1, default_factory=list, alias="Roles"
     )
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
+    witnesser: bool | None = Field(default=None, alias="witnesser")
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
 
     def to_note_mention(self) -> str:
