@@ -72,13 +72,7 @@ class WorkflowCollection(BaseCollection):
         return [Workflow(**x) for x in response.json()]
 
     def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
-        """Populate parameter setpoints when only an ID is provided.
-
-        When parameter setpoints are already supplied, the group is still fetched
-        to back-fill any missing ``sequence`` (``prgPrmRowId``) values. This
-        prevents mismatches when a data template has parameters that were deleted
-        and re-added (leaving duplicate PRM ids at different row sequences).
-        """
+        """Ensure parameter setpoints are fully populated for each parameter group with an id."""
         dt_collection = DataTemplateCollection(session=self.session)
         pg_collection = ParameterGroupCollection(session=self.session)
         for pg_setpoint in workflow.parameter_group_setpoints:
