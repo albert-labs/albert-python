@@ -18,7 +18,7 @@ from albert.core.shared.models.base import (
 )
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
-from albert.resources.data_columns import DataColumn
+from albert.resources.data_columns import DataColumn, DataColumnType, SubDataColumnRef
 from albert.resources.parameter_groups import DataType, ParameterValue, ValueValidation
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
@@ -94,6 +94,10 @@ class DataColumnValue(BaseResource):
         validation_alias=AliasChoices("Created", "Added"),
         serialization_alias="Added",
     )
+    # Read-only composite DAC fields populated by the API
+    type: DataColumnType | None = Field(default=None)
+    is_system_defined: bool | None = Field(default=None, alias="isSystemDefined")
+    sub_data_columns: list[SubDataColumnRef] | None = Field(default=None, alias="subDataColumns")
 
     @model_validator(mode="after")
     def check_for_id(self):
