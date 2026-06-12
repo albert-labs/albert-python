@@ -72,7 +72,11 @@ class WorkflowCollection(BaseCollection):
         return [Workflow(**x) for x in response.json()]
 
     def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
-        """Ensure parameter setpoints are fully populated for each parameter group with an id."""
+        """Ensure parameter setpoints are fully populated for each parameter group with an id.
+
+        When setpoints are user-supplied, missing sequence values are back-filled to prevent
+        mismatches when a parameter appears multiple times within the same group.
+        """
         dt_collection = DataTemplateCollection(session=self.session)
         pg_collection = ParameterGroupCollection(session=self.session)
         for pg_setpoint in workflow.parameter_group_setpoints:
