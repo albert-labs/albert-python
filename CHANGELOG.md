@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.28.0](https://github.com/albert-labs/albert-python/compare/v1.27.0...v1.28.0) (2026-06-12)
+
+
+### Features
+
+* **activities:** add search() method ([#547](https://github.com/albert-labs/albert-python/issues/547)) ([c6f8572](https://github.com/albert-labs/albert-python/commit/c6f85722d0ff3ce3a27e23810a44b489470b5a1e))
+* **parameter_groups:** support User-type special parameter values ([#543](https://github.com/albert-labs/albert-python/issues/543)) ([f1e3b79](https://github.com/albert-labs/albert-python/commit/f1e3b79e1779cd4faf74fce98f11a96e4bdb2672))
+* **sheets:** row grouping, new column/row types, and fixes from PR [#267](https://github.com/albert-labs/albert-python/issues/267) ([#528](https://github.com/albert-labs/albert-python/issues/528)) ([3fe9642](https://github.com/albert-labs/albert-python/commit/3fe9642034a4d53c00e10bc402a5a21adb0cfb00))
+
+
+### Bug Fixes
+
+* **inventory:** cast int values to str in InventorySpecValue validator ([#534](https://github.com/albert-labs/albert-python/issues/534)) ([dc0f0ad](https://github.com/albert-labs/albert-python/commit/dc0f0adb87777f77818fa60eeefc2be3cf72d242))
+* **inventory:** expose inventory_on_hand on InventoryItem ([#536](https://github.com/albert-labs/albert-python/issues/536)) ([1a686cd](https://github.com/albert-labs/albert-python/commit/1a686cd5cd7d4371a1b3dfae71aae71ef4d9b078)), closes [#533](https://github.com/albert-labs/albert-python/issues/533)
+* **users:** add witnesser field to User model ([#540](https://github.com/albert-labs/albert-python/issues/540)) ([0a95cda](https://github.com/albert-labs/albert-python/commit/0a95cda769a3ab2cb574b9cdbb42d38fa859642f))
+* **workflows:** back-fill prgPrmRowId when user supplies explicit setpoints ([#545](https://github.com/albert-labs/albert-python/issues/545)) ([7554481](https://github.com/albert-labs/albert-python/commit/75544815bcc98045474cf4b265c93609d3e121be))
+
 ## [1.27.0](https://github.com/albert-labs/albert-python/compare/v1.26.0...v1.27.0) (2026-06-08)
 
 
