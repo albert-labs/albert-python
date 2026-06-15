@@ -34,6 +34,7 @@ class InventoryMergeModule(str, Enum):
         Safety Data Sheets.
     PD : str
     BD : str
+        Batch data.
     LOT : str
         Lot data.
     CAS : str
