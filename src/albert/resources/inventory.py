@@ -33,6 +33,7 @@ class InventoryMergeModule(str, Enum):
     SDS : str
         Safety Data Sheets.
     PD : str
+        Product Design — worksheet column references for this inventory item.
     BD : str
         Batch data.
     LOT : str
