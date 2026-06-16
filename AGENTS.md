@@ -134,7 +134,7 @@ Run the full suite (`uv run pytest`) if the change is broad.
 
 - Prefer multiple focused commits over one large commit.
 - Use Conventional Commits: `feat(scope): summary`, `fix(scope): summary`, `chore(scope): summary`.
-- Version is defined in `src/albert/__init__.py`. Releases are created by tagging and drafting a GitHub release.
+- **Never bump the version manually.** Version numbers in `src/albert/__init__.py` and `pyproject.toml` are managed exclusively by release-please. PRs that modify the version in either file will be flagged and must not be merged.
 
 Example commit:
 
