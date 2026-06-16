@@ -16,6 +16,7 @@ class ChatComponentType(str, Enum):
     IMAGE = "image"
     REASONING_BLOCK = "reasoning_block"
     NOTEBOOK_CITATION = "notebook_citation"
+    DOCUMENT_CITATION = "document_citation"
     PRODUCT_CARD = "product_card"
     INGREDIENT_CARD = "ingredient_card"
     TOOL_CALL = "tool_call"
