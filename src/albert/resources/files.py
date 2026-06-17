@@ -37,7 +37,7 @@ class FileInfo(BaseAlbertModel):
     name: str
     size: int
     etag: str
-    namespace: FileNamespace | None = Field(default=None)
+    namespace: FileNamespace | str | None = Field(default=None)
     content_type: str = Field(..., alias="contentType")
     last_modified: datetime = Field(..., alias="lastModified")
     metadata: list[dict[str, str]] = Field(..., default_factory=list)

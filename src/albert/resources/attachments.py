@@ -40,7 +40,7 @@ class Attachment(BaseResource):
     name: str
     key: str
     namespace: str = Field(default="result", alias="nameSpace")
-    category: AttachmentCategory | None = None
+    category: AttachmentCategory | str | None = None
     revision_date: date | None = Field(default=None, alias="revisionDate")
     file_size: int | None = Field(default=None, alias="fileSize", exclude=True, frozen=True)
     mime_type: str | None = Field(default=None, alias="mimeType", exclude=True, frozen=True)
