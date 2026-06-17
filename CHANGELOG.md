@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.1](https://github.com/albert-labs/albert-python/compare/v1.29.0...v1.29.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **attachments:** accept unknown category values gracefully ([#552](https://github.com/albert-labs/albert-python/issues/552)) ([96c701e](https://github.com/albert-labs/albert-python/commit/96c701e01cba3c1297b646a6bf276d33910e32d8))
+* **chats:** add DOCUMENT_CITATION component type AI-655 ([#538](https://github.com/albert-labs/albert-python/issues/538)) ([e761ce4](https://github.com/albert-labs/albert-python/commit/e761ce40c3a1d1b0b8ab9028351a0bee3e000a36))
+* **inventory:** add InventoryMergeModule enum for merge modules parameter ([#542](https://github.com/albert-labs/albert-python/issues/542)) ([91d990c](https://github.com/albert-labs/albert-python/commit/91d990caa6c4d09d2c01bb0786a7cbfe9c03060a))
+
 ## [1.29.0](https://github.com/albert-labs/albert-python/compare/v1.28.0...v1.29.0) (2026-06-12)
 
 
