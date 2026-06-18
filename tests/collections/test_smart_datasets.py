@@ -61,11 +61,17 @@ def test_smart_dataset_create_with_build(
 
 
 def test_smart_dataset_get_all(client: Albert):
-    """Test listing smart datasets."""
-    results = client.smart_datasets.get_all()
-    assert isinstance(results, list)
+    """Test listing smart datasets returns an iterator of SmartDataset entities."""
+    results = list(client.smart_datasets.get_all())
     assert len(results) > 0
     assert all(isinstance(r, SmartDataset) for r in results)
+
+
+def test_smart_dataset_get_all_max_items(client: Albert):
+    """Test that max_items limits the number of results returned."""
+    results = list(client.smart_datasets.get_all(max_items=1))
+    assert len(results) == 1
+    assert isinstance(results[0], SmartDataset)
 
 
 def test_smart_dataset_get_by_id(client: Albert, seeded_smart_dataset: SmartDataset):
