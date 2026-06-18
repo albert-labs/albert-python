@@ -121,7 +121,7 @@ class SmartDatasetCollection(BaseCollection):
             An iterator of SmartDataset entities.
         """
         return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
+            mode=PaginationMode.KEY,
             path=self.base_path,
             session=self.session,
             max_items=max_items,
