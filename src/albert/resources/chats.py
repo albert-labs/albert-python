@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any
 
 from pydantic import Field
+from typing_extensions import TypedDict
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -42,6 +43,17 @@ class ChatFolderType(str, Enum):
 
     ROOT = "root"
     CHILD = "child"
+
+
+class PageContext(TypedDict, total=False):
+    """Embed page the user was viewing when they sent the message."""
+
+    url: str
+    entity: str
+    albert_id: str
+    parent_id: str
+    parent_entity: str
+    section: str
 
 
 class ChatSession(BaseResource):
@@ -104,8 +116,8 @@ class ChatMessage(BaseResource):
         Whether the component is visible in the UI.
     display_feedback_component : bool | None
         Whether to show the feedback UI for this message.
-    page_context : dict[str, Any] | None
-        Embed page context captured when the user sent the message (wire: ``pageContext``).
+    page_context : PageContext | None
+        Embed page the user was viewing when they sent the message.
     """
 
     id: str | None = Field(default=None)
@@ -123,7 +135,7 @@ class ChatMessage(BaseResource):
     is_visible: bool | None = Field(default=None, alias="isVisible")
     display_feedback_component: bool | None = Field(default=None, alias="displayFeedbackComponent")
     value: list[dict] | None = Field(default=None)
-    page_context: dict[str, Any] | None = Field(default=None, alias="pageContext")
+    page_context: PageContext | None = Field(default=None, alias="pageContext")
 
 
 class ChatFolder(BaseResource):

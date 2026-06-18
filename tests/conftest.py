@@ -1,9 +1,11 @@
+import os
 import time
 import uuid
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import suppress
 from pathlib import Path
 
+import jwt
 import pytest
 import pytest_asyncio
 
@@ -87,6 +89,28 @@ from tests.seeding import (
 )
 from tests.utils.fake_session import FakeAlbertSession
 
+_BOT_EXTERNAL_USER_ID_HEADER = "x-external-user-id"
+
+
+def _bot_external_user_id(sync_client: Albert) -> str:
+    if external_user_id := os.getenv("ALBERT_EXTERNAL_USER_ID_SDK"):
+        return external_user_id
+    return str(sync_client.users.get_current_user().id)
+
+
+def _configure_async_client_for_bot(async_client: AsyncAlbert, sync_client: Albert) -> None:
+    """Set x-external-user-id for bot OAuth tokens (required by chat APIs)."""
+    auth_manager = async_client.session._auth_manager
+    if auth_manager is None:
+        return
+    token = auth_manager.get_access_token()
+    payload = jwt.decode(token, options={"verify_signature": False, "verify_aud": False})
+    if payload.get("subscription") != "bot":
+        return
+    async_client.session._client.headers[_BOT_EXTERNAL_USER_ID_HEADER] = _bot_external_user_id(
+        sync_client
+    )
+
 
 @pytest.fixture(scope="session")
 def client() -> Albert:
@@ -102,17 +126,18 @@ def client() -> Albert:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
+async def async_client(client: Albert) -> AsyncGenerator[AsyncAlbert, None]:
     credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
         base_url_env="ALBERT_BASE_URL",
     )
-    client = AsyncAlbert(
+    albert = AsyncAlbert(
         auth_manager=credentials,
     )
-    yield client
-    await client.aclose()
+    _configure_async_client_for_bot(albert, client)
+    yield albert
+    await albert.aclose()
 
 
 @pytest.fixture
