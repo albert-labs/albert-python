@@ -102,6 +102,7 @@ class SmartDatasetCollection(BaseCollection):
         )
         return SmartDataset(**response.json())
 
+    @validate_call
     def get_all(
         self,
         *,
