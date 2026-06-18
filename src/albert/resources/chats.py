@@ -104,6 +104,8 @@ class ChatMessage(BaseResource):
         Whether the component is visible in the UI.
     display_feedback_component : bool | None
         Whether to show the feedback UI for this message.
+    page_context : dict[str, Any] | None
+        Embed page context captured when the user sent the message (wire: ``pageContext``).
     """
 
     id: str | None = Field(default=None)
@@ -121,6 +123,7 @@ class ChatMessage(BaseResource):
     is_visible: bool | None = Field(default=None, alias="isVisible")
     display_feedback_component: bool | None = Field(default=None, alias="displayFeedbackComponent")
     value: list[dict] | None = Field(default=None)
+    page_context: dict[str, Any] | None = Field(default=None, alias="pageContext")
 
 
 class ChatFolder(BaseResource):
