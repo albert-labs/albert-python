@@ -276,9 +276,16 @@ def _parameter_required_patch(
     updated_required = updated_parameter_value.required
     if updated_required is None:
         return None
-    initial_required = (
-        initial_parameter_value.required if initial_parameter_value.required is not None else False
-    )
+    initial_required = initial_parameter_value.required
+    # When `required` was never set, it must be added rather than updated; an
+    # `update` is rejected because there is no existing value to match against.
+    if initial_required is None:
+        return PGPatchDatum(
+            operation="add",
+            attribute="required",
+            newValue=updated_required,
+            rowId=updated_parameter_value.sequence,
+        )
     if initial_required == updated_required:
         return None
     return PGPatchDatum(
