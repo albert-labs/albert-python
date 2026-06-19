@@ -38,6 +38,9 @@ def _generate_custom_field_patch_payload(
             continue
 
         if old_value is None and new_value is not None:
+            # Scalar attributes use `update` (not `add`, which the backend rejects).
+            # When the attribute is not currently set there is no value to match,
+            # so `oldValue` is omitted entirely.
             operation = (
                 PatchOperation.UPDATE
                 if alias in ("hidden", "search", "lkpColumn", "lkpRow")
@@ -47,7 +50,6 @@ def _generate_custom_field_patch_payload(
                 PatchDatum(
                     attribute=alias,
                     operation=operation,
-                    old_value=False if operation == PatchOperation.UPDATE else None,
                     new_value=new_value,
                 )
             )
