@@ -100,7 +100,7 @@ def test_update_list_metadata_reassignment(
     static_lists: list[ListItem],
 ):
     """Test reassigning a list-valued metadata field to a different EntityLink."""
-    task = [x for x in seeded_tasks if "metadata" in x.name.lower()][0]
+    task = [x for x in seeded_tasks if "list metadata reassignment" in x.name.lower()][0]
 
     # Find a list-valued metadata key (value is a list of EntityLinks).
     list_key = next(
