@@ -1,7 +1,11 @@
+from collections.abc import Iterator
+
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import ProjectId, SmartDatasetId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.smart_datasets import (
@@ -34,7 +38,7 @@ class SmartDatasetCollection(BaseCollection):
     -------
     create(scope, build=True) -> SmartDataset
         Creates a new smart dataset entity.
-    get_all() -> list[SmartDataset]
+    get_all(max_items=None) -> Iterator[SmartDataset]
         Lists all smart datasets for the tenant.
     get_by_id(id) -> SmartDataset
         Retrieves a smart dataset by its ID.
@@ -98,18 +102,32 @@ class SmartDatasetCollection(BaseCollection):
         )
         return SmartDataset(**response.json())
 
-    def get_all(self) -> list[SmartDataset]:
+    @validate_call
+    def get_all(
+        self,
+        *,
+        max_items: int | None = None,
+    ) -> Iterator[SmartDataset]:
         """
-        Lists all smart datasets for the tenant.
+        List all smart datasets for the tenant.
+
+        Parameters
+        ----------
+        max_items : int, optional
+            Maximum number of items to return. If None, returns all available items.
 
         Returns
         -------
-        list[SmartDataset]
-            A list of SmartDataset entities.
+        Iterator[SmartDataset]
+            An iterator of SmartDataset entities.
         """
-        response = self.session.get(self.base_path)
-        data = response.json()
-        return [SmartDataset(**item) for item in data.get("Items", [])]
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            max_items=max_items,
+            deserialize=lambda items: [SmartDataset(**item) for item in items],
+        )
 
     @validate_call
     def get_by_id(self, *, id: SmartDatasetId, parent_id: ProjectId | None = None) -> SmartDataset:
