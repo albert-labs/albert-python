@@ -118,6 +118,7 @@ class UnitCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
+    @validate_call
     def update(self, *, unit: Unit) -> Unit:
         """
         Updates a unit entity by its ID.
