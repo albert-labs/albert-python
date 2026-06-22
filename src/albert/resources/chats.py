@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import Field
-from typing_extensions import TypedDict
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
