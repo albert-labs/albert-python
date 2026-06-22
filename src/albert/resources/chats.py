@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, TypedDict
+from typing import Any
 
 from pydantic import Field
+
+# Pydantic requires typing_extensions.TypedDict (not typing.TypedDict) on Python < 3.12.
+from typing_extensions import TypedDict
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
