@@ -17,6 +17,20 @@ class AlbertAuthError(AlbertException):
     """Raised when authentication fails (e.g., bad credentials, expired token)."""
 
 
+def _restore_albert_http_error(cls: type, message: str) -> "AlbertHTTPError":
+    """Reconstruct an AlbertHTTPError from a pickled message string.
+
+    Python's default exception pickling stores args and calls __init__(*args)
+    on unpickle. AlbertHTTPError.__init__ expects a requests.Response, not a
+    string, so the default path fails. This function bypasses __init__ and
+    reconstructs the exception from the pre-formatted message alone.
+    """
+    exc = Exception.__new__(cls, message)
+    exc.message = message
+    exc.response = None
+    return exc
+
+
 class AlbertHTTPError(AlbertException):
     """Base class for all erors due to HTTP responses."""
 
@@ -24,6 +38,9 @@ class AlbertHTTPError(AlbertException):
         message = self._format_message(response)
         super().__init__(message)
         self.response = response
+
+    def __reduce__(self) -> tuple:
+        return (_restore_albert_http_error, (type(self), self.message))
 
     @classmethod
     def _format_message(cls, response: requests.Response) -> str:
