@@ -71,7 +71,7 @@ class WorkflowCollection(BaseCollection):
         )
         results = []
         for x in response.json():
-            if "existingAlbertId" in x and len(x) == 1:
+            if "existingAlbertId" in x and "name" not in x:
                 results.append(self.get_by_id(id=x["existingAlbertId"]))
             else:
                 results.append(Workflow(**x))
