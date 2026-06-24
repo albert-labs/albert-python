@@ -347,6 +347,8 @@ class TaskPropertyCreate(BaseResource):
     @field_validator("value", mode="before")
     @classmethod
     def coerce_numeric_value(cls, v):
+        if isinstance(v, bool):
+            raise ValueError("Boolean values are not supported for TaskPropertyCreate.value.")
         if isinstance(v, int | float):
             return str(v)
         return v
