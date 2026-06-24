@@ -92,4 +92,12 @@ class SubstanceCollection(BaseCollection):
         SubstanceInfo
             The retrieved substance or raises an error if not found.
         """
-        return self.get_by_ids(cas_ids=[cas_id], region=region, catch_errors=catch_errors)[0]
+        # Default catch_errors=True for single-ID lookup so the API always
+        # returns an entry (with is_known=False) rather than an empty list.
+        effective_catch_errors = catch_errors if catch_errors is not None else True
+        results = self.get_by_ids(
+            cas_ids=[cas_id], region=region, catch_errors=effective_catch_errors
+        )
+        if not results:
+            raise ValueError(f"No substance data returned for CAS ID: {cas_id!r}")
+        return results[0]
