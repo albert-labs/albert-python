@@ -126,6 +126,9 @@ class AttachmentCollection(BaseCollection):
             ).data
         )
 
+        if "metadata" not in updated.model_fields_set:
+            return PatchPayload(data=patch_data)
+
         existing_meta = existing.metadata or AttachmentMetadata()
         updated_meta = updated.metadata or AttachmentMetadata()
 

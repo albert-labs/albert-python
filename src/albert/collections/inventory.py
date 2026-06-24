@@ -784,6 +784,8 @@ class InventoryCollection(BaseCollection):
                 payload["data"], updated.is_formula_override
             )
         for attribute in _updatable_attributes_special:
+            if attribute not in updated.model_fields_set:
+                continue
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
             if attribute == "cas":
