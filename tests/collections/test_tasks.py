@@ -94,6 +94,32 @@ def test_update(
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 
 
+def test_update_list_metadata_reassignment(
+    client: Albert,
+    seeded_tasks,
+    static_lists: list[ListItem],
+):
+    """Test reassigning a list-valued metadata field to a different EntityLink."""
+    task = [x for x in seeded_tasks if "list metadata reassignment" in x.name.lower()][0]
+
+    # Find a list-valued metadata key (value is a list of EntityLinks).
+    list_key = next(
+        key for key, value in task.metadata.items() if isinstance(value, list) and value
+    )
+    current_ids = {link.id for link in task.metadata[list_key]}
+
+    # Swap in a different list item of the same list type.
+    replacement = next(
+        item for item in static_lists if item.list_type == list_key and item.id not in current_ids
+    )
+    task.metadata[list_key] = [replacement.to_entity_link()]
+
+    updated_task = client.tasks.update(task=task)
+
+    updated_ids = {link.id for link in updated_task.metadata[list_key]}
+    assert updated_ids == {replacement.id}
+
+
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     starting_blocks = len(task.blocks)

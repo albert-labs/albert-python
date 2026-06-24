@@ -1658,7 +1658,21 @@ def generate_task_seeds(
             priority=TaskPriority.HIGH,
             due_date="2024-10-31",
             location=seeded_locations[1],
-            metadata=faux_metadata,
+            metadata=dict(faux_metadata),
+        ),
+        # General Task 2 - dedicated to list-metadata reassignment testing
+        GeneralTask(
+            name=f"{seed_prefix} - General Task with list metadata reassignment",
+            category=TaskCategory.GENERAL,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_inventory[2].id,
+                )
+            ],
+            priority=TaskPriority.HIGH,
+            due_date="2024-10-31",
+            location=seeded_locations[1],
+            metadata=dict(faux_metadata),
         ),
         # Batch Task 1
         # Use the Formulations used in #tests/resources/test_sheets/py defined as seeded_products

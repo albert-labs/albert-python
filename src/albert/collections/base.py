@@ -72,28 +72,30 @@ class BaseCollection:
                         )
                     )
                 elif isinstance(updated_metadata[key], list):
-                    existing_id = {v.id for v in value} if isinstance(value, list) else {value.id}
-                    updated_id = {v.id for v in updated_metadata[key]}
-                    to_add = list(updated_id - existing_id)
-                    to_remove = list(existing_id - updated_id)
-                    if len(to_add + to_remove) == 0:  # if there are no changes, skip
+                    existing_ids = [v.id for v in value] if isinstance(value, list) else [value.id]
+                    updated_ids = [v.id for v in updated_metadata[key]]
+                    if set(existing_ids) == set(updated_ids):  # no membership change, skip
                         continue
 
-                    # Handle additions and removals separately to avoid conflicts
-
-                    if len(to_remove) > 0:
+                    if len(updated_ids) == 0:
+                        # Clearing the value entirely.
                         data.append(
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=to_remove,
+                                old_value=existing_ids,
                             )
                         )
-
-                    if len(to_add) > 0:
+                    else:
+                        # Replace the whole list in a single update. Emitting a
+                        # delete followed by an add would briefly leave the field
+                        # empty, which the backend rejects for required fields.
                         data.append(
                             PatchDatum(
-                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
+                                attribute=attribute,
+                                operation=PatchOperation.UPDATE,
+                                old_value=existing_ids,
+                                new_value=updated_ids,
                             )
                         )
                 else:
