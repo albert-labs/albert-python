@@ -25,7 +25,6 @@ from albert.core.shared.identifiers import (
     WorkflowId,
     remove_id_prefix,
 )
-from albert.core.shared.models.base import EntityLink
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.attachments import AttachmentCategory
@@ -96,8 +95,6 @@ class TaskCollection(BaseCollection):
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
-            if task.project is None:
-                task = task.model_copy(update={"project": EntityLink(id=task.parent_id)})
         payload = [task.model_dump(mode="json", by_alias=True, exclude_none=True)]
         response = self.session.post(url=url, json=payload)
         task_data = response.json()[0]
