@@ -69,7 +69,13 @@ class WorkflowCollection(BaseCollection):
                 for x in workflows
             ],
         )
-        return [Workflow(**x) for x in response.json()]
+        results = []
+        for x in response.json():
+            if "existingAlbertId" in x and len(x) == 1:
+                results.append(self.get_by_id(id=x["existingAlbertId"]))
+            else:
+                results.append(Workflow(**x))
+        return results
 
     def _hydrate_parameter_groups(self, *, workflow: Workflow) -> None:
         """Ensure parameter setpoints are fully populated for each parameter group with an id.
