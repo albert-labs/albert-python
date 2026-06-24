@@ -143,13 +143,13 @@ class Lot(BaseResource):
             formatted = formatted.rstrip("0").rstrip(".")
         return formatted
 
-    @field_serializer("initial_quantity", return_type=str)
+    @field_serializer("initial_quantity", return_type=str | None)
     def serialize_initial_quantity(self, initial_quantity: NonNegativeFloat):
-        return self._format_decimal(initial_quantity)
+        return self._format_decimal(initial_quantity) if initial_quantity is not None else None
 
-    @field_serializer("cost", return_type=str)
+    @field_serializer("cost", return_type=str | None)
     def serialize_cost(self, cost: NonNegativeFloat):
-        return self._format_decimal(cost)
+        return self._format_decimal(cost) if cost is not None else None
 
     @field_serializer("inventory_on_hand", return_type=str)
     def serialize_inventory_on_hand(self, inventory_on_hand: NonNegativeFloat):
