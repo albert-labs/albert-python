@@ -163,6 +163,8 @@ class UnitCollection(BaseCollection):
         # Synonyms are added/removed one at a time; there is no list-level update,
         # so replace any whole-list datum with per-item add/delete operations.
         payload.data = [d for d in payload.data if d.attribute != "Synonyms"]
+        if "synonyms" not in updated.model_fields_set:
+            return payload
         existing_synonyms = existing.synonyms or []
         updated_synonyms = updated.synonyms or []
         payload.data.extend(
