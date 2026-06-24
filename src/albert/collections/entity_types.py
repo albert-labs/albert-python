@@ -129,6 +129,23 @@ class EntityTypeCollection(BaseCollection):
             List of patch operations for special attributes.
         """
         patches = []
+
+        def _nested_field_patch(attribute: str, old_value, new_value) -> PatchDatum:
+            # A nested key that isn't set yet must be added; the backend rejects
+            # an `update` on a path that does not already exist.
+            if old_value is None:
+                return PatchDatum(
+                    operation=PatchOperation.ADD,
+                    attribute=attribute,
+                    new_value=new_value,
+                )
+            return PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute=attribute,
+                new_value=new_value,
+                old_value=old_value,
+            )
+
         if updated.custom_fields is not None and existing.custom_fields is not None:
             patches.append(
                 PatchDatum(
@@ -170,11 +187,8 @@ class EntityTypeCollection(BaseCollection):
                     # Use the field's alias if available, otherwise use the field name
                     attr_name = field.alias or field_name
                     patches.append(
-                        PatchDatum(
-                            operation=PatchOperation.UPDATE,
-                            attribute=f"standardFieldVisibility.{attr_name}",
-                            new_value=new_value,
-                            old_value=old_value,
+                        _nested_field_patch(
+                            f"standardFieldVisibility.{attr_name}", old_value, new_value
                         )
                     )
 
@@ -190,11 +204,8 @@ class EntityTypeCollection(BaseCollection):
                 if new_value != old_value:
                     attr_name = field.alias or field_name
                     patches.append(
-                        PatchDatum(
-                            operation=PatchOperation.UPDATE,
-                            attribute=f"standardFieldRequired.{attr_name}",
-                            new_value=new_value,
-                            old_value=old_value,
+                        _nested_field_patch(
+                            f"standardFieldRequired.{attr_name}", old_value, new_value
                         )
                     )
 
@@ -212,12 +223,7 @@ class EntityTypeCollection(BaseCollection):
                     # Use the field's alias if available, otherwise use the field name
                     attr_name = field.alias or field_name
                     patches.append(
-                        PatchDatum(
-                            operation=PatchOperation.UPDATE,
-                            attribute=f"searchQueryString.{attr_name}",
-                            new_value=new_value,
-                            old_value=old_value,
-                        )
+                        _nested_field_patch(f"searchQueryString.{attr_name}", old_value, new_value)
                     )
 
         return patches

@@ -297,6 +297,24 @@ def test_update_custom_field_type_list(client: Albert):
             client.custom_fields.delete(id=custom_field.id)
 
 
+def test_update_searchable_on_unset_field(client: Albert):
+    """Test enabling searchable on a field where it was never set."""
+    custom_field = CustomField(
+        name=f"test_searchable_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="Searchable Unset Field",
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert not created.searchable
+        created.searchable = True
+        updated = client.custom_fields.update(custom_field=created)
+        assert updated.searchable is True
+    finally:
+        client.custom_fields.delete(id=created.id)
+
+
 def test_delete_custom_field(client: Albert):
     """Test deleting a custom field by ID."""
     custom_field = CustomField(
