@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.0](https://github.com/albert-labs/albert-python/compare/v1.29.1...v1.30.0) (2026-06-24)
+
+
+### Features
+
+* **chats:** add pageContext to ChatMessage (AI-637) ([#556](https://github.com/albert-labs/albert-python/issues/556)) ([301a7d9](https://github.com/albert-labs/albert-python/commit/301a7d94b9022e1a03370f5f0453c5f18747ec44))
+* **smart_dataset:** add pagination to get_all ([#555](https://github.com/albert-labs/albert-python/issues/555)) ([c46096e](https://github.com/albert-labs/albert-python/commit/c46096e7f39ad97c8d5f239f3f6ae24e42c73429))
+
+
+### Bug Fixes
+
+* **custom_fields:** correct PATCH operation/oldValue handling for unset fields ([#557](https://github.com/albert-labs/albert-python/issues/557)) ([f4b5d76](https://github.com/albert-labs/albert-python/commit/f4b5d76faa26c105cc0156b0321f07914278c525))
+* **exceptions:** make AlbertHTTPError picklable for Ray/multiprocessing contexts ([#560](https://github.com/albert-labs/albert-python/issues/560)) ([22579d1](https://github.com/albert-labs/albert-python/commit/22579d1e66fef775fdc0f2c7f82b8d946fb98402))
+* **metadata:** replace list-valued metadata in a single update ([#558](https://github.com/albert-labs/albert-python/issues/558)) ([59dc385](https://github.com/albert-labs/albert-python/commit/59dc3850edea69cfaf90802a00c14e874af07a45))
+* **units:** patch synonyms as item-level add/delete operations ([#559](https://github.com/albert-labs/albert-python/issues/559)) ([30e64c5](https://github.com/albert-labs/albert-python/commit/30e64c5412bdf39adde49ac5d570563513bf63b8))
+
+
+### Documentation
+
+* **agents:** forbid manual version bumps; release-please owns versioning ([#551](https://github.com/albert-labs/albert-python/issues/551)) ([bfffd17](https://github.com/albert-labs/albert-python/commit/bfffd17591393d8ab7a9b9d4d0404f59b1aede04))
+
 ## [1.29.1](https://github.com/albert-labs/albert-python/compare/v1.29.0...v1.29.1) (2026-06-17)
 
 
