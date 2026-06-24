@@ -321,11 +321,11 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | ImagePropertyValue | CurvePropertyValue | None = Field(
+    value: str | int | float | ImagePropertyValue | CurvePropertyValue | None = Field(
         default=None,
         description=(
             "The value of the task property. Use ImagePropertyValue for image data columns or "
-            "CurvePropertyValue for curve data columns."
+            "CurvePropertyValue for curve data columns. Numeric values are coerced to strings."
         ),
     )
     trial_number: int = Field(
@@ -343,6 +343,13 @@ class TaskPropertyCreate(BaseResource):
         default=None,
         description="Can be used to set the relative row number, allowing you to pass multiple rows of data at once.",
     )
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def coerce_numeric_value(cls, v):
+        if isinstance(v, int | float):
+            return str(v)
+        return v
 
     @model_validator(mode="after")
     def set_visible_trial_number(self) -> TaskPropertyCreate:
