@@ -8,6 +8,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import UnitId
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.units import Unit, UnitCategory
 
@@ -117,6 +118,7 @@ class UnitCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
+    @validate_call
     def update(self, *, unit: Unit) -> Unit:
         """
         Updates a unit entity by its ID.
@@ -137,11 +139,45 @@ class UnitCollection(BaseCollection):
         """
         unit_id = unit.id
         original_unit = self.get_by_id(id=unit_id)
-        payload = self._generate_patch_payload(existing=original_unit, updated=unit)
+        payload = self._generate_unit_patch_payload(existing=original_unit, updated=unit)
         url = f"{self.base_path}/{unit_id}"
-        self.session.patch(url, json=payload.model_dump(mode="json", by_alias=True))
+
+        # The backend rejects more than one operation on the same attribute in a
+        # single request, so each Synonyms edit is sent as its own request.
+        synonym_data = [d for d in payload.data if d.attribute == "Synonyms"]
+        other_data = [d for d in payload.data if d.attribute != "Synonyms"]
+        batches = [other_data] if other_data else []
+        batches.extend([datum] for datum in synonym_data)
+        for batch in batches:
+            self.session.patch(
+                url, json=PatchPayload(data=batch).model_dump(mode="json", by_alias=True)
+            )
+
         unit = self.get_by_id(id=unit_id)
         return unit
+
+    def _generate_unit_patch_payload(self, *, existing: Unit, updated: Unit) -> PatchPayload:
+        """Generate patch request data for a unit, handling synonyms as item-level edits."""
+        payload = self._generate_patch_payload(existing=existing, updated=updated)
+
+        # Synonyms are added/removed one at a time; there is no list-level update,
+        # so replace any whole-list datum with per-item add/delete operations.
+        payload.data = [d for d in payload.data if d.attribute != "Synonyms"]
+        if "synonyms" not in updated.model_fields_set:
+            return payload
+        existing_synonyms = existing.synonyms or []
+        updated_synonyms = updated.synonyms or []
+        payload.data.extend(
+            PatchDatum(attribute="Synonyms", operation=PatchOperation.ADD, new_value=synonym)
+            for synonym in updated_synonyms
+            if synonym not in existing_synonyms
+        )
+        payload.data.extend(
+            PatchDatum(attribute="Synonyms", operation=PatchOperation.DELETE, new_value=synonym)
+            for synonym in existing_synonyms
+            if synonym not in updated_synonyms
+        )
+        return payload
 
     @validate_call
     def delete(self, *, id: UnitId) -> None:
