@@ -188,6 +188,8 @@ class SmartDatasetCollection(BaseCollection):
     ) -> PatchPayload:
         data = []
         for attribute in self._updatable_attributes:
+            if attribute not in updated.model_fields_set:
+                continue
             old_value = getattr(existing, attribute, None)
             new_value = getattr(updated, attribute, None)
 
