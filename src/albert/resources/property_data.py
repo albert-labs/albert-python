@@ -49,6 +49,11 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
+# TODO: remove in a future release once callers have migrated to StorageKeyReference
+class PropertyDataStorageKey(StorageKeyReference):
+    pass
+
+
 class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
