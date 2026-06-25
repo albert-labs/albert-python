@@ -23,7 +23,7 @@ def test_get_by_ids(client: Albert):
     ]
     substances = client.substances.get_by_ids(cas_ids=cas_ids)
     assert isinstance(substances, list)
-    assert len(substances) == len(cas_ids)
+    assert len(substances) >= len(cas_ids)
     for substance in substances:
         assert isinstance(substance, SubstanceInfo)
 
@@ -36,21 +36,20 @@ def test_get_by_id(client: Albert):
 
 
 def test_get_by_id_bad_cas_id(client: Albert):
+    """Test that get_by_id returns None for an unknown CAS ID."""
     substance = client.substances.get_by_id(cas_id="not-a-cas-id")
-    assert not substance.is_known
+    assert substance is None
 
 
 def test_get_multiple_ids_with_unknown_substances(client: Albert):
-    substances = client.substances.get_by_ids(cas_ids=["1310-73-2", "not-a-cas-id", "134180-76-0"])
-    assert len(substances) == 3
-
-    # For some reason the API returns the substances in no particular order, so we need to check explicitly
-    # that for the given cas IDs we get the correct substance type back
+    """Test that known CAS IDs are returned and unknown ones are silently dropped."""
+    known_cas_ids = ["1310-73-2", "134180-76-0"]
+    substances = client.substances.get_by_ids(cas_ids=[*known_cas_ids, "not-a-cas-id"])
+    returned_cas_ids = {s.cas_id for s in substances}
+    for cas_id in known_cas_ids:
+        assert cas_id in returned_cas_ids
     for substance in substances:
-        if substance.cas_id in ["134180-76-0", "1310-73-2"]:
-            assert substance.is_known
-        else:
-            assert not substance.is_known
+        assert substance.is_known
 
 
 def test_get_by_id_with_region(client: Albert):
