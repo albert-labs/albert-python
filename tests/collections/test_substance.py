@@ -38,8 +38,8 @@ def test_get_by_id(client: Albert):
 
 
 def test_get_by_id_bad_cas_id(client: Albert):
-    """Test that get_by_id raises ValueError for an unknown CAS ID."""
-    with pytest.raises(ValueError):
+    """Test that get_by_id raises IndexError for an unknown CAS ID."""
+    with pytest.raises(IndexError):
         client.substances.get_by_id(cas_id="not-a-cas-id")
 
 
