@@ -49,20 +49,24 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
-# TODO: remove in a future release once callers have migrated to StorageKeyReference
-class PropertyDataStorageKey(StorageKeyReference):
-    pass
+# TODO: replace with StorageKeyReference in a future release
+class PropertyDataStorageKey(BaseAlbertModel):
+    preview: str | None = Field(default=None)
+    thumb: str | None = Field(default=None)
+    original: str | None = Field(default=None)
 
 
 class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
     value_type: str | None = Field(default=None, alias="valueType")
-    storage_key: StorageKeyReference | None = Field(default=None, alias="s3Key")
+    storage_key: PropertyDataStorageKey | StorageKeyReference | None = Field(
+        default=None, alias="s3Key"
+    )
     job: dict[str, Any] | None = Field(default=None)
     csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
     curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
-    athena: CurveDBMetadata | None = Field(default=None)
+    athena: dict[str, Any] | None = Field(default=None)
 
 
 class PropertyValue(BaseAlbertModel):
