@@ -1,5 +1,3 @@
-import pytest
-
 from albert.client import Albert
 from albert.resources.substance import SubstanceInfo
 
@@ -38,9 +36,9 @@ def test_get_by_id(client: Albert):
 
 
 def test_get_by_id_bad_cas_id(client: Albert):
-    """Test that get_by_id raises IndexError for an unknown CAS ID."""
-    with pytest.raises(IndexError):
-        client.substances.get_by_id(cas_id="not-a-cas-id")
+    """Test that get_by_id returns None for an unknown CAS ID."""
+    substance = client.substances.get_by_id(cas_id="not-a-cas-id")
+    assert substance is None
 
 
 def test_get_multiple_ids_with_unknown_substances(client: Albert):
