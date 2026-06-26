@@ -49,6 +49,7 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
+# TODO: replace with StorageKeyReference in a future release
 class PropertyDataStorageKey(BaseAlbertModel):
     preview: str | None = Field(default=None)
     thumb: str | None = Field(default=None)
@@ -59,7 +60,9 @@ class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
     value_type: str | None = Field(default=None, alias="valueType")
-    storage_key: PropertyDataStorageKey | dict | None = Field(default=None, alias="s3Key")
+    storage_key: PropertyDataStorageKey | StorageKeyReference | None = Field(
+        default=None, alias="s3Key"
+    )
     job: dict[str, Any] | None = Field(default=None)
     csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
     curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
