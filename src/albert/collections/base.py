@@ -156,6 +156,12 @@ class BaseCollection:
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)
             new_value = getattr(updated, attribute, None)
+            # A field the caller never set is left untouched: only an explicitly
+            # provided value participates in the diff. This prevents omitted fields
+            # from being read as deletions (an unset value is distinct from an
+            # explicit None or []), including fields whose type has a non-None default.
+            if attribute not in updated.model_fields_set:
+                continue
             # Sometimes None and empty lists/dicts are serilized/deserilized to the same value, but wont look the same here
             if old_value is None and (new_value == [] or new_value == {}):
                 # Avoid updating None to an empty list

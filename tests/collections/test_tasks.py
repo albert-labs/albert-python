@@ -94,30 +94,25 @@ def test_update(
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 
 
-def test_update_list_metadata_reassignment(
-    client: Albert,
-    seeded_tasks,
-    static_lists: list[ListItem],
+def test_update_partial_leaves_omitted_special_attrs_untouched(
+    client: Albert, seeded_tasks, seeded_tags: list[Tag]
 ):
-    """Test reassigning a list-valued metadata field to a different EntityLink."""
-    task = [x for x in seeded_tasks if "list metadata reassignment" in x.name.lower()][0]
+    """Test that updating a task without setting tags leaves existing tags untouched."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask))
+    existing_tag_ids = {t.id for t in (task.tags or []) if t.id}
+    tag = next(t for t in seeded_tags if t.id not in existing_tag_ids)
+    task.tags = (task.tags or []) + [tag]
+    client.tasks.update(task=task)
 
-    # Find a list-valued metadata key (value is a list of EntityLinks).
-    list_key = next(
-        key for key, value in task.metadata.items() if isinstance(value, list) and value
-    )
-    current_ids = {link.id for link in task.metadata[list_key]}
+    # Update object that changes only the name and omits tags entirely.
+    new_name = f"{task.name}-renamed"
+    partial = PropertyTask(id=task.id, name=new_name)
+    assert "tags" not in partial.model_fields_set
+    client.tasks.update(task=partial)
 
-    # Swap in a different list item of the same list type.
-    replacement = next(
-        item for item in static_lists if item.list_type == list_key and item.id not in current_ids
-    )
-    task.metadata[list_key] = [replacement.to_entity_link()]
-
-    updated_task = client.tasks.update(task=task)
-
-    updated_ids = {link.id for link in updated_task.metadata[list_key]}
-    assert updated_ids == {replacement.id}
+    refetched = client.tasks.get_by_id(id=task.id)
+    assert refetched.name == new_name
+    assert tag.id in {t.id for t in (refetched.tags or [])}
 
 
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):

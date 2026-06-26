@@ -12,7 +12,11 @@ from albert.collections.notes import NotesCollection
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
+from albert.resources.attachments import (
+    Attachment,
+    AttachmentCategory,
+    AttachmentMetadata,
+)
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.notes import Note
@@ -108,10 +112,22 @@ class AttachmentCollection(BaseCollection):
         if len(payload.data) == 0:
             return existing_attachment
 
-        self.session.patch(
-            f"{self.base_path}/{attachment.id}",
-            json=payload.model_dump(by_alias=True, mode="json"),
-        )
+        # The API rejects more than one operation on the same list attribute
+        # (e.g. Symbols) in a single request, so each such op is sent separately.
+        list_attrs = {
+            d.attribute
+            for d in payload.data
+            if isinstance(d.old_value, list) or isinstance(d.new_value, list)
+        }
+        scalar_data = [d for d in payload.data if d.attribute not in list_attrs]
+        list_data = [d for d in payload.data if d.attribute in list_attrs]
+        batches = [scalar_data] if scalar_data else []
+        batches.extend([d] for d in list_data)
+        for batch in batches:
+            self.session.patch(
+                f"{self.base_path}/{attachment.id}",
+                json=PatchPayload(data=batch).model_dump(by_alias=True, mode="json"),
+            )
         return self.get_by_id(id=attachment.id)
 
     def _generate_attachment_patch_payload(
@@ -125,6 +141,9 @@ class AttachmentCollection(BaseCollection):
                 generate_metadata_diff=False,
             ).data
         )
+
+        if "metadata" not in updated.model_fields_set:
+            return PatchPayload(data=patch_data)
 
         existing_meta = existing.metadata or AttachmentMetadata()
         updated_meta = updated.metadata or AttachmentMetadata()
