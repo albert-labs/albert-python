@@ -1,8 +1,9 @@
 # Authentication
 
-Albert Python SDK supports three authentication methods:
+Albert Python SDK supports four authentication methods:
 
 * **Single Sign-On (SSO)** via browser-based OAuth2
+* **OIDC Token Exchange** for server-to-server integrations using any OIDC-compliant identity provider
 * **Client Credentials** using a client ID and secret
 * **Static Token** using a pre-generated token (via the `ALBERT_TOKEN` environment variable)
 
@@ -43,6 +44,106 @@ client = Albert.from_sso(
     email="your-name@albertinvent.com"
 )
 ```
+
+---
+
+## 🔄 OIDC Token Exchange
+
+This method is for applications that already authenticate users through an **OIDC-compliant
+identity provider** and want to access the Albert API on their behalf — without any browser
+interaction. Your application obtains an OIDC ID token and the SDK exchanges it for an Albert
+access token automatically.
+
+!!! warning "Tenant configuration required"
+    This authentication method requires your identity provider's `aud` (audience/client ID)
+    to be registered with Albert for your tenant. Without this, all requests will return `401 Unauthorized`.
+    [Contact Albert support](https://support.albertinvent.com/en/contact-us) to enable this for your organisation.
+
+### Supported Identity Providers
+
+Any OIDC-compliant identity provider that includes the `preferred_username` claim in the ID
+token is supported. This includes:
+
+| Provider | Notes |
+|---|---|
+| Microsoft Entra ID (Azure AD) | Supported via v2.0 endpoints |
+| Okta | OIDC app integrations only (not SAML) |
+| Auth0 | Supported |
+| AWS Cognito | User pools with OIDC |
+| Ping Identity | PingOne and PingFederate OIDC |
+| Keycloak | Supported |
+| OneLogin, ForgeRock, IBM Security Verify | Supported |
+| Salesforce Identity | OIDC configuration required |
+| Self-hosted OIDC servers | Authentik, Dex, Hydra, etc. |
+
+!!! warning "Google Identity / Workspace"
+    `preferred_username` is not emitted by default in Google's OIDC tokens. You must configure
+    a custom claim mapping in your Google OAuth app to include it before this flow will work.
+
+!!! info "SAML providers are not supported"
+    Identity providers configured to use SAML only (rather than OIDC) are not compatible with
+    this authentication method.
+
+### Prerequisites
+
+- An application registration with your identity provider, with the Albert API audience
+  registered by Albert support
+- A mechanism in your application to obtain an OIDC ID token from your provider
+
+### Usage
+
+Provide a callable that returns a fresh OIDC ID token on demand. The SDK calls it on the
+first request and again whenever the Albert access token needs to be renewed.
+
+```python
+from albert import Albert
+import requests
+
+def get_token() -> str:
+    resp = requests.post(
+        "https://mycompany.okta.com/oauth2/default/v1/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": "your-okta-client-id",
+            "client_secret": "your-okta-client-secret",
+            "scope": "openid",
+        },
+    )
+    return resp.json()["id_token"]
+
+client = Albert.from_sso_exchange(
+    base_url="https://mycompany.albertinvent.com",
+    subdomain="mycompany",
+    oidc_token_provider=get_token,
+)
+```
+
+Or wire it up manually using `AlbertSSOTokenExchange` directly:
+
+```python
+from albert import Albert, AlbertSSOTokenExchange
+
+def get_token() -> str:
+    # Acquire an ID token from your identity provider
+    ...
+
+auth = AlbertSSOTokenExchange(
+    base_url="https://mycompany.albertinvent.com",
+    subdomain="mycompany",
+    oidc_token_provider=get_token,
+)
+client = Albert(auth_manager=auth)
+```
+
+!!! warning "Use a callable, not a static token string"
+    Passing `lambda: "my-static-token"` works only while that OIDC token remains valid
+    (typically 60–90 minutes). Once it expires and the Albert access token needs renewal,
+    the exchange will fail. Always pass a callable that fetches a fresh token from your IdP.
+
+!!! warning "Token validity is your responsibility"
+    The SDK passes the token returned by `oidc_token_provider` directly to Albert. If your
+    callable returns an expired or invalid token, the exchange will fail with `401 Unauthorized`.
+    Ensure your token acquisition logic handles refresh appropriately.
 
 ---
 

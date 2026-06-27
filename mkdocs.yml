@@ -131,6 +131,7 @@ nav:
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md
+          - OIDC Token Exchange: sso_exchange.md
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
