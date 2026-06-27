@@ -32,6 +32,7 @@ class DataType(str, Enum):
     ENUM = "enum"
     IMAGE = "image"
     CURVE = "curve"
+    COLOR = "color"
 
 
 class Operator(str, Enum):
@@ -67,9 +68,9 @@ class EnumValidationValue(BaseAlbertModel):
 class ValueValidation(BaseAlbertModel):
     # We may want to abstract this out if we end up reusing on Data Templates
     datatype: DataType = Field(...)
-    value: str | list[EnumValidationValue] | None = Field(default=None)
-    min: str | None = Field(default=None)
-    max: str | None = Field(default=None)
+    value: str | float | list[EnumValidationValue] | None = Field(default=None)
+    min: str | float | None = Field(default=None)
+    max: str | float | None = Field(default=None)
     operator: Operator | None = Field(default=None)
 
 

@@ -23,6 +23,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.core.shared.types import SerializeAsEntityLink
+from albert.resources.data_columns import DataColumnType
 from albert.resources.data_templates import (
     CurveDBMetadata,
     DataTemplate,
@@ -34,6 +35,14 @@ from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
 ########################## Supporting GET Classes ##########################
+
+
+class CompositePropertyValue(BaseAlbertModel):
+    """A single entry in a composite (multi-sub-column) property value."""
+
+    key: int
+    id: DataColumnId
+    value: str | float | None = Field(default=None)
 
 
 class PropertyDataStatus(str, Enum):
@@ -58,7 +67,7 @@ class PropertyDataStorageKey(BaseAlbertModel):
 
 class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
     value_type: str | None = Field(default=None, alias="valueType")
     storage_key: PropertyDataStorageKey | StorageKeyReference | None = Field(
         default=None, alias="s3Key"
@@ -76,11 +85,12 @@ class PropertyValue(BaseAlbertModel):
     calculation: str | None = Field(default=None)
     numeric_value: float | None = Field(default=None, alias="valueNumeric")
     string_value: str | None = Field(default=None, alias="valueString")
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | dict = Field(default_factory=dict, alias="Unit")
     property_data: PropertyData | None = Field(default=None, alias="PropertyData")
     data_column_unique_id: str | None = Field(default=None, alias="dataColumnUniqueId")
     hidden: bool | None = Field(default=False)
+    type: DataColumnType | None = Field(default=None)
 
 
 class Trial(BaseAlbertModel):
@@ -213,7 +223,7 @@ class BulkPropertyData(BaseAlbertModel):
 
 
 class TaskPropertyValue(BaseAlbertModel):
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
 
 
 class ImagePropertyValue(BaseAlbertModel):
@@ -264,6 +274,7 @@ class CurvePropertyValuePayload(BaseAlbertModel):
 class TaskDataColumn(BaseAlbertModel):
     data_column_id: DataColumnId = Field(alias="id")
     column_sequence: str | None = Field(default=None, alias="columnId")
+    type: DataColumnType | None = Field(default=None)
 
 
 class TaskDataColumnValue(TaskDataColumn):
@@ -271,10 +282,8 @@ class TaskDataColumnValue(TaskDataColumn):
 
     @field_validator("value", mode="before")
     def set_string_value(cls, v):
-        """
-        Converts a string to TaskPropertyValue if the input is a string.
-        """
-        if isinstance(v, str):
+        """Converts a string or composite list to TaskPropertyValue."""
+        if isinstance(v, str | list):
             return TaskPropertyValue(value=v)
         return v
 
@@ -321,12 +330,15 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | ImagePropertyValue | CurvePropertyValue | None = Field(
-        default=None,
-        description=(
-            "The value of the task property. Use ImagePropertyValue for image data columns or "
-            "CurvePropertyValue for curve data columns."
-        ),
+    value: str | list[CompositePropertyValue] | ImagePropertyValue | CurvePropertyValue | None = (
+        Field(
+            default=None,
+            description=(
+                "The value of the task property. Use ImagePropertyValue for image data columns, "
+                "CurvePropertyValue for curve data columns, or a list of CompositePropertyValue "
+                "for composite data columns."
+            ),
+        )
     )
     trial_number: int = Field(
         alias="trialNo",

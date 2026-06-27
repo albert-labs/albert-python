@@ -471,6 +471,46 @@ class DataTemplateCollection(BaseCollection):
         return self.get_by_id(id=data_template.id)
 
     @validate_call
+    def reorder_columns(self, *, id: DataTemplateId, sequence: list[str]) -> DataTemplate:
+        """Reorder the columns of a data template.
+
+        Parameters
+        ----------
+        id : DataTemplateId
+            The ID of the data template to update.
+        sequence : list[str]
+            The desired column sequence as a list of sequence IDs (e.g. ``["COL2", "COL0", "COL1"]``).
+            Must include all existing column sequence IDs.
+
+        Returns
+        -------
+        DataTemplate
+            The updated DataTemplate with columns in the new order.
+
+        Notes
+        -----
+        The following fields can be updated: ``sequence``.
+        """
+        existing = self.get_by_id(id=id)
+        old_sequence = [
+            dcv.sequence for dcv in (existing.data_column_values or []) if dcv.sequence is not None
+        ]
+        self.session.patch(
+            f"{self.base_path}/{id}",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "sequence",
+                        "newValue": sequence,
+                        "oldValue": old_sequence,
+                    }
+                ]
+            },
+        )
+        return self.get_by_id(id=id)
+
+    @validate_call
     def delete(self, *, id: DataTemplateId) -> None:
         """Deletes a data template by its ID.
 
