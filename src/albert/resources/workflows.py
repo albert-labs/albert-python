@@ -250,14 +250,6 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         if self.parameter_group is not None and self.id is None:
             object.__setattr__(self, "id", self.parameter_group.id)
 
-        if self.id is None:
-            # For workflows created without a PRG/DT id, intervals are not allowed.
-            for sp in self.parameter_setpoints:
-                if sp.intervals is not None:
-                    raise ValueError(
-                        f"Parameter {sp.parameter_id}: Intervals are not allowed when the Parameter Group has no 'id'."
-                    )
-
         return self
 
 
