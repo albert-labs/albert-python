@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.1](https://github.com/albert-labs/albert-python/compare/v1.30.0...v1.30.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **patch:** leave unset fields untouched in update payloads ([#561](https://github.com/albert-labs/albert-python/issues/561)) ([0642e94](https://github.com/albert-labs/albert-python/commit/0642e94cd420f227a48be0f855918a11632cb714))
+* **property_data:** type storage_key and athena on PropertyData ([#570](https://github.com/albert-labs/albert-python/issues/570)) ([ede4a83](https://github.com/albert-labs/albert-python/commit/ede4a83b677f1d7cdc2698f27e1c3fc3f4dd11ca))
+* **property-data:** accept numeric values in TaskPropertyCreate.value ([#564](https://github.com/albert-labs/albert-python/issues/564)) ([e23ce3e](https://github.com/albert-labs/albert-python/commit/e23ce3ee052c045dc1e6acf3f5239002ace5c179))
+* **substance:** default catch_errors=True in get_by_id and relax count assertions ([#569](https://github.com/albert-labs/albert-python/issues/569)) ([6c22ba3](https://github.com/albert-labs/albert-python/commit/6c22ba38d12e4aac99dea3d9b24459ca6e6428f3))
+* **workflows:** handle duplicate detection and relax intervals validator ([#568](https://github.com/albert-labs/albert-python/issues/568)) ([93cba60](https://github.com/albert-labs/albert-python/commit/93cba607603f13b3d31979017120c179ab29fa96))
+
 ## [1.30.0](https://github.com/albert-labs/albert-python/compare/v1.29.1...v1.30.0) (2026-06-24)
 
 
