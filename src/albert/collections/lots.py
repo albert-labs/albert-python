@@ -67,7 +67,22 @@ class LotCollection(BaseCollection):
         -------
         list[Lot]
             A list of created Lot entities.
+
+        Notes
+        -----
+        For non-task lots (no ``task_id``): ``storage_location`` and ``initial_quantity`` are required.
+        For task lots (with ``task_id``): ``location`` is required.
         """
+        for lot in lots:
+            if lot.task_id is None:
+                if lot.storage_location is None:
+                    raise ValueError("storage_location is required when creating a non-task lot.")
+                if lot.initial_quantity is None:
+                    raise ValueError("initial_quantity is required when creating a non-task lot.")
+            else:
+                if lot.location is None:
+                    raise ValueError("location is required when creating a task lot.")
+
         payload = [lot.model_dump(by_alias=True, exclude_none=True, mode="json") for lot in lots]
         response = self.session.post(self.base_path, json=payload)
         data = response.json()
