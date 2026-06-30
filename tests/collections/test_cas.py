@@ -35,6 +35,7 @@ def test_cas_get_all_with_filters(client: Albert):
 
     multi_cas = list(client.cas_numbers.get_all(cas=[existing.number]))
     assert_valid_cas_items(multi_cas)
+    assert any(c.number == existing.number for c in multi_cas)
 
 
 def test_cas_not_found(client: Albert):
