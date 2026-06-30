@@ -23,7 +23,9 @@ def test_get_by_ids(client: Albert):
     ]
     substances = client.substances.get_by_ids(cas_ids=cas_ids)
     assert isinstance(substances, list)
-    assert len(substances) >= len(cas_ids)
+    returned_cas_ids = {s.cas_id for s in substances}
+    for cas_id in cas_ids:
+        assert cas_id in returned_cas_ids
     for substance in substances:
         assert isinstance(substance, SubstanceInfo)
 
