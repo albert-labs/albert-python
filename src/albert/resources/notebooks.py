@@ -145,7 +145,7 @@ class KetcherContent(BaseAlbertModel):
     synthesis_id: SynthesisId | None = Field(default=None, alias="synthesisId")
     id: str | None = Field(default=None)
     block_id: str | None = Field(default=None, alias="blockId")
-    data: str = Field(default=None, exclude=True)
+    data: str | None = Field(default=None, exclude=True)
     file_key: str | None = Field(default=None, alias="fileKey")
     s3_key: str | None = Field(default=None, alias="s3Key")
     png: str | None = Field(default=None, exclude=True)
