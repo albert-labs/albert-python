@@ -63,6 +63,18 @@ def test_update_block_content_with_reorder(client: Albert, seeded_notebook: Note
         assert updated.content == existing.content
 
 
+def test_append_blocks(client: Albert, seeded_notebook: Notebook):
+    """Test appending blocks preserves existing blocks."""
+    existing_ids = [b.id for b in seeded_notebook.blocks]
+    new_block = ParagraphBlock(content=ParagraphContent(text="Appended block."))
+
+    updated_notebook = client.notebooks.append_blocks(id=seeded_notebook.id, blocks=[new_block])
+
+    updated_ids = [b.id for b in updated_notebook.blocks]
+    assert updated_ids[: len(existing_ids)] == existing_ids
+    assert updated_notebook.blocks[-1].content.text == "Appended block."
+
+
 def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: Notebook):
     # Ensure we can enter blocks with None Fields
     header_block = HeaderBlock(content=HeaderContent(level=1, text=None))

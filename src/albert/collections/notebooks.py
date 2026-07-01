@@ -210,6 +210,38 @@ class NotebookCollection(BaseCollection):
         return self.get_by_id(id=notebook.id)
 
     @validate_call
+    def append_blocks(self, *, id: NotebookId, blocks: list[NotebookBlock]) -> Notebook:
+        """Append blocks to the end of a Notebook, preserving existing blocks.
+
+        Parameters
+        ----------
+        id : str
+            The ID of the Notebook to append to.
+        blocks : list[NotebookBlock]
+            The blocks to append to the end of the Notebook.
+
+        Returns
+        -------
+        Notebook
+            The updated Notebook.
+
+        Examples
+        --------
+        !!! example "Append a paragraph block"
+            ```python
+            from albert.resources.notebooks import ParagraphBlock, ParagraphContent
+
+            notebook = client.notebooks.append_blocks(
+                id="NTB123",
+                blocks=[ParagraphBlock(content=ParagraphContent(text="Hello"))],
+            )
+            ```
+        """
+        notebook = self.get_by_id(id=id)
+        notebook.blocks.extend(blocks)
+        return self.update_block_content(notebook=notebook)
+
+    @validate_call
     def get_block_by_id(self, *, notebook_id: NotebookId, block_id: str) -> NotebookBlock:
         """Retrieve a Notebook Block by its ID.
 
