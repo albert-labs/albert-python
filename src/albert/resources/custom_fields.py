@@ -15,6 +15,8 @@ class FieldType(str, Enum):
     LIST = "list"
     STRING = "string"
     NUMBER = "number"
+    DATE = "date"
+    TIMESTAMP = "timestamp"
 
 
 class ServiceType(str, Enum):
