@@ -33,7 +33,39 @@ class _KetcherUpdateAction(BaseAlbertModel):
 
 
 class NotebookCollection(BaseCollection):
-    """NotebookCollection is a collection class for managing Notebook entities in the Albert platform."""
+    """NotebookCollection manages Notebook entities in the Albert platform.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The Albert session instance.
+
+    Attributes
+    ----------
+    base_path : str
+        The base URL for notebook API requests.
+
+    Methods
+    -------
+    get_by_id(id) -> Notebook
+        Retrieves a notebook by its ID.
+    list_by_parent_id(parent_id) -> list[Notebook]
+        Lists notebooks for a given parent (task or project).
+    create(notebook) -> Notebook
+        Creates or returns a notebook.
+    delete(id) -> None
+        Deletes a notebook by its ID.
+    update(notebook) -> Notebook
+        Updates a notebook's name.
+    update_block_content(notebook) -> Notebook
+        Updates the block content of a notebook.
+    append_blocks(id, blocks) -> Notebook
+        Appends blocks to a notebook, preserving existing blocks.
+    get_block_by_id(notebook_id, block_id) -> NotebookBlock
+        Retrieves a notebook block by its ID.
+    copy(notebook_copy_info, type) -> Notebook
+        Copies a notebook into a specified parent.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name"}
