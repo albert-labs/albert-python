@@ -81,6 +81,11 @@ class Albert:
         Ignored if `token` is provided.
     retries : int, optional
         Maximum number of retries for failed HTTP requests.
+    timeout : float | tuple[float, float], optional
+        Default timeout in seconds applied to every request. Accepts a single
+        float (applied to both connect and read) or a ``(connect, read)`` tuple.
+        When ``None`` (the default), requests can block indefinitely. Ignored if
+        `session` is provided.
     session : AlbertSession, optional
         A fully configured session instance. If provided, `base_url`, `token`, and `auth_manager`
         are all ignored.
@@ -112,6 +117,7 @@ class Albert:
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
+        timeout: float | tuple[float, float] | None = None,
         session: AlbertSession | None = None,
     ):
         if auth_manager and base_url and base_url != auth_manager.base_url:
@@ -128,12 +134,19 @@ class Albert:
             token=token or os.getenv("ALBERT_TOKEN"),
             auth_manager=auth_manager,
             retries=retries,
+            timeout=timeout,
         )
 
     @classmethod
-    def from_token(cls, *, base_url: str | None, token: str) -> Albert:
+    def from_token(
+        cls,
+        *,
+        base_url: str | None,
+        token: str,
+        timeout: float | tuple[float, float] | None = None,
+    ) -> Albert:
         """Create an Albert client using a static token for authentication."""
-        return cls(base_url=base_url, token=token)
+        return cls(base_url=base_url, token=token, timeout=timeout)
 
     @classmethod
     def from_sso(
@@ -144,12 +157,13 @@ class Albert:
         port: int = 5000,
         tenant_id: str | None = None,
         retries: int | None = None,
+        timeout: float | tuple[float, float] | None = None,
     ) -> Albert:
         """Create an Albert client using interactive OAuth2 SSO login."""
         resolved_base_url = base_url or default_albert_base_url()
         oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
         oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
-        return cls(auth_manager=oauth, retries=retries)
+        return cls(auth_manager=oauth, retries=retries, timeout=timeout)
 
     @classmethod
     def from_client_credentials(
@@ -159,6 +173,7 @@ class Albert:
         client_id: str,
         client_secret: str,
         retries: int | None = None,
+        timeout: float | tuple[float, float] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
         resolved_base_url = base_url or default_albert_base_url()
@@ -167,7 +182,7 @@ class Albert:
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
         )
-        return cls(auth_manager=creds, retries=retries)
+        return cls(auth_manager=creds, retries=retries, timeout=timeout)
 
     @property
     def projects(self) -> ProjectCollection:
