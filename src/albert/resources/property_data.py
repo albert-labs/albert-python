@@ -398,7 +398,7 @@ class PropertyDataResult(BaseAlbertModel):
     # This is not the actual PTD id it is the DAC this result is capturing
     data_column_id: DataColumnId = Field(..., alias="id")
     value: str | None = None
-    trial: str
+    trial: str | None = None
     value_string: str | None = Field(None, alias="valueString")
 
 
