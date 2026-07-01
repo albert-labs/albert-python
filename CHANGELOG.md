@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.31.0](https://github.com/albert-labs/albert-python/compare/v1.30.1...v1.31.0) (2026-07-01)
+
+
+### Features
+
+* **customfields:** date-and-datetime-type ([#577](https://github.com/albert-labs/albert-python/issues/577)) ([f3d2182](https://github.com/albert-labs/albert-python/commit/f3d21826b424ecf02b3f7fadf06151e525f154ba))
+
+
+### Bug Fixes
+
+* **property-data:** make PTD search result trial optional ([#576](https://github.com/albert-labs/albert-python/issues/576)) ([aeffc1d](https://github.com/albert-labs/albert-python/commit/aeffc1d587362d479428ab9d7fcac17ea6660788))
+* **property-data:** type PropertyDataResult.trial as Any ([#578](https://github.com/albert-labs/albert-python/issues/578)) ([34512bc](https://github.com/albert-labs/albert-python/commit/34512bc209c230e8c9909e440c6848d18e929b80))
+* **resources:** tolerate None in Lot serializers and KetcherContent.data ([#563](https://github.com/albert-labs/albert-python/issues/563)) ([25ec5e7](https://github.com/albert-labs/albert-python/commit/25ec5e706bc5ce43ffb06b0b3784d08e57fba15c))
+
 ## [1.30.1](https://github.com/albert-labs/albert-python/compare/v1.30.0...v1.30.1) (2026-06-29)
 
 
