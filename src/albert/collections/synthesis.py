@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from pydantic import validate_call
@@ -33,7 +34,12 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def create(
-        self, *, parent_id: NotebookId | str, name: str, block_id: str, smiles: str | None = None
+        self,
+        *,
+        parent_id: NotebookId | str,
+        name: str,
+        block_id: str | None = None,
+        smiles: str | None = None,
     ) -> Synthesis:
         """
         Create a synthesis record for a notebook Ketcher block.
@@ -44,8 +50,9 @@ class SynthesisCollection(BaseCollection):
             The notebook ID that owns the synthesis record.
         name : str
             The synthesis name.
-        block_id : str
-            The Ketcher block ID associated with the synthesis.
+        block_id : str | None, optional
+            The Ketcher block ID to associate with the synthesis. A new ID is
+            generated when not provided.
         smiles : str | None, optional
             The initial SMILES string for the synthesis.
 
@@ -54,7 +61,9 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The created synthesis record.
         """
-        payload = {"name": name, "blockId": block_id, "smiles": smiles}
+        payload: dict[str, Any] = {"name": name, "blockId": block_id or str(uuid.uuid4())}
+        if smiles is not None:
+            payload["smiles"] = smiles
         response = self.session.post(
             url=self.base_path,
             params={"parentId": parent_id},
