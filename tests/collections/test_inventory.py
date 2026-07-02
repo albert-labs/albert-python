@@ -173,6 +173,20 @@ def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryIt
     )
 
 
+def test_blocks_dupes_with_entity_link_company(
+    client: Albert, seeded_inventory: list[InventoryItem]
+):
+    """Test duplicate detection when the company is provided as an entity link."""
+    original = seeded_inventory[0]
+    ii_copy = original.model_copy(
+        update={"id": None, "company": original.company.to_entity_link()}
+    )
+    returned_ii = client.inventory.create(inventory_item=ii_copy)
+
+    assert returned_ii.id == original.id
+    assert returned_ii.name == original.name
+
+
 def test_add_property_to_inv_spec(
     seed_prefix: str,
     client: Albert,
