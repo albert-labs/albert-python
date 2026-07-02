@@ -247,7 +247,7 @@ class PropertyTask(BaseTask):
     location : SerializeAsEntityLink[Location]
         The location where the property task is performed.
     parent_id : str
-        The ID of the parent project.
+        The ID of the parent inventory item.
     blocks : list[Block]
         A list of blocks associated with the property task.
     id : str, optional
