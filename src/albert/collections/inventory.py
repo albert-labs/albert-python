@@ -137,18 +137,27 @@ class InventoryCollection(BaseCollection):
         InventoryItem or None
             The matching inventory item, or None if no match is found.
         """
-        inv_company = (
-            inventory_item.company.name
-            if isinstance(inventory_item.company, Company)
-            else inventory_item.company
-        )
+        company = inventory_item.company
+        company_id = company.id if company is not None else None
+        company_name = company.name if company is not None else None
 
         hits = self.get_all(
-            text=inventory_item.name, company=[inventory_item.company], max_items=100
+            text=inventory_item.name,
+            company=[company] if isinstance(company, Company) else None,
+            max_items=100,
         )
 
         for inv in hits:
-            if inv and inv.name == inventory_item.name and inv.company.name == inv_company:
+            if inv.name != inventory_item.name:
+                continue
+            inv_company = inv.company
+            # Prefer matching on company id; fall back to name when the id is
+            # unavailable (e.g. an unsaved Company passed without an id).
+            if company_id is not None:
+                matched = inv_company is not None and inv_company.id == company_id
+            else:
+                matched = (inv_company.name if inv_company else None) == company_name
+            if matched:
                 return inv
         return None
 
