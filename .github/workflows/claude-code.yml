@@ -30,15 +30,17 @@ jobs:
     steps:
       - name: Check actor is an approved sdk-maintainer
         id: allowlist
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
           # Mirrors albert-labs/sdk-maintainers team membership.
           # Update this list when the team changes (no auto-sync).
           ALLOWED="lkubie xperrylinn ventura-rivera prasad-albert"
-          if [[ " $ALLOWED " == *" ${{ github.actor }} "* ]]; then
+          if [[ " $ALLOWED " == *" $ACTOR "* ]]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "ok=false" >> "$GITHUB_OUTPUT"
-            echo "::error::${{ github.actor }} is not in the approved @claude allowlist."
+            echo "::error::${ACTOR} is not in the approved @claude allowlist."
           fi
 
       - name: Checkout repository
