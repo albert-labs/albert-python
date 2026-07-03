@@ -1,9 +1,13 @@
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
+from albert.exceptions import NotFoundError
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
+    DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
 )
@@ -302,11 +306,6 @@ def test_update_delete_data_column(
     client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
 ):
     """Test removing a data column from a data template via update."""
-    from contextlib import suppress
-
-    from albert.exceptions import NotFoundError
-    from albert.resources.data_templates import DataColumnValue
-
     dt = client.data_templates.create(
         data_template=DataTemplate(
             name=f"{seed_prefix} - Delete Column Test",
