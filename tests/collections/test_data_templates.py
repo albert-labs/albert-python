@@ -298,6 +298,47 @@ def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_p
         client.data_templates.delete(id=dt.id)
 
 
+def test_update_delete_data_column(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test removing a data column from a data template via update."""
+    from contextlib import suppress
+
+    from albert.exceptions import NotFoundError
+    from albert.resources.data_templates import DataColumnValue
+
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Delete Column Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[1]),
+            ],
+        )
+    )
+    try:
+        original_count = len(dt.data_column_values)
+        column_to_delete = next(
+            x for x in dt.data_column_values if x.data_column_id == seeded_data_columns[1].id
+        )
+
+        dt.data_column_values = [
+            x for x in dt.data_column_values if x.data_column_id != column_to_delete.data_column_id
+        ]
+        updated_dt = client.data_templates.update(data_template=dt)
+
+        assert len(updated_dt.data_column_values) == original_count - 1
+        assert column_to_delete.data_column_id not in [
+            x.data_column_id for x in updated_dt.data_column_values
+        ]
+        assert seeded_data_columns[0].id in [
+            x.data_column_id for x in updated_dt.data_column_values
+        ]
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
 def test_update_calculation(client: Albert, calculation_dt: DataTemplate):
     """Test updating calculation on a data template data column."""
     column = next(x for x in calculation_dt.data_column_values if x.calculation is not None)

@@ -385,9 +385,13 @@ def generate_data_column_patches(
     updated_data_columns = [
         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
     ]
+    # TODO: verify and fix deleting multiple data columns in a single update() call.
+    # Backend only allows one "datacolumns" delete patch per request; batching all
+    # sequences into one oldValue list leaves the removed DataColumn records in a
+    # state where a later DELETE /datacolumns/{id} 500s ("reading 'splice'").
     for del_dc in deleted_data_columns:
         patches.append(
-            DTPatchDatum(operation="delete", attribute="datacolumn", oldValue=del_dc.sequence)
+            DTPatchDatum(operation="delete", attribute="datacolumns", oldValue=[del_dc.sequence])
         )
 
     for updated_dc in updated_data_columns:
