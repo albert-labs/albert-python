@@ -1,0 +1,240 @@
+name: Claude Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: claude-security-review-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  security-review:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+
+      # Pinned to main @ 2026-04-01; bump periodically or pin a newer SHA for supply-chain stability.
+      - uses: anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda
+        id: security-review
+        with:
+          comment-pr: true
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude-model: claude-opus-4-8
+          claudecode-timeout: 10
+          run-every-commit: true
+
+      - name: Classify security findings by severity
+        id: classify
+        if: always() && steps.security-review.outcome != 'cancelled' && steps.security-review.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          if [[ ! -f findings.json ]]; then
+            echo "total_count=0" >> "$GITHUB_OUTPUT"
+            echo "blocking_count=0" >> "$GITHUB_OUTPUT"
+            echo "medium_count=0" >> "$GITHUB_OUTPUT"
+            echo "low_count=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          JQ_BASE='
+            def arr:
+              if type == "array" then .
+              elif (.results? | type) == "array" then .results
+              elif (.findings? | type) == "array" then .findings
+              else [] end;
+            def norm: (.severity // .level // .risk // "" | ascii_upcase);
+            def is_blocking:
+              (norm | test("^(CRITICAL|HIGH)(/|$| )")) or (norm == "CRITICAL") or (norm == "HIGH");
+            def is_medium:
+              (norm | test("^(MEDIUM|WARNING)(/|$| )")) or (norm == "MEDIUM") or (norm == "WARNING");
+            def is_low:
+              (norm | test("^(LOW|INFO|NOTE)(/|$| )")) or (norm == "LOW") or (norm == "INFO") or (norm == "NOTE");
+          '
+          TOTAL=$(jq -r "${JQ_BASE} arr | length" findings.json)
+          BLOCKING=$(jq -r "${JQ_BASE} arr | map(select(is_blocking)) | length" findings.json)
+          MEDIUM=$(jq -r "${JQ_BASE} arr | map(select(is_medium and (is_blocking | not) and (is_low | not))) | length" findings.json)
+          LOW=$(jq -r "${JQ_BASE} arr | map(select(is_low and (is_blocking | not) and (is_medium | not))) | length" findings.json)
+
+          echo "total_count=${TOTAL}" >> "$GITHUB_OUTPUT"
+          echo "blocking_count=${BLOCKING}" >> "$GITHUB_OUTPUT"
+          echo "medium_count=${MEDIUM}" >> "$GITHUB_OUTPUT"
+          echo "low_count=${LOW}" >> "$GITHUB_OUTPUT"
+          echo "Classified findings: total=${TOTAL} blocking=${BLOCKING} medium=${MEDIUM} low=${LOW}"
+
+      - name: Post security findings summary
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.classify.outputs.total_count != '' &&
+          steps.classify.outputs.total_count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TOTAL_COUNT: ${{ steps.classify.outputs.total_count }}
+          BLOCKING_COUNT: ${{ steps.classify.outputs.blocking_count }}
+          MEDIUM_COUNT: ${{ steps.classify.outputs.medium_count }}
+          LOW_COUNT: ${{ steps.classify.outputs.low_count }}
+        run: |
+          set -euo pipefail
+          SUMMARY_FILE="/tmp/security-review-summary.md"
+          {
+            echo "## Security review — ${TOTAL_COUNT} finding(s) on this commit"
+            echo ""
+            echo "**Legend:** 🔴 **Critical / High** — blocks merge · 🟡 **Medium** / 🔵 **Low** — advisory only"
+            echo ""
+            if [[ "$BLOCKING_COUNT" != "0" ]]; then
+              echo "> **${BLOCKING_COUNT} blocking finding(s)** must be resolved before merge."
+            else
+              echo "> No blocking findings — **${TOTAL_COUNT} advisory finding(s)** below; merge is not blocked by this workflow."
+            fi
+            echo ""
+            echo "Inline comments may appear on **Files changed** (enable **Show resolved**). The upstream action may skip posting duplicate inline threads on older commits — this summary is always posted for the current run."
+            echo ""
+            if [[ -f findings.json ]]; then
+              render_bucket() {
+                local heading="$1"
+                local jq_filter="$2"
+                local section
+                section=$(jq -r "$jq_filter" findings.json 2>/dev/null || true)
+                if [[ -n "$section" && "$section" != "null" ]]; then
+                  echo "### ${heading}"
+                  echo ""
+                  echo "$section"
+                  echo ""
+                fi
+              }
+              render_bucket "🔴 Critical / High (${BLOCKING_COUNT}) — merge blocked" '
+                def arr:
+                  if type == "array" then .
+                  elif (.results? | type) == "array" then .results
+                  elif (.findings? | type) == "array" then .findings
+                  else [] end;
+                def norm: (.severity // .level // .risk // "" | ascii_upcase);
+                def is_blocking:
+                  (norm | test("^(CRITICAL|HIGH)(/|$| )")) or (norm == "CRITICAL") or (norm == "HIGH");
+                def fmt:
+                  "#### " + (.file // "general")
+                  + (if .line? then (":" + (.line | tostring)) else "" end)
+                  + " — " + (norm // "issue") + "\n\n"
+                  + (.description // .message // "_No description provided._") + "\n\n"
+                  + (if .exploit_scenario then "**Exploit scenario:**\n" + .exploit_scenario + "\n\n" else "" end)
+                  + (if .recommendation then "**Recommendation:**\n" + .recommendation + "\n\n" else "" end)
+                  + "---";
+                arr | map(select(is_blocking)) | map(fmt) | join("\n")
+              '
+              render_bucket "🟡 Medium (${MEDIUM_COUNT}) — advisory" '
+                def arr:
+                  if type == "array" then .
+                  elif (.results? | type) == "array" then .results
+                  elif (.findings? | type) == "array" then .findings
+                  else [] end;
+                def norm: (.severity // .level // .risk // "" | ascii_upcase);
+                def is_blocking:
+                  (norm | test("^(CRITICAL|HIGH)(/|$| )")) or (norm == "CRITICAL") or (norm == "HIGH");
+                def is_medium:
+                  (norm | test("^(MEDIUM|WARNING)(/|$| )")) or (norm == "MEDIUM") or (norm == "WARNING");
+                def is_low:
+                  (norm | test("^(LOW|INFO|NOTE)(/|$| )")) or (norm == "LOW") or (norm == "INFO") or (norm == "NOTE");
+                def fmt:
+                  "#### " + (.file // "general")
+                  + (if .line? then (":" + (.line | tostring)) else "" end)
+                  + " — " + (norm // "issue") + "\n\n"
+                  + (.description // .message // "_No description provided._") + "\n\n"
+                  + (if .exploit_scenario then "**Exploit scenario:**\n" + .exploit_scenario + "\n\n" else "" end)
+                  + (if .recommendation then "**Recommendation:**\n" + .recommendation + "\n\n" else "" end)
+                  + "---";
+                arr | map(select(is_medium and (is_blocking | not) and (is_low | not))) | map(fmt) | join("\n")
+              '
+              render_bucket "🔵 Low (${LOW_COUNT}) — advisory" '
+                def arr:
+                  if type == "array" then .
+                  elif (.results? | type) == "array" then .results
+                  elif (.findings? | type) == "array" then .findings
+                  else [] end;
+                def norm: (.severity // .level // .risk // "" | ascii_upcase);
+                def is_blocking:
+                  (norm | test("^(CRITICAL|HIGH)(/|$| )")) or (norm == "CRITICAL") or (norm == "HIGH");
+                def is_medium:
+                  (norm | test("^(MEDIUM|WARNING)(/|$| )")) or (norm == "MEDIUM") or (norm == "WARNING");
+                def is_low:
+                  (norm | test("^(LOW|INFO|NOTE)(/|$| )")) or (norm == "LOW") or (norm == "INFO") or (norm == "NOTE");
+                def fmt:
+                  "#### " + (.file // "general")
+                  + (if .line? then (":" + (.line | tostring)) else "" end)
+                  + " — " + (norm // "issue") + "\n\n"
+                  + (.description // .message // "_No description provided._") + "\n\n"
+                  + (if .exploit_scenario then "**Exploit scenario:**\n" + .exploit_scenario + "\n\n" else "" end)
+                  + (if .recommendation then "**Recommendation:**\n" + .recommendation + "\n\n" else "" end)
+                  + "---";
+                arr | map(select(is_low and (is_blocking | not) and (is_medium | not))) | map(fmt) | join("\n")
+              '
+              # Uncategorized (unknown severity) — treat as advisory in summary, blocking handled in classify
+              UNCATEGORIZED=$(jq -r '
+                def arr:
+                  if type == "array" then .
+                  elif (.results? | type) == "array" then .results
+                  elif (.findings? | type) == "array" then .findings
+                  else [] end;
+                def norm: (.severity // .level // .risk // "" | ascii_upcase);
+                def is_blocking:
+                  (norm | test("^(CRITICAL|HIGH)(/|$| )")) or (norm == "CRITICAL") or (norm == "HIGH");
+                def is_medium:
+                  (norm | test("^(MEDIUM|WARNING)(/|$| )")) or (norm == "MEDIUM") or (norm == "WARNING");
+                def is_low:
+                  (norm | test("^(LOW|INFO|NOTE)(/|$| )")) or (norm == "LOW") or (norm == "INFO") or (norm == "NOTE");
+                def fmt:
+                  "#### " + (.file // "general") + " — " + (norm // "unspecified") + "\n\n"
+                  + (.description // .message // "_No description provided._") + "\n\n---";
+                arr | map(select((is_blocking | not) and (is_medium | not) and (is_low | not))) | map(fmt) | join("\n")
+              ' findings.json 2>/dev/null || true)
+              if [[ -n "$UNCATEGORIZED" && "$UNCATEGORIZED" != "null" ]]; then
+                echo "### ⚪ Other severity (advisory)"
+                echo ""
+                echo "$UNCATEGORIZED"
+                echo ""
+              fi
+            else
+              echo "Download the **security-review-results** artifact from this workflow run for full details."
+            fi
+            echo "---"
+            echo "_Posted by Claude Security Review (run \`${GITHUB_RUN_ID}\`)._"
+          } > "$SUMMARY_FILE"
+
+          BODY_BYTES=$(wc -c < "$SUMMARY_FILE" | tr -d ' ')
+          if [[ "$BODY_BYTES" -gt 60000 ]]; then
+            {
+              head -c 58000 "$SUMMARY_FILE"
+              echo ""
+              echo ""
+              echo "_Summary truncated (${BODY_BYTES} bytes). Download the **security-review-results** artifact for the full report._"
+            } > "${SUMMARY_FILE}.truncated"
+            mv "${SUMMARY_FILE}.truncated" "$SUMMARY_FILE"
+          fi
+
+          gh pr comment "$PR_NUMBER" --body-file "$SUMMARY_FILE"
+
+      - name: Fail on blocking security findings
+        if: |
+          steps.classify.outputs.blocking_count != '' &&
+          steps.classify.outputs.blocking_count != '0'
+        env:
+          BLOCKING_COUNT: ${{ steps.classify.outputs.blocking_count }}
+        run: |
+          echo "Security review found ${BLOCKING_COUNT} blocking (critical/high) finding(s)."
+          echo "Medium/low findings are advisory and do not fail this check."
+          echo "See the PR Conversation tab for a severity-grouped summary."
+          exit 1
