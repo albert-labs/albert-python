@@ -26,6 +26,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      id-token: write
       actions: read
     steps:
       - name: Check actor is an approved sdk-maintainer
