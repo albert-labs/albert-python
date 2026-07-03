@@ -83,6 +83,33 @@ class ChatSession(BaseResource):
     last_message_at: str | None = Field(default=None, alias="lastMessageAt")
 
 
+class ChatMessageAttachment(BaseAlbertModel):
+    """A compact reference to a file attached to a chat message.
+
+    Records which files arrived with a message so the transcript can render them.
+    Carries display metadata only, never file content or signed URLs.
+
+    Attributes
+    ----------
+    file_id : str
+        The attachment (ATT) ID of the file.
+    title : str
+        The file's display name.
+    kind : str
+        The file kind (e.g. ``pdf``, ``image``, ``workbook``, ``csv``).
+    size_bytes : int | None
+        The file size in bytes.
+    parts_summary : str | None
+        A human-readable description of the file's structure (e.g. ``"34 pages"``).
+    """
+
+    file_id: str = Field(alias="fileId")
+    title: str
+    kind: str
+    size_bytes: int | None = Field(default=None, alias="sizeBytes")
+    parts_summary: str | None = Field(default=None, alias="partsSummary")
+
+
 class ChatMessage(BaseResource):
     """
     A single message component within a chat session.
@@ -120,6 +147,8 @@ class ChatMessage(BaseResource):
         Whether to show the feedback UI for this message.
     page_context : PageContext | None
         Embed page the user was viewing when they sent the message.
+    attachments : list[ChatMessageAttachment] | None
+        Files the user attached to this message, for display in the transcript.
     """
 
     id: str | None = Field(default=None)
@@ -138,6 +167,7 @@ class ChatMessage(BaseResource):
     display_feedback_component: bool | None = Field(default=None, alias="displayFeedbackComponent")
     value: list[dict] | None = Field(default=None)
     page_context: PageContext | None = Field(default=None, alias="pageContext")
+    attachments: list[ChatMessageAttachment] | None = Field(default=None)
 
 
 class ChatFolder(BaseResource):
