@@ -225,7 +225,13 @@ jobs:
             mv "${SUMMARY_FILE}.truncated" "$SUMMARY_FILE"
           fi
 
-          gh pr comment "$PR_NUMBER" --body-file "$SUMMARY_FILE"
+          EXISTING=$(gh pr view "$PR_NUMBER" --json comments --jq \
+            '.comments[] | select(.body | startswith("## Security review")) | .databaseId' | tail -1)
+          if [[ -n "$EXISTING" ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING" -X PATCH -f body="$(cat "$SUMMARY_FILE")"
+          else
+            gh pr comment "$PR_NUMBER" --body-file "$SUMMARY_FILE"
+          fi
 
       - name: Fail on blocking security findings
         if: |
