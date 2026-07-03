@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.32.0](https://github.com/albert-labs/albert-python/compare/v1.31.0...v1.32.0) (2026-07-03)
+
+
+### Features
+
+* **notebooks:** add append_blocks to safely add blocks ([#581](https://github.com/albert-labs/albert-python/issues/581)) ([87fddc0](https://github.com/albert-labs/albert-python/commit/87fddc0793e0d4da24af71a545f6eed4733728da))
+* **session:** add configurable request timeout ([#572](https://github.com/albert-labs/albert-python/issues/572)) ([960f1de](https://github.com/albert-labs/albert-python/commit/960f1de714a852990548ee691f3886fa14fc9016))
+
+
+### Bug Fixes
+
+* **ci:** harden and upgrade claude-code workflows ([#586](https://github.com/albert-labs/albert-python/issues/586)) ([4a70bd3](https://github.com/albert-labs/albert-python/commit/4a70bd388ecfcfd220b10165ab632f967f065a20))
+* **data-templates:** correct payload for datacolumn delete in update() ([#585](https://github.com/albert-labs/albert-python/issues/585)) ([a9cbe5d](https://github.com/albert-labs/albert-python/commit/a9cbe5d461ef12d6efdc29599386e1a9afaafcfe))
+* **synthesis:** omit null smiles and default blockId on create ([#580](https://github.com/albert-labs/albert-python/issues/580)) ([0f63644](https://github.com/albert-labs/albert-python/commit/0f63644032d62c00fd122e0730888bb5c08c72b9))
+
 ## [1.31.0](https://github.com/albert-labs/albert-python/compare/v1.30.1...v1.31.0) (2026-07-01)
 
 
