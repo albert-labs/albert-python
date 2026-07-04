@@ -24,6 +24,7 @@ class ChatComponentType(str, Enum):
     INGREDIENT_CARD = "ingredient_card"
     TOOL_CALL = "tool_call"
     ERROR = "error"
+    PLAN = "plan"
 
 
 class ChatUserType(str, Enum):
@@ -149,6 +150,9 @@ class ChatMessage(BaseResource):
         Embed page the user was viewing when they sent the message.
     attachments : list[ChatMessageAttachment] | None
         Files the user attached to this message, for display in the transcript.
+    plan_action : dict[str, Any] | None
+        Structured record of a plan approval or change request the user submitted
+        with this message (present on user rows that acted on a plan card).
     """
 
     id: str | None = Field(default=None)
@@ -168,6 +172,7 @@ class ChatMessage(BaseResource):
     value: list[dict] | None = Field(default=None)
     page_context: PageContext | None = Field(default=None, alias="pageContext")
     attachments: list[ChatMessageAttachment] | None = Field(default=None)
+    plan_action: dict[str, Any] | None = Field(default=None, alias="planAction")
 
 
 class ChatFolder(BaseResource):
