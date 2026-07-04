@@ -25,6 +25,7 @@ class ChatComponentType(str, Enum):
     TOOL_CALL = "tool_call"
     ERROR = "error"
     PLAN = "plan"
+    PERMISSION_REQUEST = "permission_request"
 
 
 class ChatUserType(str, Enum):
@@ -153,6 +154,10 @@ class ChatMessage(BaseResource):
     plan_action : dict[str, Any] | None
         Structured record of a plan approval or change request the user submitted
         with this message (present on user rows that acted on a plan card).
+    permission_action : dict[str, Any] | None
+        Structured record of a permission decision the user submitted with this
+        message (present on user rows that responded to a permission card; an
+        allow_session row is the durable session grant).
     """
 
     id: str | None = Field(default=None)
@@ -173,6 +178,7 @@ class ChatMessage(BaseResource):
     page_context: PageContext | None = Field(default=None, alias="pageContext")
     attachments: list[ChatMessageAttachment] | None = Field(default=None)
     plan_action: dict[str, Any] | None = Field(default=None, alias="planAction")
+    permission_action: dict[str, Any] | None = Field(default=None, alias="permissionAction")
 
 
 class ChatFolder(BaseResource):
