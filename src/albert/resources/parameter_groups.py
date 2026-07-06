@@ -32,6 +32,7 @@ class DataType(str, Enum):
     ENUM = "enum"
     IMAGE = "image"
     CURVE = "curve"
+    TIMESTAMP = "timestamp"
 
 
 class Operator(str, Enum):
