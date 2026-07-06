@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.32.1](https://github.com/albert-labs/albert-python/compare/v1.32.0...v1.32.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **parameter-groups:** add missing timestamp DataType enum value ([#590](https://github.com/albert-labs/albert-python/issues/590)) ([e143327](https://github.com/albert-labs/albert-python/commit/e1433274ccabdeee3f152975ca394277dfb5ad5d))
+
 ## [1.32.0](https://github.com/albert-labs/albert-python/compare/v1.31.0...v1.32.0) (2026-07-03)
 
 
