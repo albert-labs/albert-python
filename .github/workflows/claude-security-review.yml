@@ -2,7 +2,7 @@ name: Claude Security Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
@@ -36,7 +36,6 @@ jobs:
           claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude-model: claude-opus-4-8
           claudecode-timeout: 10
-          run-every-commit: true
 
       - name: Classify security findings by severity
         id: classify
