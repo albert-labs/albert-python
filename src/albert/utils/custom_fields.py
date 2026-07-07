@@ -38,6 +38,9 @@ def _generate_custom_field_patch_payload(
             continue
 
         if old_value is None and new_value is not None:
+            # Scalar attributes use `update` (not `add`, which the backend rejects).
+            # When the attribute is not currently set there is no value to match,
+            # so `oldValue` is omitted entirely.
             operation = (
                 PatchOperation.UPDATE
                 if alias in ("hidden", "search", "lkpColumn", "lkpRow")
@@ -47,7 +50,6 @@ def _generate_custom_field_patch_payload(
                 PatchDatum(
                     attribute=alias,
                     operation=operation,
-                    old_value=False if operation == PatchOperation.UPDATE else None,
                     new_value=new_value,
                 )
             )
@@ -98,28 +100,6 @@ def _generate_entity_category_patches(
 def _generate_custom_entity_category_patches(
     *, attribute: str, old_value: list | None, new_value: list | None
 ) -> list[PatchDatum]:
-    # Initial population is sent as UPDATE with [] oldValue.
-    if old_value is None and isinstance(new_value, list):
-        return [
-            PatchDatum(
-                attribute=attribute,
-                operation=PatchOperation.UPDATE,
-                old_value=[],
-                new_value=value,
-            )
-            for value in new_value
-        ]
-    if old_value is not None and new_value is None:
-        return [
-            PatchDatum(attribute=attribute, operation=PatchOperation.DELETE, old_value=old_value)
-        ]
-    if old_value != new_value:
-        return [
-            PatchDatum(
-                attribute=attribute,
-                operation=PatchOperation.UPDATE,
-                old_value=old_value,
-                new_value=new_value,
-            )
-        ]
-    return []
+    return _generate_entity_category_patches(
+        attribute=attribute, old_value=old_value, new_value=new_value
+    )

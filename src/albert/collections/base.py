@@ -72,28 +72,30 @@ class BaseCollection:
                         )
                     )
                 elif isinstance(updated_metadata[key], list):
-                    existing_id = {v.id for v in value} if isinstance(value, list) else {value.id}
-                    updated_id = {v.id for v in updated_metadata[key]}
-                    to_add = list(updated_id - existing_id)
-                    to_remove = list(existing_id - updated_id)
-                    if len(to_add + to_remove) == 0:  # if there are no changes, skip
+                    existing_ids = [v.id for v in value] if isinstance(value, list) else [value.id]
+                    updated_ids = [v.id for v in updated_metadata[key]]
+                    if set(existing_ids) == set(updated_ids):  # no membership change, skip
                         continue
 
-                    # Handle additions and removals separately to avoid conflicts
-
-                    if len(to_remove) > 0:
+                    if len(updated_ids) == 0:
+                        # Clearing the value entirely.
                         data.append(
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=to_remove,
+                                old_value=existing_ids,
                             )
                         )
-
-                    if len(to_add) > 0:
+                    else:
+                        # Replace the whole list in a single update. Emitting a
+                        # delete followed by an add would briefly leave the field
+                        # empty, which the backend rejects for required fields.
                         data.append(
                             PatchDatum(
-                                attribute=attribute, operation=PatchOperation.ADD, new_value=to_add
+                                attribute=attribute,
+                                operation=PatchOperation.UPDATE,
+                                old_value=existing_ids,
+                                new_value=updated_ids,
                             )
                         )
                 else:
@@ -154,6 +156,12 @@ class BaseCollection:
         for attribute in self._updatable_attributes:
             old_value = getattr(existing, attribute, None)
             new_value = getattr(updated, attribute, None)
+            # A field the caller never set is left untouched: only an explicitly
+            # provided value participates in the diff. This prevents omitted fields
+            # from being read as deletions (an unset value is distinct from an
+            # explicit None or []), including fields whose type has a non-None default.
+            if attribute not in updated.model_fields_set:
+                continue
             # Sometimes None and empty lists/dicts are serilized/deserilized to the same value, but wont look the same here
             if old_value is None and (new_value == [] or new_value == {}):
                 # Avoid updating None to an empty list

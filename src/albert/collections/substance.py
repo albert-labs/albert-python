@@ -23,8 +23,8 @@ class SubstanceCollection(BaseCollection):
     -------
     get_by_ids(cas_ids: list[str], region: str = "US") -> list[SubstanceInfo]
         Retrieves a list of substances by their CAS IDs and optional region.
-    get_by_id(cas_id: str, region: str = "US") -> SubstanceInfo
-        Retrieves a single substance by its CAS ID and optional region.
+    get_by_id(cas_id: str, region: str = "US") -> SubstanceInfo | None
+        Retrieves a single substance by its CAS ID and optional region, or None if not found.
     """
 
     _api_version = "v3"
@@ -74,9 +74,8 @@ class SubstanceCollection(BaseCollection):
         cas_id: str,
         region: str = "US",
         catch_errors: bool | None = None,
-    ) -> SubstanceInfo:
-        """
-        Get a substance by its CAS ID.
+    ) -> SubstanceInfo | None:
+        """Get a substance by its CAS ID.
 
         Parameters
         ----------
@@ -85,11 +84,12 @@ class SubstanceCollection(BaseCollection):
         region : str, optional
             The region to filter the substance by, by default "US".
         catch_errors : bool, optional
-            Whether to catch errors for unknown CAS, by default False.
+            Whether to suppress errors for unknown CAS IDs, by default None.
 
         Returns
         -------
-        SubstanceInfo
-            The retrieved substance or raises an error if not found.
+        SubstanceInfo | None
+            The retrieved substance, or None if the CAS ID is not found.
         """
-        return self.get_by_ids(cas_ids=[cas_id], region=region, catch_errors=catch_errors)[0]
+        results = self.get_by_ids(cas_ids=[cas_id], region=region, catch_errors=catch_errors)
+        return results[0] if results else None

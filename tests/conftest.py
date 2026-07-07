@@ -276,8 +276,9 @@ def seeded_cas(
 ) -> Iterator[list[Cas]]:
     seeded = []
     for cas in generate_cas_seeds(seed_prefix, static_custom_fields, static_lists):
-        created_cas = client.cas_numbers.get_or_create(cas=cas)
-        seeded.append(created_cas)
+        with suppress(BadRequestError):
+            created_cas = client.cas_numbers.get_or_create(cas=cas)
+            seeded.append(created_cas)
 
     # Avoid race condition while it populated through DBs
     time.sleep(3)

@@ -19,19 +19,51 @@ from albert.resources.locations import Location
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
 
-ALL_MERGE_MODULES = [
-    "PRICING",
-    "NOTES",
-    "SDS",
-    "PD",
-    "BD",
-    "LOT",
-    "CAS",
-    "TAS",
-    "WFL",
-    "PRG",
-    "PTD",
-]
+
+class InventoryMergeModule(str, Enum):
+    """
+    Modules available for an inventory merge operation.
+
+    Attributes
+    ----------
+    PRICING : str
+        Pricing data.
+    NOTES : str
+        Notes.
+    SDS : str
+        Safety Data Sheets.
+    PD : str
+        Product Design — worksheet column references for this inventory item.
+    BD : str
+        Batch data.
+    LOT : str
+        Lot data.
+    CAS : str
+        CAS numbers.
+    TAS : str
+        Tasks.
+    WFL : str
+        Workflows.
+    PRG : str
+        Parameter groups.
+    PTD : str
+        Property data.
+    """
+
+    PRICING = "PRICING"
+    NOTES = "NOTES"
+    SDS = "SDS"
+    PD = "PD"
+    BD = "BD"
+    LOT = "LOT"
+    CAS = "CAS"
+    TAS = "TAS"
+    WFL = "WFL"
+    PRG = "PRG"
+    PTD = "PTD"
+
+
+ALL_MERGE_MODULES: list[InventoryMergeModule] = list(InventoryMergeModule)
 """All modules selectable for inventory merge."""
 
 
@@ -206,6 +238,8 @@ class InventoryItem(BaseTaggedResource):
         The formula ID associated with the InventoryItem. Read Only.
     tags : list[str|Tag] | None
         The tags associated with the InventoryItem. Optional. If a string is provided, a Tag object with the name of the provided string will be first-or-created.
+    inventory_on_hand : float
+        The total amount of this item currently on hand across all lots. Read Only.
     """
 
     name: str | None = None
@@ -224,6 +258,7 @@ class InventoryItem(BaseTaggedResource):
     acls: list[ACL] = Field(default_factory=list, alias="ACL")
 
     # Read-only fields
+    inventory_on_hand: float = Field(default=0.0, alias="onHand", exclude=True, frozen=True)
     task_config: list[dict] | None = Field(
         default=None, alias="TaskConfig", exclude=True, frozen=True
     )
@@ -276,7 +311,7 @@ class InventorySpecValue(BaseAlbertModel):
     @field_validator("min", "max", "reference", mode="before")
     @classmethod
     def cast_float_to_str(cls, v: Any) -> Any:
-        if isinstance(v, float):
+        if isinstance(v, (int | float)):
             return str(v)
         return v
 
@@ -339,4 +374,4 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 class MergeInventory(BaseAlbertModel):
     parent_id: InventoryId = Field(alias="parentId")
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
-    modules: list[str] | None = Field(default=None)
+    modules: list[InventoryMergeModule] | None = Field(default=None)

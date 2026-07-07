@@ -85,6 +85,26 @@ def test_update(
     assert any(o.id == second_user.id for o in updated_lot.owner)
 
 
+def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
+    """Test that updating a lot without setting a field leaves that field untouched."""
+    seeded_lot.manufacturer_lot_number = "PRESERVE-ME"
+    client.lots.update(lot=seeded_lot)
+
+    # Update object that sets only pack_size and omits manufacturer_lot_number.
+    partial = Lot(
+        id=seeded_lot.id,
+        inventory_id=seeded_lot.inventory_id,
+        inventory_on_hand=seeded_lot.inventory_on_hand,
+        pack_size="NEW-PACK",
+    )
+    assert "manufacturer_lot_number" not in partial.model_fields_set
+    client.lots.update(lot=partial)
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.pack_size == "NEW-PACK"
+    assert refetched.manufacturer_lot_number == "PRESERVE-ME"
+
+
 def test_adjust_add(client: Albert, seeded_lot: Lot):
     add_quantity = 10.1234567891
     updated_lot = client.lots.adjust(

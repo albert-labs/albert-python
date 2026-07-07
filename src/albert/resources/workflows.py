@@ -48,16 +48,22 @@ class IntervalParameter(BaseAlbertModel):
 class Interval(BaseAlbertModel):
     """A Pydantic class representing an interval.
 
-    Attrubutes
+    Attributes
     ----------
     value : str
-        The value of the interval setpoint.
+        The value of the interval setpoint. For Special parameters (Equipment, Consumables,
+        Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters this
+        is a plain scalar string (e.g. ``"23"``).
+    name : str | None
+        The display name of the interval value. Populated for Special parameters (e.g.
+        ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters.
     unit : Unit
         The unit of the related value.
 
     """
 
     value: str | None = Field(default=None)
+    name: str | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
@@ -68,6 +74,21 @@ class Interval(BaseAlbertModel):
         if self.unit and not getattr(self.unit, "id", None):
             raise ValueError("Interval: 'Unit.id' is required.")
         return self
+
+
+class IntervalDetail(BaseAlbertModel):
+    """A single parameter's contribution to an interval combination.
+
+    Attributes
+    ----------
+    name : str
+        The parameter name (e.g. ``"Equipment"``).
+    value : str
+        The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``).
+    """
+
+    name: str
+    value: str
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -91,11 +112,15 @@ class IntervalCombination(BaseAlbertModel):
         The string representation of the interval combination
         This will have the form "[Parameter Name]: [Parameter Value] [Parameter Unit]"
         for each parameter in the interval combination
+    interval_details : list[IntervalDetail] | None
+        Per-parameter breakdown of the interval combination. Each entry has ``name``
+        (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``)
     """
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
     interval_params: str | None = Field(default=None, alias="intervalParams")
     interval_string: str | None = Field(default=None, alias="intervalString")
+    interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
 
 
 class ParameterSetpoint(BaseAlbertModel):
@@ -162,7 +187,9 @@ class ParameterSetpoint(BaseAlbertModel):
         # Special Parameters
         if self.category == ParameterCategory.SPECIAL:
             if self.intervals is not None:
-                raise ValueError(f"Parameter {pid}: Special parameters cannot have 'intervals'.")
+                # Intervalized special parameters (Equipment, Consumables, Templates) are valid;
+                # each interval value is a plain entity ID string.
+                return self
             if self.value is None:
                 return self  # presence-only allowed
             if not has_id(self.value):
@@ -223,14 +250,6 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         if self.parameter_group is not None and self.id is None:
             object.__setattr__(self, "id", self.parameter_group.id)
 
-        if self.id is None:
-            # For workflows created without a PRG/DT id, intervals are not allowed.
-            for sp in self.parameter_setpoints:
-                if sp.intervals is not None:
-                    raise ValueError(
-                        f"Parameter {sp.parameter_id}: Intervals are not allowed when the Parameter Group has no 'id'."
-                    )
-
         return self
 
 
@@ -250,7 +269,10 @@ class Workflow(BaseResource):
     """
 
     name: str
-    parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(alias="ParameterGroups")
+    # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
+    parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
+        alias="ParameterGroups", default_factory=list
+    )
     interval_combinations: list[IntervalCombination] | None = Field(
         default=None, alias="IntervalCombinations"
     )

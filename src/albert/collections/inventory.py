@@ -23,6 +23,7 @@ from albert.resources.inventory import (
     ALL_MERGE_MODULES,
     InventoryCategory,
     InventoryItem,
+    InventoryMergeModule,
     InventorySearchItem,
     InventorySpec,
     InventorySpecList,
@@ -66,7 +67,7 @@ class InventoryCollection(BaseCollection):
         *,
         parent_id: InventoryId,
         child_id: InventoryId | list[InventoryId],
-        modules: list[str] | None = None,
+        modules: list[InventoryMergeModule] | None = None,
     ) -> None:
         """
         Merge one or multiple child inventory into a parent inventory item.
@@ -77,8 +78,8 @@ class InventoryCollection(BaseCollection):
             The ID of the parent inventory item.
         child_id : InventoryId | list[InventoryId]
             The ID(s) of the child inventory item(s).
-        modules : list[str], optional
-            The merge modules to use (default is all).
+        modules : list[InventoryMergeModule], optional
+            The merge modules to include. Defaults to all modules.
 
         Returns
         -------
@@ -792,6 +793,8 @@ class InventoryCollection(BaseCollection):
                 payload["data"], updated.is_formula_override
             )
         for attribute in _updatable_attributes_special:
+            if attribute not in updated.model_fields_set:
+                continue
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)
             if attribute == "cas":

@@ -276,9 +276,16 @@ def _parameter_required_patch(
     updated_required = updated_parameter_value.required
     if updated_required is None:
         return None
-    initial_required = (
-        initial_parameter_value.required if initial_parameter_value.required is not None else False
-    )
+    initial_required = initial_parameter_value.required
+    # When `required` was never set, it must be added rather than updated; an
+    # `update` is rejected because there is no existing value to match against.
+    if initial_required is None:
+        return PGPatchDatum(
+            operation="add",
+            attribute="required",
+            newValue=updated_required,
+            rowId=updated_parameter_value.sequence,
+        )
     if initial_required == updated_required:
         return None
     return PGPatchDatum(
@@ -378,9 +385,13 @@ def generate_data_column_patches(
     updated_data_columns = [
         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
     ]
+    # TODO: verify and fix deleting multiple data columns in a single update() call.
+    # Backend only allows one "datacolumns" delete patch per request; batching all
+    # sequences into one oldValue list leaves the removed DataColumn records in a
+    # state where a later DELETE /datacolumns/{id} 500s ("reading 'splice'").
     for del_dc in deleted_data_columns:
         patches.append(
-            DTPatchDatum(operation="delete", attribute="datacolumn", oldValue=del_dc.sequence)
+            DTPatchDatum(operation="delete", attribute="datacolumns", oldValue=[del_dc.sequence])
         )
 
     for updated_dc in updated_data_columns:

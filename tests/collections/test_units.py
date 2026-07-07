@@ -85,6 +85,11 @@ def test_unit_crud(client: Albert, seed_prefix: str):
     assert updated_unit.id == created_unit.id
     assert updated_unit.symbol == "y"
 
+    # Synonyms are patched as item-level add/delete operations.
+    updated_unit.synonyms = ["kfnehiuow", "newsynonym"]
+    synonyms_updated = client.units.update(unit=updated_unit)
+    assert set(synonyms_updated.synonyms) == {"kfnehiuow", "newsynonym"}
+
     client.units.delete(id=updated_unit.id)
     assert not client.units.exists(name=updated_unit.name)
 

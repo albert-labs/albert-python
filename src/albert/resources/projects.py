@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 from enum import Enum
 
-from pydantic import Field, field_validator
+from pydantic import Field, PrivateAttr, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId, ProjectId
-from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.base import BaseSessionResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.locations import Location
+from albert.resources.smart_projects import _PROJECTS_BASE_PATH, SmartProject
 
 
 class ProjectClass(str, Enum):
@@ -45,7 +48,7 @@ class GridDefault(str, Enum):
     WKS = "WKS"
 
 
-class Project(BaseResource):
+class Project(BaseSessionResource):
     """A project in Albert.
 
     Attributes
@@ -62,7 +65,6 @@ class Project(BaseResource):
         The metadata of the project. Optional. Metadata allowed values can be found using the Custom Fields API.
     prefix : str | None
         The prefix of the project. Optional.
-
     acl : list[ACL] | None
         The ACL of the project. Optional.
     task_config : list[TaskConfig] | None
@@ -73,7 +75,6 @@ class Project(BaseResource):
         The state/status of the project. Allowed states are customizeable using the entitystatus API. Optional.
     application_engineering_inventory_ids : list[str] | None
         Inventory Ids to be added as application engineering. Optional.
-
     """
 
     description: str = Field(min_length=1, max_length=2000)
@@ -95,8 +96,10 @@ class Project(BaseResource):
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     # Read-only fields
     status: str | None = Field(default=None, exclude=True, frozen=True)
-    # Cannot be sent in a create POST, but can be used to from a PATCH for update.
+
+    # Cannot be sent in a create POST, but can be referenced from a PATCH for update.
     state: State | None = Field(default=None, exclude=True)
+    _smart: list[SmartProject] | None = PrivateAttr(default=None)
 
     @field_validator("status", mode="before")
     def validate_status(cls, value):
@@ -104,6 +107,25 @@ class Project(BaseResource):
         if isinstance(value, str):
             return value.lower()
         return value
+
+    @property
+    def smart(self) -> SmartProject | None:
+        """Return the smart project resource for this project.
+
+        Returns
+        -------
+        SmartProject or None
+            The smart project associated with this project, or None if no smart project exists.
+        """
+        if self._smart is None:
+            response = self.session.get(f"{_PROJECTS_BASE_PATH}/{self.id}/getSmartProject")
+            smart = response.json().get("smart", [])
+            self._smart = [
+                SmartProject(**item, session=self.session, project_id=self.id) for item in smart
+            ]
+        if not self._smart:
+            return None
+        return self._smart[0]
 
 
 class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):

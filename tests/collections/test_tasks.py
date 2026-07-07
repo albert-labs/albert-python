@@ -94,6 +94,27 @@ def test_update(
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 
 
+def test_update_partial_leaves_omitted_special_attrs_untouched(
+    client: Albert, seeded_tasks, seeded_tags: list[Tag]
+):
+    """Test that updating a task without setting tags leaves existing tags untouched."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask))
+    existing_tag_ids = {t.id for t in (task.tags or []) if t.id}
+    tag = next(t for t in seeded_tags if t.id not in existing_tag_ids)
+    task.tags = (task.tags or []) + [tag]
+    client.tasks.update(task=task)
+
+    # Update object that changes only the name and omits tags entirely.
+    new_name = f"{task.name}-renamed"
+    partial = PropertyTask(id=task.id, name=new_name)
+    assert "tags" not in partial.model_fields_set
+    client.tasks.update(task=partial)
+
+    refetched = client.tasks.get_by_id(id=task.id)
+    assert refetched.name == new_name
+    assert tag.id in {t.id for t in (refetched.tags or [])}
+
+
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     starting_blocks = len(task.blocks)

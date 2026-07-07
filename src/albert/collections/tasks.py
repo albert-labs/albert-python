@@ -723,7 +723,7 @@ class TaskCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``due_date``, ``metadata``, ``name``, ``priority``, ``state``.
+        The following fields can be updated: ``due_date``, ``metadata``, ``name``, ``priority``, ``project``, ``state``.
         """
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(

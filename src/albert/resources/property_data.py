@@ -49,6 +49,7 @@ class DataEntity(str, Enum):
     INVENTORY = "inventory"
 
 
+# TODO: replace with StorageKeyReference in a future release
 class PropertyDataStorageKey(BaseAlbertModel):
     preview: str | None = Field(default=None)
     thumb: str | None = Field(default=None)
@@ -59,7 +60,9 @@ class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     value: str | None = Field(default=None)
     value_type: str | None = Field(default=None, alias="valueType")
-    storage_key: PropertyDataStorageKey | dict | None = Field(default=None, alias="s3Key")
+    storage_key: PropertyDataStorageKey | StorageKeyReference | None = Field(
+        default=None, alias="s3Key"
+    )
     job: dict[str, Any] | None = Field(default=None)
     csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
     curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
@@ -318,11 +321,11 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | ImagePropertyValue | CurvePropertyValue | None = Field(
+    value: str | int | float | ImagePropertyValue | CurvePropertyValue | None = Field(
         default=None,
         description=(
             "The value of the task property. Use ImagePropertyValue for image data columns or "
-            "CurvePropertyValue for curve data columns."
+            "CurvePropertyValue for curve data columns. Numeric values are coerced to strings."
         ),
     )
     trial_number: int = Field(
@@ -340,6 +343,15 @@ class TaskPropertyCreate(BaseResource):
         default=None,
         description="Can be used to set the relative row number, allowing you to pass multiple rows of data at once.",
     )
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def coerce_numeric_value(cls, v):
+        if isinstance(v, bool):
+            raise ValueError("Boolean values are not supported for TaskPropertyCreate.value.")
+        if isinstance(v, int | float):
+            return str(v)
+        return v
 
     @model_validator(mode="after")
     def set_visible_trial_number(self) -> TaskPropertyCreate:
@@ -386,7 +398,7 @@ class PropertyDataResult(BaseAlbertModel):
     # This is not the actual PTD id it is the DAC this result is capturing
     data_column_id: DataColumnId = Field(..., alias="id")
     value: str | None = None
-    trial: str
+    trial: Any = None
     value_string: str | None = Field(None, alias="valueString")
 
 

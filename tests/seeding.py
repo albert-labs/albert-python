@@ -77,7 +77,14 @@ from albert.resources.reports import FullAnalyticalReport
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
-from albert.resources.targets import Target, TargetOperator, TargetType, TargetValue
+from albert.resources.targets import (
+    ComparisonOperator,
+    Criterion,
+    NumericRange,
+    Target,
+    TargetParameter,
+    TargetType,
+)
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -1653,7 +1660,21 @@ def generate_task_seeds(
             priority=TaskPriority.HIGH,
             due_date="2024-10-31",
             location=seeded_locations[1],
-            metadata=faux_metadata,
+            metadata=dict(faux_metadata),
+        ),
+        # General Task 2 - dedicated to list-metadata reassignment testing
+        GeneralTask(
+            name=f"{seed_prefix} - General Task with list metadata reassignment",
+            category=TaskCategory.GENERAL,
+            inventory_information=[
+                TaskInventoryInformation(
+                    inventory_id=seeded_inventory[2].id,
+                )
+            ],
+            priority=TaskPriority.HIGH,
+            due_date="2024-10-31",
+            location=seeded_locations[1],
+            metadata=dict(faux_metadata),
         ),
         # Batch Task 1
         # Use the Formulations used in #tests/resources/test_sheets/py defined as seeded_products
@@ -1824,6 +1845,7 @@ def generate_report_seeds(
 def generate_target_seeds(
     seed_prefix: str,
     seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter] | None = None,
 ) -> list[Target]:
     """
     Generates a list of Target seed objects for testing.
@@ -1851,13 +1873,13 @@ def generate_target_seeds(
     ].pop()
     number_data_column = number_template.data_column_values[0]
 
-    return [
+    seeds = [
         Target(
             name=f"{seed_prefix} - gte",
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.GTE, value=10),
+            target_value=Criterion(operator=ComparisonOperator.GTE, value=10),
             is_required=True,
         ),
         Target(
@@ -1865,7 +1887,7 @@ def generate_target_seeds(
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.LTE, value=10),
+            target_value=Criterion(operator=ComparisonOperator.LTE, value=10),
             is_required=True,
         ),
         Target(
@@ -1873,7 +1895,9 @@ def generate_target_seeds(
             data_template_id=number_template.id,
             data_column_id=number_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.BETWEEN, value={"min": 5, "max": 15}),
+            target_value=Criterion(
+                operator=ComparisonOperator.BETWEEN, value={"min": 5, "max": 15}
+            ),
             is_required=False,
         ),
         Target(
@@ -1881,10 +1905,45 @@ def generate_target_seeds(
             data_template_id=enum_template.id,
             data_column_id=enum_data_column.data_column_id,
             type=TargetType.PERFORMANCE,
-            target_value=TargetValue(operator=TargetOperator.IN_SET, value=["A", "B", "C"]),
+            target_value=Criterion(operator=ComparisonOperator.IN_SET, value=["A", "B", "C"]),
             is_required=False,
         ),
     ]
+
+    if seeded_parameters is not None:
+        params_template = next(
+            (
+                x
+                for x in seeded_data_templates
+                if x.name == f"{seed_prefix} - Parameters Data Template"
+            ),
+            None,
+        )
+        if params_template is not None:
+            params_col = params_template.data_column_values[0]
+            seeds.append(
+                Target(
+                    name=f"{seed_prefix} - between-with-param-filter",
+                    data_template_id=params_template.id,
+                    data_column_id=params_col.data_column_id,
+                    type=TargetType.PERFORMANCE,
+                    target_value=Criterion(operator=ComparisonOperator.GTE, value=0),
+                    is_required=False,
+                    parameters=[
+                        TargetParameter(
+                            id=seeded_parameters[0].id,
+                            category=seeded_parameters[0].category,
+                            value=Criterion(
+                                operator=ComparisonOperator.BETWEEN,
+                                value=NumericRange(min=0, max=200),
+                            ),
+                            sequence="ROW1",
+                        )
+                    ],
+                )
+            )
+
+    return seeds
 
 
 def generate_smart_dataset_seed(

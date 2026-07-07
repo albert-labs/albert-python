@@ -27,6 +27,12 @@ class AlbertSession(requests.Session):
         If provided, it overrides `token`.
     retries : int, optional
         The number of automatic retries on failed requests (default is 3).
+    timeout : float | tuple[float, float], optional
+        Default timeout in seconds applied to every request. Accepts a single
+        float (applied to both connect and read) or a ``(connect, read)`` tuple.
+        When ``None`` (the default), requests have no timeout and can block
+        indefinitely. A per-call ``timeout`` passed to a request always takes
+        precedence.
     """
 
     def __init__(
@@ -36,9 +42,11 @@ class AlbertSession(requests.Session):
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
+        timeout: float | tuple[float, float] | None = None,
     ):
         super().__init__()
         self.base_url = base_url
+        self._timeout = timeout
         self.headers.update(
             {
                 "Content-Type": "application/json",
@@ -76,6 +84,7 @@ class AlbertSession(requests.Session):
 
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
         self.headers["Authorization"] = f"Bearer {self._access_token}"
+        kwargs.setdefault("timeout", self._timeout)
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
         params = self._encode_query_params(kwargs.pop("params", None) or {})
         # The requests library internally uses urllib.parse.urlencode() with the quote_via parameter set to quote_plus, which breaks CAS pagination.

@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from albert import Albert
-from albert.resources.entity_types import EntityType
+from albert.resources.entity_types import EntityType, EntityTypeSearchQueryStrings
 
 
 def test_entity_type_get_by_id(client: Albert, seeded_entity_types: list[EntityType]):
@@ -48,3 +48,17 @@ def test_entity_type_update(
     if entity_type.standard_field_required:
         assert updated.standard_field_required is not None
         assert updated.standard_field_required.notes == entity_type.standard_field_required.notes
+
+
+def test_update_adds_unset_search_query_string(
+    client: Albert, seeded_entity_types: list[EntityType]
+):
+    """Test setting a search query string that was not previously configured."""
+    entity_type = client.entity_types.get_by_id(id=seeded_entity_types[0].id)
+    assert entity_type.search_query_string is None
+
+    entity_type.search_query_string = EntityTypeSearchQueryStrings(DAT="status=active")
+    updated = client.entity_types.update(entity_type=entity_type)
+
+    assert updated.search_query_string is not None
+    assert updated.search_query_string.DAT == "status=active"
