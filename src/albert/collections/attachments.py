@@ -420,6 +420,7 @@ class AttachmentCollection(BaseCollection):
 
         return note_collection.get_by_id(id=registered_note.id)
 
+    @validate_call
     def upload_and_attach_sds_to_inventory_item(
         self,
         *,
@@ -537,15 +538,13 @@ class AttachmentCollection(BaseCollection):
         FileNotFoundError
             If ``file_path`` does not exist.
         """
-        category_value = category.value if isinstance(category, AttachmentCategory) else category
-
         resolved_path = file_path.expanduser()
         if not resolved_path.is_file():
             raise FileNotFoundError(f"File not found at '{resolved_path}'")
 
         content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/pdf"
         upload_id = self._generate_upload_id()
-        file_key = f"{inventory_id}/{category_value}/{upload_id}{resolved_path.name}"
+        file_key = f"{inventory_id}/{FileCategory.SDS.value}/{upload_id}{resolved_path.name}"
 
         file_collection = self._get_file_collection()
         with resolved_path.open("rb") as file_handle:
