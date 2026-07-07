@@ -175,7 +175,7 @@ def test_upload_and_attach_document_to_inventory_item(
     """Test uploading a generic document and attaching it to an inventory item."""
     attachment = client.attachments.upload_and_attach_document_to_inventory_item(
         inventory_id=seeded_inventory[0].id,
-        file_path=Path("tests/data/dontpanic.jpg"),
+        file_path=Path("tests/data/SDS_HCL.pdf"),
         category=AttachmentCategory.COA,
         revision_date=date(2024, 12, 1),
         description="Test CoA attachment",
