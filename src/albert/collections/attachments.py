@@ -23,7 +23,45 @@ from albert.resources.notes import Note
 
 
 class AttachmentCollection(BaseCollection):
-    """AttachmentCollection is a collection class for managing Attachment entities in the Albert platform."""
+    """AttachmentCollection manages Attachment entities in the Albert platform.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The Albert session instance.
+
+    Attributes
+    ----------
+    base_path : str
+        The base URL for attachment API requests.
+
+    Methods
+    -------
+    get_by_id(id) -> Attachment
+        Retrieve an attachment by its ID.
+    create(attachment) -> Attachment
+        Create a new attachment.
+    delete(id) -> None
+        Delete an attachment by its ID.
+    update(attachment) -> Attachment
+        Update an existing attachment.
+    get_by_parent_ids(parent_ids, category) -> dict[str, list[Attachment]]
+        Retrieve attachments grouped by parent ID.
+    get_jurisdiction_codes() -> list[str]
+        List available jurisdiction codes.
+    get_language_codes() -> list[str]
+        List available language codes.
+    attach_file_to_note(note_id, file_name, file_key) -> Attachment
+        Attach an already-uploaded file to a note.
+    upload_and_attach_file_to_note(parent_id, file_data, file_name, ...) -> Note
+        Upload a file and attach it to a note.
+    upload_and_attach_sds_to_inventory_item(inventory_id, file_sds, ...) -> Attachment
+        Upload an SDS document and attach it to an inventory item.
+    upload_and_attach_document_to_inventory_item(inventory_id, file_path, category, ...) -> Attachment
+        Upload a document and attach it to an inventory item.
+    upload_and_attach_document_to_project(project_id, file_path) -> Attachment
+        Upload a file and attach it as a document to a project.
+    """
 
     _api_version: str = "v3"
     _updatable_attributes = {"name", "revision_date", "parent_id"}
@@ -430,18 +468,86 @@ class AttachmentCollection(BaseCollection):
             The created SDS attachment linked to the inventory item.
         """
 
-        sds_path = file_sds.expanduser()
-        if not sds_path.is_file():
-            raise FileNotFoundError(f"SDS file not found at '{sds_path}'")
+        return self.upload_and_attach_document_to_inventory_item(
+            inventory_id=inventory_id,
+            file_path=file_sds,
+            category=AttachmentCategory.SDS,
+            revision_date=revision_date,
+            jurisdiction_code=jurisdiction_code,
+            language_code=language_code,
+            hazard_statements=hazard_statements,
+            hazard_symbols=hazard_symbols,
+            un_number=un_number,
+            storage_class=storage_class,
+            wgk=wgk,
+        )
 
-        content_type = mimetypes.guess_type(sds_path.name)[0] or "application/pdf"
+    @validate_call
+    def upload_and_attach_document_to_inventory_item(
+        self,
+        *,
+        inventory_id: InventoryId,
+        file_path: Path,
+        category: AttachmentCategory | str,
+        revision_date: date | None = None,
+        description: str | None = None,
+        jurisdiction_code: str | None = None,
+        language_code: str | None = None,
+        hazard_statements: list[HazardStatement] | None = None,
+        hazard_symbols: list[HazardSymbol] | None = None,
+        un_number: str | None = None,
+        storage_class: str | None = None,
+        wgk: str | None = None,
+    ) -> Attachment:
+        """Upload a file and attach it as a document to an inventory item.
 
-        extension = sds_path.suffix
+        Parameters
+        ----------
+        inventory_id : str
+            The Albert ID of the inventory item (e.g. ``INVA123``).
+        file_path : Path
+            Local path to the file to upload.
+        category : AttachmentCategory | str
+            Document category.
+        revision_date : date | None, optional
+            Revision date for the document.
+        description : str | None, optional
+            Description for the document.
+        jurisdiction_code : str | None, optional
+            Jurisdiction code (e.g. ``"US"``).
+        language_code : str | None, optional
+            Language code (e.g. ``"EN"``).
+        hazard_statements : list[HazardStatement] | None, optional
+            Hazard statements to associate with the document.
+        hazard_symbols : list[HazardSymbol] | None, optional
+            Hazard symbols to associate with the document.
+        un_number : str | None, optional
+            UN number.
+        storage_class : str | None, optional
+            Storage class.
+        wgk : str | None, optional
+            Water hazard class (WGK).
+
+        Returns
+        -------
+        Attachment
+            The created attachment linked to the inventory item.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``file_path`` does not exist.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/pdf"
         upload_id = self._generate_upload_id()
-        file_key = f"{inventory_id}/SDS/{upload_id}{extension}"
+        file_key = f"{inventory_id}/{FileCategory.SDS.value}/{upload_id}{resolved_path.name}"
 
         file_collection = self._get_file_collection()
-        with sds_path.open("rb") as file_handle:
+        with resolved_path.open("rb") as file_handle:
             file_collection.sign_and_upload_file(
                 data=file_handle,
                 name=file_key,
@@ -450,40 +556,43 @@ class AttachmentCollection(BaseCollection):
                 category=FileCategory.SDS,
             )
 
-        metadata: dict[str, MetadataItem] = {
-            "jurisdictionCode": jurisdiction_code,
-            "languageCode": language_code,
-        }
-
+        metadata: dict[str, MetadataItem] = {}
         if revision_date is not None:
             metadata["revisionDate"] = revision_date.isoformat()
-
-        if hazard_statements:
-            metadata["hazardStatement"] = [
-                statement.model_dump(by_alias=True, exclude_none=True)
-                for statement in hazard_statements
-            ]
-        if hazard_symbols:
-            metadata["Symbols"] = [
-                symbol.model_dump(by_alias=True, exclude_none=True) for symbol in hazard_symbols
-            ]
-
+        if description is not None:
+            metadata["description"] = description
+        if jurisdiction_code is not None:
+            metadata["jurisdictionCode"] = jurisdiction_code
+        if language_code is not None:
+            metadata["languageCode"] = language_code
         if un_number is not None:
             metadata["unNumber"] = un_number
         if storage_class is not None:
             metadata["storageClass"] = storage_class
         if wgk is not None:
             metadata["wgk"] = wgk
+        if hazard_statements:
+            metadata["hazardStatement"] = [
+                s.model_dump(by_alias=True, exclude_none=True) for s in hazard_statements
+            ]
+        if hazard_symbols:
+            metadata["Symbols"] = [
+                s.model_dump(by_alias=True, exclude_none=True) for s in hazard_symbols
+            ]
 
-        attachment = Attachment(
-            parent_id=inventory_id,
-            name=sds_path.name,
-            key=file_key,
-            namespace=FileNamespace.RESULT.value,
-            category=AttachmentCategory.SDS,
-            metadata=metadata,
-            revision_date=revision_date,
-        )
+        attachment_kwargs: dict = {
+            "parent_id": inventory_id,
+            "name": resolved_path.name,
+            "key": file_key,
+            "namespace": FileNamespace.RESULT.value,
+            "category": category,
+        }
+        if revision_date is not None:
+            attachment_kwargs["revision_date"] = revision_date
+        if metadata:
+            attachment_kwargs["metadata"] = metadata
+
+        attachment = Attachment(**attachment_kwargs)
         return self.create(attachment=attachment)
 
     @staticmethod
