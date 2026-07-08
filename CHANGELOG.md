@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.33.0](https://github.com/albert-labs/albert-python/compare/v1.32.1...v1.33.0) (2026-07-08)
+
+
+### Features
+
+* **btdataset:** add targets to BTDatasetReferences ([#609](https://github.com/albert-labs/albert-python/issues/609)) ([89d7021](https://github.com/albert-labs/albert-python/commit/89d7021b2f28d66434f6682687f3bb7c18b7d98e))
+
+
+### Bug Fixes
+
+* add attachments field to ChatMessage ([#588](https://github.com/albert-labs/albert-python/issues/588)) ([c06ba6e](https://github.com/albert-labs/albert-python/commit/c06ba6e12050e155dfb689ea703a9d3ffb1aff9f))
+* **chats:** add attachments field to ChatMessage ([c06ba6e](https://github.com/albert-labs/albert-python/commit/c06ba6e12050e155dfb689ea703a9d3ffb1aff9f))
+* **ci:** route manifest-file per target branch in release-please workflow ([#594](https://github.com/albert-labs/albert-python/issues/594)) ([cc1778b](https://github.com/albert-labs/albert-python/commit/cc1778bf653c4b701bfc75a5dc5efb2f229587a5))
+* **ci:** trigger claude review workflows only on PR state changes ([#597](https://github.com/albert-labs/albert-python/issues/597)) ([8abce3f](https://github.com/albert-labs/albert-python/commit/8abce3fe15b5719f4f5f7cecc6fcbb21e9c9491a))
+
 ## [1.32.1](https://github.com/albert-labs/albert-python/compare/v1.32.0...v1.32.1) (2026-07-06)
 
 
