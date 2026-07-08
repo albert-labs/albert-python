@@ -9,7 +9,8 @@ from albert.core.shared.models.base import BaseResource, EntityLink
 
 class BTDatasetReferences(BaseAlbertModel):
     project_ids: list[str]
-    data_column_ids: list[str]
+    data_column_ids: list[str] | None = Field(default=None)
+    target_ids: list[str] | None = Field(default=None)
     sheet_ids: list[str] | None = Field(default=None)
     filter: dict[str, Any] | None = Field(default=None)
 
