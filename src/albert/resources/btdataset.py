@@ -7,25 +7,9 @@ from albert.core.shared.identifiers import BTDatasetId, ProjectId
 from albert.core.shared.models.base import BaseResource, EntityLink
 
 
-class BTDatasetTargetReference(BaseAlbertModel):
-    """A target output referenced by a Breakthrough dataset.
-
-    Attributes
-    ----------
-    data_column_id : str
-        The composite data template + data column identifier of the target output.
-    unit_id : str | None
-        The unit selected for the target output, if any.
-    """
-
-    data_column_id: str
-    unit_id: str | None = Field(default=None)
-
-
 class BTDatasetReferences(BaseAlbertModel):
     project_ids: list[str]
     data_column_ids: list[str] | None = Field(default=None)
-    targets: list[BTDatasetTargetReference] | None = Field(default=None)
     target_ids: list[str] | None = Field(default=None)
     sheet_ids: list[str] | None = Field(default=None)
     filter: dict[str, Any] | None = Field(default=None)
