@@ -91,4 +91,5 @@ site/
 .vscode/launch.json
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/settings.json
