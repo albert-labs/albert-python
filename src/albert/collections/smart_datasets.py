@@ -18,7 +18,30 @@ from albert.resources.smart_datasets import (
 
 
 class SmartDatasetCollection(BaseCollection):
-    """A collection for managing smart datasets in the Albert platform (🧪Beta).
+    """Manage Smart Datasets in the Albert platform (🧪Beta).
+
+    A Smart Dataset assembles experiment data from a defined scope (projects,
+    targets, and worksheets) into a single record-by-variable matrix ready for
+    analysis and modeling. Records are the experiments (or materials,
+    lots, or measurements, depending on the aggregation level), and variables are
+    the material amounts, parameters, molecules, and measured properties observed
+    across those experiments.
+
+    A Smart Dataset is built asynchronously: after :meth:`create` (or an
+    :meth:`update` that changes the scope) the dataset moves through a build state
+    (:class:`~albert.resources.smart_datasets.SmartDatasetBuildState`) and only
+    exposes its data once it is ``ready``. Use :meth:`get_data` to pull the built
+    matrix, choosing how rows are aggregated with
+    :class:`~albert.resources.smart_datasets.SmartDatasetAggregateBy`.
+
+    Smart Datasets are referenced by their Smart Dataset ID (format ``SDT...``).
+    They aggregate the same experiment Property Data managed through
+    :class:`~albert.collections.property_data.PropertyDataCollection`, and the
+    resulting matrix is a common input for Albert Breakthrough modeling
+    (:class:`~albert.collections.btmodel.BTModelCollection` and
+    :class:`~albert.collections.btdataset.BTDatasetCollection`).
+
+    This collection is accessed as ``client.smart_datasets``.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -27,27 +50,44 @@ class SmartDatasetCollection(BaseCollection):
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for smart dataset API requests.
+        The base API route for smart dataset requests.
 
     Methods
     -------
-    create(scope, build=True) -> SmartDataset
-        Creates a new smart dataset entity.
+    create(scope, parent_id=None, build=True) -> SmartDataset
+        Create a new smart dataset from a scope and (optionally) build it.
     get_all(max_items=None) -> Iterator[SmartDataset]
-        Lists all smart datasets for the tenant.
-    get_by_id(id) -> SmartDataset
-        Retrieves a smart dataset by its ID.
-    update(smart_dataset, build=True) -> SmartDataset
-        Updates a smart dataset.
+        Iterate over all smart datasets for the tenant.
+    get_by_id(id, parent_id=None) -> SmartDataset
+        Retrieve a single smart dataset by its Smart Dataset ID.
+    update(smart_dataset) -> SmartDataset
+        Apply changes to an existing smart dataset.
     delete(id) -> None
-        Deletes a smart dataset by its ID.
-    get_data(id, aggregate_by=None, ids=None, variables=None) -> SmartDatasetData
-        Retrieves the data for a smart dataset.
+        Delete a smart dataset by its Smart Dataset ID.
+    get_data(id, parent_id=None, aggregate_by=..., ids=None, variables=None) -> SmartDatasetData
+        Retrieve the built experiment data matrix for a smart dataset.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.smart_datasets import SmartDatasetScope
+
+        client = Albert()
+        # Build a smart dataset scoped to a single project
+        ds = client.smart_datasets.create(
+            scope=SmartDatasetScope(project_ids=["PRO123"]),
+        )
+        # Once ready, pull the experiment data matrix
+        data = client.smart_datasets.get_data(id=ds.id)
+        print(data.data)
+        ```
     """
 
     _api_version = "v3"
@@ -55,13 +95,12 @@ class SmartDatasetCollection(BaseCollection):
     _updatable_attributes = {"scope", "build_state", "storage_key", "schema_"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the SmartDatasetCollection with the provided session.
+        """Initialize a SmartDatasetCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{SmartDatasetCollection._api_version}/smartdatasets"
@@ -74,23 +113,45 @@ class SmartDatasetCollection(BaseCollection):
         parent_id: ProjectId | None = None,
         build: bool = True,
     ) -> SmartDataset:
-        """
-        Creates a new smart dataset entity.
+        """Create a new smart dataset.
+
+        The ``scope`` defines which experiments feed the dataset (by project,
+        target, and optionally worksheet). When ``build`` is True the dataset is
+        populated asynchronously from Albert; poll its
+        :attr:`~albert.resources.smart_datasets.SmartDataset.build_state` (or
+        re-fetch with :meth:`get_by_id`) until it reaches ``ready`` before calling
+        :meth:`get_data`.
 
         Parameters
         ----------
         scope : SmartDatasetScope
-            The scope of the smart dataset.
+            The scope defining which projects, targets, and worksheets the dataset
+            draws its experiment data from.
         parent_id : ProjectId, optional
             The ID of the parent project to inherit the ACL policy from. When set,
             the smart dataset inherits its ACL policy from the referenced project.
         build : bool, optional
-            Whether to populate the smart dataset with data from Albert.
+            Whether to populate the smart dataset with data from Albert. Defaults
+            to True.
 
         Returns
         -------
         SmartDataset
-            The created smart dataset entity.
+            The created smart dataset, populated with its assigned Smart Dataset ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.smart_datasets import SmartDatasetScope
+
+            client = Albert()
+            ds = client.smart_datasets.create(
+                scope=SmartDatasetScope(project_ids=["PRO123"]),
+            )
+            print(ds.id, ds.build_state)
+            ```
         """
         body = {"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")}
         if parent_id is not None:
@@ -108,18 +169,26 @@ class SmartDatasetCollection(BaseCollection):
         *,
         max_items: int | None = None,
     ) -> Iterator[SmartDataset]:
-        """
-        List all smart datasets for the tenant.
+        """Iterate over all smart datasets for the tenant.
 
         Parameters
         ----------
         max_items : int, optional
-            Maximum number of items to return. If None, returns all available items.
+            Maximum number of datasets to return. If None, returns all available
+            datasets, fetching additional pages as the iterator is consumed.
 
         Returns
         -------
         Iterator[SmartDataset]
-            An iterator of SmartDataset entities.
+            An iterator over the tenant's smart datasets.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for ds in client.smart_datasets.get_all(max_items=10):
+                print(ds.id, ds.build_state)
+            ```
         """
         return AlbertPaginator(
             mode=PaginationMode.KEY,
@@ -131,13 +200,12 @@ class SmartDatasetCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: SmartDatasetId, parent_id: ProjectId | None = None) -> SmartDataset:
-        """
-        Retrieves a smart dataset by its ID.
+        """Retrieve a single smart dataset by its Smart Dataset ID.
 
         Parameters
         ----------
         id : SmartDatasetId
-            The ID of the smart dataset to retrieve.
+            The Smart Dataset ID (format ``SDT...``) of the dataset to retrieve.
         parent_id : ProjectId, optional
             The ID of the parent project to inherit the ACL policy from when
             the caller does not own the smart dataset record.
@@ -145,7 +213,15 @@ class SmartDatasetCollection(BaseCollection):
         Returns
         -------
         SmartDataset
-            The SmartDataset entity.
+            The requested smart dataset.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            ds = client.smart_datasets.get_by_id(id="SDT123")
+            print(ds.build_state)
+            ```
         """
         url = f"{self.base_path}/{id}"
         params = {"parentId": parent_id} if parent_id is not None else None
@@ -158,18 +234,37 @@ class SmartDatasetCollection(BaseCollection):
         *,
         smart_dataset: SmartDataset,
     ) -> SmartDataset:
-        """
-        Update a smart dataset.
+        """Apply changes to an existing smart dataset.
+
+        The current server-side record is fetched and diffed against the supplied
+        ``smart_dataset``; only changed, updatable fields are patched. Pass an
+        object retrieved via :meth:`get_by_id` with the desired fields modified.
 
         Parameters
         ----------
         smart_dataset : SmartDataset
-            The smart dataset with updated fields. Must have an id set.
+            The smart dataset with updated fields. Its ``id`` must be set.
 
         Returns
         -------
         SmartDataset
-            The updated SmartDataset.
+            The updated smart dataset, re-fetched after the patch is applied.
+
+        Notes
+        -----
+        Only the following fields are updatable: ``scope``, ``build_state``,
+        ``storage_key``, and ``schema_``. Changes to any other field are ignored.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.smart_datasets import SmartDatasetScope
+
+            ds = client.smart_datasets.get_by_id(id="SDT123")
+            ds.scope = SmartDatasetScope(project_ids=["PRO123", "PRO456"])
+            updated = client.smart_datasets.update(smart_dataset=ds)
+            ```
         """
         existing = self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
@@ -214,17 +309,23 @@ class SmartDatasetCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: SmartDatasetId) -> None:
-        """
-        Deletes a smart dataset by its ID.
+        """Delete a smart dataset by its Smart Dataset ID.
 
         Parameters
         ----------
         id : SmartDatasetId
-            The ID of the smart dataset to delete.
+            The Smart Dataset ID (format ``SDT...``) of the dataset to delete.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.smart_datasets.delete(id="SDT123")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -239,27 +340,50 @@ class SmartDatasetCollection(BaseCollection):
         ids: list[str] | None = None,
         variables: list[str] | None = None,
     ) -> SmartDatasetData:
-        """
-        Retrieves the experiment data for a smart dataset.
+        """Retrieve the built experiment data matrix for a smart dataset.
+
+        Returns the record-by-variable matrix assembled by the dataset, along with
+        the identifier metadata for each row and the variable metadata for each
+        column. The dataset must be built and ``ready`` before its data can be
+        retrieved.
 
         Parameters
         ----------
         id : SmartDatasetId
-            The ID of the smart dataset.
+            The Smart Dataset ID (format ``SDT...``) of the dataset.
         parent_id : ProjectId, optional
             The ID of the parent project to inherit the ACL policy from when
             the caller does not own the smart dataset record.
         aggregate_by : SmartDatasetAggregateBy, optional
-            The aggregation level for the returned data. Defaults to ``ptd``.
+            The aggregation level for the returned records (rows). Defaults to
+            ``SmartDatasetAggregateBy.PTD`` (per measurement / property data point).
         ids : list[str], optional
-            Filter results to these identifier keys.
+            Restrict the returned rows to these record identifier keys.
         variables : list[str], optional
-            Filter results to these variable keys.
+            Restrict the returned columns to these variable keys.
 
         Returns
         -------
         SmartDatasetData
-            The experiment data matrix.
+            The experiment data matrix with its identifiers and variable metadata.
+
+        Raises
+        ------
+        ValueError
+            If the smart dataset's build state is not ``ready``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.smart_datasets import SmartDatasetAggregateBy
+
+            data = client.smart_datasets.get_data(
+                id="SDT123",
+                aggregate_by=SmartDatasetAggregateBy.WFL,
+            )
+            print(data.data)
+            ```
         """
         smart_dataset = self.get_by_id(id=id, parent_id=parent_id)
         if smart_dataset.build_state != SmartDatasetBuildState.READY:

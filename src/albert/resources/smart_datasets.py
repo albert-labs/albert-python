@@ -15,7 +15,22 @@ from albert.utils.dataframes import OrientTightDataFrame
 
 
 class SmartDatasetBuildState(str, Enum):
-    """The build state of a smart dataset."""
+    """The build state of a smart dataset.
+
+    A smart dataset is populated asynchronously; its build state reports where it
+    is in that process. Data can only be retrieved once the state is ``READY``.
+
+    Attributes
+    ----------
+    BUILDING : str
+        The dataset is still being assembled from its scope; data is not yet
+        available.
+    READY : str
+        The dataset has finished building and its experiment data matrix can be
+        retrieved.
+    FAILED : str
+        The build did not complete successfully.
+    """
 
     BUILDING = "building"
     READY = "ready"
@@ -23,20 +38,36 @@ class SmartDatasetBuildState(str, Enum):
 
 
 class SmartDatasetScope(BaseAlbertModel):
-    """
-    Represents the scope of a smart dataset.
+    """The scope defining which experiment data a smart dataset draws from.
+
+    The scope selects the source of the dataset's records: the projects to
+    include, any specific targets, and optionally the worksheets to restrict to.
+    It is the main input supplied when creating or re-scoping a dataset.
 
     Attributes
     ----------
     project_ids : list[ProjectId]
-        List of project IDs.
+        The projects whose experiments feed the dataset.
     target_ids : list[TargetId]
-        List of target IDs.
+        Specific targets to include.
     sheet_ids : list[WorksheetId] | None
-        List of worksheet IDs. If None, all worksheets in the projects will be used.
+        The worksheets to restrict to. If None, all worksheets in the selected
+        projects are used.
     target_parent_ids : dict[TargetId, ProjectId] | None
         Optional mapping from target ID to a parent project ID. When set, the target
         inherits its ACL policy from the referenced project.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.smart_datasets import SmartDatasetScope
+
+        scope = SmartDatasetScope(
+            project_ids=["PRO123"],
+            sheet_ids=["WKS456"],
+        )
+        ```
     """
 
     project_ids: list[ProjectId] = Field(default_factory=list, alias="projectIds")
@@ -57,22 +88,31 @@ class SmartDatasetScope(BaseAlbertModel):
 
 
 class SmartDataset(BaseResource):
-    """
-    Represents a smart dataset entity.
+    """A smart dataset: a scoped, built matrix of experiment data.
+
+    A smart dataset is created from a :class:`SmartDatasetScope` and built
+    asynchronously by Albert. Its experiment data matrix is retrieved separately
+    (see
+    :meth:`~albert.collections.smart_datasets.SmartDatasetCollection.get_data`)
+    rather than being carried on this object.
 
     Attributes
     ----------
     id : SmartDatasetId | None
-        The unique identifier of the smart dataset.
+        The unique identifier of the smart dataset (format ``SDT...``).
     parent_id : ProjectId | None
         The ID of the parent project this smart dataset belongs to. When set,
         the smart dataset inherits its ACL policy from the referenced project.
+    build_state : SmartDatasetBuildState | None
+        Where the dataset is in its build lifecycle. Data is available once this
+        is ``ready``.
     scope : SmartDatasetScope | None
-        The dataset scope containing project, target, and sheet IDs.
+        The scope defining which projects, targets, and worksheets the dataset
+        draws its experiment data from.
     schema_ : dict | None
-        The dataset schema.
+        The schema describing the dataset's variables.
     storage_key : str | None
-        The storage key for the dataset.
+        The internal storage key for the built dataset.
     """
 
     type: Literal["smart"] = "smart"
@@ -85,7 +125,23 @@ class SmartDataset(BaseResource):
 
 
 class SmartDatasetAggregateBy(str, Enum):
-    """The aggregation level for smart dataset experiment data."""
+    """The aggregation level for smart dataset experiment data.
+
+    Controls what each row (record) in the returned matrix represents, from the
+    coarsest (one row per inventory item) to the finest (one row per measurement).
+
+    Attributes
+    ----------
+    INV : str
+        Aggregate to one record per inventory item.
+    LOT : str
+        Aggregate to one record per lot.
+    WFL : str
+        Aggregate to one record per workflow (experiment).
+    PTD : str
+        Aggregate to one record per measurement / property data point. This is the
+        finest level and the default.
+    """
 
     INV = "inv"
     LOT = "lot"
@@ -111,7 +167,19 @@ class SmartDatasetAggregateBy(str, Enum):
 
 
 class SmartDatasetVariableDataType(str, Enum):
-    """The data type of a smart dataset variable."""
+    """The data type of a smart dataset variable (column).
+
+    Attributes
+    ----------
+    NUMERIC : str
+        Continuous or discrete numeric values.
+    CATEGORICAL : str
+        Discrete, unordered category labels.
+    MOLECULAR : str
+        Molecular structure values (e.g. a molecule column).
+    BOOLEAN : str
+        True/false values.
+    """
 
     NUMERIC = "numeric"
     CATEGORICAL = "categorical"
@@ -160,14 +228,41 @@ class _BaseVariable(BaseAlbertModel):
 
 
 class MaterialAmountVariable(_BaseVariable):
-    """A material amount variable."""
+    """A dataset column for the amount of a material used in an experiment.
+
+    Attributes
+    ----------
+    key : str
+        The unique key identifying this variable (column) in the data matrix.
+    name : str
+        The human-readable name of the variable.
+    type : str
+        The variable type discriminator; always ``material_amount``.
+    data_type : SmartDatasetVariableDataType
+        The value type; always ``NUMERIC`` for material amounts.
+    """
 
     type: Literal["material_amount"] = "material_amount"
     data_type: Literal[SmartDatasetVariableDataType.NUMERIC] = SmartDatasetVariableDataType.NUMERIC
 
 
 class ParameterVariable(_BaseVariable):
-    """A parameter variable."""
+    """A dataset column for an experiment parameter.
+
+    Attributes
+    ----------
+    key : str
+        The unique key identifying this variable (column) in the data matrix.
+    name : str
+        The human-readable name of the variable.
+    type : str
+        The variable type discriminator; always ``parameter``.
+    data_type : SmartDatasetVariableDataType
+        The value type of the parameter.
+    sources : list[str]
+        Where the parameter values originate, drawn from ``property``, ``batch``,
+        and ``process_design``.
+    """
 
     type: Literal["parameter"] = "parameter"
     data_type: SmartDatasetVariableDataType
@@ -175,7 +270,19 @@ class ParameterVariable(_BaseVariable):
 
 
 class MoleculeVariable(_BaseVariable):
-    """A molecule variable."""
+    """A dataset column for a molecular structure.
+
+    Attributes
+    ----------
+    key : str
+        The unique key identifying this variable (column) in the data matrix.
+    name : str
+        The human-readable name of the variable.
+    type : str
+        The variable type discriminator; always ``molecule``.
+    data_type : SmartDatasetVariableDataType
+        The value type; always ``MOLECULAR`` for molecule variables.
+    """
 
     type: Literal["molecule"] = "molecule"
     data_type: Literal[SmartDatasetVariableDataType.MOLECULAR] = (
@@ -184,7 +291,19 @@ class MoleculeVariable(_BaseVariable):
 
 
 class PropertyVariable(_BaseVariable):
-    """A property variable."""
+    """A dataset column for a measured property.
+
+    Attributes
+    ----------
+    key : str
+        The unique key identifying this variable (column) in the data matrix.
+    name : str
+        The human-readable name of the variable.
+    type : str
+        The variable type discriminator; always ``property``.
+    data_type : SmartDatasetVariableDataType
+        The value type of the measured property.
+    """
 
     type: Literal["property"] = "property"
     data_type: SmartDatasetVariableDataType
@@ -197,19 +316,23 @@ SmartDatasetVariable = Annotated[
 
 
 class SmartDatasetData(BaseAlbertModel):
-    """
-    The experiment data matrix for a smart dataset.
+    """The built experiment data matrix for a smart dataset.
+
+    Rows are records (experiments, materials, lots, or measurements, depending on
+    ``aggregate_by``) and columns are variables (material amounts, parameters,
+    molecules, and measured properties). ``identifiers`` describes each row and
+    ``variables`` describes each column, aligned with ``data``.
 
     Attributes
     ----------
     aggregate_by : SmartDatasetAggregateBy
-        The aggregation level of the returned data.
+        The aggregation level of the returned rows.
     identifiers : list[SmartDatasetRecordIdentifier]
-        The identifier metadata for each row index entry.
+        The identifier metadata for each row, aligned with the rows of ``data``.
     variables : list[SmartDatasetVariable]
-        The variable metadata for each column entry.
+        The variable metadata for each column, aligned with the columns of ``data``.
     data : OrientTightDataFrame
-        The experiment data values.
+        The experiment data values as a record-by-variable matrix.
     uncertainty : OrientTightDataFrame | None
         The associated uncertainty values, if available.
     counts : OrientTightDataFrame | None

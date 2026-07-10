@@ -7,18 +7,53 @@ from albert.resources.btmodel import BTModel, BTModelSession
 
 
 class BTModelSessionCollection(BaseCollection):
-    """
-    BTModelSessionCollection is a collection class for managing Breakthrough model session entities.
+    """Manage Breakthrough model sessions in the Albert platform.
+
+    Breakthrough is Albert's AI/ML modeling capability. A **model session**
+    (:class:`~albert.resources.btmodel.BTModelSession`) is the parent record that
+    groups a related set of trained models produced in a single modeling run. Each
+    session is built from a dataset (:class:`~albert.resources.btdataset.BTDataset`),
+    identified by ``dataset_id`` (format ``DST...``), and the individual models it
+    contains are managed through
+    :class:`~albert.collections.btmodel.BTModelCollection`.
+
+    Model sessions are identified by a model session ID (format ``MDS...``, e.g.
+    ``"MDS12"``).
+
+    This collection is accessed as ``client.btmodelsessions``.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base path for BTModelSession API requests.
+        The base API route for model session requests.
+
+    Methods
+    -------
+    create(model_session) -> BTModelSession
+        Create a new model session.
+    get_by_id(id) -> BTModelSession
+        Retrieve a single model session by its ID.
+    update(model_session) -> BTModelSession
+        Apply changes to an existing model session.
+    delete(id) -> None
+        Delete a model session by its ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        session = client.btmodelsessions.get_by_id(id="MDS12")
+        session.name
+        # 'Tensile strength study'
+        ```
     """
 
     _api_version = "v3"
@@ -30,15 +65,41 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def create(self, *, model_session: BTModelSession) -> BTModelSession:
-        """Create a new BTModelSession.
+        """Create a new model session.
+
+        A session groups the models produced from a single dataset. Set
+        ``dataset_id`` to the :class:`~albert.resources.btdataset.BTDataset` the
+        session is built from, and ``category`` to indicate whether it is a
+        user-built or Albert-built session.
+
         Parameters
         ----------
         model_session : BTModelSession
-            The BTModelSession instance to create.
+            The session to create. ``name``, ``category``, and ``dataset_id`` are
+            required.
+
         Returns
         -------
         BTModelSession
-            The created BTModelSession instance.
+            The newly created session, populated with its assigned ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
+
+            client = Albert()
+            session = BTModelSession(
+                name="Tensile strength study",
+                category=BTModelSessionCategory.USER_MODEL,
+                dataset_id="DST1",
+            )
+            created = client.btmodelsessions.create(model_session=session)
+            created.id
+            # 'MDS12'
+            ```
         """
         response = self.session.post(
             self.base_path,
@@ -48,36 +109,62 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTModelSessionId) -> BTModelSession:
-        """Retrieve a BTModelSession by its ID.
+        """Retrieve a single model session by its ID.
+
         Parameters
         ----------
         id : BTModelSessionId
-            The ID of the BTModelSession to retrieve.
+            The model session ID (format ``MDS...``, e.g. ``"MDS12"``).
+
         Returns
         -------
         BTModelSession
-            The retrieved BTModelSession instance.
+            The retrieved model session.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            session = client.btmodelsessions.get_by_id(id="MDS12")
+            session.name
+            # 'Tensile strength study'
+            ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTModelSession(**response.json())
 
     @validate_call
     def update(self, *, model_session: BTModelSession) -> BTModelSession:
-        """Update an existing BTModelSession.
+        """Update an existing model session.
+
+        Fetch the session (e.g. with :meth:`get_by_id`), modify the updatable
+        fields on the returned object, then pass it here. Only the fields listed
+        in Notes are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         model_session : BTModelSession
-            The BTModelSession instance with updated data.
+            The session to update. Must have a valid ``id``.
 
         Returns
         -------
         BTModelSession
-            The updated BTModelSession instance.
+            The updated session.
 
         Notes
         -----
         The following fields can be updated: ``flag``, ``name``, ``registry``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            session = client.btmodelsessions.get_by_id(id="MDS12")
+            session.name = "Tensile strength study (rev 2)"
+            updated = client.btmodelsessions.update(model_session=session)
+            updated.name
+            # 'Tensile strength study (rev 2)'
+            ```
         """
 
         path = f"{self.base_path}/{model_session.id}"
@@ -90,31 +177,70 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: BTModelSessionId) -> None:
-        """Delete a BTModelSession by ID.
+        """Delete a model session by its ID.
 
         Parameters
         ----------
         id : BTModelSessionId
-            The ID of the BTModelSession to delete.
+            The model session ID to delete (format ``MDS...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.btmodelsessions.delete(id="MDS12")
+            ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
 
 class BTModelCollection(BaseCollection):
-    """
-    BTModelCollection is a collection class for managing Breakthrough model entities.
+    """Manage individual Breakthrough models in the Albert platform.
 
-    Breakthrough models can be associated with a parent Breakthrough model session,
-    or a detached without a parent.
+    Breakthrough is Albert's AI/ML modeling capability. A **model**
+    (:class:`~albert.resources.btmodel.BTModel`) is a single trained model. A model
+    can either belong to a parent model session
+    (:class:`~albert.resources.btmodel.BTModelSession`), in which case its
+    ``parent_id`` is the session ID, or be **detached** (standalone, with no parent
+    session). Most methods here take an optional ``parent_id``: pass the session ID
+    to operate on a model within that session, or omit it to operate on a detached
+    model.
+
+    Models are identified by a model ID (format ``MDL...``, e.g. ``"MDL34"``).
+
+    This collection is accessed as ``client.btmodels``.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
+
+    Methods
+    -------
+    create(model, parent_id=None) -> BTModel
+        Create a new model, optionally within a parent session.
+    get_by_id(id, parent_id=None) -> BTModel
+        Retrieve a single model by its ID.
+    update(model, parent_id=None) -> BTModel
+        Apply changes to an existing model.
+    delete(id, parent_id=None) -> None
+        Delete a model by its ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+        model.state
+        # <BTModelState.COMPLETE: 'Complete'>
+        ```
     """
 
     _api_version = "v3"
@@ -142,20 +268,38 @@ class BTModelCollection(BaseCollection):
 
     @validate_call
     def create(self, *, model: BTModel, parent_id: BTModelSessionId | None = None) -> BTModel:
-        """
-        Create a new BTModel instance.
+        """Create a new model.
+
+        Pass ``parent_id`` to create the model inside an existing session
+        (:class:`~albert.resources.btmodel.BTModelSession`); omit it to create a
+        detached, standalone model.
 
         Parameters
         ----------
         model : BTModel
-            The BTModel instance to create.
-        parent_id : BTModelSessionId | None
-            The optional ID of the parent BTModelSession.
+            The model to create. ``name`` is required.
+        parent_id : BTModelSessionId, optional
+            The parent session ID (format ``MDS...``). If omitted, the model is
+            created as detached.
 
         Returns
         -------
         BTModel
-            The created BTModel instance.
+            The newly created model, populated with its assigned ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.btmodel import BTModel
+
+            client = Albert()
+            model = BTModel(name="Random forest v1")
+            created = client.btmodels.create(model=model, parent_id="MDS12")
+            created.id
+            # 'MDL34'
+            ```
         """
         base_path = self._get_base_path(parent_id)
         response = self.session.post(
@@ -166,20 +310,28 @@ class BTModelCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTModelId, parent_id: BTModelSessionId | None = None) -> BTModel:
-        """
-        Retrieve a BTModel by its ID.
+        """Retrieve a single model by its ID.
 
         Parameters
         ----------
         id : BTModelId
-            The ID of the BTModel to retrieve.
-        parent_id : BTModelSessionId | None
-            The optional ID of the parent BTModelSession.
+            The model ID (format ``MDL...``, e.g. ``"MDL34"``).
+        parent_id : BTModelSessionId, optional
+            The parent session ID (format ``MDS...``). Omit for a detached model.
 
         Returns
         -------
         BTModel
-            The retrieved BTModel instance.
+            The retrieved model.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+            model.name
+            # 'Random forest v1'
+            ```
         """
         base_path = self._get_base_path(parent_id)
         response = self.session.get(f"{base_path}/{id}")
@@ -187,24 +339,40 @@ class BTModelCollection(BaseCollection):
 
     @validate_call
     def update(self, *, model: BTModel, parent_id: BTModelSessionId | None = None) -> BTModel:
-        """
-        Update an existing BTModel.
+        """Update an existing model.
+
+        Fetch the model (e.g. with :meth:`get_by_id`), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         model : BTModel
-            The BTModel instance with updated data.
-        parent_id : BTModelSessionId | None
-            The optional ID of the parent BTModelSession.
+            The model to update. Must have a valid ``id``.
+        parent_id : BTModelSessionId, optional
+            The parent session ID (format ``MDS...``). Omit for a detached model.
 
         Returns
         -------
         BTModel
-            The updated BTModel instance.
+            The updated model.
 
         Notes
         -----
-        The following fields can be updated: ``end_time``, ``metadata``, ``model_binary_key``, ``name``, ``start_time``, ``state``, ``target``, ``total_time``, ``type``.
+        The following fields can be updated: ``end_time``, ``metadata``,
+        ``model_binary_key``, ``name``, ``start_time``, ``state``, ``target``,
+        ``total_time``, ``type``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+            model.name = "Random forest v2"
+            updated = client.btmodels.update(model=model, parent_id="MDS12")
+            updated.name
+            # 'Random forest v2'
+            ```
         """
         base_path = self._get_base_path(parent_id)
         payload = self._generate_patch_payload(
@@ -220,18 +388,25 @@ class BTModelCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: BTModelId, parent_id: BTModelSessionId | None = None) -> None:
-        """Delete a BTModel by ID.
+        """Delete a model by its ID.
 
         Parameters
         ----------
         id : BTModelId
-            The ID of the BTModel to delete.
-        parent_id : BTModelSessionId | None
-            The optional ID of the parent BTModelSession.
+            The model ID to delete (format ``MDL...``).
+        parent_id : BTModelSessionId, optional
+            The parent session ID (format ``MDS...``). Omit for a detached model.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.btmodels.delete(id="MDL34", parent_id="MDS12")
+            ```
         """
         base_path = self._get_base_path(parent_id)
         self.session.delete(f"{base_path}/{id}")

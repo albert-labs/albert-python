@@ -15,6 +15,24 @@ from albert.core.shared.models.base import BaseResource
 
 
 class BTInsightCategory(str, Enum):
+    """The kind of Breakthrough output an insight represents.
+
+    Attributes
+    ----------
+    OPTIMIZER : str
+        A standard optimizer result.
+    CUSTOM_OPTIMIZER : str
+        A custom-configured optimizer result.
+    IMPACT_CHART : str
+        An impact chart showing how inputs affect an outcome.
+    MOLECULE : str
+        A molecule-related insight.
+    SMART_DOE : str
+        A smart design-of-experiments result.
+    GENERATE : str
+        A generative result (e.g. generated candidates).
+    """
+
     OPTIMIZER = "Optimizer"
     CUSTOM_OPTIMIZER = "Custom Optimizer"
     IMPACT_CHART = "Impact Chart"
@@ -24,6 +42,22 @@ class BTInsightCategory(str, Enum):
 
 
 class BTInsightState(str, Enum):
+    """Progress state of a Breakthrough insight computation.
+
+    Attributes
+    ----------
+    QUEUED : str
+        The computation has been queued but has not started.
+    BUILDING_MODELS : str
+        Underlying models are being trained.
+    GENERATING_CANDIDATES : str
+        Candidate solutions are being generated.
+    COMPLETE : str
+        The computation has finished successfully.
+    ERROR : str
+        The computation failed.
+    """
+
     QUEUED = "Queued"
     BUILDING_MODELS = "Building Models"
     GENERATING_CANDIDATES = "Generating Candidates"
@@ -32,15 +66,31 @@ class BTInsightState(str, Enum):
 
 
 class BTInsightPayloadType(str, Enum):
+    """Which system produced an insight's payload.
+
+    Attributes
+    ----------
+    BREAKTHROUGH : str
+        Payload produced by Breakthrough.
+    ALBERTO : str
+        Payload produced by Alberto.
+    """
+
     BREAKTHROUGH = "Breakthrough"
     ALBERTO = "Alberto"
 
 
 class BTInsightRegistry(BaseAlbertModel):
-    """Registry for the BTInsight.
+    """Result metadata recorded for a Breakthrough insight.
 
-    Registry contains result metadata for the BTInsight.
-    Additional attributes can be added to the registry as needed.
+    Attributes
+    ----------
+    build_logs : dict or None
+        Free-form logs captured while the insight was computed.
+    metrics : dict or None
+        Free-form performance metrics recorded for the insight.
+    settings : dict or None
+        Free-form settings used to produce the insight.
     """
 
     build_logs: dict[str, Any] | None = Field(default=None, alias="BuildLogs")
@@ -49,6 +99,67 @@ class BTInsightRegistry(BaseAlbertModel):
 
 
 class BTInsight(BaseResource, protected_namespaces=()):
+    """An output or insight produced by Breakthrough.
+
+    Breakthrough is Albert's AI/ML modeling capability. An insight captures a
+    Breakthrough result, such as an optimizer run, impact chart, or set of
+    generated candidates. It can trace back to the dataset, model session, and
+    model it came from via ``dataset_id``, ``model_session_id``, and ``model_id``
+    (see :class:`~albert.resources.btdataset.BTDataset` and
+    :class:`~albert.resources.btmodel.BTModel`). Insights are managed through
+    :class:`~albert.collections.btinsight.BTInsightCollection`.
+
+    Attributes
+    ----------
+    name : str
+        Human-readable name of the insight.
+    category : BTInsightCategory
+        The kind of Breakthrough output this insight represents.
+    metadata : dict or None
+        Free-form metadata associated with the insight.
+    state : BTInsightState or None
+        Current progress state of the insight computation.
+    id : BTInsightId or None
+        Unique identifier of the insight (format ``INS...``). Assigned by Albert on
+        creation.
+    parent_id : ProjectId or None
+        Identifier of the project the insight belongs to (format ``PRO...``).
+    dataset_id : BTDatasetId or None
+        Identifier of the dataset the insight is based on (format ``DST...``).
+    model_session_id : BTModelSessionId or None
+        Identifier of the model session the insight came from (format ``MDS...``).
+    model_id : BTModelId or None
+        Identifier of the model the insight came from (format ``MDL...``).
+    output_key : str or None
+        Storage key for the insight's output artifact, if applicable.
+    start_time : str or None
+        When the insight computation started, if recorded.
+    end_time : str or None
+        When the insight computation finished, if recorded.
+    total_time : str or None
+        Total time taken to compute the insight, if recorded.
+    raw_payload : dict or None
+        The raw result payload produced for the insight.
+    payload_type : BTInsightPayloadType or None
+        Which system produced the payload.
+    registry : BTInsightRegistry or None
+        Result metadata (logs, metrics, settings) recorded for the insight.
+    content_edited : bool or None
+        Whether the insight's content has been manually edited.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.btinsight import BTInsight, BTInsightCategory
+
+        insight = BTInsight(
+            name="Cost optimizer run",
+            category=BTInsightCategory.OPTIMIZER,
+        )
+        ```
+    """
+
     name: str
     category: BTInsightCategory
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
