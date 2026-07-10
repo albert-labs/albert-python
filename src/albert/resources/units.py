@@ -6,47 +6,64 @@ from albert.core.shared.models.base import BaseResource
 
 
 class UnitCategory(str, Enum):
-    """
-    UnitCategory is an enumeration of possible unit categories.
+    """The physical quantity a unit measures.
 
     Attributes
     ----------
     LENGTH : str
-        Represents length units.
+        Length units (e.g. m, cm).
     VOLUME : str
-        Represents volume units.
+        Volume units (e.g. m³).
     LIQUID_VOLUME : str
-        Represents liquid volume units.
+        Liquid volume units (e.g. L, mL).
     ANGLES : str
-        Represents angle units.
+        Angle units (e.g. degrees, radians).
     TIME : str
-        Represents time units.
+        Time units (e.g. s, h).
     FREQUENCY : str
-        Represents frequency units.
+        Frequency units (e.g. Hz).
     MASS : str
-        Represents mass units.
+        Mass units (e.g. g, kg).
     CURRENT : str
-        Represents electric current units.
+        Electric current units (e.g. A).
     TEMPERATURE : str
-        Represents temperature units.
+        Temperature units (e.g. °C, K).
     AMOUNT : str
-        Represents amount of substance units.
+        Amount of substance units (e.g. mol).
     LUMINOSITY : str
-        Represents luminous intensity units.
+        Luminous intensity units (e.g. cd).
     FORCE : str
-        Represents force units.
+        Force units (e.g. N).
     ENERGY : str
-        Represents energy units.
+        Energy units (e.g. J).
     POWER : str
-        Represents power units.
+        Power units (e.g. W).
     PRESSURE : str
-        Represents pressure units.
+        Pressure units (e.g. Pa, bar).
     ELECTRICITY_AND_MAGNETISM : str
-        Represents electricity and magnetism units.
+        Electricity and magnetism units.
     OTHER : str
-        Represents other units.
+        Units that do not fit another category.
     WEIGHT : str
-        Represents weight units.
+        Weight units.
+    AREA : str
+        Area units (e.g. m²).
+    SURFACE_AREA : str
+        Surface area units.
+    BINARY : str
+        Binary/digital-information units (e.g. bytes).
+    CAPACITANCE : str
+        Capacitance units (e.g. F).
+    SPEED : str
+        Speed units (e.g. m/s).
+    ELECTRICAL_CONDUCTIVITY : str
+        Electrical conductivity units.
+    ELECTRICAL_PERMITTIVITY : str
+        Electrical permittivity units.
+    DENSITY : str
+        Density units (e.g. g/mL).
+    RESISTANCE : str
+        Electrical resistance units (e.g. Ω).
     """
 
     LENGTH = "Length"
@@ -79,25 +96,35 @@ class UnitCategory(str, Enum):
 
 
 class Unit(BaseResource):
-    """
-    Unit is a Pydantic model representing a unit entity.
+    """A unit of measure (e.g. ``g``, ``mL``, ``°C``).
+
+    Units qualify quantities throughout the platform: inventory amounts,
+    parameter values, and property results. Managed through
+    :class:`~albert.collections.units.UnitCollection` (``client.units``).
 
     Attributes
     ----------
-    id : str | None
-        The Albert ID of the unit. Set when the unit is retrieved from Albert.
+    id : str or None
+        The Albert ID of the unit (format ``UNI...``). Set when the unit is
+        retrieved from or created in Albert.
     name : str
-        The name of the unit.
-    symbol : str | None
-        The symbol of the unit.
-    synonyms : List[str] | None
-        The list of synonyms for the unit.
-    category : UnitCategory
-        The category of the unit.
-    verified : bool | None
-        Whether the unit is verified.
-    status : Status | None
-        The status of the unit. Allowed values are `active`, and `inactive`
+        The name of the unit (e.g. ``"gram"``).
+    symbol : str or None
+        The display symbol for the unit (e.g. ``"g"``).
+    synonyms : list[str] or None
+        Alternate names or spellings that also refer to this unit.
+    category : UnitCategory or None
+        The physical quantity the unit measures (e.g. ``Mass``, ``Volume``).
+    verified : bool or None
+        Whether the unit has been verified in Albert. Read-only.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.units import Unit, UnitCategory
+        unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
+        ```
     """
 
     id: str | None = Field(None, alias="albertId")

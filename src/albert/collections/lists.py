@@ -8,39 +8,70 @@ from albert.resources.lists import ListItem, ListItemCategory
 
 
 class ListsCollection(BaseCollection):
-    """ListsCollection is a collection class for managing ListItem entities in the Albert platform.
+    """Manage List Items in the Albert platform.
 
-    Example
+    A List Item is a single allowed value in a configurable list of options, such
+    as the choices offered by a dropdown custom field or a fixed set of category
+    values. Each item has a name, a category
+    (:class:`~albert.resources.lists.ListItemCategory`, e.g. ``userDefined`` or
+    ``inventory``), and a ``list_type`` that ties it to the specific list it
+    belongs to (often the name of a custom field).
+
+    This collection is accessed as ``client.lists``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for list requests.
+
+    Methods
     -------
+    create(list_item) -> ListItem
+        Register a new list item.
+    get_by_id(id) -> ListItem
+        Retrieve a single list item by its ID.
+    get_all(...) -> Iterator[ListItem]
+        Iterate over list items with optional filters.
+    get_matching_item(name, list_type) -> ListItem | None
+        Find a list item by name within a given list type.
+    update(list_item) -> ListItem
+        Apply changes to an existing list item.
+    delete(id) -> None
+        Delete a list item by its ID.
 
-    ```python
-    stages = [
-        "1. Discovery",
-        "2. Concept Validation",
-        "3. Proof of Concept",
-        "4. Prototype Development",
-        "5. Preliminary Evaluation",
-        "6. Feasibility Study",
-        "7. Optimization",
-        "8. Scale-Up",
-        "9. Regulatory Assessment",
-    ]
-    # Initialize the Albert client
-    client = Albert()
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.lists import ListItem
+        client = Albert()
 
-    # Get the custom field this list is associated with
-    stage_gate_field = client.custom_fields.get_by_id(id="CF123")
+        # Populate the options for a dropdown custom field with stage-gate values
+        stages = [
+            "1. Discovery",
+            "2. Concept Validation",
+            "3. Proof of Concept",
+            "4. Prototype Development",
+        ]
 
-    # Create the list items
-    for s in stages:
-        item = ListItem(
-            name=s,
-            category=stage_gate_field.category,
-            list_type=stage_gate_field.name,
-        )
+        # Get the custom field this list is associated with
+        stage_gate_field = client.custom_fields.get_by_id(id="CTF123")
 
-        client.lists.create(list_item=item)
-    ```
+        # Create the list items
+        for s in stages:
+            item = ListItem(
+                name=s,
+                category=stage_gate_field.category,
+                list_type=stage_gate_field.name,
+            )
+            client.lists.create(list_item=item)
+        ```
     """
 
     _updatable_attributes = {"name"}
@@ -68,26 +99,40 @@ class ListsCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[ListItem]:
-        """
-        Get all list entities with optional filters.
+        """Iterate over list items, with optional filters.
+
+        Results are fetched page by page as you iterate, so this scales to large
+        result sets without loading everything at once.
 
         Parameters
         ----------
         names : list[str], optional
-            A list of names to filter by.
+            One or more item names to filter by.
         category : ListItemCategory, optional
-            The category of the list items to filter by.
+            Restrict results to a single category (e.g. ``userDefined``, ``inventory``).
         list_type : str, optional
-            The list type to filter by.
+            Restrict results to a single list type (often a custom field name).
+        order_by : OrderBy, optional
+            Sort direction for results. Defaults to ``OrderBy.DESCENDING``.
         start_key : str, optional
-            The pagination key to start from.
+            Pagination key to resume iteration from a previous position.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matching items.
 
         Returns
         -------
         Iterator[ListItem]
-            An iterator of ListItem entities.
+            An iterator over the matching list items.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            items = client.lists.get_all(list_type="Stage Gate", max_items=50)
+            for item in items:
+                print(item.name)
+            ```
         """
         params = {
             "startKey": start_key,
@@ -107,35 +152,50 @@ class ListsCollection(BaseCollection):
         )
 
     def get_by_id(self, *, id: str) -> ListItem:
-        """
-        Retrieves a list entity by its ID.
+        """Retrieve a single list item by its ID.
 
         Parameters
         ----------
         id : str
-            The ID of the list entity to retrieve.
+            The ID of the list item to retrieve.
 
         Returns
         -------
-        List
-            A list entity.
+        ListItem
+            The matching list item.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            item = client.lists.get_by_id(id="...")
+            ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return ListItem(**response.json())
 
     def create(self, *, list_item: ListItem) -> ListItem:
-        """
-        Creates a list entity.
+        """Register a new list item.
 
         Parameters
         ----------
         list_item : ListItem
-            The list entity to create.
+            The list item to create.
 
         Returns
         -------
-        List
-            The created list entity.
+        ListItem
+            The newly created list item, including its assigned ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.lists import ListItem, ListItemCategory
+            item = client.lists.create(
+                list_item=ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
+            )
+            ```
         """
         response = self.session.post(
             self.base_path,
@@ -144,35 +204,52 @@ class ListsCollection(BaseCollection):
         return ListItem(**response.json())
 
     def delete(self, *, id: str) -> None:
-        """
-        Delete a lists entry item by its ID.
+        """Delete a list item by its ID.
 
         Parameters
         ----------
         id : str
-            The ID of the lists item.
+            The ID of the list item to delete.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.lists.delete(id="...")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
     def get_matching_item(self, *, name: str, list_type: str) -> ListItem | None:
-        """Get a list item by name and list type.
+        """Find a list item by name within a given list type.
+
+        Performs a ranked search and returns the first item whose name matches
+        ``name`` (case-insensitive) within the given list type.
 
         Parameters
         ----------
         name : str
-            The name of it item to retrieve.
+            The name of the item to retrieve.
         list_type : str
-            The type of list (can be the name of the custom field)
+            The list type to search within (often the name of a custom field).
 
         Returns
         -------
-        ListItem | None
-            A list item with the provided name and list type, or None if not found.
+        ListItem or None
+            The matching list item, or None if no item with that name and list
+            type exists.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            item = client.lists.get_matching_item(name="In Progress", list_type="Stage Gate")
+            ```
         """
         for list_item in self.get_all(names=[name], list_type=list_type, max_items=20):
             # since it's a ranked search, we only need to check the first few results
@@ -181,21 +258,34 @@ class ListsCollection(BaseCollection):
         return None
 
     def update(self, *, list_item=ListItem) -> ListItem:
-        """Update a list item.
+        """Apply changes to an existing list item.
+
+        Fetch a list item (e.g. via :meth:`get_by_id`), modify its name, then pass
+        it here. The item is matched by its ``id``. If nothing changed, the
+        existing item is returned unmodified.
 
         Parameters
         ----------
         list_item : ListItem
-            The list item to update.
+            The list item carrying the desired changes. Must have its ``id`` set.
 
         Returns
         -------
         ListItem
-            The updated list item.
+            The updated list item, re-fetched from Albert.
 
         Notes
         -----
         The following fields can be updated: ``name``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            item = client.lists.get_by_id(id="...")
+            item.name = "Completed"
+            updated = client.lists.update(list_item=item)
+            ```
         """
         existing = self.get_by_id(id=list_item.id)
         patches = self._generate_patch_payload(

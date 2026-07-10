@@ -10,13 +10,52 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 
 
 class AttachmentCategory(str, Enum):
+    """The kind of file an attachment represents."""
+
     OTHER = "Other"
+    """A general-purpose file with no specialized handling."""
     SDS = "SDS"
+    """A Safety Data Sheet document, typically carrying hazard metadata."""
     LABEL = "Label"
+    """A product or container label."""
     SCRIPT = "Script"
+    """An executable or automation script."""
 
 
 class AttachmentMetadata(BaseAlbertModel):
+    """Optional safety and classification metadata for an attachment.
+
+    Populated primarily for SDS attachments (see
+    :meth:`~albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item`).
+
+    Attributes
+    ----------
+    symbols : list[HazardSymbol] | None
+        Hazard pictograms/symbols associated with the material.
+    un_number : str | None
+        The UN number identifying the hazardous substance.
+    storage_class : str | None
+        The storage class code for the material.
+    storage_class_name : str | None
+        The human-readable storage class name. Read-only.
+    hazard_statement : list[HazardStatement] | None
+        Hazard statements (e.g. H-phrases) for the material.
+    jurisdiction : str | None
+        The resolved jurisdiction name. Read-only.
+    language : str | None
+        The resolved language name. Read-only.
+    jurisdiction_code : str | None
+        The jurisdiction code for the document (e.g. ``"US"``).
+    language_code : str | None
+        The language code for the document (e.g. ``"EN"``).
+    wgk : str | None
+        The German water hazard class (Wassergefährdungsklasse) classification.
+    description : str | None
+        A free-text description of the attachment.
+    extensions : list[EntityLinkWithName] | None
+        Links to related extension entities.
+    """
+
     symbols: list[HazardSymbol] | None = Field(default=None, alias="Symbols")
     un_number: str | None = Field(default=None, alias="unNumber")
     storage_class: str | None = Field(default=None, alias="storageClass")
@@ -32,8 +71,57 @@ class AttachmentMetadata(BaseAlbertModel):
 
 
 class Attachment(BaseResource):
-    """Used for attching files to Notes on Tasks, Projects, Inventory, etc.
-    Key should match File.name"""
+    """A record linking an uploaded file to a parent entity in Albert.
+
+    Attachments associate a stored file with a parent entity such as a Note,
+    Task, Project, or Inventory Item. The file itself is uploaded through the
+    :class:`~albert.collections.files.FileCollection`; the attachment's ``key``
+    must match the stored :attr:`~albert.resources.files.FileInfo.name`.
+    Attachments are managed through the
+    :class:`~albert.collections.attachments.AttachmentCollection`.
+
+    Attributes
+    ----------
+    id : AttachmentId | None
+        The Albert ID of the attachment (format ``ATT...``). Assigned by Albert
+        when the attachment is created.
+    parent_id : str
+        The ID of the entity the file is attached to. Must include the full
+        entity prefix (e.g. ``"INVA1"``).
+    name : str
+        The display name of the attached file.
+    key : str
+        The storage key of the underlying file; matches the uploaded file's name.
+    namespace : str
+        The storage namespace of the file. Defaults to ``"result"``.
+    category : AttachmentCategory | str | None
+        The kind of file (e.g. SDS, Label). See :class:`AttachmentCategory`.
+    revision_date : date | None
+        The revision date of the document, when applicable (e.g. for SDS files).
+    file_size : int | None
+        The size of the file in bytes. Read-only.
+    mime_type : str | None
+        The MIME type of the file. Read-only.
+    signed_url : str | None
+        A temporary signed download URL. Read-only.
+    signed_url_v2 : str | None
+        A temporary signed download URL (v2). Read-only.
+    metadata : AttachmentMetadata | None
+        Optional safety and classification metadata. See
+        :class:`AttachmentMetadata`.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.attachments import Attachment
+        attachment = Attachment(
+            parent_id="INVA1",
+            name="datasheet.pdf",
+            key="INVA1/documents/datasheet.pdf",
+        )
+        ```
+    """
 
     id: AttachmentId | None = Field(default=None, alias="albertId")
     parent_id: str = Field(..., alias="parentId")

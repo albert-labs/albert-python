@@ -15,18 +15,66 @@ from albert.resources.files import (
 
 
 class FileCollection(BaseCollection):
-    """FileCollection is a collection class for managing File entities in the Albert platform."""
+    """Manage File storage and uploads in the Albert platform.
+
+    This collection is the low-level file storage mechanism behind Albert. Files
+    are uploaded to and downloaded from S3-backed storage using short-lived
+    signed URLs, and are organized by namespace (see
+    :class:`~albert.resources.files.FileNamespace`). Files are the underlying
+    storage for :class:`~albert.collections.attachments.AttachmentCollection`;
+    to attach a file to an entity, upload it here and then create an attachment
+    whose ``key`` matches the stored file name. The ``upload_and_attach_*``
+    helpers on the attachment collection combine both steps.
+
+    This collection is accessed as ``client.files``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for file requests.
+
+    Methods
+    -------
+    get_by_name(name, namespace, generic=False) -> FileInfo
+        Retrieve stored file metadata by name and namespace.
+    get_signed_download_url(name, namespace, ...) -> str
+        Get a temporary signed URL to download a file.
+    get_signed_upload_url(name, namespace, content_type, ...) -> str
+        Get a temporary signed URL to upload a file.
+    sign_and_upload_file(data, name, namespace, content_type, ...) -> None
+        Sign and upload a file in one step.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.files import FileNamespace
+        client = Albert()
+        with open("results.csv", "rb") as fh:
+            client.files.sign_and_upload_file(
+                data=fh,
+                name="INVA1/results.csv",
+                namespace=FileNamespace.RESULT,
+                content_type="text/csv",
+            )
+        ```
+    """
 
     _api_version: str = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize the FileCollection with the provided session.
+        """Initialize the FileCollection with the provided session.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{FileCollection._api_version}/files"
@@ -38,21 +86,35 @@ class FileCollection(BaseCollection):
         namespace: FileNamespace,
         generic: bool = False,
     ) -> FileInfo:
-        """Gets a file by name and namespace.
+        """Get stored file metadata by name and namespace.
 
         Parameters
         ----------
         name : str
-            The Name of the file
+            The name (storage key) of the file.
         namespace : FileNamespace
-            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+            The namespace the file is stored in (e.g. ``AGENT``, ``BREAKTHROUGH``,
+            ``PIPELINE``, ``PUBLIC``, ``RESULT``, ``SDS``).
         generic : bool, optional
-            TODO: _description_, by default False
+            Whether to look up the file in the shared, non-tenant-specific file
+            space rather than the tenant's own space. Defaults to False.
 
         Returns
         -------
         FileInfo
-            The file information related to the matching file.
+            Metadata for the matching file.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.files import FileNamespace
+            info = client.files.get_by_name(
+                name="INVA1/results.csv", namespace=FileNamespace.RESULT
+            )
+            info.size
+            # 2048
+            ```
         """
         params = {
             "name": name,
@@ -71,23 +133,37 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> str:
-        """Get a signed download URL for a file.
+        """Get a temporary signed URL for downloading a file.
 
         Parameters
         ----------
         name : str
-            The Name of the file
+            The name (storage key) of the file.
         namespace : FileNamespace
-            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+            The namespace the file is stored in (e.g. ``AGENT``, ``BREAKTHROUGH``,
+            ``PIPELINE``, ``PUBLIC``, ``RESULT``, ``SDS``).
         version_id : str | None, optional
-            The version of the file, by default None
+            A specific file version to download. Defaults to None (latest).
+        generic : bool, optional
+            Whether to resolve the file in the shared, non-tenant-specific file
+            space rather than the tenant's own space. Defaults to False.
         category : FileCategory | None, optional
-            The file category (E.g., SDS, OTHER), by default None
+            The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
 
         Returns
         -------
         str
-            S3 signed URL.
+            A short-lived S3 signed download URL.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.files import FileNamespace
+            url = client.files.get_signed_download_url(
+                name="INVA1/results.csv", namespace=FileNamespace.RESULT
+            )
+            ```
         """
         params = {
             "name": name,
@@ -111,23 +187,43 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> str:
-        """Get a signed upload URL for a file.
+        """Get a temporary signed URL for uploading a file.
+
+        The returned URL can be used with an HTTP ``PUT`` to upload file contents
+        directly to storage. In most cases, prefer :meth:`sign_and_upload_file`,
+        which performs both the signing and the upload.
 
         Parameters
         ----------
         name : str
-            The Name of the file
+            The name (storage key) to store the file under.
         namespace : FileNamespace
-            The namespace of the file (e.g. AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+            The namespace to store the file in (e.g. ``AGENT``, ``BREAKTHROUGH``,
+            ``PIPELINE``, ``PUBLIC``, ``RESULT``, ``SDS``).
         content_type : str
-            The content type of the file
+            The MIME type of the file (e.g. ``"text/csv"``).
+        generic : bool, optional
+            Whether to store the file in the shared, non-tenant-specific file
+            space rather than the tenant's own space. Defaults to False.
         category : FileCategory | None, optional
-            The File category (E.g., SDS, OTHER), by default None
+            The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
 
         Returns
         -------
         str
-            S3 signed URL.
+            A short-lived S3 signed upload URL.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.files import FileNamespace
+            url = client.files.get_signed_upload_url(
+                name="INVA1/results.csv",
+                namespace=FileNamespace.RESULT,
+                content_type="text/csv",
+            )
+            ```
         """
         params = {"generic": json.dumps(generic)}
 
@@ -158,24 +254,47 @@ class FileCollection(BaseCollection):
         generic: bool = False,
         category: FileCategory | None = None,
     ) -> None:
-        """Sign and upload a file to Albert.
+        """Sign and upload a file to Albert in one step.
+
+        Requests a signed upload URL and streams the file contents to storage.
+        This is the primary way to store a file; the resulting stored name can
+        then be used as an attachment ``key`` (see
+        :class:`~albert.collections.attachments.AttachmentCollection`).
 
         Parameters
         ----------
         data : IO
-            The file data
+            An open, readable binary file-like object with the file contents.
         name : str
-            The name of the file
+            The name (storage key) to store the file under.
         namespace : FileNamespace
-            The File Namespace (e.g., AGENT, BREAKTHROUGH, PIPELINE, PUBLIC, RESULT, SDS)
+            The namespace to store the file in (e.g. ``AGENT``, ``BREAKTHROUGH``,
+            ``PIPELINE``, ``PUBLIC``, ``RESULT``, ``SDS``).
         content_type : str
-            The content type of the file
+            The MIME type of the file (e.g. ``"text/csv"``).
+        generic : bool, optional
+            Whether to store the file in the shared, non-tenant-specific file
+            space rather than the tenant's own space. Defaults to False.
         category : FileCategory | None, optional
-            The category of the file (E.g., SDS, OTHER), by default None
+            The category of the file (e.g. ``SDS``, ``OTHER``). Defaults to None.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.files import FileNamespace
+            with open("results.csv", "rb") as fh:
+                client.files.sign_and_upload_file(
+                    data=fh,
+                    name="INVA1/results.csv",
+                    namespace=FileNamespace.RESULT,
+                    content_type="text/csv",
+                )
+            ```
         """
         upload_url = self.get_signed_upload_url(
             name=name,
