@@ -20,19 +20,68 @@ from albert.resources.custom_templates import (
 
 
 class CustomTemplatesCollection(BaseCollection):
-    """CustomTemplatesCollection is a collection class for managing CustomTemplate entities in the Albert platform."""
+    """Manage Custom Templates in the Albert platform.
+
+    A Custom Template is a reusable, pre-configured template that seeds a new
+    entity with a standard setup. Depending on its
+    :class:`~albert.resources.custom_templates.TemplateCategory`, a template can
+    prefill a Property task, Batch task, Sheet, Notebook, or a general task with
+    default fields such as project, location, assignee, inventories, workflow,
+    priority, and metadata. Applying a template saves users from rebuilding the
+    same configuration each time.
+
+    Custom Template IDs use the ``CTP`` prefix. This is configuration/schema-level
+    data.
+
+    This collection is accessed as ``client.custom_templates``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for custom template requests.
+
+    Methods
+    -------
+    create(custom_template) -> list[CustomTemplate]
+        Register one or more custom templates (up to 10 at once).
+    get_by_id(id) -> CustomTemplate
+        Retrieve a single fully populated template by its Custom Template ID.
+    search(...) -> Iterator[CustomTemplateSearchItem]
+        Fast, lightweight search returning partial templates.
+    get_all(...) -> Iterator[CustomTemplate]
+        Iterate over fully populated templates matching optional filters.
+    delete(id) -> None
+        Delete a template by its Custom Template ID.
+    update_acl(custom_template_id, acl_class=None, acls=None) -> CustomTemplate
+        Replace a template's ACL class and/or access entries.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        template = client.custom_templates.get_by_id(id="CTP1")
+        template.name
+        # 'Standard Property Task'
+        ```
+    """
 
     # _updatable_attributes = {"symbol", "synonyms", "category"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CustomTemplatesCollection with the provided session.
+        """Initialize a CustomTemplatesCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{CustomTemplatesCollection._api_version}/customtemplates"
@@ -43,18 +92,39 @@ class CustomTemplatesCollection(BaseCollection):
         *,
         custom_template: CustomTemplate | list[CustomTemplate],
     ) -> list[CustomTemplate]:
-        """
-        Creates one or more custom templates.
+        """Register one or more custom templates.
+
+        Up to 10 templates can be created in a single call. Each created template
+        is re-fetched so the returned entities are fully populated.
 
         Parameters
         ----------
-        custom_template : CustomTemplate | list[CustomTemplate]
-            The template entities to create.
+        custom_template : CustomTemplate or list[CustomTemplate]
+            The template(s) to create. At least one and at most 10 are required.
 
         Returns
         -------
         list[CustomTemplate]
-            The created CustomTemplate entities.
+            The newly created templates, each populated with its assigned Custom
+            Template ID.
+
+        Raises
+        ------
+        ValueError
+            If no templates are provided, or if more than 10 are provided.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.custom_templates import CustomTemplate
+            client = Albert()
+            template = CustomTemplate(name="Standard Property Task")
+            created = client.custom_templates.create(custom_template=template)
+            created[0].id
+            # 'CTP1'
+            ```
         """
         templates = ensure_list(custom_template) or []
         if len(templates) == 0:
@@ -135,17 +205,26 @@ class CustomTemplatesCollection(BaseCollection):
         return hydrated_templates
 
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
-        """Get a Custom Template by ID
+        """Retrieve a single, fully populated custom template by its ID.
 
         Parameters
         ----------
-        id : str
-            id of the custom template
+        id : CustomTemplateId
+            The Custom Template ID (format ``CTP...``).
 
         Returns
         -------
         CustomTemplate
-            The CutomTemplate with the provided ID
+            The fully populated template.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            template = client.custom_templates.get_by_id(id="CTP1")
+            template.name
+            # 'Standard Property Task'
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -170,49 +249,60 @@ class CustomTemplatesCollection(BaseCollection):
         my_role: str | list[str] | None = None,
         max_items: int | None = None,
     ) -> Iterator[CustomTemplateSearchItem]:
-        """
-        Search for CustomTemplate matching the provided criteria.
+        """Search for custom templates matching the given criteria.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        Returns lightweight, partially populated results and is the fastest way to
+        look templates up. When you need complete templates, use :meth:`get_all`,
+        or pass a resulting ID to :meth:`get_by_id`. Results are returned as a
+        lazily paginated iterator.
 
         Parameters
         ----------
         text : str, optional
-            Free text search term.
-        offset : int, optional
-            Starting offset for pagination.
+            Free-text search term.
         sort_by : str, optional
             Field to sort on.
         order_by : OrderBy, optional
-            Sort direction for `sort_by`.
-        status : Status | str, optional
+            Sort direction for ``sort_by``.
+        status : Status, optional
             Filter results by template status.
         created_by : str, optional
-            Filter by creator id.
-        category : TemplateCategory | list[TemplateCategory], optional
-            Filter by template categories.
-        created_by_name : str | list[str], optional
+            Filter by creator ID.
+        category : TemplateCategory or list[TemplateCategory], optional
+            Filter by template category (or categories).
+        created_by_name : str or list[str], optional
             Filter by creator display name(s).
-        collaborator : str | list[str], optional
-            Filter by collaborator ids.
+        collaborator : str or list[str], optional
+            Filter by collaborator ID(s).
         facet_text : str, optional
-            Filter text within a facet.
+            Text to match within a facet.
         facet_field : str, optional
-            Facet field to search inside.
-        contains_field : str | list[str], optional
-            Fields to apply contains search to.
-        contains_text : str | list[str], optional
-            Text values for contains search.
-        my_role : str | list[str], optional
-            Restrict templates to roles held by the calling user.
+            The facet field to search inside.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        my_role : str or list[str], optional
+            Restrict results to templates where the calling user holds the given
+            role(s).
         max_items : int, optional
-            Maximum number of items to yield client-side.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[CustomTemplateSearchItem]
-            An iterator of CustomTemplateSearchItem items.
+            A lazily paginated iterator of partially populated search results.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            hits = client.custom_templates.search(text="stability", max_items=10)
+            first = next(iter(hits))
+            first.name
+            # 'Stability Property Task'
+            ```
         """
 
         params = {
@@ -252,25 +342,38 @@ class CustomTemplatesCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[CustomTemplate]:
-        """Iterate over CustomTemplate entities with optional filters.
+        """Iterate over fully populated custom templates matching the filters.
+
+        Returns complete ``CustomTemplate`` entities rather than lightweight
+        search results, so prefer :meth:`search` when you only need names, IDs, or
+        counts. Results are returned as a lazily paginated iterator.
 
         Parameters
         ----------
-        name : str | list[str], optional
+        name : str or list[str], optional
             Filter by template name(s).
         created_by : str, optional
-            Filter by creator id.
+            Filter by creator ID.
         category : TemplateCategory, optional
-            Filter by category.
+            Filter by template category.
         start_key : str, optional
-            Provide the `lastKey` from a previous request to resume pagination.
+            Provide the ``lastKey`` from a previous request to resume pagination.
         max_items : int, optional
-            Maximum number of items to return.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[CustomTemplate]
-            An iterator of CustomTemplates.
+            A lazily paginated iterator of fully populated templates.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for template in client.custom_templates.get_all(max_items=25):
+                print(template.id, template.name)
+            ```
         """
         params = {
             "startKey": start_key,
@@ -290,17 +393,23 @@ class CustomTemplatesCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CustomTemplateId) -> None:
-        """
-        Delete a custom template by id.
+        """Delete a custom template by its ID.
 
         Parameters
         ----------
         id : CustomTemplateId
-            The id of the custom template to delete.
+            The Custom Template ID to delete (format ``CTP...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.custom_templates.delete(id="CTP1")
+            ```
         """
 
         url = f"{self.base_path}/{id}"
@@ -314,22 +423,41 @@ class CustomTemplatesCollection(BaseCollection):
         acl_class: str | None = None,
         acls: list[ACL] | None = None,
     ) -> CustomTemplate:
-        """
-        Replace a template's ACL class and/or entries with the provided values.
+        """Replace a template's ACL class and/or access entries.
+
+        Updates who can access a template. Provide ``acl_class`` to change the
+        ACL class, ``acls`` to replace the list of access entries, or both. When
+        ``acls`` is given, the template's current entries are diffed against it so
+        that entries are added, updated, or removed as needed.
 
         Parameters
         ----------
         custom_template_id : CustomTemplateId
-            The id of the custom template to update.
-        acl_class : str | None, optional
-            The ACL class to set (if provided).
-        acls : list[ACL] | None, optional
-            The ACL entries to replace on the template.
+            The Custom Template ID to update (format ``CTP...``).
+        acl_class : str, optional
+            The ACL class to set on the template.
+        acls : list[ACL], optional
+            The full set of ACL entries the template should end up with.
 
         Returns
         -------
         CustomTemplate
-            The updated CustomTemplate.
+            The updated template.
+
+        Raises
+        ------
+        ValueError
+            If neither ``acl_class`` nor ``acls`` is provided.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            template = client.custom_templates.update_acl(
+                custom_template_id="CTP1",
+                acl_class="private",
+            )
+            ```
         """
 
         if acl_class is None and acls is None:

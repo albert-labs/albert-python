@@ -17,36 +17,64 @@ from albert.resources.activities import (
 
 
 class ActivityCollection(BaseCollection):
-    """ActivityCollection manages Activity entities in the Albert platform.
+    """Read the Albert activity feed (audit trail) for entities and users.
+
+    An Activity is a single logged event in Albert's audit trail, recording an
+    action (such as a read or a write) performed on an entity by a user. The feed
+    is used to answer questions like "what changed on this item and when" or
+    "what has this user done recently". Activities are produced by the platform
+    and are read-only through the SDK; there is no create, update, or delete.
+
+    Use :meth:`get_all` to page through the raw feed scoped to a single entity,
+    user, or date, and :meth:`search` to run a full-text/filtered query across
+    activity records.
+
+    This collection is accessed as ``client.activities``.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for activity API requests.
+        The base API route for activity requests.
 
     Methods
     -------
     get_all(type, ...) -> Iterator[Activity]
-        Lists activity entities with optional filters.
+        Page through the activity feed scoped by entity, user, or date.
     search(...) -> Iterator[ActivitySearchItem]
-        Searches activity records using full-text and filter criteria.
+        Search activity records using full-text and filter criteria.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.activities import ActivityType
+
+        client = Albert()
+        # Recent activity for a single entity, newest first
+        for activity in client.activities.get_all(
+            type=ActivityType.ENTITY_ID,
+            id="INVA1",
+            max_items=25,
+        ):
+            print(activity.name, activity.action)
+        ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the ActivityCollection with the provided session.
+        """Initialize an ActivityCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ActivityCollection._api_version}/activities"
@@ -64,33 +92,59 @@ class ActivityCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Activity]:
-        """Lists Activity entities with optional filters
+        """Page through the activity feed scoped by entity, user, or date.
+
+        Returns the raw activity records for a single scope, chosen with ``type``:
+        the events for one entity, one user, one parent entity, one UUID, or a
+        date/date range. Results are a lazily paginated iterator, so iterating
+        fetches additional pages on demand. To run a broader full-text or
+        multi-filter query instead, use :meth:`search`.
 
         Parameters
         ----------
         type : ActivityType
-            The type of Id for which activities will be fetched.
-        start_key : str | None, optional
-            The primary key of the first item that this operation will evaluate.
-        id : str | None, optional
-            Unique id value for the selected type. This field is not supported for ActivityType.DATE_RANGE type, by default None
-        start_date : date | None, optional
-            The start date of the activities to list, by default None
-        end_date : date | None, optional
-            The end date of the activities to list, by default None
-        action : ActivityAction | None, optional
-            List activities with read/write operations, by default ActivityAction.WRITE
-        order_by : OrderBy | None, optional
-            The order by which to sort the results, by default OrderBy.DESCENDING
-        operation_id : ActivityOperationId | None, optional
-            OperationId of id for which activities will be fetched. Applicable only for recency support of sds/bl, by default ActivityOperationId.POST_SDS
+            Which kind of scope ``id`` (and the date filters) refer to, for example
+            a single entity, a user, or a date range. See :class:`~albert.resources.activities.ActivityType`.
+        id : str, optional
+            The identifier of the scope selected by ``type`` (e.g. an entity or
+            user ID). Not supported when ``type`` is ``ActivityType.DATE_RANGE``.
+        start_date : date, optional
+            Only include activities on or after this date.
+        end_date : date, optional
+            Only include activities on or before this date.
+        operation_id : ActivityOperationId, optional
+            Restrict to a specific logged operation. Applies only to recency
+            support for SDS/label events. See
+            :class:`~albert.resources.activities.ActivityOperationId`.
+        action : ActivityAction, optional
+            Whether to list read or write activities. Defaults to
+            ``ActivityAction.WRITE``.
+        order_by : OrderBy, optional
+            Sort direction. Defaults to ``OrderBy.DESCENDING`` (newest first).
+        start_key : str, optional
+            Pagination key of the first record to evaluate; used to resume paging.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of records to return in total. If None, iterates over
+            all available records.
 
         Returns
         -------
         Iterator[Activity]
-            An iterator of Activity objects.
+            A lazily paginated iterator of activity records.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.activities import ActivityType
+
+            for activity in client.activities.get_all(
+                type=ActivityType.ENTITY_ID,
+                id="INVA1",
+                max_items=10,
+            ):
+                print(activity.name, activity.action)
+            ```
         """
         params = {
             "type": type,
@@ -131,14 +185,20 @@ class ActivityCollection(BaseCollection):
         activity_id: list[str] | None = None,
         max_items: int | None = None,
     ) -> Iterator[ActivitySearchItem]:
-        """Searches activity records using full-text and filter criteria.
+        """Search activity records using full-text and filter criteria.
+
+        Returns lightweight :class:`~albert.resources.activities.ActivitySearchItem`
+        results and is the flexible way to query the audit trail across entities
+        and users at once (e.g. everything a set of users did to a given object
+        type in a date window). To page the raw feed for a single entity or user
+        instead, use :meth:`get_all`. Results are a lazily paginated iterator.
 
         Parameters
         ----------
         text : str, optional
-            Free-text search across activity fields.
+            Free-text query matched across activity fields.
         sort_by : str, optional
-            Field to sort results by. Valid value: ``loggedAt``.
+            Field to sort results by. Supported value: ``"loggedAt"``.
         order_by : OrderBy, optional
             Sort direction, ascending or descending.
         operation_id : list[str], optional
@@ -150,7 +210,7 @@ class ActivityCollection(BaseCollection):
         user_role : list[str], optional
             Filter by one or more user roles.
         object_id : list[str], optional
-            Filter by one or more object IDs.
+            Filter by one or more object (entity) IDs.
         object_type : list[str], optional
             Filter by one or more object types.
         object_class : list[str], optional
@@ -164,12 +224,22 @@ class ActivityCollection(BaseCollection):
         activity_id : list[str], optional
             Filter by one or more activity IDs.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of records to return in total. If None, iterates over
+            all matches.
 
         Returns
         -------
         Iterator[ActivitySearchItem]
-            An iterator of ActivitySearchItem objects matching the search criteria.
+            A lazily paginated iterator of matching search results.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            hits = client.activities.search(text="titanium dioxide", max_items=10)
+            for hit in hits:
+                print(hit.logged_at, hit.name)
+            ```
         """
         params = {
             "text": text,

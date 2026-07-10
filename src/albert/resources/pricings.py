@@ -11,7 +11,17 @@ from albert.resources.locations import Location
 
 
 class LeadTimeUnit(str, Enum):
-    """The unit of measure for the provided lead time."""
+    """The unit of measure for a pricing's lead time.
+
+    Attributes
+    ----------
+    DAYS : str
+        Lead time expressed in days.
+    WEEKS : str
+        Lead time expressed in weeks.
+    MONTHS : str
+        Lead time expressed in months.
+    """
 
     DAYS = "Days"
     WEEKS = "Weeks"
@@ -19,34 +29,60 @@ class LeadTimeUnit(str, Enum):
 
 
 class Pricing(BaseResource):
-    """A Price of a given InventoryItem at a given Location.
+    """A price entry for an Inventory Item at a given company and location.
+
+    A pricing records the cost of a material
+    (:class:`~albert.resources.inventory.InventoryItem`) from a particular
+    company, at a particular location. A single item can have many pricings.
+    Create pricings with
+    :meth:`~albert.collections.pricings.PricingCollection.create`.
 
     Attributes
     ----------
     id : str | None
         The Albert ID of the pricing. Set when the pricing is retrieved from Albert.
-    inventory_id : str
-        The Albert ID of the inventory item.
+    inventory_id : str | None
+        The Inventory ID of the item this pricing is for (format ``INV...``).
     company : Company
-        The company that the pricing belongs to.
+        The company the price is quoted from.
     location : Location
-        The location that the pricing belongs to.
+        The location the price applies to.
     description : str | None
-        The description of the pricing. Optional.
+        Free-text description of the pricing.
     pack_size : str | None
-        The pack size of the pricing. Optional. Used to calculate the cost per unit.
+        The pack size the price is quoted for. Used to derive cost per unit.
     price : float
-        The price of the pricing IN CURRENCY/ KG or CURRENCY/L! Must do the conversion! Depends on InventoryItem's unit of measure.
+        The price, expressed per kilogram or per liter (currency/kg or
+        currency/L) depending on the item's unit of measure. Convert to that
+        basis before setting.
     currency : str
-        The currency of the pricing. Defaults to `USD`.
+        The currency code for ``price``. Defaults to ``"USD"``.
     fob : str | None
-        The FOB of the pricing. Optional.
+        The FOB (free-on-board) shipping term for the pricing.
     lead_time : int | None
-        The lead time of the pricing. Optional.
+        The lead time value, in the unit given by ``lead_time_unit``.
     lead_time_unit : LeadTimeUnit | None
-        The unit of measure for the provided lead time. Optional.
+        The unit of measure for ``lead_time``.
     expiration_date : str | None
-        The expiration date of the pricing. YYYY-MM-DD format.
+        The date the pricing expires, in ``YYYY-MM-DD`` format.
+    default : int | None
+        Whether this is the default pricing for the item. Read-only.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.pricings import Pricing
+        from albert.resources.companies import Company
+        from albert.resources.locations import Location
+
+        pricing = Pricing(
+            inventory_id="INVA1",
+            company=Company(name="Acme Chemicals"),
+            location=Location(name="Pittsburgh"),
+            price=12.50,
+        )
+        ```
     """
 
     id: str | None = Field(default=None, alias="albertId")
@@ -67,14 +103,18 @@ class Pricing(BaseResource):
 
 
 class InventoryPricings(BaseAlbertModel):
-    """Pricings for a given InventoryItem.
+    """The pricings belonging to a single Inventory Item.
+
+    Returned by
+    :meth:`~albert.collections.pricings.PricingCollection.get_by_inventory_ids`
+    to group each item's pricings under its inventory ID.
 
     Attributes
     ----------
-    inventory_id : Inventory
-        The inventory ID the pricings belong to.
+    inventory_id : str
+        The Inventory ID the pricings belong to (format ``INV...``).
     pricings : list[Pricing]
-        The list of pricings.
+        The pricings for that item.
     """
 
     inventory_id: InventoryId = Field(..., alias="id")
@@ -82,5 +122,15 @@ class InventoryPricings(BaseAlbertModel):
 
 
 class PricingBy(str, Enum):
+    """A dimension to group or filter pricings by.
+
+    Attributes
+    ----------
+    LOCATION : str
+        Group or filter pricings by location.
+    COMPANY : str
+        Group or filter pricings by company.
+    """
+
     LOCATION = "Location"
     COMPANY = "Company"

@@ -10,7 +10,21 @@ from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
-    """The type of the custom field."""
+    """The value type stored by a custom field.
+
+    Attributes
+    ----------
+    LIST : str
+        A value (or values) chosen from a predefined list.
+    STRING : str
+        A free-text string value.
+    NUMBER : str
+        A numeric value.
+    DATE : str
+        A calendar date value.
+    TIMESTAMP : str
+        A date-and-time value.
+    """
 
     LIST = "list"
     STRING = "string"
@@ -20,7 +34,33 @@ class FieldType(str, Enum):
 
 
 class ServiceType(str, Enum):
-    """The service type the custom field is associated with"""
+    """The Albert entity a custom field is attached to.
+
+    Attributes
+    ----------
+    INVENTORIES : str
+        Field applies to Inventory Items.
+    LOTS : str
+        Field applies to Lots.
+    PROJECTS : str
+        Field applies to Projects.
+    TASKS : str
+        Field applies to Tasks.
+    USERS : str
+        Field applies to Users.
+    PARAMETERS : str
+        Field applies to Parameters.
+    DATA_COLUMNS : str
+        Field applies to Data Columns.
+    DATA_TEMPLATES : str
+        Field applies to Data Templates.
+    PARAMETER_GROUPS : str
+        Field applies to Parameter Groups.
+    CAS : str
+        Field applies to CAS records.
+    SUBSTANCES : str
+        Field applies to Substances.
+    """
 
     INVENTORIES = "inventories"
     LOTS = "lots"
@@ -36,14 +76,42 @@ class ServiceType(str, Enum):
 
 
 class FieldCategory(str, Enum):
-    """The ACL level of the custom field"""
+    """Who is allowed to add new items to a list custom field.
+
+    Attributes
+    ----------
+    BUSINESS_DEFINED : str
+        Only admins can add new allowed items to the list.
+    USER_DEFINED : str
+        General users can add new allowed items to the list.
+    """
 
     BUSINESS_DEFINED = "businessDefined"
     USER_DEFINED = "userDefined"
 
 
 class EntityCategory(str, Enum):
-    """The entity category of the custom field. Only some categories are allowed for certain services"""
+    """An entity category a custom field can apply to.
+
+    Only some categories are valid for a given service.
+
+    Attributes
+    ----------
+    FORMULAS : str
+        Formulas inventory category.
+    RAW_MATERIALS : str
+        Raw materials inventory category.
+    CONSUMABLES : str
+        Consumables inventory category.
+    EQUIPMENT : str
+        Equipment inventory category.
+    PROPERTY : str
+        Property (measurement) category.
+    BATCH : str
+        Batch (formulation) category.
+    GENERAL : str
+        General category.
+    """
 
     FORMULAS = "Formulas"
     RAW_MATERIALS = "RawMaterials"
@@ -55,20 +123,44 @@ class EntityCategory(str, Enum):
 
 
 class UIComponent(str, Enum):
-    """The UI component available to the custom field"""
+    """Where in the UI a custom field is surfaced.
+
+    Attributes
+    ----------
+    CREATE : str
+        Shown on the entity's creation form.
+    DETAILS : str
+        Shown on the entity's details view.
+    """
 
     CREATE = "create"
     DETAILS = "details"
 
 
 class CustomFieldApiMethod(str, Enum):
-    """HTTP methods supported by API-driven custom fields."""
+    """HTTP method used to fetch values for an API-backed custom field.
+
+    Attributes
+    ----------
+    GET : str
+        Values are fetched with an HTTP GET request.
+    """
 
     GET = "GET"
 
 
 class CustomFieldAPI(BaseAlbertModel):
-    """Configuration for API-backed custom fields."""
+    """Configuration for a custom field whose values come from a remote API.
+
+    Attributes
+    ----------
+    endpoint : str or None
+        The URL the field's values are fetched from.
+    method : CustomFieldApiMethod or None
+        The HTTP method used to fetch values.
+    query_params_field : list[str] or None
+        Names of other fields whose values are passed as query parameters.
+    """
 
     endpoint: str | None = Field(default=None)
     method: CustomFieldApiMethod | None = Field(default=None)
@@ -76,24 +168,63 @@ class CustomFieldAPI(BaseAlbertModel):
 
 
 class ListDefaultValue(BaseAlbertModel):
+    """A single allowed item used as a default for a list custom field.
+
+    Attributes
+    ----------
+    id : str
+        The ID of the list item.
+    name : str
+        The display name of the list item.
+    """
+
     id: str = Field(alias="albertId")
     name: str
 
 
 class StringDefault(BaseAlbertModel):
+    """The default value for a string custom field.
+
+    Attributes
+    ----------
+    type : FieldType
+        Always ``FieldType.STRING``.
+    value : str
+        The default string value.
+    """
+
     type: Literal[FieldType.STRING] = FieldType.STRING
     value: str
 
 
 class NumberDefault(BaseAlbertModel):
+    """The default value for a number custom field.
+
+    Attributes
+    ----------
+    type : FieldType
+        Always ``FieldType.NUMBER``.
+    value : int or float
+        The default numeric value.
+    """
+
     type: Literal[FieldType.NUMBER] = FieldType.NUMBER
     value: int | float
 
 
 class ListDefault(BaseAlbertModel):
-    """
-    !!! note
-        For multi-select custom fields, `value` must be `list[ListDefaultValue]`.
+    """The default value for a list custom field.
+
+    Attributes
+    ----------
+    type : FieldType
+        Always ``FieldType.LIST``.
+    value : ListDefaultValue or list[ListDefaultValue]
+        The default list item(s).
+
+    Notes
+    -----
+    For multi-select custom fields, ``value`` must be a ``list[ListDefaultValue]``.
     """
 
     type: Literal[FieldType.LIST] = FieldType.LIST
@@ -107,52 +238,87 @@ Default = Annotated[
 
 
 class CustomField(BaseResource):
-    """A custom field for an entity in Albert.
+    """A custom field definition in Albert.
 
-    Returns
-    -------
-    CustomField
-        A CustomField that can be used to attach Metadata to an entity in Albert.
+    A custom field defines an allowed metadata field on an Albert entity. Once
+    defined, its ``name`` may be used as a key in the ``metadata`` dict of the
+    matching entity (Project, Inventory Item, User, Task, Lot, etc.), and its
+    type and validation rules constrain the stored value. Create and manage
+    custom fields through
+    :class:`~albert.collections.custom_fields.CustomFieldCollection`.
+
     Attributes
-    ------
+    ----------
     name : str
-        The name of the custom field. Cannot contain spaces.
-    id : str | None
-        The Albert ID of the custom field.
+        The field name (used as the metadata key). Cannot contain spaces.
+    id : str or None
+        The Custom Field ID (format ``CTF...``). Assigned by Albert on creation.
     field_type : FieldType
-        The type of the custom field. Allowed values are `list`, `string`, and `number`.
-        `string` and `list` fields are searchable; `number` fields are not searchable.
+        The value type of the field (e.g. ``list``, ``string``, ``number``).
+        ``string`` and ``list`` fields can be searchable; ``number`` fields
+        cannot.
     display_name : str
-        The display name of the custom field. Can contain spaces.
-    searchable : bool | None
-        Whether the custom field is searchable, optional. Defaults to False. This is supported
-        for `list` and `string` fields; `number` fields can not be searchable.
+        The human-readable label for the field. Can contain spaces. Limited to 40
+        characters.
+    searchable : bool or None
+        Whether the field is searchable. Defaults to False. Supported for ``list``
+        and ``string`` fields only.
     service : ServiceType
-        The service type the custom field is associated with.
-    hidden : bool | None
-        Whether the custom field is hidden, optional. Defaults to False.
-    lookup_column : bool | None
-        Whether the custom field is a lookup column, optional. Defaults to False. Only allowed for inventories.
-    lookup_row : bool | None
-        Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
-    category : FieldCategory | None
-        The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
-    min : int | float | None
-        The minimum value of the custom field, optional. Defaults to None.
-    max : int | float | None
-        The maximum value of the custom field, optional. Defaults to None.
-    entity_categories : list[EntityCategory] | None
-        The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
-    custom_entity_categories : list[str] | None
+        The Albert entity the field is attached to.
+    hidden : bool or None
+        Whether the field is hidden. Defaults to False.
+    lookup_column : bool or None
+        Whether the field is a lookup column. Defaults to False. Only allowed for
+        inventories.
+    lookup_row : bool or None
+        Whether the field is a lookup row. Defaults to False. Only allowed for
+        formulas in inventories.
+    category : FieldCategory or None
+        Who may add new items to a list field. Required for ``list`` fields.
+    min : int or float or None
+        The minimum allowed value (or, for list fields, minimum selections).
+    max : int or float or None
+        The maximum allowed value (or, for list fields, maximum selections).
+    entity_categories : list[EntityCategory] or None
+        The entity categories the field applies to. Required for lookup row
+        fields.
+    custom_entity_categories : list[str] or None
         Custom entity categories that define where the field is valid.
-    ui_components : list[UIComponent] | None
-        The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
-    default: Default | None
-        The default value of the custom field, optional. Defaults to None.
-    editable: bool | None
-        Decides whether the field should be editable on UI or not.
-    api: CustomFieldAPI | None
-        API configuration for fields backed by remote data sources.
+    ui_components : list[UIComponent] or None
+        Where the field is surfaced in the UI (``create`` and/or ``details``).
+    required : bool or None
+        Whether a value for the field is required.
+    multiselect : bool or None
+        For list fields, whether multiple values may be selected.
+    editable : bool or None
+        Whether the field can be edited in the UI.
+    pattern : str or None
+        A validation pattern the field's value must match.
+    default : Default or None
+        The default value applied to the field.
+    api : CustomFieldAPI or None
+        Configuration for fields whose values are backed by a remote API.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.custom_fields import (
+            CustomField,
+            FieldCategory,
+            FieldType,
+            ServiceType,
+        )
+        stage_gate_field = CustomField(
+            name="stage_gate_status",
+            display_name="Stage Gate",
+            field_type=FieldType.LIST,
+            service=ServiceType.PROJECTS,
+            min=1,
+            max=1,
+            category=FieldCategory.BUSINESS_DEFINED,
+        )
+        ```
     """
 
     name: str
@@ -213,7 +379,25 @@ class CustomField(BaseResource):
 
 
 class SearchableCustomField(BaseAlbertModel):
-    """Metadata describing custom fields exposed to search."""
+    """A descriptor for a custom field that is exposed to search.
+
+    Returned by
+    :meth:`~albert.collections.custom_fields.CustomFieldCollection.get_searchable_fields`
+    to describe how a field can be queried and sorted in search.
+
+    Attributes
+    ----------
+    label : str
+        The field's display label.
+    type : str
+        The field's value type.
+    is_sortable : bool or None
+        Whether search results can be sorted by this field.
+    sort_by_param : str or None
+        The parameter name to use when sorting by this field.
+    is_custom : bool
+        Whether the field is a custom field (as opposed to a standard field).
+    """
 
     label: str
     type: str

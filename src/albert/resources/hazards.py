@@ -6,7 +6,7 @@ from albert.core.shared.models.base import EntityLinkWithName
 
 
 class HazardSymbolStatus(str, Enum):
-    """The status of a HazardSymbol.
+    """The status of a :class:`HazardSymbol`.
 
     Attributes
     ----------
@@ -24,12 +24,40 @@ class HazardSymbolStatus(str, Enum):
 
 
 class HazardSymbol(EntityLinkWithName):
-    """Model representing a hazard symbol."""
+    """A GHS hazard pictogram symbol from the platform reference list.
+
+    Returned by
+    :meth:`~albert.collections.hazards.HazardsCollection.get_symbols`.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the hazard symbol.
+    name : str | None
+        The display name of the hazard symbol.
+    category : str | None
+        The category of the hazard symbol, when set.
+    status : HazardSymbolStatus | None
+        Whether the symbol is active, inactive, or was added manually.
+    """
 
     status: HazardSymbolStatus | None = Field(default=None)
 
 
 class HazardStatement(EntityLinkWithName):
-    """Model representing a hazard statement."""
+    """A GHS hazard statement from the platform reference list.
+
+    Returned by
+    :meth:`~albert.collections.hazards.HazardsCollection.get_statements`.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the hazard statement.
+    name : str | None
+        The text of the hazard statement.
+    category : str | None
+        The category of the hazard statement, when set.
+    """
 
     pass

@@ -18,52 +18,85 @@ from albert.utils.custom_fields import _generate_custom_field_patch_payload
 
 
 class CustomFieldCollection(BaseCollection):
-    """
-    CustomFieldCollection is a collection class for managing CustomField entities in the Albert platform.
+    """Manage Custom Fields in the Albert platform.
 
-    This collection provides methods to create, update, retrieve, and list custom fields.
-    CustomFields allow you to store custom metadata on a `Project`, `InventoryItem`, `User`, `BaseTask` (Tasks), and `Lot`.
+    A Custom Field defines an allowed metadata field on an Albert entity. The
+    ``metadata`` dicts on entities such as Projects, Inventory Items, Users, Tasks,
+    and Lots may only use fields that have been defined here; a Custom Field is
+    the schema that gives a metadata key its name, type, and validation rules.
 
-    The `FieldType` used determines the shape of the metadata field's value.
-    If the `FieldType` is `LIST`, then the `FieldCategory` defines the ACL needed to add new allowed items to the given list:
+    The field's :class:`~albert.resources.custom_fields.FieldType` determines the
+    shape of the stored value (e.g. ``string``, ``number``, ``list``). When the
+    type is ``list``, the :class:`~albert.resources.custom_fields.FieldCategory`
+    determines who may add new allowed items to that list:
 
-    - `FieldCategory.USER_DEFINED`: allows general users to add items
-    - `FieldCategory.BUSINESS_DEFINED`: only admins can add new items to the list
+    - ``FieldCategory.USER_DEFINED`` — general users can add items.
+    - ``FieldCategory.BUSINESS_DEFINED`` — only admins can add items.
 
-    Example
+    Custom Field IDs use the ``CTF`` prefix. This is configuration/schema-level
+    data.
+
+    This collection is accessed as ``client.custom_fields``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for custom field requests.
+
+    Methods
+    -------
+    create(custom_field) -> CustomField
+        Register a new custom field.
+    get_by_id(id) -> CustomField
+        Retrieve a single custom field by its Custom Field ID.
+    get_by_name(name, service=None) -> CustomField | None
+        Retrieve a custom field by its name.
+    get_all(...) -> Iterator[CustomField]
+        Iterate over custom fields matching optional filters.
+    get_searchable_fields(entity) -> dict[str, SearchableCustomField]
+        Return the searchable custom fields configured for an entity/service.
+    update(custom_field) -> CustomField
+        Apply changes to an existing custom field.
+    delete(id) -> None
+        Delete a custom field by its Custom Field ID.
+
+    Examples
     --------
-
-    ```python
-    # Creating some custom fields
-    from albert import Albert
-    from albert.resources.custom_fields import CustomField, FieldCategory, FieldType, ServiceType
-    from albert.resources.lists import ListItem
-    from albert.resources.projects import Project
-
-    # Initialize the Albert client
-    client = Albert()
-
-    # Define the custom fields
-    stage_gate_field = CustomField(
-        name="stage_gate_status",
-        display_name="Stage Gate",
-        field_type=FieldType.LIST,
-        service=ServiceType.PROJECTS,
-        min=1,
-        max=1,
-        category=FieldCategory.BUSINESS_DEFINED  # Defined by the business
-    )
-    justification_field = CustomField(
-        name="justification",
-        display_name="Project Justification",
-        field_type=FieldType.STRING,
-        service=ServiceType.PROJECTS,
-    )
-
-    # Create the custom fields
-    client.custom_fields.create(custom_field=stage_gate_field)
-    client.custom_fields.create(custom_field=justification_field)
-    ```
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.custom_fields import (
+            CustomField,
+            FieldCategory,
+            FieldType,
+            ServiceType,
+        )
+        client = Albert()
+        # A business-defined single-select list field on Projects
+        stage_gate_field = CustomField(
+            name="stage_gate_status",
+            display_name="Stage Gate",
+            field_type=FieldType.LIST,
+            service=ServiceType.PROJECTS,
+            min=1,
+            max=1,
+            category=FieldCategory.BUSINESS_DEFINED,
+        )
+        # A free-text field on Projects
+        justification_field = CustomField(
+            name="justification",
+            display_name="Project Justification",
+            field_type=FieldType.STRING,
+            service=ServiceType.PROJECTS,
+        )
+        client.custom_fields.create(custom_field=stage_gate_field)
+        client.custom_fields.create(custom_field=justification_field)
+        ```
     """
 
     _updatable_attributes = {
@@ -86,48 +119,73 @@ class CustomFieldCollection(BaseCollection):
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CustomFieldCollection with the provided session.
+        """Initialize a CustomFieldCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{CustomFieldCollection._api_version}/customfields"
 
     @validate_call
     def get_by_id(self, *, id: CustomFieldId) -> CustomField:
-        """Get a CustomField item by its ID.
+        """Retrieve a single custom field by its ID.
 
         Parameters
         ----------
-        id : str
-            The ID of the CustomField item.
+        id : CustomFieldId
+            The Custom Field ID (format ``CTF...``).
 
         Returns
         -------
         CustomField
-            The CustomField item.
+            The matching custom field.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            cf = client.custom_fields.get_by_id(id="CTF1")
+            cf.name
+            # 'stage_gate_status'
+            ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return CustomField(**response.json())
 
     def get_by_name(self, *, name: str, service: ServiceType | None = None) -> CustomField | None:
-        """Get a CustomField item by its name.
+        """Retrieve a custom field by its name.
+
+        Matching is case-insensitive. Pass ``service`` to disambiguate when the
+        same field name is used across different services.
 
         Parameters
         ----------
         name : str
-            The name of the CustomField item.
-        service : ServiceType | None, optional
-            The service the field relates to, by default None
+            The name of the custom field (the ``name`` attribute, not the display
+            name).
+        service : ServiceType, optional
+            The service the field relates to. Defaults to all services.
 
         Returns
         -------
-        CustomField | None
-            The CustomField item, or None if not found.
+        CustomField or None
+            The matching custom field, or None if not found.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            cf = client.custom_fields.get_by_name(
+                name="stage_gate_status",
+                service=ServiceType.PROJECTS,
+            )
+            cf.id if cf else "not found"
+            # 'CTF1'
+            ```
         """
         for custom_field in self.get_all(name=name, service=service):
             if custom_field.name.lower() == name.lower():
@@ -147,34 +205,49 @@ class CustomFieldCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[CustomField]:
-        """
-        Get all CustomField entities with optional filters.
+        """Iterate over custom fields matching the given filters.
+
+        Results are returned as a lazily paginated iterator, so iterating fetches
+        additional pages on demand.
 
         Parameters
         ----------
         name : str, optional
-            The name of the field.
-        type: FieldType, optional
-            The type of the custom field.
+            Filter by field name.
+        type : FieldType, optional
+            Filter by field type (e.g. ``string``, ``number``, ``list``).
         service : ServiceType, optional
-            The related service the field belongs to.
+            Filter by the service the field belongs to.
         lookup_column : bool, optional
-            Whether the field is related to a lookup column.
+            Filter to fields that are (or are not) lookup columns.
         lookup_row : bool, optional
-            Whether the field is related to a lookup row.
-        entity_category : EntityCategory | None, optional
+            Filter to fields that are (or are not) lookup rows.
+        entity_category : EntityCategory, optional
             Filter by supported entity category for the field.
-        custom_entity_category : str | None, optional
+        custom_entity_category : str, optional
             Filter by custom entity category configured for the field.
         start_key : str, optional
-            Pagination key to start fetching from.
+            Provide the ``lastKey`` from a previous request to resume pagination.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[CustomField]
-            An iterator over matching CustomField entities.
+            A lazily paginated iterator of matching custom fields.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            for cf in client.custom_fields.get_all(
+                service=ServiceType.PROJECTS,
+                max_items=50,
+            ):
+                print(cf.id, cf.name)
+            ```
         """
         params = {
             "name": name,
@@ -198,17 +271,32 @@ class CustomFieldCollection(BaseCollection):
 
     @validate_call
     def get_searchable_fields(self, *, entity: ServiceType) -> dict[str, SearchableCustomField]:
-        """Return the custom fields that are configured as searchable for a given entity.
+        """Return the custom fields configured as searchable for an entity.
+
+        Only ``string`` and ``list`` fields can be made searchable. Use this to
+        discover which metadata paths on an entity can be queried in search.
 
         Parameters
         ----------
         entity : ServiceType
-            Entity/service to fetch searchable fields for.
+            The entity/service to fetch searchable fields for.
 
         Returns
         -------
         dict[str, SearchableCustomField]
-            Mapping of metadata paths to searchable field descriptors.
+            Mapping of metadata paths to their searchable field descriptors.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            fields = client.custom_fields.get_searchable_fields(
+                entity=ServiceType.PROJECTS
+            )
+            list(fields)
+            # ['Metadata.stage_gate_status', ...]
+            ```
         """
 
         response = self.session.get(
@@ -219,17 +307,42 @@ class CustomFieldCollection(BaseCollection):
         return {key: SearchableCustomField(**value) for key, value in response.items()}
 
     def create(self, *, custom_field: CustomField) -> CustomField:
-        """Create a new CustomField item.
+        """Register a new custom field.
 
         Parameters
         ----------
         custom_field : CustomField
-            The CustomField item to create.
+            The custom field to create. ``name``, ``display_name``,
+            ``field_type``, and ``service`` are required; ``list`` fields also
+            require a ``category``.
 
         Returns
         -------
         CustomField
-            The created CustomField item with its ID.
+            The newly created custom field, populated with its assigned Custom
+            Field ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.custom_fields import (
+                CustomField,
+                FieldType,
+                ServiceType,
+            )
+            client = Albert()
+            field = CustomField(
+                name="justification",
+                display_name="Project Justification",
+                field_type=FieldType.STRING,
+                service=ServiceType.PROJECTS,
+            )
+            created = client.custom_fields.create(custom_field=field)
+            created.id
+            # 'CTF1'
+            ```
         """
         response = self.session.post(
             self.base_path,
@@ -238,21 +351,41 @@ class CustomFieldCollection(BaseCollection):
         return CustomField(**response.json())
 
     def update(self, *, custom_field: CustomField) -> CustomField:
-        """Update a CustomField item.
+        """Update an existing custom field.
+
+        Fetch the field (e.g. with :meth:`get_by_id`), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         custom_field : CustomField
-            The updated CustomField item. The ID must be set and match the Field you want to update.
+            The custom field to update. Its ``id`` must be set and match the field
+            being updated.
 
         Returns
         -------
         CustomField
-            The updated CustomField item as registered in Albert.
+            The updated custom field as registered in Albert.
 
         Notes
         -----
-        The following fields can be updated: ``custom_entity_categories``, ``default``, ``display_name``, ``editable``, ``entity_categories``, ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``, ``multiselect``, ``pattern``, ``required``, ``searchable``, ``ui_components``.
+        The following fields can be updated: ``custom_entity_categories``,
+        ``default``, ``display_name``, ``editable``, ``entity_categories``,
+        ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``,
+        ``multiselect``, ``pattern``, ``required``, ``searchable``,
+        ``ui_components``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            cf = client.custom_fields.get_by_id(id="CTF1")
+            cf.display_name = "Updated display name"
+            updated = client.custom_fields.update(custom_field=cf)
+            updated.display_name
+            # 'Updated display name'
+            ```
         """
         # fetch current object state
         current_object = self.get_by_id(id=custom_field.id)
@@ -278,15 +411,22 @@ class CustomFieldCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CustomFieldId) -> None:
-        """Delete a CustomField item by its ID.
+        """Delete a custom field by its ID.
 
         Parameters
         ----------
         id : CustomFieldId
-            The ID of the CustomField item to delete.
+            The Custom Field ID to delete (format ``CTF...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.custom_fields.delete(id="CTF1")
+            ```
         """
         self.session.delete(f"{self.base_path}/{id}")

@@ -10,16 +10,26 @@ TeamRole = Literal["TeamOwner", "TeamViewer"]
 
 
 class TeamMember(BaseAlbertModel):
-    """A user belonging to a team.
+    """A user's membership in a team, pairing a user with their team role.
 
     Attributes
     ----------
     id : str
-        The Albert user ID.
+        The Albert User ID (format ``USR...``) of the member.
     name : str | None
         The display name of the user.
     role : TeamRole | None
-        The team role. Must be ``"TeamOwner"`` or ``"TeamViewer"``.
+        The member's role within the team: ``"TeamOwner"`` (can manage the
+        team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"``
+        when unset.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.teams import TeamMember
+        member = TeamMember(id="USR12", role="TeamOwner")
+        ```
     """
 
     id: UserId
@@ -28,16 +38,33 @@ class TeamMember(BaseAlbertModel):
 
 
 class Team(BaseResource):
-    """Represents a Team on the Albert Platform.
+    """A named group of users on the Albert platform.
+
+    Teams share access: entity ACLs and Task assignments can reference a whole
+    team rather than individual users. Each member is a
+    :class:`~albert.resources.teams.TeamMember` pairing a
+    :class:`~albert.resources.users.User` with a team role.
 
     Attributes
     ----------
     id : str | None
-        The Albert ID of the team. Set when the team is retrieved from Albert.
+        The Albert Team ID (format ``TEM...``). Set once the team is registered
+        in or retrieved from Albert.
     name : str
-        The name of the team.
+        The display name of the team.
     members : list[TeamMember] | None
-        The members of the team with their names and roles.
+        The members of the team, each with their name and team role.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.teams import Team, TeamMember
+        team = Team(
+            name="Coatings R&D",
+            members=[TeamMember(id="USR12", role="TeamOwner")],
+        )
+        ```
     """
 
     id: TeamId | None = Field(default=None, alias="albertId")

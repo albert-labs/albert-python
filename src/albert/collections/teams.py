@@ -14,17 +14,26 @@ from albert.resources.users import User
 
 
 class TeamCollection(BaseCollection):
-    """TeamCollection manages Team entities in the Albert platform.
+    """Manage Teams in the Albert platform.
+
+    A Team is a named group of users
+    (:class:`~albert.resources.users.User`). Each member holds a team role
+    (owner or viewer) that governs their rights within the team. Teams are used
+    to share access: entity ACLs and Task assignments can reference a whole team
+    rather than individual users. A team is identified by its Team ID (format
+    ``TEM...``, e.g. ``"TEM1"``).
+
+    This collection is accessed as ``client.teams``.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for team API requests.
+        The base API route for team requests.
 
     Methods
     -------
@@ -42,6 +51,17 @@ class TeamCollection(BaseCollection):
         Adds users to a team.
     remove_users(id, users) -> Team
         Removes users from a team.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        team = client.teams.create(name="Coatings R&D")
+        for member in team.members or []:
+            print(member.id, member.role)
+        ```
     """
 
     _api_version = "v3"
@@ -94,6 +114,14 @@ class TeamCollection(BaseCollection):
         -------
         Iterator[Team]
             An iterator of Team entities matching the filters.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for team in client.teams.get_all(name="Coatings", exact_match=False):
+                print(team.id, team.name)
+            ```
         """
         params: dict = {}
         if name is not None:
@@ -128,6 +156,15 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The Team entity.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name
+            # 'Coatings R&D'
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -147,12 +184,27 @@ class TeamCollection(BaseCollection):
         name : str
             The name of the team.
         members : list[TeamMember], optional
-            Members to add to the team on creation, each with an ID and role.
+            Members to add to the team on creation, each with a User ID and a
+            team role. Members default to the ``TeamViewer`` role when none is
+            given.
 
         Returns
         -------
         Team
-            The created Team.
+            The created Team, populated with its assigned Team ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            team = client.teams.create(
+                name="Coatings R&D",
+                members=[TeamMember(id="USR12", role="TeamOwner")],
+            )
+            team.id
+            # 'TEM1'
+            ```
         """
         payload: dict = {"name": name}
         if members:
@@ -177,6 +229,22 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The updated Team.
+
+        Notes
+        -----
+        The following can be updated: the team ``name``, its membership (adding
+        or removing :class:`~albert.resources.teams.TeamMember` entries), and
+        each member's ``role``. Setting ``members`` to an empty list removes all
+        members; leaving it as ``None`` leaves membership unchanged.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name = "Coatings & Adhesives R&D"
+            updated = client.teams.update(team=team)
+            ```
         """
         current = self.get_by_id(id=team.id)
         url = f"{self.base_path}/{team.id}"
@@ -259,6 +327,13 @@ class TeamCollection(BaseCollection):
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.teams.delete(id="TEM1")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -277,18 +352,30 @@ class TeamCollection(BaseCollection):
         id : TeamId
             The ID of the team.
         members : list[TeamMember]
-            The members to add, each with an ID and role.
+            The members to add, each with a User ID and a team role. Members
+            default to the ``TeamViewer`` role when none is given.
 
         Raises
         ------
         AlbertException
-            If any of the provided users is already a member. Use ``update``
+            If any of the provided users is already a member. Use :meth:`update`
             to change an existing member's role.
 
         Returns
         -------
         Team
             The updated Team.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            client.teams.add_users(
+                id="TEM1",
+                members=[TeamMember(id="USR34", role="TeamViewer")],
+            )
+            ```
         """
         current = self.get_by_id(id=id)
         existing_ids = {m.id for m in current.members or []}
@@ -339,6 +426,13 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The updated Team.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.teams.remove_users(id="TEM1", users=["USR34"])
+            ```
         """
         current = self.get_by_id(id=id)
         existing_ids = {m.id for m in current.members or []}

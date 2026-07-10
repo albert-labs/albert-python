@@ -41,6 +41,26 @@ class TemplateEntityType(BaseAlbertModel):
 
 
 class TemplateCategory(str, Enum):
+    """The kind of entity a custom template configures.
+
+    Attributes
+    ----------
+    PROPERTY_LIST : str
+        A property task template (``"Property Task"``).
+    PROPERTY : str
+        A property (measurement) template.
+    BATCH : str
+        A batch (formulation) task template.
+    SHEET : str
+        A worksheet template.
+    NOTEBOOK : str
+        A notebook template.
+    GENERAL : str
+        A general task template.
+    QC_BATCH : str
+        A batch task template with quality-control steps (``"BatchWithQC"``).
+    """
+
     PROPERTY_LIST = "Property Task"
     PROPERTY = "Property"
     BATCH = "Batch"
@@ -51,6 +71,18 @@ class TemplateCategory(str, Enum):
 
 
 class Priority(str, Enum):
+    """The priority assigned to a task created from a template.
+
+    Attributes
+    ----------
+    LOW : str
+        Low priority.
+    MEDIUM : str
+        Medium priority.
+    HIGH : str
+        High priority.
+    """
+
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
@@ -71,6 +103,18 @@ class GeneralData(BaseTaggedResource):
 
 
 class JobStatus(str, Enum):
+    """The status of a SAM (self-automating method) configuration job.
+
+    Attributes
+    ----------
+    ACTIVE : str
+        The job is active.
+    INACTIVE : str
+        The job is inactive.
+    QUEUED : str
+        The job is queued to run.
+    """
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     QUEUED = "queued"
@@ -163,6 +207,20 @@ CustomTemplateData = Annotated[_CustomTemplateDataUnion, Field(discriminator="ca
 
 
 class ACLType(str, Enum):
+    """The kind of access-control entry on a custom template.
+
+    Attributes
+    ----------
+    TEAM : str
+        A team-level access entry.
+    MEMBER : str
+        A member with edit access.
+    OWNER : str
+        An owner with full control.
+    VIEWER : str
+        A viewer with read-only access.
+    """
+
     TEAM = "team"
     MEMBER = "member"
     OWNER = "owner"
@@ -194,28 +252,50 @@ class TemplateACL(BaseResource):
 
 
 class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
-    """A custom template entity.
+    """A reusable custom template in Albert.
+
+    A custom template captures a standard entity setup so it can be applied
+    repeatedly. Its :attr:`category` selects what kind of entity it configures
+    (see :class:`TemplateCategory`), and its :attr:`data` holds the category-
+    specific defaults (project, location, assignee, inventories, workflow,
+    priority, and so on). Manage templates through
+    :class:`~albert.collections.custom_templates.CustomTemplatesCollection`.
 
     Attributes
     ----------
     name : str
         The name of the template.
-    id : str
-        The Albert ID of the template. Set when the template is retrieved from Albert.
+    id : CustomTemplateId or None
+        The Custom Template ID (format ``CTP...``). Set when the template is
+        retrieved from or created in Albert.
     category : TemplateCategory
-        The category of the template.
-    metadata : Dict[str, str | List[EntityLink] | EntityLink] | None
-        The metadata of the template. Allowed Metadata fields can be found using Custim Fields.
-    data : CustomTemplateData | None
-        The data of the template.
-    entity_type : TemplateEntityType | None
+        The kind of entity the template configures. Defaults to
+        ``TemplateCategory.GENERAL``.
+    metadata : dict[str, MetadataItem] or None
+        Metadata values for the template. Allowed metadata keys are those defined
+        as Custom Fields (see
+        :class:`~albert.collections.custom_fields.CustomFieldCollection`).
+    data : CustomTemplateData or None
+        The category-specific configuration the template applies.
+    entity_type : TemplateEntityType or None
         The entity type associated with the template.
-    locked : bool | None
+    locked : bool or None
         Whether the template is locked when loaded in the UI.
-    team : List[TeamACL] | None
-        The team of the template.
-    acl : TemplateACL | None
+    team : list[TeamACL] or None
+        The teams associated with the template.
+    acl : TemplateACL or None
+        The access-control list governing who can use the template.
 
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.custom_templates import CustomTemplate, TemplateCategory
+        template = CustomTemplate(
+            name="Standard Property Task",
+            category=TemplateCategory.PROPERTY,
+        )
+        ```
     """
 
     name: str
@@ -264,6 +344,39 @@ class CustomTemplateSearchItemTeam(BaseAlbertModel):
 
 
 class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
+    """A lightweight custom template returned by search.
+
+    Returned by
+    :meth:`~albert.collections.custom_templates.CustomTemplatesCollection.search`,
+    this is a partially populated view of a template optimized for fast lookups.
+    Hydrate it (or call
+    :meth:`~albert.collections.custom_templates.CustomTemplatesCollection.get_by_id`)
+    to obtain the full :class:`CustomTemplate`.
+
+    Attributes
+    ----------
+    name : str
+        The name of the template.
+    id : CustomTemplateId
+        The Custom Template ID (format ``CTP...``).
+    created_by_name : str
+        The display name of the user who created the template.
+    created_at : str
+        When the template was created.
+    category : str or None
+        The template category.
+    status : Status or None
+        The template's status.
+    resource_class : SecurityClass or None
+        The security classification of the template.
+    data : CustomTemplateSearchItemData or None
+        Partial template data included in search results.
+    acl : list[CustomTemplateSearchItemACL] or None
+        The access-control entries on the template.
+    team : list[CustomTemplateSearchItemTeam] or None
+        The teams associated with the template.
+    """
+
     name: str
     id: CustomTemplateId = Field(alias="albertId")
     created_by_name: str = Field(..., alias="createdByName")

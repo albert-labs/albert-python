@@ -13,7 +13,21 @@ from albert.resources.roles import Role
 
 
 class UserClass(str, Enum):
-    """The ACL class level of the user"""
+    """The ACL class level of a user, setting a broad permission tier.
+
+    Attributes
+    ----------
+    GUEST : str
+        Most limited access; typically external or temporary users.
+    STANDARD : str
+        Default access level for regular users.
+    TRUSTED : str
+        Elevated access above standard users.
+    PRIVILEGED : str
+        High access level below full administrators.
+    ADMIN : str
+        Full administrative access to the tenant.
+    """
 
     GUEST = "guest"
     STANDARD = "standard"
@@ -23,29 +37,60 @@ class UserClass(str, Enum):
 
 
 class UserFilterType(str, Enum):
+    """The attribute a user query filters on.
+
+    Attributes
+    ----------
+    ROLE : str
+        Filter users by the roles they hold.
+    """
+
     ROLE = "role"
 
 
 class User(BaseResource):
-    """Represents a User on the Albert Platform
+    """An Albert user account: a person who can log in and act in the platform.
+
+    A user has a name and email, an optional home
+    :class:`~albert.resources.locations.Location`, and a set of
+    :class:`~albert.resources.roles.Role` objects that govern what they can do.
+    The ``user_class`` sets a broad permission tier
+    (:class:`~albert.resources.users.UserClass`). Users are grouped into teams
+    (:class:`~albert.resources.teams.Team`), and are referenced across the
+    platform, for example as the assignee of a Task or in an entity's ACL.
 
     Attributes
     ----------
     name : str
-        The name of the user.
+        The display name of the user.
     id : str | None
-        The Albert ID of the user. Set when the user is retrieved from Albert.
+        The Albert User ID (format ``USR...``). Set once the user is registered
+        in or retrieved from Albert.
     location : Location | None
-        The location of the user.
+        The user's home location.
     email : EmailStr | None
-        The email of the user.
+        The user's email address.
     roles : list[Role]
-        The roles of the user.
+        The roles the user holds, which determine their permissions.
     user_class : UserClass
-        The ACL class level of the user.
+        The ACL class level of the user (broad permission tier).
     witnesser : bool | None
-        Whether the user is a witnesser.
+        Whether the user can act as a witness (e.g. signing off notebook
+        entries).
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
+        Custom metadata attached to the user.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.users import User, UserClass
+        user = User(
+            name="Ada Lovelace",
+            email="ada@example.com",
+            user_class=UserClass.STANDARD,
+        )
+        ```
     """
 
     name: str
@@ -71,12 +116,48 @@ class User(BaseResource):
 
 
 class UserSearchRoleItem(BaseAlbertModel):
+    """A role reference as returned within a user search result.
+
+    Attributes
+    ----------
+    roleId : str
+        The Albert ID of the role.
+    roleName : str
+        The display name of the role.
+    """
+
     roleId: str
     roleName: str
 
 
 class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
-    """Partial user entity as returned by the search."""
+    """A partial user as returned by :meth:`~albert.collections.users.UserCollection.search`.
+
+    Search returns these lightweight items for speed. Call
+    :meth:`~albert.resources._mixins.HydrationMixin.hydrate` to fetch the full
+    :class:`User`.
+
+    Attributes
+    ----------
+    name : str
+        The display name of the user.
+    id : str | None
+        The Albert User ID (format ``USR...``).
+    email : EmailStr | None
+        The user's email address.
+    user_class : UserClass
+        The ACL class level of the user (broad permission tier).
+    last_login_time : datetime | None
+        When the user most recently signed in.
+    location : str | None
+        The name of the user's home location.
+    location_id : str | None
+        The ID of the user's home location.
+    roles : list[UserSearchRoleItem]
+        The roles the user holds.
+    subscription : str | None
+        The user's subscription type.
+    """
 
     name: str
     id: UserId | None = Field(None, alias="albertId")
