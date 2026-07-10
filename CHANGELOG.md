@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.34.0](https://github.com/albert-labs/albert-python/compare/v1.33.0...v1.34.0) (2026-07-10)
+
+
+### Features
+
+* **chats:** add plan and permission component types and action fields ([#589](https://github.com/albert-labs/albert-python/issues/589)) ([ac71e18](https://github.com/albert-labs/albert-python/commit/ac71e18c1df02a7f999ab30f5edf2b9d5854bdd5))
+
+
+### Bug Fixes
+
+* **cas:** skip PATCH when no updatable fields changed ([#615](https://github.com/albert-labs/albert-python/issues/615)) ([e84dac6](https://github.com/albert-labs/albert-python/commit/e84dac6b3147f756c3781f71db5eb7886a736eb3))
+
 ## [1.33.0](https://github.com/albert-labs/albert-python/compare/v1.32.1...v1.33.0) (2026-07-08)
 
 
