@@ -448,8 +448,20 @@ class RespiratorySkinSensInfo(BaseAlbertModel):
 
 
 class SubstanceInfo(BaseAlbertModel):
-    """
-    SubstanceInfo is a Pydantic model representing information about a chemical substance.
+    """Regulatory, hazard, and property profile of a chemical substance.
+
+    Bundles the compliance data Albert holds for a single chemical, keyed by its
+    CAS number: GHS hazard classifications, toxicity and ecotoxicity study data,
+    occupational exposure limits, physical properties, and membership on
+    regulatory lists across many jurisdictions (US federal and state
+    right-to-know lists, EU REACH annexes and candidate lists, and national
+    inventories). Fields are largely optional because coverage varies by
+    chemical and region.
+
+    This is read-only reference data retrieved by CAS number through
+    :class:`~albert.collections.substance.SubstanceCollection`
+    (``client.substances``); it is not constructed directly. Many list-valued
+    fields hold repeated study records (e.g. one entry per toxicity study).
 
     Attributes
     ----------
@@ -463,19 +475,19 @@ class SubstanceInfo(BaseAlbertModel):
         General acute toxicity information.
     bio_accumulative_info : list[BioAccumulativeInfo] | None
         Information about bioaccumulation.
-    boiling_point_info : list[BoilingPointInfo] | None
+    boilingpoint_info : list[BoilingPointInfo] | None
         Information about boiling points.
     cas_id : str
-        The CAS ID of the substance.
+        The CAS number of the substance.
     classification : str | None
         The classification of the substance.
-    classification_type : str
+    classification_type : str | None
         The type of classification.
     degradability_info : list[DegradabilityInfo] | None
         Information about degradability.
     dnel_info : list[DNELInfo] | None
         Information about the Derived No Effect Level (DNEL).
-    ec_list_no : str
+    ec_list_no : str | None
         The EC list number.
     exposure_controls_acgih : list[ExposureControl] | None
         ACGIH exposure controls.
@@ -503,7 +515,7 @@ class SubstanceInfo(BaseAlbertModel):
         Indicates if the substance is on the Basel Convention list.
     bei_info : list[Any] | None
         Information related to BEI.
-    caa_cfr40 : bool | None
+    caa_cfr_40 : bool | None
         Indicates compliance with CAA CFR 40.
     caa_hpa : bool | None
         Indicates compliance with CAA HPA.
@@ -528,7 +540,7 @@ class SubstanceInfo(BaseAlbertModel):
     molecular_weight : list[MolecularWeight] | None
         Molecular weight information.
     rsl : RSL | None
-        Risk-based screening level.
+        Restricted substances list information for the substance.
     specific_conc_eu : list[SpecificConcentration] | None
         Specific concentration information for the EU.
     specific_conc_source : str | None
@@ -539,7 +551,7 @@ class SubstanceInfo(BaseAlbertModel):
         Indicates compliance with TSCA 8(b).
     cdsa_list : bool | None
         Indicates if the substance is on the CDSA list.
-    cn_csdc_regulations : bool | None
+    cn_csd_c_regulations : bool | None
         Compliance with CN CSDC regulations.
     cn_pcod_list : bool | None
         Indicates if the substance is on the CN PCOD list.
@@ -627,8 +639,8 @@ class SubstanceInfo(BaseAlbertModel):
         Route of exposure for STOT.
     tcsi_notified : bool | None
         Indicates if the substance is TCSI notified.
-    trade_secret : str | None
-        Information about trade secrets.
+    trade_secret : bool | None
+        Whether the substance is marked as a trade secret.
     tw_ghs_clas_list : bool | None
         Indicates if the substance is on the TW GHS classification list.
     tw_handle_priority_chem : bool | None
@@ -809,15 +821,18 @@ class SubstanceInfo(BaseAlbertModel):
 
 
 class SubstanceResponse(BaseAlbertModel):
-    """
-    SubstanceResponse is a Pydantic model representing the response containing substance information.
+    """Raw API response wrapping the substances returned for a lookup.
+
+    Returned internally by
+    :class:`~albert.collections.substance.SubstanceCollection`, which unwraps the
+    ``substances`` list for callers; you typically will not use this directly.
 
     Attributes
     ----------
-    substances : list[Substance]
-        A list of substances.
-    substance_errors : list[Any] | None
-        A list of errors related to substances, if any.
+    substances : list[SubstanceInfo]
+        The substances found for the requested CAS numbers.
+    substance_errors : list[dict[str, Any]] | None
+        Errors for CAS numbers that could not be resolved, if any.
     """
 
     substances: list[SubstanceInfo]

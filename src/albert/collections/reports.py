@@ -9,18 +9,75 @@ from albert.resources.reports import FullAnalyticalReport, ReportInfo
 
 
 class ReportCollection(BaseCollection):
-    """ReportCollection is a collection class for managing Report entities in the Albert platform."""
+    """Manage Reports in the Albert platform.
+
+    A Report runs a predefined server-side report type over the data you point it
+    at and returns the computed results. Report types fall into categories such as
+    ``"analytics"`` and ``"datascience"``, and each is identified by a report type
+    ID (e.g. ``"RET22"`` or the fully qualified ``"ALB#RET51"``). The set of
+    available report types is defined by Report Templates (see
+    :class:`~albert.collections.report_templates.ReportTemplateCollection`).
+
+    Two styles of access are provided:
+
+    - Run a report on demand and read its results directly with
+      :meth:`get_report` (or the category-specific :meth:`get_analytics_report`
+      and :meth:`get_datascience_report`). These take ``input_data`` describing
+      what to run the report over (e.g. project or inventory IDs).
+    - Persist a report configuration as a :class:`~albert.resources.reports.FullAnalyticalReport`
+      with :meth:`create_report`, then fetch it later by its Report ID (format
+      ``REP...``) with :meth:`get_full_report`.
+
+    This collection is accessed as ``client.reports``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for report requests.
+
+    Methods
+    -------
+    get_report(category, report_type_id, input_data=None) -> ReportInfo
+        Run a report of any category and return its results.
+    get_analytics_report(report_type_id, input_data=None) -> ReportInfo
+        Run an analytics report and return its results.
+    get_datascience_report(report_type_id, input_data=None) -> ReportInfo
+        Run a datascience report and return its results.
+    get_full_report(report_id) -> FullAnalyticalReport
+        Retrieve a saved report by its Report ID, with configuration and data.
+    create_report(report) -> FullAnalyticalReport
+        Persist a new analytical report configuration.
+    delete(id) -> None
+        Delete a saved report by its Report ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        report = client.reports.get_datascience_report(
+            report_type_id="RET51",
+            input_data={"projectId": ["PRO123"], "uniqueId": ["DAT123_DAC123"]},
+        )
+        ```
+    """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the ReportCollection with the provided session.
+        """Initialize a ReportCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ReportCollection._api_version}/reports"
@@ -28,32 +85,34 @@ class ReportCollection(BaseCollection):
     def get_report(
         self, *, category: str, report_type_id: str, input_data: dict[str, Any] | None = None
     ) -> ReportInfo:
-        """Get a report by its category and report type ID.
+        """Run a report of a given category and return its results.
 
         Parameters
         ----------
         category : str
-            The category of the report (e.g., "datascience", "analytics", etc...).
+            The category of the report (e.g. ``"datascience"`` or ``"analytics"``).
         report_type_id : str
-            The report type ID for the report.
+            The report type ID identifying which report to run (e.g. ``"RET51"``
+            or the fully qualified ``"ALB#RET51"``).
         input_data : dict[str, Any] | None
-            Additional input data for generating the report
-            (e.g., project IDs and unique IDs).
+            Input describing what to run the report over, keyed by field name
+            (e.g. project IDs, inventory IDs, or unique IDs). Optional.
 
         Returns
         -------
         ReportInfo
-            The info for the report.
+            The report type metadata and computed result items.
 
         Examples
         --------
-        >>> report = client.reports.get_report(
-        ...     category="datascience",
-        ...     report_type_id="ALB#RET51",
-        ...     input_data={
-        ...         "project": ["PRO123"],
-        ...     }
-        ... )
+        !!! example
+            ```python
+            report = client.reports.get_report(
+                category="datascience",
+                report_type_id="ALB#RET51",
+                input_data={"project": ["PRO123"]},
+            )
+            ```
         """
         path = f"{self.base_path}/{category}/{report_type_id}"
 
@@ -71,29 +130,34 @@ class ReportCollection(BaseCollection):
         report_type_id: str,
         input_data: dict[str, Any] | None = None,
     ) -> ReportInfo:
-        """Get an analytics report by its report type ID.
+        """Run an analytics report and return its results.
+
+        Convenience wrapper around :meth:`get_report` with
+        ``category="analytics"``.
 
         Parameters
         ----------
         report_type_id : str
-            The report type ID for the report.
+            The report type ID identifying which analytics report to run
+            (e.g. ``"RET22"``).
         input_data : dict[str, Any] | None
-            Additional input data for generating the report
-            (e.g., project IDs and unique IDs).
+            Input describing what to run the report over, keyed by field name
+            (e.g. inventory IDs). Optional.
 
         Returns
         -------
         ReportInfo
-            The info for the report.
+            The report type metadata and computed result items.
 
         Examples
         --------
-        >>> report = client.reports.get_analytics_report(
-        ...     report_type_id="RET22",
-        ...     input_data={
-        ...         "inventoryId": "INVA123"
-        ...     }
-        ... )
+        !!! example
+            ```python
+            report = client.reports.get_analytics_report(
+                report_type_id="RET22",
+                input_data={"inventoryId": "INVA123"},
+            )
+            ```
         """
         return self.get_report(
             category="analytics",
@@ -107,30 +171,37 @@ class ReportCollection(BaseCollection):
         report_type_id: str,
         input_data: dict[str, Any] | None = None,
     ) -> ReportInfo:
-        """Get a datascience report by its report type ID.
+        """Run a datascience report and return its results.
+
+        Convenience wrapper around :meth:`get_report` with
+        ``category="datascience"``.
 
         Parameters
         ----------
         report_type_id : str
-            The report type ID for the report.
+            The report type ID identifying which datascience report to run
+            (e.g. ``"RET51"``).
         input_data : dict[str, Any] | None
-            Additional input data for generating the report
-            (e.g., project IDs and unique IDs).
+            Input describing what to run the report over, keyed by field name
+            (e.g. project IDs and unique IDs). Optional.
 
         Returns
         -------
         ReportInfo
-            The info for the report.
+            The report type metadata and computed result items.
 
         Examples
         --------
-        >>> report = client.reports.get_datascience_report(
-        ...     report_type_id="RET51",
-        ...     input_data={
-        ...         "projectId": ["PRO123"],
-        ...         "uniqueId": ["DAT123_DAC123"]
-        ...     }
-        ... )
+        !!! example
+            ```python
+            report = client.reports.get_datascience_report(
+                report_type_id="RET51",
+                input_data={
+                    "projectId": ["PRO123"],
+                    "uniqueId": ["DAT123_DAC123"],
+                },
+            )
+            ```
         """
         return self.get_report(
             category="datascience",
@@ -140,22 +211,25 @@ class ReportCollection(BaseCollection):
 
     @validate_call
     def get_full_report(self, *, report_id: ReportId) -> FullAnalyticalReport:
-        """Get a full analytical report by its ID.
+        """Retrieve a saved analytical report by its Report ID.
 
         Parameters
         ----------
         report_id : ReportId
-            The ID of the report to retrieve.
+            The Report ID to retrieve (format ``REP...``).
 
         Returns
         -------
         FullAnalyticalReport
-            The full analytical report with all configuration and data.
+            The saved report with all of its configuration and data.
 
         Examples
         --------
-        >>> report = client.reports.get_full_report(report_id="REP14")
-        >>> report_dataframe = report.get_raw_dataframe()
+        !!! example
+            ```python
+            report = client.reports.get_full_report(report_id="REP14")
+            report_dataframe = report.get_raw_dataframe()
+            ```
         """
         path = f"{self.base_path}/{report_id}"
         params = {"viewReport": "1"}
@@ -166,6 +240,9 @@ class ReportCollection(BaseCollection):
     def create_report(self, *, report: FullAnalyticalReport) -> FullAnalyticalReport:
         """Create a new analytical report.
 
+        Read-only fields on the supplied report (``report_data_id``,
+        ``created_by``, and ``report``) are ignored on creation.
+
         Parameters
         ----------
         report : FullAnalyticalReport
@@ -174,16 +251,22 @@ class ReportCollection(BaseCollection):
         Returns
         -------
         FullAnalyticalReport
-            The created report with the generated report_data_id.
+            The created report as returned by the server, including its assigned
+            ID.
 
         Examples
         --------
-        >>> new_report = FullAnalyticalReport(
-        ...     report_type_id="ALB#RET22",
-        ...     name="My New Report",
-        ...     description="A test report"
-        ... )
-        >>> created_report = client.reports.create_report(report=new_report)
+        !!! example
+            ```python
+            from albert.resources.reports import FullAnalyticalReport
+
+            new_report = FullAnalyticalReport(
+                report_type_id="ALB#RET22",
+                name="My New Report",
+                description="A test report",
+            )
+            created_report = client.reports.create_report(report=new_report)
+            ```
         """
         path = self.base_path
 
@@ -197,12 +280,12 @@ class ReportCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: ReportId) -> None:
-        """Delete a report.
+        """Delete a saved report by its Report ID.
 
         Parameters
         ----------
         id : ReportId
-            The ID of the report to delete.
+            The Report ID to delete (format ``REP...``).
 
         Returns
         -------
@@ -210,7 +293,10 @@ class ReportCollection(BaseCollection):
 
         Examples
         --------
-        >>> client.reports.delete(id="REP14")
+        !!! example
+            ```python
+            client.reports.delete(id="REP14")
+            ```
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

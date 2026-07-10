@@ -11,8 +11,20 @@ from albert.resources.chats import ChatComponentType, ChatMessage
 
 
 class ChatMessageCollection:
-    """
-    Async collection for managing messages within a chat session (🧪Beta).
+    """Manage the message turns within an "Ask Albert" chat session (🧪 Beta).
+
+    A chat message (:class:`~albert.resources.chats.ChatMessage`) is one turn, or
+    turn component, of a conversation with Albert's AI assistant. Messages always
+    belong to a parent session
+    (:class:`~albert.resources.chats.ChatSession`, managed by
+    :class:`~albert.collections.chat_sessions.ChatSessionCollection`), so every
+    method here takes a ``session_id``. Within a session a message is addressed by
+    the pair ``(source_request_id, sequence)``, and
+    :class:`~albert.resources.chats.ChatComponentType` distinguishes components
+    that share a request.
+
+    This is an async collection accessed as ``client.chat_messages`` on an
+    :class:`~albert.client.AsyncAlbert` client.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -21,20 +33,41 @@ class ChatMessageCollection:
     Parameters
     ----------
     session : AsyncAlbertSession
-        The Albert async session instance.
+        The authenticated Albert async session used for API calls.
 
     Methods
     -------
     create(message) -> ChatMessage
-        Adds a message to a chat session.
-    get_by_id(session_id, source_request_id, sequence, component_type) -> ChatMessage
-        Retrieves a single message by its source request ID and sequence.
-    get_all(session_id, ...) -> AsyncIterator[ChatMessage]
-        Iterates over messages in a session.
+        Add a message to a chat session.
+    get_by_id(session_id, source_request_id, sequence, component_type=None) -> ChatMessage
+        Retrieve a single message by its request ID and sequence.
+    get_all(session_id, max_items=None) -> AsyncIterator[ChatMessage]
+        Iterate over the messages in a session, oldest first.
     update(session_id, source_request_id, sequence, content) -> ChatMessage
-        Updates the content of a message.
+        Update the content of a message.
     delete(session_id, source_request_id, sequence) -> None
-        Deletes a message from a session.
+        Delete a message from a session.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+
+        async with AsyncAlbert() as client:
+            await client.chat_messages.create(
+                message=ChatMessage(
+                    parent_id="<session id>",
+                    component_type=ChatComponentType.TEXT,
+                    user_type=ChatUserType.USER,
+                    role=ChatRole.USER,
+                    content="What raw materials contain titanium dioxide?",
+                )
+            )
+            async for message in client.chat_messages.get_all(session_id="<session id>"):
+                print(message.sequence, message.content)
+        ```
     """
 
     _api_version = "v3"
@@ -53,19 +86,44 @@ class ChatMessageCollection:
 
     @validate_call
     async def create(self, *, message: ChatMessage) -> ChatMessage:
-        """
-        Add a message to a chat session.
+        """Add a message to a chat session.
 
         Parameters
         ----------
         message : ChatMessage
-            The message to create. ``parent_id`` must be set to the session ID.
-            ``source_request_id`` is auto-generated if not provided.
+            The message to create. ``parent_id`` must be set to the target
+            :class:`~albert.resources.chats.ChatSession` ID. ``source_request_id``
+            is auto-generated when not provided.
 
         Returns
         -------
         ChatMessage
             The created message.
+
+        Notes
+        -----
+        The create response does not currently echo the message ``content``, so the
+        returned object's ``content`` may be ``None``. Use :meth:`get_by_id` to read
+        the stored message back in full.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+            from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+
+            async with AsyncAlbert() as client:
+                message = await client.chat_messages.create(
+                    message=ChatMessage(
+                        parent_id="...",
+                        component_type=ChatComponentType.TEXT,
+                        user_type=ChatUserType.USER,
+                        role=ChatRole.USER,
+                        content="What raw materials contain titanium dioxide?",
+                    )
+                )
+            ```
         """
         payload = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
         # parentId is encoded in the URL path, not the request body
@@ -88,24 +146,40 @@ class ChatMessageCollection:
         sequence: str,
         component_type: ChatComponentType | None = None,
     ) -> ChatMessage:
-        """
-        Retrieve a single message by its source request ID and sequence.
+        """Retrieve a single message by its request ID and sequence.
 
         Parameters
         ----------
         session_id : str
-            The ID of the parent session.
+            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
-            The zero-padded sequence of the message (e.g. "000").
+            The zero-padded sequence of the message within the session
+            (e.g. ``"000"``).
         component_type : ChatComponentType | None, optional
-            Narrows the lookup to a specific component type.
+            Narrow the lookup to a single
+            :class:`~albert.resources.chats.ChatComponentType` when a request holds
+            more than one component.
 
         Returns
         -------
         ChatMessage
             The matching message.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                message = await client.chat_messages.get_by_id(
+                    session_id="...",
+                    source_request_id="...",
+                    sequence="000",
+                )
+            ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         params: dict = {"sequence": sequence}
@@ -121,20 +195,34 @@ class ChatMessageCollection:
         session_id: str,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatMessage]:
-        """
-        Iterate over messages in a session.
+        """Iterate over the messages in a session, oldest first.
+
+        Transparently pages through results, yielding one message at a time.
 
         Parameters
         ----------
         session_id : str
-            The ID of the session whose messages to list.
+            The ID of the :class:`~albert.resources.chats.ChatSession` whose
+            messages to list.
         max_items : int | None, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of messages to yield in total. If ``None``, yields every
+            message in the session.
 
         Yields
         ------
         ChatMessage
             Messages in the session, oldest first.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                async for message in client.chat_messages.get_all(session_id="..."):
+                    print(message.sequence, message.content)
+            ```
         """
         url = f"{self._sessions_base}/{session_id}/messages"
         async for message in AsyncAlbertPaginator(
@@ -154,19 +242,21 @@ class ChatMessageCollection:
         sequence: str,
         content: str | dict,
     ) -> ChatMessage:
-        """
-        Update the content of a message.
+        """Update the content of a message.
 
         Parameters
         ----------
         session_id : str
-            The ID of the parent session.
+            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
-            The zero-padded sequence of the message (e.g. "000").
+            The zero-padded sequence of the message within the session
+            (e.g. ``"000"``).
         content : str | dict
-            The new content for the message.
+            The new content for the message. Use a string for text components or an
+            object for richer components, matching the message's
+            :class:`~albert.resources.chats.ChatComponentType`.
 
         Returns
         -------
@@ -176,6 +266,21 @@ class ChatMessageCollection:
         Notes
         -----
         The following fields can be updated: ``content``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                message = await client.chat_messages.update(
+                    session_id="...",
+                    source_request_id="...",
+                    sequence="000",
+                    content="Updated message text",
+                )
+            ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         payload = {"data": [{"operation": "update", "attribute": "Content", "newValue": content}]}
@@ -194,21 +299,35 @@ class ChatMessageCollection:
         source_request_id: str,
         sequence: str,
     ) -> None:
-        """
-        Delete a message from a session.
+        """Delete a message from a session.
 
         Parameters
         ----------
         session_id : str
-            The ID of the parent session.
+            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
-            The zero-padded sequence of the message (e.g. "000").
+            The zero-padded sequence of the message within the session
+            (e.g. ``"000"``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                await client.chat_messages.delete(
+                    session_id="...",
+                    source_request_id="...",
+                    sequence="000",
+                )
+            ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         await self._session.delete(url, params={"sequence": sequence})
