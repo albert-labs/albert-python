@@ -26,6 +26,27 @@ from albert.resources.workflows import Workflow
 
 
 class TaskCategory(str, Enum):
+    """The kind of lab work a task represents.
+
+    The category determines which concrete task class is used and is set
+    automatically by that subclass; you normally do not set it by hand.
+
+    Attributes
+    ----------
+    PROPERTY : str
+        Testing and documenting the properties of products, formulas, or raw
+        materials. Corresponds to :class:`PropertyTask`.
+    BATCH : str
+        Manufacturing a batch of a formulation inside Albert. Corresponds to
+        :class:`BatchTask`.
+    GENERAL : str
+        Any lab work that is not a batch or property task (for example
+        equipment calibration). Corresponds to :class:`GeneralTask`.
+    BATCH_WITH_QC : str
+        A batch task that also carries quality-control data. A variant of
+        :class:`BatchTask`.
+    """
+
     PROPERTY = "Property"
     BATCH = "Batch"
     GENERAL = "General"
@@ -33,28 +54,85 @@ class TaskCategory(str, Enum):
 
 
 class BatchSizeUnit(str, Enum):
+    """Unit of measure for the size of a batch made in a :class:`BatchTask`.
+
+    Attributes
+    ----------
+    GRAMS : str
+        Grams (``"g"``).
+    KILOGRAMS : str
+        Kilograms (``"Kg"``).
+    POUNDS : str
+        Pounds (``"lbs"``).
+    """
+
     GRAMS = "g"
     KILOGRAMS = "Kg"
     POUNDS = "lbs"
 
 
 class TaskSourceType(str, Enum):
+    """What kind of thing a task was created from.
+
+    Attributes
+    ----------
+    TASK : str
+        The task was created from another existing task (``"task"``).
+    TEMPLATE : str
+        The task was created from a task template (``"template"``).
+    """
+
     TASK = "task"
     TEMPLATE = "template"
 
 
 class TaskSource(BaseAlbertModel):
+    """A reference to the task or template a task was created from.
+
+    Recorded in :attr:`BaseTask.sources` to trace where a task originated.
+
+    Attributes
+    ----------
+    id : str
+        The ID of the originating task or template.
+    type : TaskSourceType
+        Whether ``id`` points to a task or a template.
+    """
+
     id: str
     type: TaskSourceType
 
 
 class TaskPriority(str, Enum):
+    """How urgent a task is, used for triage and sorting work queues.
+
+    Attributes
+    ----------
+    HIGH : str
+        Highest urgency (``"High"``).
+    MEDIUM : str
+        Normal urgency (``"Medium"``).
+    LOW : str
+        Lowest urgency (``"Low"``).
+    """
+
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
 
 
 class HistoryEntity(str, Enum):
+    """The kind of entity a task-history query is scoped to.
+
+    Used when requesting the change history of a task (see
+    :meth:`~albert.collections.tasks.TaskCollection.get_history`).
+
+    Attributes
+    ----------
+    WORKFLOW : str
+        Limit history to workflow-related changes (``"workflow"``).
+    """
+
     WORKFLOW = "workflow"
 
 
@@ -115,6 +193,27 @@ class BlockDataTemplateInfo(BaseAlbertModel):
 
 
 class TaskState(str, Enum):
+    """Where a task is in its lifecycle, from creation through completion.
+
+    The state generally advances as work progresses: an unclaimed task is
+    picked up, started, finished, and eventually closed (or cancelled).
+
+    Attributes
+    ----------
+    UNCLAIMED : str
+        Created but not yet assigned to or claimed by anyone.
+    NOT_STARTED : str
+        Claimed or assigned, but work has not begun.
+    IN_PROGRESS : str
+        Work is actively underway.
+    COMPLETED : str
+        The work has been finished.
+    CLOSED : str
+        Finalized and no longer active.
+    CANCELLED : str
+        Abandoned before completion.
+    """
+
     UNCLAIMED = "Unclaimed"
     NOT_STARTED = "Not Started"
     IN_PROGRESS = "In Progress"
@@ -124,21 +223,38 @@ class TaskState(str, Enum):
 
 
 class TaskInventoryInformation(BaseAlbertModel):
-    """Represents the Inventory information needed for a task. For a Batch task, inventory_id and batch_size are required.
-    For Property and general tasks, inventory_id and lot_id is recomended is required.
+    """Which inventory item (and optionally which lot) a task acts on.
+
+    Every task references one or more inventory items through this model, stored
+    on :attr:`BaseTask.inventory_information`. What is required depends on the
+    task type:
+
+    - :class:`BatchTask`: ``inventory_id`` and ``batch_size`` are required
+      (you are making a quantity of that item).
+    - :class:`PropertyTask` and :class:`GeneralTask`: ``inventory_id`` is
+      required and ``lot_id`` is recommended (the specific physical lot tested).
 
     Attributes
     ----------
     inventory_id : str
-        The inventory id of the item to be used in the task.
+        The ID of the inventory item used in the task (serialized as ``id``).
     lot_id : str, optional
-        The lot id of the item to be used in the task. Reccomended for Property and General tasks.
+        The ID of the specific lot used. Recommended for property and general
+        tasks so results attach to the right physical material.
     lot_number : str, optional
-        The lot number of the item to be used in the task. Optional.
-    batch_size : float, Required for Batch tasks, otherwise optional.
-        The batch size to make of the related InventoryItem. Required for Batch tasks.
-    selected_lot : bool, read only
-        Whether the lot is selected for the task. Default is None.
+        The human-readable lot number of the item.
+    inv_lot_unique_id : str, optional
+        A combined inventory-and-lot identifier used internally.
+    batch_size : float, optional
+        The quantity to make of the related inventory item. Required for
+        :class:`BatchTask`; the unit is given by
+        :attr:`BatchTask.batch_size_unit`.
+    selected_lot : bool, optional
+        Read-only. Whether this lot is the one selected for the task.
+    barcode_id : str, optional
+        The barcode identifier of the physical item, if scanned.
+    quantity_used : float, optional
+        The amount of the item consumed by the task.
     """
 
     inventory_id: InventoryId = Field(alias="id")
@@ -153,6 +269,39 @@ class TaskInventoryInformation(BaseAlbertModel):
 
 
 class Block(BaseAlbertModel):
+    """A single unit of testing within a property or batch task.
+
+    A block pairs a :class:`~albert.resources.data_templates.DataTemplate`
+    (the results/data columns to capture) with a
+    :class:`~albert.resources.workflows.Workflow` (the parameter conditions
+    under which the data is collected). A :class:`PropertyTask` or
+    :class:`BatchTask` can hold multiple blocks. Block IDs look like
+    ``"BLK..."``.
+
+    Blocks are normally created and modified through the task collection rather
+    than constructed directly; see
+    :meth:`~albert.collections.tasks.TaskCollection.add_block`,
+    :meth:`~albert.collections.tasks.TaskCollection.update_block_workflow`, and
+    :meth:`~albert.collections.tasks.TaskCollection.remove_block`. Measured
+    results for a block are recorded through
+    :class:`~albert.collections.property_data.PropertyDataCollection`.
+
+    Attributes
+    ----------
+    id : str, optional
+        The block's ID (``"BLK..."``). Assigned by Albert; ``None`` before the
+        block is created.
+    workflow : list[SerializeAsEntityLink[Workflow]]
+        The workflow(s) defining the parameter conditions for the block. At
+        least one is required.
+    data_template : list[BlockDataTemplateInfo] or DataTemplateAndTargets or list[SerializeAsEntityLink[DataTemplate]]
+        The single data template describing the data columns to capture, and
+        any associated targets.
+    parameter_quantity_used : dict, optional
+        Read-only internal mapping of parameter quantities consumed by the
+        block.
+    """
+
     id: str | None = Field(default=None)
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
     data_template: (
@@ -195,7 +344,79 @@ class TaskEntityType(BaseAlbertModel):
 
 
 class BaseTask(BaseTaggedResource):
-    """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
+    """Shared fields and behavior for every kind of task.
+
+    A task is a unit of lab work. This base class is not used directly; instead
+    pick the concrete type that matches the work:
+
+    - :class:`PropertyTask` — test and document properties of products,
+      formulas, or raw materials. Holds :class:`Block` objects and captures
+      measured property data.
+    - :class:`BatchTask` — manufacture a batch of a formulation inside Albert.
+    - :class:`GeneralTask` — any other lab work (for example equipment
+      calibration) that is neither a batch nor a property task.
+
+    Tasks are managed through
+    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``). The
+    :attr:`category` field distinguishes the subclasses and is set
+    automatically by each one. Task IDs look like ``"TAS..."``.
+
+    Attributes
+    ----------
+    id : str, optional
+        The task's ID (``"TAS..."``, serialized as ``albertId``). Assigned by
+        Albert; ``None`` before the task is created.
+    name : str
+        Human-readable name of the task. Required.
+    category : TaskCategory
+        The task type. Set automatically by the concrete subclass.
+    parent_id : str, optional
+        The ID of the parent project this task belongs to.
+    metadata : dict[str, MetadataItem], optional
+        Custom metadata fields keyed by name.
+    sources : list[TaskSource], optional
+        The task(s) or template(s) this task was created from.
+    inventory_information : list[TaskInventoryInformation]
+        The inventory item(s) (and optionally lot(s)) the task acts on.
+    location : SerializeAsEntityLink[Location], optional
+        Where the task is performed.
+    priority : TaskPriority, optional
+        The task's urgency.
+    security_class : SecurityClass, optional
+        Access-control classification (serialized as ``class``).
+    pass_fail : bool, optional
+        Whether the task is evaluated as pass/fail.
+    notes : str, optional
+        Free-text notes.
+    start_date : str, optional
+        Read-only. Date work started (``YYYY-MM-DD``).
+    due_date : str, optional
+        Target completion date (``YYYY-MM-DD``).
+    claimed_date : str, optional
+        Read-only. Date the task was claimed.
+    completed_date : str, optional
+        Read-only. Date the task was completed.
+    closed_date : str, optional
+        Read-only. Date the task was closed.
+    result : str, optional
+        Overall result summary for the task.
+    state : TaskState, optional
+        Current lifecycle state of the task.
+    project : SerializeAsEntityLink[Project] or list[SerializeAsEntityLink[Project]], optional
+        The project(s) the task is associated with.
+    assigned_to : SerializeAsEntityLinkWithName[User] or SerializeAsEntityLinkWithName[Team], optional
+        The user or team responsible for the task.
+    page_state : PageState, optional
+        Internal UI layout state for the task page.
+    entity_type : TaskEntityType, optional
+        Internal entity-type classification.
+
+    See Also
+    --------
+    PropertyTask : Task type that tests and documents properties.
+    BatchTask : Task type that manufactures a batch.
+    GeneralTask : Task type for any other lab work.
+    """
 
     id: str | None = Field(alias="albertId", default=None)
     name: str
@@ -232,52 +453,52 @@ class BaseTask(BaseTaggedResource):
 
 
 class PropertyTask(BaseTask):
-    """
-    Represents a property task.
+    """A task that tests and documents the properties of a material.
 
-    This class is used to create and manage property tasks. It includes the base task attributes
-    and additional attributes specific to property tasks (e.g., blocks tied to workflows/data templates).
+    Use a property task to measure and record properties of products, formulas,
+    or raw materials. A property task holds one or more :class:`Block` objects,
+    each pairing a data template (what to capture) with a workflow (the
+    conditions). Measured results are recorded per block, interval, and trial
+    through :class:`~albert.collections.property_data.PropertyDataCollection`
+    (``client.property_data``) and roll up to the associated inventory item's
+    properties.
+
+    Inherits all shared fields from :class:`BaseTask`. Its :attr:`category` is
+    always :attr:`TaskCategory.PROPERTY`. Create and manage property tasks with
+    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``); add
+    blocks with :meth:`~albert.collections.tasks.TaskCollection.add_block`.
 
     Attributes
     ----------
     name : str
-        The name of the property task.
+        Human-readable name of the task. Required.
+    parent_id : str, optional
+        The ID of the parent project (``"PRO..."``).
     inventory_information : list[TaskInventoryInformation]
-        Information about the inventory associated with the property task.
-    location : SerializeAsEntityLink[Location]
-        The location where the property task is performed.
-    parent_id : str
-        The ID of the parent project.
-    blocks : list[Block]
-        A list of blocks associated with the property task.
-    id : str, optional
-        The ID of the property task, by default None.
+        The inventory item(s) whose properties are being tested.
+    blocks : list[Block], optional
+        The blocks (data template + workflow pairs) that define what data the
+        task captures.
+    qc_task : bool, optional
+        Whether this property task is a quality-control task.
+    batch_task_id : str, optional
+        The ID of a related batch task, if this task tests material made by one.
+    target : str, optional
+        A target value or specification associated with the task.
 
-    metadata : dict[str, MetadataItem], optional
-        Metadata associated with the property task, by default an empty dictionary.
-    due_date : str, optional
-        The due date of the property task. YYYY-MM-DD format, by default None.
-    notes : str, optional
-        Notes associated with the property task, by default None.
-    priority : TaskPriority, optional
-        The priority of the property task, by default None.
-    assigned_to : SerializeAsEntityLink[User], optional
-        The user assigned to the property task, by default None.
+    Notes
+    -----
+    All other fields (``location``, ``priority``, ``due_date``, ``state``,
+    ``assigned_to``, dates, and so on) are inherited from :class:`BaseTask`.
 
-    state : TaskState, optional
-        The state of the property task, by default None.
-    sources : list[TaskSource], optional
-        A list of sources associated with the property task, by default an empty list.
-    security_class : SecurityClass, optional
-        The security class of the property task, by default None.
-    start_date : str, read only
-        The start date of the property task, by default None.
-    claimed_date : str, read only
-        The claimed date of the property task, by default None.
-    completed_date : str, read only
-        The completed date of the property task, by default None.
-    closed_date : str, read only
-        The closed date of the property task, by default None.
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.tasks import PropertyTask
+
+        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        ```
     """
 
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
@@ -288,66 +509,62 @@ class PropertyTask(BaseTask):
 
 
 class BatchTask(BaseTask):
-    """
-    Represents a batch task.
+    """A task that manufactures a batch of a formulation inside Albert.
 
-    This class is used to create and manage batch tasks. It includes the base task attributes
-    and additional attributes specific to batch tasks.
+    Use a batch task after creating a new formulation to make a physical
+    quantity of it. The item to make and the amount are given through
+    :attr:`inventory_information` (``inventory_id`` and ``batch_size`` are
+    required for batch tasks), with the unit set by :attr:`batch_size_unit`.
+
+    Inherits all shared fields from :class:`BaseTask`. Its :attr:`category` is
+    :attr:`TaskCategory.BATCH` (or :attr:`TaskCategory.BATCH_WITH_QC` when
+    quality-control data is attached). Create and manage batch tasks with
+    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``).
 
     Attributes
     ----------
     name : str
-        The name of the batch task.
+        Human-readable name of the task. Required.
+    parent_id : str, optional
+        The ID of the parent project (``"PRO..."``).
     inventory_information : list[TaskInventoryInformation]
-        Information about the inventory associated with the batch task.
-    location : SerializeAsEntityLink[Location]
-        The location where the batch task is performed.
-    parent_id : str
-        The ID of the parent project.
-    id : str, optional
-        The ID of the batch task, by default None.
-
-    batch_size_unit : str, optional
-        The unit of measurement for the batch size, by default None.
-    metadata : dict[str, MetadataItem], optional
-        Metadata associated with the batch task, by default an empty dictionary.
+        The item to make and how much; ``inventory_id`` and ``batch_size`` are
+        required for batch tasks.
+    batch_size_unit : BatchSizeUnit, optional
+        The unit of measure for the batch size (grams, kilograms, or pounds).
     workflows : list[SerializeAsEntityLink[Workflow]], optional
-        A list of workflows associated with the batch task, by default None.
-    due_date : str, optional
-        The due date of the batch task. YYY-MM-DD format, by default None.
-    notes : str, optional
-        Notes associated with the batch task, by default None.
-    priority : TaskPriority, optional
-        The priority of the batch task, by default None.
-    project : SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]], optional
-        The project(s) associated with the batch task, by default None.
-    assigned_to : SerializeAsEntityLink[User], optional
-        The user assigned to the batch task, by default None.
-
-    state : TaskState, optional
-        The state of the batch task, by default None.
-    sources : list[TaskSource], optional
-        A list of sources associated with the batch task, by default an empty list.
-    security_class : SecurityClass, optional
-        The security class of the batch task, by default None.
-    pass_fail : bool, optional
-        Whether the batch task is pass/fail, by default None.
-    start_date : str, read only
-        The start date of the batch task, by default None.
-    claimed_date : str, read only
-        The claimed date of the batch task, by default None.
-    completed_date : str, read only
-        The completed date of the batch task, by default None.
-    closed_date : str, read only
-        The closed date of the batch task, by default None.
+        Workflow(s) associated with the batch task.
+    blocks : list[Block], optional
+        Blocks associated with the batch task, when it captures data.
     qc_task : bool, optional
-        Whether the batch task is a QC task, by default None.
+        Whether this is a quality-control batch task.
     batch_task_id : str, optional
-        The ID of the batch task, by default None.
+        The ID of a related batch task.
     target : str, optional
-        The target of the batch task, by default None.
+        A target value or specification associated with the task.
     qc_task_data : list[QCTaskData], optional
-        A list of QC task data associated with the batch task, by default None.
+        Quality-control data associated with the batch task.
+
+    Notes
+    -----
+    All other fields (``location``, ``priority``, ``due_date``, ``state``,
+    ``assigned_to``, dates, and so on) are inherited from :class:`BaseTask`.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.tasks import BatchTask
+        from albert.resources.tasks import TaskInventoryInformation
+
+        task = BatchTask(
+            name="Make 500 g of Formula A",
+            parent_id="PRO1",
+            inventory_information=[
+                TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
+            ],
+        )
+        ```
     """
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
@@ -361,6 +578,27 @@ class BatchTask(BaseTask):
 
 
 class GeneralTask(BaseTask):
+    """A task for lab work that is neither a batch nor a property task.
+
+    Use a general task for anything that does not fit the other two types, such
+    as equipment calibration or maintenance. General tasks do not hold blocks
+    and capture no property data.
+
+    Inherits all fields from :class:`BaseTask`; its :attr:`category` is always
+    :attr:`TaskCategory.GENERAL`. Only :attr:`~BaseTask.name` is required.
+    Create and manage general tasks with
+    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``).
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.tasks import GeneralTask
+
+        task = GeneralTask(name="Calibrate rheometer")
+        ```
+    """
+
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL
 
 
@@ -378,6 +616,19 @@ class TaskHistoryEvent(BaseAlbertModel):
 
 
 class TaskHistory(BaseAlbertModel):
+    """The chronological record of changes made to a task.
+
+    Returned by :meth:`~albert.collections.tasks.TaskCollection.get_history`,
+    this wraps the individual change events (state changes, field edits, and so
+    on) recorded for a task.
+
+    Attributes
+    ----------
+    items : list[TaskHistoryEvent]
+        The history events, each describing one change (its action, timestamp,
+        acting user, and old/new values).
+    """
+
     items: list[TaskHistoryEvent] = Field(alias="Items")
 
 
