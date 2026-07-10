@@ -15,7 +15,17 @@ from albert.resources.users import User
 
 
 class LotStatus(str, Enum):
-    """The status of a lot"""
+    """The lifecycle status of a lot.
+
+    Attributes
+    ----------
+    ACTIVE
+        The lot is in normal use.
+    INACTIVE
+        The lot is no longer in use.
+    QUARANTINED
+        The lot is held back from use (e.g. pending inspection).
+    """
 
     ACTIVE = "active"
     INACTIVE = "inactive"
@@ -23,7 +33,21 @@ class LotStatus(str, Enum):
 
 
 class LotAdjustmentAction(str, Enum):
-    """Valid lot inventory adjustment actions."""
+    """How a quantity adjustment is applied to a lot's inventory on hand.
+
+    Used with :meth:`~albert.collections.lots.LotCollection.adjust`.
+
+    Attributes
+    ----------
+    ADD
+        Increase inventory on hand by the given quantity.
+    SUBTRACT
+        Decrease inventory on hand by the given quantity.
+    SET
+        Set inventory on hand to exactly the given quantity.
+    ZERO
+        Set inventory on hand to zero.
+    """
 
     ADD = "ADD"
     SUBTRACT = "SUBTRACT"
@@ -32,46 +56,94 @@ class LotAdjustmentAction(str, Enum):
 
 
 class Lot(BaseResource):
-    """A lot in Albert.
+    """A specific physical batch or quantity of an Inventory Item.
+
+    A Lot represents one received shipment or produced amount of a parent
+    Inventory Item (identified by ``inventory_id``), tracking batch-specific
+    details such as how much is currently on hand, where it is stored, its cost,
+    and who owns it. Lots are managed through the Lot collection
+    (:class:`~albert.collections.lots.LotCollection`, accessed as
+    ``client.lots``); their parent items live in the Inventory collection
+    (:class:`~albert.collections.inventory.InventoryCollection`). A ``lot_id``
+    is used throughout property data to scope results to a single batch.
+
+    A lot's own ID has the format ``LOT...``; its parent ``inventory_id`` has the
+    format ``INV...``.
 
     Attributes
     ----------
     id : LotId | None
-        The Albert ID of the lot. Set when the lot is retrieved from Albert.
+        The lot's Albert ID (format ``LOT...``). Assigned by Albert; present on
+        lots retrieved from the platform.
     inventory_id : InventoryId
-        The Albert ID of the inventory item associated with the lot.
+        The Albert ID of the parent Inventory Item this lot is a batch of.
     task_id : str | None
-        The Albert ID of the task associated with the creation of lot. Optional.
+        The Albert ID of the Task that produced this lot, if it came from one.
     notes : str | None
-        The notes associated with the lot. Optional.
+        Free-text notes on the lot.
     expiration_date : str | None
-        The expiration date of the lot. YYYY-MM-DD format. Optional.
+        The date the lot expires, in ``YYYY-MM-DD`` format.
     manufacturer_lot_number : str | None
-        The manufacturer lot number of the lot. Optional.
+        The manufacturer's own lot number for this batch.
     storage_location : StorageLocation | None
-        The storage location of the lot. Optional.
+        Where the lot is physically stored.
     pack_size : str | None
-        The pack size of the lot. Optional. Used to calculate the cost per unit.
+        The pack size of the lot, used to calculate cost per unit.
     initial_quantity : NonNegativeFloat | None
-        The initial quantity of the lot. Optional.
+        The quantity the lot started with, in the parent item's units.
     cost : NonNegativeFloat | None
-        The cost of the lot. Optional.
+        The cost of the lot.
     inventory_on_hand : NonNegativeFloat
-        The inventory on hand of the lot.
+        The quantity currently in stock, in the parent item's units. Change it
+        with :meth:`~albert.collections.lots.LotCollection.adjust` rather than by
+        editing directly.
     owner : list[User] | None
-        The owners of the lot. Optional.
+        The user(s) who own the lot. A lot may have at most one owner.
     lot_number : str | None
-        The lot number of the lot. Optional.
+        The lot's number within Albert.
     external_barcode_id : str | None
-        The external barcode ID of the lot. Optional.
+        An external barcode ID for the lot.
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
-        The metadata of the lot. Optional. Metadata allowed values can be found using the Custom Fields API.
-    has_notes : bool
+        Custom field values for the lot. Allowed keys and values are defined by
+        the Custom Fields configuration.
+    action : str | None
+        Internal marker for the operation that produced the lot (e.g. a split).
+        Not typically set by callers.
+    status : LotStatus | None
+        The lot's lifecycle status. Read-only.
+    location : Location | None
+        The location of the lot. Required when creating a Task lot.
+    has_notes : bool | None
         Whether the lot has notes. Read-only.
-    has_attachments : bool
+    has_attachments : bool | None
         Whether the lot has attachments. Read-only.
-    barcode_id : str
-        The barcode ID of the lot. Read-only.
+    parent_name : str | None
+        The name of the parent Inventory Item. Read-only.
+    parent_unit : str | None
+        The unit of measure of the parent Inventory Item. Read-only.
+    parent_category : InventoryCategory | None
+        The category of the parent Inventory Item (e.g. ``RawMaterials``).
+        Read-only.
+    barcode_id : str | None
+        The barcode ID assigned by Albert. Read-only.
+    task_completion_date : str | None
+        The completion date of the Task that produced the lot. Read-only.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.lots import Lot
+        from albert.resources.storage_locations import StorageLocation
+        client = Albert()
+        lot = Lot(
+            inventory_id="INVA1",
+            storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+            initial_quantity=10.0,
+        )
+        created = client.lots.create(lots=[lot])
+        ```
     """
 
     action: str | None = Field(default=None)
@@ -157,7 +229,35 @@ class Lot(BaseResource):
 
 
 class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
-    """Lightweight representation of a Lot returned from search()."""
+    """Lightweight, partial view of a :class:`Lot` returned by search.
+
+    Returned by :meth:`~albert.collections.lots.LotCollection.search`. It carries
+    only the most commonly needed fields for fast lookups; call
+    :meth:`hydrate` to fetch the full :class:`Lot` when you need every field.
+
+    Attributes
+    ----------
+    id : LotId
+        The lot's Albert ID (format ``LOT...``).
+    inventory_id : InventoryId | None
+        The Albert ID of the parent Inventory Item.
+    parent_name : str | None
+        The name of the parent Inventory Item.
+    parent_unit : str | None
+        The unit of measure of the parent Inventory Item.
+    parent_category : InventoryCategory | None
+        The category of the parent Inventory Item (e.g. ``RawMaterials``).
+    task_id : str | None
+        The Albert ID of the Task that produced this lot, if any.
+    barcode_id : str | None
+        The barcode ID assigned by Albert.
+    expiration_date : str | None
+        The date the lot expires, in ``YYYY-MM-DD`` format.
+    manufacturer_lot_number : str | None
+        The manufacturer's own lot number for this batch.
+    lot_number : str | None
+        The lot's number within Albert.
+    """
 
     id: LotId = Field(alias="albertId")
     inventory_id: InventoryId | None = Field(default=None, alias="parentId")

@@ -16,11 +16,75 @@ from albert.utils.worksheets import (
 
 
 class WorksheetCollection(BaseCollection):
-    """WorksheetCollection is a collection class for managing Worksheet entities in the Albert platform."""
+    """Manage Worksheets in the Albert platform.
+
+    A Worksheet is the Excel-like command center where formulations are designed.
+    Each Worksheet is paired one-to-one with a Project (:class:`~albert.resources.projects.Project`)
+    and is retrieved by that Project's ID with :meth:`get_by_project_id`.
+
+    A Worksheet holds one or more Sheets (:class:`~albert.resources.sheets.Sheet`).
+    Each Sheet is an interactive grid organized into stacked sections (given by
+    :class:`~albert.resources.sheets.DesignType`): Product Design (where
+    formulations are built), Process Design, Results (Property Tasks and their
+    data), and Apps (insights and notes). Building a formulation on a Sheet is
+    what registers a Formula inventory item
+    (:class:`~albert.resources.inventory.InventoryItem`) — Formulas originate
+    here rather than through the Inventory collection.
+
+    This collection manages Worksheet- and Sheet-level structure (retrieving a
+    Worksheet, adding Sheets, duplicating Sheets, and creating Sheet templates).
+    Editing the contents of a Sheet — columns, rows, cells, and formulations — is
+    done through the returned :class:`~albert.resources.sheets.Sheet` objects.
+
+    This collection is accessed as ``client.worksheets``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for worksheet requests.
+
+    Methods
+    -------
+    get_by_project_id(project_id) -> Worksheet
+        Retrieve the Worksheet paired with a Project.
+    setup_worksheet(project_id, add_sheet=False) -> Worksheet
+        Initialize a Worksheet for a Project that does not yet have one.
+    add_sheet(project_id, sheet_name) -> Worksheet
+        Add a new blank Sheet to a Worksheet.
+    setup_new_sheet_from_template(project_id, sheet_template_id, sheet_name) -> Worksheet
+        Add a new Sheet built from an existing Sheet template.
+    duplicate_sheet(project_id, source_sheet_name, new_sheet_name, ...) -> Worksheet
+        Copy an existing Sheet into a new Sheet within the same Project.
+    create_sheet_template(project_id, source_sheet_name, template_name, ...) -> CustomTemplate
+        Save an existing Sheet as a reusable Sheet template.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        for sheet in worksheet.sheets:
+            print(sheet.id, sheet.name)
+        ```
+    """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
+        """Initialize a WorksheetCollection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{WorksheetCollection._api_version}/worksheet"
 
@@ -35,17 +99,34 @@ class WorksheetCollection(BaseCollection):
 
     @validate_call
     def get_by_project_id(self, *, project_id: ProjectId) -> Worksheet:
-        """Retrieve a worksheet by its project ID. Projects and Worksheets are 1:1 in the Albert platform.
+        """Retrieve the Worksheet paired with a Project.
+
+        Projects and Worksheets are one-to-one in Albert, so a Project ID uniquely
+        identifies a Worksheet. This is the usual entry point for working with a
+        Worksheet: the returned object exposes its Sheets
+        (:class:`~albert.resources.sheets.Sheet`), each of which can then be
+        edited in place.
 
         Parameters
         ----------
-        project_id : str
-            The project ID to retrieve the worksheet for.
+        project_id : ProjectId
+            The ID of the Project whose Worksheet to retrieve (format ``PRO...``).
 
         Returns
         -------
         Worksheet
-            The Worksheet object for that project.
+            The Worksheet paired with the Project.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+            sheet = worksheet.sheets[0]
+            print(sheet.name)
+            ```
         """
 
         params = {"type": "project", "id": project_id}
@@ -59,19 +140,32 @@ class WorksheetCollection(BaseCollection):
 
     @validate_call
     def setup_worksheet(self, *, project_id: ProjectId, add_sheet=False) -> Worksheet:
-        """Setup a new worksheet for a project.
+        """Initialize a Worksheet for a Project that does not yet have one.
+
+        Most Projects already have a Worksheet; use this only when a Project's
+        Worksheet has not been set up. To retrieve an existing Worksheet, use
+        :meth:`get_by_project_id`.
 
         Parameters
         ----------
-        project_id : str
-            The project ID to setup the worksheet for.
+        project_id : ProjectId
+            The ID of the Project to set up the Worksheet for (format ``PRO...``).
         add_sheet : bool, optional
-            Whether to add a blank sheet to the worksheet, by default False
+            When True, a blank Sheet is added to the new Worksheet. Default is False.
 
         Returns
         -------
         Worksheet
-            The Worksheet object for the project.
+            The Worksheet for the Project.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.setup_worksheet(project_id="PRO1", add_sheet=True)
+            ```
         """
 
         params = {"sheets": str(add_sheet).lower()}
@@ -83,21 +177,37 @@ class WorksheetCollection(BaseCollection):
     def setup_new_sheet_from_template(
         self, *, project_id: ProjectId, sheet_template_id: str, sheet_name: str
     ) -> Worksheet:
-        """Create a new sheet in the Worksheet related to the specified Project from a template.
+        """Add a new Sheet to a Project's Worksheet, built from a Sheet template.
+
+        The template supplies the starting structure (columns and rows) for the
+        new Sheet. Sheet templates are created with :meth:`create_sheet_template`.
 
         Parameters
         ----------
-        project_id : str
-            _description_
+        project_id : ProjectId
+            The ID of the Project whose Worksheet the Sheet is added to (format ``PRO...``).
         sheet_template_id : str
-            _description_
+            The ID of the Sheet template to build the new Sheet from.
         sheet_name : str
-            _description_
+            The name of the new Sheet.
 
         Returns
         -------
         Worksheet
-            The Worksheet object for the project.
+            The Worksheet, now including the newly created Sheet.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.setup_new_sheet_from_template(
+                project_id="PRO1",
+                sheet_template_id="CTP123",
+                sheet_name="Trial 1",
+            )
+            ```
         """
         payload = {"name": sheet_name}
         params = {"templateId": sheet_template_id}
@@ -107,19 +217,31 @@ class WorksheetCollection(BaseCollection):
 
     @validate_call
     def add_sheet(self, *, project_id: ProjectId, sheet_name: str) -> Worksheet:
-        """Create a new blank sheet in the Worksheet with the specified name.
+        """Add a new blank Sheet to a Project's Worksheet.
+
+        The new Sheet starts empty. To start from an existing structure instead,
+        use :meth:`setup_new_sheet_from_template` or :meth:`duplicate_sheet`.
 
         Parameters
         ----------
-        project_id : str
-            The project ID for the Worksheet to add the sheet to.
+        project_id : ProjectId
+            The ID of the Project whose Worksheet the Sheet is added to (format ``PRO...``).
         sheet_name : str
-            The name of the new sheet.
+            The name of the new Sheet.
 
         Returns
         -------
         Worksheet
-            The Worksheet object for the project.
+            The Worksheet, now including the newly created Sheet.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.add_sheet(project_id="PRO1", sheet_name="Trial 2")
+            ```
         """
         payload = {"name": sheet_name}
         url = f"{self.base_path}/project/{project_id}/sheets"
@@ -139,41 +261,55 @@ class WorksheetCollection(BaseCollection):
         column_names: list[str] | None = None,
         task_row_names: list[str] | None = None,
     ) -> Worksheet:
-        """Duplicate an existing sheet within the same project.
+        """Copy an existing Sheet into a new Sheet within the same Project.
 
-        This creates a new sheet based on the specified source sheet. You can control
-        which Product Design (PD) & Results rows and columns are copied using the available options.
-        The final list of columns copied is the union of:
-            - all pinned columns (if copy_all_pinned_columns is True)
-            - all unpinned columns (if copy_all_unpinned_columns is True)
-            - explicitly listed column names (column_names)
+        The new Sheet is created from the named source Sheet. You control which
+        Product Design rows and columns are carried over using the options below.
+        The final set of columns copied is the union of:
+
+        - all pinned columns (if ``copy_all_pinned_columns`` is True)
+        - all unpinned columns (if ``copy_all_unpinned_columns`` is True)
+        - explicitly listed column names (``column_names``)
 
         Parameters
         ----------
-        project_id : str
-            The project ID under which the sheet exists.
+        project_id : ProjectId
+            The ID of the Project the source Sheet belongs to (format ``PRO...``).
         source_sheet_name : str
-            The name of the existing sheet to duplicate.
+            The name of the existing Sheet to duplicate.
         new_sheet_name : str
-            The name of the new sheet to create.
+            The name of the new Sheet to create.
         copy_all_pd_rows : bool, optional
-            When True, all PD (Product Design) rows from the source sheet are copied.
-            When False, only rows corresponding to the selected columns will be copied.
+            When True, all Product Design rows from the source Sheet are copied.
+            When False, only rows corresponding to the selected columns are copied.
             Default is True.
         copy_all_pinned_columns : bool, optional
-            If True, includes all pinned columns from the source sheet. Default is True.
+            When True, includes all pinned columns from the source Sheet. Default is True.
         copy_all_unpinned_columns : bool, optional
-            If True, includes all unpinned columns from the source sheet. Default is True.
+            When True, includes all unpinned columns from the source Sheet. Default is True.
         column_names : list[str], optional
-            A list of column names to explicitly copy. These are resolved internally
-            to column IDs using the sheet's product design grid.
+            Column names to explicitly copy. These are resolved internally to column
+            IDs using the source Sheet's Product Design grid.
         task_row_names : list[str], optional
-            List of task row names to include from the tasks.
+            Names of task rows to include from the source Sheet's Tasks.
 
         Returns
         -------
         Worksheet
-            The Worksheet entity containing newly created sheet.
+            The Worksheet, now including the newly created Sheet.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            worksheet = client.worksheets.duplicate_sheet(
+                project_id="PRO1",
+                source_sheet_name="Trial 1",
+                new_sheet_name="Trial 1 (copy)",
+            )
+            ```
         """
 
         worksheet = self.get_by_project_id(project_id=project_id)
@@ -216,37 +352,62 @@ class WorksheetCollection(BaseCollection):
         prg_row_names: list[str] | None = None,
         acl: ACLContainer | None = None,
     ) -> CustomTemplate:
-        """Create a new sheet template from an existing sheet.
+        """Save an existing Sheet as a reusable Sheet template.
+
+        The template captures the structure of the source Sheet so new Sheets can
+        be built from it later with :meth:`setup_new_sheet_from_template`. At least
+        one column must be selected, or a ``ValueError`` is raised. The set of
+        columns saved is the union of pinned columns, unpinned columns, and any
+        explicitly listed ``column_names`` (per the flags below).
 
         Parameters
         ----------
-        project_id : str
-            The project ID under which the sheet exists.
+        project_id : ProjectId
+            The ID of the Project the source Sheet belongs to (format ``PRO...``).
         source_sheet_name : str
-            The name of the existing sheet to use as the template source.
+            The name of the existing Sheet to use as the template source.
         template_name : str
             The name of the new template.
         copy_all_pd_rows : bool, optional
-            When True, all PD (Product Design) rows from the source sheet are copied.
-            When False, only rows corresponding to the selected columns will be copied.
+            When True, all Product Design rows from the source Sheet are copied.
+            When False, only rows corresponding to the selected columns are copied.
+            Default is True.
         copy_all_pinned_columns : bool, optional
-            If True, includes all pinned columns from the source sheet. Default is True.
+            When True, includes all pinned columns from the source Sheet. Default is True.
         copy_all_unpinned_columns : bool, optional
-            If True, includes all unpinned columns from the source sheet. Default is True.
+            When True, includes all unpinned columns from the source Sheet. Default is True.
         column_names : list[str], optional
-            A list of column names to explicitly copy. These are resolved internally
-            to column IDs using the sheet's product design grid.
+            Column names to explicitly copy. These are resolved internally to column
+            IDs using the source Sheet's Product Design grid.
         task_row_names : list[str], optional
-            List of task row names to include from the tasks.
+            Names of task rows to include from the source Sheet's Tasks.
         prg_row_names : list[str], optional
-            List of parameter group row names to include.
+            Names of parameter group rows to include.
         acl : ACLContainer, optional
-            ACL for the template.
+            Access control settings for the template.
 
         Returns
         -------
         CustomTemplate
-            The CustomTemplate for the created sheet template.
+            The created Sheet template.
+
+        Raises
+        ------
+        ValueError
+            If no columns are selected to include in the template.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            template = client.worksheets.create_sheet_template(
+                project_id="PRO1",
+                source_sheet_name="Trial 1",
+                template_name="Standard trial layout",
+            )
+            ```
         """
         worksheet = self.get_by_project_id(project_id=project_id)
         sheet = get_sheet_from_worksheet(sheet_name=source_sheet_name, worksheet=worksheet)

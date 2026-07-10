@@ -66,6 +66,52 @@ class CurveDataEntityLink(EntityLinkWithName):
 
 
 class DataColumnValue(BaseResource):
+    """A result data column on a Data Template.
+
+    A ``DataColumnValue`` binds a :class:`~albert.resources.data_columns.DataColumn` to
+    a Data Template as one of the results the test captures (a "direct variable"). Data
+    columns can be typed numeric, text, dropdown/enum, image, curve, date, or timestamp.
+    On a Data Template the ``value`` typically holds an example value shown on the
+    details page rather than measured data; actual measurements are stored as Property
+    Data. When constructing one, provide either ``data_column`` or ``data_column_id``.
+
+    Attributes
+    ----------
+    data_column : DataColumn | None
+        The full DataColumn resource this value binds to. Provide this or
+        ``data_column_id``. Not serialized.
+    data_column_id : DataColumnId | None
+        The ID of the bound DataColumn (format ``DAC...``). Serialized as ``id``.
+        Provide this or ``data_column``.
+    name : str | None
+        The display name of the column.
+    value : str | None
+        The column's example/default value shown on the Data Template details page.
+    hidden : bool
+        Whether the column is hidden. Defaults to False.
+    unit : Unit | None
+        The unit of measure for the column.
+    calculation : str | None
+        A calculation expression for a computed column.
+    sequence : str | None
+        The column's position within the template. Assigned by Albert.
+    validation : list[ValueValidation] | None
+        Validation rules applied to the column value (e.g. enum options, numeric range).
+    curve_data : list[CurveDataEntityLink] | None
+        For curve columns, the linked X/Y curve result columns.
+    original_name : str | None
+        The original column name as stored in Albert. Read-only.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.data_templates import DataColumnValue
+
+        column = DataColumnValue(data_column_id="DAC1", value="42")
+        ```
+    """
+
     data_column: DataColumn | None = Field(exclude=True, default=None)
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
     name: str | None = None
@@ -111,6 +157,72 @@ class DataColumnValue(BaseResource):
 
 
 class DataTemplate(BaseTaggedResource):
+    """A definition of what a test captures (a DAT).
+
+    A ``DataTemplate`` (Data Template, ID format ``DAT...``) describes a test in two
+    parts: its ``data_column_values`` are the measured RESULTS (the data columns, or
+    "direct variables"), and its ``parameter_values`` are the CONDITIONS under which
+    the test is run (the "indirect variables"). A Data Template does not itself store
+    measured values; those are recorded as Property Data. When the template is paired
+    with a Workflow inside a Block, only its parameters (not its result columns) flow
+    into the Workflow's setpoints.
+
+    Templates are managed through
+    :class:`~albert.collections.data_templates.DataTemplateCollection`
+    (``client.data_templates``).
+
+    Attributes
+    ----------
+    name : str
+        The name of the data template. Required.
+    id : DataTemplateId | None
+        The Albert Data Template ID (format ``DAT...``). Set when the template is
+        retrieved from or created in Albert. Serialized as ``albertId``.
+    description : str | None
+        A free-text description of the template.
+    security_class : SecurityClass | None
+        The access/security class of the template. Serialized as ``class``.
+    verified : bool
+        The approval/governance state of the template. Defaults to False.
+    users_with_access : list[User] | None
+        The access-control list of users who can access the template. Serialized as
+        ``ACL``.
+    data_column_values : list[DataColumnValue] | None
+        The measured results the test captures (its data columns / direct variables).
+        See :class:`DataColumnValue`.
+    parameter_values : list[ParameterValue] | None
+        The conditions under which the test is run (its indirect variables). See
+        :class:`~albert.resources.parameter_groups.ParameterValue`.
+    metadata : dict[str, MetadataItem] | None
+        Custom metadata fields. Allowed keys are defined by the workspace's
+        CustomFields configuration.
+    tags : list[Tag | str] | None
+        Tags on the template. Inherited from
+        :class:`~albert.resources.tagged_base.BaseTaggedResource`.
+    original_name : str | None
+        The original template name as stored in Albert. Read-only.
+    full_name : str | None
+        The fully qualified template name. Read-only.
+
+    See Also
+    --------
+    albert.collections.data_templates.DataTemplateCollection : Create, search, and manage templates.
+    DataColumnValue : Result data columns used in ``data_column_values``.
+    albert.resources.parameter_groups.ParameterValue : Condition parameters used in ``parameter_values``.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.data_templates import DataTemplate, DataColumnValue
+
+        template = DataTemplate(
+            name="Tensile Strength Test",
+            data_column_values=[DataColumnValue(data_column_id="DAC1")],
+        )
+        ```
+    """
+
     name: str
     id: DataTemplateId | None = Field(None, alias="albertId")
     description: str | None = None
@@ -135,27 +247,51 @@ class DataTemplate(BaseTaggedResource):
 
 
 class ImportMode(str, Enum):
+    """How a curve example's source CSV is ingested.
+
+    Attributes
+    ----------
+    SCRIPT
+        Run the attached column script first, then import its output (requires a script
+        attachment on the column).
+    CSV
+        Ingest the CSV file directly.
+    """
+
     SCRIPT = "SCRIPT"
     CSV = "CSV"
 
 
 class CurveExample(BaseAlbertModel):
-    """
-    Curve example data for a data template column.
+    """An example row for a curve data column on a Data Template.
+
+    Sets the example row shown only on the Data Template details page (not in tasks).
+    A curve is a complex type, so it is sourced from a CSV file. Provide exactly one
+    source: a local ``file_path`` or an existing ``attachment_id``. Pass this to
+    :meth:`~albert.collections.data_templates.DataTemplateCollection.set_curve_example`.
 
     Attributes
     ----------
     mode : ImportMode
         ``ImportMode.CSV`` ingests the CSV directly; ``ImportMode.SCRIPT`` runs the attached
-        script first (requires a script attachment on the column).
+        script first (requires a script attachment on the column). Defaults to CSV.
     field_mapping : dict[str, str] | None
         Optional header-to-curve-result mapping, e.g. ``{"visc": "Viscosity"}``. Overrides
         auto-detected mappings.
     file_path : str | Path | None
-        Local path to source CSV file.
+        Local path to the source CSV file.
     attachment_id : AttachmentId | None
-        Existing attachment ID of source CSV file.
+        Existing attachment ID of the source CSV file.
         Provide exactly one source CSV (local path or existing attachment).
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.data_templates import CurveExample
+
+        example = CurveExample(file_path="viscosity_curve.csv")
+        ```
     """
 
     type: Literal[DataType.CURVE] = DataType.CURVE
@@ -174,7 +310,26 @@ class CurveExample(BaseAlbertModel):
 
 
 class ImageExample(BaseAlbertModel):
-    """Example data for an image data column."""
+    """An example row for an image data column on a Data Template.
+
+    Sets the example row shown only on the Data Template details page (not in tasks).
+    An image is a complex type sourced from a local file. Pass this to
+    :meth:`~albert.collections.data_templates.DataTemplateCollection.set_image_example`.
+
+    Attributes
+    ----------
+    file_path : str | Path
+        Local path to the source image file.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.data_templates import ImageExample
+
+        example = ImageExample(file_path="fracture_surface.png")
+        ```
+    """
 
     type: Literal[DataType.IMAGE] = DataType.IMAGE
     file_path: str | Path

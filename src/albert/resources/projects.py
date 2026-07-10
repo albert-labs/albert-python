@@ -15,7 +15,12 @@ from albert.resources.smart_projects import _PROJECTS_BASE_PATH, SmartProject
 
 
 class ProjectClass(str, Enum):
-    """The ACL Class of a project"""
+    """The access-control class of a project, governing who can see it.
+
+    - ``PRIVATE`` — visible only to the project's ACL members (the default).
+    - ``SHARED`` — visible more broadly across the organization.
+    - ``CONFIDENTIAL`` — restricted, most tightly controlled access.
+    """
 
     SHARED = "shared"
     CONFIDENTIAL = "confidential"
@@ -23,7 +28,11 @@ class ProjectClass(str, Enum):
 
 
 class State(str, Enum):
-    """The current state of a project"""
+    """The lifecycle state of a project.
+
+    The set of allowed states is customizable per tenant via the entity-status
+    API; these are the platform defaults.
+    """
 
     NOT_STARTED = "Not Started"
     ACTIVE = "Active"
@@ -32,7 +41,21 @@ class State(str, Enum):
 
 
 class TaskConfig(BaseAlbertModel):
-    """The task configuration for a project"""
+    """Default task settings applied when tasks are created within a project.
+
+    Attributes
+    ----------
+    datatemplateId : str | None
+        ID of the data template tasks default to.
+    workflowId : str | None
+        ID of the workflow tasks default to.
+    defaultTaskName : str | None
+        Default name applied to new tasks.
+    target : str | None
+        Default target for the configured tasks.
+    hidden : bool | None
+        Whether this configuration is hidden in the UI.
+    """
 
     datatemplateId: str | None = None
     workflowId: str | None = None
@@ -42,39 +65,77 @@ class TaskConfig(BaseAlbertModel):
 
 
 class GridDefault(str, Enum):
-    """The default grid for a project"""
+    """The default grid view shown for a project.
+
+    - ``PD`` — the Property Data grid.
+    - ``WKS`` — the Worksheet grid.
+    """
 
     PD = "PD"
     WKS = "WKS"
 
 
 class Project(BaseSessionResource):
-    """A project in Albert.
+    """A project in Albert: the top-level container for a piece of R&D work.
+
+    A project groups the formulations designed for the work, its Worksheet (1:1
+    with the project), the Tasks run against it, and the inventory it references.
+    Create and manage projects through the
+    :class:`~albert.collections.projects.ProjectCollection` (``client.projects``).
+
+    Only ``description`` is required to build one; it doubles as the project's
+    display name. The ``id`` and ``state`` are assigned by Albert and are read
+    only from the client's perspective.
 
     Attributes
     ----------
     description : str
-        The description of the project. Used as the name of the project as well.
-    id : str | None
-        The Albert ID of the project. Set when the project is retrieved from Albert.
+        Human-readable project name/description (1-2000 characters). Also serves
+        as the project's display name.
     locations : list[Location] | None
-        The locations associated with the project. Optional.
-    project_class : ProjectClass
-        The class of the project. Defaults to PRIVATE.
-    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
-        The metadata of the project. Optional. Metadata allowed values can be found using the Custom Fields API.
+        The locations the project is associated with. Optional.
+    project_class : ProjectClass | None
+        Access-control class (private, shared, or confidential). Defaults to
+        private.
     prefix : str | None
-        The prefix of the project. Optional.
-    acl : list[ACL] | None
-        The ACL of the project. Optional.
-    task_config : list[TaskConfig] | None
-        The task configuration of the project. Optional.
-    grid : GridDefault | None
-        The default grid of the project. Optional.
-    state : State | None
-        The state/status of the project. Allowed states are customizeable using the entitystatus API. Optional.
+        Optional prefix used when naming entities within the project.
     application_engineering_inventory_ids : list[str] | None
-        Inventory Ids to be added as application engineering. Optional.
+        Inventory IDs to attach to the project as application engineering.
+        Optional.
+    id : ProjectId | None
+        The Albert Project ID (format ``PRO...``). Assigned by Albert and present
+        once the project has been created or retrieved.
+    acl : list[ACL] | None
+        Access-control entries controlling who can access the project. Optional.
+    task_config : list[TaskConfig] | None
+        Default task settings applied to tasks created within the project.
+    grid : GridDefault | None
+        The default grid view (Property Data or Worksheet) shown for the project.
+    metadata : dict[str, MetadataItem] | None
+        Custom field values. Allowed keys and values are defined via the Custom
+        Fields API. Optional.
+    status : str | None
+        Read-only status string returned by Albert.
+    state : State | None
+        The project's lifecycle state. Read only on create; can be changed via
+        :meth:`~albert.collections.projects.ProjectCollection.update`.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.projects import Project, ProjectClass
+        client = Albert()
+        project = client.projects.create(
+            project=Project(
+                description="Weatherproof Coatings 2026",
+                project_class=ProjectClass.SHARED,
+            )
+        )
+        project.id
+        # 'PRO123'
+        ```
     """
 
     description: str = Field(min_length=1, max_length=2000)
@@ -129,13 +190,59 @@ class Project(BaseSessionResource):
 
 
 class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
+    """A lightweight (partial) project returned by project search.
+
+    Returned by :meth:`~albert.collections.projects.ProjectCollection.search`,
+    this carries only summary fields for fast listing. Use its hydration support
+    (or fetch by ``id`` via
+    :meth:`~albert.collections.projects.ProjectCollection.get_by_id`) to obtain
+    the full :class:`Project`.
+
+    Attributes
+    ----------
+    id : ProjectId | None
+        The Albert Project ID (format ``PRO...``).
+    description : str
+        The project's name/description.
+    status : str | None
+        Read-only status string returned by Albert.
+    """
+
     id: ProjectId | None = Field(None, alias="albertId")
     description: str = Field(min_length=1, max_length=2000)
     status: str | None = Field(default=None, exclude=True, frozen=True)
 
 
 class DocumentSearchItem(BaseAlbertModel):
-    """A document (attachment) search result item from a project."""
+    """A document (attachment) search result linked to a project.
+
+    Returned by
+    :meth:`~albert.collections.projects.ProjectCollection.document_search`. Each
+    item describes an attachment's metadata rather than its file contents.
+
+    Attributes
+    ----------
+    id : AttachmentId | None
+        The Albert Attachment ID (format ``ATT...``).
+    name : str | None
+        The document's file name.
+    mime_type : str | None
+        The document's MIME type (e.g. ``application/pdf``).
+    file_size : int | None
+        The document's size in bytes.
+    project_id : str | None
+        ID of the project the document is linked to.
+    key : str | None
+        Storage key for the document.
+    source : str | None
+        Source system or origin of the document.
+    created_by : str | None
+        ID of the user who uploaded the document.
+    created_by_name : str | None
+        Name of the user who uploaded the document.
+    created_at : str | None
+        Timestamp when the document was created.
+    """
 
     id: AttachmentId | None = Field(None, alias="albertId")
     name: str | None = None

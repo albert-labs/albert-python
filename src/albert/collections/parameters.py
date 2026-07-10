@@ -13,35 +13,96 @@ from albert.resources.parameters import Parameter
 
 
 class ParameterCollection(BaseCollection):
-    """ParameterCollection is a collection class for managing Parameter entities in the Albert platform."""
+    """Manage Parameters in the Albert platform.
+
+    A Parameter (ID format ``PRM...``, e.g. ``"PRM1"``) is the definition of a
+    single condition or input variable used when running experiments, such as
+    Temperature, Spin Speed, or Instrument. It is often called an "indirect
+    variable": the Parameter itself only names the variable, and its actual value
+    and unit are fixed to a setpoint later, inside a :class:`~albert.resources.workflows.Workflow`.
+
+    Parameters are the building blocks of Parameter Groups
+    (:class:`~albert.resources.parameter_groups.ParameterGroup`) and form the
+    parameter side of Data Templates
+    (:class:`~albert.resources.data_templates.DataTemplate`).
+
+    This collection is accessed as ``client.parameters``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for parameter requests.
+
+    Methods
+    -------
+    create(parameter) -> Parameter
+        Create a new parameter.
+    get_or_create(parameter) -> Parameter
+        Return the existing parameter matching by name, or create it.
+    get_by_id(id) -> Parameter
+        Retrieve a single parameter by its Parameter ID.
+    get_all(...) -> Iterator[Parameter]
+        Search for parameters by ID or name.
+    update(parameter) -> Parameter
+        Apply changes to an existing parameter.
+    delete(id) -> None
+        Delete a parameter by its Parameter ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        param = client.parameters.get_by_id(id="PRM1")
+        param.name
+        # 'Temperature'
+        ```
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "metadata"}
 
     def __init__(self, *, session: AlbertSession):
-        """Initializes the ParameterCollection with the provided session.
+        """Initialize a ParameterCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ParameterCollection._api_version}/parameters"
 
     @validate_call
     def get_by_id(self, *, id: ParameterId) -> Parameter:
-        """Retrieve a parameter by its ID.
+        """Retrieve a single parameter by its ID.
+
+        To find parameters without knowing their IDs, use :meth:`get_all`.
 
         Parameters
         ----------
-        id : str
-            The ID of the parameter to retrieve.
+        id : ParameterId
+            The Parameter ID (format ``PRM...``, e.g. ``"PRM1"``).
 
         Returns
         -------
         Parameter
             The parameter with the given ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            param = client.parameters.get_by_id(id="PRM1")
+            param.name
+            # 'Temperature'
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -50,15 +111,30 @@ class ParameterCollection(BaseCollection):
     def create(self, *, parameter: Parameter) -> Parameter:
         """Create a new parameter.
 
+        This registers a new condition or input variable (e.g. Temperature or Spin
+        Speed) that can then be used in Parameter Groups and Data Templates. To
+        avoid creating duplicates when a parameter of the same name may already
+        exist, use :meth:`get_or_create` instead.
+
         Parameters
         ----------
         parameter : Parameter
-            The parameter to create.
+            The parameter to create. Only ``name`` is required.
 
         Returns
         -------
         Parameter
-            Returns the created parameter.
+            The newly created parameter, populated with its assigned Parameter ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.parameters import Parameter
+            param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
+            param.id
+            # 'PRM1'
+            ```
         """
         response = self.session.post(
             self.base_path,
@@ -67,17 +143,31 @@ class ParameterCollection(BaseCollection):
         return Parameter(**response.json())
 
     def get_or_create(self, *, parameter: Parameter) -> Parameter:
-        """Retrieves a Parameter or creates it if it does not exist.
+        """Return the existing parameter matching by name, or create it.
+
+        Matches an existing parameter by exact ``name``. If a match is found, it is
+        returned unchanged; otherwise a new parameter is created via :meth:`create`.
+        Use this to avoid creating duplicate parameters.
 
         Parameters
         ----------
         parameter : Parameter
-            The parameter to get or create.
+            The parameter to get or create. Matched on ``name``.
 
         Returns
         -------
         Parameter
             The existing or newly created parameter.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.parameters import Parameter
+            param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
+            param.id
+            # 'PRM1'
+            ```
         """
         for match in self.get_all(names=parameter.name, exact_match=False):
             if match.name == parameter.name:
@@ -91,14 +181,23 @@ class ParameterCollection(BaseCollection):
     def delete(self, *, id: ParameterId) -> None:
         """Delete a parameter by its ID.
 
+        This permanently removes the parameter.
+
         Parameters
         ----------
-        id : str
-            The ID of the parameter to delete.
+        id : ParameterId
+            The Parameter ID to delete (format ``PRM...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.parameters.delete(id="PRM1")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -114,28 +213,40 @@ class ParameterCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Parameter]:
-        """
-        Retrieve all Parameter items with optional filters.
+        """Search for parameters, optionally filtered by ID or name.
+
+        Results are returned as a lazily paginated iterator, so iterating fetches
+        additional pages on demand. With no filters, iterates over all parameters.
 
         Parameters
         ----------
-        ids : list[str], optional
-            A list of parameter IDs to retrieve.
+        ids : list[ParameterId], optional
+            Restrict results to these Parameter IDs (format ``PRM...``).
         names : str or list[str], optional
             One or more parameter names to filter by.
         exact_match : bool, optional
-            Whether to require exact name matches. Default is False.
+            When True, only parameters whose name matches ``names`` exactly are
+            returned. When False (default), name matching is partial.
         order_by : OrderBy, optional
-            Sort order of results. Default is DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         start_key : str, optional
-            The pagination key to start from.
+            Pagination key to resume from. Usually left unset.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[Parameter]
-            An iterator of Parameters matching the given criteria.
+            A lazily paginated iterator of parameters matching the given criteria.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for param in client.parameters.get_all(names="Temperature", max_items=10):
+                print(param.id, param.name)
+            ```
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
@@ -174,12 +285,16 @@ class ParameterCollection(BaseCollection):
         return isinstance(existing, list) or isinstance(updated, list)
 
     def update(self, *, parameter: Parameter) -> Parameter:
-        """Update a parameter.
+        """Update an existing parameter.
+
+        Fetch the parameter (e.g. with :meth:`get_by_id`), modify the updatable
+        fields on the returned object, then pass it here. Only the fields listed in
+        Notes are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         parameter : Parameter
-            The updated parameter to save. The parameter must have an ID.
+            The parameter to update. Must have a valid ``id``.
 
         Returns
         -------
@@ -189,6 +304,17 @@ class ParameterCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``metadata``, ``name``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            param = client.parameters.get_by_id(id="PRM1")
+            param.name = "Bath Temperature"
+            updated = client.parameters.update(parameter=param)
+            updated.name
+            # 'Bath Temperature'
+            ```
         """
         existing = self.get_by_id(id=parameter.id)
         payload = self._generate_patch_payload(

@@ -13,21 +13,75 @@ from albert.resources.companies import Company
 
 
 class CompanyCollection(BaseCollection):
-    """
-    CompanyCollection is a collection class for managing Company entities in the Albert platform.
+    """Manage Companies in the Albert platform.
+
+    A Company is a manufacturing company or supplier: the organization that makes
+    or supplies a material. Companies are the ``company`` linked on raw-material
+    inventory items (see :class:`~albert.resources.inventory.InventoryItem`), so
+    they are usually created as a side effect of registering raw materials, but
+    they can also be managed directly here.
+
+    Companies are identified by a Company ID (format ``COM...``) and are looked up
+    primarily by name. Because a Company is essentially a name, this collection
+    offers find-or-create and rename helpers in addition to the usual CRUD.
+
+    This collection is accessed as ``client.companies``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for company requests.
+
+    Methods
+    -------
+    get_all(name=None, exact_match=True, max_items=None) -> Iterator[Company]
+        Iterate over companies, optionally filtered by name.
+    get_by_id(id) -> Company
+        Retrieve a single company by its Company ID.
+    get_by_name(name, exact_match=True) -> Company | None
+        Retrieve a single company by name, or None if not found.
+    exists(name, exact_match=True) -> bool
+        Check whether a company with the given name exists.
+    create(company) -> Company
+        Create a new company from a name or Company object.
+    get_or_create(company) -> Company
+        Return the existing company with this name, or create it.
+    rename(old_name, new_name) -> Company
+        Rename an existing company.
+    update(company) -> Company
+        Apply changes to an existing company (identified by its ID).
+    merge(parent_id, child_ids) -> Company
+        Merge one or more duplicate companies into a parent company.
+    delete(id) -> None
+        Delete a company by its Company ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        company = client.companies.get_or_create(company="Acme Chemicals")
+        print(company.id, company.name)
+        ```
     """
 
     _updatable_attributes = {"name"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CompanyCollection with the provided session.
+        """Initialize a CompanyCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{CompanyCollection._api_version}/companies"
@@ -40,24 +94,41 @@ class CompanyCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Company]:
-        """
-        Get all company entities with optional filters.
+        """Iterate over companies, optionally filtered by name.
+
+        Use this to list companies or to find companies whose name matches a
+        search term. To fetch a single company, prefer :meth:`get_by_id` (by ID)
+        or :meth:`get_by_name` (by name).
 
         Parameters
         ----------
-        name : str | list[str], optional
-            The name(s) of the company to filter by.
+        name : str or list[str], optional
+            One or more company names to filter by. When omitted, all companies
+            are returned.
         exact_match : bool, optional
-            Whether to match the name(s) exactly. Default is True.
+            When True (default), only companies whose name matches ``name``
+            exactly are returned. When False, ``name`` is treated as a substring
+            search.
         start_key : str, optional
-            Key to start paginated results from.
+            Pagination cursor to resume from a previous page. Usually left unset.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of companies to return in total. If None, iterates
+            over all matching companies.
 
         Returns
         -------
         Iterator[Company]
-            An iterator of Company entities.
+            An iterator over the matching :class:`~albert.resources.companies.Company`
+            objects.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            # All companies whose name contains "chem"
+            for company in client.companies.get_all(name="chem", exact_match=False):
+                print(company.id, company.name)
+            ```
         """
         params = {
             "dupDetection": "false",
@@ -76,38 +147,59 @@ class CompanyCollection(BaseCollection):
         )
 
     def exists(self, *, name: str, exact_match: bool = True) -> bool:
-        """
-        Checks if a company exists by its name.
+        """Check whether a company with the given name exists.
+
+        Useful before creating a company to avoid duplicates. To get the matching
+        company itself, use :meth:`get_by_name`; to look up or create in one step,
+        use :meth:`get_or_create`.
 
         Parameters
         ----------
         name : str
-            The name of the company to check.
+            The company name to check for.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            When True (default), requires an exact name match. When False, matches
+            on a substring of the name.
 
         Returns
         -------
         bool
-            True if the company exists, False otherwise.
+            True if a matching company exists, False otherwise.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.companies.exists(name="Acme Chemicals")
+            # True
+            ```
         """
         companies = self.get_by_name(name=name, exact_match=exact_match)
         return bool(companies)
 
     @validate_call
     def get_by_id(self, *, id: CompanyId) -> Company:
-        """
-        Get a company by its ID.
+        """Retrieve a single company by its Company ID.
+
+        To look up a company when you only know its name, use :meth:`get_by_name`.
 
         Parameters
         ----------
-        id : str
-            The ID of the company to retrieve.
+        id : CompanyId
+            The Company ID (format ``COM...``).
 
         Returns
         -------
         Company
-            The Company object.
+            The matching :class:`~albert.resources.companies.Company`.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.get_by_id(id="COM123")
+            print(company.name)
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -116,37 +208,63 @@ class CompanyCollection(BaseCollection):
         return found_company
 
     def get_by_name(self, *, name: str, exact_match: bool = True) -> Company | None:
-        """
-        Retrieves a company by its name.
+        """Retrieve a single company by name.
+
+        Returns the first match, or None if no company matches. To check only for
+        existence, use :meth:`exists`; to look up or create in one step, use
+        :meth:`get_or_create`.
 
         Parameters
         ----------
         name : str
-            The name of the company to retrieve.
+            The company name to look up.
         exact_match : bool, optional
-            Whether to match the name exactly, by default True.
+            When True (default), requires an exact name match. When False, matches
+            on a substring of the name.
 
         Returns
         -------
-        Company
-            The Company object if found, None otherwise.
+        Company or None
+            The matching :class:`~albert.resources.companies.Company`, or None if
+            no company matches.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.get_by_name(name="Acme Chemicals")
+            company.id if company else "not found"
+            # 'COM123'
+            ```
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     def create(self, *, company: str | Company) -> Company:
-        """
-        Creates a new company entity.
+        """Create a new company.
+
+        To avoid creating a duplicate when a company with the same name may
+        already exist, use :meth:`get_or_create` instead.
 
         Parameters
         ----------
-        company : Union[str, Company]
-            The company name or Company object to create.
+        company : str or Company
+            The company to create. Pass a plain name string, or a
+            :class:`~albert.resources.companies.Company` object.
 
         Returns
         -------
         Company
-            The created Company object.
+            The newly created company, populated with its assigned Company ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.create(company="Acme Chemicals")
+            company.id
+            # 'COM123'
+            ```
         """
         if isinstance(company, str):
             company = Company(name=company)
@@ -157,18 +275,31 @@ class CompanyCollection(BaseCollection):
         return this_company
 
     def get_or_create(self, *, company: str | Company) -> Company:
-        """
-        Retrieves a company by its name or creates it if it does not exist.
+        """Return the existing company with this name, or create it if none exists.
+
+        A find-or-create helper: matches on exact name via :meth:`get_by_name`,
+        and falls back to :meth:`create` when there is no match. This is the safe
+        way to reference a company without risking a duplicate.
 
         Parameters
         ----------
-        company : Union[str, Company]
-            The company name or Company object to retrieve or create.
+        company : str or Company
+            The company to look up or create. Pass a plain name string, or a
+            :class:`~albert.resources.companies.Company` object.
 
         Returns
         -------
         Company
-            The Company object if found or created.
+            The existing company if one matches by name, otherwise the newly
+            created company.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.get_or_create(company="Acme Chemicals")
+            print(company.id, company.name)
+            ```
         """
         if isinstance(company, str):
             company = Company(name=company)
@@ -185,20 +316,34 @@ class CompanyCollection(BaseCollection):
         parent_id: CompanyId,
         child_ids: CompanyId | list[CompanyId],
     ) -> Company:
-        """
-        Merge one or more child companies into a parent company.
+        """Merge one or more duplicate companies into a parent company.
+
+        Use this to consolidate duplicate companies: the child company records are
+        folded into the parent, which is kept. Inventory items and other entities
+        referencing a child are repointed to the parent.
 
         Parameters
         ----------
         parent_id : CompanyId
-            The ID of the parent company.
-        child_ids : CompanyId | list[CompanyId]
-            A single child company ID or a list of child company IDs to merge.
+            The Company ID (format ``COM...``) of the company to keep.
+        child_ids : CompanyId or list[CompanyId]
+            One or more Company IDs of the duplicate companies to merge into the
+            parent.
 
         Returns
         -------
         Company
-            The updated parent company after the merge operation.
+            The parent company, re-fetched after the merge.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.merge(
+                parent_id="COM123",
+                child_ids=["COM456", "COM789"],
+            )
+            ```
         """
 
         child_ids = [child_ids] if isinstance(child_ids, str) else list(child_ids)
@@ -216,35 +361,60 @@ class CompanyCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CompanyId) -> None:
-        """Deletes a company entity.
+        """Delete a company by its Company ID.
 
         Parameters
         ----------
-        id : str
-            The ID of the company to delete.
+        id : CompanyId
+            The Company ID (format ``COM...``) of the company to delete.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.companies.delete(id="COM123")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
     def rename(self, *, old_name: str, new_name: str) -> Company:
-        """
-        Renames an existing company entity.
+        """Rename an existing company, looking it up by its current name.
+
+        A convenience wrapper that finds the company by name and updates its name.
+        If you already hold a :class:`~albert.resources.companies.Company` object,
+        you can instead set ``name`` and call :meth:`update`.
 
         Parameters
         ----------
         old_name : str
-            The current name of the company.
+            The company's current name. Must match an existing company exactly.
         new_name : str
-            The new name of the company.
+            The new name to assign.
 
         Returns
         -------
         Company
-            The renamed Company object
+            The renamed company, re-fetched after the update.
+
+        Raises
+        ------
+        AlbertException
+            If no company with ``old_name`` is found.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.rename(
+                old_name="Acme Chemicals",
+                new_name="Acme Specialty Chemicals",
+            )
+            ```
         """
         company = self.get_by_name(name=old_name, exact_match=True)
         if not company:
@@ -268,21 +438,36 @@ class CompanyCollection(BaseCollection):
         return updated_company
 
     def update(self, *, company: Company) -> Company:
-        """Update a Company entity. The id of the company must be provided.
+        """Apply changes to an existing company.
+
+        The company is identified by its ``id``, which must be set. The current
+        server state is fetched and diffed against the passed object, and only the
+        updatable fields are patched. To rename a company by its current name
+        rather than by ID, use :meth:`rename`.
 
         Parameters
         ----------
         company : Company
-            The updated Company object.
+            The company to update, carrying the desired field values. Its ``id``
+            must be set.
 
         Returns
         -------
         Company
-            The updated Company object as registered in Albert.
+            The updated company, re-fetched after the patch.
 
         Notes
         -----
         The following fields can be updated: ``name``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            company = client.companies.get_by_id(id="COM123")
+            company.name = "Acme Specialty Chemicals"
+            updated = client.companies.update(company=company)
+            ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)

@@ -22,17 +22,35 @@ CellAttributeValue = str | float | int | dict[str, Any] | list[Any] | None
 
 
 class CellChangeId(TypedDict):
+    """Internal identifier (row ID and column ID) locating a cell in a change payload."""
+
     rowId: str
     colId: str
 
 
 class CellChangePayload(TypedDict):
+    """Internal payload describing the patch operations to apply to a single cell."""
+
     Id: CellChangeId
     data: list[PatchDatum]
 
 
 class CellColor(str, Enum):
-    """The allowed colors for a cell"""
+    """A background color that can be applied to Sheet cells.
+
+    Each value is the RGB string the platform stores for the cell background.
+    Used with :meth:`Column.recolor_cells` and :meth:`Row.recolor_cells` to
+    highlight cells in a Sheet.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.sheets import CellColor
+        column = sheet.get_column(column_name="Formulation A")
+        column.recolor_cells(CellColor.GREEN)
+        ```
+    """
 
     WHITE = "RGB(255, 255, 255)"
     RED = "RGB(255, 161, 161)"
@@ -44,7 +62,16 @@ class CellColor(str, Enum):
 
 
 class CellType(str, Enum):
-    """The type of information in the Cell"""
+    """The kind of content a Cell, Column, or Row holds.
+
+    Cells, Columns, and Rows all carry a type drawn from this enum, which
+    determines how the platform interprets their contents. The values most
+    relevant when building formulations are ``INVENTORY`` (an ingredient amount),
+    ``TOTAL`` (a computed total row), ``FORMULA`` and ``FOR`` (formulation
+    columns), ``LKP`` (a lookup that displays an inventory attribute), and
+    ``BLANK`` (an empty cell). The remaining members correspond to specialized
+    grid content such as tags, prices, tasks, results, and apps.
+    """
 
     INVENTORY = "INV"
     APP = "APP"
@@ -74,7 +101,16 @@ class CellType(str, Enum):
 
 
 class DesignType(str, Enum):
-    """The type of Design"""
+    """The section of a Sheet that a Design represents.
+
+    A Sheet is organized into stacked sections, each backed by a Design
+    (:class:`Design`). The type identifies which section:
+
+    - ``PRODUCTS`` — Product Design, where formulations are built.
+    - ``PROCESS`` — Process Design.
+    - ``RESULTS`` — Results, holding Property Tasks and their data.
+    - ``APPS`` — Apps, holding insights, reporting, and notes.
+    """
 
     APPS = "apps"
     PRODUCTS = "products"
@@ -83,53 +119,71 @@ class DesignType(str, Enum):
 
 
 class ColumnPosition(str, Enum):
-    """Insertion position for a new column relative to a reference column."""
+    """Where to insert a new column relative to a reference column.
+
+    Used by the ``add_*_column`` methods of :class:`Sheet` to place a new column
+    ``LEFT_OF`` or ``RIGHT_OF`` an existing one.
+    """
 
     LEFT_OF = "leftOf"
     RIGHT_OF = "rightOf"
 
 
 class RowPosition(str, Enum):
-    """Insertion position for a new row relative to a reference row."""
+    """Where to insert a new row relative to a reference row.
+
+    Used by the row-adding methods of :class:`Sheet` (e.g. :meth:`Sheet.add_lookup_row`,
+    :meth:`Sheet.add_app_row`) to place a new row ``ABOVE`` or ``BELOW`` an existing one.
+    """
 
     ABOVE = "above"
     BELOW = "below"
 
 
 class Cell(BaseResource):
-    """A Cell in a Sheet
+    """A single cell in a Sheet grid, at the intersection of a Column and a Row.
+
+    A Cell is a live grid element: it carries the session and knows its position
+    (via ``column_id``, ``row_id``, and ``design_id``) as well as its value,
+    calculation, and formatting. Cells are typically read from a Sheet's grid or
+    from :attr:`Column.cells` / :attr:`Row.cells`, and written back with
+    :meth:`Sheet.update_cells`.
 
     Attributes
     ----------
     column_id : str
-        The column ID of the cell.
+        The ID of the Column this cell belongs to.
     row_id : str
-        The row ID of the cell.
-    value : str | dict
-        The value of the cell. If the cell is an inventory item, this will be a dict.
+        The ID of the Row this cell belongs to.
+    value : str | dict | list
+        The value of the cell. For an inventory cell this may be a dict rather
+        than a plain string; see :attr:`raw_value` for the underlying value.
     min_value : str | None
         The minimum allowed value for inventory cells. Optional.
     max_value : str | None
         The maximum allowed value for inventory cells. Optional.
     row_label_name : str, optional
-        The display name of the row.
+        The display name of the row this cell is in.
     type : CellType | str
-            The type of the cell. Allowed values are the same as for CellType.
+        The type of the cell. Allowed values are the same as for :class:`CellType`.
     row_type : CellType, optional
-        The type of the row containing this cell. Usually one of
-        INV (inventory row), TOT (total row), TAS (task row), TAG, PRC, PDC, BAT or BLK.
+        The type of the row containing this cell. Usually one of ``INV`` (inventory
+        row), ``TOT`` (total row), ``TAS`` (task row), ``TAG``, ``PRC``, ``PDC``,
+        ``BAT``, or ``BLK``.
     name : str | None
         The name of the cell. Optional. Default is None.
     calculation : str
-        The calculation of the cell. Optional. Default is "".
+        The formula backing the cell, if any (e.g. a total). Default is ``""``.
     design_id : str
-        The design ID of the design this cell is in.
+        The ID of the Design (Sheet section) this cell is in.
     format : dict
-        The format of the cell. Optional. Default is {}. The format is a dict with the keys `bgColor` and `fontColor`. The values are strings in the format `RGB(255, 255, 255)`.
+        The cell formatting. Default is ``{}``. Keys are ``bgColor`` and
+        ``fontColor``, with RGB string values such as ``"RGB(255, 255, 255)"``.
     raw_value : str
-        The raw value of the cell. If the cell is an inventory item, this will be the value of the inventory item. Read-only.
+        The underlying value of the cell. For an inventory cell this is the
+        inventory item's value. Read-only.
     color : str | None
-        The color of the cell. Read only.
+        The background color of the cell. Read-only.
     """
 
     column_id: str = Field(alias="colId")
@@ -159,19 +213,40 @@ class Cell(BaseResource):
 
 
 class Component(BaseResource):
-    """Represents an amount of an inventory item in a formulation.
+    """One ingredient and its amount within a formulation.
+
+    A Component pairs an inventory item (:class:`~albert.resources.inventory.InventoryItem`)
+    with the amount of it used in a formulation. Components are the input to
+    :meth:`Sheet.add_formulation` and :meth:`Sheet.add_components_to_formulation`,
+    which place each ingredient's amount into the appropriate Cell of a
+    formulation Column. Provide either ``inventory_item`` or ``inventory_id``;
+    when ``inventory_item`` is given, ``inventory_id`` is populated from it
+    automatically.
 
     Attributes
     ----------
     inventory_item : InventoryItem | None
         The inventory item in the component. Optional when ``inventory_id`` is provided.
     inventory_id : InventoryId | None
-        The inventory identifier backing the component. Automatically populated from
-        ``inventory_item`` when present; required when ``inventory_item`` is omitted.
+        The inventory ID backing the component (format ``INV...``). Automatically
+        populated from ``inventory_item`` when present; required when
+        ``inventory_item`` is omitted.
     amount : float
-        The amount of the inventory item in the component.
+        The amount of the inventory item in the formulation.
+    min_value : float | None
+        The minimum allowed amount for the component. Optional.
+    max_value : float | None
+        The maximum allowed amount for the component. Optional.
     cell : Cell
-        The cell that the component is in. Read-only.
+        The cell the component was placed into. Read-only; set on registration.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.sheets import Component
+        component = Component(inventory_id="INV1", amount=42.0)
+        ```
     """
 
     inventory_item: InventoryItem | None = Field(default=None)
@@ -206,7 +281,13 @@ class Component(BaseResource):
 
 
 class DesignState(BaseResource):
-    """The state of a Design"""
+    """The display state of a Design section within a Sheet.
+
+    Attributes
+    ----------
+    collapsed : bool | None
+        Whether the Design section is collapsed in the Sheet view. Default is False.
+    """
 
     collapsed: bool | None = False
 
@@ -227,28 +308,37 @@ class RowGroup(BaseAlbertModel):
 
 
 class Design(BaseSessionResource):
-    """A Design in a Sheet. Designs are sheet subsections that are largly abstracted away from the user.
+    """One section of a Sheet, backing the grid for a single :class:`DesignType`.
+
+    A Sheet is made up of stacked sections — Product Design, Process Design,
+    Results, and Apps — and each section is a Design. Designs are largely an
+    internal detail: most work is done through the parent :class:`Sheet`, which
+    exposes its Designs as :attr:`Sheet.product_design`,
+    :attr:`Sheet.result_design`, :attr:`Sheet.app_design`, and
+    :attr:`Sheet.process_design`. A Design is a live grid element that carries the
+    session and lazily loads its rows, columns, and grid on first access.
 
     Attributes
     ----------
     id : str
         The Albert ID of the design.
     design_type : DesignType
-        The type of the design. Allowed values are the same as for DesignType.
+        The section of the Sheet this design backs. See :class:`DesignType`.
     state : DesignState | None
-        The state of the design. Optional. Default is None.
+        The display state of the design. Optional. Default is None.
     grid : pd.DataFrame | None
-        The grid of the design. Optional. Default is None. Read-only.
-    rows : list[Row] | None
-        The rows of the design. Optional. Default is None. Read-only.
-    columns : list[Column] | None
-        The columns of the design. Optional. Default is None. Read-only.
+        The grid of the design, as a DataFrame of Cells. Loaded on first access.
+        Read-only.
+    rows : list[Row]
+        The rows of the design. Loaded on first access. Read-only.
+    columns : list[Column]
+        The columns of the design. Loaded on first access. Read-only.
 
     Methods
     -------
     group_rows(name, child_row_ids, ...) -> RowGroup
         Create a named row group within this design.
-    get_groups(refresh) -> list[RowGroup]
+    get_groups(refresh=False) -> list[RowGroup]
         Get all row groups in this design.
     """
 
@@ -492,6 +582,14 @@ class Design(BaseSessionResource):
         -------
         RowGroup
             The created row group.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            design = sheet.product_design
+            group = design.group_rows(name="Solvents", child_row_ids=["ROW2", "ROW3"])
+            ```
         """
         if not child_row_ids:
             raise AlbertException("child_row_ids must include at least one row ID")
@@ -539,6 +637,15 @@ class Design(BaseSessionResource):
         -------
         list[RowGroup]
             The row groups in this design.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            groups = sheet.product_design.get_groups()
+            for group in groups:
+                print(group.name, group.child_row_ids)
+            ```
         """
         if self._groups_cache is not None and not refresh:
             return self._groups_cache
@@ -581,7 +688,24 @@ class SheetFormulationRef(BaseAlbertModel):
 
 
 class Sheet(BaseSessionResource):  # noqa:F811
-    """A Sheet in Albert
+    """An interactive grid within a Worksheet where formulations are built.
+
+    A Sheet is one grid inside a Worksheet (:class:`~albert.resources.worksheets.Worksheet`).
+    It is organized into stacked sections, each a :class:`Design`: Product Design
+    (where formulations are built), Process Design, Results (Property Tasks and
+    their data), and Apps (insights and notes). Access those sections through
+    :attr:`product_design`, :attr:`process_design`, :attr:`result_design`, and
+    :attr:`app_design`.
+
+    A Sheet Column can be a formulation (the most common case for the SDK), a
+    lookup column that displays an inventory attribute, or an ingredient name.
+    Rows typically represent ingredients (inventory items) and their amounts.
+    Adding a formulation to a Sheet is what registers a Formula inventory item.
+
+    The Sheet is a live grid element that carries the session; its cells, columns,
+    and rows are themselves interactive. Retrieve a Sheet from a Worksheet's
+    :attr:`~albert.resources.worksheets.Worksheet.sheets`, then edit it in place
+    with the methods below.
 
     Attributes
     ----------
@@ -589,24 +713,85 @@ class Sheet(BaseSessionResource):  # noqa:F811
         The Albert ID of the sheet.
     name : str
         The name of the sheet.
+    formulations : list[SheetFormulationRef]
+        References to the formulations present on the sheet.
     hidden : bool
         Whether the sheet is hidden.
     is_column_right : bool | None
-        When True, copied columns are placed to the right of the source column; when False, to the left.
+        When True, copied columns are placed to the right of the source column;
+        when False, to the left.
     col_size_mode : str | None
-        Column width sizing mode. Allowed values are ``"minimum"`` and ``"fitToColumn"``.
-        ``None`` resets to the default grid width.
+        Column width sizing mode. Allowed values are ``"minimum"`` and
+        ``"fitToColumn"``. ``None`` resets to the default grid width.
     designs : list[Design]
-        The designs of the sheet.
+        The Designs (sections) of the sheet.
     project_id : str
-        The Albert ID of the project the sheet is in.
+        The ID of the Project the sheet belongs to (format ``PRO...``).
     grid : pd.DataFrame | None
-        The grid of the sheet. Optional. Default is None. Read-only.
+        The full sheet grid, as a DataFrame of Cells. Loaded on first access.
+        Read-only.
     columns : list[Column]
-        The columns of the sheet. Read-only.
+        The Product Design columns of the sheet. Read-only.
     rows : list[Row]
-        The rows of the sheet. Read-only.
+        The rows of the sheet, across all Designs. Read-only.
 
+    Methods
+    -------
+    rename(new_name) -> Sheet
+        Rename the sheet.
+    add_formulation(formulation_name, components, ...) -> Column
+        Build a formulation column from a list of components (registers a Formula).
+    add_components_to_formulation(components, ...) -> Column
+        Add components to an existing formulation column.
+    add_formulation_columns(formulation_names, ...) -> list[Column]
+        Add one or more empty formulation columns.
+    add_inventory_row(inventory_id, ...) -> Row
+        Add an ingredient (inventory) row.
+    add_blank_row(row_name, ...) -> Row
+        Add a blank row.
+    add_lookup_row(name, ...) -> Row
+        Add a lookup row.
+    add_app_row(app_id, name, ...) -> Row
+        Add an application row.
+    add_blank_column(name, ...) -> Column
+        Add a blank column.
+    add_lookup_column(name, ...) -> Column
+        Add a lookup column.
+    add_function_column(name, ...) -> Column
+        Add a function column.
+    add_property_column(name, attribute_id, ...) -> Column
+        Add a property/result column.
+    get_column(...) -> Column
+        Retrieve a column by column ID, inventory ID, or name.
+    update_cells(cells) -> tuple[list[Cell], list[Cell]]
+        Write changed cells back to the sheet.
+    pin_columns(col_ids, side) -> None
+        Pin columns to the left or right edge.
+    unpin_columns(col_ids) -> None
+        Unpin columns.
+    lock_column(...) -> Column
+        Lock or unlock a column.
+    hide_column(col_id) -> None
+        Hide a column.
+    show_column(col_id) -> None
+        Show a hidden column.
+    set_columns_width(col_ids, width) -> None
+        Set the display width of columns.
+    delete_column(column_id) -> None
+        Delete a column.
+    delete_row(row_id, design_id) -> None
+        Delete a row.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        sheet = worksheet.sheets[0]
+        print(sheet.grid)
+        ```
     """
 
     id: str = Field(alias="albertId")
@@ -732,6 +917,25 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return self._resolve_design(design)
 
     def rename(self, *, new_name: str):
+        """Rename this sheet.
+
+        Parameters
+        ----------
+        new_name : str
+            The new name for the sheet.
+
+        Returns
+        -------
+        Sheet
+            This sheet, with its name updated.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.rename(new_name="Final trial")
+            ```
+        """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}"
 
         payload = [{"attribute": "name", "operation": "update", "newValue": new_name}]
@@ -778,6 +982,57 @@ class Sheet(BaseSessionResource):  # noqa:F811
         enforce_order: bool = False,
         clear: bool = True,
     ) -> Column:
+        """Build a formulation on this sheet from a list of components.
+
+        This is the primary way to create a formulation. Each component
+        (:class:`Component`) contributes an ingredient and its amount, which are
+        written into a formulation column. Adding rows for any new ingredients and
+        maintaining the column's Total cell are handled automatically. Building a
+        formulation this way is what registers a Formula inventory item
+        (:class:`~albert.resources.inventory.InventoryItem`).
+
+        If a column named ``formulation_name`` already exists and ``clear`` is True,
+        that column is emptied and reused; otherwise a new formulation column is added.
+
+        Parameters
+        ----------
+        formulation_name : str
+            The name of the formulation, used as the column header.
+        components : list[Component]
+            The ingredients and their amounts to place in the formulation.
+        inventory_id : InventoryId, optional
+            The inventory ID of an existing formulation column to target
+            (format ``INV...``). Used to disambiguate when reusing a column.
+        enforce_order : bool, optional
+            When True, ingredient rows are arranged to match the order of
+            ``components``, adding rows as needed. Default is False.
+        clear : bool, optional
+            When True, an existing column with the same name is cleared and reused
+            rather than adding a duplicate. Default is True.
+
+        Returns
+        -------
+        Column
+            The formulation column that was created or updated.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.sheets import Component
+            client = Albert()
+            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+            sheet = worksheet.sheets[0]
+            column = sheet.add_formulation(
+                formulation_name="Formulation A",
+                components=[
+                    Component(inventory_id="INV1", amount=80.0),
+                    Component(inventory_id="INV2", amount=20.0),
+                ],
+            )
+            ```
+        """
         all_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
@@ -919,6 +1174,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The updated formulation column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.sheets import Component
+            column = sheet.add_components_to_formulation(
+                formulation_name="Formulation A",
+                components=[Component(inventory_id="INV3", amount=5.0)],
+            )
+            ```
         """
         col = self.get_column(
             column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
@@ -1031,6 +1297,35 @@ class Sheet(BaseSessionResource):  # noqa:F811
         formulation_names: list[str],
         starting_position: dict | None = None,
     ) -> list[Column]:
+        """Add one or more empty formulation columns to this sheet.
+
+        Creates the formulation columns without populating any ingredient amounts.
+        To build a formulation and fill in its components in one step, use
+        :meth:`add_formulation` instead.
+
+        Parameters
+        ----------
+        formulation_names : list[str]
+            The names of the formulation columns to add, used as column headers.
+        starting_position : dict, optional
+            Where to insert the new columns, as a dict with ``reference_id`` (a
+            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). Defaults
+            to just right of the leftmost pinned column.
+
+        Returns
+        -------
+        list[Column]
+            The created formulation columns, in the order requested.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            columns = sheet.add_formulation_columns(
+                formulation_names=["Formulation A", "Formulation B"]
+            )
+            ```
+        """
         if starting_position is None:
             # Ensure pinned-column state is resolved before computing the reference position.
             if self.app_design is not None:
@@ -1074,6 +1369,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
         design: DesignType = DesignType.PRODUCTS,
         position: dict | None = None,
     ):
+        """Add a blank (BLK) row to a Design section of this sheet.
+
+        Parameters
+        ----------
+        row_name : str
+            The display name of the new row.
+        design : DesignType, optional
+            Which Design section to add the row to. Default is ``DesignType.PRODUCTS``.
+            Rows cannot be added to the Results design.
+        position : dict, optional
+            Where to insert the row, as a dict with ``reference_id`` (a row ID) and
+            ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+
+        Returns
+        -------
+        Row
+            The created row.
+
+        Raises
+        ------
+        AlbertException
+            If ``design`` is ``DesignType.RESULTS``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            row = sheet.add_blank_row(row_name="Notes")
+            ```
+        """
         if design == DesignType.RESULTS:
             raise AlbertException("You cannot add rows to the results design")
         if position is None:
@@ -1108,6 +1433,31 @@ class Sheet(BaseSessionResource):  # noqa:F811
         inventory_id: str,
         position: dict | None = None,
     ):
+        """Add an ingredient (inventory) row to the Product Design.
+
+        The row represents an inventory item that can then carry amounts in each
+        formulation column. The ``INV`` prefix is added to ``inventory_id`` if absent.
+
+        Parameters
+        ----------
+        inventory_id : str
+            The inventory ID of the item to add as a row (format ``INV...``).
+        position : dict, optional
+            Where to insert the row, as a dict with ``reference_id`` (a row ID) and
+            ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+
+        Returns
+        -------
+        Row
+            The created inventory row.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            row = sheet.add_inventory_row(inventory_id="INV1")
+            ```
+        """
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design_id = self.product_design.id
@@ -1163,6 +1513,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Row
             The created row.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            row = sheet.add_lookup_row(name="Density")
+            ```
         """
         if design == DesignType.RESULTS:
             raise AlbertException("Cannot add rows to the results design")
@@ -1225,6 +1582,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Row
             The created row.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            row = sheet.add_app_row(app_id="APP1", name="Cost insight")
+            ```
         """
         if design == DesignType.RESULTS:
             raise AlbertException("Cannot add rows to the results design")
@@ -1412,6 +1776,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return False
 
     def update_cells(self, *, cells: list[Cell]):
+        """Write changed cells back to the sheet.
+
+        Compares each cell against the current grid and sends only the changed
+        attributes (value, calculation, formatting, bounds). Higher-level methods
+        such as :meth:`add_formulation` and :meth:`Column.recolor_cells` call this
+        for you; use it directly when editing cells obtained from the grid.
+
+        Parameters
+        ----------
+        cells : list[Cell]
+            The cells to update. Typically copies of existing cells with modified
+            values or formatting.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair: the cells that were successfully updated
+            and the cells that failed to update.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            column = sheet.get_column(column_name="Formulation A")
+            recolored = [c.model_copy(update={"format": {"bgColor": CellColor.YELLOW.value}})
+                         for c in column.cells]
+            updated, failed = sheet.update_cells(cells=recolored)
+            ```
+        """
         request_path_dict: dict[str, list[Cell]] = {}
         updated: list[Cell] = []
         failed: list[Cell] = []
@@ -1562,6 +1956,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The created column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.add_blank_column(name="Notes")
+            ```
         """
         return self._add_column(
             type="BLK", name=name, reference_id=reference_id, position=position
@@ -1591,6 +1992,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The created column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.add_lookup_column(name="CAS Number")
+            ```
         """
         return self._add_column(
             type="LKP", name=name, reference_id=reference_id, position=position
@@ -1620,6 +2028,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The created column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.add_function_column(name="Cost per kg")
+            ```
         """
         return self._add_column(
             type="FNC", name=name, reference_id=reference_id, position=position
@@ -1661,6 +2076,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The created column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.add_property_column(
+                name="Viscosity",
+                attribute_id="ATR2020",
+                data_column_name="Viscosity",
+            )
+            ```
         """
         if not data_column_id and not data_column_name:
             raise AlbertException("Provide at least one of data_column_id or data_column_name.")
@@ -1704,6 +2130,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The column IDs to pin.
         side : "left" or "right"
             Which edge to pin to.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.pin_columns(col_ids=["COL1", "COL2"], side="left")
+            ```
         """
         payload = {
             "data": [
@@ -1726,6 +2163,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ----------
         col_ids : list[str]
             The column IDs to unpin.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.unpin_columns(col_ids=["COL1", "COL2"])
+            ```
         """
         payload = {
             "data": [
@@ -1750,6 +2198,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
             Column IDs to update.
         width : str
             Width value, e.g. ``"142px"``.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.set_columns_width(col_ids=["COL1"], width="200px")
+            ```
         """
         payload = {
             "data": [
@@ -1772,6 +2231,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ----------
         col_id : str
             The column ID to hide.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.hide_column(col_id="COL5")
+            ```
         """
         self.session.patch(
             f"/api/v3/worksheet/sheet/{self.id}/columns",
@@ -1796,6 +2266,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ----------
         col_id : str
             The column ID to show.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.show_column(col_id="COL5")
+            ```
         """
         self.session.patch(
             f"/api/v3/worksheet/sheet/{self.id}/columns",
@@ -1813,6 +2294,24 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None
 
     def delete_column(self, *, column_id: str) -> None:
+        """Delete a column from this sheet.
+
+        Parameters
+        ----------
+        column_id : str
+            The ID of the column to delete.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.delete_column(column_id="COL5")
+            ```
+        """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [{"colId": column_id}]
         self.session.delete(endpoint, json=payload)
@@ -1821,6 +2320,26 @@ class Sheet(BaseSessionResource):  # noqa:F811
             self.grid = None
 
     def delete_row(self, *, row_id: str, design_id: str) -> None:
+        """Delete a row from a Design section of this sheet.
+
+        Parameters
+        ----------
+        row_id : str
+            The ID of the row to delete.
+        design_id : str
+            The ID of the Design (section) the row belongs to.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.delete_row(row_id="ROW3", design_id=sheet.product_design.id)
+            ```
+        """
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
         payload = [{"rowId": row_id}]
         self.session.delete(endpoint, json=payload)
@@ -1852,27 +2371,36 @@ class Sheet(BaseSessionResource):  # noqa:F811
         inventory_id: InventoryId | None = None,
         column_name: str | None = None,
     ) -> Column:
-        """
-        Retrieve a Column by its colId, underlying inventory ID, or display header name.
+        """Retrieve a Column by its column ID, underlying inventory ID, or header name.
+
+        Provide at least one of the three identifiers; the match must be unique.
 
         Parameters
         ----------
-        column_id : str | None
-            The sheet column ID to match (e.g. "COL5").
-        inventory_id : str | None
-            The internal inventory identifier to match (e.g. "INVP015-001").
-        column_name : str | None
-            The human-readable header name of the column (e.g. "p1").
+        column_id : str, optional
+            The sheet column ID to match (e.g. ``"COL5"``).
+        inventory_id : str, optional
+            The underlying inventory ID to match (e.g. ``"INVP015-001"``).
+        column_name : str, optional
+            The human-readable header name of the column (e.g. ``"Formulation A"``).
 
         Returns
         -------
         Column
-            The matching Column object.
+            The matching column.
 
         Raises
         ------
         AlbertException
-            If no matching column is found or if multiple matches exist.
+            If no identifier is provided, no matching column is found, or multiple
+            columns match.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.get_column(column_name="Formulation A")
+            ```
         """
 
         if not (column_id or inventory_id or column_name):
@@ -1931,6 +2459,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         Column
             The column that was updated.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            sheet.lock_column(column_name="Formulation A")
+            ```
         """
 
         column = self.get_column(
@@ -1959,22 +2494,46 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
 
 class Column(BaseSessionResource):  # noqa:F811
-    """A column in a Sheet
+    """A column in a Sheet.
+
+    A Column is a live grid element that carries the session. A column can be a
+    formulation (the most common case for the SDK), a lookup column that displays
+    an inventory attribute, an ingredient name, or another type given by
+    :class:`CellType`. Its cells are read through :attr:`cells` and written back
+    with :meth:`Sheet.update_cells`.
 
     Attributes
     ----------
     column_id : str
-        The column ID of the column.
+        The ID of the column.
     name : str | None
-        The name of the column. Optional. Default is None.
+        The header name of the column. Optional. Default is None.
     type : CellType | str
-        The type of the column. Allowed values are the same as for CellType.
+        The type of the column. Allowed values are the same as for :class:`CellType`.
     sheet : Sheet
-        The sheet the column is in.
+        The sheet the column belongs to.
+    inventory_id : str | None
+        For a formulation column, the underlying inventory ID (format ``INV...``).
+        Optional. Default is None.
+    locked : bool
+        Whether the column is locked against edits. Default is False.
+    hidden : bool | None
+        Whether the column is hidden. Optional. Default is None.
+    pinned : str | None
+        The edge the column is pinned to (``"left"`` or ``"right"``), or None.
+    column_width : str | None
+        The display width of the column (e.g. ``"142px"``), or None.
     cells : list[Cell]
         The cells in the column. Read-only.
     df_name : str
-        The name of the column in the DataFrame. Read-only
+        The column's label in the sheet grid DataFrame. Read-only.
+
+    Methods
+    -------
+    rename(new_name) -> Column
+        Rename the column.
+    recolor_cells(color) -> tuple[list[Cell], list[Cell]]
+        Apply a background color to every cell in the column.
     """
 
     column_id: str = Field(alias="colId")
@@ -2004,6 +2563,26 @@ class Column(BaseSessionResource):  # noqa:F811
         return self.sheet.grid[self.df_name]
 
     def rename(self, new_name):
+        """Rename this column.
+
+        Parameters
+        ----------
+        new_name : str
+            The new header name for the column.
+
+        Returns
+        -------
+        Column
+            This column, with its name updated.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            column = sheet.get_column(column_name="Formulation A")
+            column.rename("Formulation A (rev 2)")
+            ```
+        """
         payload = {
             "data": [
                 {
@@ -2028,6 +2607,27 @@ class Column(BaseSessionResource):  # noqa:F811
         return self
 
     def recolor_cells(self, color: CellColor):
+        """Apply a background color to every cell in this column.
+
+        Parameters
+        ----------
+        color : CellColor
+            The background color to apply.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair, as returned by :meth:`Sheet.update_cells`.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            column = sheet.get_column(column_name="Formulation A")
+            column.recolor_cells(CellColor.BLUE)
+            ```
+        """
         new_cells = []
         for c in self.cells:
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
@@ -2036,24 +2636,31 @@ class Column(BaseSessionResource):  # noqa:F811
 
 
 class Row(BaseSessionResource):  # noqa:F811
-    """A row in a Sheet
+    """A row in a Sheet.
+
+    A Row is a live grid element that carries the session. Rows typically
+    represent ingredients (inventory items) and their amounts, but a row can also
+    be a total, lookup, app, or blank row per its :attr:`type`. Each row belongs
+    to a specific :class:`Design` section of the :attr:`sheet`. Its cells are read
+    through :attr:`cells` and written back with :meth:`Sheet.update_cells`.
 
     Attributes
     ----------
     row_id : str
-        The row ID of the row.
+        The ID of the row.
     type : CellType | str
-        The type of the row. Allowed values are the same as for CellType.
+        The type of the row. Allowed values are the same as for :class:`CellType`.
     design : Design
-        The design the row is in.
+        The Design (section) the row belongs to.
     sheet : Sheet
-        The sheet the row is in.
+        The sheet the row belongs to.
     name : str | None
-        The name of the row. Optional. Default is None.
+        The display name of the row. Optional. Default is None.
     inventory_id : str | None
-        The inventory ID of the row. Optional. Default is None.
+        For an ingredient row, the inventory ID of the item (format ``INV...``).
+        Optional. Default is None.
     manufacturer : str | None
-        The manufacturer of the row. Optional. Default is None.
+        The manufacturer of the row's inventory item. Optional. Default is None.
     config : RowConfig | None
         Configuration for APP or location-scoped rows. Optional. Default is None.
     parent_row_id : str | None
@@ -2063,10 +2670,14 @@ class Row(BaseSessionResource):  # noqa:F811
     is_group_header : bool
         True when this row is the header of a row group. Read-only.
     row_unique_id : str
-        The unique ID of the row. Read-only.
+        The unique ID of the row, combining its Design ID and row ID. Read-only.
     cells : list[Cell]
         The cells in the row. Read-only.
 
+    Methods
+    -------
+    recolor_cells(color) -> tuple[list[Cell], list[Cell]]
+        Apply a background color to every cell in the row.
     """
 
     row_id: str = Field(alias="rowId")
@@ -2103,6 +2714,27 @@ class Row(BaseSessionResource):  # noqa:F811
         return self.sheet.grid.loc[self.row_unique_id]
 
     def recolor_cells(self, color: CellColor):
+        """Apply a background color to every cell in this row.
+
+        Parameters
+        ----------
+        color : CellColor
+            The background color to apply.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair, as returned by :meth:`Sheet.update_cells`.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            row = sheet.rows[0]
+            row.recolor_cells(CellColor.RED)
+            ```
+        """
         new_cells = []
         for c in self.cells:
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})

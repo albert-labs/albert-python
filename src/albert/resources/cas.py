@@ -21,7 +21,23 @@ class CasCategory(str, Enum):
 
 
 class Hazard(BaseAlbertModel):
-    """Represents a chemical hazard."""
+    """A single GHS hazard classification associated with a CAS substance.
+
+    Hazards are read from the CAS record; a :class:`Cas` may carry a list of them.
+
+    Attributes
+    ----------
+    sub_category : str, optional
+        Hazard subcategory.
+    h_code : str, optional
+        GHS hazard statement code (e.g. an ``H``-code such as ``"H301"``).
+    category : str or float, optional
+        Hazard category.
+    hazard_class : str, optional
+        Hazard classification.
+    h_code_text : str, optional
+        Human-readable text for the hazard code.
+    """
 
     sub_category: str | None = Field(None, alias="subCategory", description="Hazard subcategory")
     h_code: str | None = Field(None, alias="hCode", description="Hazard code")
@@ -31,7 +47,64 @@ class Hazard(BaseAlbertModel):
 
 
 class Cas(BaseResource):
-    """Represents a CAS entity."""
+    """A CAS entry: a chemical substance identified by its CAS Registry Number.
+
+    A ``Cas`` is Albert's dictionary record for a substance. Raw-material Inventory
+    Items reference these entries to declare what they are made of, pairing each
+    ``Cas`` with an amount (see :class:`~albert.resources.inventory.CasAmount`).
+    Manage entries through
+    :class:`~albert.collections.cas.CasCollection` (``client.cas``): most fields
+    are populated by Albert, so you typically only build a ``Cas`` from a registry
+    ``number`` when creating a new entry.
+
+    Attributes
+    ----------
+    number : str
+        The CAS Registry Number (e.g. ``"7727-37-9"``). Required.
+    name : str, optional
+        Name of the substance.
+    description : str, optional
+        Free-text description of the CAS. Updatable via
+        :meth:`~albert.collections.cas.CasCollection.update`.
+    notes : str, optional
+        Free-text notes about the CAS. Updatable.
+    category : CasCategory, optional
+        The source/classification of the entry (e.g. user-created, TSCA listing).
+        See :class:`CasCategory`.
+    smiles : str, optional
+        SMILES structure notation for the substance. Updatable. Serialized as
+        ``casSmiles``.
+    inchi_key : str, optional
+        InChIKey hash of the chemical structure.
+    iupac_name : str, optional
+        IUPAC systematic name.
+    id : str, optional
+        The Albert CAS ID (format ``CAS...``, e.g. ``"CAS1"``). Assigned by Albert
+        on creation. Serialized as ``albertId``.
+    hazards : list[Hazard], optional
+        GHS hazard classifications for the substance. See :class:`Hazard`.
+    wgk : str, optional
+        German Water Hazard Class (Wassergefährdungsklasse) number.
+    ec_number : str, optional
+        European Community (EC) number. Serialized as ``ecListNo``.
+    type : str, optional
+        Internal classification-type reference for the CAS.
+    classification_type : str, optional
+        Classification type of the CAS.
+    order : str, optional
+        CAS order value.
+    metadata : dict[str, MetadataItem]
+        Custom metadata keyed by field. Updatable.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.cas import Cas
+        # Build a CAS entry to register a new substance
+        cas = Cas(number="7727-37-9")
+        ```
+    """
 
     number: str = Field(..., description="The CAS number.")
     name: str | None = Field(None, description="Name of the CAS.")
@@ -56,17 +129,28 @@ class Cas(BaseResource):
 
     @classmethod
     def from_string(cls, *, number: str) -> Cas:
-        """
-        Creates a Cas object from a string.
+        """Build a :class:`Cas` from a bare registry number.
+
+        Convenience constructor equivalent to ``Cas(number=number)``, for when you
+        only have the registry number and want a ``Cas`` object to pass to
+        :class:`~albert.collections.cas.CasCollection`.
 
         Parameters
         ----------
         number : str
-            The CAS number.
+            The CAS Registry Number (e.g. ``"7727-37-9"``).
 
         Returns
         -------
         Cas
-            The Cas object created from the string.
+            A ``Cas`` with only ``number`` set.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.cas import Cas
+            cas = Cas.from_string(number="7727-37-9")
+            ```
         """
         return cls(number=number)

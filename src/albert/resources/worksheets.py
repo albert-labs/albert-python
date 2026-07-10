@@ -5,18 +5,41 @@ from albert.resources.sheets import Sheet
 
 
 class Worksheet(BaseSessionResource):
-    """A worksheet entity.
+    """An Excel-like grid paired one-to-one with a Project.
+
+    A Worksheet is the command center where formulations are designed. It groups
+    one or more Sheets (:class:`~albert.resources.sheets.Sheet`), each an
+    interactive grid organized into stacked sections (Product Design, Process
+    Design, Results, and Apps). Building a formulation on a Sheet is what
+    registers a Formula inventory item.
+
+    Retrieve a Worksheet with
+    :meth:`~albert.collections.worksheets.WorksheetCollection.get_by_project_id`,
+    then work with its Sheets through the :attr:`sheets` attribute. Editing the
+    contents of a Sheet is done through the :class:`~albert.resources.sheets.Sheet`
+    objects themselves, which remain connected to the live session.
 
     Attributes
     ----------
-    sheets : List[Sheet]
-        A list of sheet entities.
+    sheets : list[Sheet]
+        The Sheets contained in this Worksheet.
     project_name : str | None
-        The name of the project.
+        The name of the paired Project.
     sheets_enabled : bool
-        Whether the sheets are enabled.
+        Whether Sheets are enabled for this Worksheet.
     project_id : str
-        The Albert ID of the project.
+        The ID of the paired Project (format ``PRO...``).
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        for sheet in worksheet.sheets:
+            print(sheet.id, sheet.name)
+        ```
     """
 
     sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")

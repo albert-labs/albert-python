@@ -14,26 +14,84 @@ from albert.resources.projects import DocumentSearchItem, Project, ProjectSearch
 
 
 class ProjectCollection(BaseCollection):
-    """ProjectCollection is a collection class for managing Project entities in the Albert platform."""
+    """Manage Projects in the Albert platform.
+
+    A Project is the top-level container for a piece of R&D work. It groups the
+    formulations designed for that work, the Project's Worksheet (1:1 with the
+    project), the Tasks run against it, and the inventory it references. Projects
+    are the entry point most workflows start from: you create a project, then
+    build formulas and run tasks inside it.
+
+    Every project is identified by a Project ID (format ``PRO...``, e.g.
+    ``"PRO123"``). A project always has a ``description`` (which doubles as its
+    display name) and a :class:`~albert.resources.projects.ProjectClass`
+    controlling its access level (private, shared, or confidential).
+
+    This collection is accessed as ``client.projects``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for project requests.
+
+    Methods
+    -------
+    create(project) -> Project
+        Create a new project.
+    get_by_id(id) -> Project
+        Retrieve a single project by its Project ID.
+    update(project) -> Project
+        Apply changes to an existing project.
+    delete(id) -> None
+        Delete a project by its Project ID.
+    search(...) -> Iterator[ProjectSearchItem]
+        Fast, lightweight search returning partial projects (best for lookups).
+    get_all(...) -> Iterator[Project]
+        Same filters as search, but returns fully hydrated projects (slower).
+    document_search(...) -> Iterator[DocumentSearchItem]
+        Search documents (attachments) linked to a project.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.projects import Project
+        client = Albert()
+        project = client.projects.create(
+            project=Project(description="Weatherproof Coatings 2026")
+        )
+        print(project.id)
+        # 'PRO123'
+        ```
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"description", "grid", "metadata", "state"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize a ProjectCollection object.
+        """Initialize a ProjectCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ProjectCollection._api_version}/projects"
 
     def create(self, *, project: Project) -> Project:
-        """
-        Create a new project.
+        """Create a new project.
+
+        Use this to register a new R&D container. Only ``description`` is
+        required; it doubles as the project's display name. Optionally set
+        ``locations``, ``project_class`` (defaults to private), ``metadata``, and
+        other fields on the :class:`~albert.resources.projects.Project` first.
 
         Parameters
         ----------
@@ -42,8 +100,20 @@ class ProjectCollection(BaseCollection):
 
         Returns
         -------
-        Optional[Project]
-            The created project object if successful, None otherwise.
+        Project
+            The newly created project, populated with its assigned Project ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.projects import Project
+            project = client.projects.create(
+                project=Project(description="Weatherproof Coatings 2026")
+            )
+            project.id
+            # 'PRO123'
+            ```
         """
         response = self.session.post(
             self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -52,18 +122,29 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: ProjectId) -> Project:
-        """
-        Retrieve a project by its ID.
+        """Retrieve a single project by its ID.
+
+        To find projects without knowing their IDs, use :meth:`search` or
+        :meth:`get_all`.
 
         Parameters
         ----------
-        id : str
-            The ID of the project to retrieve.
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
 
         Returns
         -------
         Project
-            The project object if found
+            The fully hydrated project.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description
+            # 'Weatherproof Coatings 2026'
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -73,19 +154,34 @@ class ProjectCollection(BaseCollection):
     def update(self, *, project: Project) -> Project:
         """Update a project.
 
+        Fetches the current server-side project, diffs it against the object you
+        pass in, and applies the difference. Retrieve the project (e.g. with
+        :meth:`get_by_id`), modify the updatable fields, then pass it here.
+
         Parameters
         ----------
         project : Project
-            The updated project object.
+            The project carrying the desired changes. Its ``id`` identifies which
+            project to update.
 
         Returns
         -------
         Project
-            The updated project object as returned by the server.
+            The updated project as returned by the server.
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``grid``, ``metadata``, ``state``.
+        The following fields can be updated: ``description``, ``grid``,
+        ``metadata``, ``state``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description = "Weatherproof Coatings 2026 (rev B)"
+            updated = client.projects.update(project=project)
+            ```
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
@@ -97,17 +193,23 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: ProjectId) -> None:
-        """
-        Delete a project by its ID.
+        """Delete a project by its ID.
 
         Parameters
         ----------
-        id : str
-            The ID of the project to delete.
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.projects.delete(id="PRO123")
+            ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -140,11 +242,16 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[ProjectSearchItem]:
-        """
-        Search for Project matching the provided criteria.
+        """Search for projects matching the provided criteria.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        This is the fast way to find projects: it returns lightweight, partial
+        (unhydrated) :class:`~albert.resources.projects.ProjectSearchItem` results
+        and is best for lookups, counts, and pulling IDs. To retrieve fully
+        detailed :class:`~albert.resources.projects.Project` entities, use
+        :meth:`get_all` instead (slower, one full fetch per result).
+
+        All filters are optional; with no arguments this iterates over all
+        projects you can access.
 
         Parameters
         ----------
@@ -193,15 +300,21 @@ class ProjectCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by.
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[ProjectSearchItem]
-            An iterator of matching partial (unhydrated) Project results.
+            An iterator of matching partial (unhydrated) project results.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for hit in client.projects.search(text="coatings", max_items=25):
+                print(hit.id, hit.description)
+            ```
         """
         query_params = {
             "order": order_by,
@@ -268,18 +381,21 @@ class ProjectCollection(BaseCollection):
     ) -> Iterator[DocumentSearchItem]:
         """Search for documents (attachments) linked to a project.
 
+        Each result is a lightweight
+        :class:`~albert.resources.projects.DocumentSearchItem` describing an
+        attachment (name, MIME type, size, uploader) rather than the file itself.
+
         Parameters
         ----------
         linked_to : SearchProjectId
-            The project ID to filter documents by (e.g. ``P770``).
+            The project to filter documents by (format ``PRO...``, e.g.
+            ``"PRO123"``).
         text : str, optional
             Full-text search query for document names.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by (for example ``createdAt``).
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all.
 
@@ -287,6 +403,14 @@ class ProjectCollection(BaseCollection):
         -------
         Iterator[DocumentSearchItem]
             Matching document search results.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for doc in client.projects.document_search(linked_to="PRO123"):
+                print(doc.name, doc.mime_type)
+            ```
         """
         query_params = {
             "linkedTo": linked_to,
@@ -332,11 +456,12 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[Project]:
-        """
-        Retrieve fully hydrated Project entities with optional filters.
+        """Retrieve fully hydrated projects matching optional filters.
 
-        This method returns complete entity data using `get_by_id`.
-        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Accepts the same filters as :meth:`search`, but yields complete
+        :class:`~albert.resources.projects.Project` entities by fetching each
+        match individually via :meth:`get_by_id`. This is convenient but slower;
+        prefer :meth:`search` when you only need IDs or a few summary fields.
 
         Parameters
         ----------
@@ -380,8 +505,6 @@ class ProjectCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by.
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
@@ -389,6 +512,14 @@ class ProjectCollection(BaseCollection):
         -------
         Iterator[Project]
             An iterator of fully hydrated Project entities.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for project in client.projects.get_all(text="coatings", max_items=10):
+                print(project.id, project.description)
+            ```
         """
         for project in self.search(
             text=text,

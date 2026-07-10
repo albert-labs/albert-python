@@ -13,58 +13,95 @@ from albert.resources.data_columns import DataColumn
 
 
 class DataColumnCollection(BaseCollection):
-    """DataColumnCollection is a collection class for managing DataColumn entities in the Albert platform.
+    """Manage Data Columns in the Albert platform.
+
+    A Data Column (DAC, IDs ``DAC...``) is the definition of a single measured
+    result variable, such as ``Viscosity`` or ``APHA Color``. Data columns are the
+    reusable building blocks of a Data Template's results: a
+    :class:`~albert.resources.data_templates.DataTemplate` references them through
+    its ``data_column_values``, and the values recorded against a data column
+    during experiments are stored as Property Data.
+
+    This collection is accessed as ``client.data_columns``.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for data column API requests.
+        The base API route for data column requests.
 
     Methods
     -------
     get_all(...) -> Iterator[DataColumn]
-        Get all data column entities with optional filters.
+        Retrieve data columns matching optional filters.
     get_by_id(id) -> DataColumn
-        Get a data column by its ID.
+        Retrieve a single data column by its Data Column ID.
     get_by_name(name) -> DataColumn | None
-        Get a data column by its name.
+        Retrieve a single data column by its exact name.
     create(data_column) -> DataColumn
-        Create a new data column entity.
+        Create a new data column.
     get_or_create(data_column) -> DataColumn
-        Retrieve an existing data column by name or create it if not found.
+        Return the existing data column matching by name, or create it.
     update(data_column) -> DataColumn
-        Update a data column entity.
+        Apply changes to an existing data column.
     delete(id) -> None
-        Delete a data column entity.
+        Delete a data column by its Data Column ID.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        dc = client.data_columns.get_by_id(id="DAC1")
+        dc.name
+        # 'Viscosity'
+        ```
     """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "metadata"}
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the DataColumnCollection with the provided session."""
+        """Initialize a DataColumnCollection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{DataColumnCollection._api_version}/datacolumns"
 
     @validate_call
     def get_by_name(self, *, name: str) -> DataColumn | None:
-        """
-        Get a data column by its name.
+        """Retrieve a single data column by its exact name.
+
+        Matching is case-insensitive. To retrieve multiple columns or use partial
+        matching, use :meth:`get_all` instead.
 
         Parameters
         ----------
         name : str
-            The name of the data column to get.
+            The name of the data column to retrieve (e.g. ``"Viscosity"``).
 
         Returns
         -------
-        DataColumn | None
-            The data column object on match or None
+        DataColumn or None
+            The matching data column, or None if no exact match is found.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_name(name="Viscosity")
+            dc.id if dc else "no match"
+            # 'DAC1'
+            ```
         """
         for dc in self.get_all(name=name):
             if dc.name.lower() == name.lower():
@@ -73,18 +110,29 @@ class DataColumnCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: DataColumnId) -> DataColumn:
-        """
-        Get a data column by its ID.
+        """Retrieve a single data column by its ID.
+
+        To find a column without knowing its ID, use :meth:`get_by_name` or
+        :meth:`get_all`.
 
         Parameters
         ----------
-        id : str
-            The ID of the data column to get.
+        id : DataColumnId
+            The Data Column ID (format ``DAC...``, e.g. ``"DAC1"``).
 
         Returns
         -------
-        DataColumn | None
-            The data column object on match or None
+        DataColumn
+            The matching data column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_id(id="DAC1")
+            dc.name
+            # 'Viscosity'
+            ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         dc = DataColumn(**response.json())
@@ -102,30 +150,43 @@ class DataColumnCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[DataColumn]:
-        """
-        Get all data column entities with optional filters.
+        """Retrieve data columns matching the given filters.
+
+        Results are returned as a lazily paginated iterator, so iterating fetches
+        additional pages on demand. To retrieve a single column by its exact name,
+        use :meth:`get_by_name`; by ID, use :meth:`get_by_id`.
 
         Parameters
         ----------
         order_by : OrderBy, optional
-            The order in which to sort the results. Default is DESCENDING.
-        ids : str or list[str], optional
-            Filter by one or more data column IDs.
+            Sort direction. Default ``OrderBy.DESCENDING``.
+        ids : DataColumnId or list[DataColumnId], optional
+            Filter by one or more Data Column IDs (format ``DAC...``).
         name : str or list[str], optional
             Filter by name(s).
         exact_match : bool, optional
-            Whether the name filter should match exactly.
+            When True, the ``name`` filter must match exactly; otherwise partial
+            matches are included.
         default : bool, optional
-            Whether to return only default columns.
+            When True, return only default data columns.
         start_key : str, optional
-            The pagination key to start from.
+            Pagination key to resume from. Usually left unset.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[DataColumn]
-            An iterator over matching DataColumn entities.
+            A lazily paginated iterator of matching data columns.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            for dc in client.data_columns.get_all(name="Color", max_items=10):
+                print(dc.id, dc.name)
+            ```
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
@@ -150,18 +211,30 @@ class DataColumnCollection(BaseCollection):
         )
 
     def create(self, *, data_column: DataColumn) -> DataColumn:
-        """
-        Create a new data column entity.
+        """Create a new data column.
+
+        To avoid creating a duplicate when a column with the same name may already
+        exist, use :meth:`get_or_create` instead.
 
         Parameters
         ----------
         data_column : DataColumn
-            The data column object to create.
+            The data column to create. ``name`` is required; leave ``id`` unset.
 
         Returns
         -------
         DataColumn
-            The created data column object.
+            The newly created data column, populated with its assigned Data Column ID.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.data_columns import DataColumn
+            created = client.data_columns.create(data_column=DataColumn(name="Viscosity"))
+            created.id
+            # 'DAC1'
+            ```
         """
         payload = [data_column.model_dump(by_alias=True, exclude_unset=True, mode="json")]
         response = self.session.post(self.base_path, json=payload)
@@ -169,17 +242,31 @@ class DataColumnCollection(BaseCollection):
         return DataColumn(**response.json()[0])
 
     def get_or_create(self, *, data_column: DataColumn) -> DataColumn:
-        """Retrieve an existing data column by name or create it if not found.
+        """Return the existing data column matching by name, or create it.
+
+        If a data column with the same name already exists, that existing column is
+        returned instead of creating a duplicate; otherwise a new column is created
+        via :meth:`create`.
 
         Parameters
         ----------
         data_column : DataColumn
-            The data column to get or create.
+            The data column to get or create. Its ``name`` is used to match.
 
         Returns
         -------
         DataColumn
             The existing or newly created data column.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.data_columns import DataColumn
+            dc = client.data_columns.get_or_create(data_column=DataColumn(name="Viscosity"))
+            dc.id
+            # 'DAC1'
+            ```
         """
         for match in self.get_all(name=data_column.name, exact_match=False):
             if match.name == data_column.name:
@@ -191,17 +278,23 @@ class DataColumnCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: DataColumnId) -> None:
-        """
-        Delete a data column entity.
+        """Delete a data column by its ID.
 
         Parameters
         ----------
-        id : str
-            The ID of the data column object to delete.
+        id : DataColumnId
+            The Data Column ID to delete (format ``DAC...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.data_columns.delete(id="DAC1")
+            ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -221,21 +314,37 @@ class DataColumnCollection(BaseCollection):
         return isinstance(existing, list) or isinstance(updated, list)
 
     def update(self, *, data_column: DataColumn) -> DataColumn:
-        """Update a data column entity.
+        """Update an existing data column.
+
+        Fetch the column (e.g. with :meth:`get_by_id`), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         data_column : DataColumn
-            The updated data column object. The ID must be set and match an existing data column.
+            The data column to update. Must have a valid ``id`` matching an existing
+            data column.
 
         Returns
         -------
         DataColumn
-            The updated data column object as registered in Albert.
+            The updated data column as registered in Albert.
 
         Notes
         -----
         The following fields can be updated: ``metadata``, ``name``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_id(id="DAC1")
+            dc.name = "Kinematic Viscosity"
+            updated = client.data_columns.update(data_column=dc)
+            updated.name
+            # 'Kinematic Viscosity'
+            ```
         """
         existing = self.get_by_id(id=data_column.id)
         payload = self._generate_patch_payload(
