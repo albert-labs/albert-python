@@ -129,11 +129,11 @@ class TargetParameter(BaseAlbertModel):
         # operator/value-pair migration (lazy backfill may not have run yet).
         if v is None:
             return v
-        if isinstance(v, (dict, Criterion)):
+        if isinstance(v, dict | Criterion):
             return v
         if isinstance(v, bool):  # guard: bool is a subclass of int
             return {"operator": "in-set", "value": [v]}
-        if isinstance(v, (int, float)):
+        if isinstance(v, int | float):
             return {"operator": "eq", "value": v}
         if isinstance(v, str):
             return {"operator": "in-set", "value": [v]}
