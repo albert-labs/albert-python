@@ -35,7 +35,84 @@ from albert.utils.inventory import _build_cas_patch_operations
 
 
 class InventoryCollection(BaseCollection):
-    """InventoryCollection is a collection class for managing Inventory Item entities in the Albert platform."""
+    """Manage Inventory Items in the Albert platform.
+
+    An Inventory Item is a catalog entry for a physical or formulated material
+    tracked in Albert. Every item belongs to one of four categories:
+
+    - ``RawMaterials`` — purchased substances used as ingredients (e.g. a solvent
+      or pigment), typically linked to a manufacturing Company and one or more
+      CAS numbers.
+    - ``Consumables`` — supplies consumed during lab work (e.g. gloves, vials).
+    - ``Equipment`` — instruments and apparatus.
+    - ``Formulas`` — mixtures designed in Albert. Formulas are created through the
+      Worksheet collection (:class:`~albert.collections.worksheets.WorksheetCollection`),
+      not here; :meth:`create` rejects Formula items.
+
+    Inventory Items are referenced throughout the platform by their Inventory ID
+    (format ``INV...``, e.g. ``"INVA1"``). They are the building blocks that
+    Worksheets, Tasks, and Property Data all point back to.
+
+    This collection is accessed as ``client.inventory``.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for inventory requests.
+
+    Methods
+    -------
+    create(inventory_item, avoid_duplicates=True) -> InventoryItem
+        Register a new inventory item (raw material, consumable, or equipment).
+    get_by_id(id) -> InventoryItem
+        Retrieve a single fully populated item by its Inventory ID.
+    get_by_ids(ids) -> list[InventoryItem]
+        Retrieve many items by ID in batches.
+    search(...) -> Iterator[InventorySearchItem]
+        Fast, lightweight search returning partial items (best for lookups/counts).
+    get_all(...) -> Iterator[InventoryItem]
+        Same filters as search, but returns fully populated items (slower).
+    update(inventory_item) -> InventoryItem
+        Apply changes to an existing item.
+    delete(id) -> None
+        Delete an item by its Inventory ID.
+    merge(parent_id, child_id, modules=None) -> None
+        Merge duplicate item(s) into a single parent item.
+    exists(inventory_item) -> bool
+        Check whether an item with the same name and company already exists.
+    get_match_or_none(inventory_item) -> InventoryItem | None
+        Return the existing item matching name + company, or None.
+    add_specs(inventory_id, specs) -> InventorySpecList
+        Attach specification properties to an item.
+    get_specs(ids) -> list[InventorySpecList]
+        Retrieve the specs attached to a list of items.
+    get_all_facets(...) -> list[FacetItem]
+        Retrieve facet groups (aggregated filter counts) for a query.
+    get_facet_by_name(name, ...) -> list[FacetItem]
+        Retrieve a single named facet group for a query.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.inventory import InventoryCategory
+        client = Albert()
+        # Find raw materials mentioning "titanium dioxide"
+        items = client.inventory.get_all(
+            text="titanium dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            max_items=25,
+        )
+        for item in items:
+            print(item.id, item.name)
+        ```
+    """
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -49,13 +126,12 @@ class InventoryCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """
-        InventoryCollection is a collection class for managing inventory items.
+        """Initialize an InventoryCollection.
 
         Parameters
         ----------
-        session : Albert
-            The Albert session instance.
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
@@ -68,21 +144,32 @@ class InventoryCollection(BaseCollection):
         child_id: InventoryId | list[InventoryId],
         modules: list[InventoryMergeModule] | None = None,
     ) -> None:
-        """
-        Merge one or multiple child inventory into a parent inventory item.
+        """Merge one or more duplicate inventory items into a single parent item.
+
+        Use this to consolidate duplicates: the child item(s) are folded into the
+        parent, and their data (as selected by ``modules``) is carried over. The
+        child items are removed as standalone entries.
 
         Parameters
         ----------
         parent_id : InventoryId
-            The ID of the parent inventory item.
-        child_id : InventoryId | list[InventoryId]
-            The ID(s) of the child inventory item(s).
+            The item to keep. All merged data ends up here.
+        child_id : InventoryId or list[InventoryId]
+            The duplicate item(s) to merge into the parent. At least one is required.
         modules : list[InventoryMergeModule], optional
-            The merge modules to include. Defaults to all modules.
+            Which categories of data to carry over from the children (e.g. pricing,
+            notes). Defaults to all modules.
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
+            ```
         """
 
         # assume "all" modules if not specified explicitly
@@ -107,35 +194,63 @@ class InventoryCollection(BaseCollection):
         self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
     def exists(self, *, inventory_item: InventoryItem) -> bool:
-        """
-        Check if an inventory item exists.
+        """Check whether a matching inventory item already exists.
+
+        A match is determined by name and company, the same way :meth:`create`
+        detects duplicates. Useful before creating an item to avoid duplicates.
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to check.
+            The item to look for. Its ``name`` and ``company`` are used to match.
 
         Returns
         -------
         bool
-            True if the inventory item exists, False otherwise.
+            True if a matching item exists, False otherwise.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            candidate = InventoryItem(
+                name="Acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            client.inventory.exists(inventory_item=candidate)
+            # True
+            ```
         """
         hit = self.get_match_or_none(inventory_item=inventory_item)
         return bool(hit)
 
     def get_match_or_none(self, *, inventory_item: InventoryItem) -> InventoryItem | None:
-        """
-        Get a matching inventory item by name and company, or return None if not found.
+        """Return the existing item matching name and company, or None.
+
+        Like :meth:`exists`, but returns the matched item itself so you can reuse
+        its ID instead of creating a duplicate.
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to match.
+            The item to match. Its ``name`` and ``company`` are used to match.
 
         Returns
         -------
         InventoryItem or None
-            The matching inventory item, or None if no match is found.
+            The matching item, or None if no match is found.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            existing = client.inventory.get_match_or_none(inventory_item=candidate)
+            existing.id if existing else "no match"
+            # 'INVA1'
+            ```
         """
         inv_company = (
             inventory_item.company.name
@@ -158,20 +273,53 @@ class InventoryCollection(BaseCollection):
         inventory_item: InventoryItem,
         avoid_duplicates: bool = True,
     ) -> InventoryItem:
-        """
-        Create a new inventory item.
+        """Register a new inventory item.
+
+        Use this to add a raw material, consumable, or equipment item to the
+        catalog. Formula items are not supported here; build those through the
+        Worksheet collection.
+
+        Any tags or company on the item that do not yet exist in Albert are
+        created automatically before the item is registered (see
+        :class:`~albert.collections.companies.CompanyCollection` and
+        :class:`~albert.collections.tags.TagCollection`).
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to create.
+            The item to create. ``name`` and ``category`` are required. For raw
+            materials, set ``company`` to the manufacturing Company and ``cas`` to
+            the relevant CAS numbers.
         avoid_duplicates : bool, optional
-            Whether to avoid creating duplicate items (default is True).
+            When True (default), if an item with the same name and company already
+            exists, that existing item is returned instead of creating a duplicate.
+            Set to False to force creation.
 
         Returns
         -------
         InventoryItem
-            The created inventory item.
+            The newly created item, populated with its assigned Inventory ID.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``inventory_item.category`` is ``Formulas``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            item = InventoryItem(
+                name="Titanium Dioxide",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            created = client.inventory.create(inventory_item=item)
+            created.id
+            # 'INVA1'
+            ```
         """
         category = (
             inventory_item.category
@@ -211,18 +359,29 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
-        """
-        Retrieve an inventory item by its ID.
+        """Retrieve a single, fully populated inventory item by its ID.
+
+        For retrieving many items at once, use :meth:`get_by_ids`. To find items
+        without knowing their IDs, use :meth:`search` or :meth:`get_all`.
 
         Parameters
         ----------
         id : InventoryId
-            The ID of the inventory item.
+            The Inventory ID (format ``INV...``, e.g. ``"INVA1"``).
 
         Returns
         -------
         InventoryItem
-            The retrieved inventory item.
+            The fully populated item.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA1")
+            item.name
+            # 'Titanium Dioxide'
+            ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -230,18 +389,29 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
-        """
-        Retrieve a set of inventory items by their IDs.
+        """Retrieve multiple fully populated inventory items by their IDs.
+
+        Requests are automatically split into batches, so arbitrarily long ID
+        lists are supported. Items not found are omitted from the result.
 
         Parameters
         ----------
         ids : list[InventoryId]
-            The list of IDs of the inventory items.
+            The Inventory IDs to retrieve (format ``INV...``).
 
         Returns
         -------
         list[InventoryItem]
-            The retrieved inventory items.
+            The matching items. Order is not guaranteed to match the input.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
+            [i.name for i in items]
+            # ['Titanium Dioxide', 'Acetone']
+            ```
         """
         batch_size = 250
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
@@ -253,17 +423,30 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Get the specs for a list of inventory items.
+        """Retrieve the specs attached to a list of inventory items.
+
+        A spec is a declared property of an item (see :meth:`add_specs` for the
+        distinction between specs and task-measured Property Data). Requests are
+        automatically batched.
 
         Parameters
         ----------
         ids : list[InventoryId]
-            List of Inventory IDs to get the specs for.
+            The Inventory IDs to fetch specs for (format ``INV...``).
 
         Returns
         -------
         list[InventorySpecList]
-            A list of InventorySpecList entities, each containing the specs for an inventory item.
+            One entry per item, each holding that item's specs.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            spec_lists = client.inventory.get_specs(ids=["INVA1"])
+            spec_lists[0].specs
+            # [...]
+            ```
         """
         url = f"{self.base_path}/specs"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -281,24 +464,39 @@ class InventoryCollection(BaseCollection):
         inventory_id: InventoryId,
         specs: InventorySpec | list[InventorySpec],
     ) -> InventorySpecList:
-        """Add inventory specs to the inventory item.
+        """Attach one or more specs to an inventory item.
 
-        An `InventorySpec` is a property that was not directly measured via a task,
-        but is a generic property of that inventory item.
+        An ``InventorySpec`` is a declared property of an item, as opposed to a
+        value measured through a Task. Use specs for generic, known properties
+        (e.g. a supplier-stated density); use Tasks and Property Data for
+        experimentally measured results. A spec can optionally carry the
+        conditions under which it holds, expressed via a workflow.
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The Albert ID of the inventory item to add the specs to
-        specs : list[InventorySpec]
-            List of InventorySpec entities to add to the inventory item,
-            which described the value and, optionally,
-            the conditions associated with the value (via workflow).
+            The item to attach the specs to (format ``INV...``).
+        specs : InventorySpec or list[InventorySpec]
+            The spec(s) to attach. Each describes a value and, optionally, the
+            associated conditions (via workflow).
 
         Returns
         -------
         InventorySpecList
-            The list of InventorySpecs attached to the InventoryItem.
+            The full set of specs now attached to the item.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.inventory import InventorySpec, InventorySpecValue
+            spec = InventorySpec(
+                name="Density",
+                data_column_id="DAC1",
+                value=InventorySpecValue(min="1.1", max="1.3"),
+            )
+            client.inventory.add_specs(inventory_id="INVA1", specs=spec)
+            ```
         """
         if isinstance(specs, InventorySpec):
             specs = [specs]
@@ -310,17 +508,26 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: InventoryId) -> None:
-        """
-        Delete an inventory item by its ID.
+        """Delete an inventory item by its ID.
+
+        This permanently removes the item. To consolidate duplicates while
+        preserving data, use :meth:`merge` instead.
 
         Parameters
         ----------
         id : InventoryId
-            The ID of the inventory item.
+            The Inventory ID to delete (format ``INV...``).
 
         Returns
         -------
         None
+
+        Examples
+        --------
+        !!! example
+            ```python
+            client.inventory.delete(id="INVA1")
+            ```
         """
 
         url = f"{self.base_path}/{id}"
@@ -400,40 +607,56 @@ class InventoryCollection(BaseCollection):
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
-        """
-        Get available facets for inventory items based on the provided filters.
+        """Get the facets available for an inventory search.
+
+        Facets are the grouped, counted filter options for a query, like the
+        refinement sidebar of a search UI (e.g. how many matching items fall under
+        each category, company, or tag). Use them to build progressive filtering
+        or to summarize a result set without fetching every item. To pull a single
+        named facet, use :meth:`get_facet_by_name`.
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
-        cas : list[Cas] | Cas | None, optional
-            Filter by CAS values.
-        category : list[InventoryCategory] | InventoryCategory | None, optional
-            Filter by inventory category.
-        company : list[Company] | Company | None, optional
-            Filter by company.
-        location : list[Location] | Location | None, optional
+            Free-text query matched against item name and related fields.
+        cas : Cas or list[Cas], optional
+            Filter by CAS number(s).
+        category : InventoryCategory or list[InventoryCategory], optional
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
+        company : Company or list[Company], optional
+            Filter by manufacturing Company.
+        location : Location or list[Location], optional
             Filter by location.
-        storage_location : list[StorageLocation] | StorageLocation | None, optional
+        storage_location : StorageLocation or list[StorageLocation], optional
             Filter by storage location.
-        project_id : ProjectId | None, optional
+        project_id : ProjectId, optional
             Filter by project.
-        sheet_id : WorksheetId | None, optional
+        sheet_id : WorksheetId, optional
             Filter by worksheet.
-        created_by : list[User] | User | None, optional
+        created_by : User or list[User], optional
             Filter by creator.
-        lot_owner : list[User] | User | None, optional
+        lot_owner : User or list[User], optional
             Filter by lot owner.
-        tags : list[str] | None, optional
-            Filter by tags.
+        tags : list[str], optional
+            Filter by tag name(s).
         match_all_conditions : bool, optional
-            If ``True``, only return results that satisfy all applied filters.
+            If True, only count items that satisfy every applied filter (AND logic).
+            Default False.
 
         Returns
         -------
         list[FacetItem]
-            Facet groups available for the provided query filters.
+            The facet groups available for the query.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            facets = client.inventory.get_all_facets(text="titanium dioxide")
+            [f.name for f in facets]
+            # ['Category', 'Company', 'Tags', ...]
+            ```
         """
 
         params = self._prepare_parameters(
@@ -477,15 +700,17 @@ class InventoryCollection(BaseCollection):
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
-        """
-        Returns a specific facet by its name with all the filters applied to the search.
-        This can be used for example to fetch all remaining tags as part of an iterative
-        refinement of a search.
+        """Return one or more named facets for an inventory search.
+
+        A convenience wrapper over :meth:`get_all_facets` that keeps only the
+        facet group(s) you name. Useful for iterative search refinement, e.g.
+        fetching the remaining ``Tags`` facet after other filters are applied.
 
         Parameters
         ----------
-        name : str | list[str]
-            Facet name or names to return.
+        name : str or list[str]
+            The facet group name(s) to return (e.g. ``"Tags"``, ``"Company"``).
+            Matching is case-insensitive.
         text : str, optional
             Search text for full-text matching.
         cas : list[Cas] | Cas | None, optional
@@ -509,12 +734,22 @@ class InventoryCollection(BaseCollection):
         tags : list[str] | None, optional
             Filter by tags.
         match_all_conditions : bool, optional
-            If ``True``, only return results that satisfy all applied filters.
+            If True, only count items that satisfy every applied filter (AND logic).
+            Default False.
 
         Returns
         -------
         list[FacetItem]
-            Matching facet groups for the provided facet name filter.
+            The facet group(s) matching ``name``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            tags = client.inventory.get_facet_by_name("Tags", text="acetone")
+            tags[0].name
+            # 'Tags'
+            ```
         """
         name = ensure_list(name) or []
 
@@ -561,28 +796,37 @@ class InventoryCollection(BaseCollection):
         offset: int | None = 0,
         from_created_at: str | None = None,
     ) -> Iterator[InventorySearchItem]:
-        """
-        Search for Inventory items matching the provided criteria.
+        """Search for inventory items matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        Returns lightweight, partially populated results and is the fastest way to
+        look items up (best for name lookups, counts, or feeding IDs into another
+        call). Fields such as full CAS breakdowns and metadata are omitted; when
+        you need complete items, use :meth:`get_all` with the same filters, or pass
+        the resulting IDs to :meth:`get_by_ids`.
+
+        Filters are combined with OR logic by default (an item matches if it
+        satisfies any filter); set ``match_all_conditions=True`` to require every
+        filter to match. Results are returned as a lazily paginated iterator, so
+        iterating fetches additional pages on demand.
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
+            Free-text query matched against item name, alias, and related fields.
+            Only the first 50 characters are used.
         cas : Cas or list[Cas], optional
-            Filter by CAS numbers.
+            Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
-            Filter by item category.
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
         company : Company or list[Company], optional
-            Filter by associated company.
+            Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
         storage_location : StorageLocation or list[StorageLocation], optional
             Filter by storage location.
         project_id : str, optional
-            Filter by project ID (formulas).
+            Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
         created_by : User or list[User], optional
@@ -592,22 +836,37 @@ class InventoryCollection(BaseCollection):
         tags : list[str], optional
             Filter by tag name(s).
         match_all_conditions : bool, optional
-            Whether to match all filters (AND logic). Default is False.
+            Require every filter to match (AND logic). Default False (OR logic).
         order : OrderBy, optional
-            Sort order. Default is DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
-            Field to sort results by. Default is None.
+            Field to sort by. Default None (server default order).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Offset for pagination. Default is 0.
-        from_created_at: str | None
-            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+        from_created_at : str, optional
+            Only include items created on or after this date, formatted as
+            ``YYYY-MM-DD``.
 
         Returns
         -------
         Iterator[InventorySearchItem]
-            An iterator over partial (unhydrated) InventorySearchItem results.
+            A lazily paginated iterator of partially populated search results.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            hits = client.inventory.search(
+                text="acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=10,
+            )
+            first = next(iter(hits))
+            first.name
+            # 'Acetone'
+            ```
         """
 
         def deserialize(items: list[dict]):
@@ -666,28 +925,35 @@ class InventoryCollection(BaseCollection):
         offset: int | None = 0,
         from_created_at: str | None = None,
     ) -> Iterator[InventoryItem]:
-        """
-        Retrieve fully hydrated InventoryItem entities with optional filters.
+        """Retrieve fully populated inventory items matching the given filters.
 
-        This method returns complete entity data using `get_by_ids`.
-        Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Accepts the same filters as :meth:`search` but returns complete
+        ``InventoryItem`` entities rather than lightweight search results. This is
+        slower because it fetches full detail for every match, so prefer
+        :meth:`search` when you only need names, IDs, or counts.
+
+        Filters are combined with OR logic by default; set
+        ``match_all_conditions=True`` to require every filter to match. Results are
+        returned as a lazily paginated iterator.
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
+            Free-text query matched against item name, alias, and related fields.
+            Only the first 50 characters are used.
         cas : Cas or list[Cas], optional
-            Filter by CAS numbers.
+            Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
-            Filter by item category.
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
         company : Company or list[Company], optional
-            Filter by associated company.
+            Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
         storage_location : StorageLocation or list[StorageLocation], optional
             Filter by storage location.
         project_id : str, optional
-            Filter by project ID (formulas).
+            Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
         created_by : User or list[User], optional
@@ -697,22 +963,34 @@ class InventoryCollection(BaseCollection):
         tags : list[str], optional
             Filter by tag name(s).
         match_all_conditions : bool, optional
-            Whether to match all filters (AND logic). Default is False.
+            Require every filter to match (AND logic). Default False (OR logic).
         order : OrderBy, optional
-            Sort order. Default is DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
-            Field to sort results by. Default is None.
+            Field to sort by. Default None (server default order).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Offset for pagination. Default is 0.
-        from_created_at: str | None
-            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+        from_created_at : str, optional
+            Only include items created on or after this date, formatted as
+            ``YYYY-MM-DD``.
 
         Returns
         -------
         Iterator[InventoryItem]
-            An iterator over fully hydrated InventoryItem entities.
+            A lazily paginated iterator of fully populated items.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            for item in client.inventory.get_all(
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=50,
+            ):
+                print(item.id, item.name)
+            ```
         """
 
         def deserialize(items: list[dict]) -> list[InventoryItem]:
@@ -916,22 +1194,38 @@ class InventoryCollection(BaseCollection):
         return patch_data
 
     def update(self, *, inventory_item: InventoryItem) -> InventoryItem:
-        """
-        Update an inventory item.
+        """Update an existing inventory item.
+
+        Fetch the item (e.g. with :meth:`get_by_id`), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied; changes to other fields are ignored.
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The updated inventory item object.
+            The item to update. Must have a valid ``id``.
 
         Returns
         -------
         InventoryItem
-            The updated inventory item retrieved from the server.
+            The updated item.
 
         Notes
         -----
-        The following fields can be updated: ``alias``, ``description``, ``is_formula_override``, ``metadata``, ``name``, ``security_class``, ``unit_category``.
+        The following fields can be updated: ``alias``, ``description``,
+        ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
+        ``unit_category``.
+
+        Examples
+        --------
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA1")
+            item.description = "Updated description"
+            updated = client.inventory.update(inventory_item=item)
+            updated.description
+            # 'Updated description'
+            ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

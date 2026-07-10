@@ -22,7 +22,12 @@ from albert.resources.tags import Tag
 
 class InventoryMergeModule(str, Enum):
     """
-    Modules available for an inventory merge operation.
+    A data category that can be carried over when merging inventory items.
+
+    When duplicate inventory items are merged (see :class:`MergeInventory` and
+    :meth:`~albert.collections.inventory.InventoryCollection.merge`), each selected
+    module names a body of data to fold from the child item(s) into the surviving
+    parent item. When no modules are specified, all modules are included.
 
     Attributes
     ----------
@@ -68,6 +73,26 @@ ALL_MERGE_MODULES: list[InventoryMergeModule] = list(InventoryMergeModule)
 
 
 class InventoryCategory(str, Enum):
+    """The kind of material an :class:`InventoryItem` represents.
+
+    Every inventory item belongs to exactly one category, which determines how it
+    is used across the platform and which fields are relevant to it.
+
+    Attributes
+    ----------
+    RAW_MATERIALS : str
+        A purchased substance used as an ingredient (e.g. a solvent or pigment).
+        Typically linked to a manufacturing ``company`` and one or more CAS numbers.
+    CONSUMABLES : str
+        Lab supplies consumed during work (e.g. gloves, vials, filters).
+    EQUIPMENT : str
+        Instruments and apparatus (e.g. a balance or spectrometer).
+    FORMULAS : str
+        A mixture designed in Albert through a Worksheet. Formulas are not created
+        through the inventory collection; they are produced by the Worksheet
+        collection (:class:`~albert.collections.worksheets.WorksheetCollection`).
+    """
+
     RAW_MATERIALS = "RawMaterials"
     CONSUMABLES = "Consumables"
     EQUIPMENT = "Equipment"
@@ -75,6 +100,26 @@ class InventoryCategory(str, Enum):
 
 
 class InventoryUnitCategory(str, Enum):
+    """The dimension of the unit an :class:`InventoryItem` is measured and stocked in.
+
+    Determines how quantities on hand and in formulas are interpreted. When not
+    supplied, the category defaults based on :class:`InventoryCategory`: ``MASS``
+    for raw materials and formulas, ``UNITS`` for equipment and consumables.
+
+    Attributes
+    ----------
+    MASS : str
+        Measured by mass (e.g. grams, kilograms).
+    VOLUME : str
+        Measured by volume (e.g. milliliters, liters).
+    LENGTH : str
+        Measured by length (e.g. meters).
+    PRESSURE : str
+        Measured by pressure.
+    UNITS : str
+        Counted as discrete units (e.g. each item).
+    """
+
     MASS = "mass"
     VOLUME = "volume"
     LENGTH = "length"
@@ -89,32 +134,63 @@ class CasAuditFieldsWithEmail(AuditFields):
 
 
 class CasAmount(BaseAlbertModel):
-    """
-    CasAmount is a Pydantic model representing an amount of a given CAS.
+    """A single CAS constituent and its concentration within an :class:`InventoryItem`.
+
+    A ``CasAmount`` links one CAS number (a chemical substance identifier) to the
+    amount of that substance present in an inventory item, expressed as a range
+    (``min``–``max``) with an optional ``target``. A list of these on an
+    :class:`InventoryItem` gives the item's compositional breakdown.
+
+    Identify the CAS in one of two ways: pass a full :class:`~albert.resources.cas.Cas`
+    object as ``cas`` (its ``id``, ``number``, and ``cas_smiles`` are then copied onto
+    this amount), or pass just the CAS resource ``id`` string. Do not pass both.
 
     Attributes
     ----------
     min : float
-        The minimum amount of the CAS in the formulation.
+        The minimum amount (concentration) of the CAS in the item.
     max : float
-        The maximum amount of the CAS in the formulation.
-    target: float | None
-        The inventory value or target of the CAS in the formulation.
+        The maximum amount (concentration) of the CAS in the item.
+    target : float | None
+        The target amount of the CAS in the item. Serialized as ``inventoryValue``.
     id : str | None
-        The Albert ID of the CAS Number Resource this amount represents. Provide either a Cas or an ID.
+        The Albert ID of the CAS resource this amount represents. Provide either a
+        ``cas`` object or an ``id``; when ``cas`` is given, this is set from it.
+    cas_category : str | None
+        The category assigned to the CAS in this context.
+    inventory_function : list[ListItem | str] | None
+        Business-controlled functions associated with the CAS in this inventory
+        context (e.g. what role the substance plays). Values come from a managed list.
+    type : str | None
+        The CAS type. Can be retrieved from the CAS collection before construction.
+    classification_type : str | None
+        The CAS classification type. Can be retrieved from the CAS collection.
     cas : Cas | None
-        The CAS object associated with this amount. Provide either a Cas or an id.
-    cas_smiles: str | None
-        The SMILES string of the CAS Number resource. Obtained from the Cas object when provided.
-    number: str | None
-        The CAS number. Obtained from the Cas object when provided.
-    inventory_function: list[ListItem | EntityLink | str] | None
-        Business-controlled functions associated with the CAS in this inventory context.
+        The full CAS object associated with this amount. Read-only after init; excluded
+        from serialization. Provide either a ``cas`` or an ``id``.
+    cas_smiles : str | None
+        The SMILES string of the CAS resource. Read-only; set from the ``cas`` object.
+    number : str | None
+        The CAS number (e.g. ``"7440-32-6"``). Read-only; set from the ``cas`` object.
+    created : AuditFields | None
+        Audit metadata for creation. Read-only.
+    updated : CasAuditFieldsWithEmail | None
+        Audit metadata for the last update. Read-only.
 
-    !!! tip
-    ---
-    `type` and `classification_type` values can be retrieved from the CAS collection via
-    `CasCollection.get_all(number=[...])` before constructing the `CasAmount`.
+    See Also
+    --------
+    albert.resources.cas.Cas : The CAS resource referenced by this amount.
+    InventoryItem : Holds the list of ``CasAmount`` entries for an item.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.inventory import CasAmount
+
+        # Reference an existing CAS resource by its Albert ID, 10-30% concentration
+        amount = CasAmount(min=10.0, max=30.0, id="CAS1")
+        ```
     """
 
     min: float
@@ -154,17 +230,40 @@ class CasAmount(BaseAlbertModel):
 
 
 class InventoryMinimum(BaseAlbertModel):
-    """Defined the minimum amount of an InventoryItem that must be kept in stock at a given Location.
+    """A reorder threshold: the minimum stock of an :class:`InventoryItem` to keep at a Location.
+
+    Each entry pairs one Location with the minimum quantity of an item that must be
+    kept on hand there. An :class:`InventoryItem` may carry several of these, one per
+    Location. Identify the Location either by passing a full
+    :class:`~albert.resources.locations.Location` object as ``location`` (its ``id`` is
+    then copied onto ``id``), or by passing the location ``id`` string directly. Provide
+    one or the other, not both.
 
     Attributes
     ----------
-    id : str
-        The unique identifier of the Location object associated with this InventoryMinimum.
-        Provide either a Location or a location id.
-    location : Location
-        The Location object associated with this InventoryMinimum. Provide either a Location or a location id.
+    id : str | None
+        The Albert ID of the Location this minimum applies to. Provide either a
+        ``location`` or an ``id``; when ``location`` is given, this is set from it.
+    location : Location | None
+        The Location object this minimum applies to. Excluded from serialization.
+        Provide either a ``location`` or an ``id``.
     minimum : float
-        The minimum amount of the InventoryItem that must be kept in stock at the given Location.
+        The minimum amount of the item that must be kept in stock at the Location.
+        Must be between 0 and 1e15.
+
+    See Also
+    --------
+    albert.resources.locations.Location : The Location referenced by this minimum.
+    InventoryItem : Holds the list of ``InventoryMinimum`` entries for an item.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.inventory import InventoryMinimum
+
+        minimum = InventoryMinimum(id="LOC1", minimum=500)
+        ```
     """
 
     id: str | None = Field(default=None)
@@ -194,49 +293,93 @@ class InventoryMinimum(BaseAlbertModel):
 
 
 class InventoryItem(BaseTaggedResource):
-    """An InventoryItem is a Pydantic model representing an item in the inventory. Can be a raw material, consumable, equipment, or formula.
-    Note: Formulas should be registered via the Worksheet collection / Sheet resource.
+    """A catalog entry for a material tracked in Albert.
 
-    Returns
-    -------
-    InventoryItem
-        An InventoryItem that can be used to represent an item in the inventory. Can be a raw material, consumable, equipment, or formula.
+    An ``InventoryItem`` is the canonical record for a raw material, consumable,
+    piece of equipment, or formula. Its :class:`InventoryCategory` determines how it
+    is used across the platform, and once saved it is referenced everywhere by its
+    Inventory ID (format ``INV...``, e.g. ``"INVA1"``). Raw materials are typically
+    linked to a manufacturing ``company`` and a compositional breakdown of CAS
+    amounts. Formula items are designed in Worksheets rather than created here (the
+    :meth:`~albert.collections.inventory.InventoryCollection.create` method rejects
+    Formula items), and a Formula requires a ``project_id``.
+
+    Items are managed through
+    :class:`~albert.collections.inventory.InventoryCollection` (``client.inventory``).
 
     Attributes
-    ------
-
-    name : str
-        The name of the InventoryItem.
+    ----------
+    name : str | None
+        The name of the item.
     id : str | None
-        The Albert ID of the InventoryItem. Set when the InventoryItem is retrieved from Albert.
+        The Albert Inventory ID (format ``INV...``). Set when the item is retrieved
+        from or created in Albert. Serialized as ``albertId``.
     description : str | None
-        The description of the InventoryItem.
+        A free-text description of the item.
     category : InventoryCategory
-        The category of the InventoryItem. Allowed values are `RawMaterials`, `Consumables`, `Equipment`, and `Formulas`.
-    unit_category : InventoryUnitCategory
-        The unit category of the InventoryItem. Can be mass, volume, length, pressure, or units. By default, mass is used for RawMaterials and Formulas, and units is used for Equipment and Consumables.
+        The kind of material this item represents. Required. One of ``RawMaterials``,
+        ``Consumables``, ``Equipment``, or ``Formulas``.
+    unit_category : InventoryUnitCategory | None
+        The dimension the item is measured in (mass, volume, length, pressure, or
+        units). If not supplied, it defaults from ``category``: mass for raw materials
+        and formulas, units for equipment and consumables.
     security_class : SecurityClass | None
-        The security class of the InventoryItem. Optional. Can be confidential, shared, or restricted.
+        The access/security class of the item (e.g. confidential, shared, restricted).
     company : Company | str | None
-        The company associated with the InventoryItem. Can be a Company object or a string. If a String is provided, a Company object with the name of the provided string will be first-or-created.
+        The manufacturing Company associated with the item (links to the Company
+        collection). Accepts a :class:`~albert.resources.companies.Company` or a name
+        string; a string is turned into a Company that is first-or-created on save.
     minimum : list[InventoryMinimum] | None
-        The minimum amount of the InventoryItem that must be kept in stock at a given Location. Optional.
+        Per-Location reorder thresholds for the item. See :class:`InventoryMinimum`.
     alias : str | None
-        An alias for the InventoryItem. Optional.
+        An alternate name for the item.
     cas : list[CasAmount] | None
-        The CAS numbers associated with the InventoryItem. This is how a compositional breakdown can be provided. Optional.
+        The item's compositional breakdown as CAS amounts. See :class:`CasAmount`.
     is_formula_override : bool | None
-        Whether formula override is enabled for a formula inventory item. Optional.
-    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
-        Metadata associated with the InventoryItem. Optional. Allowed metadata fields can be found in the CustomFields documentation.
+        Whether formula override is enabled for a formula item.
+    metadata : dict[str, MetadataItem] | None
+        Custom metadata fields. Allowed keys are defined by the workspace's
+        CustomFields configuration.
     project_id : str | None
-        The project ID associated with the InventoryItem. Read Only. Required for Formulas.
-    formula_id : str | None
-        The formula ID associated with the InventoryItem. Read Only.
-    tags : list[str|Tag] | None
-        The tags associated with the InventoryItem. Optional. If a string is provided, a Tag object with the name of the provided string will be first-or-created.
+        The parent Project ID. Required for Formulas. Serialized as ``parentId``.
+    acls : list[ACL]
+        Access-control entries governing who can act on the item.
+    tags : list[Tag | str] | None
+        Tags on the item. A string is turned into a Tag that is first-or-created.
+        Inherited from :class:`~albert.resources.tagged_base.BaseTaggedResource`.
     inventory_on_hand : float
-        The total amount of this item currently on hand across all lots. Read Only.
+        Total amount currently on hand across all lots. Read-only.
+    formula_id : str | None
+        The formula ID for a formula item. Read-only.
+    un_number : str | None
+        The UN hazardous-material number, when applicable. Read-only.
+    task_config : list[dict] | None
+        Task configuration associated with the item. Read-only.
+    symbols : list[dict] | None
+        Hazard/pictogram symbols associated with the item. Read-only.
+    recent_atachment_id : str | None
+        The ID of the most recent attachment on the item. Read-only.
+
+    See Also
+    --------
+    albert.collections.inventory.InventoryCollection : Create, search, and manage items.
+    InventoryCategory : The set of allowed categories.
+    CasAmount : Compositional entries used in ``cas``.
+    InventoryMinimum : Per-Location reorder thresholds used in ``minimum``.
+    InventorySpec : Declared property specifications for an item.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.inventory import InventoryItem, InventoryCategory
+
+        item = InventoryItem(
+            name="Titanium Dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            company="Acme Chemicals",
+        )
+        ```
     """
 
     name: str | None = None
@@ -300,6 +443,25 @@ class InventoryItem(BaseTaggedResource):
 
 
 class InventorySpecValue(BaseAlbertModel):
+    """The acceptance value(s) of an :class:`InventorySpec`.
+
+    Expresses the expected value of a declared property as a range (``min``–``max``),
+    a single ``reference`` value, and/or a ``comparison_operator``. Numeric inputs are
+    accepted and stored as strings.
+
+    Attributes
+    ----------
+    min : str | None
+        The lower bound of the acceptable range.
+    max : str | None
+        The upper bound of the acceptable range.
+    reference : str | None
+        A reference or target value for the property.
+    comparison_operator : str | None
+        The operator used to compare a measured value against this spec
+        (e.g. ``">"``, ``"<="``). Serialized as ``comparisonOperator``.
+    """
+
     min: str | None = Field(default=None)
     max: str | None = Field(default=None)
     reference: str | None = Field(default=None)
@@ -314,6 +476,63 @@ class InventorySpecValue(BaseAlbertModel):
 
 
 class InventorySpec(BaseAlbertModel):
+    """A declared property of an :class:`InventoryItem`.
+
+    A spec is a property asserted directly on an item (a declared expectation), as
+    opposed to a value measured through a Task. Each spec points at a data column
+    (``data_column_id``, format ``DAC...``) and carries the expected
+    :class:`InventorySpecValue`. Specs are attached to and retrieved from an item via
+    :meth:`~albert.collections.inventory.InventoryCollection.add_specs` and
+    :meth:`~albert.collections.inventory.InventoryCollection.get_specs`, and are
+    grouped for an item by :class:`InventorySpecList`.
+
+    Attributes
+    ----------
+    id : str | None
+        The Albert ID of the spec. Serialized as ``albertId``.
+    name : str
+        The name of the spec. Required.
+    data_column_id : str
+        The ID of the data column this spec applies to (format ``DAC...``). Required.
+        Serialized as ``datacolumnId``.
+    data_column_name : str | None
+        The display name of the data column. Serialized as ``datacolumnName``.
+    data_template_id : str | None
+        The ID of the associated data template. Serialized as ``datatemplateId``.
+    data_template_name : str | None
+        The display name of the data template. Serialized as ``datatemplateName``.
+    unit_id : str | None
+        The ID of the unit for the spec value. Serialized as ``unitId``.
+    unit_name : str | None
+        The display name of the unit. Serialized as ``unitName``.
+    workflow_id : str | None
+        The ID of the associated workflow. Serialized as ``workflowId``.
+    workflow_name : str | None
+        The display name of the workflow. Serialized as ``workflowName``.
+    spec_config : str | None
+        Additional spec configuration. Serialized as ``specConfig``.
+    value : InventorySpecValue | None
+        The expected value or range for the property. Serialized as ``Value``.
+
+    See Also
+    --------
+    InventorySpecValue : The value/range carried by a spec.
+    InventorySpecList : Groups the specs attached to a single item.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.inventory import InventorySpec, InventorySpecValue
+
+        spec = InventorySpec(
+            name="Viscosity",
+            data_column_id="DAC1",
+            value=InventorySpecValue(min=100, max=200),
+        )
+        ```
+    """
+
     id: str | None = Field(default=None, alias="albertId")
     name: str
     data_column_id: str = Field(..., alias="datacolumnId")
@@ -329,6 +548,25 @@ class InventorySpec(BaseAlbertModel):
 
 
 class InventorySpecList(BaseAlbertModel):
+    """The set of :class:`InventorySpec` entries attached to one :class:`InventoryItem`.
+
+    Returned by
+    :meth:`~albert.collections.inventory.InventoryCollection.get_specs` and accepted by
+    :meth:`~albert.collections.inventory.InventoryCollection.add_specs`, this binds a
+    list of specs to the item they belong to.
+
+    Attributes
+    ----------
+    parent_id : str
+        The Inventory ID of the item the specs belong to. Serialized as ``parentId``.
+    specs : list[InventorySpec]
+        The specs attached to the item. Serialized as ``Specs``.
+
+    See Also
+    --------
+    InventorySpec : An individual declared property in the list.
+    """
+
     parent_id: str = Field(..., alias="parentId")
     specs: list[InventorySpec] = Field(..., alias="Specs")
 
@@ -337,6 +575,8 @@ class InventorySpecList(BaseAlbertModel):
 # and see if this is unique to the search endpoint or a
 # common resource
 class InventorySearchPictogramItem(BaseAlbertModel):
+    """A hazard pictogram entry returned on an :class:`InventorySearchItem`."""
+
     id: str
     name: str
     status: str | None = Field(default=None)
@@ -347,6 +587,8 @@ class InventorySearchPictogramItem(BaseAlbertModel):
 # if UnNumber doesn't require all fields we can
 # merge these two classes together
 class InventorySearchSDSItem(BaseAlbertModel):
+    """Safety Data Sheet summary fields returned on an :class:`InventorySearchItem`."""
+
     un_number: str | None = Field(default=None, alias="unNumber")
     storage_class_name: str | None = Field(default=None, alias="storageClassName")
     shipping_description: str | None = Field(default=None, alias="shippingDescription")
@@ -355,6 +597,44 @@ class InventorySearchSDSItem(BaseAlbertModel):
 
 
 class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
+    """A lightweight :class:`InventoryItem` result returned by the search endpoint.
+
+    Search returns these partial records for speed; they carry the fields most useful
+    for lookups, counts, and display rather than the full item. Produced by
+    :meth:`~albert.collections.inventory.InventoryCollection.search`. Because it mixes
+    in :class:`~albert.resources._mixins.HydrationMixin`, calling ``hydrate()`` on a
+    bound instance fetches the corresponding fully populated :class:`InventoryItem`.
+
+    Attributes
+    ----------
+    id : str
+        The Albert Inventory ID (format ``INV...``). Serialized as ``albertId``.
+    name : str
+        The name of the item.
+    description : str
+        The description of the item.
+    category : InventoryCategory
+        The kind of material this item represents.
+    unit : InventoryUnitCategory
+        The dimension the item is measured in.
+    lots : list[dict[str, Any]]
+        Lot records associated with the item.
+    tags : list[Tag]
+        Tags on the item.
+    pictogram : list[InventorySearchPictogramItem]
+        Hazard pictograms associated with the item.
+    inventory_on_hand : float
+        Total amount currently on hand. Defaults to 0 when absent (none on hand).
+        Serialized as ``inventoryOnHand``.
+    sds : InventorySearchSDSItem | None
+        Safety Data Sheet summary fields. Serialized as ``SDS``.
+
+    See Also
+    --------
+    InventoryItem : The fully populated item returned by ``hydrate()``.
+    albert.collections.inventory.InventoryCollection.search : Produces these results.
+    """
+
     id: str = Field(alias="albertId")
     name: str = Field(default="")
     description: str = Field(default="")
@@ -369,6 +649,43 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 
 
 class MergeInventory(BaseAlbertModel):
+    """The request payload for merging duplicate inventory items into one.
+
+    Describes a merge: one surviving parent item plus the child item(s) to fold into
+    it, and optionally which data modules to carry over. This is the body used by
+    :meth:`~albert.collections.inventory.InventoryCollection.merge`; when ``modules``
+    is omitted, all :class:`InventoryMergeModule` values are included.
+
+    Attributes
+    ----------
+    parent_id : InventoryId
+        The Inventory ID of the item that will survive the merge. Serialized as
+        ``parentId``.
+    child_inventories : list[dict[str, InventoryId]]
+        The child item(s) to merge into the parent, each given as a mapping such as
+        ``{"id": "INVB1"}``. Serialized as ``ChildInventories``.
+    modules : list[InventoryMergeModule] | None
+        The data modules to carry over from the children. When ``None``, all modules
+        are merged.
+
+    See Also
+    --------
+    InventoryMergeModule : The set of mergeable data categories.
+    albert.collections.inventory.InventoryCollection.merge : Consumes this payload.
+
+    Examples
+    --------
+    !!! example
+        ```python
+        from albert.resources.inventory import MergeInventory
+
+        merge = MergeInventory(
+            parent_id="INVA1",
+            child_inventories=[{"id": "INVB1"}, {"id": "INVC1"}],
+        )
+        ```
+    """
+
     parent_id: InventoryId = Field(alias="parentId")
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
     modules: list[InventoryMergeModule] | None = Field(default=None)
