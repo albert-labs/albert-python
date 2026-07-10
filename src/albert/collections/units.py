@@ -67,12 +67,13 @@ class UnitCollection(BaseCollection):
         Unit
             The existing or newly created Unit object.
         """
-        match = self.get_by_name(name=unit.name, exact_match=True)
-        if match:
-            logging.warning(
-                f"Unit with the name {unit.name} already exists. Returning the existing unit."
-            )
-            return match
+        found = self.get_all(name=unit.name, max_items=50)
+        for existing in found:
+            if existing.name.lower() == unit.name.lower():
+                logging.warning(
+                    f"Unit with the name {unit.name} already exists. Returning the existing unit."
+                )
+                return existing
         return self.create(unit=unit)
 
     @validate_call
