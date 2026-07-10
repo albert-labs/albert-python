@@ -319,6 +319,8 @@ class CasCollection(BaseCollection):
 
         # Generate the PATCH payload
         patch_payload = self._generate_patch_payload(existing=existing_cas, updated=updated_object)
+        if not patch_payload.data:
+            return existing_cas
         url = f"{self.base_path}/{updated_object.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
 
