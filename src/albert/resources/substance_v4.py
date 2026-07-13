@@ -91,6 +91,9 @@ class SubstanceV4Info(BaseAlbertModel):
         REACH registration number.
     source : str | None
         Data source.
+    is_cas : bool
+        Whether the substance is a known regulatory CAS record. ``False``
+        indicates an auto-created or trade-secret placeholder.
     notes : str | None
         Free-text notes for the substance.
     description : str | None
@@ -139,6 +142,7 @@ class SubstanceV4Info(BaseAlbertModel):
     classification: str | None = None
     reach_registration_no: str | None = Field(None, alias="reachRegistrationNo")
     source: str | None = None
+    is_cas: bool = Field(default=True, alias="isCas")
     notes: str | None = None
     description: str | None = None
     cas_smiles: str | None = Field(None, alias="casSmiles")
