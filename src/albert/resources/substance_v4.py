@@ -91,6 +91,9 @@ class SubstanceV4Info(BaseAlbertModel):
         REACH registration number.
     source : str | None
         Data source.
+    is_cas : bool
+        Whether the substance is a known regulatory CAS record. ``False``
+        indicates an auto-created or trade-secret placeholder.
     metadata : dict[str, Any] | None
         Tenant custom metadata. Scalar fields are plain strings or numbers.
         List-type fields return a list of ``MetadataItem`` objects
@@ -127,6 +130,7 @@ class SubstanceV4Info(BaseAlbertModel):
     classification: str | None = None
     reach_registration_no: str | None = Field(None, alias="reachRegistrationNo")
     source: str | None = None
+    is_cas: bool = Field(default=True, alias="isCas")
     metadata: dict[str, Any] | None = None
 
 
