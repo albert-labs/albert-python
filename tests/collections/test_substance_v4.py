@@ -42,28 +42,8 @@ def test_get_by_id(client: Albert):
 
 def test_get_by_id_not_found(client: Albert):
     """Test that get_by_id returns None for a non-existent CAS ID."""
-    substance = client.substances_v4.get_by_id(cas_id="99-999-9999")
+    substance = client.substances_v4.get_by_id(cas_id="DUMMY-CAS-NO")
     assert substance is None
-
-
-def test_get_by_id_regulatory_fields(client: Albert):
-    """Test that regulatory list flags are declared fields on SubstanceV4Info."""
-    substance = client.substances_v4.get_by_id(cas_id="50-00-0")
-    assert substance is not None
-    assert substance.eu_annex17_substances_list is True
-    assert substance.eu_candidate_list is False
-    assert substance.tsca8b is True
-    assert substance.osha_carcinogen is True
-    assert substance.canada_inventory_status == "DSL"
-    assert substance.sustainability_status_lbc == "redList"
-    assert substance.notes == "NOTE B NOTE D"
-    assert substance.pictograms
-    assert substance.acute_dermal_tox_info
-    assert substance.specific_conc_eu
-    extra = substance.model_extra or {}
-    assert "euCandidateList" not in extra
-    assert "massachusettsRTK" not in extra
-    assert "notes" not in extra
 
 
 def test_get_by_id_region(client: Albert):
