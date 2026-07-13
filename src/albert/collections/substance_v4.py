@@ -9,7 +9,6 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.types import _UNSET, MetadataItem, _UnsetType
-from albert.exceptions import AlbertHTTPError
 from albert.resources.substance_v4 import (
     SubstanceV4Create,
     SubstanceV4CreateResult,
@@ -85,9 +84,9 @@ class SubstanceV4Collection(BaseCollection):
 
     Methods
     -------
-    get_by_ids(...) -> list[SubstanceV4Info]
+    get_by_ids(...) -> SubstanceV4Response
         Retrieves substances by CAS IDs, substance IDs, or external IDs.
-    get_by_id(...) -> SubstanceV4Info
+    get_by_id(...) -> SubstanceV4Info | None
         Retrieves a single substance by CAS ID, substance ID, or external ID.
     search(...) -> Iterator[SubstanceV4SearchItem]
         Searches substances by keyword or advanced filters.
@@ -114,7 +113,7 @@ class SubstanceV4Collection(BaseCollection):
         catch_errors: bool | None = None,
         language: str | None = None,
         classification_type: str | None = None,
-    ) -> list[SubstanceV4Info]:
+    ) -> SubstanceV4Response:
         """Retrieve substances by their identifiers.
 
         At least one of ``cas_ids``, ``sub_ids``, or ``external_ids`` must be provided.
@@ -131,7 +130,11 @@ class SubstanceV4Collection(BaseCollection):
             Region for hazard data. Common values: ``"global"``, ``"EU"``, ``"US"``,
             ``"UK"``. Defaults to ``"global"``.
         catch_errors : bool | None, optional
-            Whether to suppress errors for unknown substances, by default None.
+            When ``False``, substances with incomplete hazard data are still
+            returned alongside any per-substance errors. When ``True`` or omitted,
+            the request fails if any substance has incomplete hazard data.
+            Does not affect whether not-found identifiers are included in the
+            results. By default ``None``.
         language : str | None, optional
             BCP-47 language code for name translation (e.g. ``"EN"``, ``"DE"``,
             ``"FR"``), by default None.
@@ -143,8 +146,8 @@ class SubstanceV4Collection(BaseCollection):
 
         Returns
         -------
-        list[SubstanceV4Info]
-            The matching substances.
+        SubstanceV4Response
+            The matching substances and any per-substance retrieval errors.
         """
         if not any([cas_ids, sub_ids, external_ids]):
             raise ValueError("At least one of cas_ids, sub_ids, or external_ids must be provided.")
@@ -164,7 +167,7 @@ class SubstanceV4Collection(BaseCollection):
             params["classificationType"] = classification_type
 
         response = self.session.get(self.base_path, params=params)
-        return SubstanceV4Response.model_validate(response.json()).substances
+        return SubstanceV4Response.model_validate(response.json())
 
     @validate_call
     def get_by_id(
@@ -177,7 +180,7 @@ class SubstanceV4Collection(BaseCollection):
         catch_errors: bool | None = None,
         language: str | None = None,
         classification_type: str | None = None,
-    ) -> SubstanceV4Info:
+    ) -> SubstanceV4Info | None:
         """Retrieve a single substance by its identifier.
 
         Provide exactly one of ``cas_id``, ``sub_id``, or ``external_id``.
@@ -194,7 +197,11 @@ class SubstanceV4Collection(BaseCollection):
             Region for hazard data. Common values: ``"global"``, ``"EU"``, ``"US"``,
             ``"UK"``. Defaults to ``"global"``.
         catch_errors : bool | None, optional
-            Whether to suppress errors for unknown substances, by default None.
+            When ``False``, substances with incomplete hazard data are still
+            returned alongside any per-substance errors. When ``True`` or omitted,
+            the request fails if any substance has incomplete hazard data.
+            Does not affect whether not-found identifiers are included in the
+            results. By default ``None``.
         language : str | None, optional
             BCP-47 language code for name translation (e.g. ``"EN"``, ``"DE"``,
             ``"FR"``), by default None.
@@ -206,14 +213,14 @@ class SubstanceV4Collection(BaseCollection):
 
         Returns
         -------
-        SubstanceV4Info
-            The matching substance.
+        SubstanceV4Info | None
+            The matching substance, or ``None`` if not found.
         """
         provided = sum([cas_id is not None, sub_id is not None, external_id is not None])
         if provided != 1:
             raise ValueError("Exactly one of cas_id, sub_id, or external_id must be provided.")
 
-        results = self.get_by_ids(
+        response = self.get_by_ids(
             cas_ids=[cas_id] if cas_id else None,
             sub_ids=[sub_id] if sub_id else None,
             external_ids=[external_id] if external_id else None,
@@ -222,9 +229,9 @@ class SubstanceV4Collection(BaseCollection):
             language=language,
             classification_type=classification_type,
         )
-        if not results:
-            raise ValueError("No substance found for the provided identifier.")
-        return results[0]
+        if not response.substances:
+            return None
+        return response.substances[0]
 
     @validate_call
     def search(
@@ -406,12 +413,8 @@ class SubstanceV4Collection(BaseCollection):
             return
 
         sub_id = id if id.startswith("SUB") else f"SUB{id}"
-        try:
-            substance = self.get_by_id(sub_id=sub_id, catch_errors=True)
-        except AlbertHTTPError:
-            # Substance exists but can't be fetched (e.g. no hazard data yet).
-            # Treat the current state as empty so all operations become adds.
-            substance = None
+        response = self.get_by_ids(sub_ids=[sub_id], catch_errors=False)
+        substance = response.substances[0] if response.substances else None
         operations = []
 
         for attr, wire_name in [

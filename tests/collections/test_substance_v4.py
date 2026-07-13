@@ -9,6 +9,7 @@ from albert.resources.substance_v4 import (
     SubstanceV4Create,
     SubstanceV4Identifier,
     SubstanceV4Info,
+    SubstanceV4Response,
 )
 
 CAS_IDS = [
@@ -22,12 +23,12 @@ CAS_IDS = [
 
 def test_get_by_ids(client: Albert):
     """Test retrieving multiple substances by CAS IDs."""
-    substances = client.substances_v4.get_by_ids(cas_ids=CAS_IDS)
-    assert isinstance(substances, list)
-    assert len(substances) >= len(
+    response = client.substances_v4.get_by_ids(cas_ids=CAS_IDS)
+    assert isinstance(response, SubstanceV4Response)
+    assert len(response.substances) >= len(
         CAS_IDS
     )  # API may return multiple entries per CAS (e.g. different classification types)
-    for substance in substances:
+    for substance in response.substances:
         assert isinstance(substance, SubstanceV4Info)
 
 
@@ -37,6 +38,12 @@ def test_get_by_id(client: Albert):
     assert substance is not None
     assert isinstance(substance, SubstanceV4Info)
     assert substance.cas_id == "7732-18-5"
+
+
+def test_get_by_id_not_found(client: Albert):
+    """Test that get_by_id returns None for a non-existent CAS ID."""
+    substance = client.substances_v4.get_by_id(cas_id="99-999-9999")
+    assert substance is None
 
 
 def test_get_by_id_region(client: Albert):
