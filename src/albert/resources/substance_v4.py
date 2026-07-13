@@ -110,18 +110,6 @@ class SubstanceV4Info(BaseAlbertModel):
         Tenant custom metadata. Scalar fields are plain strings or numbers.
         List-type fields return a list of ``MetadataItem`` objects
         with ``name`` and ``id``.
-    notes : str | None
-        Free-text notes for the substance.
-    description : str | None
-        A description of the substance.
-    cas_smiles : str | None
-        The SMILES string for the substance.
-    inchi_key : str | None
-        The InChI key for the substance.
-    iupac_name : str | None
-        The IUPAC name for the substance.
-    cactus_status : str | None
-        The Cactus status for the substance.
     acute_dermal_tox_info : list[dict] | None
         Acute dermal toxicity information.
     acute_inhalation_tox_info : list[dict] | None
@@ -348,12 +336,6 @@ class SubstanceV4Info(BaseAlbertModel):
     iupac_name: str | None = Field(None, alias="iUpacName")
     cactus_status: str | None = Field(None, alias="cactusStatus")
     metadata: dict[str, Any] | None = None
-    notes: str | None = None
-    description: str | None = None
-    cas_smiles: str | None = Field(None, alias="casSmiles")
-    inchi_key: str | None = Field(None, alias="inchiKey")
-    iupac_name: str | None = Field(None, alias="iUpacName")
-    cactus_status: str | None = Field(None, alias="cactusStatus")
     acute_dermal_tox_info: list[dict] | None = Field(None, alias="acuteDermalToxInfo")
     acute_inhalation_tox_info: list[dict] | None = Field(None, alias="acuteInhalationToxInfo")
     acute_oral_tox_info: list[dict] | None = Field(None, alias="acuteOralToxInfo")
