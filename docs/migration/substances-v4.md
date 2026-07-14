@@ -53,7 +53,7 @@ Migrating now means your code is ready for 2.0 with only a rename.
 | Look up by CAS | ✅ | ✅ |
 | Look up by substance ID | ❌ | ✅ |
 | Look up by external ID | ❌ | ✅ |
-| Bulk lookup | ✅ `get_by_ids(cas_ids=[...])` | ✅ `get_by_ids(cas_ids=[], sub_ids=[], ...)` |
+| Bulk lookup | ✅ `get_by_ids(cas_ids=[...])` | ✅ `get_by_ids(...)` → `SubstanceV4Response` |
 | Search | ❌ | ✅ `search(search_key=..., cas=..., ...)` |
 | Create | ❌ | ✅ `create(substance=...)` |
 | Update metadata | ❌ | ✅ `update_metadata(id=..., metadata=...)` |
@@ -87,8 +87,10 @@ substance = client.substances_v4.get_by_id(sub_id="SUB00001")
 substances = client.substances.get_by_ids(cas_ids=["64-17-5", "67-56-1"])
 
 # v4 — CAS IDs, substance IDs, or external IDs
-substances = client.substances_v4.get_by_ids(cas_ids=["64-17-5", "67-56-1"])
-substances = client.substances_v4.get_by_ids(sub_ids=["SUB00001", "SUB00002"])
+response = client.substances_v4.get_by_ids(cas_ids=["64-17-5", "67-56-1"])
+substances = response.substances
+response = client.substances_v4.get_by_ids(sub_ids=["SUB00001", "SUB00002"])
+substances = response.substances
 ```
 
 ### `search` (new in v4)
@@ -150,7 +152,8 @@ find-and-replace.
 
 | Model | Used by | Purpose |
 |---|---|---|
-| `SubstanceV4Info` | `get_by_id`, `get_by_ids` | Full substance record (toxicology, exposure controls, REACH, carcinogen flags, …) |
+| `SubstanceV4Info` | `get_by_id`, `get_by_ids` | Full substance record (toxicology, exposure controls, REACH, carcinogen flags, `is_cas`, …) |
+| `SubstanceV4Response` | `get_by_ids` | Lookup envelope — `substances`, `substance_errors` |
 | `SubstanceV4SearchItem` | `search` | Lightweight record returned from search results |
 | `SubstanceV4Create` | `create` | Input model for creating a new substance |
 | `SubstanceV4MetadataItem` | `SubstanceV4Create`, `SubstanceV4Metadata` | Single list-type metadata value — `{id, name}` on read; `{id, value}` on write for multi-select |

@@ -91,10 +91,211 @@ class SubstanceV4Info(BaseAlbertModel):
         REACH registration number.
     source : str | None
         Data source.
+    is_cas : bool
+        Whether the substance is a known regulatory CAS record. ``False``
+        indicates an auto-created or trade-secret placeholder.
     metadata : dict[str, Any] | None
         Tenant custom metadata. Scalar fields are plain strings or numbers.
         List-type fields return a list of ``MetadataItem`` objects
         with ``name`` and ``id``.
+    notes : str | None
+        Free-text notes for the substance.
+    description : str | None
+        A description of the substance.
+    cas_smiles : str | None
+        The SMILES string for the substance.
+    inchi_key : str | None
+        The InChI key for the substance.
+    iupac_name : str | None
+        The IUPAC name for the substance.
+    cactus_status : str | None
+        The Cactus status for the substance.
+    acute_dermal_tox_info : list[dict] | None
+        Acute dermal toxicity information.
+    acute_inhalation_tox_info : list[dict] | None
+        Acute inhalation toxicity information.
+    acute_oral_tox_info : list[dict] | None
+        Acute oral toxicity information.
+    acute_tox_info : list[dict] | None
+        General acute toxicity information.
+    chronic_tox_info : list[dict] | None
+        Chronic toxicity information.
+    aspiration_tox_info : list[dict] | None
+        Aspiration toxicity information.
+    neuro_tox_info : list[dict] | None
+        Neurotoxicity information.
+    reproductive_tox_info : list[dict] | None
+        Reproductive toxicity information.
+    carcinogen_info : list[dict] | None
+        Carcinogenicity information.
+    germ_cell_mutagen_info : list[dict] | None
+        Germ cell mutagenicity information.
+    skin_corrosion_info : list[dict] | None
+        Skin corrosion information.
+    serious_eye_damage_info : list[dict] | None
+        Serious eye damage information.
+    respiratory_skin_sens_info : list[dict] | None
+        Respiratory and skin sensitization information.
+    stot_info : list[dict] | None
+        Specific target organ toxicity information.
+    stot_affected_organs : str | None
+        Organs affected by specific target organ toxicity.
+    stot_route_of_exposure : str | None
+        Route of exposure for specific target organ toxicity.
+    boilingpoint_info : list[dict] | None
+        Boiling point information.
+    flashpoint_info : list[dict] | None
+        Flash point information.
+    molecular_weight : list[dict] | None
+        Molecular weight information.
+    bio_accumulative_info : list[dict] | None
+        Bioaccumulation information.
+    degradability_info : list[dict] | None
+        Degradability information.
+    soil_mobility_info : list[dict] | None
+        Soil mobility information.
+    peroxide_function_groups : int | None
+        Number of peroxide function groups.
+    structures : list[dict] | None
+        Chemical structure representations.
+    oel_info : list[dict] | None
+        Occupational exposure limit information.
+    bei_info : list[dict] | None
+        Biological exposure index information.
+    dnel_info : list[dict] | None
+        Derived no-effect level information.
+    m_factor : int | None
+        Acute toxicity M-factor.
+    m_factor_chronic : int | None
+        Chronic toxicity M-factor.
+    specific_conc_eu : list[dict] | None
+        EU-specific concentration limits.
+    specific_conc_source : str | None
+        Source of specific concentration limit information.
+    aicis_notified : bool | None
+        Whether the substance is AICIS notified.
+    iecsc_notified : bool | None
+        Whether the substance is IECSC notified.
+    jpencs_notified : bool | None
+        Whether the substance is JPENCS notified.
+    jpishl_notified : bool | None
+        Whether the substance is JPISHL notified.
+    koecl_notified : bool | None
+        Whether the substance is KOECL notified.
+    nzioc_notified : bool | None
+        Whether the substance is NZIOC notified.
+    piccs_notified : bool | None
+        Whether the substance is PICCS notified.
+    tcsi_notified : bool | None
+        Whether the substance is TCSI notified.
+    vinic_notified : bool | None
+        Whether the substance is VINIC notified.
+    encs_notified_list : dict[str, Any] | None
+        ENCS notification details.
+    ishl_notified_list : dict[str, Any] | None
+        ISHL notification details.
+    ec_notified : str | None
+        EC notification status.
+    canada_inventory_status : str | None
+        Canadian inventory status.
+    trade_secret : bool | None
+        Whether the substance is a trade secret.
+    eu_annex14_substances_list : bool | None
+        Whether the substance is on the EU Annex XIV list.
+    eu_annex17_restrictions_list : bool | None
+        Whether the substance is on the EU Annex XVII restrictions list.
+    eu_annex17_substances_list : bool | None
+        Whether the substance is on the EU Annex XVII substances list.
+    eu_candidate_list : bool | None
+        Whether the substance is on the EU SVHC candidate list.
+    eu_dang_chem_annex1_part1_list : bool | None
+        Whether the substance is on the EU dangerous chemicals Annex 1 Part 1 list.
+    eu_dang_chem_annex1_part2_list : bool | None
+        Whether the substance is on the EU dangerous chemicals Annex 1 Part 2 list.
+    eu_dang_chem_annex1_part3_list : bool | None
+        Whether the substance is on the EU dangerous chemicals Annex 1 Part 3 list.
+    eu_dang_chem_annex5_list : bool | None
+        Whether the substance is on the EU dangerous chemicals Annex 5 list.
+    eu_directive_ec_list : bool | None
+        Whether the substance is on the EU directive EC list.
+    eu_explosive_precursors_annex1_list : bool | None
+        Whether the substance is on the EU explosive precursors Annex 1 list.
+    eu_explosive_precursors_annex2_list : bool | None
+        Whether the substance is on the EU explosive precursors Annex 2 list.
+    eu_ozone_depletion_list : bool | None
+        Whether the substance is on the EU ozone depletion list.
+    eu_pollutant_annex2_list : bool | None
+        Whether the substance is on the EU pollutant Annex 2 list.
+    eu_pop_list : bool | None
+        Whether the substance is on the EU POP list.
+    caa_cfr40 : bool | None
+        Whether the substance is listed under CAA CFR 40.
+    caa_hpa : bool | None
+        Whether the substance is listed under CAA HPA.
+    massachusetts_rtk : bool | None
+        Whether the substance is on the Massachusetts RTK list.
+    new_jersey_rtk : bool | None
+        Whether the substance is on the New Jersey RTK list.
+    new_york_rtk : bool | None
+        Whether the substance is on the New York RTK list.
+    pennsylvania_rtk : bool | None
+        Whether the substance is on the Pennsylvania RTK list.
+    rhode_island_rtk : bool | None
+        Whether the substance is on the Rhode Island RTK list.
+    sdwa : bool | None
+        Whether the substance is listed under the SDWA.
+    tsca8b : bool | None
+        Whether the substance is listed under TSCA 8(b).
+    pcr_regulated : bool | None
+        Whether the substance is PCR regulated.
+    pdscl : str | None
+        PDSCL classification.
+    prtr : str | None
+        PRTR classification.
+    page_number : int | None
+        Reference page number.
+    cn_csdc_regulations : bool | None
+        Whether the substance is subject to CN CSDC regulations.
+    cn_pcod_list : bool | None
+        Whether the substance is on the CN PCOD list.
+    cn_priority_list : bool | None
+        Whether the substance is on the CN priority list.
+    tw_ghs_clas_list : bool | None
+        Whether the substance is on the Taiwan GHS classification list.
+    tw_handle_priority_chem : bool | None
+        Whether the substance is a Taiwan priority chemical.
+    tw_handle_toxic_chem : bool | None
+        Whether the substance is a Taiwan toxic chemical.
+    tw_ind_waste_standards : bool | None
+        Whether the substance is subject to Taiwan industrial waste standards.
+    basel_conv_list : bool | None
+        Whether the substance is on the Basel Convention list.
+    rotterdam_conv_list : bool | None
+        Whether the substance is on the Rotterdam Convention list.
+    stockholm_conv_list : bool | None
+        Whether the substance is on the Stockholm Convention list.
+    kyoto_protocol : bool | None
+        Whether the substance is subject to the Kyoto Protocol.
+    montreal_protocol : bool | None
+        Whether the substance is subject to the Montreal Protocol.
+    green_gas_list : bool | None
+        Whether the substance is on the green gas list.
+    export_control_list_phrases : bool | None
+        Whether the substance has export control list phrases.
+    cdsa_list : bool | None
+        Whether the substance is on the CDSA list.
+    chemical_category : list[str] | None
+        Chemical categories for the substance.
+    custom_phrases : list[dict] | None
+        Custom phrases for the substance.
+    substance_phrases : list[dict] | None
+        Substance phrases.
+    sustainability_status_lbc : str | None
+        Living Building Challenge sustainability status.
+    approved_legal_entities : Any | None
+        Approved legal entities for the substance.
+    pictograms : list[dict] | None
+        GHS hazard pictograms.
     """
 
     model_config = ConfigDict(extra="allow")
@@ -127,7 +328,111 @@ class SubstanceV4Info(BaseAlbertModel):
     classification: str | None = None
     reach_registration_no: str | None = Field(None, alias="reachRegistrationNo")
     source: str | None = None
+    is_cas: bool = Field(default=True, alias="isCas")
     metadata: dict[str, Any] | None = None
+    notes: str | None = None
+    description: str | None = None
+    cas_smiles: str | None = Field(None, alias="casSmiles")
+    inchi_key: str | None = Field(None, alias="inchiKey")
+    iupac_name: str | None = Field(None, alias="iUpacName")
+    cactus_status: str | None = Field(None, alias="cactusStatus")
+    acute_dermal_tox_info: list[dict] | None = Field(None, alias="acuteDermalToxInfo")
+    acute_inhalation_tox_info: list[dict] | None = Field(None, alias="acuteInhalationToxInfo")
+    acute_oral_tox_info: list[dict] | None = Field(None, alias="acuteOralToxInfo")
+    acute_tox_info: list[dict] | None = Field(None, alias="acuteToxInfo")
+    chronic_tox_info: list[dict] | None = Field(None, alias="chronicToxInfo")
+    aspiration_tox_info: list[dict] | None = Field(None, alias="aspirationToxInfo")
+    neuro_tox_info: list[dict] | None = Field(None, alias="neuroToxInfo")
+    reproductive_tox_info: list[dict] | None = Field(None, alias="reproductiveToxInfo")
+    carcinogen_info: list[dict] | None = Field(None, alias="carcinogenInfo")
+    germ_cell_mutagen_info: list[dict] | None = Field(None, alias="germCellMutagenInfo")
+    skin_corrosion_info: list[dict] | None = Field(None, alias="skinCorrosionInfo")
+    serious_eye_damage_info: list[dict] | None = Field(None, alias="seriousEyeDamageInfo")
+    respiratory_skin_sens_info: list[dict] | None = Field(None, alias="respiratorySkinSensInfo")
+    stot_info: list[dict] | None = Field(None, alias="stotInfo")
+    stot_affected_organs: str | None = Field(None, alias="stotAffectedOrgans")
+    stot_route_of_exposure: str | None = Field(None, alias="stotRouteOfExposure")
+    boilingpoint_info: list[dict] | None = Field(None, alias="boilingpointInfo")
+    flashpoint_info: list[dict] | None = Field(None, alias="flashpointInfo")
+    molecular_weight: list[dict] | None = Field(None, alias="molecularWeight")
+    bio_accumulative_info: list[dict] | None = Field(None, alias="bioAccumulativeInfo")
+    degradability_info: list[dict] | None = Field(None, alias="degradabilityInfo")
+    soil_mobility_info: list[dict] | None = Field(None, alias="soilMobilityInfo")
+    peroxide_function_groups: int | None = Field(None, alias="peroxideFunctionGroups")
+    structures: list[dict] | None = None
+    oel_info: list[dict] | None = Field(None, alias="oelInfo")
+    bei_info: list[dict] | None = Field(None, alias="beiInfo")
+    dnel_info: list[dict] | None = Field(None, alias="dnelInfo")
+    m_factor: int | None = Field(None, alias="mFactor")
+    m_factor_chronic: int | None = Field(None, alias="mFactorChronic")
+    specific_conc_eu: list[dict] | None = Field(None, alias="specificConcEU")
+    specific_conc_source: str | None = Field(None, alias="specificConcSource")
+    aicis_notified: bool | None = Field(None, alias="aicisNotified")
+    iecsc_notified: bool | None = Field(None, alias="iecscNotified")
+    jpencs_notified: bool | None = Field(None, alias="jpencsNotified")
+    jpishl_notified: bool | None = Field(None, alias="jpishlNotified")
+    koecl_notified: bool | None = Field(None, alias="koeclNotified")
+    nzioc_notified: bool | None = Field(None, alias="nziocNotified")
+    piccs_notified: bool | None = Field(None, alias="piccsNotified")
+    tcsi_notified: bool | None = Field(None, alias="tcsiNotified")
+    vinic_notified: bool | None = Field(None, alias="vinicNotified")
+    encs_notified_list: dict[str, Any] | None = Field(None, alias="encsNotifiedList")
+    ishl_notified_list: dict[str, Any] | None = Field(None, alias="ishlNotifiedList")
+    ec_notified: str | None = Field(None, alias="ecNotified")
+    canada_inventory_status: str | None = Field(None, alias="canadaInventoryStatus")
+    trade_secret: bool | None = Field(None, alias="tradeSecret")
+    eu_annex14_substances_list: bool | None = Field(None, alias="euAnnex14SubstancesList")
+    eu_annex17_restrictions_list: bool | None = Field(None, alias="euAnnex17RestrictionsList")
+    eu_annex17_substances_list: bool | None = Field(None, alias="euAnnex17SubstancesList")
+    eu_candidate_list: bool | None = Field(None, alias="euCandidateList")
+    eu_dang_chem_annex1_part1_list: bool | None = Field(None, alias="euDangChemAnnex1Part1List")
+    eu_dang_chem_annex1_part2_list: bool | None = Field(None, alias="euDangChemAnnex1Part2List")
+    eu_dang_chem_annex1_part3_list: bool | None = Field(None, alias="euDangChemAnnex1Part3List")
+    eu_dang_chem_annex5_list: bool | None = Field(None, alias="euDangChemAnnex5List")
+    eu_directive_ec_list: bool | None = Field(None, alias="euDirectiveEcList")
+    eu_explosive_precursors_annex1_list: bool | None = Field(
+        None, alias="euExplosivePrecursorsAnnex1List"
+    )
+    eu_explosive_precursors_annex2_list: bool | None = Field(
+        None, alias="euExplosivePrecursorsAnnex2List"
+    )
+    eu_ozone_depletion_list: bool | None = Field(None, alias="euOzoneDepletionList")
+    eu_pollutant_annex2_list: bool | None = Field(None, alias="euPollutantAnnex2List")
+    eu_pop_list: bool | None = Field(None, alias="euPopList")
+    caa_cfr40: bool | None = Field(None, alias="caaCFR40")
+    caa_hpa: bool | None = Field(None, alias="caaHPA")
+    massachusetts_rtk: bool | None = Field(None, alias="massachusettsRTK")
+    new_jersey_rtk: bool | None = Field(None, alias="newJerseyRTK")
+    new_york_rtk: bool | None = Field(None, alias="newYorkRTK")
+    pennsylvania_rtk: bool | None = Field(None, alias="pennsylvaniaRTK")
+    rhode_island_rtk: bool | None = Field(None, alias="rhodeIslandRTK")
+    sdwa: bool | None = None
+    tsca8b: bool | None = Field(None, alias="tsca8B")
+    pcr_regulated: bool | None = Field(None, alias="pcrRegulated")
+    pdscl: str | None = None
+    prtr: str | None = None
+    page_number: int | None = Field(None, alias="pageNumber")
+    cn_csdc_regulations: bool | None = Field(None, alias="cnCSDCRegulations")
+    cn_pcod_list: bool | None = Field(None, alias="cnPCODList")
+    cn_priority_list: bool | None = Field(None, alias="cnPriorityList")
+    tw_ghs_clas_list: bool | None = Field(None, alias="twGHSClasList")
+    tw_handle_priority_chem: bool | None = Field(None, alias="twHandlePriorityChem")
+    tw_handle_toxic_chem: bool | None = Field(None, alias="twHandleToxicChem")
+    tw_ind_waste_standards: bool | None = Field(None, alias="twIndWasteStandards")
+    basel_conv_list: bool | None = Field(None, alias="baselConvList")
+    rotterdam_conv_list: bool | None = Field(None, alias="rotterdamConvList")
+    stockholm_conv_list: bool | None = Field(None, alias="stockholmConvList")
+    kyoto_protocol: bool | None = Field(None, alias="kyotoProtocol")
+    montreal_protocol: bool | None = Field(None, alias="montrealProtocol")
+    green_gas_list: bool | None = Field(None, alias="greenGasList")
+    export_control_list_phrases: bool | None = Field(None, alias="exportControlListPhrases")
+    cdsa_list: bool | None = Field(None, alias="cdsaList")
+    chemical_category: list[str] | None = Field(None, alias="chemicalCategory")
+    custom_phrases: list[dict] | None = Field(None, alias="customPhrases")
+    substance_phrases: list[dict] | None = Field(None, alias="substancePhrases")
+    sustainability_status_lbc: str | None = Field(None, alias="sustainabilityStatusLBC")
+    approved_legal_entities: Any | None = Field(None, alias="approvedLegalEntities")
+    pictograms: list[dict] | None = None
 
 
 class SubstanceV4Response(BaseAlbertModel):
