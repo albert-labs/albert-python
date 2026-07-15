@@ -106,10 +106,10 @@ class DesignType(str, Enum):
     A Sheet is organized into stacked sections, each backed by a Design
     (:class:`Design`). The type identifies which section:
 
-    - ``PRODUCTS`` — Product Design, where formulations are built.
-    - ``PROCESS`` — Process Design.
-    - ``RESULTS`` — Results, holding Property Tasks and their data.
-    - ``APPS`` — Apps, holding insights, reporting, and notes.
+    - ``PRODUCTS``: Product Design, where formulations are built.
+    - ``PROCESS``: Process Design.
+    - ``RESULTS``: Results, holding Property Tasks and their data.
+    - ``APPS``: Apps, holding insights, reporting, and notes.
     """
 
     APPS = "apps"
@@ -310,8 +310,8 @@ class RowGroup(BaseAlbertModel):
 class Design(BaseSessionResource):
     """One section of a Sheet, backing the grid for a single :class:`DesignType`.
 
-    A Sheet is made up of stacked sections — Product Design, Process Design,
-    Results, and Apps — and each section is a Design. Designs are largely an
+    A Sheet is made up of stacked sections (Product Design, Process Design,
+    Results, and Apps) and each section is a Design. Designs are largely an
     internal detail: most work is done through the parent :class:`Sheet`, which
     exposes its Designs as :attr:`Sheet.product_design`,
     :attr:`Sheet.result_design`, :attr:`Sheet.app_design`, and
@@ -418,8 +418,8 @@ class Design(BaseSessionResource):
 
     def _get_columns(self, *, grid_response: dict) -> list[Column]:
         """
-        Normalizes inventory IDs (always prefixed "INV") and—for the
-        "Inventory ID" header—falls back to the row's top-level `id`
+        Normalizes inventory IDs (always prefixed "INV") and, for the
+        "Inventory ID" header, falls back to the row's top-level `id`
         when Values[].id is absent.
 
         Parameters

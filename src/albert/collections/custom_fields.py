@@ -30,8 +30,8 @@ class CustomFieldCollection(BaseCollection):
     type is ``list``, the :class:`~albert.resources.custom_fields.FieldCategory`
     determines who may add new allowed items to that list:
 
-    - ``FieldCategory.USER_DEFINED`` — general users can add items.
-    - ``FieldCategory.BUSINESS_DEFINED`` — only admins can add items.
+    - ``FieldCategory.USER_DEFINED``: general users can add items.
+    - ``FieldCategory.BUSINESS_DEFINED``: only admins can add items.
 
     Custom Field IDs use the ``CTF`` prefix. This is configuration/schema-level
     data.

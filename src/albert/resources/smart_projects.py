@@ -106,8 +106,8 @@ class SmartProject(BaseSessionResource):
         Parameters
         ----------
         target : Target | TargetId
-            The target to add. An existing target — a ``TargetId`` or a ``Target``
-            with an ``id`` — is registered to the scope. A new ``Target`` (without
+            The target to add. An existing target, a ``TargetId`` or a ``Target``
+            with an ``id``, is registered to the scope. A new ``Target`` (without
             an ``id``) is created and registered.
 
         Returns

@@ -17,9 +17,9 @@ from albert.resources.smart_projects import _PROJECTS_BASE_PATH, SmartProject
 class ProjectClass(str, Enum):
     """The access-control class of a project, governing who can see it.
 
-    - ``PRIVATE`` — visible only to the project's ACL members (the default).
-    - ``SHARED`` — visible more broadly across the organization.
-    - ``CONFIDENTIAL`` — restricted, most tightly controlled access.
+    - ``PRIVATE``: visible only to the project's ACL members (the default).
+    - ``SHARED``: visible more broadly across the organization.
+    - ``CONFIDENTIAL``: restricted, most tightly controlled access.
     """
 
     SHARED = "shared"
@@ -67,8 +67,8 @@ class TaskConfig(BaseAlbertModel):
 class GridDefault(str, Enum):
     """The default grid view shown for a project.
 
-    - ``PD`` — the Property Data grid.
-    - ``WKS`` — the Worksheet grid.
+    - ``PD``: the Property Data grid.
+    - ``WKS``: the Worksheet grid.
     """
 
     PD = "PD"

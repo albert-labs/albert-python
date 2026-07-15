@@ -135,7 +135,7 @@ async def handle_async_http_errors() -> AsyncIterator[None]:
         if errors:
             message = f"{message} Errors: {errors}"
         error_cls = _get_http_error_cls(response.status_code)
-        # Bypass AlbertHTTPError.__init__ (requires requests.Response) — use
+        # Bypass AlbertHTTPError.__init__ (requires requests.Response), use
         # Exception.__new__ which sets exc.args and is safe in Python 3.12+.
         exc = Exception.__new__(error_cls, message)
         exc.message = message

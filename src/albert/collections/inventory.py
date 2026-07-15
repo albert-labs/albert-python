@@ -40,12 +40,12 @@ class InventoryCollection(BaseCollection):
     An Inventory Item is a catalog entry for a physical or formulated material
     tracked in Albert. Every item belongs to one of four categories:
 
-    - ``RawMaterials`` — purchased substances used as ingredients (e.g. a solvent
+    - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
       or pigment), typically linked to a manufacturing Company and one or more
       CAS numbers.
-    - ``Consumables`` — supplies consumed during lab work (e.g. gloves, vials).
-    - ``Equipment`` — instruments and apparatus.
-    - ``Formulas`` — mixtures designed in Albert. Formulas are created through the
+    - ``Consumables``: supplies consumed during lab work (e.g. gloves, vials).
+    - ``Equipment``: instruments and apparatus.
+    - ``Formulas``: mixtures designed in Albert. Formulas are created through the
       Worksheet collection (:class:`~albert.collections.worksheets.WorksheetCollection`),
       not here; :meth:`create` rejects Formula items.
 

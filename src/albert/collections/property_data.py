@@ -48,22 +48,22 @@ class PropertyDataCollection(BaseCollection):
     Property Data is the actual measured result values in Albert. It lives in two
     places, and this collection covers both:
 
-    - **On a Task** — the results captured when a Property Task is executed,
+    - **On a Task**: the results captured when a Property Task is executed,
       organized per Block, interval combination, and trial. Task methods here are
       named ``*_task_*`` / ``*_interval_*`` / ``*_trial_*``.
-    - **On an Inventory Item** — properties attached directly to a material.
+    - **On an Inventory Item**: properties attached directly to a material.
       Inventory methods here are named ``*_on_inventory``. Task-measured results
       roll up to the associated inventory item's properties.
 
     **Intervals and trials.** Within a Block, results are addressed by:
 
-    - *Interval* — one specific combination of parameter setpoints (e.g. "measured
+    - *Interval*: one specific combination of parameter setpoints (e.g. "measured
       at 25°C"). It is identified by an interval ID of the form ``ROW1`` (one
       intervalized parameter) or ``ROW1XROW2`` (two). Build this ID from parameter
       values with :meth:`~albert.resources.workflows.Workflow.get_interval_id`, or
       list the intervals present on a task with :meth:`check_for_task_data`. When a
       block has no intervalized parameters, use the literal ``"default"``.
-    - *Trial* — one replicate measurement of a given interval, identified by an
+    - *Trial*: one replicate measurement of a given interval, identified by an
       integer trial number.
 
     The void/unvoid methods mirror this hierarchy: void an entire task block, a

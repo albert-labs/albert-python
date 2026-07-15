@@ -63,10 +63,10 @@ class DataTemplateCollection(BaseCollection):
     A Data Template (DAT, IDs formatted ``DAT...``) defines what a test captures. It
     has two parts:
 
-    - ``data_column_values`` — the measured RESULTS of the test (its data columns, also
+    - ``data_column_values``: the measured RESULTS of the test (its data columns, also
       called "direct variables"). See :class:`~albert.resources.data_templates.DataColumnValue`
       and :class:`~albert.resources.data_columns.DataColumn`.
-    - ``parameter_values`` — the CONDITIONS under which the test is run (also called
+    - ``parameter_values``: the CONDITIONS under which the test is run (also called
       "indirect variables"). See :class:`~albert.resources.parameter_groups.ParameterValue`
       and the Parameter collection.
 

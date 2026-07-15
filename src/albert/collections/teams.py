@@ -261,7 +261,7 @@ class TeamCollection(BaseCollection):
                 }
             )
 
-        # Member diff — None means "no change", empty list means "remove all"
+        # Member diff: None means "no change", empty list means "remove all"
         if team.members is not None:
             current_ids = {m.id for m in current.members or []}
             updated_ids = {m.id for m in team.members}

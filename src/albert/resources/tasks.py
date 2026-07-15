@@ -349,11 +349,11 @@ class BaseTask(BaseTaggedResource):
     A task is a unit of lab work. This base class is not used directly; instead
     pick the concrete type that matches the work:
 
-    - :class:`PropertyTask` — test and document properties of products,
+    - :class:`PropertyTask`: test and document properties of products,
       formulas, or raw materials. Holds :class:`Block` objects and captures
       measured property data.
-    - :class:`BatchTask` — manufacture a batch of a formulation inside Albert.
-    - :class:`GeneralTask` — any other lab work (for example equipment
+    - :class:`BatchTask`: manufacture a batch of a formulation inside Albert.
+    - :class:`GeneralTask`: any other lab work (for example equipment
       calibration) that is neither a batch nor a property task.
 
     Tasks are managed through

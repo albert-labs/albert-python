@@ -483,7 +483,7 @@ class ParameterGroupCollection(BaseCollection):
             )
 
         # new_parameter_values have sequence=None before being sent, so this
-        # guard never matches in practice — enum updates on new params are
+        # guard never matches in practice, enum updates on new params are
         # handled above by create_parameters_with_enums.
         new_param_sequences = [x.sequence for x in new_parameter_values]
         # handle enum updates for existing parameters

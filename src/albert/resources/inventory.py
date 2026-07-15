@@ -38,7 +38,7 @@ class InventoryMergeModule(str, Enum):
     SDS : str
         Safety Data Sheets.
     PD : str
-        Product Design — worksheet column references for this inventory item.
+        Product Design: worksheet column references for this inventory item.
     BD : str
         Batch data.
     LOT : str
@@ -138,7 +138,7 @@ class CasAmount(BaseAlbertModel):
 
     A ``CasAmount`` links one CAS number (a chemical substance identifier) to the
     amount of that substance present in an inventory item, expressed as a range
-    (``min``–``max``) with an optional ``target``. A list of these on an
+    (``min`` to ``max``) with an optional ``target``. A list of these on an
     :class:`InventoryItem` gives the item's compositional breakdown.
 
     Identify the CAS in one of two ways: pass a full :class:`~albert.resources.cas.Cas`
@@ -447,7 +447,7 @@ class InventoryItem(BaseTaggedResource):
 class InventorySpecValue(BaseAlbertModel):
     """The acceptance value(s) of an :class:`InventorySpec`.
 
-    Expresses the expected value of a declared property as a range (``min``–``max``),
+    Expresses the expected value of a declared property as a range (``min`` to ``max``),
     a single ``reference`` value, and/or a ``comparison_operator``. Numeric inputs are
     accepted and stored as strings.
 

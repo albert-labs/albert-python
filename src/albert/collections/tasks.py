@@ -62,13 +62,13 @@ class TaskCollection(BaseCollection):
     A Task is a unit of lab work. There are three kinds, and choosing the right
     one matters:
 
-    - **PropertyTask** — test and document the properties of products/formulas or
+    - **PropertyTask**: test and document the properties of products/formulas or
       raw materials. This is the task type that captures measured Property Data.
       A PropertyTask holds one or more *Blocks*, each pairing a Data Template
       (the results to capture) with a Workflow (the conditions to run under).
-    - **BatchTask** — manufacture a batch within Albert after creating a new
+    - **BatchTask**: manufacture a batch within Albert after creating a new
       formulation.
-    - **GeneralTask** — anything else happening in the lab that is not a batch or
+    - **GeneralTask**: anything else happening in the lab that is not a batch or
       property task (e.g. equipment calibration). Has no blocks.
 
     Typical PropertyTask flow: create the task, attach a Block with
@@ -156,9 +156,9 @@ class TaskCollection(BaseCollection):
         Pass the concrete task type you want to create. Its ``category`` is set
         automatically by the type, so the platform routes it correctly:
 
-        - :class:`~albert.resources.tasks.PropertyTask` — test/document properties.
-        - :class:`~albert.resources.tasks.BatchTask` — manufacture a batch.
-        - :class:`~albert.resources.tasks.GeneralTask` — any other lab work.
+        - :class:`~albert.resources.tasks.PropertyTask`: test/document properties.
+        - :class:`~albert.resources.tasks.BatchTask`: manufacture a batch.
+        - :class:`~albert.resources.tasks.GeneralTask`: any other lab work.
 
         For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
         added separately with :meth:`add_block` after creation.

@@ -28,12 +28,12 @@ class WorksheetCollection(BaseCollection):
     formulations are built), Process Design, Results (Property Tasks and their
     data), and Apps (insights and notes). Building a formulation on a Sheet is
     what registers a Formula inventory item
-    (:class:`~albert.resources.inventory.InventoryItem`) — Formulas originate
+    (:class:`~albert.resources.inventory.InventoryItem`): Formulas originate
     here rather than through the Inventory collection.
 
     This collection manages Worksheet- and Sheet-level structure (retrieving a
     Worksheet, adding Sheets, duplicating Sheets, and creating Sheet templates).
-    Editing the contents of a Sheet — columns, rows, cells, and formulations — is
+    Editing the contents of a Sheet (columns, rows, cells, and formulations) is
     done through the returned :class:`~albert.resources.sheets.Sheet` objects.
 
     This collection is accessed as ``client.worksheets``.

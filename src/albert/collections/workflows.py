@@ -16,14 +16,14 @@ from albert.resources.workflows import ParameterSetpoint, Workflow
 class WorkflowCollection(BaseCollection):
     """Manage Workflows in the Albert platform.
 
-    A Workflow is a specific set of **parameter setpoints** — the conditions a
+    A Workflow is a specific set of **parameter setpoints**, the conditions a
     test is run under. It pulls together the parameters that appear on a Data
     Template (for a measurement) together with all the parameters from one or more
     Parameter Groups, and fixes each to a value (a *setpoint*), plus a unit where
     applicable.
 
     A Workflow does **not** include the *results / data columns* of a Data
-    Template — it describes conditions (parameters) only, never measured results.
+    Template: it describes conditions (parameters) only, never measured results.
     The results live on the Data Template and, once measured, in Property Data. A
     Workflow is also not itself a task: it becomes actionable when paired with a
     Data Template inside a *Block* on a Property or Batch Task (see
@@ -102,7 +102,7 @@ class WorkflowCollection(BaseCollection):
 
         This is the intended way to obtain a workflow ID: build the Workflow object
         you want and let this method return the existing match or create a new one.
-        Workflows are deduplicated by their full setpoint configuration — the value
+        Workflows are deduplicated by their full setpoint configuration: the value
         and unit of every setpoint, the order of parameters within each Data
         Template / Parameter Group, and the order of those groups within the
         workflow. Any parameter group supplied by ID only is expanded to its full
@@ -201,7 +201,7 @@ class WorkflowCollection(BaseCollection):
                 params = group.parameters or []
 
             if pg_setpoint.parameter_setpoints:
-                # User supplied explicit setpoints — only fill in missing sequences.
+                # User supplied explicit setpoints, only fill in missing sequences.
                 sequence_by_param_id = {pv.id: pv.sequence for pv in params if pv.id}
                 for sp in pg_setpoint.parameter_setpoints:
                     if sp.sequence is None and sp.parameter_id in sequence_by_param_id:

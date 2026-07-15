@@ -554,10 +554,10 @@ class LotCollection(BaseCollection):
         action : LotAdjustmentAction
             How to apply ``quantity`` to the current inventory on hand:
 
-            - ``ADD`` — increase on hand by ``quantity``.
-            - ``SUBTRACT`` — decrease on hand by ``quantity``.
-            - ``SET`` — set on hand to exactly ``quantity``.
-            - ``ZERO`` — set on hand to zero (no ``quantity``).
+            - ``ADD``: increase on hand by ``quantity``.
+            - ``SUBTRACT``: decrease on hand by ``quantity``.
+            - ``SET``: set on hand to exactly ``quantity``.
+            - ``ZERO``: set on hand to zero (no ``quantity``).
         quantity : float, optional
             The amount to apply. Required and must be greater than zero for
             ``ADD``, ``SUBTRACT``, and ``SET``; must be omitted for ``ZERO``.

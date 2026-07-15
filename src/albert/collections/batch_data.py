@@ -14,13 +14,13 @@ class BatchDataCollection(BaseCollection):
     (:class:`~albert.resources.tasks.BatchTask`): the grid that captures how a
     physical batch of a formulation was actually made. It is organized as:
 
-    - **Rows** (:class:`~albert.resources.batch_data.BatchDataRow`) — the
+    - **Rows** (:class:`~albert.resources.batch_data.BatchDataRow`): the
       formulation components (ingredients) that go into the batch, along with
       nested child rows for sub-formulas.
-    - **Product columns** (:class:`~albert.resources.batch_data.BatchDataColumn`)
-      — the batch/product being manufactured, carrying batch totals, reference
+    - **Product columns** (:class:`~albert.resources.batch_data.BatchDataColumn`):
+      the batch/product being manufactured, carrying batch totals, reference
       totals, and any lot breakdowns.
-    - **Values** (:class:`~albert.resources.batch_data.BatchDataValue`) — the
+    - **Values** (:class:`~albert.resources.batch_data.BatchDataValue`): the
       amount recorded for a given row within a given column.
 
     Batch Data is keyed by the Task ID of its Batch Task (format ``TAS...``); it

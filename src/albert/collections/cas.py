@@ -176,7 +176,7 @@ class CasCollection(BaseCollection):
         if number is not None or cas:
             # Filtered search path: self-managed integer offset pagination.
             # The backend has a bug where it overwrites the numeric lastKey with a
-            # string key — we must ignore lastKey and use integer offsets. (TAS-564)
+            # string key, we must ignore lastKey and use integer offsets. (TAS-564)
             start_offset = 0
             if start_key is not None:
                 try:
