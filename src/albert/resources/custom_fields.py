@@ -276,9 +276,11 @@ class CustomField(BaseResource):
     category : FieldCategory or None
         Who may add new items to a list field. Required for ``list`` fields.
     min : int or float or None
-        The minimum value for a numeric-type field.
+        The minimum count allowed for the field: the fewest items selectable in a
+        multiselect list, or the fewest characters allowed in a string.
     max : int or float or None
-        The maximum value for a numeric-type field.
+        The maximum count allowed for the field: the most items selectable in a
+        multiselect list, or the most characters allowed in a string.
     entity_categories : list[EntityCategory] or None
         The entity categories the field applies to. Required for lookup row
         fields.
