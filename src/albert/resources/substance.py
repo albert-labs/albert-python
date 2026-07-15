@@ -358,7 +358,7 @@ class RSLSanitizer(BaseAlbertModel):
 
 class RSL(BaseAlbertModel):
     """
-    RSL is a Pydantic model representing the regulatory substance list (RSL) information.
+    RSL is a Pydantic model representing the Restricted substances list (RSL) information.
 
     Attributes
     ----------

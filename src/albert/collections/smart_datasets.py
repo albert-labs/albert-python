@@ -36,10 +36,15 @@ class SmartDatasetCollection(BaseCollection):
 
     Smart Datasets are referenced by their Smart Dataset ID (format ``SDT...``).
     They aggregate the same experiment Property Data managed through
-    :class:`~albert.collections.property_data.PropertyDataCollection`, and the
-    resulting matrix is a common input for Albert Breakthrough modeling
-    (:class:`~albert.collections.btmodel.BTModelCollection` and
-    :class:`~albert.collections.btdataset.BTDatasetCollection`).
+    :class:`~albert.collections.property_data.PropertyDataCollection`.
+
+    A :class:`~albert.resources.smart_datasets.SmartDataset` and a
+    :class:`~albert.resources.btdataset.BTDataset` are distinct entities that share
+    an ETL engine (Zeus stored procedures) but are not interchangeable: a
+    ``BTDataset`` is a Breakthrough pointer record (its dataset rows are stored in
+    S3), while a ``SmartDataset`` is a Smart Projects entity (also S3-backed, via
+    ``storage_key`` and ``schema_``). A SmartDataset is not itself an input to
+    Albert Breakthrough.
 
     This collection is accessed as ``client.smart_datasets``.
 

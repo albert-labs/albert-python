@@ -96,6 +96,12 @@ class SmartDataset(BaseResource):
     :meth:`~albert.collections.smart_datasets.SmartDatasetCollection.get_data`)
     rather than being carried on this object.
 
+    A ``SmartDataset`` and a :class:`~albert.resources.btdataset.BTDataset` are
+    distinct entities that share an ETL engine (Zeus stored procedures) but are not
+    interchangeable: a ``SmartDataset`` is a Smart Projects entity (S3-backed, via
+    ``storage_key`` and ``schema_``), while a ``BTDataset`` is a Breakthrough
+    pointer record. A SmartDataset is not itself an input to Albert Breakthrough.
+
     Attributes
     ----------
     id : SmartDatasetId | None
@@ -110,9 +116,10 @@ class SmartDataset(BaseResource):
         The scope defining which projects, targets, and worksheets the dataset
         draws its experiment data from.
     schema_ : dict | None
-        The schema describing the dataset's variables.
+        Serialized dataset schema (from the dataset's ``get_schema()``): variable
+        metadata for the experiments/mixtures/inventory tables.
     storage_key : str | None
-        The internal storage key for the built dataset.
+        S3 key for the built dataset JSON.
     """
 
     type: Literal["smart"] = "smart"
@@ -139,8 +146,8 @@ class SmartDatasetAggregateBy(str, Enum):
     WFL : str
         Aggregate to one record per workflow (experiment).
     PTD : str
-        Aggregate to one record per measurement / property data point. This is the
-        finest level and the default.
+        Finest granularity: one record per measurement (API value ``measurement``);
+        record identifiers at this level include ``property_data_id``.
     """
 
     INV = "inv"
@@ -260,8 +267,9 @@ class ParameterVariable(_BaseVariable):
     data_type : SmartDatasetVariableDataType
         The value type of the parameter.
     sources : list[str]
-        Where the parameter values originate, drawn from ``property``, ``batch``,
-        and ``process_design``.
+        Which RET48 origins contributed the parameter values: ``"property"``,
+        ``"batch"``, or ``"process_design"`` (overlaps resolved by the ETL, with
+        batch taking precedence over process-design).
     """
 
     type: Literal["parameter"] = "parameter"

@@ -317,7 +317,7 @@ class ParameterGroup(BaseTaggedResource):
         Whether the group has been verified (an approval/governance state).
         Read-only.
     documents : list[EntityLink]
-        Documents attached to the group. Read-only.
+        Documents (e.g. SOPs) associated with the Parameter Group.
 
     See Also
     --------

@@ -206,7 +206,8 @@ class ParameterSetpoint(BaseAlbertModel):
     row_id : RowId | None
         Read-only. The row ID of this parameter with respect to its interval row.
     sequence : str | None
-        The parameter's ordering key within the parameter group.
+        Ordering key; needed because a Parameter Group can be repeated within a
+        workflow. Not required when writing (PUT).
 
     See Also
     --------
@@ -322,7 +323,8 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     row_id : RowId | None
         Read-only. The group's interval row ID.
     sequence : int | None
-        Read-only. The group's ordering position within the workflow.
+        Ordering key; needed because a Parameter Group can be repeated within a
+        workflow. Not required when writing (PUT).
 
     See Also
     --------
@@ -409,7 +411,8 @@ class Workflow(BaseResource):
         The Albert ID of the workflow (``WFL...``). Set when a workflow is created or
         retrieved from the platform.
     block_mapping : str | None
-        Optional mapping of the workflow to a block.
+        Read-only / informational. When a Workflow is returned in the context of a
+        block, this is hydrated for convenience.
 
     See Also
     --------

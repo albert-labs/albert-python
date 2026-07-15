@@ -14,7 +14,7 @@ from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightSt
 class BTInsightCollection(BaseCollection):
     """Manage Breakthrough insights in the Albert platform.
 
-    Breakthrough is Albert's AI/ML modeling capability. An **insight**
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. An **insight**
     (:class:`~albert.resources.btinsight.BTInsight`) is an output produced by
     Breakthrough, such as an optimizer result, impact chart, or generated
     candidate. An insight is categorized by its

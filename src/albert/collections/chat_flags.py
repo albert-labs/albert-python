@@ -77,9 +77,11 @@ class ChatFlagCollection:
     async def get_all(self, *, type: ChatFlagType) -> list[ChatFlag]:
         """List all flagged messages of a given type.
 
-        Returns every message flagged with the given
-        :class:`~albert.resources.chats.ChatFlagType`, across all sessions the
-        caller can access.
+        Returns flag records for the given
+        :class:`~albert.resources.chats.ChatFlagType` across ALL sessions the
+        authenticated user can access (not a single session). Each record is a
+        pointer, not the full message body: ``parent_id`` (session id),
+        ``source_request_id``, ``sequence``, and an optional ``component_type``.
 
         Parameters
         ----------

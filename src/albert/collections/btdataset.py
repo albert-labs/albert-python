@@ -13,7 +13,7 @@ from albert.resources.btdataset import BTDataset
 class BTDatasetCollection(BaseCollection):
     """Manage Breakthrough datasets in the Albert platform.
 
-    Breakthrough is Albert's AI/ML modeling capability. A **dataset**
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **dataset**
     (:class:`~albert.resources.btdataset.BTDataset`) is the tabular data used to
     build and train Breakthrough models. A dataset can reference the Albert entities
     it was assembled from (projects, data columns, targets, and worksheets) via its

@@ -119,6 +119,8 @@ class Project(BaseSessionResource):
     state : State | None
         The project's lifecycle state. Read only on create; can be changed via
         :meth:`~albert.collections.projects.ProjectCollection.update`.
+    old_api_params : dict | None
+        Read-only. Do not use.
 
     Examples
     --------

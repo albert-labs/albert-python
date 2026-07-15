@@ -9,7 +9,7 @@ from albert.resources.btmodel import BTModel, BTModelSession
 class BTModelSessionCollection(BaseCollection):
     """Manage Breakthrough model sessions in the Albert platform.
 
-    Breakthrough is Albert's AI/ML modeling capability. A **model session**
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **model session**
     (:class:`~albert.resources.btmodel.BTModelSession`) is the parent record that
     groups a related set of trained models produced in a single modeling run. Each
     session is built from a dataset (:class:`~albert.resources.btdataset.BTDataset`),
@@ -201,7 +201,7 @@ class BTModelSessionCollection(BaseCollection):
 class BTModelCollection(BaseCollection):
     """Manage individual Breakthrough models in the Albert platform.
 
-    Breakthrough is Albert's AI/ML modeling capability. A **model**
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **model**
     (:class:`~albert.resources.btmodel.BTModel`) is a single trained model. A model
     can either belong to a parent model session
     (:class:`~albert.resources.btmodel.BTModelSession`), in which case its
@@ -286,6 +286,12 @@ class BTModelCollection(BaseCollection):
         -------
         BTModel
             The newly created model, populated with its assigned ID.
+
+        Notes
+        -----
+        Only ``name`` is required on a :class:`~albert.resources.btmodel.BTModel`.
+        ``dataset_id`` and ``target`` are optional on the model, but in practice
+        they are provided together with ``state``.
 
         Examples
         --------

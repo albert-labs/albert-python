@@ -161,8 +161,12 @@ class UnpackedProductDesign(BaseAlbertModel):
 
     Returned by
     :meth:`~albert.collections.product_design.ProductDesignCollection.get_unpacked_products`,
-    one per formula that was unpacked. It gathers the resolved ingredients, the
-    flattened ingredient list, SDS details, and the CAS-level substance rollup.
+    one per formula that was unpacked. Unpacking recursively resolves the
+    formulation's ingredient tree into two views: a row-level inventory list (the
+    direct worksheet ingredients, some of which may be sub-formulations) and a flat
+    CAS-level substance list (fully resolved raw materials with combined weight
+    fractions). This object gathers the resolved ingredients, the flattened
+    ingredient list, SDS details, and the CAS-level substance rollup.
 
     Attributes
     ----------

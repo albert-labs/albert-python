@@ -96,8 +96,8 @@ class FileCollection(BaseCollection):
             The namespace the file is stored in (e.g. ``AGENT``, ``BREAKTHROUGH``,
             ``PIPELINE``, ``PUBLIC``, ``RESULT``, ``SDS``).
         generic : bool, optional
-            Whether to look up the file in the shared, non-tenant-specific file
-            space rather than the tenant's own space. Defaults to False.
+            Include generic Albert-managed files in addition to the tenant's own
+            files. Defaults to False.
 
         Returns
         -------
@@ -145,8 +145,8 @@ class FileCollection(BaseCollection):
         version_id : str | None, optional
             A specific file version to download. Defaults to None (latest).
         generic : bool, optional
-            Whether to resolve the file in the shared, non-tenant-specific file
-            space rather than the tenant's own space. Defaults to False.
+            Include generic Albert-managed files in addition to the tenant's own
+            files. Defaults to False.
         category : FileCategory | None, optional
             The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
 
@@ -203,8 +203,8 @@ class FileCollection(BaseCollection):
         content_type : str
             The MIME type of the file (e.g. ``"text/csv"``).
         generic : bool, optional
-            Whether to store the file in the shared, non-tenant-specific file
-            space rather than the tenant's own space. Defaults to False.
+            Include generic Albert-managed files in addition to the tenant's own
+            files. Defaults to False.
         category : FileCategory | None, optional
             The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
 
@@ -273,8 +273,8 @@ class FileCollection(BaseCollection):
         content_type : str
             The MIME type of the file (e.g. ``"text/csv"``).
         generic : bool, optional
-            Whether to store the file in the shared, non-tenant-specific file
-            space rather than the tenant's own space. Defaults to False.
+            Include generic Albert-managed files in addition to the tenant's own
+            files. Defaults to False.
         category : FileCategory | None, optional
             The category of the file (e.g. ``SDS``, ``OTHER``). Defaults to None.
 

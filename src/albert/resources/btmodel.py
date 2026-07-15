@@ -41,7 +41,7 @@ class BTModelRegistry(BaseAlbertModel):
 class BTModelSession(BaseResource, protected_namespaces=()):
     """A parent session grouping a related set of Breakthrough models.
 
-    Breakthrough is Albert's AI/ML modeling capability. A model session ties
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model session ties
     together the models produced from a single dataset
     (:class:`~albert.resources.btdataset.BTDataset`) in one modeling run. The
     individual models are represented by :class:`BTModel` and managed through
@@ -144,7 +144,7 @@ class BTModelState(str, Enum):
 class BTModel(BaseResource, protected_namespaces=()):
     """A single trained Breakthrough model.
 
-    Breakthrough is Albert's AI/ML modeling capability. A model can belong to a
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model can belong to a
     parent session (:class:`BTModelSession`), in which case ``parent_id`` is set to
     the session ID, or be a detached, standalone model. Models are managed through
     :class:`~albert.collections.btmodel.BTModelCollection`.

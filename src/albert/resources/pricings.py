@@ -66,7 +66,8 @@ class Pricing(BaseResource):
     expiration_date : str | None
         The date the pricing expires, in ``YYYY-MM-DD`` format.
     default : int | None
-        Whether this is the default pricing for the item. Read-only.
+        Whether the default price is being used rather than an overridden price (a
+        flag).
 
     Examples
     --------

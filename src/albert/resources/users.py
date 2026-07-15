@@ -75,8 +75,8 @@ class User(BaseResource):
     user_class : UserClass
         The ACL class level of the user (broad permission tier).
     witnesser : bool | None
-        Whether the user can act as a witness (e.g. signing off notebook
-        entries).
+        Whether the user can act as a witness on tasks (only relevant when witnessing
+        is enabled for the tenant).
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Custom metadata attached to the user.
 

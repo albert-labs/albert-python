@@ -187,9 +187,9 @@ class EntityTypeSearchQueryStrings(BaseAlbertModel):
     Attributes
     ----------
     DAT : str or None
-        Query string used when selecting related Data Templates.
+        Search string for Data Templates.
     PRG : str or None
-        Query string used when selecting related Parameter Groups.
+        Search string for Parameter Groups.
 
     Examples
     --------

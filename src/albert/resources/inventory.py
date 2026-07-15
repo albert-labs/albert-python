@@ -157,14 +157,14 @@ class CasAmount(BaseAlbertModel):
         The Albert ID of the CAS resource this amount represents. Provide either a
         ``cas`` object or an ``id``; when ``cas`` is given, this is set from it.
     cas_category : str | None
-        The category assigned to the CAS in this context.
+        Whether the CAS is a trade secret.
     inventory_function : list[ListItem | str] | None
         Business-controlled functions associated with the CAS in this inventory
         context (e.g. what role the substance plays). Values come from a managed list.
     type : str | None
         The CAS type. Can be retrieved from the CAS collection before construction.
     classification_type : str | None
-        The CAS classification type. Can be retrieved from the CAS collection.
+        The EU classification source for the CAS: harmonized, notified, or REACH.
     cas : Cas | None
         The full CAS object associated with this amount. Read-only after init; excluded
         from serialization. Provide either a ``cas`` or an ``id``.
@@ -336,7 +336,9 @@ class InventoryItem(BaseTaggedResource):
     cas : list[CasAmount] | None
         The item's compositional breakdown as CAS amounts. See :class:`CasAmount`.
     is_formula_override : bool | None
-        Whether formula override is enabled for a formula item.
+        Whether the substance/CAS-level breakdown for this formula has been overridden
+        from the auto-calculated value; commonly set to indicate the formula is not a
+        non-reactive homogeneous mixture.
     metadata : dict[str, MetadataItem] | None
         Custom metadata fields. Allowed keys are defined by the workspace's
         CustomFields configuration.

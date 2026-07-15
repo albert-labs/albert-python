@@ -12,12 +12,20 @@ class ProductDesignCollection(BaseCollection):
     """Unpack formulated products into their full substance-level composition.
 
     "Product design" here refers to unpacking (flattening) a formulation inventory
-    item into the complete set of substances it is made of. A formula in Albert is
-    built from other inventory items, which may themselves be formulas; unpacking
-    walks that hierarchy all the way down and rolls it up into a single, CAS-level
-    view of what the product actually contains. The result reports each constituent
-    ingredient, its normalized amount, the CAS numbers involved, and the associated
-    SDS / regulatory details (hazard class, UN number).
+    item into its full substance-level composition. An unpacked product resolves a
+    formulation's complete substance composition by recursively traversing its
+    ingredient tree: each sub-formulation is expanded into its own ingredients, with
+    fractional contributions multiplied down through each level and summed at the
+    CAS-number level. It produces two outputs: a row-level inventory list (the direct
+    worksheet ingredients, some of which may themselves be sub-formulations) and a
+    flat CAS-level substance list (fully resolved raw materials with combined weight
+    fractions).
+
+    The calculation assumes a non-reactive, homogeneous mixture: no chemical
+    transformations occur and concentrations are additive. When a formulation has
+    overrides, the recursive traversal short-circuits; Albert accepts the declared
+    composition at face value rather than deriving it, and CAS amounts are expressed
+    as ranges to signal supplied (not bottom-up calculated) values.
 
     Use this when you need the resolved composition of a formula rather than just
     its immediate ingredient list, for example to compute regulatory or safety

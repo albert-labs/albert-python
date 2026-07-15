@@ -73,7 +73,9 @@ class BTInsightPayloadType(str, Enum):
     BREAKTHROUGH : str
         Payload produced by Breakthrough.
     ALBERTO : str
-        Payload produced by Alberto.
+        Legacy payload configuration retained for backwards compatibility with
+        insights created in 2024 that predate the current session schema; slated
+        for deprecation.
     """
 
     BREAKTHROUGH = "Breakthrough"
@@ -101,7 +103,7 @@ class BTInsightRegistry(BaseAlbertModel):
 class BTInsight(BaseResource, protected_namespaces=()):
     """An output or insight produced by Breakthrough.
 
-    Breakthrough is Albert's AI/ML modeling capability. An insight captures a
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. An insight captures a
     Breakthrough result, such as an optimizer run, impact chart, or set of
     generated candidates. It can trace back to the dataset, model session, and
     model it came from via ``dataset_id``, ``model_session_id``, and ``model_id``

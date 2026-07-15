@@ -19,32 +19,39 @@ class ChatComponentType(str, Enum):
     components, each of a specific type. The component type determines how the
     ``content`` payload is shaped and how the UI renders it.
 
+    The primary payload is always ``content`` (a string or typed JSON object);
+    some user-side structured responses are carried on separate fields, as noted.
+
     Attributes
     ----------
     TEXT : str
-        Plain text content.
+        Prose / markdown assistant or user text (streamed, APPEND semantics).
     IMAGE : str
-        An image component.
+        Image or code-interpreter chart payload.
     REASONING_BLOCK : str
-        The assistant's intermediate reasoning ("thinking") block.
+        Collapsible agent reasoning block.
     NOTEBOOK_CITATION : str
-        A citation referencing an Albert Notebook.
+        Citation card linking to a notebook source.
     DOCUMENT_CITATION : str
-        A citation referencing a document.
+        Citation card linking to a document source.
     PRODUCT_CARD : str
-        A card describing a product or inventory item.
+        Formulation inventory card (feedback-eligible in the UI).
     INGREDIENT_CARD : str
-        A card describing an ingredient.
+        Ingredient inventory card (feedback-eligible in the UI).
     TOOL_CALL : str
-        A tool/function call issued by the assistant.
+        Structured tool-execution chip (tool name, status, I/O display items);
+        REPLACE semantics (latest row per ``component_id`` wins).
     ERROR : str
-        An error surfaced during the conversation.
+        An error surfaced to the user.
     PLAN : str
-        A plan card the assistant presents for the user to approve or amend
-        (the user's response is captured in :attr:`ChatMessage.plan_action`).
+        Supervisor plan artifact (plan content in ``content``); the user's
+        approve/answer/changes response is carried on the user message via
+        :attr:`ChatMessage.plan_action`, not in the plan card's ``content``.
     PERMISSION_REQUEST : str
-        A card requesting the user's permission to proceed (the user's decision is
-        captured in :attr:`ChatMessage.permission_action`).
+        Gated SDK-write approval card (permission content in ``content``); the
+        user's allow/deny is carried via :attr:`ChatMessage.permission_action`
+        on the user message (an ``allow_session`` response persists as a durable
+        session grant).
     """
 
     TEXT = "text"
@@ -140,7 +147,9 @@ class ChatSession(BaseResource):
 
     A chat session is one conversation thread with Albert's AI assistant. It holds
     an ordered series of :class:`ChatMessage` turns and can be filed under a
-    :class:`ChatFolder`. Once saved it is referenced by its server-assigned ``id``.
+    :class:`ChatFolder`. A session has a server-assigned ``id`` plus a required
+    client-facing ``source_session_id`` that externally links it to the Ask
+    session.
 
     Sessions are managed through
     :class:`~albert.collections.chat_sessions.ChatSessionCollection`
@@ -218,10 +227,11 @@ class ChatMessage(BaseResource):
 
     A chat message is one component of the back-and-forth inside a
     :class:`ChatSession`: a user prompt, an assistant reply, a reasoning block, a
-    citation, and so on, as given by its :class:`ChatComponentType`. Within a
-    session a message is located by the triple ``(parent_id, source_request_id,
-    sequence)``, and :class:`ChatComponentType` further distinguishes components
-    that share a request.
+    citation, and so on, as given by its :class:`ChatComponentType`. Messages are
+    addressed by the composite key ``(source_request_id, sequence)`` (``sequence``
+    is zero-padded, e.g. ``"000"``); ``id`` exists but lookups use
+    ``source_request_id`` + ``sequence``, and :class:`ChatComponentType` further
+    distinguishes components that share a request.
 
     Messages are managed through
     :class:`~albert.collections.chat_messages.ChatMessageCollection`
@@ -266,7 +276,10 @@ class ChatMessage(BaseResource):
         Whether the feedback UI is shown for this message. Serialized as
         ``displayFeedbackComponent``.
     value : list[dict] | None
-        Additional structured payload associated with the component.
+        api-chat storage/history metadata for the message rows grouped under one
+        message ID (revision records, e.g. ``{ts: <epoch>}``). This is NOT the
+        component payload; the payload is in ``content``. Do not treat ``value``
+        as a general-purpose extra-data field.
     page_context : PageContext | None
         The Albert page the user was viewing when they sent the message. Serialized
         as ``pageContext``.

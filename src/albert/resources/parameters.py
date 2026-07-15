@@ -59,7 +59,7 @@ class Parameter(BaseResource):
     rank : int | None
         The rank of the returned parameter. Read-only.
     required : bool | None
-        Whether the parameter is required. Read-only.
+        Whether this parameter must be filled in within a Parameter Group.
 
     Examples
     --------

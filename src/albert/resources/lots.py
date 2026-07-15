@@ -86,7 +86,8 @@ class Lot(BaseResource):
     manufacturer_lot_number : str | None
         The manufacturer's own lot number for this batch.
     storage_location : StorageLocation | None
-        Where the lot is physically stored.
+        The specific place within a location where the lot is stored (e.g. a bin,
+        cabinet, or hood).
     pack_size : str | None
         The pack size of the lot, used to calculate cost per unit.
     initial_quantity : NonNegativeFloat | None
@@ -112,7 +113,8 @@ class Lot(BaseResource):
     status : LotStatus | None
         The lot's lifecycle status. Read-only.
     location : Location | None
-        The location of the lot. Required when creating a Task lot.
+        The site/campus the lot is at (may contain multiple buildings, each with many
+        storage locations).
     has_notes : bool | None
         Whether the lot has notes. Read-only.
     has_attachments : bool | None

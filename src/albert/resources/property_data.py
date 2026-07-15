@@ -145,9 +145,13 @@ class PropertyValue(BaseAlbertModel):
     name : str | None
         The data column / result name.
     sequence : str | None
-        The column sequence identifier within the block.
+        Pointer to the specific data (result) column; more unique than a data column
+        ID because a data column can be repeated within a Data Template (analogous to a
+        parameter repeated in a Parameter Group).
     calculation : str | None
-        The calculation expression, if this column is computed.
+        Optional calculation expression used in place of a fixed value; may reference
+        other result columns (e.g. ``=((COL3-COL1)/COL2)*100``). The result is computed
+        and shown in the UI.
     numeric_value : float | None
         The numeric form of the value. Serialized as ``valueNumeric``.
     string_value : str | None
@@ -413,7 +417,8 @@ class TaskPropertyData(BaseResource):
     entity : Literal[DataEntity.TASK]
         Always :attr:`DataEntity.TASK`.
     parent_id : str
-        The parent entity ID for the data. Serialized as ``parentId``.
+        Governs the ACL model: associates the property data with a controlling parent
+        (e.g. a task or inventory item). Serialized as ``parentId``.
     task_id : str | None
         The task (format ``TAS...``). Serialized as ``id``.
     inventory : PropertyDataInventoryInformation | None

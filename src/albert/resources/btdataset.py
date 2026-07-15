@@ -37,12 +37,18 @@ class BTDatasetReferences(BaseAlbertModel):
 class BTDataset(BaseResource):
     """A dataset used to build and train Breakthrough models.
 
-    Breakthrough is Albert's AI/ML modeling capability. A dataset holds the tabular
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A dataset holds the tabular
     data that Breakthrough model sessions and models
     (:class:`~albert.resources.btmodel.BTModelSession`,
     :class:`~albert.resources.btmodel.BTModel`) are trained on; their ``dataset_id``
     points back to a dataset. Datasets are managed through
     :class:`~albert.collections.btdataset.BTDatasetCollection`.
+
+    A ``BTDataset`` and a :class:`~albert.resources.smart_datasets.SmartDataset` are
+    distinct entities that share an ETL engine (Zeus stored procedures) but are not
+    interchangeable: a ``BTDataset`` is a Breakthrough pointer record (its dataset
+    rows are stored in S3), while a ``SmartDataset`` is a Smart Projects entity. A
+    SmartDataset is not itself an input to Albert Breakthrough.
 
     Attributes
     ----------
