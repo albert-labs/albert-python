@@ -20,11 +20,37 @@ from albert.resources.users import User, UserClass
 
 
 class CustomTemplateInventoryLot(BaseAlbertModel):
+    """A lot reference within a custom template inventory entry.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the lot.
+    barcode : str | None
+        The barcode of the lot.
+    """
+
     id: str
     barcode: str | None = None
 
 
 class DataTemplateInventory(EntityLink):
+    """An inventory item reference within a custom template, with batch and lot details.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the inventory item.
+    batch_size : float | None
+        The batch size to use for this inventory item.
+    sheet : list[Sheet | EntityLink] | None
+        Sheets associated with this inventory item in the template.
+    category : InventoryCategory | None
+        The inventory category of the item.
+    lots : list[CustomTemplateInventoryLot] | None
+        Lots associated with this inventory item in the template.
+    """
+
     batch_size: float | None = Field(default=None, alias="batchSize")
     sheet: list[Sheet | EntityLink] | None = Field(default=None)
     category: InventoryCategory | None = Field(default=None)
@@ -32,10 +58,30 @@ class DataTemplateInventory(EntityLink):
 
 
 class DesignLink(EntityLink):
+    """A link to a worksheet design with its type.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the design.
+    type : DesignType
+        The design type (apps, products, results, or process).
+    """
+
     type: DesignType
 
 
 class TemplateEntityType(BaseAlbertModel):
+    """The entity type associated with a custom template.
+
+    Attributes
+    ----------
+    id : EntityTypeId | None
+        The Albert ID of the entity type.
+    custom_category : str | None
+        A custom category name for the entity type.
+    """
+
     id: EntityTypeId | None = Field(default=None)
     custom_category: str | None = Field(default=None, alias="customCategory")
 
@@ -121,12 +167,40 @@ class JobStatus(str, Enum):
 
 
 class SamInput(BaseResource):
+    """An input parameter for a SAM (Sample Analysis Module) configuration.
+
+    Attributes
+    ----------
+    value : str | None
+        The value of the input parameter.
+    unit : str | None
+        The unit of the input parameter.
+    name : str
+        The name of the input parameter.
+    """
+
     value: str | None = Field(alias="Value", default=None)
     unit: str | None = Field(alias="Unit", default=None)
     name: str = Field(alias="Name")
 
 
 class SamConfig(BaseResource):
+    """A SAM (Sample Analysis Module) machine configuration.
+
+    Attributes
+    ----------
+    configuration_name : str
+        The name of the configuration.
+    configurationId : str
+        The identifier of the configuration.
+    machineId : str | None
+        The identifier of the machine.
+    input : list[SamInput] | None
+        The input parameters for this configuration.
+    job_status : JobStatus | None
+        The status of the SAM job.
+    """
+
     configuration_name: str = Field(alias="configurationName")
     configurationId: str
     machineId: str | None = Field(default=None)
@@ -135,6 +209,18 @@ class SamConfig(BaseResource):
 
 
 class Workflow(BaseResource):
+    """A workflow reference within a custom template.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the workflow.
+    name : str | None
+        The name of the workflow.
+    sam_config : list[SamConfig] | None
+        SAM configurations associated with this workflow, if any.
+    """
+
     id: str
     name: str | None = Field(default=None)
     # Some workflows may have SamConfig
@@ -247,6 +333,16 @@ ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discrimin
 
 
 class TemplateACL(BaseResource):
+    """Access control settings for a custom template.
+
+    Attributes
+    ----------
+    fgclist : list[ACLEntry]
+        The list of access control entries (team, owner, member, viewer).
+    acl_class : str | None
+        The default access class for the template.
+    """
+
     fgclist: list[ACLEntry] = Field(default=None)
     acl_class: str | None = Field(default=None, alias="class")
 

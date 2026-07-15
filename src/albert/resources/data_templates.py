@@ -27,6 +27,16 @@ from albert.resources.users import User
 
 
 class CSVMapping(BaseAlbertModel):
+    """A mapping between CSV column headers and data column IDs.
+
+    Attributes
+    ----------
+    map_id : str | None
+        A compact mapping string (e.g. ``"Header1:DAC2900#Header2:DAC4707"``).
+    map_data : dict[str, str] | None
+        A dictionary mapping CSV header names to data column IDs.
+    """
+
     map_id: str | None = Field(
         alias="mapId", default=None, examples="Header1:DAC2900#Header2:DAC4707"
     )
@@ -41,11 +51,39 @@ class Axis(str, Enum):
 
 
 class CurveDBMetadata(BaseAlbertModel):
+    """Database metadata for a curve data column result.
+
+    Attributes
+    ----------
+    table_name : str | None
+        The Athena/database table name storing the curve data.
+    partition_key : str | None
+        The partition key for the curve data table.
+    """
+
     table_name: str | None = Field(default=None, alias="tableName")
     partition_key: str | None = Field(default=None, alias="partitionKey")
 
 
 class StorageKeyReference(BaseAlbertModel):
+    """S3 storage key references for a data column file result.
+
+    Attributes
+    ----------
+    rawfile : str | None
+        The raw file storage key.
+    s3_input : str | None
+        The S3 key for the input file.
+    s3_output : str | None
+        The S3 key for the processed output file.
+    preview : str | None
+        The S3 key for a preview image.
+    thumb : str | None
+        The S3 key for a thumbnail image.
+    original : str | None
+        The S3 key for the original file.
+    """
+
     rawfile: str | None = None
     s3_input: str | None = Field(default=None, alias="s3Input")
     s3_output: str | None = Field(default=None, alias="s3Output")
@@ -55,11 +93,33 @@ class StorageKeyReference(BaseAlbertModel):
 
 
 class JobSummary(BaseAlbertModel):
+    """A brief summary of a background processing job.
+
+    Attributes
+    ----------
+    id : str | None
+        The job identifier.
+    state : str | None
+        The current state of the job.
+    """
+
     id: str | None = None
     state: str | None = None
 
 
 class CurveDataEntityLink(EntityLinkWithName):
+    """A link to a data column that provides one axis of a curve dataset.
+
+    Attributes
+    ----------
+    id : DataColumnId
+        The data column ID.
+    axis : Axis | None
+        Which axis this column represents (X or Y).
+    unit : Unit | None
+        The unit of measure for this axis.
+    """
+
     id: DataColumnId
     axis: Axis | None = Field(default=None)
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
@@ -336,12 +396,52 @@ class ImageExample(BaseAlbertModel):
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
+    """A lightweight data column reference within a data template search result.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the data column.
+    name : str | None
+        The name of the data column.
+    localized_names : LocalizedNames
+        Localized name variants for the data column.
+    """
+
     id: str
     name: str | None = None
     localized_names: LocalizedNames = Field(alias="localizedNames")
 
 
 class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
+    """Lightweight representation of a DataTemplate returned from search.
+
+    Attributes
+    ----------
+    id : str
+        The Albert ID of the data template.
+    name : str
+        The name of the data template.
+    data_columns : list[DataTemplateSearchItemDataColumn] | None
+        The data column summaries included in the template.
+    owner : list[User] | None
+        The owners of the data template.
+    tags : list[User] | None
+        Tags associated with the data template.
+    acl : list[User] | None
+        Users with explicit access to the data template.
+    created_at : str | None
+        ISO 8601 timestamp of when the template was created.
+    created_by_name : str | None
+        The name of the user who created the template.
+    metadata : dict[str, Any] | None
+        Custom metadata attached to the template.
+    team : list[User] | None
+        Team members associated with the template.
+    standards : list[dict[str, Any]] | None
+        Standards linked to the template.
+    """
+
     id: str = Field(alias="albertId")
     name: str
     data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(

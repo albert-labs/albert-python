@@ -359,6 +359,18 @@ class ParameterGroup(BaseTaggedResource):
 
 
 class ParameterSearchItemParameter(BaseAlbertModel):
+    """A lightweight parameter reference within a parameter group search result.
+
+    Attributes
+    ----------
+    name : str | None
+        The name of the parameter.
+    id : str
+        The Albert ID of the parameter.
+    localized_names : LocalizedNames
+        Localized name variants for the parameter.
+    """
+
     name: str | None = None
     id: str
     localized_names: LocalizedNames = Field(alias="localizedNames")
