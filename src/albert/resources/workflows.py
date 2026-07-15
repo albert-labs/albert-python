@@ -377,12 +377,22 @@ class ParameterGroupSetpoints(BaseAlbertModel):
 
 
 class Workflow(BaseResource):
-    """A specific set of parameter setpoints: the conditions a test runs under.
+    """A specific set of parameter setpoints: the independent variables of a test.
 
-    A workflow (WFL) captures only the *conditions* of a test, not its results. It gathers
-    the parameters that appear on a Data Template (for a measurement) together with all
-    parameters from one or more Parameter Groups, each fixed to a value (a setpoint) and a
-    unit where applicable. It does not include the Data Template's results / data columns.
+    A workflow (WFL) captures only the *independent variables* of a test, the parameters and
+    the setpoints (a value, plus a unit where applicable) they are fixed to. It is built from
+    one or more groupings of parameters, where each grouping is either a Data Template that
+    has pre-linked parameters or a Parameter Group. A single workflow can combine several
+    groupings, for example one Data Template's pre-linked parameters together with a couple of
+    Parameter Groups, each contributing its own parameter setpoints. Because a Data Template
+    can carry pre-linked parameters, it is used here exactly like a Parameter Group: purely to
+    describe a set of parameters and their setpoints.
+
+    A workflow does NOT include a Data Template's Data Columns (also called Results). Those are
+    the *dependent variables*, and they are recorded only in Property Data
+    (:class:`~albert.resources.property_data.TaskPropertyData`). In short: the Workflow holds
+    the independent variables; Property Data holds the dependent variables (the measured
+    results).
 
     A workflow is uniquely identified by its full setpoint configuration: the value and
     unit of every setpoint, the order of parameters within each Data Template / Parameter
@@ -432,15 +442,33 @@ class Workflow(BaseResource):
         )
 
         client = Albert()
+        # One workflow combining a Data Template's pre-linked parameters with two
+        # Parameter Groups. Each grouping is keyed by its DAT... or PRG... id.
         workflow = Workflow(
-            name="Cure at 25C",
+            name="Tensile test at 23C, 50% RH",
             parameter_group_setpoints=[
+                # Pre-linked parameters on a Data Template (used just like a PRG here)
+                ParameterGroupSetpoints(
+                    id="DAT1",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                        ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                    ],
+                ),
+                # A Parameter Group describing sample prep
                 ParameterGroupSetpoints(
                     id="PRG1",
                     parameter_setpoints=[
-                        ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
+                        ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
                     ],
-                )
+                ),
+                # A second Parameter Group (e.g. the mixing step)
+                ParameterGroupSetpoints(
+                    id="PRG2",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                    ],
+                ),
             ],
         )
         created = client.workflows.create(workflows=[workflow])

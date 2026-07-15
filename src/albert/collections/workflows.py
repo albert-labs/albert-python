@@ -16,17 +16,21 @@ from albert.resources.workflows import ParameterSetpoint, Workflow
 class WorkflowCollection(BaseCollection):
     """Manage Workflows in the Albert platform.
 
-    A Workflow is a specific set of **parameter setpoints**, the conditions a
-    test is run under. It pulls together the parameters that appear on a Data
-    Template (for a measurement) together with all the parameters from one or more
-    Parameter Groups, and fixes each to a value (a *setpoint*), plus a unit where
-    applicable.
+    A Workflow is a grouping of **parameters and their setpoints**, the *independent
+    variables* a test is run under. It is built from one or more groupings, where each
+    grouping is either a Data Template with pre-linked parameters or a Parameter Group.
+    A single Workflow can combine a Data Template's pre-linked parameters with one or
+    more Parameter Groups, each contributing its own parameter setpoints (a value, plus
+    a unit where applicable). Because a Data Template can carry pre-linked parameters, it
+    is used here exactly like a Parameter Group: purely to describe parameters and their
+    setpoints.
 
-    A Workflow does **not** include the *results / data columns* of a Data
-    Template: it describes conditions (parameters) only, never measured results.
-    The results live on the Data Template and, once measured, in Property Data. A
-    Workflow is also not itself a task: it becomes actionable when paired with a
-    Data Template inside a *Block* on a Property or Batch Task (see
+    A Workflow does **not** include a Data Template's **Data Columns** (also called
+    *Results*). Those are the *dependent variables*, and they are recorded only in
+    Property Data (:class:`~albert.collections.property_data.PropertyDataCollection`). In
+    short, the Workflow holds the independent variables and Property Data holds the
+    dependent ones. A Workflow is also not itself a task: it becomes actionable when
+    paired with a Data Template inside a *Block* on a Property or Batch Task (see
     :meth:`~albert.collections.tasks.TaskCollection.add_block`).
 
     **Uniqueness.** A Workflow is uniquely identified by its full setpoint
@@ -134,15 +138,31 @@ class WorkflowCollection(BaseCollection):
                 ParameterGroupSetpoints,
                 ParameterSetpoint,
             )
+
+            # A workflow combining a Data Template's pre-linked parameters (keyed by a
+            # DAT... id, used just like a Parameter Group) with two Parameter Groups.
             workflow = Workflow(
-                name="Cure at 25C",
+                name="Tensile test at 23C, 50% RH",
                 parameter_group_setpoints=[
+                    ParameterGroupSetpoints(
+                        id="DAT1",
+                        parameter_setpoints=[
+                            ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                            ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                        ],
+                    ),
                     ParameterGroupSetpoints(
                         id="PRG1",
                         parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
+                            ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
                         ],
-                    )
+                    ),
+                    ParameterGroupSetpoints(
+                        id="PRG2",
+                        parameter_setpoints=[
+                            ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                        ],
+                    ),
                 ],
             )
             created = client.workflows.create(workflows=[workflow])
