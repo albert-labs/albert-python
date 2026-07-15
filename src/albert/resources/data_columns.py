@@ -19,16 +19,13 @@ class DataColumn(BaseResource):
     :class:`~albert.collections.data_columns.DataColumnCollection`, accessed as
     ``client.data_columns``.
 
-    Parameters
+    Attributes
     ----------
     name : str
         The name of the data column (e.g. ``"Viscosity"``).
     metadata : dict[str, MetadataItem], optional
         Custom metadata keyed by field name. Values may be strings, numbers, or
         entity links.
-
-    Attributes
-    ----------
     id : str
         The Data Column ID assigned by Albert (format ``DAC...``). Populated by the
         server on creation; leave unset when building a column to create.
