@@ -17,7 +17,13 @@ _PROJECTS_BASE_PATH = "/api/v3/projects"
 
 
 class SmartProjectScope(BaseAlbertModel):
-    """Scope of a smart project. This is the default state used to build a smart dataset."""
+    """Scope of a smart project, defining which targets drive its smart dataset.
+
+    Attributes
+    ----------
+    targets : list[TargetId]
+        The target IDs that are part of this smart project scope.
+    """
 
     targets: list[TargetId] = Field(default_factory=list, alias="targetIds")
 
