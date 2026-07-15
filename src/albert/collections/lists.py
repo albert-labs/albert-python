@@ -15,7 +15,17 @@ class ListsCollection(BaseCollection):
     values. Each item has a name, a category
     (:class:`~albert.resources.lists.ListItemCategory`, e.g. ``userDefined`` or
     ``inventory``), and a ``list_type`` that ties it to the specific list it
-    belongs to (often the name of a custom field).
+    belongs to.
+
+    List Items most often populate the lists defined by ``list``-type Custom
+    Fields: a :class:`~albert.resources.custom_fields.CustomField` with
+    :attr:`~albert.resources.custom_fields.FieldType.LIST` creates a new list
+    whose ``list_type`` is typically the field's name, and each selectable option
+    is a List Item with that same ``list_type``. To offer choices on such a field,
+    add List Items here with a matching ``list_type`` (see
+    :class:`~albert.collections.custom_fields.CustomFieldCollection`). Some
+    ``list_type`` values are instead built-in platform lists (e.g. ``projectState``,
+    ``casCategory``, ``inventoryFunction``).
 
     This collection is accessed as ``client.lists``.
 

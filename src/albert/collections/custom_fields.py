@@ -33,6 +33,12 @@ class CustomFieldCollection(BaseCollection):
     - ``FieldCategory.USER_DEFINED``: general users can add items.
     - ``FieldCategory.BUSINESS_DEFINED``: only admins can add items.
 
+    Creating a ``list`` custom field establishes a new list (identified by a
+    ``list_type``, typically the field's name) for options to be added to. Those
+    options are :class:`~albert.resources.lists.ListItem` records managed through
+    :class:`~albert.collections.lists.ListsCollection` (``client.lists``); add
+    each option with its ``list_type`` set to this field.
+
     Custom Field IDs use the ``CTF`` prefix. This is configuration/schema-level
     data.
 

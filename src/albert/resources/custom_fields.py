@@ -15,7 +15,10 @@ class FieldType(str, Enum):
     Attributes
     ----------
     LIST : str
-        A value (or values) chosen from a predefined list.
+        A value (or values) chosen from a predefined list. A ``list`` field
+        defines its own list; the selectable options are
+        :class:`~albert.resources.lists.ListItem` records (see
+        :class:`~albert.collections.lists.ListsCollection`).
     STRING : str
         A free-text string value.
     NUMBER : str
@@ -246,6 +249,12 @@ class CustomField(BaseResource):
     type and validation rules constrain the stored value. Create and manage
     custom fields through
     :class:`~albert.collections.custom_fields.CustomFieldCollection`.
+
+    When ``field_type`` is :attr:`FieldType.LIST`, the field defines a new list
+    (identified by a ``list_type``, typically the field's ``name``). The
+    selectable options are :class:`~albert.resources.lists.ListItem` records with
+    a matching ``list_type``, managed through
+    :class:`~albert.collections.lists.ListsCollection` (``client.lists``).
 
     Attributes
     ----------

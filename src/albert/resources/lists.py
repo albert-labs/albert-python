@@ -34,8 +34,12 @@ class ListItemCategory(str, Enum):
 class ListItem(BaseResource):
     """A single allowed value in a configurable list of options.
 
-    List items back the choices offered by custom fields (e.g. dropdown options)
-    and other fixed option sets in Albert. Managed through
+    List items back the choices offered by ``list``-type custom fields (e.g.
+    dropdown options) and other fixed option sets in Albert. A
+    :class:`~albert.resources.custom_fields.CustomField` with
+    :attr:`~albert.resources.custom_fields.FieldType.LIST` defines a list (keyed
+    by ``list_type``, typically the field's name); its selectable options are
+    ``ListItem`` records with a matching ``list_type``. Managed through
     :class:`~albert.collections.lists.ListsCollection` (``client.lists``).
 
     Attributes
@@ -49,9 +53,11 @@ class ListItem(BaseResource):
         The category of the list item. Allowed values are ``businessDefined``,
         ``userDefined``, ``projects``, ``extensions``, and ``inventory``.
     list_type : str or None
-        The type of list this item belongs to, often the name of a custom field.
-        For built-in categories the allowed values are ``projectState`` for
-        ``projects``, ``extensions`` for ``extensions``, and ``casCategory`` or
+        The list this item belongs to. For a list-type custom field this is
+        typically the field's name (see
+        :class:`~albert.resources.custom_fields.CustomField`). For built-in
+        categories the allowed values are ``projectState`` for ``projects``,
+        ``extensions`` for ``extensions``, and ``casCategory`` or
         ``inventoryFunction`` for ``inventory``.
 
     Examples
