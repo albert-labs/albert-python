@@ -105,7 +105,6 @@ plugins:
           inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
-            - url: https://typing-extensions.readthedocs.io/en/latest/objects.inv
           rendering:
             show_docstring_attributes: true
   - mike:
