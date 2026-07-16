@@ -143,21 +143,22 @@ class ValueValidation(BaseAlbertModel):
     operator : Operator or None
         The comparison operator applied against ``min`` and/or ``max``.
 
-    !!! example
-        ```python
-        from albert.resources.parameter_groups import (
-            DataType,
-            Operator,
-            ValueValidation,
-        )
+    Examples
+    --------
+    ```python
+    from albert.resources.parameter_groups import (
+        DataType,
+        Operator,
+        ValueValidation,
+    )
 
-        rule = ValueValidation(
-            datatype=DataType.NUMBER,
-            operator=Operator.BETWEEN,
-            min="0",
-            max="100",
-        )
-        ```
+    rule = ValueValidation(
+        datatype=DataType.NUMBER,
+        operator=Operator.BETWEEN,
+        min="0",
+        max="100",
+    )
+    ```
     """
 
     datatype: DataType = Field(...)
@@ -208,13 +209,14 @@ class ParameterValue(BaseAlbertModel):
     sequence : str or None
         The sequence of the parameter within the group. Read-only.
 
-    !!! example
-        ```python
-        from albert.resources.parameter_groups import ParameterValue
+    Examples
+    --------
+    ```python
+    from albert.resources.parameter_groups import ParameterValue
 
-        # Reference the parameter by its Albert ID
-        value = ParameterValue(id="PRM1", value="500")
-        ```
+    # Reference the parameter by its Albert ID
+    value = ParameterValue(id="PRM1", value="500")
+    ```
     """
 
     parameter: Parameter | None = Field(default=None, exclude=True)
@@ -322,20 +324,21 @@ class ParameterGroup(BaseTaggedResource):
     PGType : The set of allowed group types.
     albert.resources.workflows.Workflow : Where a group's parameters are fixed to setpoints.
 
-    !!! example
-        ```python
-        from albert.resources.parameter_groups import (
-            ParameterGroup,
-            ParameterValue,
-            PGType,
-        )
+    Examples
+    --------
+    ```python
+    from albert.resources.parameter_groups import (
+        ParameterGroup,
+        ParameterValue,
+        PGType,
+    )
 
-        pg = ParameterGroup(
-            name="Mixing Step",
-            type=PGType.BATCH,
-            parameters=[ParameterValue(id="PRM1", value="500")],
-        )
-        ```
+    pg = ParameterGroup(
+        name="Mixing Step",
+        type=PGType.BATCH,
+        parameters=[ParameterValue(id="PRM1", value="500")],
+    )
+    ```
     """
 
     name: str

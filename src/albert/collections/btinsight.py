@@ -41,25 +41,26 @@ class BTInsightCollection(BaseCollection):
     Methods
     -------
     create(insight) -> BTInsight
-        Register a new insight.
+        Create a new insight.
     get_by_id(id) -> BTInsight
-        Retrieve a single insight by its ID.
+        Get a single insight by its ID.
     search(...) -> Iterator[BTInsight]
         Search for insights by text, name, state, or category.
     update(insight) -> BTInsight
-        Apply changes to an existing insight.
+        Update an existing insight.
     delete(id) -> None
         Delete an insight by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        insight = client.btinsights.get_by_id(id="INS7")
-        insight.name
-        # 'Cost optimizer run'
-        ```
+    client = Albert()
+    insight = client.btinsights.get_by_id(id="INS7")
+    insight.name
+    # 'Cost optimizer run'
+    ```
     """
 
     _api_version = "v3"
@@ -90,7 +91,7 @@ class BTInsightCollection(BaseCollection):
 
     @validate_call
     def create(self, *, insight: BTInsight) -> BTInsight:
-        """Register a new insight.
+        """Create a new insight.
 
         Parameters
         ----------
@@ -102,20 +103,21 @@ class BTInsightCollection(BaseCollection):
         BTInsight
             The newly created insight, populated with its assigned ID.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.btinsight import BTInsight, BTInsightCategory
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.btinsight import BTInsight, BTInsightCategory
 
-            client = Albert()
-            insight = BTInsight(
-                name="Cost optimizer run",
-                category=BTInsightCategory.OPTIMIZER,
-            )
-            created = client.btinsights.create(insight=insight)
-            created.id
-            # 'INS7'
-            ```
+        client = Albert()
+        insight = BTInsight(
+            name="Cost optimizer run",
+            category=BTInsightCategory.OPTIMIZER,
+        )
+        created = client.btinsights.create(insight=insight)
+        created.id
+        # 'INS7'
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -125,7 +127,7 @@ class BTInsightCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTInsightId) -> BTInsight:
-        """Retrieve a single insight by its ID.
+        """Get a single insight by its ID.
 
         Parameters
         ----------
@@ -135,14 +137,15 @@ class BTInsightCollection(BaseCollection):
         Returns
         -------
         BTInsight
-            The retrieved insight.
+            The fully populated insight.
 
-        !!! example
-            ```python
-            insight = client.btinsights.get_by_id(id="INS7")
-            insight.name
-            # 'Cost optimizer run'
-            ```
+        Examples
+        --------
+        ```python
+        insight = client.btinsights.get_by_id(id="INS7")
+        insight.name
+        # 'Cost optimizer run'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTInsight(**response.json())
@@ -188,17 +191,18 @@ class BTInsightCollection(BaseCollection):
         Iterator[BTInsight]
             A lazily paginated iterator of matching insights.
 
-        !!! example
-            ```python
-            from albert.resources.btinsight import BTInsightCategory
+        Examples
+        --------
+        ```python
+        from albert.resources.btinsight import BTInsightCategory
 
-            hits = client.btinsights.search(
-                category=BTInsightCategory.OPTIMIZER,
-                max_items=10,
-            )
-            for insight in hits:
-                print(insight.id, insight.name)
-            ```
+        hits = client.btinsights.search(
+            category=BTInsightCategory.OPTIMIZER,
+            max_items=10,
+        )
+        for insight in hits:
+            print(insight.id, insight.name)
+        ```
         """
         params = {
             "offset": offset,
@@ -247,14 +251,15 @@ class BTInsightCollection(BaseCollection):
         ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``,
         ``registry``, ``start_time``, ``state``, ``total_time``.
 
-        !!! example
-            ```python
-            insight = client.btinsights.get_by_id(id="INS7")
-            insight.name = "Cost optimizer run (final)"
-            updated = client.btinsights.update(insight=insight)
-            updated.name
-            # 'Cost optimizer run (final)'
-            ```
+        Examples
+        --------
+        ```python
+        insight = client.btinsights.get_by_id(id="INS7")
+        insight.name = "Cost optimizer run (final)"
+        updated = client.btinsights.update(insight=insight)
+        updated.name
+        # 'Cost optimizer run (final)'
+        ```
         """
         path = f"{self.base_path}/{insight.id}"
         payload = self._generate_patch_payload(
@@ -278,9 +283,10 @@ class BTInsightCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.btinsights.delete(id="INS7")
-            ```
+        Examples
+        --------
+        ```python
+        client.btinsights.delete(id="INS7")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")

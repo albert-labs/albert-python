@@ -178,12 +178,13 @@ class ChatSession(BaseResource):
     ChatMessage : The turns that make up a session.
     ChatFolder : Folders that organize sessions.
 
-    !!! example
-        ```python
-        from albert.resources.chats import ChatSession
+    Examples
+    --------
+    ```python
+    from albert.resources.chats import ChatSession
 
-        session = ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
-        ```
+    session = ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
+    ```
     """
 
     id: str | None = Field(default=None)
@@ -297,18 +298,19 @@ class ChatMessage(BaseResource):
     ChatSession : The conversation a message belongs to.
     ChatComponentType : The set of component types.
 
-    !!! example
-        ```python
-        from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+    Examples
+    --------
+    ```python
+    from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
 
-        message = ChatMessage(
-            parent_id="<session id>",
-            component_type=ChatComponentType.TEXT,
-            user_type=ChatUserType.USER,
-            role=ChatRole.USER,
-            content="What raw materials contain titanium dioxide?",
-        )
-        ```
+    message = ChatMessage(
+        parent_id="<session id>",
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="What raw materials contain titanium dioxide?",
+    )
+    ```
     """
 
     id: str | None = Field(default=None)
@@ -361,12 +363,13 @@ class ChatFolder(BaseResource):
     albert.collections.chat_folders.ChatFolderCollection : Create and manage folders.
     ChatSession : The conversations a folder organizes.
 
-    !!! example
-        ```python
-        from albert.resources.chats import ChatFolder
+    Examples
+    --------
+    ```python
+    from albert.resources.chats import ChatFolder
 
-        folder = ChatFolder(name="Formulation questions")
-        ```
+    folder = ChatFolder(name="Formulation questions")
+    ```
     """
 
     id: str | None = Field(default=None)

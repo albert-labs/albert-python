@@ -23,11 +23,12 @@ class TeamMember(BaseAlbertModel):
         team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"``
         when unset.
 
-    !!! example
-        ```python
-        from albert.resources.teams import TeamMember
-        member = TeamMember(id="USR12", role="TeamOwner")
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.teams import TeamMember
+    member = TeamMember(id="USR12", role="TeamOwner")
+    ```
     """
 
     id: UserId
@@ -53,14 +54,15 @@ class Team(BaseResource):
     members : list[TeamMember] | None
         The members of the team, each with their name and team role.
 
-    !!! example
-        ```python
-        from albert.resources.teams import Team, TeamMember
-        team = Team(
-            name="Coatings R&D",
-            members=[TeamMember(id="USR12", role="TeamOwner")],
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.teams import Team, TeamMember
+    team = Team(
+        name="Coatings R&D",
+        members=[TeamMember(id="USR12", role="TeamOwner")],
+    )
+    ```
     """
 
     id: TeamId | None = Field(default=None, alias="albertId")

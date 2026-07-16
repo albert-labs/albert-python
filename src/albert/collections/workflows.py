@@ -67,23 +67,24 @@ class WorkflowCollection(BaseCollection):
     create(workflows) -> list[Workflow]
         Find-or-create workflows, deduplicating by parameter setpoints.
     get_by_id(id) -> Workflow
-        Retrieve a single workflow, including its full setpoints.
+        Get a single workflow, including its full setpoints.
     get_by_ids(ids) -> list[Workflow]
-        Retrieve multiple workflows by ID in batches.
+        Get multiple workflows by their IDs in batches.
     get_all(max_items=None) -> Iterator[Workflow]
         Iterate over all workflows (rarely needed in production).
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        wf = client.workflows.get_by_id(id="WFL1")
-        # Build the interval ID for a specific condition, then use it with
-        # client.property_data to read/write that interval's results.
-        interval_id = wf.get_interval_id({"Temperature": 25})
-        interval_id
-        # 'ROW1'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    wf = client.workflows.get_by_id(id="WFL1")
+    # Build the interval ID for a specific condition, then use it with
+    # client.property_data to read/write that interval's results.
+    interval_id = wf.get_interval_id({"Temperature": 25})
+    interval_id
+    # 'ROW1'
+    ```
     """
 
     _api_version = "v3"
@@ -107,8 +108,8 @@ class WorkflowCollection(BaseCollection):
         Workflows are deduplicated by their full setpoint configuration: the value
         and unit of every setpoint, the order of parameters within each Data
         Template / Parameter Group, and the order of those groups within the
-        workflow. Any parameter group supplied by ID only is expanded to its full
-        parameters before matching.
+        workflow. Any parameter group supplied by its ID only is expanded to its
+        full parameters before matching.
 
         Parameters
         ----------
@@ -127,44 +128,45 @@ class WorkflowCollection(BaseCollection):
         whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
         fetch the full setpoints.
 
-        !!! example
-            ```python
-            from albert.resources.workflows import (
-                Workflow,
-                ParameterGroupSetpoints,
-                ParameterSetpoint,
-            )
+        Examples
+        --------
+        ```python
+        from albert.resources.workflows import (
+            Workflow,
+            ParameterGroupSetpoints,
+            ParameterSetpoint,
+        )
 
-            # A workflow combining a Data Template's pre-linked parameters (keyed by a
-            # DAT... id, used just like a Parameter Group) with two Parameter Groups.
-            workflow = Workflow(
-                name="Tensile test at 23C, 50% RH",
-                parameter_group_setpoints=[
-                    ParameterGroupSetpoints(
-                        id="DAT1",
-                        parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
-                            ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
-                        ],
-                    ),
-                    ParameterGroupSetpoints(
-                        id="PRG1",
-                        parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
-                        ],
-                    ),
-                    ParameterGroupSetpoints(
-                        id="PRG2",
-                        parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
-                        ],
-                    ),
-                ],
-            )
-            created = client.workflows.create(workflows=[workflow])
-            created[0].id
-            # 'WFL1'
-            ```
+        # A workflow combining a Data Template's pre-linked parameters (keyed by a
+        # DAT... id, used just like a Parameter Group) with two Parameter Groups.
+        workflow = Workflow(
+            name="Tensile test at 23C, 50% RH",
+            parameter_group_setpoints=[
+                ParameterGroupSetpoints(
+                    id="DAT1",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                        ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                    ],
+                ),
+                ParameterGroupSetpoints(
+                    id="PRG1",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
+                    ],
+                ),
+                ParameterGroupSetpoints(
+                    id="PRG2",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                    ],
+                ),
+            ],
+        )
+        created = client.workflows.create(workflows=[workflow])
+        created[0].id
+        # 'WFL1'
+        ```
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
@@ -261,7 +263,7 @@ class WorkflowCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: WorkflowId) -> Workflow:
-        """Retrieve a single workflow by its ID, including its full setpoints.
+        """Get a single workflow by its ID, including its full setpoints.
 
         Unlike the workflows returned by [`create`][albert.collections.workflows.WorkflowCollection.create], this includes the fully
         populated ``parameter_group_setpoints`` and any interval combinations.
@@ -276,19 +278,20 @@ class WorkflowCollection(BaseCollection):
         Workflow
             The fully populated workflow.
 
-        !!! example
-            ```python
-            wf = client.workflows.get_by_id(id="WFL1")
-            wf.name
-            # 'Cure at 25C'
-            ```
+        Examples
+        --------
+        ```python
+        wf = client.workflows.get_by_id(id="WFL1")
+        wf.name
+        # 'Cure at 25C'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Workflow(**response.json())
 
     @validate_call
     def get_by_ids(self, *, ids: list[WorkflowId]) -> list[Workflow]:
-        """Retrieve multiple workflows by their IDs.
+        """Get multiple workflows by their IDs.
 
         Requests are automatically split into batches, so long ID lists are
         supported. Each returned workflow includes its full setpoints.
@@ -303,12 +306,13 @@ class WorkflowCollection(BaseCollection):
         list[Workflow]
             The matching workflows.
 
-        !!! example
-            ```python
-            workflows = client.workflows.get_by_ids(ids=["WFL1", "WFL2"])
-            [w.name for w in workflows]
-            # ['Cure at 25C', 'Cure at 40C']
-            ```
+        Examples
+        --------
+        ```python
+        workflows = client.workflows.get_by_ids(ids=["WFL1", "WFL2"])
+        [w.name for w in workflows]
+        # ['Cure at 25C', 'Cure at 40C']
+        ```
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
@@ -324,7 +328,7 @@ class WorkflowCollection(BaseCollection):
     ) -> Iterator[Workflow]:
         """Iterate over all workflows.
 
-        Workflows are usually retrieved by ID (via [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]) or created
+        Workflows are usually retrieved by their IDs (via [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]) or created
         as part of building a task, so a full listing is rarely needed in
         production. Results are returned as a lazily paginated iterator.
 
@@ -339,11 +343,12 @@ class WorkflowCollection(BaseCollection):
         Workflow
             Each workflow, fully populated.
 
-        !!! example
-            ```python
-            for wf in client.workflows.get_all(max_items=10):
-                print(wf.id, wf.name)
-            ```
+        Examples
+        --------
+        ```python
+        for wf in client.workflows.get_all(max_items=10):
+            print(wf.id, wf.name)
+        ```
         """
 
         def deserialize(items: list[dict]) -> list[Workflow]:

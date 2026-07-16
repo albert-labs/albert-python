@@ -38,26 +38,27 @@ class LinksCollection(BaseCollection):
     get_all(...) -> Iterator[Link]
         Iterate over links, optionally filtered by entity, type, and category.
     get_by_id(id) -> Link
-        Retrieve a single link by its ID.
+        Get a single link by its ID.
     delete(id) -> None
         Delete a link by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.links import LinkCategory
-        client = Albert()
-        links = client.links.get_all(id="INVA1", type="all", category=LinkCategory.MENTION)
-        for link in links:
-            print(link.parent.id, "->", link.child.id)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.links import LinkCategory
+    client = Albert()
+    links = client.links.get_all(id="INVA1", type="all", category=LinkCategory.MENTION)
+    for link in links:
+        print(link.parent.id, "->", link.child.id)
+    ```
     """
 
     _api_version = "v3"
     _updatable_attributes = {}  # No updatable attributes for links
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the LinksCollection with the provided session.
+        """Initialize a LinksCollection.
 
         Parameters
         ----------
@@ -81,22 +82,23 @@ class LinksCollection(BaseCollection):
         list[Link]
             The created links, each populated with its assigned Link ID.
 
-        !!! example
-            ```python
-            from albert.resources.links import Link, LinkCategory
-            from albert.core.shared.models.base import EntityLink
-            created = client.links.create(
-                links=[
-                    Link(
-                        parent=EntityLink(id="INVA1"),
-                        child=EntityLink(id="INVA2"),
-                        category=LinkCategory.LINKED_INVENTORY,
-                    )
-                ]
-            )
-            created[0].id
-            # 'LNK1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.links import Link, LinkCategory
+        from albert.core.shared.models.base import EntityLink
+        created = client.links.create(
+            links=[
+                Link(
+                    parent=EntityLink(id="INVA1"),
+                    child=EntityLink(id="INVA2"),
+                    category=LinkCategory.LINKED_INVENTORY,
+                )
+            ]
+        )
+        created[0].id
+        # 'LNK1'
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -138,11 +140,12 @@ class LinksCollection(BaseCollection):
         Iterator[Link]
             An iterator over the matching links.
 
-        !!! example
-            ```python
-            for link in client.links.get_all(id="INVA1", type="all"):
-                print(link.category, link.parent.id, link.child.id)
-            ```
+        Examples
+        --------
+        ```python
+        for link in client.links.get_all(id="INVA1", type="all"):
+            print(link.category, link.parent.id, link.child.id)
+        ```
         """
         params = {
             "type": type,
@@ -162,7 +165,7 @@ class LinksCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: LinkId) -> Link:
-        """Retrieve a link by its ID.
+        """Get a link by its ID.
 
         Parameters
         ----------
@@ -172,14 +175,15 @@ class LinksCollection(BaseCollection):
         Returns
         -------
         Link
-            The matching link.
+            The fully populated link.
 
-        !!! example
-            ```python
-            link = client.links.get_by_id(id="LNK1")
-            link.category
-            # <LinkCategory.MENTION: 'mention'>
-            ```
+        Examples
+        --------
+        ```python
+        link = client.links.get_by_id(id="LNK1")
+        link.category
+        # <LinkCategory.MENTION: 'mention'>
+        ```
         """
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
@@ -198,10 +202,11 @@ class LinksCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.links.delete(id="LNK1")
-            ```
+        Examples
+        --------
+        ```python
+        client.links.delete(id="LNK1")
+        ```
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

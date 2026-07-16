@@ -30,18 +30,19 @@ class HazardsCollection(BaseCollection):
     Methods
     -------
     get_symbols() -> list[HazardSymbol]
-        Fetch all available hazard pictogram symbols.
+        Get all available hazard pictogram symbols.
     get_statements() -> list[HazardStatement]
-        Fetch all available hazard statements.
+        Get all available hazard statements.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        symbols = client.hazards.get_symbols()
-        [s.name for s in symbols]
-        ```
+    client = Albert()
+    symbols = client.hazards.get_symbols()
+    [s.name for s in symbols]
+    ```
     """
 
     _api_version = "v3"
@@ -59,18 +60,19 @@ class HazardsCollection(BaseCollection):
 
     @validate_call
     def get_symbols(self) -> list[HazardSymbol]:
-        """Fetch all available hazard pictogram symbols.
+        """Get all available hazard pictogram symbols.
 
         Returns
         -------
         list[HazardSymbol]
             The full reference list of hazard symbols.
 
-        !!! example
-            ```python
-            symbols = client.hazards.get_symbols()
-            symbols[0].name
-            ```
+        Examples
+        --------
+        ```python
+        symbols = client.hazards.get_symbols()
+        symbols[0].name
+        ```
         """
 
         response = self.session.get(f"{self.base_path}/hazardsymbols")
@@ -80,18 +82,19 @@ class HazardsCollection(BaseCollection):
 
     @validate_call
     def get_statements(self) -> list[HazardStatement]:
-        """Fetch all available hazard statements.
+        """Get all available hazard statements.
 
         Returns
         -------
         list[HazardStatement]
             The full reference list of hazard statements.
 
-        !!! example
-            ```python
-            statements = client.hazards.get_statements()
-            statements[0].name
-            ```
+        Examples
+        --------
+        ```python
+        statements = client.hazards.get_statements()
+        statements[0].name
+        ```
         """
 
         response = self.session.get(f"{self.base_path}/hazardstatements")

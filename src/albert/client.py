@@ -371,7 +371,7 @@ class Albert:
 
 class AsyncAlbert:
     """
-    Async client for interacting with the Albert chat API (🧪Beta).
+    Async client for interacting with the Albert chat API (🧪 Beta).
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.

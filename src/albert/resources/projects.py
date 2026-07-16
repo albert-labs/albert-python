@@ -122,20 +122,21 @@ class Project(BaseSessionResource):
     old_api_params : dict | None
         Read-only. Do not use.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.projects import Project, ProjectClass
-        client = Albert()
-        project = client.projects.create(
-            project=Project(
-                description="Weatherproof Coatings 2026",
-                project_class=ProjectClass.SHARED,
-            )
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.projects import Project, ProjectClass
+    client = Albert()
+    project = client.projects.create(
+        project=Project(
+            description="Weatherproof Coatings 2026",
+            project_class=ProjectClass.SHARED,
         )
-        project.id
-        # 'PRO123'
-        ```
+    )
+    project.id
+    # 'PRO123'
+    ```
     """
 
     description: str = Field(min_length=1, max_length=2000)

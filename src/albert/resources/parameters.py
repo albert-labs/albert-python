@@ -61,15 +61,16 @@ class Parameter(BaseResource):
     required : bool | None
         Whether this parameter must be filled in within a Parameter Group.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.parameters import Parameter
-        client = Albert()
-        param = client.parameters.create(parameter=Parameter(name="Temperature"))
-        param.id
-        # 'PRM1'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.parameters import Parameter
+    client = Albert()
+    param = client.parameters.create(parameter=Parameter(name="Temperature"))
+    param.id
+    # 'PRM1'
+    ```
     """
 
     name: str

@@ -382,14 +382,15 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     acl : TemplateACL or None
         The access-control list governing who can use the template.
 
-    !!! example
-        ```python
-        from albert.resources.custom_templates import CustomTemplate, TemplateCategory
-        template = CustomTemplate(
-            name="Standard Property Task",
-            category=TemplateCategory.PROPERTY,
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.custom_templates import CustomTemplate, TemplateCategory
+    template = CustomTemplate(
+        name="Standard Property Task",
+        category=TemplateCategory.PROPERTY,
+    )
+    ```
     """
 
     name: str

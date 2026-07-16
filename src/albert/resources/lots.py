@@ -131,19 +131,20 @@ class Lot(BaseResource):
     task_completion_date : str | None
         The completion date of the Task that produced the lot. Read-only.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.lots import Lot
-        from albert.resources.storage_locations import StorageLocation
-        client = Albert()
-        lot = Lot(
-            inventory_id="INVA1",
-            storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
-            initial_quantity=10.0,
-        )
-        created = client.lots.create(lots=[lot])
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.lots import Lot
+    from albert.resources.storage_locations import StorageLocation
+    client = Albert()
+    lot = Lot(
+        inventory_id="INVA1",
+        storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+        initial_quantity=10.0,
+    )
+    created = client.lots.create(lots=[lot])
+    ```
     """
 
     action: str | None = Field(default=None)

@@ -48,9 +48,9 @@ class SynthesisCollection(BaseCollection):
     create(parent_id, name, block_id=None, smiles=None) -> Synthesis
         Create a synthesis record for a notebook Ketcher block.
     get_by_id(id, include_recommendations=False, include_predictions=False, version=None) -> Synthesis
-        Retrieve a single synthesis record by its Synthesis ID.
+        Get a single synthesis record by its ID.
     update(synthesis) -> Synthesis
-        Apply changes to an existing synthesis record.
+        Update an existing synthesis record.
     update_canvas_data(synthesis_id, smiles, data, png) -> Synthesis
         Replace the drawn reaction (SMILES, canvas data, and preview image).
     update_reactant_row_values(synthesis_id, row_id, values) -> Synthesis
@@ -58,16 +58,17 @@ class SynthesisCollection(BaseCollection):
     create_reactant_productant_table(synthesis_id) -> Synthesis
         Initialize the reactant/product table and reveal the reaction worksheet.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        synthesis = client.synthesis.create(
-            parent_id="NTBA1",
-            name="Amide coupling",
-        )
-        print(synthesis.id)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    synthesis = client.synthesis.create(
+        parent_id="NTBA1",
+        name="Amide coupling",
+    )
+    print(synthesis.id)
+    ```
     """
 
     _api_version = "v3"
@@ -117,16 +118,17 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The created synthesis record, populated with its assigned Synthesis ID.
 
-        !!! example
-            ```python
-            synthesis = client.synthesis.create(
-                parent_id="NTBA1",
-                name="Amide coupling",
-                smiles="CC(=O)O.CN>>CC(=O)NC",
-            )
-            synthesis.id
-            # 'SYNA1'
-            ```
+        Examples
+        --------
+        ```python
+        synthesis = client.synthesis.create(
+            parent_id="NTBA1",
+            name="Amide coupling",
+            smiles="CC(=O)O.CN>>CC(=O)NC",
+        )
+        synthesis.id
+        # 'SYNA1'
+        ```
         """
         payload: dict[str, Any] = {"name": name, "blockId": block_id or str(uuid.uuid4())}
         if smiles is not None:
@@ -147,7 +149,7 @@ class SynthesisCollection(BaseCollection):
         include_predictions: bool = False,
         version: str | None = None,
     ) -> Synthesis:
-        """Retrieve a synthesis record by its Synthesis ID.
+        """Get a synthesis record by its ID.
 
         Parameters
         ----------
@@ -165,13 +167,14 @@ class SynthesisCollection(BaseCollection):
         Returns
         -------
         Synthesis
-            The requested synthesis record.
+            The fully populated synthesis record.
 
-        !!! example
-            ```python
-            synthesis = client.synthesis.get_by_id(id="SYNA1")
-            print(synthesis.name)
-            ```
+        Examples
+        --------
+        ```python
+        synthesis = client.synthesis.get_by_id(id="SYNA1")
+        print(synthesis.name)
+        ```
         """
         params: dict[str, Any] = {
             "recommendations": include_recommendations,
@@ -211,15 +214,16 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The updated synthesis record.
 
-        !!! example
-            ```python
-            synthesis = client.synthesis.update_canvas_data(
-                synthesis_id="SYNA1",
-                smiles="CC(=O)O.CN>>CC(=O)NC",
-                data=serialized_canvas,
-                png=base64_png,
-            )
-            ```
+        Examples
+        --------
+        ```python
+        synthesis = client.synthesis.update_canvas_data(
+            synthesis_id="SYNA1",
+            smiles="CC(=O)O.CN>>CC(=O)NC",
+            data=serialized_canvas,
+            png=base64_png,
+        )
+        ```
         """
         payload = {
             "smiles": smiles,
@@ -233,7 +237,7 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def update(self, *, synthesis: Synthesis) -> Synthesis:
-        """Apply changes to an existing synthesis record.
+        """Update an existing synthesis record.
 
         Fetch the record with [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id], modify the updatable fields on the
         returned object, then pass it here. Only the fields listed in Notes are
@@ -248,7 +252,7 @@ class SynthesisCollection(BaseCollection):
         Returns
         -------
         Synthesis
-            The refreshed synthesis record.
+            The updated synthesis record.
 
         Raises
         ------
@@ -260,12 +264,13 @@ class SynthesisCollection(BaseCollection):
         The following fields can be updated: ``name``, ``status``,
         ``hide_reaction_worksheet``.
 
-        !!! example
-            ```python
-            synthesis = client.synthesis.get_by_id(id="SYNA1")
-            synthesis.name = "Amide coupling (revised)"
-            updated = client.synthesis.update(synthesis=synthesis)
-            ```
+        Examples
+        --------
+        ```python
+        synthesis = client.synthesis.get_by_id(id="SYNA1")
+        synthesis.name = "Amide coupling (revised)"
+        updated = client.synthesis.update(synthesis=synthesis)
+        ```
         """
         if synthesis.id is None:
             msg = "Synthesis id is required to update the record."
@@ -310,17 +315,18 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The updated synthesis record.
 
-        !!! example
-            ```python
-            from albert.resources.synthesis import ReactantValues
-            synthesis = client.synthesis.get_by_id(id="SYNA1")
-            row_id = synthesis.reactants[0].row_id
-            updated = client.synthesis.update_reactant_row_values(
-                synthesis_id="SYNA1",
-                row_id=row_id,
-                values=ReactantValues(mass=10.0, eq=1.0),
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.synthesis import ReactantValues
+        synthesis = client.synthesis.get_by_id(id="SYNA1")
+        row_id = synthesis.reactants[0].row_id
+        updated = client.synthesis.update_reactant_row_values(
+            synthesis_id="SYNA1",
+            row_id=row_id,
+            values=ReactantValues(mass=10.0, eq=1.0),
+        )
+        ```
         """
         payload = {
             "data": [
@@ -362,12 +368,13 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The synthesis record with its reactant/product table initialized.
 
-        !!! example
-            ```python
-            synthesis = client.synthesis.create_reactant_productant_table(
-                synthesis_id="SYNA1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        synthesis = client.synthesis.create_reactant_productant_table(
+            synthesis_id="SYNA1",
+        )
+        ```
         """
         synthesis = self.get_by_id(id=synthesis_id)
         if synthesis.inventory_id is not None:

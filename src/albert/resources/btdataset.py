@@ -68,12 +68,13 @@ class BTDataset(BaseResource):
     references : BTDatasetReferences or None
         The Albert entities the dataset was assembled from.
 
-    !!! example
-        ```python
-        from albert.resources.btdataset import BTDataset
+    Examples
+    --------
+    ```python
+    from albert.resources.btdataset import BTDataset
 
-        dataset = BTDataset(name="Coatings training set")
-        ```
+    dataset = BTDataset(name="Coatings training set")
+    ```
     """
 
     name: str

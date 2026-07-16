@@ -33,13 +33,14 @@ class Company(BaseResource):
         Lifecycle status of the company (inherited from
         [`BaseResource`][albert.core.shared.models.base.BaseResource]).
 
-    !!! example
-        ```python
-        from albert.resources.companies import Company
+    Examples
+    --------
+    ```python
+    from albert.resources.companies import Company
 
-        # Build a company to create or attach to an inventory item
-        company = Company(name="Acme Chemicals")
-        ```
+    # Build a company to create or attach to an inventory item
+    company = Company(name="Acme Chemicals")
+    ```
     """
 
     name: str

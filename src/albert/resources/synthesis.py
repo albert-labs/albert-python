@@ -170,11 +170,12 @@ class ReactantValues(BaseAlbertModel):
     concentration : float or int, optional
         The concentration of the reactant.
 
-    !!! example
-        ```python
-        from albert.resources.synthesis import ReactantValues
-        values = ReactantValues(mass=10.0, eq=1.0)
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.synthesis import ReactantValues
+    values = ReactantValues(mass=10.0, eq=1.0)
+    ```
     """
 
     mass: float | None = None

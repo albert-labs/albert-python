@@ -42,9 +42,9 @@ class CompanyCollection(BaseCollection):
     get_all(name=None, exact_match=True, max_items=None) -> Iterator[Company]
         Iterate over companies, optionally filtered by name.
     get_by_id(id) -> Company
-        Retrieve a single company by its Company ID.
+        Get a single company by its ID.
     get_by_name(name, exact_match=True) -> Company | None
-        Retrieve a single company by name, or None if not found.
+        Get a single company by name, or None if not found.
     exists(name, exact_match=True) -> bool
         Check whether a company with the given name exists.
     create(company) -> Company
@@ -54,20 +54,21 @@ class CompanyCollection(BaseCollection):
     rename(old_name, new_name) -> Company
         Rename an existing company.
     update(company) -> Company
-        Apply changes to an existing company (identified by its ID).
+        Update an existing company (identified by its ID).
     merge(parent_id, child_ids) -> Company
         Merge one or more duplicate companies into a parent company.
     delete(id) -> None
-        Delete a company by its Company ID.
+        Delete a company by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        company = client.companies.get_or_create(company="Acme Chemicals")
-        print(company.id, company.name)
-        ```
+    client = Albert()
+    company = client.companies.get_or_create(company="Acme Chemicals")
+    print(company.id, company.name)
+    ```
     """
 
     _updatable_attributes = {"name"}
@@ -119,12 +120,13 @@ class CompanyCollection(BaseCollection):
             An iterator over the matching [`Company`][albert.resources.companies.Company]
             objects.
 
-        !!! example
-            ```python
-            # All companies whose name contains "chem"
-            for company in client.companies.get_all(name="chem", exact_match=False):
-                print(company.id, company.name)
-            ```
+        Examples
+        --------
+        ```python
+        # All companies whose name contains "chem"
+        for company in client.companies.get_all(name="chem", exact_match=False):
+            print(company.id, company.name)
+        ```
         """
         params = {
             "dupDetection": "false",
@@ -162,18 +164,19 @@ class CompanyCollection(BaseCollection):
         bool
             True if a matching company exists, False otherwise.
 
-        !!! example
-            ```python
-            client.companies.exists(name="Acme Chemicals")
-            # True
-            ```
+        Examples
+        --------
+        ```python
+        client.companies.exists(name="Acme Chemicals")
+        # True
+        ```
         """
         companies = self.get_by_name(name=name, exact_match=exact_match)
         return bool(companies)
 
     @validate_call
     def get_by_id(self, *, id: CompanyId) -> Company:
-        """Retrieve a single company by its Company ID.
+        """Get a single company by its ID.
 
         To look up a company when you only know its name, use [`get_by_name`][albert.collections.companies.CompanyCollection.get_by_name].
 
@@ -185,13 +188,14 @@ class CompanyCollection(BaseCollection):
         Returns
         -------
         Company
-            The matching [`Company`][albert.resources.companies.Company].
+            The fully populated [`Company`][albert.resources.companies.Company].
 
-        !!! example
-            ```python
-            company = client.companies.get_by_id(id="COM123")
-            print(company.name)
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.get_by_id(id="COM123")
+        print(company.name)
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -200,7 +204,7 @@ class CompanyCollection(BaseCollection):
         return found_company
 
     def get_by_name(self, *, name: str, exact_match: bool = True) -> Company | None:
-        """Retrieve a single company by name.
+        """Get a single company by name.
 
         Returns the first match, or None if no company matches. To check only for
         existence, use [`exists`][albert.collections.companies.CompanyCollection.exists]; to look up or create in one step, use
@@ -220,12 +224,13 @@ class CompanyCollection(BaseCollection):
             The matching [`Company`][albert.resources.companies.Company], or None if
             no company matches.
 
-        !!! example
-            ```python
-            company = client.companies.get_by_name(name="Acme Chemicals")
-            company.id if company else "not found"
-            # 'COM123'
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.get_by_name(name="Acme Chemicals")
+        company.id if company else "not found"
+        # 'COM123'
+        ```
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
@@ -247,12 +252,13 @@ class CompanyCollection(BaseCollection):
         Company
             The newly created company, populated with its assigned Company ID.
 
-        !!! example
-            ```python
-            company = client.companies.create(company="Acme Chemicals")
-            company.id
-            # 'COM123'
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.create(company="Acme Chemicals")
+        company.id
+        # 'COM123'
+        ```
         """
         if isinstance(company, str):
             company = Company(name=company)
@@ -281,11 +287,12 @@ class CompanyCollection(BaseCollection):
             The existing company if one matches by name, otherwise the newly
             created company.
 
-        !!! example
-            ```python
-            company = client.companies.get_or_create(company="Acme Chemicals")
-            print(company.id, company.name)
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.get_or_create(company="Acme Chemicals")
+        print(company.id, company.name)
+        ```
         """
         if isinstance(company, str):
             company = Company(name=company)
@@ -321,13 +328,14 @@ class CompanyCollection(BaseCollection):
         Company
             The parent company, re-fetched after the merge.
 
-        !!! example
-            ```python
-            company = client.companies.merge(
-                parent_id="COM123",
-                child_ids=["COM456", "COM789"],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.merge(
+            parent_id="COM123",
+            child_ids=["COM456", "COM789"],
+        )
+        ```
         """
 
         child_ids = [child_ids] if isinstance(child_ids, str) else list(child_ids)
@@ -345,7 +353,7 @@ class CompanyCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CompanyId) -> None:
-        """Delete a company by its Company ID.
+        """Delete a company by its ID.
 
         Parameters
         ----------
@@ -356,10 +364,11 @@ class CompanyCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.companies.delete(id="COM123")
-            ```
+        Examples
+        --------
+        ```python
+        client.companies.delete(id="COM123")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -388,13 +397,14 @@ class CompanyCollection(BaseCollection):
         AlbertException
             If no company with ``old_name`` is found.
 
-        !!! example
-            ```python
-            company = client.companies.rename(
-                old_name="Acme Chemicals",
-                new_name="Acme Specialty Chemicals",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.rename(
+            old_name="Acme Chemicals",
+            new_name="Acme Specialty Chemicals",
+        )
+        ```
         """
         company = self.get_by_name(name=old_name, exact_match=True)
         if not company:
@@ -418,12 +428,11 @@ class CompanyCollection(BaseCollection):
         return updated_company
 
     def update(self, *, company: Company) -> Company:
-        """Apply changes to an existing company.
+        """Update an existing company.
 
-        The company is identified by its ``id``, which must be set. The current
-        server state is fetched and diffed against the passed object, and only the
-        updatable fields are patched. To rename a company by its current name
-        rather than by ID, use [`rename`][albert.collections.companies.CompanyCollection.rename].
+        The company is identified by its ``id``, which must be set. Only the
+        updatable fields listed in Notes are applied. To rename a company by its
+        current name rather than by its ID, use [`rename`][albert.collections.companies.CompanyCollection.rename].
 
         Parameters
         ----------
@@ -434,18 +443,19 @@ class CompanyCollection(BaseCollection):
         Returns
         -------
         Company
-            The updated company, re-fetched after the patch.
+            The updated company.
 
         Notes
         -----
         The following fields can be updated: ``name``.
 
-        !!! example
-            ```python
-            company = client.companies.get_by_id(id="COM123")
-            company.name = "Acme Specialty Chemicals"
-            updated = client.companies.update(company=company)
-            ```
+        Examples
+        --------
+        ```python
+        company = client.companies.get_by_id(id="COM123")
+        company.name = "Acme Specialty Chemicals"
+        updated = client.companies.update(company=company)
+        ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)

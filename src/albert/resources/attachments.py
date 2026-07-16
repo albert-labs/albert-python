@@ -110,15 +110,16 @@ class Attachment(BaseResource):
         Optional safety and classification metadata. See
         [`AttachmentMetadata`][albert.resources.attachments.AttachmentMetadata].
 
-    !!! example
-        ```python
-        from albert.resources.attachments import Attachment
-        attachment = Attachment(
-            parent_id="INVA1",
-            name="datasheet.pdf",
-            key="INVA1/documents/datasheet.pdf",
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.attachments import Attachment
+    attachment = Attachment(
+        parent_id="INVA1",
+        name="datasheet.pdf",
+        key="INVA1/documents/datasheet.pdf",
+    )
+    ```
     """
 
     id: AttachmentId | None = Field(default=None, alias="albertId")

@@ -39,25 +39,26 @@ class BTDatasetCollection(BaseCollection):
     Methods
     -------
     create(dataset) -> BTDataset
-        Register a new dataset.
+        Create a new dataset.
     get_by_id(id) -> BTDataset
-        Retrieve a single dataset by its ID.
+        Get a single dataset by its ID.
     get_all(...) -> Iterator[BTDataset]
         Iterate over datasets, optionally filtered by name or creator.
     update(dataset) -> BTDataset
-        Apply changes to an existing dataset.
+        Update an existing dataset.
     delete(id) -> None
         Delete a dataset by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        dataset = client.btdatasets.get_by_id(id="DST1")
-        dataset.name
-        # 'Coatings training set'
-        ```
+    client = Albert()
+    dataset = client.btdatasets.get_by_id(id="DST1")
+    dataset.name
+    # 'Coatings training set'
+    ```
     """
 
     _api_version = "v3"
@@ -76,7 +77,7 @@ class BTDatasetCollection(BaseCollection):
 
     @validate_call
     def create(self, *, dataset: BTDataset) -> BTDataset:
-        """Register a new dataset.
+        """Create a new dataset.
 
         Parameters
         ----------
@@ -89,17 +90,18 @@ class BTDatasetCollection(BaseCollection):
         BTDataset
             The newly created dataset, populated with its assigned ID.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.btdataset import BTDataset
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.btdataset import BTDataset
 
-            client = Albert()
-            dataset = BTDataset(name="Coatings training set")
-            created = client.btdatasets.create(dataset=dataset)
-            created.id
-            # 'DST1'
-            ```
+        client = Albert()
+        dataset = BTDataset(name="Coatings training set")
+        created = client.btdatasets.create(dataset=dataset)
+        created.id
+        # 'DST1'
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -109,7 +111,7 @@ class BTDatasetCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTDatasetId) -> BTDataset:
-        """Retrieve a single dataset by its ID.
+        """Get a single dataset by its ID.
 
         Parameters
         ----------
@@ -119,14 +121,15 @@ class BTDatasetCollection(BaseCollection):
         Returns
         -------
         BTDataset
-            The retrieved dataset.
+            The fully populated dataset.
 
-        !!! example
-            ```python
-            dataset = client.btdatasets.get_by_id(id="DST1")
-            dataset.name
-            # 'Coatings training set'
-            ```
+        Examples
+        --------
+        ```python
+        dataset = client.btdatasets.get_by_id(id="DST1")
+        dataset.name
+        # 'Coatings training set'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTDataset(**response.json())
@@ -154,14 +157,15 @@ class BTDatasetCollection(BaseCollection):
         The following fields can be updated: ``file_name``, ``key``, ``name``,
         ``references``.
 
-        !!! example
-            ```python
-            dataset = client.btdatasets.get_by_id(id="DST1")
-            dataset.name = "Coatings training set (v2)"
-            updated = client.btdatasets.update(dataset=dataset)
-            updated.name
-            # 'Coatings training set (v2)'
-            ```
+        Examples
+        --------
+        ```python
+        dataset = client.btdatasets.get_by_id(id="DST1")
+        dataset.name = "Coatings training set (v2)"
+        updated = client.btdatasets.update(dataset=dataset)
+        updated.name
+        # 'Coatings training set (v2)'
+        ```
         """
         path = f"{self.base_path}/{dataset.id}"
         payload = self._generate_patch_payload(
@@ -184,10 +188,11 @@ class BTDatasetCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.btdatasets.delete(id="DST1")
-            ```
+        Examples
+        --------
+        ```python
+        client.btdatasets.delete(id="DST1")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -222,11 +227,12 @@ class BTDatasetCollection(BaseCollection):
         Iterator[BTDataset]
             A lazily paginated iterator over datasets.
 
-        !!! example
-            ```python
-            for dataset in client.btdatasets.get_all(max_items=25):
-                print(dataset.id, dataset.name)
-            ```
+        Examples
+        --------
+        ```python
+        for dataset in client.btdatasets.get_all(max_items=25):
+            print(dataset.id, dataset.name)
+        ```
         """
         params = {
             "startKey": start_key,

@@ -75,16 +75,17 @@ class BTModelSession(BaseResource, protected_namespaces=()):
     flag : bool
         Boolean marker on the session. Defaults to False.
 
-    !!! example
-        ```python
-        from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
+    Examples
+    --------
+    ```python
+    from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
 
-        session = BTModelSession(
-            name="Tensile strength study",
-            category=BTModelSessionCategory.USER_MODEL,
-            dataset_id="DST1",
-        )
-        ```
+    session = BTModelSession(
+        name="Tensile strength study",
+        category=BTModelSessionCategory.USER_MODEL,
+        dataset_id="DST1",
+    )
+    ```
     """
 
     name: str
@@ -178,12 +179,13 @@ class BTModel(BaseResource, protected_namespaces=()):
     flag : bool
         Boolean marker on the model. Defaults to False.
 
-    !!! example
-        ```python
-        from albert.resources.btmodel import BTModel
+    Examples
+    --------
+    ```python
+    from albert.resources.btmodel import BTModel
 
-        model = BTModel(name="Random forest v1")
-        ```
+    model = BTModel(name="Random forest v1")
+    ```
     """
 
     name: str

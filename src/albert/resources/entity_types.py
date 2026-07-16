@@ -191,16 +191,17 @@ class EntityTypeSearchQueryStrings(BaseAlbertModel):
     PRG : str or None
         Search string for Parameter Groups.
 
-    !!! example
-        ```python
-        from albert.resources.entity_types import EntityTypeSearchQueryStrings
-        # Here the custom field names match on the Task and on the
-        # Data Templates + Parameter Groups.
-        search_strings = EntityTypeSearchQueryStrings(
-            DAT="customField1={customField1}&customField2={customField2}",
-            PRG="customField1={customField1}&customField2={customField2}",
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.entity_types import EntityTypeSearchQueryStrings
+    # Here the custom field names match on the Task and on the
+    # Data Templates + Parameter Groups.
+    search_strings = EntityTypeSearchQueryStrings(
+        DAT="customField1={customField1}&customField2={customField2}",
+        PRG="customField1={customField1}&customField2={customField2}",
+    )
+    ```
     """
 
     DAT: str | None = None
@@ -251,19 +252,20 @@ class EntityType(BaseResource):
     search_query_string : EntityTypeSearchQueryStrings or None
         Query strings used to find related Data Templates and Parameter Groups.
 
-    !!! example
-        ```python
-        from albert.resources.entity_types import (
-            EntityCategory,
-            EntityServiceType,
-            EntityType,
-        )
-        entity_type = EntityType(
-            label="Stability Task",
-            service=EntityServiceType.TASKS,
-            category=EntityCategory.PROPERTY,
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.entity_types import (
+        EntityCategory,
+        EntityServiceType,
+        EntityType,
+    )
+    entity_type = EntityType(
+        label="Stability Task",
+        service=EntityServiceType.TASKS,
+        category=EntityCategory.PROPERTY,
+    )
+    ```
     """
 
     id: EntityTypeId | None = Field(alias="albertId", default=None)

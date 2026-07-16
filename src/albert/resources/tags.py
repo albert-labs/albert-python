@@ -43,11 +43,12 @@ class Tag(BaseResource):
     from_string(tag) -> Tag
         Build a Tag from its name string.
 
-    !!! example
-        ```python
-        from albert.resources.tags import Tag
-        tag = Tag(tag="high-priority")
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.tags import Tag
+    tag = Tag(tag="high-priority")
+    ```
     """
 
     # different endpoints use different aliases for the fields
@@ -76,10 +77,11 @@ class Tag(BaseResource):
         Tag
             A Tag with the given name.
 
-        !!! example
-            ```python
-            from albert.resources.tags import Tag
-            tag = Tag.from_string("experimental")
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.tags import Tag
+        tag = Tag.from_string("experimental")
+        ```
         """
         return cls(tag=tag)

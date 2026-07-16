@@ -40,16 +40,17 @@ class Link(BaseResource):
         The Albert ID of the link (format ``LNK...``). Assigned by Albert when
         the link is created.
 
-    !!! example
-        ```python
-        from albert.resources.links import Link, LinkCategory
-        from albert.core.shared.models.base import EntityLink
-        link = Link(
-            parent=EntityLink(id="INVA1"),
-            child=EntityLink(id="INVA2"),
-            category=LinkCategory.LINKED_INVENTORY,
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.links import Link, LinkCategory
+    from albert.core.shared.models.base import EntityLink
+    link = Link(
+        parent=EntityLink(id="INVA1"),
+        child=EntityLink(id="INVA2"),
+        category=LinkCategory.LINKED_INVENTORY,
+    )
+    ```
     """
 
     parent: EntityLink = Field(..., alias="Parent")

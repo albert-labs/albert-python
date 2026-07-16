@@ -149,15 +149,16 @@ class BTInsight(BaseResource, protected_namespaces=()):
     content_edited : bool or None
         Whether the insight's content has been manually edited.
 
-    !!! example
-        ```python
-        from albert.resources.btinsight import BTInsight, BTInsightCategory
+    Examples
+    --------
+    ```python
+    from albert.resources.btinsight import BTInsight, BTInsightCategory
 
-        insight = BTInsight(
-            name="Cost optimizer run",
-            category=BTInsightCategory.OPTIMIZER,
-        )
-        ```
+    insight = BTInsight(
+        name="Cost optimizer run",
+        category=BTInsightCategory.OPTIMIZER,
+    )
+    ```
     """
 
     name: str

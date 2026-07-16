@@ -68,19 +68,19 @@ class InventoryCollection(BaseCollection):
     Methods
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
-        Register a new inventory item (raw material, consumable, or equipment).
+        Create a new inventory item (raw material, consumable, or equipment).
     get_by_id(id) -> InventoryItem
-        Retrieve a single fully populated item by its Inventory ID.
+        Get a single fully populated item by its ID.
     get_by_ids(ids) -> list[InventoryItem]
-        Retrieve many items by ID in batches.
+        Get many items by their IDs in batches.
     search(...) -> Iterator[InventorySearchItem]
         Fast, lightweight search returning partial items (best for lookups/counts).
     get_all(...) -> Iterator[InventoryItem]
         Same filters as search, but returns fully populated items (slower).
     update(inventory_item) -> InventoryItem
-        Apply changes to an existing item.
+        Update an existing item.
     delete(id) -> None
-        Delete an item by its Inventory ID.
+        Delete an item by its ID.
     merge(parent_id, child_id, modules=None) -> None
         Merge duplicate item(s) into a single parent item.
     exists(inventory_item) -> bool
@@ -90,26 +90,27 @@ class InventoryCollection(BaseCollection):
     add_specs(inventory_id, specs) -> InventorySpecList
         Attach specification properties to an item.
     get_specs(ids) -> list[InventorySpecList]
-        Retrieve the specs attached to a list of items.
+        Get the specs attached to a list of items.
     get_all_facets(...) -> list[FacetItem]
-        Retrieve facet groups (aggregated filter counts) for a query.
+        Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
-        Retrieve a single named facet group for a query.
+        Get a single named facet group for a query.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.inventory import InventoryCategory
-        client = Albert()
-        # Find raw materials mentioning "titanium dioxide"
-        items = client.inventory.get_all(
-            text="titanium dioxide",
-            category=InventoryCategory.RAW_MATERIALS,
-            max_items=25,
-        )
-        for item in items:
-            print(item.id, item.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.inventory import InventoryCategory
+    client = Albert()
+    # Find raw materials mentioning "titanium dioxide"
+    items = client.inventory.get_all(
+        text="titanium dioxide",
+        category=InventoryCategory.RAW_MATERIALS,
+        max_items=25,
+    )
+    for item in items:
+        print(item.id, item.name)
+    ```
     """
 
     _api_version = "v3"
@@ -162,10 +163,11 @@ class InventoryCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
-            ```
+        Examples
+        --------
+        ```python
+        client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
+        ```
         """
 
         # assume "all" modules if not specified explicitly
@@ -205,18 +207,19 @@ class InventoryCollection(BaseCollection):
         bool
             True if a matching item exists, False otherwise.
 
-        !!! example
-            ```python
-            from albert.resources.inventory import InventoryItem, InventoryCategory
-            from albert.resources.companies import Company
-            candidate = InventoryItem(
-                name="Acetone",
-                category=InventoryCategory.RAW_MATERIALS,
-                company=Company(name="Acme Chemicals"),
-            )
-            client.inventory.exists(inventory_item=candidate)
-            # True
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.inventory import InventoryItem, InventoryCategory
+        from albert.resources.companies import Company
+        candidate = InventoryItem(
+            name="Acetone",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=Company(name="Acme Chemicals"),
+        )
+        client.inventory.exists(inventory_item=candidate)
+        # True
+        ```
         """
         hit = self.get_match_or_none(inventory_item=inventory_item)
         return bool(hit)
@@ -237,12 +240,13 @@ class InventoryCollection(BaseCollection):
         InventoryItem or None
             The matching item, or None if no match is found.
 
-        !!! example
-            ```python
-            existing = client.inventory.get_match_or_none(inventory_item=candidate)
-            existing.id if existing else "no match"
-            # 'INVA1'
-            ```
+        Examples
+        --------
+        ```python
+        existing = client.inventory.get_match_or_none(inventory_item=candidate)
+        existing.id if existing else "no match"
+        # 'INVA1'
+        ```
         """
         inv_company = (
             inventory_item.company.name
@@ -265,7 +269,7 @@ class InventoryCollection(BaseCollection):
         inventory_item: InventoryItem,
         avoid_duplicates: bool = True,
     ) -> InventoryItem:
-        """Register a new inventory item.
+        """Create a new inventory item.
 
         Use this to add a raw material, consumable, or equipment item to the
         catalog. Formula items are not supported here; build those through the
@@ -297,19 +301,20 @@ class InventoryCollection(BaseCollection):
         NotImplementedError
             If ``inventory_item.category`` is ``Formulas``.
 
-        !!! example
-            ```python
-            from albert.resources.inventory import InventoryItem, InventoryCategory
-            from albert.resources.companies import Company
-            item = InventoryItem(
-                name="Titanium Dioxide",
-                category=InventoryCategory.RAW_MATERIALS,
-                company=Company(name="Acme Chemicals"),
-            )
-            created = client.inventory.create(inventory_item=item)
-            created.id
-            # 'INVA1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.inventory import InventoryItem, InventoryCategory
+        from albert.resources.companies import Company
+        item = InventoryItem(
+            name="Titanium Dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=Company(name="Acme Chemicals"),
+        )
+        created = client.inventory.create(inventory_item=item)
+        created.id
+        # 'INVA1'
+        ```
         """
         category = (
             inventory_item.category
@@ -349,7 +354,7 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
-        """Retrieve a single, fully populated inventory item by its ID.
+        """Get a single, fully populated inventory item by its ID.
 
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
@@ -364,12 +369,13 @@ class InventoryCollection(BaseCollection):
         InventoryItem
             The fully populated item.
 
-        !!! example
-            ```python
-            item = client.inventory.get_by_id(id="INVA1")
-            item.name
-            # 'Titanium Dioxide'
-            ```
+        Examples
+        --------
+        ```python
+        item = client.inventory.get_by_id(id="INVA1")
+        item.name
+        # 'Titanium Dioxide'
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -377,7 +383,7 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
-        """Retrieve multiple fully populated inventory items by their IDs.
+        """Get multiple fully populated inventory items by their IDs.
 
         Requests are automatically split into batches, so arbitrarily long ID
         lists are supported. Items not found are omitted from the result.
@@ -392,12 +398,13 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The matching items. Order is not guaranteed to match the input.
 
-        !!! example
-            ```python
-            items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
-            [i.name for i in items]
-            # ['Titanium Dioxide', 'Acetone']
-            ```
+        Examples
+        --------
+        ```python
+        items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
+        [i.name for i in items]
+        # ['Titanium Dioxide', 'Acetone']
+        ```
         """
         batch_size = 250
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
@@ -409,7 +416,7 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Retrieve the specs attached to a list of inventory items.
+        """Get the specs attached to a list of inventory items.
 
         A spec is a declared property of an item (see [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] for the
         distinction between specs and task-measured Property Data). Requests are
@@ -425,12 +432,13 @@ class InventoryCollection(BaseCollection):
         list[InventorySpecList]
             One entry per item, each holding that item's specs.
 
-        !!! example
-            ```python
-            spec_lists = client.inventory.get_specs(ids=["INVA1"])
-            spec_lists[0].specs
-            # [...]
-            ```
+        Examples
+        --------
+        ```python
+        spec_lists = client.inventory.get_specs(ids=["INVA1"])
+        spec_lists[0].specs
+        # [...]
+        ```
         """
         url = f"{self.base_path}/specs"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -469,16 +477,17 @@ class InventoryCollection(BaseCollection):
         InventorySpecList
             The full set of specs now attached to the item.
 
-        !!! example
-            ```python
-            from albert.resources.inventory import InventorySpec, InventorySpecValue
-            spec = InventorySpec(
-                name="Density",
-                data_column_id="DAC1",
-                value=InventorySpecValue(min="1.1", max="1.3"),
-            )
-            client.inventory.add_specs(inventory_id="INVA1", specs=spec)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.inventory import InventorySpec, InventorySpecValue
+        spec = InventorySpec(
+            name="Density",
+            data_column_id="DAC1",
+            value=InventorySpecValue(min="1.1", max="1.3"),
+        )
+        client.inventory.add_specs(inventory_id="INVA1", specs=spec)
+        ```
         """
         if isinstance(specs, InventorySpec):
             specs = [specs]
@@ -504,10 +513,11 @@ class InventoryCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.inventory.delete(id="INVA1")
-            ```
+        Examples
+        --------
+        ```python
+        client.inventory.delete(id="INVA1")
+        ```
         """
 
         url = f"{self.base_path}/{id}"
@@ -629,12 +639,13 @@ class InventoryCollection(BaseCollection):
         list[FacetItem]
             The facet groups available for the query.
 
-        !!! example
-            ```python
-            facets = client.inventory.get_all_facets(text="titanium dioxide")
-            [f.name for f in facets]
-            # ['Category', 'Company', 'Tags', ...]
-            ```
+        Examples
+        --------
+        ```python
+        facets = client.inventory.get_all_facets(text="titanium dioxide")
+        [f.name for f in facets]
+        # ['Category', 'Company', 'Tags', ...]
+        ```
         """
 
         params = self._prepare_parameters(
@@ -720,12 +731,13 @@ class InventoryCollection(BaseCollection):
         list[FacetItem]
             The facet group(s) matching ``name``.
 
-        !!! example
-            ```python
-            tags = client.inventory.get_facet_by_name("Tags", text="acetone")
-            tags[0].name
-            # 'Tags'
-            ```
+        Examples
+        --------
+        ```python
+        tags = client.inventory.get_facet_by_name("Tags", text="acetone")
+        tags[0].name
+        # 'Tags'
+        ```
         """
         name = ensure_list(name) or []
 
@@ -829,18 +841,19 @@ class InventoryCollection(BaseCollection):
         Iterator[InventorySearchItem]
             A lazily paginated iterator of partially populated search results.
 
-        !!! example
-            ```python
-            from albert.resources.inventory import InventoryCategory
-            hits = client.inventory.search(
-                text="acetone",
-                category=InventoryCategory.RAW_MATERIALS,
-                max_items=10,
-            )
-            first = next(iter(hits))
-            first.name
-            # 'Acetone'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.inventory import InventoryCategory
+        hits = client.inventory.search(
+            text="acetone",
+            category=InventoryCategory.RAW_MATERIALS,
+            max_items=10,
+        )
+        first = next(iter(hits))
+        first.name
+        # 'Acetone'
+        ```
         """
 
         def deserialize(items: list[dict]):
@@ -899,7 +912,7 @@ class InventoryCollection(BaseCollection):
         offset: int | None = 0,
         from_created_at: str | None = None,
     ) -> Iterator[InventoryItem]:
-        """Retrieve fully populated inventory items matching the given filters.
+        """Get fully populated inventory items matching the given filters.
 
         Accepts the same filters as [`search`][albert.collections.inventory.InventoryCollection.search] but returns complete
         ``InventoryItem`` entities rather than lightweight search results. This is
@@ -954,15 +967,16 @@ class InventoryCollection(BaseCollection):
         Iterator[InventoryItem]
             A lazily paginated iterator of fully populated items.
 
-        !!! example
-            ```python
-            from albert.resources.inventory import InventoryCategory
-            for item in client.inventory.get_all(
-                category=InventoryCategory.RAW_MATERIALS,
-                max_items=50,
-            ):
-                print(item.id, item.name)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.inventory import InventoryCategory
+        for item in client.inventory.get_all(
+            category=InventoryCategory.RAW_MATERIALS,
+            max_items=50,
+        ):
+            print(item.id, item.name)
+        ```
         """
 
         def deserialize(items: list[dict]) -> list[InventoryItem]:
@@ -1188,14 +1202,15 @@ class InventoryCollection(BaseCollection):
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
 
-        !!! example
-            ```python
-            item = client.inventory.get_by_id(id="INVA1")
-            item.description = "Updated description"
-            updated = client.inventory.update(inventory_item=item)
-            updated.description
-            # 'Updated description'
-            ```
+        Examples
+        --------
+        ```python
+        item = client.inventory.get_by_id(id="INVA1")
+        item.description = "Updated description"
+        updated = client.inventory.update(inventory_item=item)
+        updated.description
+        # 'Updated description'
+        ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

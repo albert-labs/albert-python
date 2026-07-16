@@ -146,7 +146,7 @@ class TargetParameter(BaseAlbertModel):
 
 
 class Target(BaseResource):
-    """A desired value or acceptable range for a measured property (🧪Beta).
+    """A desired value or acceptable range for a measured property (🧪 Beta).
 
     A target links a data template and data column (the property being measured)
     to a target value constraint, optionally scoped to a project and to specific
@@ -180,23 +180,24 @@ class Target(BaseResource):
     validation : list[dict] or None
         Validation rules applied to the target value.
 
-    !!! example
-        ```python
-        from albert.resources.targets import (
-            Target,
-            TargetType,
-            Criterion,
-            ComparisonOperator,
-        )
-        target = Target(
-            name="Viscosity spec",
-            type=TargetType.PERFORMANCE,
-            data_template_id="DAT1",
-            data_column_id="DAC1",
-            target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
-            is_required=True,
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.targets import (
+        Target,
+        TargetType,
+        Criterion,
+        ComparisonOperator,
+    )
+    target = Target(
+        name="Viscosity spec",
+        type=TargetType.PERFORMANCE,
+        data_template_id="DAT1",
+        data_column_id="DAC1",
+        target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
+        is_required=True,
+    )
+    ```
     """
 
     id: str | None = Field(default=None)

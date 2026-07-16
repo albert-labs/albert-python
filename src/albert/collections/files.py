@@ -41,7 +41,7 @@ class FileCollection(BaseCollection):
     Methods
     -------
     get_by_name(name, namespace, generic=False) -> FileInfo
-        Retrieve stored file metadata by name and namespace.
+        Get stored file metadata by name and namespace.
     get_signed_download_url(name, namespace, ...) -> str
         Get a temporary signed URL to download a file.
     get_signed_upload_url(name, namespace, content_type, ...) -> str
@@ -49,25 +49,26 @@ class FileCollection(BaseCollection):
     sign_and_upload_file(data, name, namespace, content_type, ...) -> None
         Sign and upload a file in one step.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.files import FileNamespace
-        client = Albert()
-        with open("results.csv", "rb") as fh:
-            client.files.sign_and_upload_file(
-                data=fh,
-                name="INVA1/results.csv",
-                namespace=FileNamespace.RESULT,
-                content_type="text/csv",
-            )
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.files import FileNamespace
+    client = Albert()
+    with open("results.csv", "rb") as fh:
+        client.files.sign_and_upload_file(
+            data=fh,
+            name="INVA1/results.csv",
+            namespace=FileNamespace.RESULT,
+            content_type="text/csv",
+        )
+    ```
     """
 
     _api_version: str = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the FileCollection with the provided session.
+        """Initialize a FileCollection.
 
         Parameters
         ----------
@@ -102,15 +103,16 @@ class FileCollection(BaseCollection):
         FileInfo
             Metadata for the matching file.
 
-        !!! example
-            ```python
-            from albert.resources.files import FileNamespace
-            info = client.files.get_by_name(
-                name="INVA1/results.csv", namespace=FileNamespace.RESULT
-            )
-            info.size
-            # 2048
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.files import FileNamespace
+        info = client.files.get_by_name(
+            name="INVA1/results.csv", namespace=FileNamespace.RESULT
+        )
+        info.size
+        # 2048
+        ```
         """
         params = {
             "name": name,
@@ -151,13 +153,14 @@ class FileCollection(BaseCollection):
         str
             A short-lived S3 signed download URL.
 
-        !!! example
-            ```python
-            from albert.resources.files import FileNamespace
-            url = client.files.get_signed_download_url(
-                name="INVA1/results.csv", namespace=FileNamespace.RESULT
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.files import FileNamespace
+        url = client.files.get_signed_download_url(
+            name="INVA1/results.csv", namespace=FileNamespace.RESULT
+        )
+        ```
         """
         params = {
             "name": name,
@@ -207,15 +210,16 @@ class FileCollection(BaseCollection):
         str
             A short-lived S3 signed upload URL.
 
-        !!! example
-            ```python
-            from albert.resources.files import FileNamespace
-            url = client.files.get_signed_upload_url(
-                name="INVA1/results.csv",
-                namespace=FileNamespace.RESULT,
-                content_type="text/csv",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.files import FileNamespace
+        url = client.files.get_signed_upload_url(
+            name="INVA1/results.csv",
+            namespace=FileNamespace.RESULT,
+            content_type="text/csv",
+        )
+        ```
         """
         params = {"generic": json.dumps(generic)}
 
@@ -274,17 +278,18 @@ class FileCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            from albert.resources.files import FileNamespace
-            with open("results.csv", "rb") as fh:
-                client.files.sign_and_upload_file(
-                    data=fh,
-                    name="INVA1/results.csv",
-                    namespace=FileNamespace.RESULT,
-                    content_type="text/csv",
-                )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.files import FileNamespace
+        with open("results.csv", "rb") as fh:
+            client.files.sign_and_upload_file(
+                data=fh,
+                name="INVA1/results.csv",
+                namespace=FileNamespace.RESULT,
+                content_type="text/csv",
+            )
+        ```
         """
         upload_url = self.get_signed_upload_url(
             name=name,

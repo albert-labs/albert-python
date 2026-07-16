@@ -54,31 +54,32 @@ class EntityTypeCollection(BaseCollection):
     Methods
     -------
     create(entity_type) -> EntityType
-        Register a new entity type.
+        Create a new entity type.
     get_by_id(id) -> EntityType
-        Retrieve a single entity type by its Entity Type ID.
+        Get a single entity type by its ID.
     get_all(...) -> Iterator[EntityType]
         Iterate over entity types, optionally filtered by service.
     update(entity_type) -> EntityType
-        Apply changes to an existing entity type.
+        Update an existing entity type.
     delete(id) -> None
-        Delete an entity type by its Entity Type ID.
+        Delete an entity type by its ID.
     get_rules(id) -> list[EntityTypeRule]
-        Retrieve the conditional field rules configured for an entity type.
+        Get the conditional field rules configured for an entity type.
     set_rules(id, rules) -> list[EntityTypeRule]
         Create or replace the conditional field rules for an entity type.
     delete_rules(id) -> None
         Remove the conditional field rules for an entity type.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.entity_types import EntityServiceType
-        client = Albert()
-        # List the entity types configured for Tasks
-        for et in client.entity_types.get_all(service=EntityServiceType.TASKS):
-            print(et.id, et.label)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.entity_types import EntityServiceType
+    client = Albert()
+    # List the entity types configured for Tasks
+    for et in client.entity_types.get_all(service=EntityServiceType.TASKS):
+        print(et.id, et.label)
+    ```
     """
 
     _api_version = "v3"
@@ -105,7 +106,7 @@ class EntityTypeCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: EntityTypeId) -> EntityType:
-        """Retrieve a single entity type by its ID.
+        """Get a single entity type by its ID.
 
         Parameters
         ----------
@@ -115,20 +116,21 @@ class EntityTypeCollection(BaseCollection):
         Returns
         -------
         EntityType
-            The matching entity type.
+            The fully populated entity type.
 
-        !!! example
-            ```python
-            et = client.entity_types.get_by_id(id="ETT1")
-            et.label
-            # 'Formulation Task'
-            ```
+        Examples
+        --------
+        ```python
+        et = client.entity_types.get_by_id(id="ETT1")
+        et.label
+        # 'Formulation Task'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return EntityType(**response.json())
 
     def create(self, *, entity_type: EntityType) -> EntityType:
-        """Register a new entity type.
+        """Create a new entity type.
 
         Parameters
         ----------
@@ -143,24 +145,25 @@ class EntityTypeCollection(BaseCollection):
             The newly created entity type, populated with its assigned Entity
             Type ID.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.entity_types import (
-                EntityCategory,
-                EntityServiceType,
-                EntityType,
-            )
-            client = Albert()
-            new_type = EntityType(
-                label="Stability Task",
-                service=EntityServiceType.TASKS,
-                category=EntityCategory.PROPERTY,
-            )
-            created = client.entity_types.create(entity_type=new_type)
-            created.id
-            # 'ETT1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.entity_types import (
+            EntityCategory,
+            EntityServiceType,
+            EntityType,
+        )
+        client = Albert()
+        new_type = EntityType(
+            label="Stability Task",
+            service=EntityServiceType.TASKS,
+            category=EntityCategory.PROPERTY,
+        )
+        created = client.entity_types.create(entity_type=new_type)
+        created.id
+        # 'ETT1'
+        ```
         """
         response = self.session.post(
             self.base_path, json=entity_type.model_dump(by_alias=True, exclude_none=True)
@@ -190,14 +193,15 @@ class EntityTypeCollection(BaseCollection):
         ``locked_template``, ``search_query_string``, ``standard_field_required``,
         ``standard_field_visibility``, ``template_based``.
 
-        !!! example
-            ```python
-            et = client.entity_types.get_by_id(id="ETT1")
-            et.label = "Updated label"
-            updated = client.entity_types.update(entity_type=et)
-            updated.label
-            # 'Updated label'
-            ```
+        Examples
+        --------
+        ```python
+        et = client.entity_types.get_by_id(id="ETT1")
+        et.label = "Updated label"
+        updated = client.entity_types.update(entity_type=et)
+        updated.label
+        # 'Updated label'
+        ```
         """
         current_entity_type = self.get_by_id(id=entity_type.id)
         patch = self._generate_patch_payload(
@@ -351,16 +355,17 @@ class EntityTypeCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.entity_types.delete(id="ETT1")
-            ```
+        Examples
+        --------
+        ```python
+        client.entity_types.delete(id="ETT1")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
     @validate_call
     def get_rules(self, *, id: EntityTypeId) -> list[EntityTypeRule]:
-        """Retrieve the conditional field rules configured for an entity type.
+        """Get the conditional field rules configured for an entity type.
 
         A rule (see [`EntityTypeRule`][albert.resources.entity_types.EntityTypeRule]) makes
         one field's behavior depend on the value of another: for example, showing,
@@ -377,12 +382,13 @@ class EntityTypeCollection(BaseCollection):
         list[EntityTypeRule]
             The configured rules for the entity type.
 
-        !!! example
-            ```python
-            rules = client.entity_types.get_rules(id="ETT1")
-            [r.id for r in rules]
-            # ['RUL1', 'RUL2']
-            ```
+        Examples
+        --------
+        ```python
+        rules = client.entity_types.get_rules(id="ETT1")
+        [r.id for r in rules]
+        # ['RUL1', 'RUL2']
+        ```
         """
         response = self.session.get(f"{self.base_path}/rules/{id}")
         return [EntityTypeRule(**rule) for rule in response.json()]
@@ -407,11 +413,12 @@ class EntityTypeCollection(BaseCollection):
         list[EntityTypeRule]
             The updated rules as registered in Albert.
 
-        !!! example
-            ```python
-            existing = client.entity_types.get_rules(id="ETT1")
-            updated = client.entity_types.set_rules(id="ETT1", rules=existing)
-            ```
+        Examples
+        --------
+        ```python
+        existing = client.entity_types.get_rules(id="ETT1")
+        updated = client.entity_types.set_rules(id="ETT1", rules=existing)
+        ```
         """
         response = self.session.put(
             f"{self.base_path}/rules/{id}",
@@ -432,10 +439,11 @@ class EntityTypeCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.entity_types.delete_rules(id="ETT1")
-            ```
+        Examples
+        --------
+        ```python
+        client.entity_types.delete_rules(id="ETT1")
+        ```
         """
         self.session.delete(f"{self.base_path}/rules/{id}")
 
@@ -470,15 +478,16 @@ class EntityTypeCollection(BaseCollection):
         Iterator[EntityType]
             A lazily paginated iterator of matching entity types.
 
-        !!! example
-            ```python
-            from albert.resources.entity_types import EntityServiceType
-            for et in client.entity_types.get_all(
-                service=EntityServiceType.INVENTORIES,
-                max_items=25,
-            ):
-                print(et.id, et.label)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.entity_types import EntityServiceType
+        for et in client.entity_types.get_all(
+            service=EntityServiceType.INVENTORIES,
+            max_items=25,
+        ):
+            print(et.id, et.label)
+        ```
         """
         params = {
             "service": service,

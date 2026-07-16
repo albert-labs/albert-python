@@ -162,12 +162,13 @@ class DataColumnValue(BaseResource):
     original_name : str | None
         The original column name as stored in Albert. Read-only.
 
-    !!! example
-        ```python
-        from albert.resources.data_templates import DataColumnValue
+    Examples
+    --------
+    ```python
+    from albert.resources.data_templates import DataColumnValue
 
-        column = DataColumnValue(data_column_id="DAC1", value="42")
-        ```
+    column = DataColumnValue(data_column_id="DAC1", value="42")
+    ```
     """
 
     data_column: DataColumn | None = Field(exclude=True, default=None)
@@ -268,15 +269,16 @@ class DataTemplate(BaseTaggedResource):
     DataColumnValue : Result data columns used in ``data_column_values``.
     albert.resources.parameter_groups.ParameterValue : Condition parameters used in ``parameter_values``.
 
-    !!! example
-        ```python
-        from albert.resources.data_templates import DataTemplate, DataColumnValue
+    Examples
+    --------
+    ```python
+    from albert.resources.data_templates import DataTemplate, DataColumnValue
 
-        template = DataTemplate(
-            name="Tensile Strength Test",
-            data_column_values=[DataColumnValue(data_column_id="DAC1")],
-        )
-        ```
+    template = DataTemplate(
+        name="Tensile Strength Test",
+        data_column_values=[DataColumnValue(data_column_id="DAC1")],
+    )
+    ```
     """
 
     name: str
@@ -340,12 +342,13 @@ class CurveExample(BaseAlbertModel):
         Existing attachment ID of the source CSV file.
         Provide exactly one source CSV (local path or existing attachment).
 
-    !!! example
-        ```python
-        from albert.resources.data_templates import CurveExample
+    Examples
+    --------
+    ```python
+    from albert.resources.data_templates import CurveExample
 
-        example = CurveExample(file_path="viscosity_curve.csv")
-        ```
+    example = CurveExample(file_path="viscosity_curve.csv")
+    ```
     """
 
     type: Literal[DataType.CURVE] = DataType.CURVE
@@ -375,12 +378,13 @@ class ImageExample(BaseAlbertModel):
     file_path : str | Path
         Local path to the source image file.
 
-    !!! example
-        ```python
-        from albert.resources.data_templates import ImageExample
+    Examples
+    --------
+    ```python
+    from albert.resources.data_templates import ImageExample
 
-        example = ImageExample(file_path="fracture_surface.png")
-        ```
+    example = ImageExample(file_path="fracture_surface.png")
+    ```
     """
 
     type: Literal[DataType.IMAGE] = DataType.IMAGE

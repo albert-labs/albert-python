@@ -89,13 +89,13 @@ class DataTemplateCollection(BaseCollection):
     Methods
     -------
     create(data_template) -> DataTemplate
-        Register a new data template, including its data columns and parameters.
+        Create a new data template, including its data columns and parameters.
     get_by_id(id) -> DataTemplate
-        Retrieve a single fully populated template by its Data Template ID.
+        Get a single fully populated template by its ID.
     get_by_ids(ids) -> list[DataTemplate]
-        Retrieve many templates by ID in batches.
+        Get many templates by their IDs in batches.
     get_by_name(name) -> DataTemplate | None
-        Retrieve a single template by exact (case-insensitive) name, or None.
+        Get a single template by exact (case-insensitive) name, or None.
     search(...) -> Iterator[DataTemplateSearchItem]
         Fast, lightweight search returning partial items (best for lookups/counts).
     get_all(...) -> Iterator[DataTemplate]
@@ -105,22 +105,23 @@ class DataTemplateCollection(BaseCollection):
     add_parameters(data_template_id, parameters) -> DataTemplate
         Attach condition parameters to an existing template.
     update(data_template) -> DataTemplate
-        Apply changes to an existing template.
+        Update an existing template.
     delete(id) -> None
-        Delete a template by its Data Template ID.
+        Delete a template by its ID.
     set_curve_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for a curve data column (shown on the details page).
     set_image_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for an image data column (shown on the details page).
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        dt = client.data_templates.get_by_id(id="DAT1")
-        print(dt.name)
-        # 'Tensile Strength Test'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    dt = client.data_templates.get_by_id(id="DAT1")
+    print(dt.name)
+    # 'Tensile Strength Test'
+    ```
     """
 
     _api_version = "v3"
@@ -138,7 +139,7 @@ class DataTemplateCollection(BaseCollection):
         self.base_path = f"/api/{DataTemplateCollection._api_version}/datatemplates"
 
     def create(self, *, data_template: DataTemplate) -> DataTemplate:
-        """Register a new data template.
+        """Create a new data template.
 
         Creates the template along with its result data columns
         (``data_column_values``) and condition parameters (``parameter_values``).
@@ -157,17 +158,18 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The newly created template, populated with its assigned Data Template ID.
 
-        !!! example
-            ```python
-            from albert.resources.data_templates import DataTemplate, DataColumnValue
-            template = DataTemplate(
-                name="Tensile Strength Test",
-                data_column_values=[DataColumnValue(data_column_id="DAC1")],
-            )
-            created = client.data_templates.create(data_template=template)
-            created.id
-            # 'DAT1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.data_templates import DataTemplate, DataColumnValue
+        template = DataTemplate(
+            name="Tensile Strength Test",
+            data_column_values=[DataColumnValue(data_column_id="DAC1")],
+        )
+        created = client.data_templates.create(data_template=template)
+        created.id
+        # 'DAT1'
+        ```
         """
         # Preprocess data_column_values to set validation to None if it is an empty list
         # Handle a bug in the API where validation is an empty list
@@ -197,7 +199,7 @@ class DataTemplateCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
-        """Retrieve a single, fully populated data template by its ID.
+        """Get a single, fully populated data template by its ID.
 
         For retrieving many templates at once, use [`get_by_ids`][albert.collections.data_templates.DataTemplateCollection.get_by_ids]. To find
         templates without knowing their IDs, use [`search`][albert.collections.data_templates.DataTemplateCollection.search] or [`get_all`][albert.collections.data_templates.DataTemplateCollection.get_all].
@@ -212,19 +214,20 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The fully populated template.
 
-        !!! example
-            ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
-            dt.name
-            # 'Tensile Strength Test'
-            ```
+        Examples
+        --------
+        ```python
+        dt = client.data_templates.get_by_id(id="DAT1")
+        dt.name
+        # 'Tensile Strength Test'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return DataTemplate(**response.json())
 
     @validate_call
     def get_by_ids(self, *, ids: list[DataTemplateId]) -> list[DataTemplate]:
-        """Retrieve multiple fully populated data templates by their IDs.
+        """Get multiple fully populated data templates by their IDs.
 
         Requests are automatically split into batches, so arbitrarily long ID lists
         are supported.
@@ -239,12 +242,13 @@ class DataTemplateCollection(BaseCollection):
         list[DataTemplate]
             The matching templates.
 
-        !!! example
-            ```python
-            templates = client.data_templates.get_by_ids(ids=["DAT1", "DAT2"])
-            [t.name for t in templates]
-            # ['Tensile Strength Test', 'Melt Flow Index']
-            ```
+        Examples
+        --------
+        ```python
+        templates = client.data_templates.get_by_ids(ids=["DAT1", "DAT2"])
+        [t.name for t in templates]
+        # ['Tensile Strength Test', 'Melt Flow Index']
+        ```
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -255,7 +259,7 @@ class DataTemplateCollection(BaseCollection):
         ]
 
     def get_by_name(self, *, name: str) -> DataTemplate | None:
-        """Retrieve a single, fully populated data template by its exact name.
+        """Get a single, fully populated data template by its exact name.
 
         The match is case-insensitive. If multiple templates share the name, the
         first match is returned. Returns None when no template matches.
@@ -270,12 +274,13 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate or None
             The matching template, or None if not found.
 
-        !!! example
-            ```python
-            dt = client.data_templates.get_by_name(name="Tensile Strength Test")
-            dt.id if dt else "no match"
-            # 'DAT1'
-            ```
+        Examples
+        --------
+        ```python
+        dt = client.data_templates.get_by_name(name="Tensile Strength Test")
+        dt.id if dt else "no match"
+        # 'DAT1'
+        ```
         """
         for t in self.search(name=name):
             if t.name.lower() == name.lower():
@@ -305,14 +310,15 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated template, re-fetched with the new columns.
 
-        !!! example
-            ```python
-            from albert.resources.data_templates import DataColumnValue
-            updated = client.data_templates.add_data_columns(
-                data_template_id="DAT1",
-                data_columns=[DataColumnValue(data_column_id="DAC1")],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.data_templates import DataColumnValue
+        updated = client.data_templates.add_data_columns(
+            data_template_id="DAT1",
+            data_columns=[DataColumnValue(data_column_id="DAC1")],
+        )
+        ```
         """
         data_template_url = f"{self.base_path}/{data_template_id}"
         create_data_columns_with_enums(
@@ -347,14 +353,15 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated template, re-fetched with the new parameters.
 
-        !!! example
-            ```python
-            from albert.resources.parameter_groups import ParameterValue
-            updated = client.data_templates.add_parameters(
-                data_template_id="DAT1",
-                parameters=[ParameterValue(id="PRM1", value="25")],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.parameter_groups import ParameterValue
+        updated = client.data_templates.add_parameters(
+            data_template_id="DAT1",
+            parameters=[ParameterValue(id="PRM1", value="25")],
+        )
+        ```
         """
         if parameters is None or len(parameters) == 0:
             return self.get_by_id(id=data_template_id)
@@ -383,7 +390,7 @@ class DataTemplateCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[DataTemplateSearchItem]:
-        """Search for data templates matching the provided criteria.
+        """Search for data templates matching the given filters.
 
         This is the fast path: it returns partial (unhydrated)
         [`DataTemplateSearchItem`][albert.resources.data_templates.DataTemplateSearchItem] entities and is
@@ -421,11 +428,12 @@ class DataTemplateCollection(BaseCollection):
             `hydrate()` on an
             item to fetch its full [`DataTemplate`][albert.resources.data_templates.DataTemplate].
 
-        !!! example
-            ```python
-            for item in client.data_templates.search(name="Tensile", max_items=10):
-                print(item.id, item.name)
-            ```
+        Examples
+        --------
+        ```python
+        for item in client.data_templates.search(name="Tensile", max_items=10):
+            print(item.id, item.name)
+        ```
         """
         payload = {
             "offset": offset,
@@ -456,12 +464,11 @@ class DataTemplateCollection(BaseCollection):
         )
 
     def update(self, *, data_template: DataTemplate) -> DataTemplate:
-        """Apply changes to an existing data template.
+        """Update an existing data template.
 
-        The current server state is fetched and diffed against the supplied template,
-        and only the differences are patched. New data columns and parameters present
-        on the supplied template (including their enum validations) are created as part
-        of this call.
+        Only the fields listed in Notes are applied. New data columns and parameters
+        present on the supplied template (including their enum validations) are
+        created as part of this call.
 
         Parameters
         ----------
@@ -473,7 +480,7 @@ class DataTemplateCollection(BaseCollection):
         Returns
         -------
         DataTemplate
-            The updated template, re-fetched from Albert.
+            The updated template.
 
         Notes
         -----
@@ -487,12 +494,13 @@ class DataTemplateCollection(BaseCollection):
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
 
-        !!! example
-            ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
-            dt.description = "Updated per ASTM D638"
-            updated = client.data_templates.update(data_template=dt)
-            ```
+        Examples
+        --------
+        ```python
+        dt = client.data_templates.get_by_id(id="DAT1")
+        dt.description = "Updated per ASTM D638"
+        updated = client.data_templates.update(data_template=dt)
+        ```
         """
 
         existing = self.get_by_id(id=data_template.id)
@@ -657,10 +665,11 @@ class DataTemplateCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.data_templates.delete(id="DAT1")
-            ```
+        Examples
+        --------
+        ```python
+        client.data_templates.delete(id="DAT1")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -674,7 +683,7 @@ class DataTemplateCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
     ) -> Iterator[DataTemplate]:
-        """Retrieve fully populated data templates matching the provided criteria.
+        """Get fully populated data templates matching the given filters.
 
         This mirrors [`search`][albert.collections.data_templates.DataTemplateCollection.search] but hydrates each match into a complete
         [`DataTemplate`][albert.resources.data_templates.DataTemplate] (via [`get_by_ids`][albert.collections.data_templates.DataTemplateCollection.get_by_ids]), so it is slower. Use
@@ -698,11 +707,12 @@ class DataTemplateCollection(BaseCollection):
         Iterator[DataTemplate]
             A lazy iterator over fully populated templates.
 
-        !!! example
-            ```python
-            for dt in client.data_templates.get_all(name="Tensile", max_items=10):
-                print(dt.id, dt.name)
-            ```
+        Examples
+        --------
+        ```python
+        for dt in client.data_templates.get_all(name="Tensile", max_items=10):
+            print(dt.id, dt.name)
+        ```
         """
 
         def batched(iterable, size: int):
@@ -765,15 +775,16 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated template, re-fetched after the example is applied.
 
-        !!! example
-            ```python
-            from albert.resources.data_templates import CurveExample
-            updated = client.data_templates.set_curve_example(
-                data_template_id="DAT1",
-                data_column_name="Viscosity Curve",
-                example=CurveExample(file_path="curve.csv"),
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.data_templates import CurveExample
+        updated = client.data_templates.set_curve_example(
+            data_template_id="DAT1",
+            data_column_name="Viscosity Curve",
+            example=CurveExample(file_path="curve.csv"),
+        )
+        ```
         """
         data_template = self.get_by_id(id=data_template_id)
         target_column = get_target_data_column(
@@ -832,15 +843,16 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The updated template, re-fetched after the example is applied.
 
-        !!! example
-            ```python
-            from albert.resources.data_templates import ImageExample
-            updated = client.data_templates.set_image_example(
-                data_template_id="DAT1",
-                data_column_name="Fracture Surface",
-                example=ImageExample(file_path="fracture.png"),
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.data_templates import ImageExample
+        updated = client.data_templates.set_image_example(
+            data_template_id="DAT1",
+            data_column_name="Fracture Surface",
+            example=ImageExample(file_path="fracture.png"),
+        )
+        ```
         """
         data_template = self.get_by_id(id=data_template_id)
         target_column = get_target_data_column(

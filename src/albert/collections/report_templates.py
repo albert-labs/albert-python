@@ -33,22 +33,23 @@ class ReportTemplateCollection(BaseCollection):
     Methods
     -------
     get_by_id(id) -> ReportTemplate
-        Retrieve a single report template by its ID.
+        Get a single report template by its ID.
     get_all(category=None) -> list[ReportTemplate]
         List all report templates, optionally filtered by category.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.report_templates import ReportTemplateCategory
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.report_templates import ReportTemplateCategory
 
-        client = Albert()
-        templates = client.report_templates.get_all(
-            category=ReportTemplateCategory.ANALYTICS
-        )
-        for template in templates:
-            print(template.id, template.name)
-        ```
+    client = Albert()
+    templates = client.report_templates.get_all(
+        category=ReportTemplateCategory.ANALYTICS
+    )
+    for template in templates:
+        print(template.id, template.name)
+    ```
     """
 
     _api_version = "v3"
@@ -66,7 +67,7 @@ class ReportTemplateCollection(BaseCollection):
         self.base_path = f"/api/{ReportTemplateCollection._api_version}/reporttemplates"
 
     def get_by_id(self, *, id: str) -> ReportTemplate:
-        """Retrieve a single report template by its ID.
+        """Get a single report template by its ID.
 
         Parameters
         ----------
@@ -76,12 +77,13 @@ class ReportTemplateCollection(BaseCollection):
         Returns
         -------
         ReportTemplate
-            The requested report template.
+            The fully populated report template.
 
-        !!! example
-            ```python
-            template = client.report_templates.get_by_id(id="...")
-            ```
+        Examples
+        --------
+        ```python
+        template = client.report_templates.get_by_id(id="...")
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -105,14 +107,15 @@ class ReportTemplateCollection(BaseCollection):
         list[ReportTemplate]
             The matching report templates.
 
-        !!! example
-            ```python
-            from albert.resources.report_templates import ReportTemplateCategory
+        Examples
+        --------
+        ```python
+        from albert.resources.report_templates import ReportTemplateCategory
 
-            templates = client.report_templates.get_all(
-                category=ReportTemplateCategory.DATASCIENCE
-            )
-            ```
+        templates = client.report_templates.get_all(
+            category=ReportTemplateCategory.DATASCIENCE
+        )
+        ```
         """
         params = {}
         if category:

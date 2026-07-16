@@ -37,21 +37,22 @@ class BTModelSessionCollection(BaseCollection):
     create(model_session) -> BTModelSession
         Create a new model session.
     get_by_id(id) -> BTModelSession
-        Retrieve a single model session by its ID.
+        Get a single model session by its ID.
     update(model_session) -> BTModelSession
-        Apply changes to an existing model session.
+        Update an existing model session.
     delete(id) -> None
         Delete a model session by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        session = client.btmodelsessions.get_by_id(id="MDS12")
-        session.name
-        # 'Tensile strength study'
-        ```
+    client = Albert()
+    session = client.btmodelsessions.get_by_id(id="MDS12")
+    session.name
+    # 'Tensile strength study'
+    ```
     """
 
     _api_version = "v3"
@@ -81,21 +82,22 @@ class BTModelSessionCollection(BaseCollection):
         BTModelSession
             The newly created session, populated with its assigned ID.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
 
-            client = Albert()
-            session = BTModelSession(
-                name="Tensile strength study",
-                category=BTModelSessionCategory.USER_MODEL,
-                dataset_id="DST1",
-            )
-            created = client.btmodelsessions.create(model_session=session)
-            created.id
-            # 'MDS12'
-            ```
+        client = Albert()
+        session = BTModelSession(
+            name="Tensile strength study",
+            category=BTModelSessionCategory.USER_MODEL,
+            dataset_id="DST1",
+        )
+        created = client.btmodelsessions.create(model_session=session)
+        created.id
+        # 'MDS12'
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -105,7 +107,7 @@ class BTModelSessionCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTModelSessionId) -> BTModelSession:
-        """Retrieve a single model session by its ID.
+        """Get a single model session by its ID.
 
         Parameters
         ----------
@@ -115,14 +117,15 @@ class BTModelSessionCollection(BaseCollection):
         Returns
         -------
         BTModelSession
-            The retrieved model session.
+            The fully populated model session.
 
-        !!! example
-            ```python
-            session = client.btmodelsessions.get_by_id(id="MDS12")
-            session.name
-            # 'Tensile strength study'
-            ```
+        Examples
+        --------
+        ```python
+        session = client.btmodelsessions.get_by_id(id="MDS12")
+        session.name
+        # 'Tensile strength study'
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTModelSession(**response.json())
@@ -149,14 +152,15 @@ class BTModelSessionCollection(BaseCollection):
         -----
         The following fields can be updated: ``flag``, ``name``, ``registry``.
 
-        !!! example
-            ```python
-            session = client.btmodelsessions.get_by_id(id="MDS12")
-            session.name = "Tensile strength study (rev 2)"
-            updated = client.btmodelsessions.update(model_session=session)
-            updated.name
-            # 'Tensile strength study (rev 2)'
-            ```
+        Examples
+        --------
+        ```python
+        session = client.btmodelsessions.get_by_id(id="MDS12")
+        session.name = "Tensile strength study (rev 2)"
+        updated = client.btmodelsessions.update(model_session=session)
+        updated.name
+        # 'Tensile strength study (rev 2)'
+        ```
         """
 
         path = f"{self.base_path}/{model_session.id}"
@@ -180,10 +184,11 @@ class BTModelSessionCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.btmodelsessions.delete(id="MDS12")
-            ```
+        Examples
+        --------
+        ```python
+        client.btmodelsessions.delete(id="MDS12")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -214,21 +219,22 @@ class BTModelCollection(BaseCollection):
     create(model, parent_id=None) -> BTModel
         Create a new model, optionally within a parent session.
     get_by_id(id, parent_id=None) -> BTModel
-        Retrieve a single model by its ID.
+        Get a single model by its ID.
     update(model, parent_id=None) -> BTModel
-        Apply changes to an existing model.
+        Update an existing model.
     delete(id, parent_id=None) -> None
         Delete a model by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
-        model.state
-        # <BTModelState.COMPLETE: 'Complete'>
-        ```
+    client = Albert()
+    model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+    model.state
+    # <BTModelState.COMPLETE: 'Complete'>
+    ```
     """
 
     _api_version = "v3"
@@ -281,17 +287,18 @@ class BTModelCollection(BaseCollection):
         ``dataset_id`` and ``target`` are optional on the model, but in practice
         they are provided together with ``state``.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.btmodel import BTModel
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.btmodel import BTModel
 
-            client = Albert()
-            model = BTModel(name="Random forest v1")
-            created = client.btmodels.create(model=model, parent_id="MDS12")
-            created.id
-            # 'MDL34'
-            ```
+        client = Albert()
+        model = BTModel(name="Random forest v1")
+        created = client.btmodels.create(model=model, parent_id="MDS12")
+        created.id
+        # 'MDL34'
+        ```
         """
         base_path = self._get_base_path(parent_id)
         response = self.session.post(
@@ -302,7 +309,7 @@ class BTModelCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTModelId, parent_id: BTModelSessionId | None = None) -> BTModel:
-        """Retrieve a single model by its ID.
+        """Get a single model by its ID.
 
         Parameters
         ----------
@@ -314,14 +321,15 @@ class BTModelCollection(BaseCollection):
         Returns
         -------
         BTModel
-            The retrieved model.
+            The fully populated model.
 
-        !!! example
-            ```python
-            model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
-            model.name
-            # 'Random forest v1'
-            ```
+        Examples
+        --------
+        ```python
+        model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+        model.name
+        # 'Random forest v1'
+        ```
         """
         base_path = self._get_base_path(parent_id)
         response = self.session.get(f"{base_path}/{id}")
@@ -353,14 +361,15 @@ class BTModelCollection(BaseCollection):
         ``model_binary_key``, ``name``, ``start_time``, ``state``, ``target``,
         ``total_time``, ``type``.
 
-        !!! example
-            ```python
-            model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
-            model.name = "Random forest v2"
-            updated = client.btmodels.update(model=model, parent_id="MDS12")
-            updated.name
-            # 'Random forest v2'
-            ```
+        Examples
+        --------
+        ```python
+        model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
+        model.name = "Random forest v2"
+        updated = client.btmodels.update(model=model, parent_id="MDS12")
+        updated.name
+        # 'Random forest v2'
+        ```
         """
         base_path = self._get_base_path(parent_id)
         payload = self._generate_patch_payload(
@@ -389,10 +398,11 @@ class BTModelCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.btmodels.delete(id="MDL34", parent_id="MDS12")
-            ```
+        Examples
+        --------
+        ```python
+        client.btmodels.delete(id="MDL34", parent_id="MDS12")
+        ```
         """
         base_path = self._get_base_path(parent_id)
         self.session.delete(f"{base_path}/{id}")

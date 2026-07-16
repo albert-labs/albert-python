@@ -57,9 +57,9 @@ class ChatSessionCollection:
     create(session) -> ChatSession
         Create a new chat session.
     get_by_id(id) -> ChatSession
-        Retrieve a single session by its ID.
+        Get a single session by its ID.
     get_by_source_session_id(source_session_id) -> ChatSession
-        Retrieve a session by its external source session ID.
+        Get a session by its external source session ID.
     get_all(name, exact_match, parent_id, max_items) -> AsyncIterator[ChatSession]
         Iterate over sessions, with optional filters.
     update(id, name=None, parent_id=...) -> ChatSession
@@ -67,30 +67,30 @@ class ChatSessionCollection:
     delete(id) -> None
         Delete a session by its ID.
 
-    !!! example
-        ```python
-        from albert import AsyncAlbert
-        from albert.resources.chats import ChatSession
+    Examples
+    --------
+    ```python
+    from albert import AsyncAlbert
+    from albert.resources.chats import ChatSession
 
-        async with AsyncAlbert() as client:
-            session = await client.chat_sessions.create(
-                session=ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
-            )
-            async for s in client.chat_sessions.get_all(name=["titanium"]):
-                print(s.id, s.name)
-        ```
+    async with AsyncAlbert() as client:
+        session = await client.chat_sessions.create(
+            session=ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
+        )
+        async for s in client.chat_sessions.get_all(name=["titanium"]):
+            print(s.id, s.name)
+    ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
-        """
-        Initializes the ChatSessionCollection with the provided session.
+        """Initialize a ChatSessionCollection.
 
         Parameters
         ----------
         session : AsyncAlbertSession
-            The async session used to make API requests.
+            The authenticated Albert async session used for API calls.
         """
         self._session = session
         self.base_path: str = f"/api/{self._api_version}/chats/sessions"
@@ -111,16 +111,17 @@ class ChatSessionCollection:
         ChatSession
             The created session, populated with its server-assigned ``id``.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatSession
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatSession
 
-            async with AsyncAlbert() as client:
-                session = await client.chat_sessions.create(
-                    session=ChatSession(name="Titanium dioxide questions", source_session_id="...")
-                )
-            ```
+        async with AsyncAlbert() as client:
+            session = await client.chat_sessions.create(
+                session=ChatSession(name="Titanium dioxide questions", source_session_id="...")
+            )
+        ```
         """
         response = await self._session.post(
             self.base_path,
@@ -130,7 +131,7 @@ class ChatSessionCollection:
 
     @validate_call
     async def get_by_id(self, *, id: str) -> ChatSession:
-        """Retrieve a chat session by its ID.
+        """Get a chat session by its ID.
 
         Parameters
         ----------
@@ -140,22 +141,23 @@ class ChatSessionCollection:
         Returns
         -------
         ChatSession
-            The matching session.
+            The fully populated session.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                session = await client.chat_sessions.get_by_id(id="...")
-            ```
+        async with AsyncAlbert() as client:
+            session = await client.chat_sessions.get_by_id(id="...")
+        ```
         """
         response = await self._session.get(f"{self.base_path}/{id}")
         return ChatSession(**response.json())
 
     @validate_call
     async def get_by_source_session_id(self, *, source_session_id: str) -> ChatSession:
-        """Retrieve a chat session by its external source session ID.
+        """Get a chat session by its external source session ID.
 
         Use this to look up a session by the identifier that links it to a source
         system, rather than by its Albert ``id``.
@@ -171,13 +173,14 @@ class ChatSessionCollection:
         ChatSession
             The matching session.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                session = await client.chat_sessions.get_by_source_session_id(source_session_id="...")
-            ```
+        async with AsyncAlbert() as client:
+            session = await client.chat_sessions.get_by_source_session_id(source_session_id="...")
+        ```
         """
         response = await self._session.get(f"{self.base_path}/source/{source_session_id}")
         return ChatSession(**response.json())
@@ -214,14 +217,15 @@ class ChatSessionCollection:
         ChatSession
             Sessions matching the given filters.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                async for session in client.chat_sessions.get_all(name=["titanium"]):
-                    print(session.id, session.name)
-            ```
+        async with AsyncAlbert() as client:
+            async for session in client.chat_sessions.get_all(name=["titanium"]):
+                print(session.id, session.name)
+        ```
         """
         params: dict[str, str | list[str]] = {}
         if name:
@@ -273,13 +277,14 @@ class ChatSessionCollection:
         -----
         The following fields can be updated: ``name``, ``parent_id``.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                session = await client.chat_sessions.update(id="...", name="Renamed session")
-            ```
+        async with AsyncAlbert() as client:
+            session = await client.chat_sessions.update(id="...", name="Renamed session")
+        ```
         """
         data = []
         if name is not None:
@@ -293,7 +298,7 @@ class ChatSessionCollection:
 
     @validate_call
     async def delete(self, *, id: str) -> None:
-        """Delete a chat session by ID.
+        """Delete a chat session by its ID.
 
         Parameters
         ----------
@@ -304,12 +309,13 @@ class ChatSessionCollection:
         -------
         None
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                await client.chat_sessions.delete(id="...")
-            ```
+        async with AsyncAlbert() as client:
+            await client.chat_sessions.delete(id="...")
+        ```
         """
         await self._session.delete(f"{self.base_path}/{id}")

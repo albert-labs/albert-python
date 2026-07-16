@@ -30,14 +30,15 @@ class Worksheet(BaseSessionResource):
     project_id : str
         The ID of the paired Project (format ``PRO...``).
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-        for sheet in worksheet.sheets:
-            print(sheet.id, sheet.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+    for sheet in worksheet.sheets:
+        print(sheet.id, sheet.name)
+    ```
     """
 
     sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")

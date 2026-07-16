@@ -52,11 +52,12 @@ class Note(BaseResource):
         Files attached to the note. Read-only; populated when the note is
         retrieved.
 
-    !!! example
-        ```python
-        from albert.resources.notes import Note
-        note = Note(parent_id="TASA1", note="Reviewed the results.")
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.notes import Note
+    note = Note(parent_id="TASA1", note="Reviewed the results.")
+    ```
     """
 
     parent_id: str = Field(..., alias="parentId")

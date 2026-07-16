@@ -61,13 +61,13 @@ class NotebookCollection(BaseCollection):
     Methods
     -------
     get_by_id(id) -> Notebook
-        Retrieve a single notebook by its Notebook ID.
+        Get a single notebook by its ID.
     list_by_parent_id(parent_id) -> list[Notebook]
         List the notebooks attached to a given parent (project or task).
     create(notebook) -> Notebook
         Find or create an (empty) notebook for the given parent.
     delete(id) -> None
-        Delete a notebook by its Notebook ID.
+        Delete a notebook by its ID.
     update(notebook) -> Notebook
         Update a notebook's name.
     update_block_content(notebook) -> Notebook
@@ -75,19 +75,20 @@ class NotebookCollection(BaseCollection):
     append_blocks(id, blocks) -> Notebook
         Append blocks to the end of a notebook, preserving existing blocks.
     get_block_by_id(notebook_id, block_id) -> NotebookBlock
-        Retrieve a single block from a notebook by block ID.
+        Get a single block from a notebook by block ID.
     copy(notebook_copy_info, type) -> Notebook
         Copy a notebook into a specified parent.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        notebook = client.notebooks.get_by_id(id="NTB123")
-        for block in notebook.blocks:
-            print(block.id, block.type)
-        ```
+    client = Albert()
+    notebook = client.notebooks.get_by_id(id="NTB123")
+    for block in notebook.blocks:
+        print(block.id, block.type)
+    ```
     """
 
     _api_version = "v3"
@@ -108,7 +109,7 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: NotebookId) -> Notebook:
-        """Retrieve a single Notebook by its Notebook ID.
+        """Get a single Notebook by its ID.
 
         Parameters
         ----------
@@ -118,13 +119,14 @@ class NotebookCollection(BaseCollection):
         Returns
         -------
         Notebook
-            The fully populated notebook, including its ordered content blocks.
+            The fully populated notebook.
 
-        !!! example
-            ```python
-            notebook = client.notebooks.get_by_id(id="NTB123")
-            print(notebook.name)
-            ```
+        Examples
+        --------
+        ```python
+        notebook = client.notebooks.get_by_id(id="NTB123")
+        print(notebook.name)
+        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Notebook(**response.json())
@@ -144,12 +146,13 @@ class NotebookCollection(BaseCollection):
         list[Notebook]
             The fully populated notebooks attached to the parent.
 
-        !!! example
-            ```python
-            notebooks = client.notebooks.list_by_parent_id(parent_id="PRO123")
-            for notebook in notebooks:
-                print(notebook.id, notebook.name)
-            ```
+        Examples
+        --------
+        ```python
+        notebooks = client.notebooks.list_by_parent_id(parent_id="PRO123")
+        for notebook in notebooks:
+            print(notebook.id, notebook.name)
+        ```
         """
 
         # search
@@ -184,14 +187,15 @@ class NotebookCollection(BaseCollection):
         AlbertException
             If the notebook has pre-filled blocks.
 
-        !!! example
-            ```python
-            from albert.resources.notebooks import Notebook
+        Examples
+        --------
+        ```python
+        from albert.resources.notebooks import Notebook
 
-            notebook = client.notebooks.create(
-                notebook=Notebook(name="Trial 1 log", parent_id="PRO123")
-            )
-            ```
+        notebook = client.notebooks.create(
+            notebook=Notebook(name="Trial 1 log", parent_id="PRO123")
+        )
+        ```
         """
         if notebook.blocks:
             # This check keeps a user from corrupting the Notebook data.
@@ -210,7 +214,7 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: NotebookId) -> None:
-        """Delete a Notebook by its Notebook ID.
+        """Delete a Notebook by its ID.
 
         Parameters
         ----------
@@ -221,10 +225,11 @@ class NotebookCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.notebooks.delete(id="NTB123")
-            ```
+        Examples
+        --------
+        ```python
+        client.notebooks.delete(id="NTB123")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -242,18 +247,19 @@ class NotebookCollection(BaseCollection):
         Returns
         -------
         Notebook
-            The updated notebook as returned by the server.
+            The updated notebook.
 
         Notes
         -----
         The following fields can be updated: ``name``.
 
-        !!! example
-            ```python
-            notebook = client.notebooks.get_by_id(id="NTB123")
-            notebook.name = "Revised trial log"
-            notebook = client.notebooks.update(notebook=notebook)
-            ```
+        Examples
+        --------
+        ```python
+        notebook = client.notebooks.get_by_id(id="NTB123")
+        notebook.name = "Revised trial log"
+        notebook = client.notebooks.update(notebook=notebook)
+        ```
         """
         existing_notebook = self.get_by_id(id=notebook.id)
         patch_data = self._generate_patch_payload(existing=existing_notebook, updated=notebook)
@@ -284,7 +290,7 @@ class NotebookCollection(BaseCollection):
         Returns
         -------
         Notebook
-            The updated notebook as returned by the server.
+            The updated notebook.
 
         Raises
         ------
@@ -292,16 +298,18 @@ class NotebookCollection(BaseCollection):
             If the notebook has no ``id``, if two blocks share the same id, or if
             an existing block's type is changed in place.
 
-        !!! example "Add a Ketcher block from SMILES"
-            ```python
-            from albert.resources.notebooks import KetcherBlock, KetcherContent
+        Examples
+        --------
+        ```python
+        # Add a Ketcher block from SMILES
+        from albert.resources.notebooks import KetcherBlock, KetcherContent
 
-            notebook = client.notebooks.get_by_id(id="NTB123")
-            notebook.blocks.append(
-                KetcherBlock(content=KetcherContent(smiles="CCO"))
-            )
-            notebook = client.notebooks.update_block_content(notebook=notebook)
-            ```
+        notebook = client.notebooks.get_by_id(id="NTB123")
+        notebook.blocks.append(
+            KetcherBlock(content=KetcherContent(smiles="CCO"))
+        )
+        notebook = client.notebooks.update_block_content(notebook=notebook)
+        ```
         """
         if notebook.id is None:
             raise AlbertException("Notebook id is required to update block content.")
@@ -340,15 +348,17 @@ class NotebookCollection(BaseCollection):
         Notebook
             The updated notebook.
 
-        !!! example "Append a paragraph block"
-            ```python
-            from albert.resources.notebooks import ParagraphBlock, ParagraphContent
+        Examples
+        --------
+        ```python
+        # Append a paragraph block
+        from albert.resources.notebooks import ParagraphBlock, ParagraphContent
 
-            notebook = client.notebooks.append_blocks(
-                id="NTB123",
-                blocks=[ParagraphBlock(content=ParagraphContent(text="Hello"))],
-            )
-            ```
+        notebook = client.notebooks.append_blocks(
+            id="NTB123",
+            blocks=[ParagraphBlock(content=ParagraphContent(text="Hello"))],
+        )
+        ```
         """
         notebook = self.get_by_id(id=id)
         notebook.blocks.extend(blocks)
@@ -356,7 +366,7 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def get_block_by_id(self, *, notebook_id: NotebookId, block_id: str) -> NotebookBlock:
-        """Retrieve a single block from a Notebook by block ID.
+        """Get a single block from a Notebook by block ID.
 
         Parameters
         ----------
@@ -371,12 +381,13 @@ class NotebookCollection(BaseCollection):
             The requested block, typed according to its block type (e.g.
             [`ParagraphBlock`][albert.resources.notebooks.ParagraphBlock]).
 
-        !!! example
-            ```python
-            block = client.notebooks.get_block_by_id(
-                notebook_id="NTB123", block_id="abc-123"
-            )
-            ```
+        Examples
+        --------
+        ```python
+        block = client.notebooks.get_block_by_id(
+            notebook_id="NTB123", block_id="abc-123"
+        )
+        ```
         """
         response = self.session.get(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
         return TypeAdapter(NotebookBlock).validate_python(response.json())
@@ -523,15 +534,16 @@ class NotebookCollection(BaseCollection):
         Notebook
             The newly created copy.
 
-        !!! example
-            ```python
-            from albert.resources.notebooks import NotebookCopyInfo, NotebookCopyType
+        Examples
+        --------
+        ```python
+        from albert.resources.notebooks import NotebookCopyInfo, NotebookCopyType
 
-            copy = client.notebooks.copy(
-                notebook_copy_info=NotebookCopyInfo(id="NTB123", parent_id="PRO456"),
-                type=NotebookCopyType.PROJECT,
-            )
-            ```
+        copy = client.notebooks.copy(
+            notebook_copy_info=NotebookCopyInfo(id="NTB123", parent_id="PRO456"),
+            type=NotebookCopyType.PROJECT,
+        )
+        ```
         """
         response = self.session.post(
             url=f"{self.base_path}/copy",

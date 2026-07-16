@@ -34,38 +34,38 @@ class ChatFlagCollection:
     get_all(type) -> list[ChatFlag]
         List all flagged messages of a given flag type.
     get_by_message(session_id, source_request_id, sequence=None) -> ChatFlagsInMessage
-        Retrieve all flags set on a specific message.
+        Get all flags set on a specific message.
     add(session_id, source_request_id, sequence, type, component_type=None) -> ChatFlag
         Add a flag to a message.
     remove(session_id, source_request_id, sequence, type, component_type=None) -> None
         Remove a flag from a message.
 
-    !!! example
-        ```python
-        from albert import AsyncAlbert
-        from albert.resources.chats import ChatFlagType
+    Examples
+    --------
+    ```python
+    from albert import AsyncAlbert
+    from albert.resources.chats import ChatFlagType
 
-        async with AsyncAlbert() as client:
-            await client.chat_flags.add(
-                session_id="<session id>",
-                source_request_id="<request id>",
-                sequence="000",
-                type=ChatFlagType.STARRED,
-            )
-            starred = await client.chat_flags.get_all(type=ChatFlagType.STARRED)
-        ```
+    async with AsyncAlbert() as client:
+        await client.chat_flags.add(
+            session_id="<session id>",
+            source_request_id="<request id>",
+            sequence="000",
+            type=ChatFlagType.STARRED,
+        )
+        starred = await client.chat_flags.get_all(type=ChatFlagType.STARRED)
+    ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
-        """
-        Initializes the ChatFlagCollection with the provided session.
+        """Initialize a ChatFlagCollection.
 
         Parameters
         ----------
         session : AsyncAlbertSession
-            The async session used to make API requests.
+            The authenticated Albert async session used for API calls.
         """
         self._session = session
         self._flags_base = f"/api/{self._api_version}/chats/flags"
@@ -91,14 +91,15 @@ class ChatFlagCollection:
         list[ChatFlag]
             Flagged messages matching the given type.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatFlagType
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatFlagType
 
-            async with AsyncAlbert() as client:
-                starred = await client.chat_flags.get_all(type=ChatFlagType.STARRED)
-            ```
+        async with AsyncAlbert() as client:
+            starred = await client.chat_flags.get_all(type=ChatFlagType.STARRED)
+        ```
         """
         response = await self._session.get(self._flags_base, params={"type": type.value})
         data = response.json()
@@ -112,7 +113,7 @@ class ChatFlagCollection:
         source_request_id: str,
         sequence: str | None = None,
     ) -> ChatFlagsInMessage:
-        """Retrieve all flags set on a specific message.
+        """Get all flags set on a specific message.
 
         Parameters
         ----------
@@ -129,17 +130,18 @@ class ChatFlagCollection:
         ChatFlagsInMessage
             A summary of the flag types set on the message.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                flags = await client.chat_flags.get_by_message(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                )
-            ```
+        async with AsyncAlbert() as client:
+            flags = await client.chat_flags.get_by_message(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
         params: dict[str, str] = {}
@@ -181,19 +183,20 @@ class ChatFlagCollection:
         ChatFlag
             The created flag.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatFlagType
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatFlagType
 
-            async with AsyncAlbert() as client:
-                flag = await client.chat_flags.add(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                    type=ChatFlagType.STARRED,
-                )
-            ```
+        async with AsyncAlbert() as client:
+            flag = await client.chat_flags.add(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+                type=ChatFlagType.STARRED,
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
         params: dict[str, str] = {"sequence": sequence, "type": type.value}
@@ -234,19 +237,20 @@ class ChatFlagCollection:
         -------
         None
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatFlagType
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatFlagType
 
-            async with AsyncAlbert() as client:
-                await client.chat_flags.remove(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                    type=ChatFlagType.STARRED,
-                )
-            ```
+        async with AsyncAlbert() as client:
+            await client.chat_flags.remove(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+                type=ChatFlagType.STARRED,
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}/flag"
         params: dict[str, str] = {"sequence": sequence, "type": type.value}

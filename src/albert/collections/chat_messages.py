@@ -40,7 +40,7 @@ class ChatMessageCollection:
     create(message) -> ChatMessage
         Add a message to a chat session.
     get_by_id(session_id, source_request_id, sequence, component_type=None) -> ChatMessage
-        Retrieve a single message by its request ID and sequence.
+        Get a single message by its request ID and sequence.
     get_all(session_id, max_items=None) -> AsyncIterator[ChatMessage]
         Iterate over the messages in a session, oldest first.
     update(session_id, source_request_id, sequence, content) -> ChatMessage
@@ -48,36 +48,36 @@ class ChatMessageCollection:
     delete(session_id, source_request_id, sequence) -> None
         Delete a message from a session.
 
-    !!! example
-        ```python
-        from albert import AsyncAlbert
-        from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+    Examples
+    --------
+    ```python
+    from albert import AsyncAlbert
+    from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
 
-        async with AsyncAlbert() as client:
-            await client.chat_messages.create(
-                message=ChatMessage(
-                    parent_id="<session id>",
-                    component_type=ChatComponentType.TEXT,
-                    user_type=ChatUserType.USER,
-                    role=ChatRole.USER,
-                    content="What raw materials contain titanium dioxide?",
-                )
+    async with AsyncAlbert() as client:
+        await client.chat_messages.create(
+            message=ChatMessage(
+                parent_id="<session id>",
+                component_type=ChatComponentType.TEXT,
+                user_type=ChatUserType.USER,
+                role=ChatRole.USER,
+                content="What raw materials contain titanium dioxide?",
             )
-            async for message in client.chat_messages.get_all(session_id="<session id>"):
-                print(message.sequence, message.content)
-        ```
+        )
+        async for message in client.chat_messages.get_all(session_id="<session id>"):
+            print(message.sequence, message.content)
+    ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
-        """
-        Initializes the ChatMessageCollection with the provided session.
+        """Initialize a ChatMessageCollection.
 
         Parameters
         ----------
         session : AsyncAlbertSession
-            The async session used to make API requests.
+            The authenticated Albert async session used for API calls.
         """
         self._session = session
         self._sessions_base = f"/api/{self._api_version}/chats/sessions"
@@ -104,22 +104,23 @@ class ChatMessageCollection:
         returned object's ``content`` may be ``None``. Use [`get_by_id`][albert.collections.chat_messages.ChatMessageCollection.get_by_id] to read
         the stored message back in full.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
 
-            async with AsyncAlbert() as client:
-                message = await client.chat_messages.create(
-                    message=ChatMessage(
-                        parent_id="...",
-                        component_type=ChatComponentType.TEXT,
-                        user_type=ChatUserType.USER,
-                        role=ChatRole.USER,
-                        content="What raw materials contain titanium dioxide?",
-                    )
+        async with AsyncAlbert() as client:
+            message = await client.chat_messages.create(
+                message=ChatMessage(
+                    parent_id="...",
+                    component_type=ChatComponentType.TEXT,
+                    user_type=ChatUserType.USER,
+                    role=ChatRole.USER,
+                    content="What raw materials contain titanium dioxide?",
                 )
-            ```
+            )
+        ```
         """
         payload = message.model_dump(by_alias=True, exclude_unset=True, mode="json")
         # parentId is encoded in the URL path, not the request body
@@ -142,7 +143,7 @@ class ChatMessageCollection:
         sequence: str,
         component_type: ChatComponentType | None = None,
     ) -> ChatMessage:
-        """Retrieve a single message by its request ID and sequence.
+        """Get a single message by its request ID and sequence.
 
         Parameters
         ----------
@@ -161,19 +162,20 @@ class ChatMessageCollection:
         Returns
         -------
         ChatMessage
-            The matching message.
+            The fully populated message.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                message = await client.chat_messages.get_by_id(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                )
-            ```
+        async with AsyncAlbert() as client:
+            message = await client.chat_messages.get_by_id(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         params: dict = {"sequence": sequence}
@@ -207,14 +209,15 @@ class ChatMessageCollection:
         ChatMessage
             Messages in the session, oldest first.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                async for message in client.chat_messages.get_all(session_id="..."):
-                    print(message.sequence, message.content)
-            ```
+        async with AsyncAlbert() as client:
+            async for message in client.chat_messages.get_all(session_id="..."):
+                print(message.sequence, message.content)
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages"
         async for message in AsyncAlbertPaginator(
@@ -259,18 +262,19 @@ class ChatMessageCollection:
         -----
         The following fields can be updated: ``content``.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                message = await client.chat_messages.update(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                    content="Updated message text",
-                )
-            ```
+        async with AsyncAlbert() as client:
+            message = await client.chat_messages.update(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+                content="Updated message text",
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         payload = {"data": [{"operation": "update", "attribute": "Content", "newValue": content}]}
@@ -305,17 +309,18 @@ class ChatMessageCollection:
         -------
         None
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                await client.chat_messages.delete(
-                    session_id="...",
-                    source_request_id="...",
-                    sequence="000",
-                )
-            ```
+        async with AsyncAlbert() as client:
+            await client.chat_messages.delete(
+                session_id="...",
+                source_request_id="...",
+                sequence="000",
+            )
+        ```
         """
         url = f"{self._sessions_base}/{session_id}/messages/{source_request_id}"
         await self._session.delete(url, params={"sequence": sequence})

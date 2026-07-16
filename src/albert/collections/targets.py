@@ -7,7 +7,7 @@ from albert.resources.targets import Target
 
 
 class TargetCollection(BaseCollection):
-    """Manage Targets in the Albert platform (🧪Beta).
+    """Manage Targets in the Albert platform (🧪 Beta).
 
     A Target is a desired value or acceptable range for a measured property. It
     ties a data template and data column (the property being measured) to a
@@ -37,39 +37,39 @@ class TargetCollection(BaseCollection):
     Methods
     -------
     create(target) -> Target
-        Register a new target.
+        Create a new target.
     get_by_id(id, parent_id=None) -> Target
-        Retrieve a single target by its Target ID.
+        Get a single target by its ID.
     get_by_ids(ids) -> list[Target]
-        Retrieve many targets by their IDs.
+        Get many targets by their IDs.
     delete(id) -> None
-        Delete a target by its Target ID.
+        Delete a target by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        target = client.targets.get_by_id(id="TAR1")
-        print(target.name, target.target_value)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    target = client.targets.get_by_id(id="TAR1")
+    print(target.name, target.target_value)
+    ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the TargetCollection with the provided session.
+        """Initialize a TargetCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TargetCollection._api_version}/targets"
 
     def create(self, *, target: Target) -> Target:
-        """Register a new target.
+        """Create a new target.
 
         Parameters
         ----------
@@ -81,25 +81,26 @@ class TargetCollection(BaseCollection):
         Target
             The newly created target, including its assigned Target ID.
 
-        !!! example
-            ```python
-            from albert.resources.targets import (
-                Target,
-                TargetType,
-                Criterion,
-                ComparisonOperator,
+        Examples
+        --------
+        ```python
+        from albert.resources.targets import (
+            Target,
+            TargetType,
+            Criterion,
+            ComparisonOperator,
+        )
+        target = client.targets.create(
+            target=Target(
+                name="Viscosity spec",
+                type=TargetType.PERFORMANCE,
+                data_template_id="DAT1",
+                data_column_id="DAC1",
+                target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+                is_required=True,
             )
-            target = client.targets.create(
-                target=Target(
-                    name="Viscosity spec",
-                    type=TargetType.PERFORMANCE,
-                    data_template_id="DAT1",
-                    data_column_id="DAC1",
-                    target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
-                    is_required=True,
-                )
-            )
-            ```
+        )
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -109,7 +110,7 @@ class TargetCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: TargetId, parent_id: ProjectId | None = None) -> Target:
-        """Retrieve a single target by its Target ID.
+        """Get a single target by its ID.
 
         Parameters
         ----------
@@ -123,12 +124,13 @@ class TargetCollection(BaseCollection):
         Returns
         -------
         Target
-            The matching target.
+            The fully populated target.
 
-        !!! example
-            ```python
-            target = client.targets.get_by_id(id="TAR1")
-            ```
+        Examples
+        --------
+        ```python
+        target = client.targets.get_by_id(id="TAR1")
+        ```
         """
         url = f"{self.base_path}/{id}"
         params = {"parentId": parent_id} if parent_id is not None else None
@@ -136,7 +138,7 @@ class TargetCollection(BaseCollection):
         return Target(**response.json())
 
     def get_by_ids(self, *, ids: list[TargetId]) -> list[Target]:
-        """Retrieve many targets by their IDs.
+        """Get many targets by their IDs.
 
         Parameters
         ----------
@@ -148,10 +150,11 @@ class TargetCollection(BaseCollection):
         list[Target]
             The matching targets. Targets not found are omitted.
 
-        !!! example
-            ```python
-            targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
-            ```
+        Examples
+        --------
+        ```python
+        targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
+        ```
         """
         url = f"{self.base_path}/ids"
         response = self.session.get(url, params={"id": ids})
@@ -159,7 +162,7 @@ class TargetCollection(BaseCollection):
         return [Target(**item) for item in data.get("Items", [])]
 
     def delete(self, *, id: TargetId) -> None:
-        """Delete a target by its Target ID.
+        """Delete a target by its ID.
 
         Parameters
         ----------
@@ -170,10 +173,11 @@ class TargetCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.targets.delete(id="TAR1")
-            ```
+        Examples
+        --------
+        ```python
+        client.targets.delete(id="TAR1")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

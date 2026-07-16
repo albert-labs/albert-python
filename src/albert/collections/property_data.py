@@ -123,16 +123,17 @@ class PropertyDataCollection(BaseCollection):
     search(...) -> Iterator[PropertyDataSearchItem]
         Search recorded property data across the platform.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        # Read every recorded result on a property task
-        for block in client.property_data.get_all_task_properties(
-            task_id="TASFOR1", with_data_only=True
-        ):
-            print(block.block_id, block.data)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    # Read every recorded result on a property task
+    for block in client.property_data.get_all_task_properties(
+        task_id="TASFOR1", with_data_only=True
+    ):
+        print(block.block_id, block.data)
+    ```
     """
 
     _api_version = "v3"
@@ -166,14 +167,15 @@ class PropertyDataCollection(BaseCollection):
         InventoryPropertyData
             The item's properties, split into task-derived and directly-added data.
 
-        !!! example
-            ```python
-            props = client.property_data.get_properties_on_inventory(
-                inventory_id="INVA1"
-            )
-            len(props.custom_property_data)
-            # 3
-            ```
+        Examples
+        --------
+        ```python
+        props = client.property_data.get_properties_on_inventory(
+            inventory_id="INVA1"
+        )
+        len(props.custom_property_data)
+        # 3
+        ```
         """
         params = {"entity": "inventory", "id": [inventory_id]}
         response = self.session.get(url=self.base_path, params=params)
@@ -202,14 +204,15 @@ class PropertyDataCollection(BaseCollection):
         list[InventoryPropertyDataCreate]
             The registered properties.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import InventoryDataColumn
-            props = client.property_data.add_properties_to_inventory(
-                inventory_id="INVA1",
-                properties=[InventoryDataColumn(data_column_id="DAC1", value="1.2")],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import InventoryDataColumn
+        props = client.property_data.add_properties_to_inventory(
+            inventory_id="INVA1",
+            properties=[InventoryDataColumn(data_column_id="DAC1", value="1.2")],
+        )
+        ```
         """
         returned = []
         for p in properties:
@@ -247,14 +250,15 @@ class PropertyDataCollection(BaseCollection):
         InventoryPropertyData
             The item's properties after the update.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import InventoryDataColumn
-            updated = client.property_data.update_property_on_inventory(
-                inventory_id="INVA1",
-                property_data=InventoryDataColumn(data_column_id="DAC1", value="1.3"),
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import InventoryDataColumn
+        updated = client.property_data.update_property_on_inventory(
+            inventory_id="INVA1",
+            property_data=InventoryDataColumn(data_column_id="DAC1", value="1.3"),
+        )
+        ```
         """
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
@@ -329,14 +333,15 @@ class PropertyDataCollection(BaseCollection):
             The results in the block for the given inventory item, organized by
             interval and trial.
 
-        !!! example
-            ```python
-            data = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
-            )
-            data.block_id
-            # 'BLK1'
-            ```
+        Examples
+        --------
+        ```python
+        data = client.property_data.get_task_block_properties(
+            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+        )
+        data.block_id
+        # 'BLK1'
+        ```
         """
         params = {
             "entity": "task",
@@ -370,12 +375,13 @@ class PropertyDataCollection(BaseCollection):
         list[CheckPropertyData]
             The data status of each block/interval/inventory combination.
 
-        !!! example
-            ```python
-            statuses = client.property_data.check_for_task_data(task_id="TASFOR1")
-            [(s.block_id, s.interval_id, s.data_exists) for s in statuses]
-            # [('BLK1', 'ROW1', True), ('BLK1', 'ROW2', False)]
-            ```
+        Examples
+        --------
+        ```python
+        statuses = client.property_data.check_for_task_data(task_id="TASFOR1")
+        [(s.block_id, s.interval_id, s.data_exists) for s in statuses]
+        # [('BLK1', 'ROW1', True), ('BLK1', 'ROW2', False)]
+        ```
         """
         task_info = property_data_utils.get_task_from_id(session=self.session, id=task_id)
 
@@ -412,14 +418,15 @@ class PropertyDataCollection(BaseCollection):
         CheckPropertyData
             The data status of the given block interval.
 
-        !!! example
-            ```python
-            status = client.property_data.check_block_interval_for_data(
-                block_id="BLK1", task_id="TASFOR1", interval_id="ROW1"
-            )
-            status.data_exists
-            # True
-            ```
+        Examples
+        --------
+        ```python
+        status = client.property_data.check_block_interval_for_data(
+            block_id="BLK1", task_id="TASFOR1", interval_id="ROW1"
+        )
+        status.data_exists
+        # True
+        ```
         """
         params = {
             "entity": "block",
@@ -455,14 +462,15 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             Results for each block/inventory/lot combination on the task.
 
-        !!! example
-            ```python
-            blocks = client.property_data.get_all_task_properties(
-                task_id="TASFOR1", with_data_only=True
-            )
-            [b.block_id for b in blocks]
-            # ['BLK1', 'BLK2']
-            ```
+        Examples
+        --------
+        ```python
+        blocks = client.property_data.get_all_task_properties(
+            task_id="TASFOR1", with_data_only=True
+        )
+        [b.block_id for b in blocks]
+        # ['BLK1', 'BLK2']
+        ```
         """
         all_info = []
         task_data_info = self.check_for_task_data(task_id=task_id)
@@ -520,21 +528,22 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's properties after the update, scoped per ``return_scope``.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import PropertyDataPatchDatum
-            from albert.core.shared.models.patch import PatchOperation
-            patch = PropertyDataPatchDatum(
-                operation=PatchOperation.UPDATE,
-                id="PTD1",
-                attribute="value",
-                new_value="1.5",
-                old_value="1.2",
-            )
-            client.property_data.update_property_on_task(
-                task_id="TASFOR1", patch_payload=[patch]
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import PropertyDataPatchDatum
+        from albert.core.shared.models.patch import PatchOperation
+        patch = PropertyDataPatchDatum(
+            operation=PatchOperation.UPDATE,
+            id="PTD1",
+            attribute="value",
+            new_value="1.5",
+            old_value="1.2",
+        )
+        client.property_data.update_property_on_task(
+            task_id="TASFOR1", patch_payload=[patch]
+        )
+        ```
         """
         if len(patch_payload) > 0:
             resolved_payload = property_data_utils.resolve_patch_payload(
@@ -587,12 +596,13 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.void_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.void_task_data(
+            task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+        )
+        ```
         """
         payload = {
             "operation": "void",
@@ -636,12 +646,13 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.unvoid_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.unvoid_task_data(
+            task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+        )
+        ```
         """
         payload = {
             "operation": "unvoid",
@@ -694,15 +705,16 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.void_interval_data(
-                task_id="TASFOR1",
-                interval_id="ROW1",
-                inventory_id="INVA1",
-                block_id="BLK1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.void_interval_data(
+            task_id="TASFOR1",
+            interval_id="ROW1",
+            inventory_id="INVA1",
+            block_id="BLK1",
+        )
+        ```
         """
         payload = {
             "operation": "void",
@@ -755,15 +767,16 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.unvoid_interval_data(
-                task_id="TASFOR1",
-                interval_id="ROW1",
-                inventory_id="INVA1",
-                block_id="BLK1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.unvoid_interval_data(
+            task_id="TASFOR1",
+            interval_id="ROW1",
+            inventory_id="INVA1",
+            block_id="BLK1",
+        )
+        ```
         """
         payload = {
             "operation": "unvoid",
@@ -817,16 +830,17 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.void_trial_data(
-                task_id="TASFOR1",
-                interval_id="ROW1",
-                trial_number=2,
-                inventory_id="INVA1",
-                block_id="BLK1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.void_trial_data(
+            task_id="TASFOR1",
+            interval_id="ROW1",
+            trial_number=2,
+            inventory_id="INVA1",
+            block_id="BLK1",
+        )
+        ```
         """
         payload = [
             {
@@ -880,16 +894,17 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.unvoid_trial_data(
-                task_id="TASFOR1",
-                interval_id="ROW1",
-                trial_number=2,
-                inventory_id="INVA1",
-                block_id="BLK1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.unvoid_trial_data(
+            task_id="TASFOR1",
+            interval_id="ROW1",
+            trial_number=2,
+            inventory_id="INVA1",
+            block_id="BLK1",
+        )
+        ```
         """
         payload = [
             {
@@ -954,29 +969,30 @@ class PropertyDataCollection(BaseCollection):
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
-            # Derive the required data column / template from the existing block
-            block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
-            )
-            column = block.data[0].trials[0].data_columns[0]
-            new_value = TaskPropertyCreate(
-                interval_combination="default",
-                data_column=TaskDataColumn(
-                    data_column_id=column.id, column_sequence=column.sequence
-                ),
-                value="33.3",
-                data_template=block.data_template,
-            )
-            client.property_data.add_properties_to_task(
-                inventory_id="INVA1",
-                task_id="TASFOR1",
-                block_id="BLK1",
-                properties=[new_value],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+        # Derive the required data column / template from the existing block
+        block = client.property_data.get_task_block_properties(
+            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+        )
+        column = block.data[0].trials[0].data_columns[0]
+        new_value = TaskPropertyCreate(
+            interval_combination="default",
+            data_column=TaskDataColumn(
+                data_column_id=column.id, column_sequence=column.sequence
+            ),
+            value="33.3",
+            data_template=block.data_template,
+        )
+        client.property_data.add_properties_to_task(
+            inventory_id="INVA1",
+            task_id="TASFOR1",
+            block_id="BLK1",
+            properties=[new_value],
+        )
+        ```
         """
         params = {
             "blockId": block_id,
@@ -1081,29 +1097,30 @@ class PropertyDataCollection(BaseCollection):
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
-            block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
-            )
-            column = block.data[0].trials[0].data_columns[0]
-            value = TaskPropertyCreate(
-                interval_combination="default",
-                data_column=TaskDataColumn(
-                    data_column_id=column.id, column_sequence=column.sequence
-                ),
-                value="42",
-                trial_number=1,
-                data_template=block.data_template,
-            )
-            client.property_data.update_or_create_task_properties(
-                inventory_id="INVA1",
-                task_id="TASFOR1",
-                block_id="BLK1",
-                properties=[value],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+        block = client.property_data.get_task_block_properties(
+            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+        )
+        column = block.data[0].trials[0].data_columns[0]
+        value = TaskPropertyCreate(
+            interval_combination="default",
+            data_column=TaskDataColumn(
+                data_column_id=column.id, column_sequence=column.sequence
+            ),
+            value="42",
+            trial_number=1,
+            data_template=block.data_template,
+        )
+        client.property_data.update_or_create_task_properties(
+            inventory_id="INVA1",
+            task_id="TASFOR1",
+            block_id="BLK1",
+            properties=[value],
+        )
+        ```
         """
 
         existing_data_rows = self.get_task_block_properties(
@@ -1249,17 +1266,18 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's results after the load, scoped per ``return_scope``.
 
-        !!! example
-            ```python
-            from albert.resources.property_data import BulkPropertyData
-            data = BulkPropertyData.from_dataframe(df=my_dataframe)
-            results = client.property_data.bulk_load_task_properties(
-                block_id="BLK1",
-                inventory_id="INVA1",
-                property_data=data,
-                task_id="TASFOR291760",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.property_data import BulkPropertyData
+        data = BulkPropertyData.from_dataframe(df=my_dataframe)
+        results = client.property_data.bulk_load_task_properties(
+            block_id="BLK1",
+            inventory_id="INVA1",
+            property_data=data,
+            task_id="TASFOR291760",
+        )
+        ```
         """
         property_df = pd.DataFrame(
             {x.data_column_name: x.data_series for x in property_data.columns}
@@ -1330,12 +1348,13 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.property_data.bulk_delete_task_data(
-                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA1"
-            )
-            ```
+        Examples
+        --------
+        ```python
+        client.property_data.bulk_delete_task_data(
+            task_id="TASFOR1", block_id="BLK1", inventory_id="INVA1"
+        )
+        ```
         """
         params = {
             "inventoryId": inventory_id,
@@ -1435,14 +1454,15 @@ class PropertyDataCollection(BaseCollection):
         Iterator[PropertyDataSearchItem]
             A lazily paginated iterator of matching property data search items.
 
-        !!! example
-            ```python
-            hits = client.property_data.search(
-                data_columns="Viscosity", max_items=25
-            )
-            for item in hits:
-                print(item)
-            ```
+        Examples
+        --------
+        ```python
+        hits = client.property_data.search(
+            data_columns="Viscosity", max_items=25
+        )
+        for item in hits:
+            print(item)
+        ```
         """
 
         def deserialize(items: list[dict]) -> list[PropertyDataSearchItem]:

@@ -28,20 +28,21 @@ class RoleCollection(BaseCollection):
     Methods
     -------
     get_by_id(id) -> Role
-        Retrieve a single role by its ID.
+        Get a single role by its ID.
     get_all(params=None) -> list[Role]
-        Retrieve all available roles.
+        Get all available roles.
     create(role) -> Role
-        Register a new role.
+        Create a new role.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        roles = client.roles.get_all()
-        for role in roles:
-            print(role.id, role.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    roles = client.roles.get_all()
+    for role in roles:
+        print(role.id, role.name)
+    ```
     """
 
     _api_version = "v3"
@@ -58,7 +59,7 @@ class RoleCollection(BaseCollection):
         self.base_path = f"/api/{RoleCollection._api_version}/acl/roles"
 
     def get_by_id(self, *, id: str) -> Role:
-        """Retrieve a single role by its ID.
+        """Get a single role by its ID.
 
         Parameters
         ----------
@@ -69,14 +70,15 @@ class RoleCollection(BaseCollection):
         Returns
         -------
         Role
-            The retrieved role.
+            The fully populated role.
 
-        !!! example
-            ```python
-            role = client.roles.get_by_id(id="role#admin")
-            role.name
-            # 'Administrator'
-            ```
+        Examples
+        --------
+        ```python
+        role = client.roles.get_by_id(id="role#admin")
+        role.name
+        # 'Administrator'
+        ```
         """
         # role IDs have # symbols
         url = urllib.parse.quote(f"{self.base_path}/{id}")
@@ -84,7 +86,7 @@ class RoleCollection(BaseCollection):
         return Role(**response.json())
 
     def create(self, *, role: Role):
-        """Register a new role.
+        """Create a new role.
 
         Parameters
         ----------
@@ -96,12 +98,13 @@ class RoleCollection(BaseCollection):
         Role
             The newly created role.
 
-        !!! example
-            ```python
-            from albert.resources.roles import Role
-            role = client.roles.create(role=Role(name="Lab Analyst", tenant="TEN123"))
-            role.id
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.roles import Role
+        role = client.roles.create(role=Role(name="Lab Analyst", tenant="TEN123"))
+        role.id
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -110,7 +113,7 @@ class RoleCollection(BaseCollection):
         return Role(**response.json())
 
     def get_all(self, *, params: dict | None = None) -> list[Role]:
-        """Retrieve all available roles.
+        """Get all available roles.
 
         Parameters
         ----------
@@ -123,12 +126,13 @@ class RoleCollection(BaseCollection):
         list[Role]
             All roles available in the tenant.
 
-        !!! example
-            ```python
-            roles = client.roles.get_all()
-            [r.name for r in roles]
-            # ['Administrator', 'Standard User']
-            ```
+        Examples
+        --------
+        ```python
+        roles = client.roles.get_all()
+        [r.name for r in roles]
+        # ['Administrator', 'Standard User']
+        ```
         """
         if params is None:
             params = {}

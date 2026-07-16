@@ -44,29 +44,30 @@ class ProjectCollection(BaseCollection):
     create(project) -> Project
         Create a new project.
     get_by_id(id) -> Project
-        Retrieve a single project by its Project ID.
+        Get a single project by its ID.
     update(project) -> Project
-        Apply changes to an existing project.
+        Update an existing project.
     delete(id) -> None
-        Delete a project by its Project ID.
+        Delete a project by its ID.
     search(...) -> Iterator[ProjectSearchItem]
         Fast, lightweight search returning partial projects (best for lookups).
     get_all(...) -> Iterator[Project]
-        Same filters as search, but returns fully hydrated projects (slower).
+        Same filters as search, but returns fully populated projects (slower).
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.projects import Project
-        client = Albert()
-        project = client.projects.create(
-            project=Project(description="Weatherproof Coatings 2026")
-        )
-        print(project.id)
-        # 'PRO123'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.projects import Project
+    client = Albert()
+    project = client.projects.create(
+        project=Project(description="Weatherproof Coatings 2026")
+    )
+    print(project.id)
+    # 'PRO123'
+    ```
     """
 
     _api_version = "v3"
@@ -101,15 +102,16 @@ class ProjectCollection(BaseCollection):
         Project
             The newly created project, populated with its assigned Project ID.
 
-        !!! example
-            ```python
-            from albert.resources.projects import Project
-            project = client.projects.create(
-                project=Project(description="Weatherproof Coatings 2026")
-            )
-            project.id
-            # 'PRO123'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.projects import Project
+        project = client.projects.create(
+            project=Project(description="Weatherproof Coatings 2026")
+        )
+        project.id
+        # 'PRO123'
+        ```
         """
         response = self.session.post(
             self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -118,7 +120,7 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: ProjectId) -> Project:
-        """Retrieve a single project by its ID.
+        """Get a single project by its ID.
 
         To find projects without knowing their IDs, use [`search`][albert.collections.projects.ProjectCollection.search] or
         [`get_all`][albert.collections.projects.ProjectCollection.get_all].
@@ -131,14 +133,15 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Project
-            The fully hydrated project.
+            The fully populated project.
 
-        !!! example
-            ```python
-            project = client.projects.get_by_id(id="PRO123")
-            project.description
-            # 'Weatherproof Coatings 2026'
-            ```
+        Examples
+        --------
+        ```python
+        project = client.projects.get_by_id(id="PRO123")
+        project.description
+        # 'Weatherproof Coatings 2026'
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -146,11 +149,11 @@ class ProjectCollection(BaseCollection):
         return Project(**response.json(), session=self.session)
 
     def update(self, *, project: Project) -> Project:
-        """Update a project.
+        """Update an existing project.
 
-        Fetches the current server-side project, diffs it against the object you
-        pass in, and applies the difference. Retrieve the project (e.g. with
-        [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]), modify the updatable fields, then pass it here.
+        Retrieve the project (e.g. with
+        [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]), modify the updatable fields, then pass it
+        here. Only the fields listed in Notes are applied.
 
         Parameters
         ----------
@@ -161,19 +164,20 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Project
-            The updated project as returned by the server.
+            The updated project.
 
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
         ``metadata``, ``state``.
 
-        !!! example
-            ```python
-            project = client.projects.get_by_id(id="PRO123")
-            project.description = "Weatherproof Coatings 2026 (rev B)"
-            updated = client.projects.update(project=project)
-            ```
+        Examples
+        --------
+        ```python
+        project = client.projects.get_by_id(id="PRO123")
+        project.description = "Weatherproof Coatings 2026 (rev B)"
+        updated = client.projects.update(project=project)
+        ```
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
@@ -196,10 +200,11 @@ class ProjectCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.projects.delete(id="PRO123")
-            ```
+        Examples
+        --------
+        ```python
+        client.projects.delete(id="PRO123")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -232,7 +237,7 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[ProjectSearchItem]:
-        """Search for projects matching the provided criteria.
+        """Search for projects matching the given filters.
 
         This is the fast way to find projects: it returns lightweight, partial
         (unhydrated) [`ProjectSearchItem`][albert.resources.projects.ProjectSearchItem] results
@@ -298,11 +303,12 @@ class ProjectCollection(BaseCollection):
         Iterator[ProjectSearchItem]
             An iterator of matching partial (unhydrated) project results.
 
-        !!! example
-            ```python
-            for hit in client.projects.search(text="coatings", max_items=25):
-                print(hit.id, hit.description)
-            ```
+        Examples
+        --------
+        ```python
+        for hit in client.projects.search(text="coatings", max_items=25):
+            print(hit.id, hit.description)
+        ```
         """
         query_params = {
             "order": order_by,
@@ -392,11 +398,12 @@ class ProjectCollection(BaseCollection):
         Iterator[DocumentSearchItem]
             Matching document search results.
 
-        !!! example
-            ```python
-            for doc in client.projects.document_search(linked_to="PRO123"):
-                print(doc.name, doc.mime_type)
-            ```
+        Examples
+        --------
+        ```python
+        for doc in client.projects.document_search(linked_to="PRO123"):
+            print(doc.name, doc.mime_type)
+        ```
         """
         query_params = {
             "linkedTo": linked_to,
@@ -442,7 +449,7 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[Project]:
-        """Retrieve fully hydrated projects matching optional filters.
+        """Get fully populated projects matching optional filters.
 
         Accepts the same filters as [`search`][albert.collections.projects.ProjectCollection.search], but yields complete
         [`Project`][albert.resources.projects.Project] entities by fetching each
@@ -497,13 +504,14 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Iterator[Project]
-            An iterator of fully hydrated Project entities.
+            An iterator of fully populated Project entities.
 
-        !!! example
-            ```python
-            for project in client.projects.get_all(text="coatings", max_items=10):
-                print(project.id, project.description)
-            ```
+        Examples
+        --------
+        ```python
+        for project in client.projects.get_all(text="coatings", max_items=10):
+            print(project.id, project.description)
+        ```
         """
         for project in self.search(
             text=text,

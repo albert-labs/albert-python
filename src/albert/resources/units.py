@@ -118,11 +118,12 @@ class Unit(BaseResource):
     verified : bool or None
         Whether the unit has been verified in Albert. Read-only.
 
-    !!! example
-        ```python
-        from albert.resources.units import Unit, UnitCategory
-        unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.units import Unit, UnitCategory
+    unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
+    ```
     """
 
     id: str | None = Field(None, alias="albertId")

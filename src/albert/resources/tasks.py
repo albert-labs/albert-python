@@ -491,12 +491,13 @@ class PropertyTask(BaseTask):
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
     ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
 
-    !!! example
-        ```python
-        from albert.resources.tasks import PropertyTask
+    Examples
+    --------
+    ```python
+    from albert.resources.tasks import PropertyTask
 
-        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
-        ```
+    task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+    ```
     """
 
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
@@ -548,19 +549,20 @@ class BatchTask(BaseTask):
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
     ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
 
-    !!! example
-        ```python
-        from albert.resources.tasks import BatchTask
-        from albert.resources.tasks import TaskInventoryInformation
+    Examples
+    --------
+    ```python
+    from albert.resources.tasks import BatchTask
+    from albert.resources.tasks import TaskInventoryInformation
 
-        task = BatchTask(
-            name="Make 500 g of Formula A",
-            parent_id="PRO1",
-            inventory_information=[
-                TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
-            ],
-        )
-        ```
+    task = BatchTask(
+        name="Make 500 g of Formula A",
+        parent_id="PRO1",
+        inventory_information=[
+            TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
+        ],
+    )
+    ```
     """
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
@@ -585,12 +587,13 @@ class GeneralTask(BaseTask):
     Create and manage general tasks with
     [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
 
-    !!! example
-        ```python
-        from albert.resources.tasks import GeneralTask
+    Examples
+    --------
+    ```python
+    from albert.resources.tasks import GeneralTask
 
-        task = GeneralTask(name="Calibrate rheometer")
-        ```
+    task = GeneralTask(name="Calibrate rheometer")
+    ```
     """
 
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL

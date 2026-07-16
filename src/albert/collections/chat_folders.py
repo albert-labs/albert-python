@@ -41,7 +41,7 @@ class ChatFolderCollection:
     create(folder) -> ChatFolder
         Create a new chat folder.
     get_by_id(id) -> ChatFolder
-        Retrieve a single folder by its ID.
+        Get a single folder by its ID.
     get_all(name, exact_match, max_items) -> AsyncIterator[ChatFolder]
         Iterate over folders, with optional filters.
     update(id, name=None, sequence=None) -> ChatFolder
@@ -49,30 +49,30 @@ class ChatFolderCollection:
     delete(id) -> None
         Delete a folder by its ID.
 
-    !!! example
-        ```python
-        from albert import AsyncAlbert
-        from albert.resources.chats import ChatFolder
+    Examples
+    --------
+    ```python
+    from albert import AsyncAlbert
+    from albert.resources.chats import ChatFolder
 
-        async with AsyncAlbert() as client:
-            folder = await client.chat_folders.create(
-                folder=ChatFolder(name="Formulation questions")
-            )
-            async for f in client.chat_folders.get_all():
-                print(f.id, f.name)
-        ```
+    async with AsyncAlbert() as client:
+        folder = await client.chat_folders.create(
+            folder=ChatFolder(name="Formulation questions")
+        )
+        async for f in client.chat_folders.get_all():
+            print(f.id, f.name)
+    ```
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AsyncAlbertSession):
-        """
-        Initializes the ChatFolderCollection with the provided session.
+        """Initialize a ChatFolderCollection.
 
         Parameters
         ----------
         session : AsyncAlbertSession
-            The async session used to make API requests.
+            The authenticated Albert async session used for API calls.
         """
         self._session = session
         self.base_path: str = f"/api/{self._api_version}/chats/folders"
@@ -92,16 +92,17 @@ class ChatFolderCollection:
         ChatFolder
             The created folder, populated with its server-assigned ``id``.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
-            from albert.resources.chats import ChatFolder
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatFolder
 
-            async with AsyncAlbert() as client:
-                folder = await client.chat_folders.create(
-                    folder=ChatFolder(name="Formulation questions")
-                )
-            ```
+        async with AsyncAlbert() as client:
+            folder = await client.chat_folders.create(
+                folder=ChatFolder(name="Formulation questions")
+            )
+        ```
         """
         response = await self._session.post(
             self.base_path,
@@ -111,7 +112,7 @@ class ChatFolderCollection:
 
     @validate_call
     async def get_by_id(self, *, id: str) -> ChatFolder:
-        """Retrieve a chat folder by its ID.
+        """Get a chat folder by its ID.
 
         Parameters
         ----------
@@ -121,15 +122,16 @@ class ChatFolderCollection:
         Returns
         -------
         ChatFolder
-            The matching folder.
+            The fully populated folder.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                folder = await client.chat_folders.get_by_id(id="...")
-            ```
+        async with AsyncAlbert() as client:
+            folder = await client.chat_folders.get_by_id(id="...")
+        ```
         """
         response = await self._session.get(f"{self.base_path}/{id}")
         return ChatFolder(**response.json())
@@ -162,14 +164,15 @@ class ChatFolderCollection:
         ChatFolder
             Folders matching the given filters.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                async for folder in client.chat_folders.get_all():
-                    print(folder.id, folder.name)
-            ```
+        async with AsyncAlbert() as client:
+            async for folder in client.chat_folders.get_all():
+                print(folder.id, folder.name)
+        ```
         """
         params: dict[str, str | list[str]] = {}
         if name:
@@ -218,13 +221,14 @@ class ChatFolderCollection:
         -----
         The following fields can be updated: ``name``, ``sequence``.
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                folder = await client.chat_folders.update(id="...", name="Renamed folder")
-            ```
+        async with AsyncAlbert() as client:
+            folder = await client.chat_folders.update(id="...", name="Renamed folder")
+        ```
         """
         data = []
         if name is not None:
@@ -238,7 +242,7 @@ class ChatFolderCollection:
 
     @validate_call
     async def delete(self, *, id: str) -> None:
-        """Delete a chat folder by ID.
+        """Delete a chat folder by its ID.
 
         Parameters
         ----------
@@ -249,12 +253,13 @@ class ChatFolderCollection:
         -------
         None
 
-        !!! example
-            ```python
-            from albert import AsyncAlbert
+        Examples
+        --------
+        ```python
+        from albert import AsyncAlbert
 
-            async with AsyncAlbert() as client:
-                await client.chat_folders.delete(id="...")
-            ```
+        async with AsyncAlbert() as client:
+            await client.chat_folders.delete(id="...")
+        ```
         """
         await self._session.delete(f"{self.base_path}/{id}")

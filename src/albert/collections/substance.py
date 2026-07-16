@@ -35,19 +35,20 @@ class SubstanceCollection(BaseCollection):
     Methods
     -------
     get_by_ids(cas_ids, region="US", catch_errors=None) -> list[SubstanceInfo]
-        Retrieve regulatory information for several CAS numbers at once.
+        Get regulatory information for several CAS numbers at once.
     get_by_id(cas_id, region="US", catch_errors=None) -> SubstanceInfo | None
-        Retrieve regulatory information for a single CAS number.
+        Get regulatory information for a single CAS number.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        substance = client.substances.get_by_id(cas_id="64-17-5")
-        substance.cas_id
-        # '64-17-5'
-        ```
+    client = Albert()
+    substance = client.substances.get_by_id(cas_id="64-17-5")
+    substance.cas_id
+    # '64-17-5'
+    ```
     """
 
     _api_version = "v3"
@@ -70,7 +71,7 @@ class SubstanceCollection(BaseCollection):
         region: str = "US",
         catch_errors: bool | None = None,
     ) -> list[SubstanceInfo]:
-        """Retrieve regulatory information for several CAS numbers at once.
+        """Get regulatory information for several CAS numbers at once.
 
         For a single CAS number, use [`get_by_id`][albert.collections.substance.SubstanceCollection.get_by_id].
 
@@ -91,15 +92,16 @@ class SubstanceCollection(BaseCollection):
         list[SubstanceInfo]
             The substances found for the given CAS numbers.
 
-        !!! example
-            ```python
-            from albert import Albert
+        Examples
+        --------
+        ```python
+        from albert import Albert
 
-            client = Albert()
-            substances = client.substances.get_by_ids(cas_ids=["64-17-5", "67-64-1"])
-            [s.cas_id for s in substances]
-            # ['64-17-5', '67-64-1']
-            ```
+        client = Albert()
+        substances = client.substances.get_by_ids(cas_ids=["64-17-5", "67-64-1"])
+        [s.cas_id for s in substances]
+        # ['64-17-5', '67-64-1']
+        ```
         """
         params = {
             "casIDs": ",".join(cas_ids),
@@ -117,7 +119,7 @@ class SubstanceCollection(BaseCollection):
         region: str = "US",
         catch_errors: bool | None = None,
     ) -> SubstanceInfo | None:
-        """Retrieve regulatory information for a single CAS number.
+        """Get regulatory information for a single CAS number.
 
         To look up several CAS numbers in one call, use [`get_by_ids`][albert.collections.substance.SubstanceCollection.get_by_ids].
 
@@ -135,17 +137,18 @@ class SubstanceCollection(BaseCollection):
         Returns
         -------
         SubstanceInfo or None
-            The substance for the given CAS number, or None if it is not found.
+            The fully populated substance, or None if it is not found.
 
-        !!! example
-            ```python
-            from albert import Albert
+        Examples
+        --------
+        ```python
+        from albert import Albert
 
-            client = Albert()
-            substance = client.substances.get_by_id(cas_id="64-17-5")
-            substance.is_known
-            # True
-            ```
+        client = Albert()
+        substance = client.substances.get_by_id(cas_id="64-17-5")
+        substance.is_known
+        # True
+        ```
         """
         results = self.get_by_ids(cas_ids=[cas_id], region=region, catch_errors=catch_errors)
         return results[0] if results else None

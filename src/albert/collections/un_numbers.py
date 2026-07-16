@@ -31,9 +31,9 @@ class UnNumberCollection(BaseCollection):
     Methods
     -------
     get_by_id(id) -> UnNumber
-        Retrieve a single UN Number by its Albert ID.
+        Get a single UN Number by its ID.
     get_by_name(name) -> UnNumber | None
-        Retrieve a UN Number by its exact name, or None if not found.
+        Get a UN Number by its exact name, or None if not found.
     get_all(...) -> Iterator[UnNumber]
         Iterate over UN Numbers, optionally filtered by name.
     create() -> None
@@ -44,14 +44,15 @@ class UnNumberCollection(BaseCollection):
     Creating UN Numbers is not supported via the SDK, as UN Numbers are highly
     controlled by Albert.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        un_number = client.un_numbers.get_by_name(name="UN1090")
-        un_number.shipping_description
-        ```
+    client = Albert()
+    un_number = client.un_numbers.get_by_name(name="UN1090")
+    un_number.shipping_description
+    ```
     """
 
     _api_version = "v3"
@@ -85,7 +86,7 @@ class UnNumberCollection(BaseCollection):
         raise NotImplementedError()
 
     def get_by_id(self, *, id: str) -> UnNumber:
-        """Retrieve a single UN Number by its Albert ID.
+        """Get a single UN Number by its ID.
 
         Parameters
         ----------
@@ -95,20 +96,21 @@ class UnNumberCollection(BaseCollection):
         Returns
         -------
         UnNumber
-            The matching UN Number.
+            The fully populated UN Number.
 
-        !!! example
-            ```python
-            un_number = client.un_numbers.get_by_id(id="...")
-            un_number.un_number
-            ```
+        Examples
+        --------
+        ```python
+        un_number = client.un_numbers.get_by_id(id="...")
+        un_number.un_number
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return UnNumber(**response.json())
 
     def get_by_name(self, *, name: str) -> UnNumber | None:
-        """Retrieve a UN Number by its exact name.
+        """Get a UN Number by its exact name.
 
         Runs an exact-match lookup and returns the first result. To browse or
         do partial-name matching, use [`get_all`][albert.collections.un_numbers.UnNumberCollection.get_all].
@@ -123,11 +125,12 @@ class UnNumberCollection(BaseCollection):
         UnNumber | None
             The matching UN Number, or None if no exact match is found.
 
-        !!! example
-            ```python
-            un_number = client.un_numbers.get_by_name(name="UN1090")
-            un_number.storage_class_name if un_number else "not found"
-            ```
+        Examples
+        --------
+        ```python
+        un_number = client.un_numbers.get_by_name(name="UN1090")
+        un_number.storage_class_name if un_number else "not found"
+        ```
         """
         found = self.get_all(exact_match=True, name=name)
         return next(found, None)
@@ -163,11 +166,12 @@ class UnNumberCollection(BaseCollection):
         Iterator[UnNumber]
             The UN Numbers matching the search criteria.
 
-        !!! example
-            ```python
-            for un_number in client.un_numbers.get_all(name="acetone", max_items=10):
-                print(un_number.un_number, un_number.shipping_description)
-            ```
+        Examples
+        --------
+        ```python
+        for un_number in client.un_numbers.get_all(name="acetone", max_items=10):
+            print(un_number.un_number, un_number.shipping_description)
+        ```
         """
         params = {"startKey": start_key}
         if name:

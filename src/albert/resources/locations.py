@@ -28,17 +28,18 @@ class Location(BaseResource):
     country : str | None
         The two-letter country code of the location (for example, ``"US"``).
 
-    !!! example
-        ```python
-        from albert.resources.locations import Location
-        location = Location(
-            name="Boston Lab",
-            latitude=42.3601,
-            longitude=-71.0589,
-            address="1 Main St",
-            country="US",
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.locations import Location
+    location = Location(
+        name="Boston Lab",
+        latitude=42.3601,
+        longitude=-71.0589,
+        address="1 Main St",
+        country="US",
+    )
+    ```
     """
 
     name: str

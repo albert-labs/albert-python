@@ -507,26 +507,27 @@ class BulkPropertyData(BaseAlbertModel):
     --------
     BulkPropertyDataColumn : One column's row values.
 
-    !!! example
-        ```python
-        import pandas as pd
-        from albert.resources.property_data import (
-            BulkPropertyData,
-            BulkPropertyDataColumn,
-        )
+    Examples
+    --------
+    ```python
+    import pandas as pd
+    from albert.resources.property_data import (
+        BulkPropertyData,
+        BulkPropertyDataColumn,
+    )
 
-        # Construct directly from columns
-        bulk = BulkPropertyData(
-            columns=[
-                BulkPropertyDataColumn(
-                    data_column_name="Viscosity", data_series=["1.1", "1.2"]
-                ),
-            ]
-        )
+    # Construct directly from columns
+    bulk = BulkPropertyData(
+        columns=[
+            BulkPropertyDataColumn(
+                data_column_name="Viscosity", data_series=["1.1", "1.2"]
+            ),
+        ]
+    )
 
-        # Or build from a DataFrame (values are coerced to strings)
-        bulk = BulkPropertyData.from_dataframe(pd.DataFrame({"Viscosity": [1.1, 1.2]}))
-        ```
+    # Or build from a DataFrame (values are coerced to strings)
+    bulk = BulkPropertyData.from_dataframe(pd.DataFrame({"Viscosity": [1.1, 1.2]}))
+    ```
     """
 
     columns: list[BulkPropertyDataColumn] = Field(
@@ -585,12 +586,13 @@ class ImagePropertyValue(BaseAlbertModel):
     TaskPropertyCreate : Uses this as its ``value`` for image data columns.
     CurvePropertyValue : The equivalent input for curve data columns.
 
-    !!! example
-        ```python
-        from albert.resources.property_data import ImagePropertyValue
+    Examples
+    --------
+    ```python
+    from albert.resources.property_data import ImagePropertyValue
 
-        image = ImagePropertyValue(file_path="results/sample.png")
-        ```
+    image = ImagePropertyValue(file_path="results/sample.png")
+    ```
     """
 
     file_path: str | Path
@@ -617,12 +619,13 @@ class CurvePropertyValue(BaseAlbertModel):
     TaskPropertyCreate : Uses this as its ``value`` for curve data columns.
     ImagePropertyValue : The equivalent input for image data columns.
 
-    !!! example
-        ```python
-        from albert.resources.property_data import CurvePropertyValue
+    Examples
+    --------
+    ```python
+    from albert.resources.property_data import CurvePropertyValue
 
-        curve = CurvePropertyValue(file_path="results/dsc_curve.csv")
-        ```
+    curve = CurvePropertyValue(file_path="results/dsc_curve.csv")
+    ```
     """
 
     file_path: str | Path
@@ -713,12 +716,13 @@ class InventoryDataColumn(BaseAlbertModel):
     --------
     InventoryPropertyDataCreate : Wraps these columns for the create request.
 
-    !!! example
-        ```python
-        from albert.resources.property_data import InventoryDataColumn
+    Examples
+    --------
+    ```python
+    from albert.resources.property_data import InventoryDataColumn
 
-        prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
-        ```
+    prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
+    ```
     """
 
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
@@ -783,24 +787,25 @@ class TaskPropertyCreate(BaseResource):
     ImagePropertyValue : Value input for image data columns.
     CurvePropertyValue : Value input for curve data columns.
 
-    !!! example
-        ```python
-        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+    Examples
+    --------
+    ```python
+    from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
 
-        # Derive the data column and template from the existing block
-        block = client.property_data.get_task_block_properties(
-            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
-        )
-        column = block.data[0].trials[0].data_columns[0]
-        new_value = TaskPropertyCreate(
-            interval_combination="default",
-            data_column=TaskDataColumn(
-                data_column_id=column.id, column_sequence=column.sequence
-            ),
-            value="33.3",
-            data_template=block.data_template,
-        )
-        ```
+    # Derive the data column and template from the existing block
+    block = client.property_data.get_task_block_properties(
+        inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+    )
+    column = block.data[0].trials[0].data_columns[0]
+    new_value = TaskPropertyCreate(
+        interval_combination="default",
+        data_column=TaskDataColumn(
+            data_column_id=column.id, column_sequence=column.sequence
+        ),
+        value="33.3",
+        data_template=block.data_template,
+    )
+    ```
     """
 
     entity: Literal[DataEntity.TASK] = Field(
@@ -883,19 +888,20 @@ class PropertyDataPatchDatum(PatchDatum):
     old_value : Any | None
         The previous value. Serialized as ``oldValue``.
 
-    !!! example
-        ```python
-        from albert.resources.property_data import PropertyDataPatchDatum
-        from albert.core.shared.models.patch import PatchOperation
+    Examples
+    --------
+    ```python
+    from albert.resources.property_data import PropertyDataPatchDatum
+    from albert.core.shared.models.patch import PatchOperation
 
-        patch = PropertyDataPatchDatum(
-            operation=PatchOperation.UPDATE,
-            id="PTD1",
-            attribute="value",
-            new_value="1.5",
-            old_value="1.2",
-        )
-        ```
+    patch = PropertyDataPatchDatum(
+        operation=PatchOperation.UPDATE,
+        id="PTD1",
+        attribute="value",
+        new_value="1.5",
+        old_value="1.2",
+    )
+    ```
     """
 
     property_column_id: DataColumnId | PropertyDataId = Field(alias="id")

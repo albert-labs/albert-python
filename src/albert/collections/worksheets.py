@@ -51,7 +51,7 @@ class WorksheetCollection(BaseCollection):
     Methods
     -------
     get_by_project_id(project_id) -> Worksheet
-        Retrieve the Worksheet paired with a Project.
+        Get the Worksheet paired with a Project.
     setup_worksheet(project_id, add_sheet=False) -> Worksheet
         Initialize a Worksheet for a Project that does not yet have one.
     add_sheet(project_id, sheet_name) -> Worksheet
@@ -63,14 +63,15 @@ class WorksheetCollection(BaseCollection):
     create_sheet_template(project_id, source_sheet_name, template_name, ...) -> CustomTemplate
         Save an existing Sheet as a reusable Sheet template.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-        for sheet in worksheet.sheets:
-            print(sheet.id, sheet.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+    for sheet in worksheet.sheets:
+        print(sheet.id, sheet.name)
+    ```
     """
 
     _api_version = "v3"
@@ -97,7 +98,7 @@ class WorksheetCollection(BaseCollection):
 
     @validate_call
     def get_by_project_id(self, *, project_id: ProjectId) -> Worksheet:
-        """Retrieve the Worksheet paired with a Project.
+        """Get the Worksheet paired with a Project.
 
         Projects and Worksheets are one-to-one in Albert, so a Project ID uniquely
         identifies a Worksheet. This is the usual entry point for working with a
@@ -115,14 +116,15 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet paired with the Project.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-            sheet = worksheet.sheets[0]
-            print(sheet.name)
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        sheet = worksheet.sheets[0]
+        print(sheet.name)
+        ```
         """
 
         params = {"type": "project", "id": project_id}
@@ -154,12 +156,13 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet for the Project.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            worksheet = client.worksheets.setup_worksheet(project_id="PRO1", add_sheet=True)
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.setup_worksheet(project_id="PRO1", add_sheet=True)
+        ```
         """
 
         params = {"sheets": str(add_sheet).lower()}
@@ -190,16 +193,17 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            worksheet = client.worksheets.setup_new_sheet_from_template(
-                project_id="PRO1",
-                sheet_template_id="CTP123",
-                sheet_name="Trial 1",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.setup_new_sheet_from_template(
+            project_id="PRO1",
+            sheet_template_id="CTP123",
+            sheet_name="Trial 1",
+        )
+        ```
         """
         payload = {"name": sheet_name}
         params = {"templateId": sheet_template_id}
@@ -226,12 +230,13 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            worksheet = client.worksheets.add_sheet(project_id="PRO1", sheet_name="Trial 2")
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.add_sheet(project_id="PRO1", sheet_name="Trial 2")
+        ```
         """
         payload = {"name": sheet_name}
         url = f"{self.base_path}/project/{project_id}/sheets"
@@ -288,16 +293,17 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            worksheet = client.worksheets.duplicate_sheet(
-                project_id="PRO1",
-                source_sheet_name="Trial 1",
-                new_sheet_name="Trial 1 (copy)",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.duplicate_sheet(
+            project_id="PRO1",
+            source_sheet_name="Trial 1",
+            new_sheet_name="Trial 1 (copy)",
+        )
+        ```
         """
 
         worksheet = self.get_by_project_id(project_id=project_id)
@@ -384,16 +390,17 @@ class WorksheetCollection(BaseCollection):
         ValueError
             If no columns are selected to include in the template.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            template = client.worksheets.create_sheet_template(
-                project_id="PRO1",
-                source_sheet_name="Trial 1",
-                template_name="Standard trial layout",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        template = client.worksheets.create_sheet_template(
+            project_id="PRO1",
+            source_sheet_name="Trial 1",
+            template_name="Standard trial layout",
+        )
+        ```
         """
         worksheet = self.get_by_project_id(project_id=project_id)
         sheet = get_sheet_from_worksheet(sheet_name=source_sheet_name, worksheet=worksheet)

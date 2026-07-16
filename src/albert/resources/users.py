@@ -80,15 +80,16 @@ class User(BaseResource):
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Custom metadata attached to the user.
 
-    !!! example
-        ```python
-        from albert.resources.users import User, UserClass
-        user = User(
-            name="Ada Lovelace",
-            email="ada@example.com",
-            user_class=UserClass.STANDARD,
-        )
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.users import User, UserClass
+    user = User(
+        name="Ada Lovelace",
+        email="ada@example.com",
+        user_class=UserClass.STANDARD,
+    )
+    ```
     """
 
     name: str

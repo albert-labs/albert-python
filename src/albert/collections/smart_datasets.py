@@ -18,7 +18,7 @@ from albert.resources.smart_datasets import (
 
 
 class SmartDatasetCollection(BaseCollection):
-    """Manage Smart Datasets in the Albert platform (🧪Beta).
+    """Manage Smart Datasets in the Albert platform (🧪 Beta).
 
     A Smart Dataset assembles experiment data from a defined scope (projects,
     targets, and worksheets) into a single record-by-variable matrix ready for
@@ -69,28 +69,29 @@ class SmartDatasetCollection(BaseCollection):
     get_all(max_items=None) -> Iterator[SmartDataset]
         Iterate over all smart datasets for the tenant.
     get_by_id(id, parent_id=None) -> SmartDataset
-        Retrieve a single smart dataset by its Smart Dataset ID.
+        Get a single smart dataset by its ID.
     update(smart_dataset) -> SmartDataset
-        Apply changes to an existing smart dataset.
+        Update an existing smart dataset.
     delete(id) -> None
-        Delete a smart dataset by its Smart Dataset ID.
+        Delete a smart dataset by its ID.
     get_data(id, parent_id=None, aggregate_by=..., ids=None, variables=None) -> SmartDatasetData
-        Retrieve the built experiment data matrix for a smart dataset.
+        Get the built experiment data matrix for a smart dataset.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.smart_datasets import SmartDatasetScope
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.smart_datasets import SmartDatasetScope
 
-        client = Albert()
-        # Build a smart dataset scoped to a single project
-        ds = client.smart_datasets.create(
-            scope=SmartDatasetScope(project_ids=["PRO123"]),
-        )
-        # Once ready, pull the experiment data matrix
-        data = client.smart_datasets.get_data(id=ds.id)
-        print(data.data)
-        ```
+    client = Albert()
+    # Build a smart dataset scoped to a single project
+    ds = client.smart_datasets.create(
+        scope=SmartDatasetScope(project_ids=["PRO123"]),
+    )
+    # Once ready, pull the experiment data matrix
+    data = client.smart_datasets.get_data(id=ds.id)
+    print(data.data)
+    ```
     """
 
     _api_version = "v3"
@@ -142,17 +143,18 @@ class SmartDatasetCollection(BaseCollection):
         SmartDataset
             The created smart dataset, populated with its assigned Smart Dataset ID.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.smart_datasets import SmartDatasetScope
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.smart_datasets import SmartDatasetScope
 
-            client = Albert()
-            ds = client.smart_datasets.create(
-                scope=SmartDatasetScope(project_ids=["PRO123"]),
-            )
-            print(ds.id, ds.build_state)
-            ```
+        client = Albert()
+        ds = client.smart_datasets.create(
+            scope=SmartDatasetScope(project_ids=["PRO123"]),
+        )
+        print(ds.id, ds.build_state)
+        ```
         """
         body = {"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")}
         if parent_id is not None:
@@ -183,11 +185,12 @@ class SmartDatasetCollection(BaseCollection):
         Iterator[SmartDataset]
             An iterator over the tenant's smart datasets.
 
-        !!! example
-            ```python
-            for ds in client.smart_datasets.get_all(max_items=10):
-                print(ds.id, ds.build_state)
-            ```
+        Examples
+        --------
+        ```python
+        for ds in client.smart_datasets.get_all(max_items=10):
+            print(ds.id, ds.build_state)
+        ```
         """
         return AlbertPaginator(
             mode=PaginationMode.KEY,
@@ -199,7 +202,7 @@ class SmartDatasetCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: SmartDatasetId, parent_id: ProjectId | None = None) -> SmartDataset:
-        """Retrieve a single smart dataset by its Smart Dataset ID.
+        """Get a single smart dataset by its ID.
 
         Parameters
         ----------
@@ -212,13 +215,14 @@ class SmartDatasetCollection(BaseCollection):
         Returns
         -------
         SmartDataset
-            The requested smart dataset.
+            The fully populated smart dataset.
 
-        !!! example
-            ```python
-            ds = client.smart_datasets.get_by_id(id="SDT123")
-            print(ds.build_state)
-            ```
+        Examples
+        --------
+        ```python
+        ds = client.smart_datasets.get_by_id(id="SDT123")
+        print(ds.build_state)
+        ```
         """
         url = f"{self.base_path}/{id}"
         params = {"parentId": parent_id} if parent_id is not None else None
@@ -231,11 +235,11 @@ class SmartDatasetCollection(BaseCollection):
         *,
         smart_dataset: SmartDataset,
     ) -> SmartDataset:
-        """Apply changes to an existing smart dataset.
+        """Update an existing smart dataset.
 
-        The current server-side record is fetched and diffed against the supplied
-        ``smart_dataset``; only changed, updatable fields are patched. Pass an
-        object retrieved via [`get_by_id`][albert.collections.smart_datasets.SmartDatasetCollection.get_by_id] with the desired fields modified.
+        Fetch the smart dataset (e.g. with [`get_by_id`][albert.collections.smart_datasets.SmartDatasetCollection.get_by_id]), modify the
+        updatable fields on the returned object, then pass it here. Only the fields
+        listed in Notes are applied; changes to other fields are ignored.
 
         Parameters
         ----------
@@ -245,21 +249,22 @@ class SmartDatasetCollection(BaseCollection):
         Returns
         -------
         SmartDataset
-            The updated smart dataset, re-fetched after the patch is applied.
+            The updated smart dataset.
 
         Notes
         -----
         Only the following fields are updatable: ``scope``, ``build_state``,
         ``storage_key``, and ``schema_``. Changes to any other field are ignored.
 
-        !!! example
-            ```python
-            from albert.resources.smart_datasets import SmartDatasetScope
+        Examples
+        --------
+        ```python
+        from albert.resources.smart_datasets import SmartDatasetScope
 
-            ds = client.smart_datasets.get_by_id(id="SDT123")
-            ds.scope = SmartDatasetScope(project_ids=["PRO123", "PRO456"])
-            updated = client.smart_datasets.update(smart_dataset=ds)
-            ```
+        ds = client.smart_datasets.get_by_id(id="SDT123")
+        ds.scope = SmartDatasetScope(project_ids=["PRO123", "PRO456"])
+        updated = client.smart_datasets.update(smart_dataset=ds)
+        ```
         """
         existing = self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
@@ -304,7 +309,7 @@ class SmartDatasetCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: SmartDatasetId) -> None:
-        """Delete a smart dataset by its Smart Dataset ID.
+        """Delete a smart dataset by its ID.
 
         Parameters
         ----------
@@ -315,10 +320,11 @@ class SmartDatasetCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.smart_datasets.delete(id="SDT123")
-            ```
+        Examples
+        --------
+        ```python
+        client.smart_datasets.delete(id="SDT123")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -333,7 +339,7 @@ class SmartDatasetCollection(BaseCollection):
         ids: list[str] | None = None,
         variables: list[str] | None = None,
     ) -> SmartDatasetData:
-        """Retrieve the built experiment data matrix for a smart dataset.
+        """Get the built experiment data matrix for a smart dataset.
 
         Returns the record-by-variable matrix assembled by the dataset, along with
         the identifier metadata for each row and the variable metadata for each
@@ -365,16 +371,17 @@ class SmartDatasetCollection(BaseCollection):
         ValueError
             If the smart dataset's build state is not ``ready``.
 
-        !!! example
-            ```python
-            from albert.resources.smart_datasets import SmartDatasetAggregateBy
+        Examples
+        --------
+        ```python
+        from albert.resources.smart_datasets import SmartDatasetAggregateBy
 
-            data = client.smart_datasets.get_data(
-                id="SDT123",
-                aggregate_by=SmartDatasetAggregateBy.WFL,
-            )
-            print(data.data)
-            ```
+        data = client.smart_datasets.get_data(
+            id="SDT123",
+            aggregate_by=SmartDatasetAggregateBy.WFL,
+        )
+        print(data.data)
+        ```
         """
         smart_dataset = self.get_by_id(id=id, parent_id=parent_id)
         if smart_dataset.build_state != SmartDatasetBuildState.READY:

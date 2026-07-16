@@ -32,16 +32,17 @@ class DataColumn(BaseResource):
     status : Status or None
         The lifecycle status of the data column.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.data_columns import DataColumn
-        client = Albert()
-        column = DataColumn(name="Viscosity")
-        created = client.data_columns.create(data_column=column)
-        created.id
-        # 'DAC1'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.data_columns import DataColumn
+    client = Albert()
+    column = DataColumn(name="Viscosity")
+    created = client.data_columns.create(data_column=column)
+    created.id
+    # 'DAC1'
+    ```
     """
 
     name: str

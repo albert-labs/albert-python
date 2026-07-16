@@ -45,22 +45,23 @@ class ParameterCollection(BaseCollection):
     get_or_create(parameter) -> Parameter
         Return the existing parameter matching by name, or create it.
     get_by_id(id) -> Parameter
-        Retrieve a single parameter by its Parameter ID.
+        Get a single parameter by its ID.
     get_all(...) -> Iterator[Parameter]
-        Search for parameters by ID or name.
+        Search for parameters by name or ID.
     update(parameter) -> Parameter
-        Apply changes to an existing parameter.
+        Update an existing parameter.
     delete(id) -> None
-        Delete a parameter by its Parameter ID.
+        Delete a parameter by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        param = client.parameters.get_by_id(id="PRM1")
-        param.name
-        # 'Temperature'
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    param = client.parameters.get_by_id(id="PRM1")
+    param.name
+    # 'Temperature'
+    ```
     """
 
     _api_version = "v3"
@@ -79,7 +80,7 @@ class ParameterCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: ParameterId) -> Parameter:
-        """Retrieve a single parameter by its ID.
+        """Get a single parameter by its ID.
 
         To find parameters without knowing their IDs, use [`get_all`][albert.collections.parameters.ParameterCollection.get_all].
 
@@ -91,14 +92,15 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         Parameter
-            The parameter with the given ID.
+            The fully populated parameter.
 
-        !!! example
-            ```python
-            param = client.parameters.get_by_id(id="PRM1")
-            param.name
-            # 'Temperature'
-            ```
+        Examples
+        --------
+        ```python
+        param = client.parameters.get_by_id(id="PRM1")
+        param.name
+        # 'Temperature'
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -122,13 +124,14 @@ class ParameterCollection(BaseCollection):
         Parameter
             The newly created parameter, populated with its assigned Parameter ID.
 
-        !!! example
-            ```python
-            from albert.resources.parameters import Parameter
-            param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
-            param.id
-            # 'PRM1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.parameters import Parameter
+        param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
+        param.id
+        # 'PRM1'
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -153,13 +156,14 @@ class ParameterCollection(BaseCollection):
         Parameter
             The existing or newly created parameter.
 
-        !!! example
-            ```python
-            from albert.resources.parameters import Parameter
-            param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
-            param.id
-            # 'PRM1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.parameters import Parameter
+        param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
+        param.id
+        # 'PRM1'
+        ```
         """
         for match in self.get_all(names=parameter.name, exact_match=False):
             if match.name == parameter.name:
@@ -184,10 +188,11 @@ class ParameterCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.parameters.delete(id="PRM1")
-            ```
+        Examples
+        --------
+        ```python
+        client.parameters.delete(id="PRM1")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -203,7 +208,7 @@ class ParameterCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Parameter]:
-        """Search for parameters, optionally filtered by ID or name.
+        """Search for parameters, optionally filtered by name or ID.
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand. With no filters, iterates over all parameters.
@@ -230,11 +235,12 @@ class ParameterCollection(BaseCollection):
         Iterator[Parameter]
             A lazily paginated iterator of parameters matching the given criteria.
 
-        !!! example
-            ```python
-            for param in client.parameters.get_all(names="Temperature", max_items=10):
-                print(param.id, param.name)
-            ```
+        Examples
+        --------
+        ```python
+        for param in client.parameters.get_all(names="Temperature", max_items=10):
+            print(param.id, param.name)
+        ```
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
@@ -287,20 +293,21 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         Parameter
-            The updated parameter as returned by the server.
+            The updated parameter.
 
         Notes
         -----
         The following fields can be updated: ``metadata``, ``name``.
 
-        !!! example
-            ```python
-            param = client.parameters.get_by_id(id="PRM1")
-            param.name = "Bath Temperature"
-            updated = client.parameters.update(parameter=param)
-            updated.name
-            # 'Bath Temperature'
-            ```
+        Examples
+        --------
+        ```python
+        param = client.parameters.get_by_id(id="PRM1")
+        param.name = "Bath Temperature"
+        updated = client.parameters.update(parameter=param)
+        updated.name
+        # 'Bath Temperature'
+        ```
         """
         existing = self.get_by_id(id=parameter.id)
         payload = self._generate_patch_payload(

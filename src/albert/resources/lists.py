@@ -60,11 +60,12 @@ class ListItem(BaseResource):
         ``extensions`` for ``extensions``, and ``casCategory`` or
         ``inventoryFunction`` for ``inventory``.
 
-    !!! example
-        ```python
-        from albert.resources.lists import ListItem, ListItemCategory
-        item = ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.lists import ListItem, ListItemCategory
+    item = ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
+    ```
     """
 
     name: str

@@ -30,16 +30,17 @@ class BatchValuePatchDatum(BaseAlbertModel):
     operation : str
         The kind of change to apply (e.g. ``"add"``, ``"update"``, ``"delete"``).
 
-    !!! example
-        ```python
-        from albert.resources.batch_data import BatchValuePatchDatum
+    Examples
+    --------
+    ```python
+    from albert.resources.batch_data import BatchValuePatchDatum
 
-        datum = BatchValuePatchDatum(
-            operation="update",
-            new_value="LOT123",
-            old_value="LOT100",
-        )
-        ```
+    datum = BatchValuePatchDatum(
+        operation="update",
+        new_value="LOT123",
+        old_value="LOT100",
+    )
+    ```
     """
 
     attribute: str = Field(default="lotId")
@@ -62,12 +63,13 @@ class BatchValueId(BaseAlbertModel):
     col_id : str, optional
         The identifier of the product column the value belongs to.
 
-    !!! example
-        ```python
-        from albert.resources.batch_data import BatchValueId
+    Examples
+    --------
+    ```python
+    from albert.resources.batch_data import BatchValueId
 
-        location = BatchValueId(row_id="ROW1", col_id="COL1")
-        ```
+    location = BatchValueId(row_id="ROW1", col_id="COL1")
+    ```
     """
 
     col_id: str | None = Field(default=None, alias="colId")
@@ -90,19 +92,20 @@ class BatchValuePatchPayload(BaseAlbertModel):
     lot_id : str, optional
         The lot identifier associated with the change, when applicable.
 
-    !!! example
-        ```python
-        from albert.resources.batch_data import (
-            BatchValueId,
-            BatchValuePatchDatum,
-            BatchValuePatchPayload,
-        )
+    Examples
+    --------
+    ```python
+    from albert.resources.batch_data import (
+        BatchValueId,
+        BatchValuePatchDatum,
+        BatchValuePatchPayload,
+    )
 
-        patch = BatchValuePatchPayload(
-            id=BatchValueId(row_id="ROW1", col_id="COL1"),
-            data=[BatchValuePatchDatum(operation="update", new_value="LOT123")],
-        )
-        ```
+    patch = BatchValuePatchPayload(
+        id=BatchValueId(row_id="ROW1", col_id="COL1"),
+        data=[BatchValuePatchDatum(operation="update", new_value="LOT123")],
+    )
+    ```
     """
 
     id: BatchValueId = Field(alias="Id")

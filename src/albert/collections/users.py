@@ -43,28 +43,29 @@ class UserCollection(BaseCollection):
     Methods
     -------
     get_current_user() -> User
-        Retrieve the user account for the currently authenticated session.
+        Get the user account for the currently authenticated session.
     get_by_id(id) -> User
-        Retrieve a single fully populated user by its User ID.
+        Get a single fully populated user by its ID.
     search(...) -> Iterator[UserSearchItem]
         Fast, lightweight search returning partial users (best for lookups).
     get_all(...) -> Iterator[User]
         Same idea as search, but returns fully populated users (slower).
     create(user) -> User
-        Register a new user account.
+        Create a new user account.
     update(user) -> User
-        Apply changes to an existing user.
+        Update an existing user.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        # Look up the signed-in user, then find others at the same location
-        me = client.users.get_current_user()
-        colleagues = client.users.get_all(max_items=25)
-        for user in colleagues:
-            print(user.id, user.name, user.email)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    # Look up the signed-in user, then find others at the same location
+    me = client.users.get_current_user()
+    colleagues = client.users.get_all(max_items=25)
+    for user in colleagues:
+        print(user.id, user.name, user.email)
+    ```
     """
 
     _api_version = "v3"
@@ -82,7 +83,7 @@ class UserCollection(BaseCollection):
         self.base_path = f"/api/{UserCollection._api_version}/users"
 
     def get_current_user(self) -> User:
-        """Retrieve the user account for the currently authenticated session.
+        """Get the user account for the currently authenticated session.
 
         Use this to find out who the active credentials belong to, for example
         to set yourself as the assignee of a Task or to check your own roles.
@@ -92,12 +93,13 @@ class UserCollection(BaseCollection):
         User
             The fully populated user for the authenticated session.
 
-        !!! example
-            ```python
-            me = client.users.get_current_user()
-            me.name
-            # 'Ada Lovelace'
-            ```
+        Examples
+        --------
+        ```python
+        me = client.users.get_current_user()
+        me.name
+        # 'Ada Lovelace'
+        ```
         """
         response = self.session.get(
             "/api/v3/login/validatejwt",
@@ -111,7 +113,7 @@ class UserCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: UserId) -> User:
-        """Retrieve a single, fully populated user by their ID.
+        """Get a single, fully populated user by its ID.
 
         To find users without knowing their IDs, use [`search`][albert.collections.users.UserCollection.search] or
         [`get_all`][albert.collections.users.UserCollection.get_all].
@@ -126,12 +128,13 @@ class UserCollection(BaseCollection):
         User
             The fully populated user.
 
-        !!! example
-            ```python
-            user = client.users.get_by_id(id="USR12")
-            user.email
-            # 'ada@example.com'
-            ```
+        Examples
+        --------
+        ```python
+        user = client.users.get_by_id(id="USR12")
+        user.email
+        # 'ada@example.com'
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -159,7 +162,7 @@ class UserCollection(BaseCollection):
         offset: int = 0,
         max_items: int | None = None,
     ) -> Iterator[UserSearchItem]:
-        """Search for users matching the provided filters.
+        """Search for users matching the given filters.
 
         This returns lightweight, partial results ([`UserSearchItem`][albert.resources.users.UserSearchItem]) and
         is the fastest way to look users up by name, role, team, or location.
@@ -208,12 +211,13 @@ class UserCollection(BaseCollection):
         Iterator[UserSearchItem]
             An iterator of partial users matching the filters.
 
-        !!! example
-            ```python
-            # Find users whose name or email mentions "ada"
-            for user in client.users.search(text="ada", max_items=10):
-                print(user.id, user.name)
-            ```
+        Examples
+        --------
+        ```python
+        # Find users whose name or email mentions "ada"
+        for user in client.users.search(text="ada", max_items=10):
+            print(user.id, user.name)
+        ```
         """
         params = {
             "text": text,
@@ -255,7 +259,7 @@ class UserCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[User]:
-        """Retrieve fully populated users, with optional filters.
+        """Get fully populated users, with optional filters.
 
         Each result is fetched individually via [`get_by_id`][albert.collections.users.UserCollection.get_by_id], so this is
         convenient but slower than [`search`][albert.collections.users.UserCollection.search]. Prefer [`search`][albert.collections.users.UserCollection.search] when
@@ -282,13 +286,14 @@ class UserCollection(BaseCollection):
         Iterator[User]
             An iterator of fully populated users.
 
-        !!! example
-            ```python
-            from albert.core.shared.enums import Status
-            active_users = client.users.get_all(status=Status.ACTIVE, max_items=50)
-            for user in active_users:
-                print(user.name)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.core.shared.enums import Status
+        active_users = client.users.get_all(status=Status.ACTIVE, max_items=50)
+        for user in active_users:
+            print(user.name)
+        ```
         """
         params = {
             "status": status,
@@ -316,7 +321,7 @@ class UserCollection(BaseCollection):
         )
 
     def create(self, *, user: User) -> User:  # pragma: no cover
-        """Register a new user account.
+        """Create a new user account.
 
         Parameters
         ----------
@@ -329,18 +334,19 @@ class UserCollection(BaseCollection):
         User
             The newly created user, populated with its assigned User ID.
 
-        !!! example
-            ```python
-            from albert.resources.users import User, UserClass
-            new_user = User(
-                name="Ada Lovelace",
-                email="ada@example.com",
-                user_class=UserClass.STANDARD,
-            )
-            created = client.users.create(user=new_user)
-            created.id
-            # 'USR12'
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.users import User, UserClass
+        new_user = User(
+            name="Ada Lovelace",
+            email="ada@example.com",
+            user_class=UserClass.STANDARD,
+        )
+        created = client.users.create(user=new_user)
+        created.id
+        # 'USR12'
+        ```
         """
 
         response = self.session.post(
@@ -350,11 +356,11 @@ class UserCollection(BaseCollection):
         return User(**response.json())
 
     def update(self, *, user: User) -> User:
-        """Apply changes to an existing user.
+        """Update an existing user.
 
         Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
-        fields, then pass it here. Only the difference against the current
-        server state is sent.
+        fields, then pass it here. Only the fields listed in Notes are applied;
+        changes to other fields are ignored.
 
         Parameters
         ----------
@@ -364,21 +370,22 @@ class UserCollection(BaseCollection):
         Returns
         -------
         User
-            The updated user as returned by the server.
+            The updated user.
 
         Notes
         -----
         The following fields can be updated: ``email``, ``metadata``, ``name``,
         ``status``.
 
-        !!! example
-            ```python
-            user = client.users.get_by_id(id="USR12")
-            user.name = "Ada King"
-            updated = client.users.update(user=user)
-            updated.name
-            # 'Ada King'
-            ```
+        Examples
+        --------
+        ```python
+        user = client.users.get_by_id(id="USR12")
+        user.name = "Ada King"
+        updated = client.users.update(user=user)
+        updated.name
+        # 'Ada King'
+        ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)

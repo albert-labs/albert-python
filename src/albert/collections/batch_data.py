@@ -46,19 +46,20 @@ class BatchDataCollection(BaseCollection):
     create_batch_data(task_id) -> BatchData
         Initialize the batch data entry for a batch task.
     get_by_id(id, type=..., limit=..., start_key=..., order_by=...) -> BatchData
-        Retrieve the batch data for a batch task by its Task ID.
+        Get the batch data for a batch task by its ID.
     update_used_batch_amounts(task_id, patches) -> None
         Record which lots were used for the batch's recorded amounts.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        batch_data = client.batch_data.get_by_id(id="TAS123")
-        for row in batch_data.rows or []:
-            print(row.name)
-        ```
+    client = Albert()
+    batch_data = client.batch_data.get_by_id(id="TAS123")
+    for row in batch_data.rows or []:
+        print(row.name)
+    ```
     """
 
     _api_version = "v3"
@@ -93,13 +94,14 @@ class BatchDataCollection(BaseCollection):
         BatchData
             The created batch data entry.
 
-        !!! example
-            ```python
-            from albert import Albert
+        Examples
+        --------
+        ```python
+        from albert import Albert
 
-            client = Albert()
-            batch_data = client.batch_data.create_batch_data(task_id="TAS123")
-            ```
+        client = Albert()
+        batch_data = client.batch_data.create_batch_data(task_id="TAS123")
+        ```
         """
         url = f"{self.base_path}"
         response = self.session.post(url, json={"parentId": task_id})
@@ -115,7 +117,7 @@ class BatchDataCollection(BaseCollection):
         start_key: str | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
     ) -> BatchData:
-        """Retrieve the batch data for a batch task by its Task ID.
+        """Get the batch data for a batch task by its ID.
 
         Returns the batch data grid (rows, product columns, and recorded values)
         for the owning Batch Task ([`BatchTask`][albert.resources.tasks.BatchTask]).
@@ -140,17 +142,18 @@ class BatchDataCollection(BaseCollection):
         Returns
         -------
         BatchData
-            The batch data for the task.
+            The fully populated batch data.
 
-        !!! example
-            ```python
-            from albert import Albert
+        Examples
+        --------
+        ```python
+        from albert import Albert
 
-            client = Albert()
-            batch_data = client.batch_data.get_by_id(id="TAS123")
-            batch_data.size
-            # 12
-            ```
+        client = Albert()
+        batch_data = client.batch_data.get_by_id(id="TAS123")
+        batch_data.size
+        # 12
+        ```
         """
         params = {
             "id": id,
@@ -187,28 +190,29 @@ class BatchDataCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.batch_data import (
-                BatchValueId,
-                BatchValuePatchDatum,
-                BatchValuePatchPayload,
-            )
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.batch_data import (
+            BatchValueId,
+            BatchValuePatchDatum,
+            BatchValuePatchPayload,
+        )
 
-            client = Albert()
-            patch = BatchValuePatchPayload(
-                id=BatchValueId(row_id="ROW1", col_id="COL1"),
-                data=[
-                    BatchValuePatchDatum(
-                        operation="update",
-                        new_value="LOT123",
-                        old_value="LOT100",
-                    )
-                ],
-            )
-            client.batch_data.update_used_batch_amounts(task_id="TAS123", patches=[patch])
-            ```
+        client = Albert()
+        patch = BatchValuePatchPayload(
+            id=BatchValueId(row_id="ROW1", col_id="COL1"),
+            data=[
+                BatchValuePatchDatum(
+                    operation="update",
+                    new_value="LOT123",
+                    old_value="LOT100",
+                )
+            ],
+        )
+        client.batch_data.update_used_batch_amounts(task_id="TAS123", patches=[patch])
+        ```
         """
         url = f"{self.base_path}/{task_id}/values"
         self.session.patch(

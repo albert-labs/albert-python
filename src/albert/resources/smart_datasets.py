@@ -57,15 +57,16 @@ class SmartDatasetScope(BaseAlbertModel):
         Optional mapping from target ID to a parent project ID. When set, the target
         inherits its ACL policy from the referenced project.
 
-    !!! example
-        ```python
-        from albert.resources.smart_datasets import SmartDatasetScope
+    Examples
+    --------
+    ```python
+    from albert.resources.smart_datasets import SmartDatasetScope
 
-        scope = SmartDatasetScope(
-            project_ids=["PRO123"],
-            sheet_ids=["WKS456"],
-        )
-        ```
+    scope = SmartDatasetScope(
+        project_ids=["PRO123"],
+        sheet_ids=["WKS456"],
+    )
+    ```
     """
 
     project_ids: list[ProjectId] = Field(default_factory=list, alias="projectIds")

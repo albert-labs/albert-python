@@ -39,32 +39,33 @@ class StorageLocationsCollection(BaseCollection):
     Methods
     -------
     create(storage_location) -> StorageLocation
-        Register a new storage location.
+        Create a new storage location.
     get_by_id(id) -> StorageLocation
-        Retrieve a single storage location by its Albert ID.
+        Get a single storage location by its Albert ID.
     get_all(...) -> Iterator[StorageLocation]
         Iterate over storage locations, optionally filtered by name or location.
     update(storage_location) -> StorageLocation
-        Apply changes to an existing storage location.
+        Update an existing storage location.
     get_or_create(storage_location) -> StorageLocation
         Return the matching storage location if it exists, otherwise create it.
     delete(id) -> None
         Delete a storage location by its Albert ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        for storage_location in client.storage_locations.get_all(name="Freezer A"):
-            print(storage_location.id, storage_location.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    for storage_location in client.storage_locations.get_all(name="Freezer A"):
+        print(storage_location.id, storage_location.name)
+    ```
     """
 
     _api_version = "v3"
     _updatable_attributes = {"name"}
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the StorageLocationsCollection.
+        """Initialize a StorageLocationsCollection.
 
         Parameters
         ----------
@@ -75,7 +76,7 @@ class StorageLocationsCollection(BaseCollection):
         self.base_path = f"/api/{StorageLocationsCollection._api_version}/storagelocations"
 
     def get_by_id(self, *, id: str) -> StorageLocation:
-        """Retrieve a single Storage Location by its Albert ID.
+        """Get a single Storage Location by its Albert ID.
 
         Parameters
         ----------
@@ -87,11 +88,12 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The fully populated storage location.
 
-        !!! example
-            ```python
-            storage_location = client.storage_locations.get_by_id(id="STL1")
-            print(storage_location.name)
-            ```
+        Examples
+        --------
+        ```python
+        storage_location = client.storage_locations.get_by_id(id="STL1")
+        print(storage_location.name)
+        ```
         """
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
@@ -131,13 +133,14 @@ class StorageLocationsCollection(BaseCollection):
         Iterator[StorageLocation]
             Storage locations matching the given filters.
 
-        !!! example
-            ```python
-            for storage_location in client.storage_locations.get_all(
-                location="...",
-            ):
-                print(storage_location.id, storage_location.name)
-            ```
+        Examples
+        --------
+        ```python
+        for storage_location in client.storage_locations.get_all(
+            location="...",
+        ):
+            print(storage_location.id, storage_location.name)
+        ```
         """
 
         # Remove explicit hydration when SUP-410 is fixed
@@ -169,7 +172,7 @@ class StorageLocationsCollection(BaseCollection):
         )
 
     def create(self, *, storage_location: StorageLocation) -> StorageLocation:
-        """Register a new Storage Location.
+        """Create a new Storage Location.
 
         Parameters
         ----------
@@ -182,15 +185,16 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The newly created storage location, populated with its assigned ``id``.
 
-        !!! example
-            ```python
-            from albert.resources.locations import Location
-            from albert.resources.storage_locations import StorageLocation
-            parent = client.locations.get_by_id(id="...")
-            storage_location = client.storage_locations.create(
-                storage_location=StorageLocation(name="Freezer A", location=parent)
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.locations import Location
+        from albert.resources.storage_locations import StorageLocation
+        parent = client.locations.get_by_id(id="...")
+        storage_location = client.storage_locations.create(
+            storage_location=StorageLocation(name="Freezer A", location=parent)
+        )
+        ```
         """
         response = self.session.post(
             self.base_path,
@@ -215,14 +219,15 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The existing or newly created storage location.
 
-        !!! example
-            ```python
-            from albert.resources.storage_locations import StorageLocation
-            parent = client.locations.get_by_id(id="...")
-            storage_location = client.storage_locations.get_or_create(
-                storage_location=StorageLocation(name="Freezer A", location=parent)
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.storage_locations import StorageLocation
+        parent = client.locations.get_by_id(id="...")
+        storage_location = client.storage_locations.get_or_create(
+            storage_location=StorageLocation(name="Freezer A", location=parent)
+        )
+        ```
         """
         matching = self.get_all(
             name=storage_location.name, location=storage_location.location, exact_match=True
@@ -247,19 +252,20 @@ class StorageLocationsCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.storage_locations.delete(id="STL1")
-            ```
+        Examples
+        --------
+        ```python
+        client.storage_locations.delete(id="STL1")
+        ```
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)
 
     def update(self, *, storage_location: StorageLocation) -> StorageLocation:
-        """Apply changes to an existing Storage Location.
+        """Update an existing Storage Location.
 
-        Fetches the current server state, computes the difference against the
-        supplied storage location, and applies it.
+        Fetch a storage location (e.g. via [`get_by_id`][albert.collections.storage_locations.StorageLocationsCollection.get_by_id]),
+        modify its name, then pass it here. The storage location is matched by its ``id``.
 
         Parameters
         ----------
@@ -269,18 +275,19 @@ class StorageLocationsCollection(BaseCollection):
         Returns
         -------
         StorageLocation
-            The updated storage location as returned by the server.
+            The updated storage location, re-fetched from Albert.
 
         Notes
         -----
         Only the ``name`` field can be updated.
 
-        !!! example
-            ```python
-            storage_location = client.storage_locations.get_by_id(id="STL1")
-            storage_location.name = "Freezer A (relocated)"
-            updated = client.storage_locations.update(storage_location=storage_location)
-            ```
+        Examples
+        --------
+        ```python
+        storage_location = client.storage_locations.get_by_id(id="STL1")
+        storage_location.name = "Freezer A (relocated)"
+        updated = client.storage_locations.update(storage_location=storage_location)
+        ```
         """
         path = f"{self.base_path}/{storage_location.id}"
         payload = self._generate_patch_payload(

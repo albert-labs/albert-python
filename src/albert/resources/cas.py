@@ -96,12 +96,13 @@ class Cas(BaseResource):
     metadata : dict[str, MetadataItem]
         Custom metadata keyed by field. Updatable.
 
-    !!! example
-        ```python
-        from albert.resources.cas import Cas
-        # Build a CAS entry to register a new substance
-        cas = Cas(number="7727-37-9")
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.cas import Cas
+    # Build a CAS entry to register a new substance
+    cas = Cas(number="7727-37-9")
+    ```
     """
 
     number: str = Field(..., description="The CAS number.")
@@ -143,10 +144,11 @@ class Cas(BaseResource):
         Cas
             A ``Cas`` with only ``number`` set.
 
-        !!! example
-            ```python
-            from albert.resources.cas import Cas
-            cas = Cas.from_string(number="7727-37-9")
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.cas import Cas
+        cas = Cas.from_string(number="7727-37-9")
+        ```
         """
         return cls(number=number)

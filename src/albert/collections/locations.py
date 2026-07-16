@@ -32,13 +32,13 @@ class LocationCollection(BaseCollection):
     Methods
     -------
     create(location) -> Location
-        Register a new location.
+        Create a new location.
     get_by_id(id) -> Location
-        Retrieve a single location by its Albert ID.
+        Get a single location by its Albert ID.
     get_all(...) -> Iterator[Location]
         Iterate over locations, optionally filtered by name or country.
     update(location) -> Location
-        Apply changes to an existing location.
+        Update an existing location.
     exists(location) -> Location | None
         Return the existing location matching the given name, or None.
     get_or_create(location) -> Location
@@ -46,20 +46,21 @@ class LocationCollection(BaseCollection):
     delete(id) -> None
         Delete a location by its Albert ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        for location in client.locations.get_all(country="US"):
-            print(location.id, location.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    for location in client.locations.get_all(country="US"):
+        print(location.id, location.name)
+    ```
     """
 
     _updatable_attributes = {"latitude", "longitude", "address", "country", "name"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the LocationCollection.
+        """Initialize a LocationCollection.
 
         Parameters
         ----------
@@ -105,11 +106,12 @@ class LocationCollection(BaseCollection):
         Iterator[Location]
             Locations matching the given filters.
 
-        !!! example
-            ```python
-            for location in client.locations.get_all(name="Boston Lab"):
-                print(location.id, location.name)
-            ```
+        Examples
+        --------
+        ```python
+        for location in client.locations.get_all(name="Boston Lab"):
+            print(location.id, location.name)
+        ```
         """
         params = {
             "startKey": start_key,
@@ -130,7 +132,7 @@ class LocationCollection(BaseCollection):
         )
 
     def get_by_id(self, *, id: str) -> Location:
-        """Retrieve a single Location by its Albert ID.
+        """Get a single Location by its Albert ID.
 
         Parameters
         ----------
@@ -142,21 +144,22 @@ class LocationCollection(BaseCollection):
         Location
             The fully populated location.
 
-        !!! example
-            ```python
-            location = client.locations.get_by_id(id="...")
-            print(location.name)
-            ```
+        Examples
+        --------
+        ```python
+        location = client.locations.get_by_id(id="...")
+        print(location.name)
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return Location(**response.json())
 
     def update(self, *, location: Location) -> Location:
-        """Apply changes to an existing Location.
+        """Update an existing Location.
 
-        Fetches the current server state, computes the difference against the
-        supplied location, and applies it.
+        Fetch a location (e.g. via [`get_by_id`][albert.collections.locations.LocationCollection.get_by_id]), modify the updatable fields on
+        the returned object, then pass it here. The location is matched by its ``id``.
 
         Parameters
         ----------
@@ -166,19 +169,20 @@ class LocationCollection(BaseCollection):
         Returns
         -------
         Location
-            The updated location as returned by the server.
+            The updated location, re-fetched from Albert.
 
         Notes
         -----
         The following fields can be updated: ``address``, ``country``,
         ``latitude``, ``longitude``, ``name``.
 
-        !!! example
-            ```python
-            location = client.locations.get_by_id(id="...")
-            location.name = "Boston Lab (Bldg 2)"
-            updated = client.locations.update(location=location)
-            ```
+        Examples
+        --------
+        ```python
+        location = client.locations.get_by_id(id="...")
+        location.name = "Boston Lab (Bldg 2)"
+        updated = client.locations.update(location=location)
+        ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=location.id)
@@ -208,18 +212,19 @@ class LocationCollection(BaseCollection):
         Location or None
             The matching registered location, or None if no match is found.
 
-        !!! example
-            ```python
-            from albert.resources.locations import Location
-            candidate = Location(
-                name="Boston Lab",
-                latitude=42.3601,
-                longitude=-71.0589,
-                address="1 Main St",
-                country="US",
-            )
-            existing = client.locations.exists(location=candidate)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.locations import Location
+        candidate = Location(
+            name="Boston Lab",
+            latitude=42.3601,
+            longitude=-71.0589,
+            address="1 Main St",
+            country="US",
+        )
+        existing = client.locations.exists(location=candidate)
+        ```
         """
         hits = self.get_all(name=location.name)
         for hit in hits:
@@ -228,7 +233,7 @@ class LocationCollection(BaseCollection):
         return None
 
     def create(self, *, location: Location) -> Location:
-        """Register a new Location.
+        """Create a new Location.
 
         Parameters
         ----------
@@ -240,19 +245,20 @@ class LocationCollection(BaseCollection):
         Location
             The newly created location, populated with its assigned ``id``.
 
-        !!! example
-            ```python
-            from albert.resources.locations import Location
-            location = client.locations.create(
-                location=Location(
-                    name="Boston Lab",
-                    latitude=42.3601,
-                    longitude=-71.0589,
-                    address="1 Main St",
-                    country="US",
-                )
+        Examples
+        --------
+        ```python
+        from albert.resources.locations import Location
+        location = client.locations.create(
+            location=Location(
+                name="Boston Lab",
+                latitude=42.3601,
+                longitude=-71.0589,
+                address="1 Main St",
+                country="US",
             )
-            ```
+        )
+        ```
         """
         payload = location.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
@@ -275,19 +281,20 @@ class LocationCollection(BaseCollection):
         Location
             The existing or newly created location.
 
-        !!! example
-            ```python
-            from albert.resources.locations import Location
-            location = client.locations.get_or_create(
-                location=Location(
-                    name="Boston Lab",
-                    latitude=42.3601,
-                    longitude=-71.0589,
-                    address="1 Main St",
-                    country="US",
-                )
+        Examples
+        --------
+        ```python
+        from albert.resources.locations import Location
+        location = client.locations.get_or_create(
+            location=Location(
+                name="Boston Lab",
+                latitude=42.3601,
+                longitude=-71.0589,
+                address="1 Main St",
+                country="US",
             )
-            ```
+        )
+        ```
         """
         found = self.exists(location=location)
         if found:
@@ -307,10 +314,11 @@ class LocationCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.locations.delete(id="...")
-            ```
+        Examples
+        --------
+        ```python
+        client.locations.delete(id="...")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

@@ -35,25 +35,26 @@ class PricingCollection(BaseCollection):
     create(pricing) -> Pricing
         Create a new pricing entry for an inventory item.
     get_by_id(id) -> Pricing
-        Retrieve a single pricing by its ID.
+        Get a single pricing by its ID.
     get_by_inventory_id(inventory_id, ...) -> list[Pricing]
-        Retrieve the pricings for one inventory item, optionally grouped/filtered.
+        Get the pricings for one inventory item, optionally grouped/filtered.
     get_by_inventory_ids(inventory_ids) -> list[InventoryPricings]
-        Retrieve pricings for several inventory items at once.
+        Get pricings for several inventory items at once.
     update(pricing) -> Pricing
-        Apply changes to an existing pricing.
+        Update an existing pricing.
     delete(id) -> None
         Delete a pricing by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
-        for pricing in pricings:
-            print(pricing.price, pricing.currency)
-        ```
+    client = Albert()
+    pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+    for pricing in pricings:
+        print(pricing.price, pricing.currency)
+    ```
     """
 
     _api_version = "v3"
@@ -70,12 +71,12 @@ class PricingCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """Initializes the PricingCollection with the provided session.
+        """Initialize a PricingCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{PricingCollection._api_version}/pricings"
@@ -95,21 +96,22 @@ class PricingCollection(BaseCollection):
         Pricing
             The newly created pricing, populated with its assigned ID.
 
-        !!! example
-            ```python
-            from albert.resources.pricings import Pricing
-            from albert.resources.companies import Company
-            from albert.resources.locations import Location
+        Examples
+        --------
+        ```python
+        from albert.resources.pricings import Pricing
+        from albert.resources.companies import Company
+        from albert.resources.locations import Location
 
-            pricing = Pricing(
-                inventory_id="INVA1",
-                company=Company(name="Acme Chemicals"),
-                location=Location(name="Pittsburgh"),
-                price=12.50,
-            )
-            created = client.pricings.create(pricing=pricing)
-            created.id
-            ```
+        pricing = Pricing(
+            inventory_id="INVA1",
+            company=Company(name="Acme Chemicals"),
+            location=Location(name="Pittsburgh"),
+            price=12.50,
+        )
+        created = client.pricings.create(pricing=pricing)
+        created.id
+        ```
         """
         payload = pricing.model_dump(by_alias=True, exclude_none=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
@@ -117,7 +119,7 @@ class PricingCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: str) -> Pricing:
-        """Retrieve a single pricing by its ID.
+        """Get a single pricing by its ID.
 
         Parameters
         ----------
@@ -127,13 +129,14 @@ class PricingCollection(BaseCollection):
         Returns
         -------
         Pricing
-            The matching pricing.
+            The fully populated pricing.
 
-        !!! example
-            ```python
-            pricing = client.pricings.get_by_id(id="...")
-            pricing.price
-            ```
+        Examples
+        --------
+        ```python
+        pricing = client.pricings.get_by_id(id="...")
+        pricing.price
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -149,7 +152,7 @@ class PricingCollection(BaseCollection):
         filter_id: str | None = None,
         order_by: OrderBy | None = None,
     ) -> list[Pricing]:
-        """Retrieve the pricings for a single inventory item.
+        """Get the pricings for a single inventory item.
 
         Returns every pricing entry attached to the given inventory item, with
         optional grouping, filtering, and sorting. To pull pricings for many items
@@ -175,11 +178,12 @@ class PricingCollection(BaseCollection):
         list[Pricing]
             The pricings for the item matching the provided parameters.
 
-        !!! example
-            ```python
-            pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
-            [p.price for p in pricings]
-            ```
+        Examples
+        --------
+        ```python
+        pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+        [p.price for p in pricings]
+        ```
         """
         params = {
             "parentId": inventory_id,
@@ -195,7 +199,7 @@ class PricingCollection(BaseCollection):
 
     @validate_call
     def get_by_inventory_ids(self, *, inventory_ids: list[InventoryId]) -> list[InventoryPricings]:
-        """Retrieve pricings for several inventory items at once.
+        """Get pricings for several inventory items at once.
 
         Each returned [`InventoryPricings`][albert.resources.pricings.InventoryPricings] groups
         one item's pricings under its inventory ID.
@@ -210,13 +214,14 @@ class PricingCollection(BaseCollection):
         list[InventoryPricings]
             One entry per item, each holding that item's pricings.
 
-        !!! example
-            ```python
-            grouped = client.pricings.get_by_inventory_ids(
-                inventory_ids=["INVA1", "INVA2"]
-            )
-            grouped[0].pricings
-            ```
+        Examples
+        --------
+        ```python
+        grouped = client.pricings.get_by_inventory_ids(
+            inventory_ids=["INVA1", "INVA2"]
+        )
+        grouped[0].pricings
+        ```
         """
         params = {"id": inventory_ids}
         response = self.session.get(f"{self.base_path}/ids", params=params)
@@ -235,10 +240,11 @@ class PricingCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.pricings.delete(id="...")
-            ```
+        Examples
+        --------
+        ```python
+        client.pricings.delete(id="...")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -283,14 +289,15 @@ class PricingCollection(BaseCollection):
         ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
         ``lead_time_unit``, ``pack_size``, ``price``.
 
-        !!! example
-            ```python
-            pricing = client.pricings.get_by_id(id="...")
-            pricing.price = 15.00
-            updated = client.pricings.update(pricing=pricing)
-            updated.price
-            # 15.0
-            ```
+        Examples
+        --------
+        ```python
+        pricing = client.pricings.get_by_id(id="...")
+        pricing.price = 15.00
+        updated = client.pricings.update(pricing=pricing)
+        updated.price
+        # 15.0
+        ```
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)

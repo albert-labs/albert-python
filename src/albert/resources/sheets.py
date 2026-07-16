@@ -42,12 +42,13 @@ class CellColor(str, Enum):
     Used with [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] and [`recolor_cells`][albert.resources.sheets.Row.recolor_cells] to
     highlight cells in a Sheet.
 
-    !!! example
-        ```python
-        from albert.resources.sheets import CellColor
-        column = sheet.get_column(column_name="Formulation A")
-        column.recolor_cells(CellColor.GREEN)
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.sheets import CellColor
+    column = sheet.get_column(column_name="Formulation A")
+    column.recolor_cells(CellColor.GREEN)
+    ```
     """
 
     WHITE = "RGB(255, 255, 255)"
@@ -238,11 +239,12 @@ class Component(BaseResource):
     cell : Cell
         The cell the component was placed into. Read-only; set on registration.
 
-    !!! example
-        ```python
-        from albert.resources.sheets import Component
-        component = Component(inventory_id="INV1", amount=42.0)
-        ```
+    Examples
+    --------
+    ```python
+    from albert.resources.sheets import Component
+    component = Component(inventory_id="INV1", amount=42.0)
+    ```
     """
 
     inventory_item: InventoryItem | None = Field(default=None)
@@ -579,11 +581,12 @@ class Design(BaseSessionResource):
         RowGroup
             The created row group.
 
-        !!! example
-            ```python
-            design = sheet.product_design
-            group = design.group_rows(name="Solvents", child_row_ids=["ROW2", "ROW3"])
-            ```
+        Examples
+        --------
+        ```python
+        design = sheet.product_design
+        group = design.group_rows(name="Solvents", child_row_ids=["ROW2", "ROW3"])
+        ```
         """
         if not child_row_ids:
             raise AlbertException("child_row_ids must include at least one row ID")
@@ -632,12 +635,13 @@ class Design(BaseSessionResource):
         list[RowGroup]
             The row groups in this design.
 
-        !!! example
-            ```python
-            groups = sheet.product_design.get_groups()
-            for group in groups:
-                print(group.name, group.child_row_ids)
-            ```
+        Examples
+        --------
+        ```python
+        groups = sheet.product_design.get_groups()
+        for group in groups:
+            print(group.name, group.child_row_ids)
+        ```
         """
         if self._groups_cache is not None and not refresh:
             return self._groups_cache
@@ -774,14 +778,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
     delete_row(row_id, design_id) -> None
         Delete a row.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-        sheet = worksheet.sheets[0]
-        print(sheet.grid)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+    sheet = worksheet.sheets[0]
+    print(sheet.grid)
+    ```
     """
 
     id: str = Field(alias="albertId")
@@ -919,10 +924,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Sheet
             This sheet, with its name updated.
 
-        !!! example
-            ```python
-            sheet.rename(new_name="Final trial")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.rename(new_name="Final trial")
+        ```
         """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}"
 
@@ -1003,21 +1009,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The formulation column that was created or updated.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.sheets import Component
-            client = Albert()
-            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-            sheet = worksheet.sheets[0]
-            column = sheet.add_formulation(
-                formulation_name="Formulation A",
-                components=[
-                    Component(inventory_id="INV1", amount=80.0),
-                    Component(inventory_id="INV2", amount=20.0),
-                ],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.sheets import Component
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        sheet = worksheet.sheets[0]
+        column = sheet.add_formulation(
+            formulation_name="Formulation A",
+            components=[
+                Component(inventory_id="INV1", amount=80.0),
+                Component(inventory_id="INV2", amount=20.0),
+            ],
+        )
+        ```
         """
         all_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
@@ -1161,14 +1168,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The updated formulation column.
 
-        !!! example
-            ```python
-            from albert.resources.sheets import Component
-            column = sheet.add_components_to_formulation(
-                formulation_name="Formulation A",
-                components=[Component(inventory_id="INV3", amount=5.0)],
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.sheets import Component
+        column = sheet.add_components_to_formulation(
+            formulation_name="Formulation A",
+            components=[Component(inventory_id="INV3", amount=5.0)],
+        )
+        ```
         """
         col = self.get_column(
             column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
@@ -1301,12 +1309,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
         list[Column]
             The created formulation columns, in the order requested.
 
-        !!! example
-            ```python
-            columns = sheet.add_formulation_columns(
-                formulation_names=["Formulation A", "Formulation B"]
-            )
-            ```
+        Examples
+        --------
+        ```python
+        columns = sheet.add_formulation_columns(
+            formulation_names=["Formulation A", "Formulation B"]
+        )
+        ```
         """
         if starting_position is None:
             # Ensure pinned-column state is resolved before computing the reference position.
@@ -1374,10 +1383,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         AlbertException
             If ``design`` is ``DesignType.RESULTS``.
 
-        !!! example
-            ```python
-            row = sheet.add_blank_row(row_name="Notes")
-            ```
+        Examples
+        --------
+        ```python
+        row = sheet.add_blank_row(row_name="Notes")
+        ```
         """
         if design == DesignType.RESULTS:
             raise AlbertException("You cannot add rows to the results design")
@@ -1431,10 +1441,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Row
             The created inventory row.
 
-        !!! example
-            ```python
-            row = sheet.add_inventory_row(inventory_id="INV1")
-            ```
+        Examples
+        --------
+        ```python
+        row = sheet.add_inventory_row(inventory_id="INV1")
+        ```
         """
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
@@ -1492,10 +1503,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Row
             The created row.
 
-        !!! example
-            ```python
-            row = sheet.add_lookup_row(name="Density")
-            ```
+        Examples
+        --------
+        ```python
+        row = sheet.add_lookup_row(name="Density")
+        ```
         """
         if design == DesignType.RESULTS:
             raise AlbertException("Cannot add rows to the results design")
@@ -1559,10 +1571,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Row
             The created row.
 
-        !!! example
-            ```python
-            row = sheet.add_app_row(app_id="APP1", name="Cost insight")
-            ```
+        Examples
+        --------
+        ```python
+        row = sheet.add_app_row(app_id="APP1", name="Cost insight")
+        ```
         """
         if design == DesignType.RESULTS:
             raise AlbertException("Cannot add rows to the results design")
@@ -1769,14 +1782,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
             A ``(updated, failed)`` pair: the cells that were successfully updated
             and the cells that failed to update.
 
-        !!! example
-            ```python
-            from albert.resources.sheets import CellColor
-            column = sheet.get_column(column_name="Formulation A")
-            recolored = [c.model_copy(update={"format": {"bgColor": CellColor.YELLOW.value}})
-                         for c in column.cells]
-            updated, failed = sheet.update_cells(cells=recolored)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.sheets import CellColor
+        column = sheet.get_column(column_name="Formulation A")
+        recolored = [c.model_copy(update={"format": {"bgColor": CellColor.YELLOW.value}})
+                     for c in column.cells]
+        updated, failed = sheet.update_cells(cells=recolored)
+        ```
         """
         request_path_dict: dict[str, list[Cell]] = {}
         updated: list[Cell] = []
@@ -1929,10 +1943,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The created column.
 
-        !!! example
-            ```python
-            column = sheet.add_blank_column(name="Notes")
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.add_blank_column(name="Notes")
+        ```
         """
         return self._add_column(
             type="BLK", name=name, reference_id=reference_id, position=position
@@ -1963,10 +1978,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The created column.
 
-        !!! example
-            ```python
-            column = sheet.add_lookup_column(name="CAS Number")
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.add_lookup_column(name="CAS Number")
+        ```
         """
         return self._add_column(
             type="LKP", name=name, reference_id=reference_id, position=position
@@ -1997,10 +2013,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The created column.
 
-        !!! example
-            ```python
-            column = sheet.add_function_column(name="Cost per kg")
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.add_function_column(name="Cost per kg")
+        ```
         """
         return self._add_column(
             type="FNC", name=name, reference_id=reference_id, position=position
@@ -2043,14 +2060,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The created column.
 
-        !!! example
-            ```python
-            column = sheet.add_property_column(
-                name="Viscosity",
-                attribute_id="ATR2020",
-                data_column_name="Viscosity",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.add_property_column(
+            name="Viscosity",
+            attribute_id="ATR2020",
+            data_column_name="Viscosity",
+        )
+        ```
         """
         if not data_column_id and not data_column_name:
             raise AlbertException("Provide at least one of data_column_id or data_column_name.")
@@ -2099,10 +2117,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.pin_columns(col_ids=["COL1", "COL2"], side="left")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.pin_columns(col_ids=["COL1", "COL2"], side="left")
+        ```
         """
         payload = {
             "data": [
@@ -2130,10 +2149,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.unpin_columns(col_ids=["COL1", "COL2"])
-            ```
+        Examples
+        --------
+        ```python
+        sheet.unpin_columns(col_ids=["COL1", "COL2"])
+        ```
         """
         payload = {
             "data": [
@@ -2163,10 +2183,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.set_columns_width(col_ids=["COL1"], width="200px")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.set_columns_width(col_ids=["COL1"], width="200px")
+        ```
         """
         payload = {
             "data": [
@@ -2194,10 +2215,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.hide_column(col_id="COL5")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.hide_column(col_id="COL5")
+        ```
         """
         self.session.patch(
             f"/api/v3/worksheet/sheet/{self.id}/columns",
@@ -2227,10 +2249,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.show_column(col_id="COL5")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.show_column(col_id="COL5")
+        ```
         """
         self.session.patch(
             f"/api/v3/worksheet/sheet/{self.id}/columns",
@@ -2259,10 +2282,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.delete_column(column_id="COL5")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.delete_column(column_id="COL5")
+        ```
         """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [{"colId": column_id}]
@@ -2285,10 +2309,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         -------
         None
 
-        !!! example
-            ```python
-            sheet.delete_row(row_id="ROW3", design_id=sheet.product_design.id)
-            ```
+        Examples
+        --------
+        ```python
+        sheet.delete_row(row_id="ROW3", design_id=sheet.product_design.id)
+        ```
         """
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
         payload = [{"rowId": row_id}]
@@ -2345,10 +2370,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
             If no identifier is provided, no matching column is found, or multiple
             columns match.
 
-        !!! example
-            ```python
-            column = sheet.get_column(column_name="Formulation A")
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.get_column(column_name="Formulation A")
+        ```
         """
 
         if not (column_id or inventory_id or column_name):
@@ -2408,10 +2434,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Column
             The column that was updated.
 
-        !!! example
-            ```python
-            sheet.lock_column(column_name="Formulation A")
-            ```
+        Examples
+        --------
+        ```python
+        sheet.lock_column(column_name="Formulation A")
+        ```
         """
 
         column = self.get_column(
@@ -2521,11 +2548,12 @@ class Column(BaseSessionResource):  # noqa:F811
         Column
             This column, with its name updated.
 
-        !!! example
-            ```python
-            column = sheet.get_column(column_name="Formulation A")
-            column.rename("Formulation A (rev 2)")
-            ```
+        Examples
+        --------
+        ```python
+        column = sheet.get_column(column_name="Formulation A")
+        column.rename("Formulation A (rev 2)")
+        ```
         """
         payload = {
             "data": [
@@ -2563,12 +2591,13 @@ class Column(BaseSessionResource):  # noqa:F811
         tuple[list[Cell], list[Cell]]
             A ``(updated, failed)`` pair, as returned by [`update_cells`][albert.resources.sheets.Sheet.update_cells].
 
-        !!! example
-            ```python
-            from albert.resources.sheets import CellColor
-            column = sheet.get_column(column_name="Formulation A")
-            column.recolor_cells(CellColor.BLUE)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.sheets import CellColor
+        column = sheet.get_column(column_name="Formulation A")
+        column.recolor_cells(CellColor.BLUE)
+        ```
         """
         new_cells = []
         for c in self.cells:
@@ -2668,12 +2697,13 @@ class Row(BaseSessionResource):  # noqa:F811
         tuple[list[Cell], list[Cell]]
             A ``(updated, failed)`` pair, as returned by [`update_cells`][albert.resources.sheets.Sheet.update_cells].
 
-        !!! example
-            ```python
-            from albert.resources.sheets import CellColor
-            row = sheet.rows[0]
-            row.recolor_cells(CellColor.RED)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.sheets import CellColor
+        row = sheet.rows[0]
+        row.recolor_cells(CellColor.RED)
+        ```
         """
         new_cells = []
         for c in self.cells:

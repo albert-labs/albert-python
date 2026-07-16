@@ -49,22 +49,23 @@ class ReportCollection(BaseCollection):
     get_datascience_report(report_type_id, input_data=None) -> ReportInfo
         Run a datascience report and return its results.
     get_full_report(report_id) -> FullAnalyticalReport
-        Retrieve a saved report by its Report ID, with configuration and data.
+        Get a saved report by its ID, with configuration and data.
     create_report(report) -> FullAnalyticalReport
         Persist a new analytical report configuration.
     delete(id) -> None
-        Delete a saved report by its Report ID.
+        Delete a saved report by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
+    Examples
+    --------
+    ```python
+    from albert import Albert
 
-        client = Albert()
-        report = client.reports.get_datascience_report(
-            report_type_id="RET51",
-            input_data={"projectId": ["PRO123"], "uniqueId": ["DAT123_DAC123"]},
-        )
-        ```
+    client = Albert()
+    report = client.reports.get_datascience_report(
+        report_type_id="RET51",
+        input_data={"projectId": ["PRO123"], "uniqueId": ["DAT123_DAC123"]},
+    )
+    ```
     """
 
     _api_version = "v3"
@@ -101,14 +102,15 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        !!! example
-            ```python
-            report = client.reports.get_report(
-                category="datascience",
-                report_type_id="ALB#RET51",
-                input_data={"project": ["PRO123"]},
-            )
-            ```
+        Examples
+        --------
+        ```python
+        report = client.reports.get_report(
+            category="datascience",
+            report_type_id="ALB#RET51",
+            input_data={"project": ["PRO123"]},
+        )
+        ```
         """
         path = f"{self.base_path}/{category}/{report_type_id}"
 
@@ -145,13 +147,14 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        !!! example
-            ```python
-            report = client.reports.get_analytics_report(
-                report_type_id="RET22",
-                input_data={"inventoryId": "INVA123"},
-            )
-            ```
+        Examples
+        --------
+        ```python
+        report = client.reports.get_analytics_report(
+            report_type_id="RET22",
+            input_data={"inventoryId": "INVA123"},
+        )
+        ```
         """
         return self.get_report(
             category="analytics",
@@ -184,16 +187,17 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        !!! example
-            ```python
-            report = client.reports.get_datascience_report(
-                report_type_id="RET51",
-                input_data={
-                    "projectId": ["PRO123"],
-                    "uniqueId": ["DAT123_DAC123"],
-                },
-            )
-            ```
+        Examples
+        --------
+        ```python
+        report = client.reports.get_datascience_report(
+            report_type_id="RET51",
+            input_data={
+                "projectId": ["PRO123"],
+                "uniqueId": ["DAT123_DAC123"],
+            },
+        )
+        ```
         """
         return self.get_report(
             category="datascience",
@@ -203,7 +207,7 @@ class ReportCollection(BaseCollection):
 
     @validate_call
     def get_full_report(self, *, report_id: ReportId) -> FullAnalyticalReport:
-        """Retrieve a saved analytical report by its Report ID.
+        """Get a saved analytical report by its ID.
 
         Parameters
         ----------
@@ -215,11 +219,12 @@ class ReportCollection(BaseCollection):
         FullAnalyticalReport
             The saved report with all of its configuration and data.
 
-        !!! example
-            ```python
-            report = client.reports.get_full_report(report_id="REP14")
-            report_dataframe = report.get_raw_dataframe()
-            ```
+        Examples
+        --------
+        ```python
+        report = client.reports.get_full_report(report_id="REP14")
+        report_dataframe = report.get_raw_dataframe()
+        ```
         """
         path = f"{self.base_path}/{report_id}"
         params = {"viewReport": "1"}
@@ -244,17 +249,18 @@ class ReportCollection(BaseCollection):
             The created report as returned by the server, including its assigned
             ID.
 
-        !!! example
-            ```python
-            from albert.resources.reports import FullAnalyticalReport
+        Examples
+        --------
+        ```python
+        from albert.resources.reports import FullAnalyticalReport
 
-            new_report = FullAnalyticalReport(
-                report_type_id="ALB#RET22",
-                name="My New Report",
-                description="A test report",
-            )
-            created_report = client.reports.create_report(report=new_report)
-            ```
+        new_report = FullAnalyticalReport(
+            report_type_id="ALB#RET22",
+            name="My New Report",
+            description="A test report",
+        )
+        created_report = client.reports.create_report(report=new_report)
+        ```
         """
         path = self.base_path
 
@@ -268,7 +274,7 @@ class ReportCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: ReportId) -> None:
-        """Delete a saved report by its Report ID.
+        """Delete a saved report by its ID.
 
         Parameters
         ----------
@@ -279,10 +285,11 @@ class ReportCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.reports.delete(id="REP14")
-            ```
+        Examples
+        --------
+        ```python
+        client.reports.delete(id="REP14")
+        ```
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

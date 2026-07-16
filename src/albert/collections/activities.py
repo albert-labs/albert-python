@@ -48,20 +48,21 @@ class ActivityCollection(BaseCollection):
     search(...) -> Iterator[ActivitySearchItem]
         Search activity records using full-text and filter criteria.
 
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.activities import ActivityType
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    from albert.resources.activities import ActivityType
 
-        client = Albert()
-        # Recent activity for a single entity, newest first
-        for activity in client.activities.get_all(
-            type=ActivityType.ENTITY_ID,
-            id="INVA1",
-            max_items=25,
-        ):
-            print(activity.name, activity.action)
-        ```
+    client = Albert()
+    # Recent activity for a single entity, newest first
+    for activity in client.activities.get_all(
+        type=ActivityType.ENTITY_ID,
+        id="INVA1",
+        max_items=25,
+    ):
+        print(activity.name, activity.action)
+    ```
     """
 
     _api_version = "v3"
@@ -130,17 +131,18 @@ class ActivityCollection(BaseCollection):
         Iterator[Activity]
             A lazily paginated iterator of activity records.
 
-        !!! example
-            ```python
-            from albert.resources.activities import ActivityType
+        Examples
+        --------
+        ```python
+        from albert.resources.activities import ActivityType
 
-            for activity in client.activities.get_all(
-                type=ActivityType.ENTITY_ID,
-                id="INVA1",
-                max_items=10,
-            ):
-                print(activity.name, activity.action)
-            ```
+        for activity in client.activities.get_all(
+            type=ActivityType.ENTITY_ID,
+            id="INVA1",
+            max_items=10,
+        ):
+            print(activity.name, activity.action)
+        ```
         """
         params = {
             "type": type,
@@ -228,12 +230,13 @@ class ActivityCollection(BaseCollection):
         Iterator[ActivitySearchItem]
             A lazily paginated iterator of matching search results.
 
-        !!! example
-            ```python
-            hits = client.activities.search(text="titanium dioxide", max_items=10)
-            for hit in hits:
-                print(hit.logged_at, hit.name)
-            ```
+        Examples
+        --------
+        ```python
+        hits = client.activities.search(text="titanium dioxide", max_items=10)
+        for hit in hits:
+            print(hit.logged_at, hit.name)
+        ```
         """
         params = {
             "text": text,

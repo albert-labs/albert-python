@@ -60,9 +60,9 @@ class LotCollection(BaseCollection):
     create(lots) -> list[Lot]
         Create one or more new lots.
     get_by_id(id) -> Lot
-        Retrieve a single lot by its Lot ID.
+        Get a single lot by its ID.
     get_by_ids(ids) -> list[Lot]
-        Retrieve many lots by their Lot IDs.
+        Get many lots by their IDs.
     search(...) -> Iterator[LotSearchItem]
         Fast, lightweight search returning partial lots (best for lookups/counts).
     get_all(...) -> Iterator[Lot]
@@ -72,19 +72,20 @@ class LotCollection(BaseCollection):
     transfer(lot_id, quantity, storage_location_id, owner=None) -> Lot
         Move some or all of a lot's quantity to another storage location.
     update(lot) -> Lot
-        Apply changes to an existing lot.
+        Update an existing lot.
     delete(id) -> None
-        Delete a lot by its Lot ID.
+        Delete a lot by its ID.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        # Look up all lots of a given inventory item
-        lots = client.lots.get_all(parent_id="INVA1")
-        for lot in lots:
-            print(lot.id, lot.inventory_on_hand)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    # Look up all lots of a given inventory item
+    lots = client.lots.get_all(parent_id="INVA1")
+    for lot in lots:
+        print(lot.id, lot.inventory_on_hand)
+    ```
     """
 
     _api_version = "v3"
@@ -103,12 +104,12 @@ class LotCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """A collection for interacting with Lots in Albert.
+        """Initialize a LotCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            An Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
@@ -144,21 +145,22 @@ class LotCollection(BaseCollection):
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.lots import Lot
-            from albert.resources.storage_locations import StorageLocation
-            client = Albert()
-            new_lot = Lot(
-                inventory_id="INVA1",
-                storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
-                initial_quantity=10.0,
-            )
-            created = client.lots.create(lots=[new_lot])
-            created[0].id
-            # 'LOTA1'
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.lots import Lot
+        from albert.resources.storage_locations import StorageLocation
+        client = Albert()
+        new_lot = Lot(
+            inventory_id="INVA1",
+            storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+            initial_quantity=10.0,
+        )
+        created = client.lots.create(lots=[new_lot])
+        created[0].id
+        # 'LOTA1'
+        ```
         """
         for lot in lots:
             if lot.task_id is None:
@@ -187,7 +189,7 @@ class LotCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: LotId) -> Lot:
-        """Retrieve a single, fully populated lot by its ID.
+        """Get a single, fully populated lot by its ID.
 
         To retrieve many lots at once, use [`get_by_ids`][albert.collections.lots.LotCollection.get_by_ids]. To find lots
         without knowing their IDs, use [`search`][albert.collections.lots.LotCollection.search] or [`get_all`][albert.collections.lots.LotCollection.get_all].
@@ -200,16 +202,17 @@ class LotCollection(BaseCollection):
         Returns
         -------
         Lot
-            The lot with the provided ID.
+            The fully populated lot.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            lot = client.lots.get_by_id(id="LOTA1")
-            lot.inventory_on_hand
-            # 10.0
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        lot = client.lots.get_by_id(id="LOTA1")
+        lot.inventory_on_hand
+        # 10.0
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -217,7 +220,7 @@ class LotCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[LotId]) -> list[Lot]:
-        """Retrieve many fully populated lots by their IDs.
+        """Get many fully populated lots by their IDs.
 
         Use this instead of repeated [`get_by_id`][albert.collections.lots.LotCollection.get_by_id] calls when you already
         have several Lot IDs to fetch.
@@ -232,12 +235,13 @@ class LotCollection(BaseCollection):
         list[Lot]
             The lots matching the provided IDs.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            lots = client.lots.get_by_ids(ids=["LOTA1", "LOTA2"])
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        lots = client.lots.get_by_ids(ids=["LOTA1", "LOTA2"])
+        ```
         """
         url = f"{self.base_path}/ids"
         response = self.session.get(url, params={"id": ids})
@@ -256,12 +260,13 @@ class LotCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            client.lots.delete(id="LOTA1")
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        client.lots.delete(id="LOTA1")
+        ```
         """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
@@ -286,7 +291,7 @@ class LotCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[LotSearchItem]:
-        """Search for lots matching the provided filters.
+        """Search for lots matching the given filters.
 
         This is the fast way to look up lots or count matches. It returns partial
         (unhydrated) lots ([`LotSearchItem`][albert.resources.lots.LotSearchItem]) rather
@@ -333,14 +338,15 @@ class LotCollection(BaseCollection):
         Iterator[LotSearchItem]
             An iterator over matching partial (unhydrated) lots.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            # Find lots of a given inventory item that are running low
-            for lot in client.lots.search(inventory_id="INVA1", max_items=50):
-                print(lot.id, lot.parent_name)
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        # Find lots of a given inventory item that are running low
+        for lot in client.lots.search(inventory_id="INVA1", max_items=50):
+            print(lot.id, lot.parent_name)
+        ```
         """
 
         search_text = text if (text is None or len(text) < 50) else text[:50]
@@ -389,9 +395,9 @@ class LotCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Lot]:
-        """Retrieve fully populated lots matching the given filters.
+        """Get fully populated lots matching the given filters.
 
-        Same purpose as [`search`][albert.collections.lots.LotCollection.search], but returns fully hydrated
+        Same purpose as [`search`][albert.collections.lots.LotCollection.search], but returns fully populated
         [`Lot`][albert.resources.lots.Lot] objects (every field populated), which
         is slower. Use [`search`][albert.collections.lots.LotCollection.search] when a lightweight result is enough.
 
@@ -429,14 +435,15 @@ class LotCollection(BaseCollection):
         Iterator[Lot]
             An iterator over the fully populated lots matching the filters.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            # List only lots of an item that still have stock
-            for lot in client.lots.get_all(parent_id="INVA1", inventory_on_hand="gtZero"):
-                print(lot.id, lot.inventory_on_hand)
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        # List only lots of an item that still have stock
+        for lot in client.lots.get_all(parent_id="INVA1", inventory_on_hand="gtZero"):
+            print(lot.id, lot.inventory_on_hand)
+        ```
         """
         params = {
             "parentId": parent_id,
@@ -561,19 +568,20 @@ class LotCollection(BaseCollection):
             If ``quantity`` is supplied for ``ZERO``, or missing/non-positive for
             ``ADD``, ``SUBTRACT``, or ``SET``.
 
-        !!! example
-            ```python
-            from albert import Albert
-            from albert.resources.lots import LotAdjustmentAction
-            client = Albert()
-            # Record that 2.5 units were consumed
-            lot = client.lots.adjust(
-                lot_id="LOTA1",
-                action=LotAdjustmentAction.SUBTRACT,
-                quantity=2.5,
-                description="Used in experiment",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        from albert.resources.lots import LotAdjustmentAction
+        client = Albert()
+        # Record that 2.5 units were consumed
+        lot = client.lots.adjust(
+            lot_id="LOTA1",
+            action=LotAdjustmentAction.SUBTRACT,
+            quantity=2.5,
+            description="Used in experiment",
+        )
+        ```
         """
         if action == LotAdjustmentAction.ZERO and quantity is not None:
             raise ValueError("quantity must be omitted for ZERO action.")
@@ -656,17 +664,18 @@ class LotCollection(BaseCollection):
             If a numeric ``quantity`` is not greater than zero, or the current
             user cannot be resolved when ``owner`` is omitted.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            # Split 5 units off into a different storage location
-            new_lot = client.lots.transfer(
-                lot_id="LOTA1",
-                quantity=5.0,
-                storage_location_id="STLA2",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        # Split 5 units off into a different storage location
+        new_lot = client.lots.transfer(
+            lot_id="LOTA1",
+            quantity=5.0,
+            storage_location_id="STLA2",
+        )
+        ```
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
@@ -710,11 +719,11 @@ class LotCollection(BaseCollection):
         return Lot(**response.json())
 
     def update(self, *, lot: Lot) -> Lot:
-        """Apply changes to an existing lot.
+        """Update an existing lot.
 
         Fetch the lot (e.g. with [`get_by_id`][albert.collections.lots.LotCollection.get_by_id]), modify the updatable fields
-        on the returned object, then pass it here. Only the changed fields are
-        sent. The lot is matched by its ``id``.
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied. The lot is matched by its ``id``.
 
         For quantity changes, prefer [`adjust`][albert.collections.lots.LotCollection.adjust]; for relocations, prefer
         [`transfer`][albert.collections.lots.LotCollection.transfer]. Both handle the inventory-on-hand bookkeeping for you.
@@ -737,14 +746,15 @@ class LotCollection(BaseCollection):
         ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
         ``status``, ``storage_location``.
 
-        !!! example
-            ```python
-            from albert import Albert
-            client = Albert()
-            lot = client.lots.get_by_id(id="LOTA1")
-            lot.cost = 42.0
-            updated = client.lots.update(lot=lot)
-            ```
+        Examples
+        --------
+        ```python
+        from albert import Albert
+        client = Albert()
+        lot = client.lots.get_by_id(id="LOTA1")
+        lot.cost = 42.0
+        updated = client.lots.update(lot=lot)
+        ```
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

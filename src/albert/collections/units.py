@@ -39,50 +39,50 @@ class UnitCollection(BaseCollection):
     Methods
     -------
     create(unit) -> Unit
-        Register a new unit.
+        Create a new unit.
     get_or_create(unit) -> Unit
         Return the existing unit matching the name, or create it.
     get_by_id(id) -> Unit
-        Retrieve a single unit by its Unit ID.
+        Get a single unit by its ID.
     get_by_ids(ids) -> list[Unit]
-        Retrieve many units by ID in batches.
+        Get many units by their IDs.
     get_by_name(name, exact_match=False) -> Unit | None
-        Retrieve a unit by name, or None if not found.
+        Get a unit by name, or None if not found.
     get_all(...) -> Iterator[Unit]
         Iterate over units with optional filters.
     update(unit) -> Unit
-        Apply changes to an existing unit.
+        Update an existing unit.
     delete(id) -> None
-        Delete a unit by its Unit ID.
+        Delete a unit by its ID.
     exists(name, exact_match=True) -> bool
         Check whether a unit with the given name exists.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        unit = client.units.get_by_id(id="UNI1")
-        print(unit.name, unit.symbol, unit.category)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    unit = client.units.get_by_id(id="UNI1")
+    print(unit.name, unit.symbol, unit.category)
+    ```
     """
 
     _updatable_attributes = {"symbol", "synonyms", "category"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the UnitCollection with the provided session.
+        """Initialize a UnitCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{UnitCollection._api_version}/units"
 
     def create(self, *, unit: Unit) -> Unit:
-        """Register a new unit.
+        """Create a new unit.
 
         Parameters
         ----------
@@ -94,13 +94,14 @@ class UnitCollection(BaseCollection):
         Unit
             The newly created unit, including its assigned Unit ID.
 
-        !!! example
-            ```python
-            from albert.resources.units import Unit, UnitCategory
-            unit = client.units.create(
-                unit=Unit(name="milligram", symbol="mg", category=UnitCategory.MASS)
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.units import Unit, UnitCategory
+        unit = client.units.create(
+            unit=Unit(name="milligram", symbol="mg", category=UnitCategory.MASS)
+        )
+        ```
         """
         response = self.session.post(
             self.base_path, json=unit.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -124,13 +125,14 @@ class UnitCollection(BaseCollection):
         Unit
             The existing or newly created unit.
 
-        !!! example
-            ```python
-            from albert.resources.units import Unit, UnitCategory
-            unit = client.units.get_or_create(
-                unit=Unit(name="gram", symbol="g", category=UnitCategory.MASS)
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.units import Unit, UnitCategory
+        unit = client.units.get_or_create(
+            unit=Unit(name="gram", symbol="g", category=UnitCategory.MASS)
+        )
+        ```
         """
         match = self.get_by_name(name=unit.name, exact_match=True)
         if match:
@@ -142,7 +144,7 @@ class UnitCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: UnitId) -> Unit:
-        """Retrieve a single unit by its Unit ID.
+        """Get a single unit by its ID.
 
         Parameters
         ----------
@@ -152,12 +154,13 @@ class UnitCollection(BaseCollection):
         Returns
         -------
         Unit
-            The matching unit.
+            The fully populated unit.
 
-        !!! example
-            ```python
-            unit = client.units.get_by_id(id="UNI1")
-            ```
+        Examples
+        --------
+        ```python
+        unit = client.units.get_by_id(id="UNI1")
+        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -166,7 +169,7 @@ class UnitCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[UnitId]) -> list[Unit]:
-        """Retrieve many units by their IDs.
+        """Get many units by their IDs.
 
         IDs are fetched in batches, so arbitrarily long lists are supported.
 
@@ -180,10 +183,11 @@ class UnitCollection(BaseCollection):
         list[Unit]
             The matching units. Units not found are omitted.
 
-        !!! example
-            ```python
-            units = client.units.get_by_ids(ids=["UNI1", "UNI2"])
-            ```
+        Examples
+        --------
+        ```python
+        units = client.units.get_by_ids(ids=["UNI1", "UNI2"])
+        ```
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 500] for i in range(0, len(ids), 500)]
@@ -195,7 +199,7 @@ class UnitCollection(BaseCollection):
 
     @validate_call
     def update(self, *, unit: Unit) -> Unit:
-        """Apply changes to an existing unit.
+        """Update an existing unit.
 
         Fetch a unit (e.g. via [`get_by_id`][albert.collections.units.UnitCollection.get_by_id]), modify the updatable fields on
         the returned object, then pass it here. The unit is matched by its ``id``.
@@ -214,13 +218,14 @@ class UnitCollection(BaseCollection):
         -----
         The following fields can be updated: ``category``, ``symbol``, ``synonyms``.
 
-        !!! example
-            ```python
-            unit = client.units.get_by_id(id="UNI1")
-            unit.symbol = "g"
-            unit.synonyms = ["gram", "grams"]
-            updated = client.units.update(unit=unit)
-            ```
+        Examples
+        --------
+        ```python
+        unit = client.units.get_by_id(id="UNI1")
+        unit.symbol = "g"
+        unit.synonyms = ["gram", "grams"]
+        updated = client.units.update(unit=unit)
+        ```
         """
         unit_id = unit.id
         original_unit = self.get_by_id(id=unit_id)
@@ -266,7 +271,7 @@ class UnitCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: UnitId) -> None:
-        """Delete a unit by its Unit ID.
+        """Delete a unit by its ID.
 
         Parameters
         ----------
@@ -277,10 +282,11 @@ class UnitCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.units.delete(id="UNI1")
-            ```
+        Examples
+        --------
+        ```python
+        client.units.delete(id="UNI1")
+        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -324,12 +330,13 @@ class UnitCollection(BaseCollection):
         Iterator[Unit]
             An iterator over the matching units.
 
-        !!! example
-            ```python
-            from albert.resources.units import UnitCategory
-            for unit in client.units.get_all(category=UnitCategory.MASS, max_items=50):
-                print(unit.name, unit.symbol)
-            ```
+        Examples
+        --------
+        ```python
+        from albert.resources.units import UnitCategory
+        for unit in client.units.get_all(category=UnitCategory.MASS, max_items=50):
+            print(unit.name, unit.symbol)
+        ```
         """
         params = {
             "orderBy": order_by,
@@ -350,7 +357,7 @@ class UnitCollection(BaseCollection):
         )
 
     def get_by_name(self, *, name: str, exact_match: bool = False) -> Unit | None:
-        """Retrieve a unit by its name.
+        """Get a unit by its name.
 
         Parameters
         ----------
@@ -364,10 +371,11 @@ class UnitCollection(BaseCollection):
         Unit or None
             The matching unit, or None if no unit with that name exists.
 
-        !!! example
-            ```python
-            unit = client.units.get_by_name(name="gram", exact_match=True)
-            ```
+        Examples
+        --------
+        ```python
+        unit = client.units.get_by_name(name="gram", exact_match=True)
+        ```
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=10)
         # return the first with exactly that name
@@ -391,10 +399,11 @@ class UnitCollection(BaseCollection):
         bool
             True if a matching unit exists, False otherwise.
 
-        !!! example
-            ```python
-            if client.units.exists(name="gram"):
-                print("gram is defined")
-            ```
+        Examples
+        --------
+        ```python
+        if client.units.exists(name="gram"):
+            print("gram is defined")
+        ```
         """
         return self.get_by_name(name=name, exact_match=exact_match) is not None

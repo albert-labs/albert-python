@@ -49,11 +49,11 @@ class AttachmentCollection(BaseCollection):
     create(attachment) -> Attachment
         Create an attachment record for an already-uploaded file.
     get_by_id(id) -> Attachment
-        Retrieve a single attachment by its ID.
+        Get a single attachment by its ID.
     get_by_parent_ids(parent_ids, data_column_ids=None) -> dict[str, list[Attachment]]
-        Retrieve attachments grouped by parent entity ID.
+        Get attachments grouped by parent entity ID.
     update(attachment) -> Attachment
-        Apply changes to an existing attachment.
+        Update an existing attachment.
     delete(id) -> None
         Delete an attachment by its ID.
     attach_file_to_note(note_id, file_name, file_key, category=FileCategory.OTHER) -> Attachment
@@ -65,18 +65,19 @@ class AttachmentCollection(BaseCollection):
     upload_and_attach_document_to_project(project_id, file_path) -> Attachment
         Upload a file and attach it as a document to a project.
     get_jurisdiction_codes() -> dict[str, str]
-        Retrieve available SDS jurisdiction codes.
+        Get available SDS jurisdiction codes.
     get_language_codes() -> dict[str, str]
-        Retrieve available SDS language codes.
+        Get available SDS language codes.
 
-    !!! example
-        ```python
-        from albert import Albert
-        client = Albert()
-        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA1"])
-        for attachment in attachments.get("INVA1", []):
-            print(attachment.name)
-        ```
+    Examples
+    --------
+    ```python
+    from albert import Albert
+    client = Albert()
+    attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA1"])
+    for attachment in attachments.get("INVA1", []):
+        print(attachment.name)
+    ```
     """
 
     _api_version: str = "v3"
@@ -105,7 +106,7 @@ class AttachmentCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: AttachmentId) -> Attachment:
-        """Retrieve an attachment by its ID.
+        """Get an attachment by its ID.
 
         Parameters
         ----------
@@ -115,14 +116,15 @@ class AttachmentCollection(BaseCollection):
         Returns
         -------
         Attachment
-            The matching attachment.
+            The fully populated attachment.
 
-        !!! example
-            ```python
-            attachment = client.attachments.get_by_id(id="ATT1")
-            attachment.name
-            # 'sds.pdf'
-            ```
+        Examples
+        --------
+        ```python
+        attachment = client.attachments.get_by_id(id="ATT1")
+        attachment.name
+        # 'sds.pdf'
+        ```
         """
         response = self.session.get(url=f"{self.base_path}/{id}")
         return Attachment(**response.json())
@@ -148,17 +150,18 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment.
 
-        !!! example
-            ```python
-            from albert.resources.attachments import Attachment
-            attachment = client.attachments.create(
-                attachment=Attachment(
-                    parent_id="INVA1",
-                    name="datasheet.pdf",
-                    key="INVA1/documents/datasheet.pdf",
-                )
+        Examples
+        --------
+        ```python
+        from albert.resources.attachments import Attachment
+        attachment = client.attachments.create(
+            attachment=Attachment(
+                parent_id="INVA1",
+                name="datasheet.pdf",
+                key="INVA1/documents/datasheet.pdf",
             )
-            ```
+        )
+        ```
         """
         payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
@@ -184,12 +187,13 @@ class AttachmentCollection(BaseCollection):
         Metadata fields such as hazard symbols, hazard statements, storage class,
         UN number, jurisdiction code, and language code can also be updated.
 
-        !!! example
-            ```python
-            attachment = client.attachments.get_by_id(id="ATT1")
-            attachment.name = "renamed.pdf"
-            updated = client.attachments.update(attachment=attachment)
-            ```
+        Examples
+        --------
+        ```python
+        attachment = client.attachments.get_by_id(id="ATT1")
+        attachment.name = "renamed.pdf"
+        updated = client.attachments.update(attachment=attachment)
+        ```
         """
         if attachment.id is None:
             raise ValueError("Attachment ID is required for update.")
@@ -298,7 +302,7 @@ class AttachmentCollection(BaseCollection):
     def get_by_parent_ids(
         self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
     ) -> dict[str, list[Attachment]]:
-        """Retrieves attachments by their parent IDs.
+        """Get attachments by their parent IDs.
 
         Note: This method returns a dictionary where the keys are parent IDs
         and the values are lists of Attachment objects associated with each parent ID.
@@ -323,12 +327,13 @@ class AttachmentCollection(BaseCollection):
         dict[str, list[Attachment]]
             A dictionary mapping parent IDs to lists of Attachment objects associated with each parent ID.
 
-        !!! example
-            ```python
-            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA1", "PROA1"])
-            by_parent.get("INVA1", [])
-            # [Attachment(...), ...]
-            ```
+        Examples
+        --------
+        ```python
+        by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA1", "PROA1"])
+        by_parent.get("INVA1", [])
+        # [Attachment(...), ...]
+        ```
         """
         response = self.session.get(
             url=f"{self.base_path}/parents",
@@ -368,14 +373,15 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment linking the file to the note.
 
-        !!! example
-            ```python
-            attachment = client.attachments.attach_file_to_note(
-                note_id="...",
-                file_name="results.csv",
-                file_key="INVA1/notes/results.csv",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        attachment = client.attachments.attach_file_to_note(
+            note_id="...",
+            file_name="results.csv",
+            file_key="INVA1/notes/results.csv",
+        )
+        ```
         """
         attachment = Attachment(
             parent_id=note_id, name=file_name, key=file_key, namespace="result", category=category
@@ -393,12 +399,13 @@ class AttachmentCollection(BaseCollection):
         dict[str, str]
             Mapping of jurisdiction name to code (e.g. ``{"Germany": "DE", "USA": "US"}``).
 
-        !!! example
-            ```python
-            codes = client.attachments.get_jurisdiction_codes()
-            codes["USA"]
-            # 'US'
-            ```
+        Examples
+        --------
+        ```python
+        codes = client.attachments.get_jurisdiction_codes()
+        codes["USA"]
+        # 'US'
+        ```
         """
         response = self.session.get(
             f"{self.base_path}/jurisdictionslanguages", params={"type": "jurisdiction"}
@@ -416,12 +423,13 @@ class AttachmentCollection(BaseCollection):
         dict[str, str]
             Mapping of language name to code (e.g. ``{"English": "EN", "German": "DE"}``).
 
-        !!! example
-            ```python
-            codes = client.attachments.get_language_codes()
-            codes["English"]
-            # 'EN'
-            ```
+        Examples
+        --------
+        ```python
+        codes = client.attachments.get_language_codes()
+        codes["English"]
+        # 'EN'
+        ```
         """
         response = self.session.get(
             f"{self.base_path}/jurisdictionslanguages", params={"type": "language"}
@@ -441,10 +449,11 @@ class AttachmentCollection(BaseCollection):
         -------
         None
 
-        !!! example
-            ```python
-            client.attachments.delete(id="ATT1")
-            ```
+        Examples
+        --------
+        ```python
+        client.attachments.delete(id="ATT1")
+        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -479,16 +488,17 @@ class AttachmentCollection(BaseCollection):
         Note
             The created note, with the uploaded file attached.
 
-        !!! example
-            ```python
-            with open("results.csv", "rb") as fh:
-                note = client.attachments.upload_and_attach_file_as_note(
-                    parent_id="TASA1",
-                    file_data=fh,
-                    note_text="Attaching the raw results.",
-                    file_name="results.csv",
-                )
-            ```
+        Examples
+        --------
+        ```python
+        with open("results.csv", "rb") as fh:
+            note = client.attachments.upload_and_attach_file_as_note(
+                parent_id="TASA1",
+                file_data=fh,
+                note_text="Attaching the raw results.",
+                file_name="results.csv",
+            )
+        ```
         """
         if not (upload_key or file_name):
             raise ValueError("A file name or upload key must be provided for attachment upload.")
@@ -574,18 +584,19 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created SDS attachment linked to the inventory item.
 
-        !!! example
-            ```python
-            from datetime import date
-            from pathlib import Path
-            attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
-                inventory_id="INVA1",
-                file_sds=Path("~/Downloads/acetone_sds.pdf"),
-                revision_date=date(2024, 1, 1),
-                storage_class="3",
-                un_number="1090",
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from datetime import date
+        from pathlib import Path
+        attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
+            inventory_id="INVA1",
+            file_sds=Path("~/Downloads/acetone_sds.pdf"),
+            revision_date=date(2024, 1, 1),
+            storage_class="3",
+            un_number="1090",
+        )
+        ```
         """
 
         sds_path = file_sds.expanduser()
@@ -669,14 +680,15 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment record.
 
-        !!! example
-            ```python
-            from pathlib import Path
-            attachment = client.attachments.upload_and_attach_document_to_project(
-                project_id="PRO770",
-                file_path=Path("~/Downloads/report.pdf"),
-            )
-            ```
+        Examples
+        --------
+        ```python
+        from pathlib import Path
+        attachment = client.attachments.upload_and_attach_document_to_project(
+            project_id="PRO770",
+            file_path=Path("~/Downloads/report.pdf"),
+        )
+        ```
         """
         resolved_path = file_path.expanduser()
         if not resolved_path.is_file():
