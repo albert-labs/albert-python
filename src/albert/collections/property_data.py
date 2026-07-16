@@ -76,6 +76,8 @@ class PropertyDataCollection(BaseCollection):
         params = {"entity": "inventory", "id": [inventory_id]}
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
+        if not response_json:
+            return InventoryPropertyData(inventoryId=inventory_id)
         return InventoryPropertyData(**response_json[0])
 
     @validate_call
