@@ -35,6 +35,15 @@ class CustomTemplatesCollection(BaseCollection):
 
     This collection is accessed as ``client.custom_templates``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        template = client.custom_templates.get_by_id(id="CTP1")
+        template.name
+        # 'Standard Property Task'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -59,16 +68,6 @@ class CustomTemplatesCollection(BaseCollection):
         Delete a template by its ID.
     update_acl(custom_template_id, acl_class=None, acls=None) -> CustomTemplate
         Replace a template's ACL class and/or access entries.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    template = client.custom_templates.get_by_id(id="CTP1")
-    template.name
-    # 'Standard Property Task'
-    ```
     """
 
     # _updatable_attributes = {"symbol", "synonyms", "category"}
@@ -96,6 +95,17 @@ class CustomTemplatesCollection(BaseCollection):
         Up to 10 templates can be created in a single call. Each created template
         is re-fetched so the returned entities are fully populated.
 
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.custom_templates import CustomTemplate
+            client = Albert()
+            template = CustomTemplate(name="Standard Property Task")
+            created = client.custom_templates.create(custom_template=template)
+            created[0].id
+            # 'CTP1'
+            ```
+
         Parameters
         ----------
         custom_template : CustomTemplate or list[CustomTemplate]
@@ -111,18 +121,6 @@ class CustomTemplatesCollection(BaseCollection):
         ------
         ValueError
             If no templates are provided, or if more than 10 are provided.
-
-        Examples
-        --------
-        ```python
-        from albert import Albert
-        from albert.resources.custom_templates import CustomTemplate
-        client = Albert()
-        template = CustomTemplate(name="Standard Property Task")
-        created = client.custom_templates.create(custom_template=template)
-        created[0].id
-        # 'CTP1'
-        ```
         """
         templates = ensure_list(custom_template) or []
         if len(templates) == 0:
@@ -205,6 +203,13 @@ class CustomTemplatesCollection(BaseCollection):
     def get_by_id(self, *, id: CustomTemplateId) -> CustomTemplate:
         """Get a single, fully populated custom template by its ID.
 
+        !!! example
+            ```python
+            template = client.custom_templates.get_by_id(id="CTP1")
+            template.name
+            # 'Standard Property Task'
+            ```
+
         Parameters
         ----------
         id : CustomTemplateId
@@ -214,14 +219,6 @@ class CustomTemplatesCollection(BaseCollection):
         -------
         CustomTemplate
             The fully populated template.
-
-        Examples
-        --------
-        ```python
-        template = client.custom_templates.get_by_id(id="CTP1")
-        template.name
-        # 'Standard Property Task'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -252,6 +249,14 @@ class CustomTemplatesCollection(BaseCollection):
         look templates up. When you need complete templates, use [`get_all`][albert.collections.custom_templates.CustomTemplatesCollection.get_all],
         or pass a resulting ID to [`get_by_id`][albert.collections.custom_templates.CustomTemplatesCollection.get_by_id]. Results are returned as a
         lazily paginated iterator.
+
+        !!! example
+            ```python
+            hits = client.custom_templates.search(text="stability", max_items=10)
+            first = next(iter(hits))
+            first.name
+            # 'Stability Property Task'
+            ```
 
         Parameters
         ----------
@@ -290,15 +295,6 @@ class CustomTemplatesCollection(BaseCollection):
         -------
         Iterator[CustomTemplateSearchItem]
             A lazily paginated iterator of partially populated search results.
-
-        Examples
-        --------
-        ```python
-        hits = client.custom_templates.search(text="stability", max_items=10)
-        first = next(iter(hits))
-        first.name
-        # 'Stability Property Task'
-        ```
         """
 
         params = {
@@ -344,6 +340,12 @@ class CustomTemplatesCollection(BaseCollection):
         search results, so prefer [`search`][albert.collections.custom_templates.CustomTemplatesCollection.search] when you only need names, IDs, or
         counts. Results are returned as a lazily paginated iterator.
 
+        !!! example
+            ```python
+            for template in client.custom_templates.get_all(max_items=25):
+                print(template.id, template.name)
+            ```
+
         Parameters
         ----------
         name : str or list[str], optional
@@ -362,13 +364,6 @@ class CustomTemplatesCollection(BaseCollection):
         -------
         Iterator[CustomTemplate]
             A lazily paginated iterator of fully populated templates.
-
-        Examples
-        --------
-        ```python
-        for template in client.custom_templates.get_all(max_items=25):
-            print(template.id, template.name)
-        ```
         """
         params = {
             "startKey": start_key,
@@ -390,6 +385,11 @@ class CustomTemplatesCollection(BaseCollection):
     def delete(self, *, id: CustomTemplateId) -> None:
         """Delete a custom template by its ID.
 
+        !!! example
+            ```python
+            client.custom_templates.delete(id="CTP1")
+            ```
+
         Parameters
         ----------
         id : CustomTemplateId
@@ -398,12 +398,6 @@ class CustomTemplatesCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.custom_templates.delete(id="CTP1")
-        ```
         """
 
         url = f"{self.base_path}/{id}"
@@ -424,6 +418,14 @@ class CustomTemplatesCollection(BaseCollection):
         ``acls`` is given, the template's current entries are diffed against it so
         that entries are added, updated, or removed as needed.
 
+        !!! example
+            ```python
+            template = client.custom_templates.update_acl(
+                custom_template_id="CTP1",
+                acl_class="private",
+            )
+            ```
+
         Parameters
         ----------
         custom_template_id : CustomTemplateId
@@ -442,15 +444,6 @@ class CustomTemplatesCollection(BaseCollection):
         ------
         ValueError
             If neither ``acl_class`` nor ``acls`` is provided.
-
-        Examples
-        --------
-        ```python
-        template = client.custom_templates.update_acl(
-            custom_template_id="CTP1",
-            acl_class="private",
-        )
-        ```
         """
 
         if acl_class is None and acls is None:

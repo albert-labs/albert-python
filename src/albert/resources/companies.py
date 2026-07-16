@@ -18,6 +18,14 @@ class Company(BaseResource):
     (``Company(name="Acme Chemicals")``) to create it or to attach it to an
     inventory item.
 
+    !!! example
+        ```python
+        from albert.resources.companies import Company
+
+        # Build a company to create or attach to an inventory item
+        company = Company(name="Acme Chemicals")
+        ```
+
     Attributes
     ----------
     name : str
@@ -32,15 +40,6 @@ class Company(BaseResource):
     status : Status | None
         Lifecycle status of the company (inherited from
         [`BaseResource`][albert.core.shared.models.base.BaseResource]).
-
-    Examples
-    --------
-    ```python
-    from albert.resources.companies import Company
-
-    # Build a company to create or attach to an inventory item
-    company = Company(name="Acme Chemicals")
-    ```
     """
 
     name: str

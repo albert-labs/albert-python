@@ -44,6 +44,16 @@ class Parameter(BaseResource):
     [`ParameterCollection`][albert.collections.parameters.ParameterCollection]
     (``client.parameters``).
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.parameters import Parameter
+        client = Albert()
+        param = client.parameters.create(parameter=Parameter(name="Temperature"))
+        param.id
+        # 'PRM1'
+        ```
+
     Attributes
     ----------
     name : str
@@ -60,17 +70,6 @@ class Parameter(BaseResource):
         The rank of the returned parameter. Read-only.
     required : bool | None
         Whether this parameter must be filled in within a Parameter Group.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.parameters import Parameter
-    client = Albert()
-    param = client.parameters.create(parameter=Parameter(name="Temperature"))
-    param.id
-    # 'PRM1'
-    ```
     """
 
     name: str

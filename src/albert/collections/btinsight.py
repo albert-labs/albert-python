@@ -28,6 +28,16 @@ class BTInsightCollection(BaseCollection):
 
     This collection is accessed as ``client.btinsights``.
 
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        insight = client.btinsights.get_by_id(id="INS7")
+        insight.name
+        # 'Cost optimizer run'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -50,17 +60,6 @@ class BTInsightCollection(BaseCollection):
         Update an existing insight.
     delete(id) -> None
         Delete an insight by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-
-    client = Albert()
-    insight = client.btinsights.get_by_id(id="INS7")
-    insight.name
-    # 'Cost optimizer run'
-    ```
     """
 
     _api_version = "v3"
@@ -93,6 +92,21 @@ class BTInsightCollection(BaseCollection):
     def create(self, *, insight: BTInsight) -> BTInsight:
         """Create a new insight.
 
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.btinsight import BTInsight, BTInsightCategory
+
+            client = Albert()
+            insight = BTInsight(
+                name="Cost optimizer run",
+                category=BTInsightCategory.OPTIMIZER,
+            )
+            created = client.btinsights.create(insight=insight)
+            created.id
+            # 'INS7'
+            ```
+
         Parameters
         ----------
         insight : BTInsight
@@ -102,22 +116,6 @@ class BTInsightCollection(BaseCollection):
         -------
         BTInsight
             The newly created insight, populated with its assigned ID.
-
-        Examples
-        --------
-        ```python
-        from albert import Albert
-        from albert.resources.btinsight import BTInsight, BTInsightCategory
-
-        client = Albert()
-        insight = BTInsight(
-            name="Cost optimizer run",
-            category=BTInsightCategory.OPTIMIZER,
-        )
-        created = client.btinsights.create(insight=insight)
-        created.id
-        # 'INS7'
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -129,6 +127,13 @@ class BTInsightCollection(BaseCollection):
     def get_by_id(self, *, id: BTInsightId) -> BTInsight:
         """Get a single insight by its ID.
 
+        !!! example
+            ```python
+            insight = client.btinsights.get_by_id(id="INS7")
+            insight.name
+            # 'Cost optimizer run'
+            ```
+
         Parameters
         ----------
         id : BTInsightId
@@ -138,14 +143,6 @@ class BTInsightCollection(BaseCollection):
         -------
         BTInsight
             The fully populated insight.
-
-        Examples
-        --------
-        ```python
-        insight = client.btinsights.get_by_id(id="INS7")
-        insight.name
-        # 'Cost optimizer run'
-        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTInsight(**response.json())
@@ -167,6 +164,18 @@ class BTInsightCollection(BaseCollection):
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand.
+
+        !!! example
+            ```python
+            from albert.resources.btinsight import BTInsightCategory
+
+            hits = client.btinsights.search(
+                category=BTInsightCategory.OPTIMIZER,
+                max_items=10,
+            )
+            for insight in hits:
+                print(insight.id, insight.name)
+            ```
 
         Parameters
         ----------
@@ -190,19 +199,6 @@ class BTInsightCollection(BaseCollection):
         -------
         Iterator[BTInsight]
             A lazily paginated iterator of matching insights.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.btinsight import BTInsightCategory
-
-        hits = client.btinsights.search(
-            category=BTInsightCategory.OPTIMIZER,
-            max_items=10,
-        )
-        for insight in hits:
-            print(insight.id, insight.name)
-        ```
         """
         params = {
             "offset": offset,
@@ -235,6 +231,15 @@ class BTInsightCollection(BaseCollection):
         fields on the returned object, then pass it here. Only the fields listed in
         Notes are applied; changes to other fields are ignored.
 
+        !!! example
+            ```python
+            insight = client.btinsights.get_by_id(id="INS7")
+            insight.name = "Cost optimizer run (final)"
+            updated = client.btinsights.update(insight=insight)
+            updated.name
+            # 'Cost optimizer run (final)'
+            ```
+
         Parameters
         ----------
         insight : BTInsight
@@ -250,16 +255,6 @@ class BTInsightCollection(BaseCollection):
         The following fields can be updated: ``content_edited``, ``end_time``,
         ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``,
         ``registry``, ``start_time``, ``state``, ``total_time``.
-
-        Examples
-        --------
-        ```python
-        insight = client.btinsights.get_by_id(id="INS7")
-        insight.name = "Cost optimizer run (final)"
-        updated = client.btinsights.update(insight=insight)
-        updated.name
-        # 'Cost optimizer run (final)'
-        ```
         """
         path = f"{self.base_path}/{insight.id}"
         payload = self._generate_patch_payload(
@@ -274,6 +269,11 @@ class BTInsightCollection(BaseCollection):
     def delete(self, *, id: BTInsightId) -> None:
         """Delete an insight by its ID.
 
+        !!! example
+            ```python
+            client.btinsights.delete(id="INS7")
+            ```
+
         Parameters
         ----------
         id : BTInsightId
@@ -282,11 +282,5 @@ class BTInsightCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.btinsights.delete(id="INS7")
-        ```
         """
         self.session.delete(f"{self.base_path}/{id}")

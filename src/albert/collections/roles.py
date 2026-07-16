@@ -15,6 +15,15 @@ class RoleCollection(BaseCollection):
 
     This collection is accessed as ``client.roles``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        roles = client.roles.get_all()
+        for role in roles:
+            print(role.id, role.name)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -33,16 +42,6 @@ class RoleCollection(BaseCollection):
         Get all available roles.
     create(role) -> Role
         Create a new role.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    roles = client.roles.get_all()
-    for role in roles:
-        print(role.id, role.name)
-    ```
     """
 
     _api_version = "v3"
@@ -61,6 +60,13 @@ class RoleCollection(BaseCollection):
     def get_by_id(self, *, id: str) -> Role:
         """Get a single role by its ID.
 
+        !!! example
+            ```python
+            role = client.roles.get_by_id(id="role#admin")
+            role.name
+            # 'Administrator'
+            ```
+
         Parameters
         ----------
         id : str
@@ -71,14 +77,6 @@ class RoleCollection(BaseCollection):
         -------
         Role
             The fully populated role.
-
-        Examples
-        --------
-        ```python
-        role = client.roles.get_by_id(id="role#admin")
-        role.name
-        # 'Administrator'
-        ```
         """
         # role IDs have # symbols
         url = urllib.parse.quote(f"{self.base_path}/{id}")
@@ -87,6 +85,13 @@ class RoleCollection(BaseCollection):
 
     def create(self, *, role: Role):
         """Create a new role.
+
+        !!! example
+            ```python
+            from albert.resources.roles import Role
+            role = client.roles.create(role=Role(name="Lab Analyst", tenant="TEN123"))
+            role.id
+            ```
 
         Parameters
         ----------
@@ -97,14 +102,6 @@ class RoleCollection(BaseCollection):
         -------
         Role
             The newly created role.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.roles import Role
-        role = client.roles.create(role=Role(name="Lab Analyst", tenant="TEN123"))
-        role.id
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -114,6 +111,13 @@ class RoleCollection(BaseCollection):
 
     def get_all(self, *, params: dict | None = None) -> list[Role]:
         """Get all available roles.
+
+        !!! example
+            ```python
+            roles = client.roles.get_all()
+            [r.name for r in roles]
+            # ['Administrator', 'Standard User']
+            ```
 
         Parameters
         ----------
@@ -125,14 +129,6 @@ class RoleCollection(BaseCollection):
         -------
         list[Role]
             All roles available in the tenant.
-
-        Examples
-        --------
-        ```python
-        roles = client.roles.get_all()
-        [r.name for r in roles]
-        # ['Administrator', 'Standard User']
-        ```
         """
         if params is None:
             params = {}

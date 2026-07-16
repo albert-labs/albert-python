@@ -129,6 +129,22 @@ class ValueValidation(BaseAlbertModel):
     the bounds or allowed options it must satisfy. Attach one or more of these to a
     [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] via its ``validation`` field.
 
+    !!! example
+        ```python
+        from albert.resources.parameter_groups import (
+            DataType,
+            Operator,
+            ValueValidation,
+        )
+
+        rule = ValueValidation(
+            datatype=DataType.NUMBER,
+            operator=Operator.BETWEEN,
+            min="0",
+            max="100",
+        )
+        ```
+
     Attributes
     ----------
     datatype : DataType
@@ -142,23 +158,6 @@ class ValueValidation(BaseAlbertModel):
         The upper bound for numeric values, used with ``operator``.
     operator : Operator or None
         The comparison operator applied against ``min`` and/or ``max``.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.parameter_groups import (
-        DataType,
-        Operator,
-        ValueValidation,
-    )
-
-    rule = ValueValidation(
-        datatype=DataType.NUMBER,
-        operator=Operator.BETWEEN,
-        min="0",
-        max="100",
-    )
-    ```
     """
 
     datatype: DataType = Field(...)
@@ -178,6 +177,14 @@ class ParameterValue(BaseAlbertModel):
     ``parameter`` is given, the ``id``, ``category``, and ``name`` are populated
     from it. Values are later fixed to setpoints inside a
     [`Workflow`][albert.resources.workflows.Workflow].
+
+    !!! example
+        ```python
+        from albert.resources.parameter_groups import ParameterValue
+
+        # Reference the parameter by its Albert ID
+        value = ParameterValue(id="PRM1", value="500")
+        ```
 
     Attributes
     ----------
@@ -208,15 +215,6 @@ class ParameterValue(BaseAlbertModel):
         The name of the parameter. Read-only.
     sequence : str or None
         The sequence of the parameter within the group. Read-only.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.parameter_groups import ParameterValue
-
-    # Reference the parameter by its Albert ID
-    value = ParameterValue(id="PRM1", value="500")
-    ```
     """
 
     parameter: Parameter | None = Field(default=None, exclude=True)
@@ -284,6 +282,21 @@ class ParameterGroup(BaseTaggedResource):
     [`ParameterGroupCollection`][albert.collections.parameter_groups.ParameterGroupCollection]
     (``client.parameter_groups``).
 
+    !!! example
+        ```python
+        from albert.resources.parameter_groups import (
+            ParameterGroup,
+            ParameterValue,
+            PGType,
+        )
+
+        pg = ParameterGroup(
+            name="Mixing Step",
+            type=PGType.BATCH,
+            parameters=[ParameterValue(id="PRM1", value="500")],
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -323,22 +336,6 @@ class ParameterGroup(BaseTaggedResource):
     ParameterValue : A parameter and its value within a group.
     PGType : The set of allowed group types.
     albert.resources.workflows.Workflow : Where a group's parameters are fixed to setpoints.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.parameter_groups import (
-        ParameterGroup,
-        ParameterValue,
-        PGType,
-    )
-
-    pg = ParameterGroup(
-        name="Mixing Step",
-        type=PGType.BATCH,
-        parameters=[ParameterValue(id="PRM1", value="500")],
-    )
-    ```
     """
 
     name: str

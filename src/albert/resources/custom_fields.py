@@ -256,6 +256,25 @@ class CustomField(BaseResource):
     a matching ``list_type``, managed through
     [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
 
+    !!! example
+        ```python
+        from albert.resources.custom_fields import (
+            CustomField,
+            FieldCategory,
+            FieldType,
+            ServiceType,
+        )
+        stage_gate_field = CustomField(
+            name="stage_gate_status",
+            display_name="Stage Gate",
+            field_type=FieldType.LIST,
+            service=ServiceType.PROJECTS,
+            min=1,
+            max=1,
+            category=FieldCategory.BUSINESS_DEFINED,
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -309,26 +328,6 @@ class CustomField(BaseResource):
         The default value applied to the field.
     api : CustomFieldAPI or None
         Configuration for fields whose values are backed by a remote API.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.custom_fields import (
-        CustomField,
-        FieldCategory,
-        FieldType,
-        ServiceType,
-    )
-    stage_gate_field = CustomField(
-        name="stage_gate_status",
-        display_name="Stage Gate",
-        field_type=FieldType.LIST,
-        service=ServiceType.PROJECTS,
-        min=1,
-        max=1,
-        category=FieldCategory.BUSINESS_DEFINED,
-    )
-    ```
     """
 
     name: str

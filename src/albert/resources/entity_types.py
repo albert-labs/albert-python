@@ -184,24 +184,23 @@ class EntityTypeSearchQueryStrings(BaseAlbertModel):
     ``{customField}`` placeholders that are substituted with the actual values of
     the entity's custom fields.
 
+    !!! example
+        ```python
+        from albert.resources.entity_types import EntityTypeSearchQueryStrings
+        # Here the custom field names match on the Task and on the
+        # Data Templates + Parameter Groups.
+        search_strings = EntityTypeSearchQueryStrings(
+            DAT="customField1={customField1}&customField2={customField2}",
+            PRG="customField1={customField1}&customField2={customField2}",
+        )
+        ```
+
     Attributes
     ----------
     DAT : str or None
         Search string for Data Templates.
     PRG : str or None
         Search string for Parameter Groups.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.entity_types import EntityTypeSearchQueryStrings
-    # Here the custom field names match on the Task and on the
-    # Data Templates + Parameter Groups.
-    search_strings = EntityTypeSearchQueryStrings(
-        DAT="customField1={customField1}&customField2={customField2}",
-        PRG="customField1={customField1}&customField2={customField2}",
-    )
-    ```
     """
 
     DAT: str | None = None
@@ -218,6 +217,20 @@ class EntityType(BaseResource):
     searches are built. Entity types can be built-in (``system``) or
     organization-defined (``custom``), and may carry conditional field rules (see
     [`EntityTypeRule`][albert.resources.entity_types.EntityTypeRule]).
+
+    !!! example
+        ```python
+        from albert.resources.entity_types import (
+            EntityCategory,
+            EntityServiceType,
+            EntityType,
+        )
+        entity_type = EntityType(
+            label="Stability Task",
+            service=EntityServiceType.TASKS,
+            category=EntityCategory.PROPERTY,
+        )
+        ```
 
     Attributes
     ----------
@@ -251,21 +264,6 @@ class EntityType(BaseResource):
         Whether the template is locked. If True, users cannot edit the template.
     search_query_string : EntityTypeSearchQueryStrings or None
         Query strings used to find related Data Templates and Parameter Groups.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.entity_types import (
-        EntityCategory,
-        EntityServiceType,
-        EntityType,
-    )
-    entity_type = EntityType(
-        label="Stability Task",
-        service=EntityServiceType.TASKS,
-        category=EntityCategory.PROPERTY,
-    )
-    ```
     """
 
     id: EntityTypeId | None = Field(alias="albertId", default=None)

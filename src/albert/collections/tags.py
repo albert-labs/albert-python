@@ -28,6 +28,14 @@ class TagCollection(BaseCollection):
 
     This collection is accessed as ``client.tags``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        tag = client.tags.get_or_create(tag="high-priority")
+        print(tag.id, tag.tag)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -58,15 +66,6 @@ class TagCollection(BaseCollection):
         Delete a tag by its ID.
     exists(tag, exact_match=True) -> bool
         Check whether a tag with the given name exists.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    tag = client.tags.get_or_create(tag="high-priority")
-    print(tag.id, tag.tag)
-    ```
     """
 
     _api_version = "v3"
@@ -85,6 +84,12 @@ class TagCollection(BaseCollection):
     def exists(self, *, tag: str, exact_match: bool = True) -> bool:
         """Check whether a tag with the given name exists.
 
+        !!! example
+            ```python
+            if client.tags.exists(tag="high-priority"):
+                print("tag already defined")
+            ```
+
         Parameters
         ----------
         tag : str
@@ -96,19 +101,17 @@ class TagCollection(BaseCollection):
         -------
         bool
             True if a matching tag exists, False otherwise.
-
-        Examples
-        --------
-        ```python
-        if client.tags.exists(tag="high-priority"):
-            print("tag already defined")
-        ```
         """
 
         return self.get_by_name(name=tag, exact_match=exact_match) is not None
 
     def create(self, *, tag: str | Tag) -> Tag:
         """Create a new tag.
+
+        !!! example
+            ```python
+            tag = client.tags.create(tag="experimental")
+            ```
 
         Parameters
         ----------
@@ -119,12 +122,6 @@ class TagCollection(BaseCollection):
         -------
         Tag
             The newly created tag, including its assigned Tag ID.
-
-        Examples
-        --------
-        ```python
-        tag = client.tags.create(tag="experimental")
-        ```
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
@@ -141,6 +138,11 @@ class TagCollection(BaseCollection):
         found it is returned unchanged; otherwise a new tag is created. This is
         the recommended way to reference a tag, since tags are shared by name.
 
+        !!! example
+            ```python
+            tag = client.tags.get_or_create(tag="high-priority")
+            ```
+
         Parameters
         ----------
         tag : str or Tag
@@ -151,12 +153,6 @@ class TagCollection(BaseCollection):
         -------
         Tag
             The existing or newly created tag.
-
-        Examples
-        --------
-        ```python
-        tag = client.tags.get_or_create(tag="high-priority")
-        ```
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
@@ -170,6 +166,11 @@ class TagCollection(BaseCollection):
     def get_by_id(self, *, id: TagId) -> Tag:
         """Get a single tag by its ID.
 
+        !!! example
+            ```python
+            tag = client.tags.get_by_id(id="TAG1")
+            ```
+
         Parameters
         ----------
         id : TagId
@@ -179,12 +180,6 @@ class TagCollection(BaseCollection):
         -------
         Tag
             The fully populated tag.
-
-        Examples
-        --------
-        ```python
-        tag = client.tags.get_by_id(id="TAG1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -196,6 +191,11 @@ class TagCollection(BaseCollection):
 
         IDs are fetched in batches, so arbitrarily long lists are supported.
 
+        !!! example
+            ```python
+            tags = client.tags.get_by_ids(ids=["TAG1", "TAG2"])
+            ```
+
         Parameters
         ----------
         ids : list[TagId]
@@ -205,12 +205,6 @@ class TagCollection(BaseCollection):
         -------
         list[Tag]
             The matching tags. Tags not found are omitted.
-
-        Examples
-        --------
-        ```python
-        tags = client.tags.get_by_ids(ids=["TAG1", "TAG2"])
-        ```
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
@@ -223,6 +217,11 @@ class TagCollection(BaseCollection):
     def get_by_name(self, *, name: str, exact_match: bool = True) -> Tag | None:
         """Get a tag by its name.
 
+        !!! example
+            ```python
+            tag = client.tags.get_by_name(name="high-priority")
+            ```
+
         Parameters
         ----------
         name : str
@@ -234,12 +233,6 @@ class TagCollection(BaseCollection):
         -------
         Tag or None
             The matching tag, or None if no tag with that name exists.
-
-        Examples
-        --------
-        ```python
-        tag = client.tags.get_by_name(name="high-priority")
-        ```
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
@@ -247,6 +240,11 @@ class TagCollection(BaseCollection):
     @validate_call
     def delete(self, *, id: TagId) -> None:
         """Delete a tag by its ID.
+
+        !!! example
+            ```python
+            client.tags.delete(id="TAG1")
+            ```
 
         Parameters
         ----------
@@ -256,12 +254,6 @@ class TagCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.tags.delete(id="TAG1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -271,6 +263,11 @@ class TagCollection(BaseCollection):
 
         The tag is looked up by its current name and updated in place, so every
         entity carrying the tag reflects the new name.
+
+        !!! example
+            ```python
+            tag = client.tags.rename(old_name="high-priority", new_name="urgent")
+            ```
 
         Parameters
         ----------
@@ -288,12 +285,6 @@ class TagCollection(BaseCollection):
         ------
         AlbertException
             If no tag with ``old_name`` is found.
-
-        Examples
-        --------
-        ```python
-        tag = client.tags.rename(old_name="high-priority", new_name="urgent")
-        ```
         """
         found_tag = self.get_by_name(name=old_name, exact_match=True)
         if not found_tag:
@@ -331,6 +322,12 @@ class TagCollection(BaseCollection):
         Results are fetched page by page as you iterate, so this scales to large
         result sets without loading everything at once.
 
+        !!! example
+            ```python
+            for tag in client.tags.get_all(max_items=100):
+                print(tag.tag)
+            ```
+
         Parameters
         ----------
         order_by : OrderBy, optional
@@ -349,13 +346,6 @@ class TagCollection(BaseCollection):
         -------
         Iterator[Tag]
             An iterator over the matching tags.
-
-        Examples
-        --------
-        ```python
-        for tag in client.tags.get_all(max_items=100):
-            print(tag.tag)
-        ```
         """
         params = {
             "orderBy": order_by,

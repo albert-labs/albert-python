@@ -25,6 +25,17 @@ class Link(BaseResource):
     [`LinkCategory`][albert.resources.links.LinkCategory]. Links are managed through the
     [`LinksCollection`][albert.collections.links.LinksCollection].
 
+    !!! example
+        ```python
+        from albert.resources.links import Link, LinkCategory
+        from albert.core.shared.models.base import EntityLink
+        link = Link(
+            parent=EntityLink(id="INVA1"),
+            child=EntityLink(id="INVA2"),
+            category=LinkCategory.LINKED_INVENTORY,
+        )
+        ```
+
     Attributes
     ----------
     parent : EntityLink
@@ -39,18 +50,6 @@ class Link(BaseResource):
     id : str | None
         The Albert ID of the link (format ``LNK...``). Assigned by Albert when
         the link is created.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.links import Link, LinkCategory
-    from albert.core.shared.models.base import EntityLink
-    link = Link(
-        parent=EntityLink(id="INVA1"),
-        child=EntityLink(id="INVA2"),
-        category=LinkCategory.LINKED_INVENTORY,
-    )
-    ```
     """
 
     parent: EntityLink = Field(..., alias="Parent")

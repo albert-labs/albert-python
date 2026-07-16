@@ -42,6 +42,12 @@ class ListItem(BaseResource):
     ``ListItem`` records with a matching ``list_type``. Managed through
     [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
 
+    !!! example
+        ```python
+        from albert.resources.lists import ListItem, ListItemCategory
+        item = ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
+        ```
+
     Attributes
     ----------
     name : str
@@ -59,13 +65,6 @@ class ListItem(BaseResource):
         categories the allowed values are ``projectState`` for ``projects``,
         ``extensions`` for ``extensions``, and ``casCategory`` or
         ``inventoryFunction`` for ``inventory``.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.lists import ListItem, ListItemCategory
-    item = ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
-    ```
     """
 
     name: str

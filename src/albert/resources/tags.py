@@ -30,6 +30,12 @@ class Tag(BaseResource):
     through [`TagCollection`][albert.collections.tags.TagCollection] (``client.tags``);
     the usual entry point is [`get_or_create`][albert.collections.tags.TagCollection.get_or_create].
 
+    !!! example
+        ```python
+        from albert.resources.tags import Tag
+        tag = Tag(tag="high-priority")
+        ```
+
     Attributes
     ----------
     tag : str
@@ -42,13 +48,6 @@ class Tag(BaseResource):
     -------
     from_string(tag) -> Tag
         Build a Tag from its name string.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.tags import Tag
-    tag = Tag(tag="high-priority")
-    ```
     """
 
     # different endpoints use different aliases for the fields
@@ -67,6 +66,12 @@ class Tag(BaseResource):
     def from_string(cls, tag: str) -> Tag:
         """Build a Tag from its name string.
 
+        !!! example
+            ```python
+            from albert.resources.tags import Tag
+            tag = Tag.from_string("experimental")
+            ```
+
         Parameters
         ----------
         tag : str
@@ -76,12 +81,5 @@ class Tag(BaseResource):
         -------
         Tag
             A Tag with the given name.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.tags import Tag
-        tag = Tag.from_string("experimental")
-        ```
         """
         return cls(tag=tag)

@@ -29,6 +29,33 @@ class ListsCollection(BaseCollection):
 
     This collection is accessed as ``client.lists``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.lists import ListItem
+        client = Albert()
+
+        # Populate the options for a dropdown custom field with stage-gate values
+        stages = [
+            "1. Discovery",
+            "2. Concept Validation",
+            "3. Proof of Concept",
+            "4. Prototype Development",
+        ]
+
+        # Get the custom field this list is associated with
+        stage_gate_field = client.custom_fields.get_by_id(id="CTF123")
+
+        # Create the list items
+        for s in stages:
+            item = ListItem(
+                name=s,
+                category=stage_gate_field.category,
+                list_type=stage_gate_field.name,
+            )
+            client.lists.create(list_item=item)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -53,34 +80,6 @@ class ListsCollection(BaseCollection):
         Update an existing list item.
     delete(id) -> None
         Delete a list item by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.lists import ListItem
-    client = Albert()
-
-    # Populate the options for a dropdown custom field with stage-gate values
-    stages = [
-        "1. Discovery",
-        "2. Concept Validation",
-        "3. Proof of Concept",
-        "4. Prototype Development",
-    ]
-
-    # Get the custom field this list is associated with
-    stage_gate_field = client.custom_fields.get_by_id(id="CTF123")
-
-    # Create the list items
-    for s in stages:
-        item = ListItem(
-            name=s,
-            category=stage_gate_field.category,
-            list_type=stage_gate_field.name,
-        )
-        client.lists.create(list_item=item)
-    ```
     """
 
     _updatable_attributes = {"name"}
@@ -112,6 +111,13 @@ class ListsCollection(BaseCollection):
         Results are fetched page by page as you iterate, so this scales to large
         result sets without loading everything at once.
 
+        !!! example
+            ```python
+            items = client.lists.get_all(list_type="Stage Gate", max_items=50)
+            for item in items:
+                print(item.name)
+            ```
+
         Parameters
         ----------
         names : list[str], optional
@@ -132,14 +138,6 @@ class ListsCollection(BaseCollection):
         -------
         Iterator[ListItem]
             An iterator over the matching list items.
-
-        Examples
-        --------
-        ```python
-        items = client.lists.get_all(list_type="Stage Gate", max_items=50)
-        for item in items:
-            print(item.name)
-        ```
         """
         params = {
             "startKey": start_key,
@@ -161,6 +159,11 @@ class ListsCollection(BaseCollection):
     def get_by_id(self, *, id: str) -> ListItem:
         """Get a single list item by its ID.
 
+        !!! example
+            ```python
+            item = client.lists.get_by_id(id="...")
+            ```
+
         Parameters
         ----------
         id : str
@@ -170,18 +173,20 @@ class ListsCollection(BaseCollection):
         -------
         ListItem
             The fully populated list item.
-
-        Examples
-        --------
-        ```python
-        item = client.lists.get_by_id(id="...")
-        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return ListItem(**response.json())
 
     def create(self, *, list_item: ListItem) -> ListItem:
         """Create a new list item.
+
+        !!! example
+            ```python
+            from albert.resources.lists import ListItem, ListItemCategory
+            item = client.lists.create(
+                list_item=ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
+            )
+            ```
 
         Parameters
         ----------
@@ -192,15 +197,6 @@ class ListsCollection(BaseCollection):
         -------
         ListItem
             The newly created list item, including its assigned ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.lists import ListItem, ListItemCategory
-        item = client.lists.create(
-            list_item=ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
-        )
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -211,6 +207,11 @@ class ListsCollection(BaseCollection):
     def delete(self, *, id: str) -> None:
         """Delete a list item by its ID.
 
+        !!! example
+            ```python
+            client.lists.delete(id="...")
+            ```
+
         Parameters
         ----------
         id : str
@@ -219,12 +220,6 @@ class ListsCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.lists.delete(id="...")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -234,6 +229,11 @@ class ListsCollection(BaseCollection):
 
         Performs a ranked search and returns the first item whose name matches
         ``name`` (case-insensitive) within the given list type.
+
+        !!! example
+            ```python
+            item = client.lists.get_matching_item(name="In Progress", list_type="Stage Gate")
+            ```
 
         Parameters
         ----------
@@ -247,12 +247,6 @@ class ListsCollection(BaseCollection):
         ListItem or None
             The matching list item, or None if no item with that name and list
             type exists.
-
-        Examples
-        --------
-        ```python
-        item = client.lists.get_matching_item(name="In Progress", list_type="Stage Gate")
-        ```
         """
         for list_item in self.get_all(names=[name], list_type=list_type, max_items=20):
             # since it's a ranked search, we only need to check the first few results
@@ -267,6 +261,13 @@ class ListsCollection(BaseCollection):
         it here. The item is matched by its ``id``. If nothing changed, the
         existing item is returned unmodified.
 
+        !!! example
+            ```python
+            item = client.lists.get_by_id(id="...")
+            item.name = "Completed"
+            updated = client.lists.update(list_item=item)
+            ```
+
         Parameters
         ----------
         list_item : ListItem
@@ -280,14 +281,6 @@ class ListsCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``name``.
-
-        Examples
-        --------
-        ```python
-        item = client.lists.get_by_id(id="...")
-        item.name = "Completed"
-        updated = client.lists.update(list_item=item)
-        ```
         """
         existing = self.get_by_id(id=list_item.id)
         patches = self._generate_patch_payload(

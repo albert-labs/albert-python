@@ -26,6 +26,19 @@ class ChatFolderCollection:
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
+    !!! example
+        ```python
+        from albert import AsyncAlbert
+        from albert.resources.chats import ChatFolder
+
+        async with AsyncAlbert() as client:
+            folder = await client.chat_folders.create(
+                folder=ChatFolder(name="Formulation questions")
+            )
+            async for f in client.chat_folders.get_all():
+                print(f.id, f.name)
+        ```
+
     Parameters
     ----------
     session : AsyncAlbertSession
@@ -48,20 +61,6 @@ class ChatFolderCollection:
         Rename a folder or reorder its contents.
     delete(id) -> None
         Delete a folder by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import AsyncAlbert
-    from albert.resources.chats import ChatFolder
-
-    async with AsyncAlbert() as client:
-        folder = await client.chat_folders.create(
-            folder=ChatFolder(name="Formulation questions")
-        )
-        async for f in client.chat_folders.get_all():
-            print(f.id, f.name)
-    ```
     """
 
     _api_version = "v3"
@@ -81,6 +80,17 @@ class ChatFolderCollection:
     async def create(self, *, folder: ChatFolder) -> ChatFolder:
         """Create a new chat folder.
 
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+            from albert.resources.chats import ChatFolder
+
+            async with AsyncAlbert() as client:
+                folder = await client.chat_folders.create(
+                    folder=ChatFolder(name="Formulation questions")
+                )
+            ```
+
         Parameters
         ----------
         folder : ChatFolder
@@ -91,18 +101,6 @@ class ChatFolderCollection:
         -------
         ChatFolder
             The created folder, populated with its server-assigned ``id``.
-
-        Examples
-        --------
-        ```python
-        from albert import AsyncAlbert
-        from albert.resources.chats import ChatFolder
-
-        async with AsyncAlbert() as client:
-            folder = await client.chat_folders.create(
-                folder=ChatFolder(name="Formulation questions")
-            )
-        ```
         """
         response = await self._session.post(
             self.base_path,
@@ -114,6 +112,14 @@ class ChatFolderCollection:
     async def get_by_id(self, *, id: str) -> ChatFolder:
         """Get a chat folder by its ID.
 
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                folder = await client.chat_folders.get_by_id(id="...")
+            ```
+
         Parameters
         ----------
         id : str
@@ -123,15 +129,6 @@ class ChatFolderCollection:
         -------
         ChatFolder
             The fully populated folder.
-
-        Examples
-        --------
-        ```python
-        from albert import AsyncAlbert
-
-        async with AsyncAlbert() as client:
-            folder = await client.chat_folders.get_by_id(id="...")
-        ```
         """
         response = await self._session.get(f"{self.base_path}/{id}")
         return ChatFolder(**response.json())
@@ -148,6 +145,15 @@ class ChatFolderCollection:
 
         Transparently pages through results, yielding one folder at a time.
 
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                async for folder in client.chat_folders.get_all():
+                    print(folder.id, folder.name)
+            ```
+
         Parameters
         ----------
         name : list[str] | None, optional
@@ -163,16 +169,6 @@ class ChatFolderCollection:
         ------
         ChatFolder
             Folders matching the given filters.
-
-        Examples
-        --------
-        ```python
-        from albert import AsyncAlbert
-
-        async with AsyncAlbert() as client:
-            async for folder in client.chat_folders.get_all():
-                print(folder.id, folder.name)
-        ```
         """
         params: dict[str, str | list[str]] = {}
         if name:
@@ -202,6 +198,14 @@ class ChatFolderCollection:
         Rename a folder and/or reorder its contents. Only the arguments you pass
         are changed; omitted arguments are left untouched.
 
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                folder = await client.chat_folders.update(id="...", name="Renamed folder")
+            ```
+
         Parameters
         ----------
         id : str
@@ -220,15 +224,6 @@ class ChatFolderCollection:
         Notes
         -----
         The following fields can be updated: ``name``, ``sequence``.
-
-        Examples
-        --------
-        ```python
-        from albert import AsyncAlbert
-
-        async with AsyncAlbert() as client:
-            folder = await client.chat_folders.update(id="...", name="Renamed folder")
-        ```
         """
         data = []
         if name is not None:
@@ -244,6 +239,14 @@ class ChatFolderCollection:
     async def delete(self, *, id: str) -> None:
         """Delete a chat folder by its ID.
 
+        !!! example
+            ```python
+            from albert import AsyncAlbert
+
+            async with AsyncAlbert() as client:
+                await client.chat_folders.delete(id="...")
+            ```
+
         Parameters
         ----------
         id : str
@@ -252,14 +255,5 @@ class ChatFolderCollection:
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        from albert import AsyncAlbert
-
-        async with AsyncAlbert() as client:
-            await client.chat_folders.delete(id="...")
-        ```
         """
         await self._session.delete(f"{self.base_path}/{id}")

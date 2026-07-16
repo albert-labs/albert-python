@@ -52,6 +52,21 @@ class SmartDatasetCollection(BaseCollection):
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.smart_datasets import SmartDatasetScope
+
+        client = Albert()
+        # Build a smart dataset scoped to a single project
+        ds = client.smart_datasets.create(
+            scope=SmartDatasetScope(project_ids=["PRO123"]),
+        )
+        # Once ready, pull the experiment data matrix
+        data = client.smart_datasets.get_data(id=ds.id)
+        print(data.data)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -76,22 +91,6 @@ class SmartDatasetCollection(BaseCollection):
         Delete a smart dataset by its ID.
     get_data(id, parent_id=None, aggregate_by=..., ids=None, variables=None) -> SmartDatasetData
         Get the built experiment data matrix for a smart dataset.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.smart_datasets import SmartDatasetScope
-
-    client = Albert()
-    # Build a smart dataset scoped to a single project
-    ds = client.smart_datasets.create(
-        scope=SmartDatasetScope(project_ids=["PRO123"]),
-    )
-    # Once ready, pull the experiment data matrix
-    data = client.smart_datasets.get_data(id=ds.id)
-    print(data.data)
-    ```
     """
 
     _api_version = "v3"
@@ -126,6 +125,18 @@ class SmartDatasetCollection(BaseCollection):
         re-fetch with [`get_by_id`][albert.collections.smart_datasets.SmartDatasetCollection.get_by_id]) until it reaches ``ready`` before calling
         [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data].
 
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.smart_datasets import SmartDatasetScope
+
+            client = Albert()
+            ds = client.smart_datasets.create(
+                scope=SmartDatasetScope(project_ids=["PRO123"]),
+            )
+            print(ds.id, ds.build_state)
+            ```
+
         Parameters
         ----------
         scope : SmartDatasetScope
@@ -142,19 +153,6 @@ class SmartDatasetCollection(BaseCollection):
         -------
         SmartDataset
             The created smart dataset, populated with its assigned Smart Dataset ID.
-
-        Examples
-        --------
-        ```python
-        from albert import Albert
-        from albert.resources.smart_datasets import SmartDatasetScope
-
-        client = Albert()
-        ds = client.smart_datasets.create(
-            scope=SmartDatasetScope(project_ids=["PRO123"]),
-        )
-        print(ds.id, ds.build_state)
-        ```
         """
         body = {"scope": scope.model_dump(by_alias=True, exclude_none=False, mode="json")}
         if parent_id is not None:
@@ -174,6 +172,12 @@ class SmartDatasetCollection(BaseCollection):
     ) -> Iterator[SmartDataset]:
         """Iterate over all smart datasets for the tenant.
 
+        !!! example
+            ```python
+            for ds in client.smart_datasets.get_all(max_items=10):
+                print(ds.id, ds.build_state)
+            ```
+
         Parameters
         ----------
         max_items : int, optional
@@ -184,13 +188,6 @@ class SmartDatasetCollection(BaseCollection):
         -------
         Iterator[SmartDataset]
             An iterator over the tenant's smart datasets.
-
-        Examples
-        --------
-        ```python
-        for ds in client.smart_datasets.get_all(max_items=10):
-            print(ds.id, ds.build_state)
-        ```
         """
         return AlbertPaginator(
             mode=PaginationMode.KEY,
@@ -204,6 +201,12 @@ class SmartDatasetCollection(BaseCollection):
     def get_by_id(self, *, id: SmartDatasetId, parent_id: ProjectId | None = None) -> SmartDataset:
         """Get a single smart dataset by its ID.
 
+        !!! example
+            ```python
+            ds = client.smart_datasets.get_by_id(id="SDT123")
+            print(ds.build_state)
+            ```
+
         Parameters
         ----------
         id : SmartDatasetId
@@ -216,13 +219,6 @@ class SmartDatasetCollection(BaseCollection):
         -------
         SmartDataset
             The fully populated smart dataset.
-
-        Examples
-        --------
-        ```python
-        ds = client.smart_datasets.get_by_id(id="SDT123")
-        print(ds.build_state)
-        ```
         """
         url = f"{self.base_path}/{id}"
         params = {"parentId": parent_id} if parent_id is not None else None
@@ -241,6 +237,15 @@ class SmartDatasetCollection(BaseCollection):
         updatable fields on the returned object, then pass it here. Only the fields
         listed in Notes are applied; changes to other fields are ignored.
 
+        !!! example
+            ```python
+            from albert.resources.smart_datasets import SmartDatasetScope
+
+            ds = client.smart_datasets.get_by_id(id="SDT123")
+            ds.scope = SmartDatasetScope(project_ids=["PRO123", "PRO456"])
+            updated = client.smart_datasets.update(smart_dataset=ds)
+            ```
+
         Parameters
         ----------
         smart_dataset : SmartDataset
@@ -255,16 +260,6 @@ class SmartDatasetCollection(BaseCollection):
         -----
         Only the following fields are updatable: ``scope``, ``build_state``,
         ``storage_key``, and ``schema_``. Changes to any other field are ignored.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.smart_datasets import SmartDatasetScope
-
-        ds = client.smart_datasets.get_by_id(id="SDT123")
-        ds.scope = SmartDatasetScope(project_ids=["PRO123", "PRO456"])
-        updated = client.smart_datasets.update(smart_dataset=ds)
-        ```
         """
         existing = self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
@@ -311,6 +306,11 @@ class SmartDatasetCollection(BaseCollection):
     def delete(self, *, id: SmartDatasetId) -> None:
         """Delete a smart dataset by its ID.
 
+        !!! example
+            ```python
+            client.smart_datasets.delete(id="SDT123")
+            ```
+
         Parameters
         ----------
         id : SmartDatasetId
@@ -319,12 +319,6 @@ class SmartDatasetCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.smart_datasets.delete(id="SDT123")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -345,6 +339,17 @@ class SmartDatasetCollection(BaseCollection):
         the identifier metadata for each row and the variable metadata for each
         column. The dataset must be built and ``ready`` before its data can be
         retrieved.
+
+        !!! example
+            ```python
+            from albert.resources.smart_datasets import SmartDatasetAggregateBy
+
+            data = client.smart_datasets.get_data(
+                id="SDT123",
+                aggregate_by=SmartDatasetAggregateBy.WFL,
+            )
+            print(data.data)
+            ```
 
         Parameters
         ----------
@@ -370,18 +375,6 @@ class SmartDatasetCollection(BaseCollection):
         ------
         ValueError
             If the smart dataset's build state is not ``ready``.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.smart_datasets import SmartDatasetAggregateBy
-
-        data = client.smart_datasets.get_data(
-            id="SDT123",
-            aggregate_by=SmartDatasetAggregateBy.WFL,
-        )
-        print(data.data)
-        ```
         """
         smart_dataset = self.get_by_id(id=id, parent_id=parent_id)
         if smart_dataset.build_state != SmartDatasetBuildState.READY:

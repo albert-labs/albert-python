@@ -94,22 +94,79 @@ Right:
     [`BatchTask`][albert.resources.tasks.BatchTask].
 ```
 
-### Examples: use an `Examples` section with a bare code fence
+### Examples: use `!!! example` admonitions, placed before `Parameters`
 
-Put runnable examples under a Numpy `Examples` section with a plain ` ```python ` fence. Do **NOT** use `!!! example` admonitions: without a section header the admonition gets absorbed into the preceding section (it renders as a stray `Returns` table row); with one you get a duplicate "Examples / Example" heading.
+Use `!!! example` admonitions for all examples -- they render as the styled purple box. Placement is critical:
 
-```text
-        Examples
-        --------
+**Always place `!!! example` in the description block, before the first numpy section.** Every numpy section (`Parameters`, `Attributes`, `Methods`, `Returns`, `Notes`, `Raises`) renders its content as a table or structured list. Any markdown appended after the last entry in a section -- including admonitions -- gets absorbed into that section and rendered as a stray table row.
+
+The safe zone is the free-form description at the top of the docstring, before any section header.
+
+**Method docstrings** -- place before `Parameters`:
+
+```python
+def search(self, *, text: str | None = None) -> Iterator[Cas]:
+    """Search for CAS entries matching the given filters.
+
+    Results are returned as a lazily paginated iterator.
+
+    !!! example
         ```python
         from albert import Albert
 
         client = Albert()
-        item = client.inventory.get_by_id(id="INVA1")
-        item.name
-        # 'Titanium Dioxide'
+        for cas in client.cas.search(text="water"):
+            print(cas.id, cas.name)
         ```
+
+    Parameters
+    ----------
+    text : str, optional
+        Free-text query.
+
+    Returns
+    -------
+    Iterator[Cas]
+        A lazily paginated iterator of matching CAS entries.
+    """
 ```
+
+**Class docstrings** (collections and resources alike) -- place before `Parameters` or `Attributes`, whichever comes first:
+
+```python
+class CasCollection(BaseCollection):
+    """Manage CAS entries in the Albert platform.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for CAS requests.
+
+    Methods
+    -------
+    get_by_id(id) -> Cas
+        Get a single CAS by its ID.
+    """
+```
+
+**Do not** place `!!! example` after `Methods`, `Attributes`, `Returns`, or any other numpy section -- it will bleed into that section's table.
+**Do not** wrap examples in `Examples\n--------` -- it adds a redundant "Examples:" label above the box.
+**Do not** use a bare ` ```python ` fence inside an `Examples` numpy section -- it loses the box styling entirely.
 
 - Instantiate the client zero-arg (`client = Albert()`); show it once in the class-level example and reuse `client` in method examples.
 - Async collections (e.g. chat) use `async with AsyncAlbert() as client:` and `await`.

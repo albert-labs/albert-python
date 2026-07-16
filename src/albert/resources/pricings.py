@@ -37,6 +37,20 @@ class Pricing(BaseResource):
     Create pricings with
     [`create`][albert.collections.pricings.PricingCollection.create].
 
+    !!! example
+        ```python
+        from albert.resources.pricings import Pricing
+        from albert.resources.companies import Company
+        from albert.resources.locations import Location
+
+        pricing = Pricing(
+            inventory_id="INVA1",
+            company=Company(name="Acme Chemicals"),
+            location=Location(name="Pittsburgh"),
+            price=12.50,
+        )
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -68,21 +82,6 @@ class Pricing(BaseResource):
     default : int | None
         Whether the default price is being used rather than an overridden price (a
         flag).
-
-    Examples
-    --------
-    ```python
-    from albert.resources.pricings import Pricing
-    from albert.resources.companies import Company
-    from albert.resources.locations import Location
-
-    pricing = Pricing(
-        inventory_id="INVA1",
-        company=Company(name="Acme Chemicals"),
-        location=Location(name="Pittsburgh"),
-        price=12.50,
-    )
-    ```
     """
 
     id: str | None = Field(default=None, alias="albertId")

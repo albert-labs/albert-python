@@ -12,6 +12,12 @@ TeamRole = Literal["TeamOwner", "TeamViewer"]
 class TeamMember(BaseAlbertModel):
     """A user's membership in a team, pairing a user with their team role.
 
+    !!! example
+        ```python
+        from albert.resources.teams import TeamMember
+        member = TeamMember(id="USR12", role="TeamOwner")
+        ```
+
     Attributes
     ----------
     id : str
@@ -22,13 +28,6 @@ class TeamMember(BaseAlbertModel):
         The member's role within the team: ``"TeamOwner"`` (can manage the
         team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"``
         when unset.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.teams import TeamMember
-    member = TeamMember(id="USR12", role="TeamOwner")
-    ```
     """
 
     id: UserId
@@ -44,6 +43,15 @@ class Team(BaseResource):
     [`TeamMember`][albert.resources.teams.TeamMember] pairing a
     [`User`][albert.resources.users.User] with a team role.
 
+    !!! example
+        ```python
+        from albert.resources.teams import Team, TeamMember
+        team = Team(
+            name="Coatings R&D",
+            members=[TeamMember(id="USR12", role="TeamOwner")],
+        )
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -53,16 +61,6 @@ class Team(BaseResource):
         The display name of the team.
     members : list[TeamMember] | None
         The members of the team, each with their name and team role.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.teams import Team, TeamMember
-    team = Team(
-        name="Coatings R&D",
-        members=[TeamMember(id="USR12", role="TeamOwner")],
-    )
-    ```
     """
 
     id: TeamId | None = Field(default=None, alias="albertId")

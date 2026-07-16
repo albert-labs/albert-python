@@ -24,6 +24,14 @@ class TargetCollection(BaseCollection):
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        target = client.targets.get_by_id(id="TAR1")
+        print(target.name, target.target_value)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -44,15 +52,6 @@ class TargetCollection(BaseCollection):
         Get many targets by their IDs.
     delete(id) -> None
         Delete a target by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    target = client.targets.get_by_id(id="TAR1")
-    print(target.name, target.target_value)
-    ```
     """
 
     _api_version = "v3"
@@ -71,6 +70,26 @@ class TargetCollection(BaseCollection):
     def create(self, *, target: Target) -> Target:
         """Create a new target.
 
+        !!! example
+            ```python
+            from albert.resources.targets import (
+                Target,
+                TargetType,
+                Criterion,
+                ComparisonOperator,
+            )
+            target = client.targets.create(
+                target=Target(
+                    name="Viscosity spec",
+                    type=TargetType.PERFORMANCE,
+                    data_template_id="DAT1",
+                    data_column_id="DAC1",
+                    target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+                    is_required=True,
+                )
+            )
+            ```
+
         Parameters
         ----------
         target : Target
@@ -80,27 +99,6 @@ class TargetCollection(BaseCollection):
         -------
         Target
             The newly created target, including its assigned Target ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.targets import (
-            Target,
-            TargetType,
-            Criterion,
-            ComparisonOperator,
-        )
-        target = client.targets.create(
-            target=Target(
-                name="Viscosity spec",
-                type=TargetType.PERFORMANCE,
-                data_template_id="DAT1",
-                data_column_id="DAC1",
-                target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
-                is_required=True,
-            )
-        )
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -111,6 +109,11 @@ class TargetCollection(BaseCollection):
     @validate_call
     def get_by_id(self, *, id: TargetId, parent_id: ProjectId | None = None) -> Target:
         """Get a single target by its ID.
+
+        !!! example
+            ```python
+            target = client.targets.get_by_id(id="TAR1")
+            ```
 
         Parameters
         ----------
@@ -125,12 +128,6 @@ class TargetCollection(BaseCollection):
         -------
         Target
             The fully populated target.
-
-        Examples
-        --------
-        ```python
-        target = client.targets.get_by_id(id="TAR1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         params = {"parentId": parent_id} if parent_id is not None else None
@@ -139,6 +136,11 @@ class TargetCollection(BaseCollection):
 
     def get_by_ids(self, *, ids: list[TargetId]) -> list[Target]:
         """Get many targets by their IDs.
+
+        !!! example
+            ```python
+            targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
+            ```
 
         Parameters
         ----------
@@ -149,12 +151,6 @@ class TargetCollection(BaseCollection):
         -------
         list[Target]
             The matching targets. Targets not found are omitted.
-
-        Examples
-        --------
-        ```python
-        targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
-        ```
         """
         url = f"{self.base_path}/ids"
         response = self.session.get(url, params={"id": ids})
@@ -164,6 +160,11 @@ class TargetCollection(BaseCollection):
     def delete(self, *, id: TargetId) -> None:
         """Delete a target by its ID.
 
+        !!! example
+            ```python
+            client.targets.delete(id="TAR1")
+            ```
+
         Parameters
         ----------
         id : TargetId
@@ -172,12 +173,6 @@ class TargetCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.targets.delete(id="TAR1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)

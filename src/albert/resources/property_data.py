@@ -498,6 +498,27 @@ class BulkPropertyData(BaseAlbertModel):
     [`DataFrame`][albert.resources.property_data.pandas.DataFrame] with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
     [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
 
+    !!! example
+        ```python
+        import pandas as pd
+        from albert.resources.property_data import (
+            BulkPropertyData,
+            BulkPropertyDataColumn,
+        )
+
+        # Construct directly from columns
+        bulk = BulkPropertyData(
+            columns=[
+                BulkPropertyDataColumn(
+                    data_column_name="Viscosity", data_series=["1.1", "1.2"]
+                ),
+            ]
+        )
+
+        # Or build from a DataFrame (values are coerced to strings)
+        bulk = BulkPropertyData.from_dataframe(pd.DataFrame({"Viscosity": [1.1, 1.2]}))
+        ```
+
     Attributes
     ----------
     columns : list[BulkPropertyDataColumn]
@@ -506,28 +527,6 @@ class BulkPropertyData(BaseAlbertModel):
     See Also
     --------
     BulkPropertyDataColumn : One column's row values.
-
-    Examples
-    --------
-    ```python
-    import pandas as pd
-    from albert.resources.property_data import (
-        BulkPropertyData,
-        BulkPropertyDataColumn,
-    )
-
-    # Construct directly from columns
-    bulk = BulkPropertyData(
-        columns=[
-            BulkPropertyDataColumn(
-                data_column_name="Viscosity", data_series=["1.1", "1.2"]
-            ),
-        ]
-    )
-
-    # Or build from a DataFrame (values are coerced to strings)
-    bulk = BulkPropertyData.from_dataframe(pd.DataFrame({"Viscosity": [1.1, 1.2]}))
-    ```
     """
 
     columns: list[BulkPropertyDataColumn] = Field(
@@ -576,6 +575,13 @@ class ImagePropertyValue(BaseAlbertModel):
     Pass as the ``value`` of a [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] when the target data
     column stores an image. The file is uploaded when the property is created.
 
+    !!! example
+        ```python
+        from albert.resources.property_data import ImagePropertyValue
+
+        image = ImagePropertyValue(file_path="results/sample.png")
+        ```
+
     Attributes
     ----------
     file_path : str | Path
@@ -585,14 +591,6 @@ class ImagePropertyValue(BaseAlbertModel):
     --------
     TaskPropertyCreate : Uses this as its ``value`` for image data columns.
     CurvePropertyValue : The equivalent input for curve data columns.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.property_data import ImagePropertyValue
-
-    image = ImagePropertyValue(file_path="results/sample.png")
-    ```
     """
 
     file_path: str | Path
@@ -604,6 +602,13 @@ class CurvePropertyValue(BaseAlbertModel):
     Pass as the ``value`` of a [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] when the target data
     column stores curve data. The CSV is uploaded and ingested when the property is
     created.
+
+    !!! example
+        ```python
+        from albert.resources.property_data import CurvePropertyValue
+
+        curve = CurvePropertyValue(file_path="results/dsc_curve.csv")
+        ```
 
     Attributes
     ----------
@@ -618,14 +623,6 @@ class CurvePropertyValue(BaseAlbertModel):
     --------
     TaskPropertyCreate : Uses this as its ``value`` for curve data columns.
     ImagePropertyValue : The equivalent input for image data columns.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.property_data import CurvePropertyValue
-
-    curve = CurvePropertyValue(file_path="results/dsc_curve.csv")
-    ```
     """
 
     file_path: str | Path
@@ -705,6 +702,13 @@ class InventoryDataColumn(BaseAlbertModel):
     and
     [`update_property_on_inventory`][albert.collections.property_data.PropertyDataCollection.update_property_on_inventory].
 
+    !!! example
+        ```python
+        from albert.resources.property_data import InventoryDataColumn
+
+        prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
+        ```
+
     Attributes
     ----------
     data_column_id : DataColumnId | None
@@ -715,14 +719,6 @@ class InventoryDataColumn(BaseAlbertModel):
     See Also
     --------
     InventoryPropertyDataCreate : Wraps these columns for the create request.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.property_data import InventoryDataColumn
-
-    prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
-    ```
     """
 
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
@@ -746,6 +742,25 @@ class TaskPropertyCreate(BaseResource):
     ``interval_combination`` from parameter setpoints. For image data columns pass an
     [`ImagePropertyValue`][albert.resources.property_data.ImagePropertyValue] as ``value``; for curve data columns pass a
     [`CurvePropertyValue`][albert.resources.property_data.CurvePropertyValue]; numeric values are coerced to strings.
+
+    !!! example
+        ```python
+        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+
+        # Derive the data column and template from the existing block
+        block = client.property_data.get_task_block_properties(
+            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+        )
+        column = block.data[0].trials[0].data_columns[0]
+        new_value = TaskPropertyCreate(
+            interval_combination="default",
+            data_column=TaskDataColumn(
+                data_column_id=column.id, column_sequence=column.sequence
+            ),
+            value="33.3",
+            data_template=block.data_template,
+        )
+        ```
 
     Attributes
     ----------
@@ -786,26 +801,6 @@ class TaskPropertyCreate(BaseResource):
     TaskDataColumn : Identifies the data column a value targets.
     ImagePropertyValue : Value input for image data columns.
     CurvePropertyValue : Value input for curve data columns.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
-
-    # Derive the data column and template from the existing block
-    block = client.property_data.get_task_block_properties(
-        inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
-    )
-    column = block.data[0].trials[0].data_columns[0]
-    new_value = TaskPropertyCreate(
-        interval_combination="default",
-        data_column=TaskDataColumn(
-            data_column_id=column.id, column_sequence=column.sequence
-        ),
-        value="33.3",
-        data_template=block.data_template,
-    )
-    ```
     """
 
     entity: Literal[DataEntity.TASK] = Field(
@@ -873,6 +868,20 @@ class PropertyDataPatchDatum(PatchDatum):
     property (or data column) to change. Pass a list of these to
     [`update_property_on_task`][albert.collections.property_data.PropertyDataCollection.update_property_on_task].
 
+    !!! example
+        ```python
+        from albert.resources.property_data import PropertyDataPatchDatum
+        from albert.core.shared.models.patch import PatchOperation
+
+        patch = PropertyDataPatchDatum(
+            operation=PatchOperation.UPDATE,
+            id="PTD1",
+            attribute="value",
+            new_value="1.5",
+            old_value="1.2",
+        )
+        ```
+
     Attributes
     ----------
     property_column_id : DataColumnId | PropertyDataId
@@ -887,21 +896,6 @@ class PropertyDataPatchDatum(PatchDatum):
         The new value. Serialized as ``newValue``.
     old_value : Any | None
         The previous value. Serialized as ``oldValue``.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.property_data import PropertyDataPatchDatum
-    from albert.core.shared.models.patch import PatchOperation
-
-    patch = PropertyDataPatchDatum(
-        operation=PatchOperation.UPDATE,
-        id="PTD1",
-        attribute="value",
-        new_value="1.5",
-        old_value="1.2",
-    )
-    ```
     """
 
     property_column_id: DataColumnId | PropertyDataId = Field(alias="id")

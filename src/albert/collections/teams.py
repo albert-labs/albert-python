@@ -25,6 +25,15 @@ class TeamCollection(BaseCollection):
 
     This collection is accessed as ``client.teams``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        team = client.teams.create(name="Coatings R&D")
+        for member in team.members or []:
+            print(member.id, member.role)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -51,16 +60,6 @@ class TeamCollection(BaseCollection):
         Adds users to a team.
     remove_users(id, users) -> Team
         Removes users from a team.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    team = client.teams.create(name="Coatings R&D")
-    for member in team.members or []:
-        print(member.id, member.role)
-    ```
     """
 
     _api_version = "v3"
@@ -94,6 +93,12 @@ class TeamCollection(BaseCollection):
     ) -> Iterator[Team]:
         """List all teams with optional filters.
 
+        !!! example
+            ```python
+            for team in client.teams.get_all(name="Coatings", exact_match=False):
+                print(team.id, team.name)
+            ```
+
         Parameters
         ----------
         name : str or list[str], optional
@@ -113,13 +118,6 @@ class TeamCollection(BaseCollection):
         -------
         Iterator[Team]
             An iterator of Team entities matching the filters.
-
-        Examples
-        --------
-        ```python
-        for team in client.teams.get_all(name="Coatings", exact_match=False):
-            print(team.id, team.name)
-        ```
         """
         params: dict = {}
         if name is not None:
@@ -145,6 +143,13 @@ class TeamCollection(BaseCollection):
     def get_by_id(self, *, id: TeamId) -> Team:
         """Get a team by its ID.
 
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name
+            # 'Coatings R&D'
+            ```
+
         Parameters
         ----------
         id : TeamId
@@ -154,14 +159,6 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The fully populated team.
-
-        Examples
-        --------
-        ```python
-        team = client.teams.get_by_id(id="TEM1")
-        team.name
-        # 'Coatings R&D'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -176,6 +173,17 @@ class TeamCollection(BaseCollection):
     ) -> Team:
         """Create a new team, optionally with initial members.
 
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            team = client.teams.create(
+                name="Coatings R&D",
+                members=[TeamMember(id="USR12", role="TeamOwner")],
+            )
+            team.id
+            # 'TEM1'
+            ```
+
         Parameters
         ----------
         name : str
@@ -189,18 +197,6 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The created Team, populated with its assigned Team ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.teams import TeamMember
-        team = client.teams.create(
-            name="Coatings R&D",
-            members=[TeamMember(id="USR12", role="TeamOwner")],
-        )
-        team.id
-        # 'TEM1'
-        ```
         """
         payload: dict = {"name": name}
         if members:
@@ -213,6 +209,13 @@ class TeamCollection(BaseCollection):
     @validate_call
     def update(self, *, team: Team) -> Team:
         """Update a team's name and membership.
+
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name = "Coatings & Adhesives R&D"
+            updated = client.teams.update(team=team)
+            ```
 
         Parameters
         ----------
@@ -232,14 +235,6 @@ class TeamCollection(BaseCollection):
         or removing [`TeamMember`][albert.resources.teams.TeamMember] entries), and
         each member's ``role``. Setting ``members`` to an empty list removes all
         members; leaving it as ``None`` leaves membership unchanged.
-
-        Examples
-        --------
-        ```python
-        team = client.teams.get_by_id(id="TEM1")
-        team.name = "Coatings & Adhesives R&D"
-        updated = client.teams.update(team=team)
-        ```
         """
         current = self.get_by_id(id=team.id)
         url = f"{self.base_path}/{team.id}"
@@ -314,6 +309,11 @@ class TeamCollection(BaseCollection):
     def delete(self, *, id: TeamId) -> None:
         """Delete a team by its ID.
 
+        !!! example
+            ```python
+            client.teams.delete(id="TEM1")
+            ```
+
         Parameters
         ----------
         id : TeamId
@@ -322,12 +322,6 @@ class TeamCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.teams.delete(id="TEM1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -340,6 +334,15 @@ class TeamCollection(BaseCollection):
         members: list[TeamMember],
     ) -> Team:
         """Add users to a team.
+
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            client.teams.add_users(
+                id="TEM1",
+                members=[TeamMember(id="USR34", role="TeamViewer")],
+            )
+            ```
 
         Parameters
         ----------
@@ -359,16 +362,6 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The updated Team.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.teams import TeamMember
-        client.teams.add_users(
-            id="TEM1",
-            members=[TeamMember(id="USR34", role="TeamViewer")],
-        )
-        ```
         """
         current = self.get_by_id(id=id)
         existing_ids = {m.id for m in current.members or []}
@@ -403,6 +396,11 @@ class TeamCollection(BaseCollection):
     ) -> Team:
         """Remove users from a team.
 
+        !!! example
+            ```python
+            client.teams.remove_users(id="TEM1", users=["USR34"])
+            ```
+
         Parameters
         ----------
         id : TeamId
@@ -419,12 +417,6 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The updated Team.
-
-        Examples
-        --------
-        ```python
-        client.teams.remove_users(id="TEM1", users=["USR34"])
-        ```
         """
         current = self.get_by_id(id=id)
         existing_ids = {m.id for m in current.members or []}

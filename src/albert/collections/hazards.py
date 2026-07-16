@@ -17,6 +17,15 @@ class HazardsCollection(BaseCollection):
 
     This collection is read-only and accessed as ``client.hazards``.
 
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        symbols = client.hazards.get_symbols()
+        [s.name for s in symbols]
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -33,16 +42,6 @@ class HazardsCollection(BaseCollection):
         Get all available hazard pictogram symbols.
     get_statements() -> list[HazardStatement]
         Get all available hazard statements.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-
-    client = Albert()
-    symbols = client.hazards.get_symbols()
-    [s.name for s in symbols]
-    ```
     """
 
     _api_version = "v3"
@@ -62,17 +61,16 @@ class HazardsCollection(BaseCollection):
     def get_symbols(self) -> list[HazardSymbol]:
         """Get all available hazard pictogram symbols.
 
+        !!! example
+            ```python
+            symbols = client.hazards.get_symbols()
+            symbols[0].name
+            ```
+
         Returns
         -------
         list[HazardSymbol]
             The full reference list of hazard symbols.
-
-        Examples
-        --------
-        ```python
-        symbols = client.hazards.get_symbols()
-        symbols[0].name
-        ```
         """
 
         response = self.session.get(f"{self.base_path}/hazardsymbols")
@@ -84,17 +82,16 @@ class HazardsCollection(BaseCollection):
     def get_statements(self) -> list[HazardStatement]:
         """Get all available hazard statements.
 
+        !!! example
+            ```python
+            statements = client.hazards.get_statements()
+            statements[0].name
+            ```
+
         Returns
         -------
         list[HazardStatement]
             The full reference list of hazard statements.
-
-        Examples
-        --------
-        ```python
-        statements = client.hazards.get_statements()
-        statements[0].name
-        ```
         """
 
         response = self.session.get(f"{self.base_path}/hazardstatements")

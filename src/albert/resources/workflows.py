@@ -63,6 +63,15 @@ class Interval(BaseAlbertModel):
     field. The workflow then carries the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries,
     one per interval (or per cartesian product of two intervalized parameters).
 
+    !!! example
+        ```python
+        from albert.resources.workflows import Interval
+
+        # A Normal parameter varied across two temperatures.
+        low = Interval(value="25", unit={"id": "UNI1"})
+        high = Interval(value="60", unit={"id": "UNI1"})
+        ```
+
     Attributes
     ----------
     value : str
@@ -79,16 +88,6 @@ class Interval(BaseAlbertModel):
     --------
     ParameterSetpoint : Holds a list of intervals when a parameter is intervalized.
     Workflow.get_interval_id : Resolves interval values to a composite interval ID.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.workflows import Interval
-
-    # A Normal parameter varied across two temperatures.
-    low = Interval(value="25", unit={"id": "UNI1"})
-    high = Interval(value="60", unit={"id": "UNI1"})
-    ```
     """
 
     value: str | None = Field(default=None)
@@ -178,6 +177,24 @@ class ParameterSetpoint(BaseAlbertModel):
     Normal parameters take exactly one of ``value`` or ``intervals``. Special parameters
     (Equipment, Consumables, Templates) take an entity ID as their value.
 
+    !!! example
+        ```python
+        from albert.resources.workflows import ParameterSetpoint, Interval
+
+        # A single fixed setpoint identified by parameter ID.
+        temp = ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp")
+
+        # The same parameter intervalized across two values.
+        temp_varied = ParameterSetpoint(
+            parameter_id="PRM1",
+            short_name="Temp",
+            intervals=[
+                Interval(value="25", unit={"id": "UNI1"}),
+                Interval(value="60", unit={"id": "UNI1"}),
+            ],
+        )
+        ```
+
     Attributes
     ----------
     parameter : Parameter | None
@@ -212,25 +229,6 @@ class ParameterSetpoint(BaseAlbertModel):
     --------
     ParameterGroupSetpoints : Groups setpoints under one parameter group.
     Interval : The interval values supplied to ``intervals``.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.workflows import ParameterSetpoint, Interval
-
-    # A single fixed setpoint identified by parameter ID.
-    temp = ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp")
-
-    # The same parameter intervalized across two values.
-    temp_varied = ParameterSetpoint(
-        parameter_id="PRM1",
-        short_name="Temp",
-        intervals=[
-            Interval(value="25", unit={"id": "UNI1"}),
-            Interval(value="60", unit={"id": "UNI1"}),
-        ],
-    )
-    ```
     """
 
     parameter: Parameter | None = Field(exclude=True, default=None)
@@ -305,6 +303,21 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     group and the order of groups within the workflow are part of what makes a workflow
     unique, so preserve the order you intend.
 
+    !!! example
+        ```python
+        from albert.resources.workflows import (
+            ParameterGroupSetpoints,
+            ParameterSetpoint,
+        )
+
+        group = ParameterGroupSetpoints(
+            id="PRG1",
+            parameter_setpoints=[
+                ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
+            ],
+        )
+        ```
+
     Attributes
     ----------
     parameter_group : ParameterGroup | None
@@ -328,22 +341,6 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     --------
     Workflow : Holds one of these per Data Template / Parameter Group.
     ParameterSetpoint : A single parameter's setpoint within this group.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.workflows import (
-        ParameterGroupSetpoints,
-        ParameterSetpoint,
-    )
-
-    group = ParameterGroupSetpoints(
-        id="PRG1",
-        parameter_setpoints=[
-            ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
-        ],
-    )
-    ```
     """
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
@@ -404,6 +401,50 @@ class Workflow(BaseResource):
     [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the interval ID for a condition, then use it with the
     property_data endpoints to read or write that condition's results.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.workflows import (
+            Workflow,
+            ParameterGroupSetpoints,
+            ParameterSetpoint,
+        )
+
+        client = Albert()
+        # One workflow combining a Data Template's pre-linked parameters with two
+        # Parameter Groups. Each grouping is keyed by its DAT... or PRG... id.
+        workflow = Workflow(
+            name="Tensile test at 23C, 50% RH",
+            parameter_group_setpoints=[
+                # Pre-linked parameters on a Data Template (used just like a PRG here)
+                ParameterGroupSetpoints(
+                    id="DAT1",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                        ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                    ],
+                ),
+                # A Parameter Group describing sample prep
+                ParameterGroupSetpoints(
+                    id="PRG1",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
+                    ],
+                ),
+                # A second Parameter Group (e.g. the mixing step)
+                ParameterGroupSetpoints(
+                    id="PRG2",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                    ],
+                ),
+            ],
+        )
+        created = client.workflows.create(workflows=[workflow])
+        created[0].id
+        # 'WFL1'
+        ```
+
     Attributes
     ----------
     name : str
@@ -426,51 +467,6 @@ class Workflow(BaseResource):
     ParameterGroupSetpoints : One group's worth of setpoints within the workflow.
     IntervalCombination : A single realized condition carried by an intervalized workflow.
     albert.collections.workflows.WorkflowCollection.create : Find-or-create a workflow.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.workflows import (
-        Workflow,
-        ParameterGroupSetpoints,
-        ParameterSetpoint,
-    )
-
-    client = Albert()
-    # One workflow combining a Data Template's pre-linked parameters with two
-    # Parameter Groups. Each grouping is keyed by its DAT... or PRG... id.
-    workflow = Workflow(
-        name="Tensile test at 23C, 50% RH",
-        parameter_group_setpoints=[
-            # Pre-linked parameters on a Data Template (used just like a PRG here)
-            ParameterGroupSetpoints(
-                id="DAT1",
-                parameter_setpoints=[
-                    ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
-                    ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
-                ],
-            ),
-            # A Parameter Group describing sample prep
-            ParameterGroupSetpoints(
-                id="PRG1",
-                parameter_setpoints=[
-                    ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
-                ],
-            ),
-            # A second Parameter Group (e.g. the mixing step)
-            ParameterGroupSetpoints(
-                id="PRG2",
-                parameter_setpoints=[
-                    ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
-                ],
-            ),
-        ],
-    )
-    created = client.workflows.create(workflows=[workflow])
-    created[0].id
-    # 'WFL1'
-    ```
     """
 
     name: str
@@ -522,6 +518,21 @@ class Workflow(BaseResource):
         case-insensitive to type: ``25`` and ``"25"`` both match an interval value of
         ``"25"``.
 
+        !!! example
+            ```python
+            # Single intervalized parameter
+            workflow.get_interval_id({"Temperature": 25})
+            # 'ROW1'
+
+            # Two intervalized parameters (cartesian product)
+            workflow.get_interval_id({"Temperature": 25, "Time": 60})
+            # 'ROW1XROW2'
+
+            # A value that matches no interval raises AlbertException
+            workflow.get_interval_id({"Temperature": 999})
+            # AlbertException: No matching interval found for parameter 'Temperature' ...
+            ```
+
         Parameters
         ----------
         parameter_values : dict[str, Any]
@@ -542,22 +553,6 @@ class Workflow(BaseResource):
         See Also
         --------
         IntervalCombination : The conditions whose interval IDs this method reproduces.
-
-        Examples
-        --------
-        ```python
-        # Single intervalized parameter
-        workflow.get_interval_id({"Temperature": 25})
-        # 'ROW1'
-
-        # Two intervalized parameters (cartesian product)
-        workflow.get_interval_id({"Temperature": 25, "Time": 60})
-        # 'ROW1XROW2'
-
-        # A value that matches no interval raises AlbertException
-        workflow.get_interval_id({"Temperature": 999})
-        # AlbertException: No matching interval found for parameter 'Temperature' ...
-        ```
         """
         interval_id = ""
         for param_name, param_value in parameter_values.items():

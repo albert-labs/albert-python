@@ -18,6 +18,15 @@ class UnNumberCollection(BaseCollection):
 
     This collection is accessed as ``client.un_numbers``.
 
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        un_number = client.un_numbers.get_by_name(name="UN1090")
+        un_number.shipping_description
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -43,16 +52,6 @@ class UnNumberCollection(BaseCollection):
     ----
     Creating UN Numbers is not supported via the SDK, as UN Numbers are highly
     controlled by Albert.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-
-    client = Albert()
-    un_number = client.un_numbers.get_by_name(name="UN1090")
-    un_number.shipping_description
-    ```
     """
 
     _api_version = "v3"
@@ -88,6 +87,12 @@ class UnNumberCollection(BaseCollection):
     def get_by_id(self, *, id: str) -> UnNumber:
         """Get a single UN Number by its ID.
 
+        !!! example
+            ```python
+            un_number = client.un_numbers.get_by_id(id="...")
+            un_number.un_number
+            ```
+
         Parameters
         ----------
         id : str
@@ -97,13 +102,6 @@ class UnNumberCollection(BaseCollection):
         -------
         UnNumber
             The fully populated UN Number.
-
-        Examples
-        --------
-        ```python
-        un_number = client.un_numbers.get_by_id(id="...")
-        un_number.un_number
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -115,6 +113,12 @@ class UnNumberCollection(BaseCollection):
         Runs an exact-match lookup and returns the first result. To browse or
         do partial-name matching, use [`get_all`][albert.collections.un_numbers.UnNumberCollection.get_all].
 
+        !!! example
+            ```python
+            un_number = client.un_numbers.get_by_name(name="UN1090")
+            un_number.storage_class_name if un_number else "not found"
+            ```
+
         Parameters
         ----------
         name : str
@@ -124,13 +128,6 @@ class UnNumberCollection(BaseCollection):
         -------
         UnNumber | None
             The matching UN Number, or None if no exact match is found.
-
-        Examples
-        --------
-        ```python
-        un_number = client.un_numbers.get_by_name(name="UN1090")
-        un_number.storage_class_name if un_number else "not found"
-        ```
         """
         found = self.get_all(exact_match=True, name=name)
         return next(found, None)
@@ -147,6 +144,12 @@ class UnNumberCollection(BaseCollection):
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand. With no ``name``, iterates over all UN Numbers.
+
+        !!! example
+            ```python
+            for un_number in client.un_numbers.get_all(name="acetone", max_items=10):
+                print(un_number.un_number, un_number.shipping_description)
+            ```
 
         Parameters
         ----------
@@ -165,13 +168,6 @@ class UnNumberCollection(BaseCollection):
         ------
         Iterator[UnNumber]
             The UN Numbers matching the search criteria.
-
-        Examples
-        --------
-        ```python
-        for un_number in client.un_numbers.get_all(name="acetone", max_items=10):
-            print(un_number.un_number, un_number.shipping_description)
-        ```
         """
         params = {"startKey": start_key}
         if name:

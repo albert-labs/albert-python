@@ -55,6 +55,21 @@ class InventoryCollection(BaseCollection):
 
     This collection is accessed as ``client.inventory``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.inventory import InventoryCategory
+        client = Albert()
+        # Find raw materials mentioning "titanium dioxide"
+        items = client.inventory.get_all(
+            text="titanium dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            max_items=25,
+        )
+        for item in items:
+            print(item.id, item.name)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -95,22 +110,6 @@ class InventoryCollection(BaseCollection):
         Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
         Get a single named facet group for a query.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.inventory import InventoryCategory
-    client = Albert()
-    # Find raw materials mentioning "titanium dioxide"
-    items = client.inventory.get_all(
-        text="titanium dioxide",
-        category=InventoryCategory.RAW_MATERIALS,
-        max_items=25,
-    )
-    for item in items:
-        print(item.id, item.name)
-    ```
     """
 
     _api_version = "v3"
@@ -149,6 +148,11 @@ class InventoryCollection(BaseCollection):
         parent, and their data (as selected by ``modules``) is carried over. The
         child items are removed as standalone entries.
 
+        !!! example
+            ```python
+            client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
+            ```
+
         Parameters
         ----------
         parent_id : InventoryId
@@ -162,12 +166,6 @@ class InventoryCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
-        ```
         """
 
         # assume "all" modules if not specified explicitly
@@ -197,6 +195,19 @@ class InventoryCollection(BaseCollection):
         A match is determined by name and company, the same way [`create`][albert.collections.inventory.InventoryCollection.create]
         detects duplicates. Useful before creating an item to avoid duplicates.
 
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            candidate = InventoryItem(
+                name="Acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            client.inventory.exists(inventory_item=candidate)
+            # True
+            ```
+
         Parameters
         ----------
         inventory_item : InventoryItem
@@ -206,20 +217,6 @@ class InventoryCollection(BaseCollection):
         -------
         bool
             True if a matching item exists, False otherwise.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.inventory import InventoryItem, InventoryCategory
-        from albert.resources.companies import Company
-        candidate = InventoryItem(
-            name="Acetone",
-            category=InventoryCategory.RAW_MATERIALS,
-            company=Company(name="Acme Chemicals"),
-        )
-        client.inventory.exists(inventory_item=candidate)
-        # True
-        ```
         """
         hit = self.get_match_or_none(inventory_item=inventory_item)
         return bool(hit)
@@ -230,6 +227,13 @@ class InventoryCollection(BaseCollection):
         Like [`exists`][albert.collections.inventory.InventoryCollection.exists], but returns the matched item itself so you can reuse
         its ID instead of creating a duplicate.
 
+        !!! example
+            ```python
+            existing = client.inventory.get_match_or_none(inventory_item=candidate)
+            existing.id if existing else "no match"
+            # 'INVA1'
+            ```
+
         Parameters
         ----------
         inventory_item : InventoryItem
@@ -239,14 +243,6 @@ class InventoryCollection(BaseCollection):
         -------
         InventoryItem or None
             The matching item, or None if no match is found.
-
-        Examples
-        --------
-        ```python
-        existing = client.inventory.get_match_or_none(inventory_item=candidate)
-        existing.id if existing else "no match"
-        # 'INVA1'
-        ```
         """
         inv_company = (
             inventory_item.company.name
@@ -280,6 +276,20 @@ class InventoryCollection(BaseCollection):
         [`CompanyCollection`][albert.collections.companies.CompanyCollection] and
         [`TagCollection`][albert.collections.tags.TagCollection]).
 
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            item = InventoryItem(
+                name="Titanium Dioxide",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            created = client.inventory.create(inventory_item=item)
+            created.id
+            # 'INVA1'
+            ```
+
         Parameters
         ----------
         inventory_item : InventoryItem
@@ -300,21 +310,6 @@ class InventoryCollection(BaseCollection):
         ------
         NotImplementedError
             If ``inventory_item.category`` is ``Formulas``.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.inventory import InventoryItem, InventoryCategory
-        from albert.resources.companies import Company
-        item = InventoryItem(
-            name="Titanium Dioxide",
-            category=InventoryCategory.RAW_MATERIALS,
-            company=Company(name="Acme Chemicals"),
-        )
-        created = client.inventory.create(inventory_item=item)
-        created.id
-        # 'INVA1'
-        ```
         """
         category = (
             inventory_item.category
@@ -359,6 +354,13 @@ class InventoryCollection(BaseCollection):
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
 
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA1")
+            item.name
+            # 'Titanium Dioxide'
+            ```
+
         Parameters
         ----------
         id : InventoryId
@@ -368,14 +370,6 @@ class InventoryCollection(BaseCollection):
         -------
         InventoryItem
             The fully populated item.
-
-        Examples
-        --------
-        ```python
-        item = client.inventory.get_by_id(id="INVA1")
-        item.name
-        # 'Titanium Dioxide'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -388,6 +382,13 @@ class InventoryCollection(BaseCollection):
         Requests are automatically split into batches, so arbitrarily long ID
         lists are supported. Items not found are omitted from the result.
 
+        !!! example
+            ```python
+            items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
+            [i.name for i in items]
+            # ['Titanium Dioxide', 'Acetone']
+            ```
+
         Parameters
         ----------
         ids : list[InventoryId]
@@ -397,14 +398,6 @@ class InventoryCollection(BaseCollection):
         -------
         list[InventoryItem]
             The matching items. Order is not guaranteed to match the input.
-
-        Examples
-        --------
-        ```python
-        items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
-        [i.name for i in items]
-        # ['Titanium Dioxide', 'Acetone']
-        ```
         """
         batch_size = 250
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
@@ -422,6 +415,13 @@ class InventoryCollection(BaseCollection):
         distinction between specs and task-measured Property Data). Requests are
         automatically batched.
 
+        !!! example
+            ```python
+            spec_lists = client.inventory.get_specs(ids=["INVA1"])
+            spec_lists[0].specs
+            # [...]
+            ```
+
         Parameters
         ----------
         ids : list[InventoryId]
@@ -431,14 +431,6 @@ class InventoryCollection(BaseCollection):
         -------
         list[InventorySpecList]
             One entry per item, each holding that item's specs.
-
-        Examples
-        --------
-        ```python
-        spec_lists = client.inventory.get_specs(ids=["INVA1"])
-        spec_lists[0].specs
-        # [...]
-        ```
         """
         url = f"{self.base_path}/specs"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -464,6 +456,17 @@ class InventoryCollection(BaseCollection):
         experimentally measured results. A spec can optionally carry the
         conditions under which it holds, expressed via a workflow.
 
+        !!! example
+            ```python
+            from albert.resources.inventory import InventorySpec, InventorySpecValue
+            spec = InventorySpec(
+                name="Density",
+                data_column_id="DAC1",
+                value=InventorySpecValue(min="1.1", max="1.3"),
+            )
+            client.inventory.add_specs(inventory_id="INVA1", specs=spec)
+            ```
+
         Parameters
         ----------
         inventory_id : InventoryId
@@ -476,18 +479,6 @@ class InventoryCollection(BaseCollection):
         -------
         InventorySpecList
             The full set of specs now attached to the item.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.inventory import InventorySpec, InventorySpecValue
-        spec = InventorySpec(
-            name="Density",
-            data_column_id="DAC1",
-            value=InventorySpecValue(min="1.1", max="1.3"),
-        )
-        client.inventory.add_specs(inventory_id="INVA1", specs=spec)
-        ```
         """
         if isinstance(specs, InventorySpec):
             specs = [specs]
@@ -504,6 +495,11 @@ class InventoryCollection(BaseCollection):
         This permanently removes the item. To consolidate duplicates while
         preserving data, use [`merge`][albert.collections.inventory.InventoryCollection.merge] instead.
 
+        !!! example
+            ```python
+            client.inventory.delete(id="INVA1")
+            ```
+
         Parameters
         ----------
         id : InventoryId
@@ -512,12 +508,6 @@ class InventoryCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.inventory.delete(id="INVA1")
-        ```
         """
 
         url = f"{self.base_path}/{id}"
@@ -605,6 +595,13 @@ class InventoryCollection(BaseCollection):
         or to summarize a result set without fetching every item. To pull a single
         named facet, use [`get_facet_by_name`][albert.collections.inventory.InventoryCollection.get_facet_by_name].
 
+        !!! example
+            ```python
+            facets = client.inventory.get_all_facets(text="titanium dioxide")
+            [f.name for f in facets]
+            # ['Category', 'Company', 'Tags', ...]
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -638,14 +635,6 @@ class InventoryCollection(BaseCollection):
         -------
         list[FacetItem]
             The facet groups available for the query.
-
-        Examples
-        --------
-        ```python
-        facets = client.inventory.get_all_facets(text="titanium dioxide")
-        [f.name for f in facets]
-        # ['Category', 'Company', 'Tags', ...]
-        ```
         """
 
         params = self._prepare_parameters(
@@ -695,6 +684,13 @@ class InventoryCollection(BaseCollection):
         facet group(s) you name. Useful for iterative search refinement, e.g.
         fetching the remaining ``Tags`` facet after other filters are applied.
 
+        !!! example
+            ```python
+            tags = client.inventory.get_facet_by_name("Tags", text="acetone")
+            tags[0].name
+            # 'Tags'
+            ```
+
         Parameters
         ----------
         name : str or list[str]
@@ -730,14 +726,6 @@ class InventoryCollection(BaseCollection):
         -------
         list[FacetItem]
             The facet group(s) matching ``name``.
-
-        Examples
-        --------
-        ```python
-        tags = client.inventory.get_facet_by_name("Tags", text="acetone")
-        tags[0].name
-        # 'Tags'
-        ```
         """
         name = ensure_list(name) or []
 
@@ -797,6 +785,19 @@ class InventoryCollection(BaseCollection):
         filter to match. Results are returned as a lazily paginated iterator, so
         iterating fetches additional pages on demand.
 
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            hits = client.inventory.search(
+                text="acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=10,
+            )
+            first = next(iter(hits))
+            first.name
+            # 'Acetone'
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -840,20 +841,6 @@ class InventoryCollection(BaseCollection):
         -------
         Iterator[InventorySearchItem]
             A lazily paginated iterator of partially populated search results.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.inventory import InventoryCategory
-        hits = client.inventory.search(
-            text="acetone",
-            category=InventoryCategory.RAW_MATERIALS,
-            max_items=10,
-        )
-        first = next(iter(hits))
-        first.name
-        # 'Acetone'
-        ```
         """
 
         def deserialize(items: list[dict]):
@@ -923,6 +910,16 @@ class InventoryCollection(BaseCollection):
         ``match_all_conditions=True`` to require every filter to match. Results are
         returned as a lazily paginated iterator.
 
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            for item in client.inventory.get_all(
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=50,
+            ):
+                print(item.id, item.name)
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -966,17 +963,6 @@ class InventoryCollection(BaseCollection):
         -------
         Iterator[InventoryItem]
             A lazily paginated iterator of fully populated items.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.inventory import InventoryCategory
-        for item in client.inventory.get_all(
-            category=InventoryCategory.RAW_MATERIALS,
-            max_items=50,
-        ):
-            print(item.id, item.name)
-        ```
         """
 
         def deserialize(items: list[dict]) -> list[InventoryItem]:
@@ -1186,6 +1172,15 @@ class InventoryCollection(BaseCollection):
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA1")
+            item.description = "Updated description"
+            updated = client.inventory.update(inventory_item=item)
+            updated.description
+            # 'Updated description'
+            ```
+
         Parameters
         ----------
         inventory_item : InventoryItem
@@ -1201,16 +1196,6 @@ class InventoryCollection(BaseCollection):
         The following fields can be updated: ``alias``, ``description``,
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
-
-        Examples
-        --------
-        ```python
-        item = client.inventory.get_by_id(id="INVA1")
-        item.description = "Updated description"
-        updated = client.inventory.update(inventory_item=item)
-        updated.description
-        # 'Updated description'
-        ```
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

@@ -24,6 +24,15 @@ class DataColumnCollection(BaseCollection):
 
     This collection is accessed as ``client.data_columns``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        dc = client.data_columns.get_by_id(id="DAC1")
+        dc.name
+        # 'Viscosity'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -50,16 +59,6 @@ class DataColumnCollection(BaseCollection):
         Update an existing data column.
     delete(id) -> None
         Delete a data column by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    dc = client.data_columns.get_by_id(id="DAC1")
-    dc.name
-    # 'Viscosity'
-    ```
     """
 
     _api_version = "v3"
@@ -83,6 +82,13 @@ class DataColumnCollection(BaseCollection):
         Matching is case-insensitive. To retrieve multiple columns or use partial
         matching, use [`get_all`][albert.collections.data_columns.DataColumnCollection.get_all] instead.
 
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_name(name="Viscosity")
+            dc.id if dc else "no match"
+            # 'DAC1'
+            ```
+
         Parameters
         ----------
         name : str
@@ -92,14 +98,6 @@ class DataColumnCollection(BaseCollection):
         -------
         DataColumn or None
             The matching data column, or None if no exact match is found.
-
-        Examples
-        --------
-        ```python
-        dc = client.data_columns.get_by_name(name="Viscosity")
-        dc.id if dc else "no match"
-        # 'DAC1'
-        ```
         """
         for dc in self.get_all(name=name):
             if dc.name.lower() == name.lower():
@@ -113,6 +111,13 @@ class DataColumnCollection(BaseCollection):
         To find a column without knowing its ID, use [`get_by_name`][albert.collections.data_columns.DataColumnCollection.get_by_name] or
         [`get_all`][albert.collections.data_columns.DataColumnCollection.get_all].
 
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_id(id="DAC1")
+            dc.name
+            # 'Viscosity'
+            ```
+
         Parameters
         ----------
         id : DataColumnId
@@ -122,14 +127,6 @@ class DataColumnCollection(BaseCollection):
         -------
         DataColumn
             The fully populated data column.
-
-        Examples
-        --------
-        ```python
-        dc = client.data_columns.get_by_id(id="DAC1")
-        dc.name
-        # 'Viscosity'
-        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         dc = DataColumn(**response.json())
@@ -152,6 +149,12 @@ class DataColumnCollection(BaseCollection):
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand. To retrieve a single column by its exact name,
         use [`get_by_name`][albert.collections.data_columns.DataColumnCollection.get_by_name]; by its ID, use [`get_by_id`][albert.collections.data_columns.DataColumnCollection.get_by_id].
+
+        !!! example
+            ```python
+            for dc in client.data_columns.get_all(name="Color", max_items=10):
+                print(dc.id, dc.name)
+            ```
 
         Parameters
         ----------
@@ -176,13 +179,6 @@ class DataColumnCollection(BaseCollection):
         -------
         Iterator[DataColumn]
             A lazily paginated iterator of matching data columns.
-
-        Examples
-        --------
-        ```python
-        for dc in client.data_columns.get_all(name="Color", max_items=10):
-            print(dc.id, dc.name)
-        ```
         """
 
         def deserialize(items: list[dict]) -> Iterator[DataColumn]:
@@ -212,6 +208,14 @@ class DataColumnCollection(BaseCollection):
         To avoid creating a duplicate when a column with the same name may already
         exist, use [`get_or_create`][albert.collections.data_columns.DataColumnCollection.get_or_create] instead.
 
+        !!! example
+            ```python
+            from albert.resources.data_columns import DataColumn
+            created = client.data_columns.create(data_column=DataColumn(name="Viscosity"))
+            created.id
+            # 'DAC1'
+            ```
+
         Parameters
         ----------
         data_column : DataColumn
@@ -221,15 +225,6 @@ class DataColumnCollection(BaseCollection):
         -------
         DataColumn
             The newly created data column, populated with its assigned Data Column ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.data_columns import DataColumn
-        created = client.data_columns.create(data_column=DataColumn(name="Viscosity"))
-        created.id
-        # 'DAC1'
-        ```
         """
         payload = [data_column.model_dump(by_alias=True, exclude_unset=True, mode="json")]
         response = self.session.post(self.base_path, json=payload)
@@ -243,6 +238,14 @@ class DataColumnCollection(BaseCollection):
         returned instead of creating a duplicate; otherwise a new column is created
         via [`create`][albert.collections.data_columns.DataColumnCollection.create].
 
+        !!! example
+            ```python
+            from albert.resources.data_columns import DataColumn
+            dc = client.data_columns.get_or_create(data_column=DataColumn(name="Viscosity"))
+            dc.id
+            # 'DAC1'
+            ```
+
         Parameters
         ----------
         data_column : DataColumn
@@ -252,15 +255,6 @@ class DataColumnCollection(BaseCollection):
         -------
         DataColumn
             The existing or newly created data column.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.data_columns import DataColumn
-        dc = client.data_columns.get_or_create(data_column=DataColumn(name="Viscosity"))
-        dc.id
-        # 'DAC1'
-        ```
         """
         for match in self.get_all(name=data_column.name, exact_match=False):
             if match.name == data_column.name:
@@ -274,6 +268,11 @@ class DataColumnCollection(BaseCollection):
     def delete(self, *, id: DataColumnId) -> None:
         """Delete a data column by its ID.
 
+        !!! example
+            ```python
+            client.data_columns.delete(id="DAC1")
+            ```
+
         Parameters
         ----------
         id : DataColumnId
@@ -282,12 +281,6 @@ class DataColumnCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.data_columns.delete(id="DAC1")
-        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -313,6 +306,15 @@ class DataColumnCollection(BaseCollection):
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
+        !!! example
+            ```python
+            dc = client.data_columns.get_by_id(id="DAC1")
+            dc.name = "Kinematic Viscosity"
+            updated = client.data_columns.update(data_column=dc)
+            updated.name
+            # 'Kinematic Viscosity'
+            ```
+
         Parameters
         ----------
         data_column : DataColumn
@@ -327,16 +329,6 @@ class DataColumnCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``metadata``, ``name``.
-
-        Examples
-        --------
-        ```python
-        dc = client.data_columns.get_by_id(id="DAC1")
-        dc.name = "Kinematic Viscosity"
-        updated = client.data_columns.update(data_column=dc)
-        updated.name
-        # 'Kinematic Viscosity'
-        ```
         """
         existing = self.get_by_id(id=data_column.id)
         payload = self._generate_patch_payload(

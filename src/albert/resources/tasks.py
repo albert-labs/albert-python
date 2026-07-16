@@ -468,6 +468,13 @@ class PropertyTask(BaseTask):
     [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``); add
     blocks with [`add_block`][albert.collections.tasks.TaskCollection.add_block].
 
+    !!! example
+        ```python
+        from albert.resources.tasks import PropertyTask
+
+        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        ```
+
     Attributes
     ----------
     name : str
@@ -490,14 +497,6 @@ class PropertyTask(BaseTask):
     -----
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
     ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
-
-    Examples
-    --------
-    ```python
-    from albert.resources.tasks import PropertyTask
-
-    task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
-    ```
     """
 
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
@@ -519,6 +518,20 @@ class BatchTask(BaseTask):
     [`BATCH`][albert.resources.tasks.TaskCategory.BATCH] (or [`BATCH_WITH_QC`][albert.resources.tasks.TaskCategory.BATCH_WITH_QC] when
     quality-control data is attached). Create and manage batch tasks with
     [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
+
+    !!! example
+        ```python
+        from albert.resources.tasks import BatchTask
+        from albert.resources.tasks import TaskInventoryInformation
+
+        task = BatchTask(
+            name="Make 500 g of Formula A",
+            parent_id="PRO1",
+            inventory_information=[
+                TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
+            ],
+        )
+        ```
 
     Attributes
     ----------
@@ -548,21 +561,6 @@ class BatchTask(BaseTask):
     -----
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
     ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
-
-    Examples
-    --------
-    ```python
-    from albert.resources.tasks import BatchTask
-    from albert.resources.tasks import TaskInventoryInformation
-
-    task = BatchTask(
-        name="Make 500 g of Formula A",
-        parent_id="PRO1",
-        inventory_information=[
-            TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
-        ],
-    )
-    ```
     """
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
@@ -587,13 +585,12 @@ class GeneralTask(BaseTask):
     Create and manage general tasks with
     [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
 
-    Examples
-    --------
-    ```python
-    from albert.resources.tasks import GeneralTask
+    !!! example
+        ```python
+        from albert.resources.tasks import GeneralTask
 
-    task = GeneralTask(name="Calibrate rheometer")
-    ```
+        task = GeneralTask(name="Calibrate rheometer")
+        ```
     """
 
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL

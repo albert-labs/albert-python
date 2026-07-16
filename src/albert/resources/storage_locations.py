@@ -14,6 +14,15 @@ class StorageLocation(BaseResource):
     can narrow results to items held in a given storage location. Managed through
     [`StorageLocationsCollection`][albert.collections.storage_locations.StorageLocationsCollection].
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.storage_locations import StorageLocation
+        client = Albert()
+        parent = client.locations.get_by_id(id="...")
+        storage_location = StorageLocation(name="Freezer A", location=parent)
+        ```
+
     Attributes
     ----------
     name : str
@@ -24,16 +33,6 @@ class StorageLocation(BaseResource):
         retrieved.
     location : Location
         The parent Location this storage location belongs to.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.storage_locations import StorageLocation
-    client = Albert()
-    parent = client.locations.get_by_id(id="...")
-    storage_location = StorageLocation(name="Freezer A", location=parent)
-    ```
     """
 
     name: str = Field(alias="name", min_length=2, max_length=255)

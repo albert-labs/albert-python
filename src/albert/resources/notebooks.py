@@ -132,20 +132,19 @@ class HeaderContent(BaseAlbertModel):
 class HeaderBlock(BaseBlock):
     """A section heading in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import HeaderBlock, HeaderContent
+
+        block = HeaderBlock(content=HeaderContent(level=1, text="Procedure"))
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`HEADER`][albert.resources.notebooks.BlockType.HEADER].
     content : HeaderContent
         The heading level and text.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import HeaderBlock, HeaderContent
-
-    block = HeaderBlock(content=HeaderContent(level=1, text="Procedure"))
-    ```
     """
 
     type: Literal[BlockType.HEADER] = Field(default=BlockType.HEADER, alias="blockType")
@@ -167,20 +166,19 @@ class ParagraphContent(BaseAlbertModel):
 class ParagraphBlock(BaseBlock):
     """A block of free text in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import ParagraphBlock, ParagraphContent
+
+        block = ParagraphBlock(content=ParagraphContent(text="Weighed 1.2 g."))
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`PARAGRAPH`][albert.resources.notebooks.BlockType.PARAGRAPH].
     content : ParagraphContent
         The paragraph text.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import ParagraphBlock, ParagraphContent
-
-    block = ParagraphBlock(content=ParagraphContent(text="Weighed 1.2 g."))
-    ```
     """
 
     type: Literal[BlockType.PARAGRAPH] = Field(default=BlockType.PARAGRAPH, alias="blockType")
@@ -217,28 +215,27 @@ class ChecklistContent(BaseAlbertModel):
 class ChecklistBlock(BaseBlock):
     """A list of checkable items in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import (
+            ChecklistBlock,
+            ChecklistContent,
+            ChecklistItem,
+        )
+
+        block = ChecklistBlock(
+            content=ChecklistContent(
+                items=[ChecklistItem(text="Calibrate scale", checked=False)]
+            )
+        )
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`CHECKLIST`][albert.resources.notebooks.BlockType.CHECKLIST].
     content : ChecklistContent
         The checklist items.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import (
-        ChecklistBlock,
-        ChecklistContent,
-        ChecklistItem,
-    )
-
-    block = ChecklistBlock(
-        content=ChecklistContent(
-            items=[ChecklistItem(text="Calibrate scale", checked=False)]
-        )
-    )
-    ```
     """
 
     type: Literal[BlockType.CHECKLIST] = Field(default=BlockType.CHECKLIST, alias="blockType")
@@ -302,22 +299,21 @@ class AttachesContent(BaseAlbertModel):
 class AttachesBlock(BaseBlock):
     """An attached file in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import AttachesBlock, AttachesContent
+
+        block = AttachesBlock(
+            content=AttachesContent(file_path="/path/to/spectrum.pdf")
+        )
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`ATTACHES`][albert.resources.notebooks.BlockType.ATTACHES].
     content : AttachesContent
         The attachment details.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import AttachesBlock, AttachesContent
-
-    block = AttachesBlock(
-        content=AttachesContent(file_path="/path/to/spectrum.pdf")
-    )
-    ```
     """
 
     type: Literal[BlockType.ATTACHES] = Field(default=BlockType.ATTACHES, alias="blockType")
@@ -367,20 +363,19 @@ class ImageContent(BaseAlbertModel):
 class ImageBlock(BaseBlock):
     """An embedded image in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import ImageBlock, ImageContent
+
+        block = ImageBlock(content=ImageContent(file_path="/path/to/plot.png"))
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`IMAGE`][albert.resources.notebooks.BlockType.IMAGE].
     content : ImageContent
         The image details.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import ImageBlock, ImageContent
-
-    block = ImageBlock(content=ImageContent(file_path="/path/to/plot.png"))
-    ```
     """
 
     type: Literal[BlockType.IMAGE] = Field(default=BlockType.IMAGE, alias="blockType")
@@ -431,20 +426,19 @@ class KetcherContent(BaseAlbertModel):
 class KetcherBlock(BaseBlock):
     """A chemical structure drawn in the Ketcher editor.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import KetcherBlock, KetcherContent
+
+        block = KetcherBlock(content=KetcherContent(smiles="CCO"))
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`KETCHER`][albert.resources.notebooks.BlockType.KETCHER].
     content : KetcherContent
         The structure details, typically built from a SMILES string.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import KetcherBlock, KetcherContent
-
-    block = KetcherBlock(content=KetcherContent(smiles="CCO"))
-    ```
     """
 
     type: Literal[BlockType.KETCHER] = Field(default=BlockType.KETCHER, alias="blockType")
@@ -469,25 +463,24 @@ class TableContent(BaseAlbertModel):
 class TableBlock(BaseBlock):
     """A tabular grid of cells in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import TableBlock, TableContent
+
+        block = TableBlock(
+            content=TableContent(
+                content=[["Trial", "Yield"], ["1", "82%"]],
+                with_headings=True,
+            )
+        )
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`TABLE`][albert.resources.notebooks.BlockType.TABLE].
     content : TableContent
         The table cells.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import TableBlock, TableContent
-
-    block = TableBlock(
-        content=TableContent(
-            content=[["Trial", "Yield"], ["1", "82%"]],
-            with_headings=True,
-        )
-    )
-    ```
     """
 
     type: Literal[BlockType.TABLE] = Field(default=BlockType.TABLE, alias="blockType")
@@ -573,28 +566,27 @@ ListContent = Annotated[NumberedListContent | BulletedListContent, Field(discrim
 class ListBlock(BaseBlock):
     """A bulleted or numbered list in a notebook.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import (
+            ListBlock,
+            BulletedListContent,
+            NotebookListItem,
+        )
+
+        block = ListBlock(
+            content=BulletedListContent(
+                items=[NotebookListItem(content="First step")]
+            )
+        )
+        ```
+
     Attributes
     ----------
     type : BlockType
         Always [`LIST`][albert.resources.notebooks.BlockType.LIST].
     content : NumberedListContent | BulletedListContent
         The list entries and style.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import (
-        ListBlock,
-        BulletedListContent,
-        NotebookListItem,
-    )
-
-    block = ListBlock(
-        content=BulletedListContent(
-            items=[NotebookListItem(content="First step")]
-        )
-    )
-    ```
     """
 
     type: Literal[BlockType.LIST] = Field(default=BlockType.LIST, alias="blockType")
@@ -638,6 +630,13 @@ class Notebook(BaseResource):
     empty and then populated block-by-block; see
     [`NotebookCollection`][albert.collections.notebooks.NotebookCollection] for the workflow.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import Notebook
+
+        notebook = Notebook(name="Trial 1 log", parent_id="PRO123")
+        ```
+
     Attributes
     ----------
     id : NotebookId | None
@@ -654,14 +653,6 @@ class Notebook(BaseResource):
         The ordered content blocks of the notebook.
     links : list[NotebookLink] | None
         Links from this notebook to other Albert entities.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import Notebook
-
-    notebook = Notebook(name="Trial 1 log", parent_id="PRO123")
-    ```
     """
 
     id: NotebookId | None = Field(default=None, alias="albertId")
@@ -777,6 +768,13 @@ class NotebookCopyACL(BaseResource):
 class NotebookCopyInfo(BaseAlbertModel):
     """Instructions for copying a notebook into a new parent.
 
+    !!! example
+        ```python
+        from albert.resources.notebooks import NotebookCopyInfo
+
+        info = NotebookCopyInfo(id="NTB123", parent_id="PRO456")
+        ```
+
     Attributes
     ----------
     id : NotebookId
@@ -789,14 +787,6 @@ class NotebookCopyInfo(BaseAlbertModel):
         An optional alternative name for the copy.
     acl : ACLContainer | NotebookCopyACL | None
         Access-control settings to apply to the copy.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notebooks import NotebookCopyInfo
-
-    info = NotebookCopyInfo(id="NTB123", parent_id="PRO456")
-    ```
     """
 
     id: NotebookId

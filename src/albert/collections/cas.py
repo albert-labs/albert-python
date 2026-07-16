@@ -57,6 +57,14 @@ class CasCollection(BaseCollection):
 
     This collection is accessed as ``client.cas``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        cas = client.cas.get_or_create(cas="7727-37-9")
+        print(cas.id, cas.number)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -85,15 +93,6 @@ class CasCollection(BaseCollection):
         Update an existing CAS entry.
     delete(id) -> None
         Delete a CAS entry by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    cas = client.cas.get_or_create(cas="7727-37-9")
-    print(cas.id, cas.number)
-    ```
     """
 
     _updatable_attributes = {"notes", "description", "smiles", "metadata"}
@@ -129,6 +128,16 @@ class CasCollection(BaseCollection):
         already know its registry number or CAS ID, prefer [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]
         or [`get_by_id`][albert.collections.cas.CasCollection.get_by_id].
 
+        !!! example
+            ```python
+            # List the most recent CAS entries
+            for cas in client.cas.get_all(max_items=10):
+                print(cas.id, cas.number)
+
+            # Look up specific registry numbers
+            matches = list(client.cas.get_all(cas=["7727-37-9", "64-17-5"]))
+            ```
+
         Parameters
         ----------
         number : str, optional
@@ -152,17 +161,6 @@ class CasCollection(BaseCollection):
         ------
         Cas
             Matching CAS entries.
-
-        Examples
-        --------
-        ```python
-        # List the most recent CAS entries
-        for cas in client.cas.get_all(max_items=10):
-            print(cas.id, cas.number)
-
-        # Look up specific registry numbers
-        matches = list(client.cas.get_all(cas=["7727-37-9", "64-17-5"]))
-        ```
         """
 
         params: dict[str, Any] = {"orderBy": order_by}
@@ -214,6 +212,12 @@ class CasCollection(BaseCollection):
         matching entry itself (rather than a boolean), use [`get_by_number`][albert.collections.cas.CasCollection.get_by_number];
         to fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
 
+        !!! example
+            ```python
+            client.cas.exists(number="7727-37-9")
+            # True
+            ```
+
         Parameters
         ----------
         number : str
@@ -229,13 +233,6 @@ class CasCollection(BaseCollection):
         -------
         bool
             True if a matching CAS entry exists, False otherwise.
-
-        Examples
-        --------
-        ```python
-        client.cas.exists(number="7727-37-9")
-        # True
-        ```
         """
         return (
             self.get_by_number(number=number, exact_match=exact_match, max_items=max_items)
@@ -249,6 +246,13 @@ class CasCollection(BaseCollection):
         sure whether the substance already exists, prefer [`get_or_create`][albert.collections.cas.CasCollection.get_or_create],
         which avoids creating a duplicate.
 
+        !!! example
+            ```python
+            cas = client.cas.create(cas="7727-37-9")
+            cas.id
+            # 'CAS1'
+            ```
+
         Parameters
         ----------
         cas : str or Cas
@@ -260,14 +264,6 @@ class CasCollection(BaseCollection):
         -------
         Cas
             The newly created entry, populated with its assigned CAS ID.
-
-        Examples
-        --------
-        ```python
-        cas = client.cas.create(cas="7727-37-9")
-        cas.id
-        # 'CAS1'
-        ```
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
@@ -284,6 +280,13 @@ class CasCollection(BaseCollection):
         it looks up the registry number with an exact match and returns the
         existing entry if found, otherwise creates a new one via [`create`][albert.collections.cas.CasCollection.create].
 
+        !!! example
+            ```python
+            cas = client.cas.get_or_create(cas="7727-37-9")
+            cas.id
+            # 'CAS1'
+            ```
+
         Parameters
         ----------
         cas : str or Cas
@@ -295,14 +298,6 @@ class CasCollection(BaseCollection):
         -------
         Cas
             The existing or newly created entry.
-
-        Examples
-        --------
-        ```python
-        cas = client.cas.get_or_create(cas="7727-37-9")
-        cas.id
-        # 'CAS1'
-        ```
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
@@ -319,6 +314,13 @@ class CasCollection(BaseCollection):
         To look a substance up by its registry number instead, use
         [`get_by_number`][albert.collections.cas.CasCollection.get_by_number].
 
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.number
+            # '7727-37-9'
+            ```
+
         Parameters
         ----------
         id : CasId
@@ -328,14 +330,6 @@ class CasCollection(BaseCollection):
         -------
         Cas
             The fully populated CAS entry.
-
-        Examples
-        --------
-        ```python
-        cas = client.cas.get_by_id(id="CAS1")
-        cas.number
-        # '7727-37-9'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -371,6 +365,13 @@ class CasCollection(BaseCollection):
         are removed), mirroring how the Albert backend compares CAS numbers. To
         fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
 
+        !!! example
+            ```python
+            cas = client.cas.get_by_number(number="7727-37-9")
+            cas.id if cas else "not found"
+            # 'CAS1'
+            ```
+
         Parameters
         ----------
         number : str
@@ -387,14 +388,6 @@ class CasCollection(BaseCollection):
         -------
         Cas or None
             The matching CAS entry, or None if no match is found.
-
-        Examples
-        --------
-        ```python
-        cas = client.cas.get_by_number(number="7727-37-9")
-        cas.id if cas else "not found"
-        # 'CAS1'
-        ```
         """
         cleaned_number = self._clean_cas_number(number)
 
@@ -413,6 +406,11 @@ class CasCollection(BaseCollection):
     def delete(self, *, id: CasId) -> None:
         """Delete a CAS entry by its CAS ID.
 
+        !!! example
+            ```python
+            client.cas.delete(id="CAS1")
+            ```
+
         Parameters
         ----------
         id : CasId
@@ -421,12 +419,6 @@ class CasCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.cas.delete(id="CAS1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -437,6 +429,13 @@ class CasCollection(BaseCollection):
         Fetch the entry (e.g. with [`get_by_id`][albert.collections.cas.CasCollection.get_by_id] or [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]),
         modify the updatable fields on the returned object, then pass it here. The
         entry is matched by its ``id``, so that field must be set.
+
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.notes = "Confirmed against supplier COA."
+            updated = client.cas.update(updated_object=cas)
+            ```
 
         Parameters
         ----------
@@ -452,14 +451,6 @@ class CasCollection(BaseCollection):
         -----
         Only the following fields are updatable: ``description``, ``metadata``,
         ``notes``, ``smiles``. Changes to other fields are ignored.
-
-        Examples
-        --------
-        ```python
-        cas = client.cas.get_by_id(id="CAS1")
-        cas.notes = "Confirmed against supplier COA."
-        updated = client.cas.update(updated_object=cas)
-        ```
         """
         # Fetch the current object state from the server or database
         existing_cas = self.get_by_id(id=updated_object.id)

@@ -28,6 +28,15 @@ class ParameterCollection(BaseCollection):
 
     This collection is accessed as ``client.parameters``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        param = client.parameters.get_by_id(id="PRM1")
+        param.name
+        # 'Temperature'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -52,16 +61,6 @@ class ParameterCollection(BaseCollection):
         Update an existing parameter.
     delete(id) -> None
         Delete a parameter by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    param = client.parameters.get_by_id(id="PRM1")
-    param.name
-    # 'Temperature'
-    ```
     """
 
     _api_version = "v3"
@@ -84,6 +83,13 @@ class ParameterCollection(BaseCollection):
 
         To find parameters without knowing their IDs, use [`get_all`][albert.collections.parameters.ParameterCollection.get_all].
 
+        !!! example
+            ```python
+            param = client.parameters.get_by_id(id="PRM1")
+            param.name
+            # 'Temperature'
+            ```
+
         Parameters
         ----------
         id : ParameterId
@@ -93,14 +99,6 @@ class ParameterCollection(BaseCollection):
         -------
         Parameter
             The fully populated parameter.
-
-        Examples
-        --------
-        ```python
-        param = client.parameters.get_by_id(id="PRM1")
-        param.name
-        # 'Temperature'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -114,6 +112,14 @@ class ParameterCollection(BaseCollection):
         avoid creating duplicates when a parameter of the same name may already
         exist, use [`get_or_create`][albert.collections.parameters.ParameterCollection.get_or_create] instead.
 
+        !!! example
+            ```python
+            from albert.resources.parameters import Parameter
+            param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
+            param.id
+            # 'PRM1'
+            ```
+
         Parameters
         ----------
         parameter : Parameter
@@ -123,15 +129,6 @@ class ParameterCollection(BaseCollection):
         -------
         Parameter
             The newly created parameter, populated with its assigned Parameter ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.parameters import Parameter
-        param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
-        param.id
-        # 'PRM1'
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -146,6 +143,14 @@ class ParameterCollection(BaseCollection):
         returned unchanged; otherwise a new parameter is created via [`create`][albert.collections.parameters.ParameterCollection.create].
         Use this to avoid creating duplicate parameters.
 
+        !!! example
+            ```python
+            from albert.resources.parameters import Parameter
+            param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
+            param.id
+            # 'PRM1'
+            ```
+
         Parameters
         ----------
         parameter : Parameter
@@ -155,15 +160,6 @@ class ParameterCollection(BaseCollection):
         -------
         Parameter
             The existing or newly created parameter.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.parameters import Parameter
-        param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
-        param.id
-        # 'PRM1'
-        ```
         """
         for match in self.get_all(names=parameter.name, exact_match=False):
             if match.name == parameter.name:
@@ -179,6 +175,11 @@ class ParameterCollection(BaseCollection):
 
         This permanently removes the parameter.
 
+        !!! example
+            ```python
+            client.parameters.delete(id="PRM1")
+            ```
+
         Parameters
         ----------
         id : ParameterId
@@ -187,12 +188,6 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.parameters.delete(id="PRM1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -212,6 +207,12 @@ class ParameterCollection(BaseCollection):
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand. With no filters, iterates over all parameters.
+
+        !!! example
+            ```python
+            for param in client.parameters.get_all(names="Temperature", max_items=10):
+                print(param.id, param.name)
+            ```
 
         Parameters
         ----------
@@ -234,13 +235,6 @@ class ParameterCollection(BaseCollection):
         -------
         Iterator[Parameter]
             A lazily paginated iterator of parameters matching the given criteria.
-
-        Examples
-        --------
-        ```python
-        for param in client.parameters.get_all(names="Temperature", max_items=10):
-            print(param.id, param.name)
-        ```
         """
 
         def deserialize(items: list[dict]) -> Iterator[Parameter]:
@@ -285,6 +279,15 @@ class ParameterCollection(BaseCollection):
         fields on the returned object, then pass it here. Only the fields listed in
         Notes are applied; changes to other fields are ignored.
 
+        !!! example
+            ```python
+            param = client.parameters.get_by_id(id="PRM1")
+            param.name = "Bath Temperature"
+            updated = client.parameters.update(parameter=param)
+            updated.name
+            # 'Bath Temperature'
+            ```
+
         Parameters
         ----------
         parameter : Parameter
@@ -298,16 +301,6 @@ class ParameterCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``metadata``, ``name``.
-
-        Examples
-        --------
-        ```python
-        param = client.parameters.get_by_id(id="PRM1")
-        param.name = "Bath Temperature"
-        updated = client.parameters.update(parameter=param)
-        updated.name
-        # 'Bath Temperature'
-        ```
         """
         existing = self.get_by_id(id=parameter.id)
         payload = self._generate_patch_payload(

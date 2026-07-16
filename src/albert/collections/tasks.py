@@ -79,6 +79,19 @@ class TaskCollection(BaseCollection):
 
     This collection is accessed as ``client.tasks``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.tasks import PropertyTask
+        client = Albert()
+        task = client.tasks.create(
+            task=PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        )
+        client.tasks.add_block(
+            task_id=task.id, data_template_id="DAT1", workflow_id="WFL1"
+        )
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -113,20 +126,6 @@ class TaskCollection(BaseCollection):
         Import measured results into a Property task from a file or attachment.
     get_history(id, ...) -> TaskHistory
         Get a task's audit history.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.tasks import PropertyTask
-    client = Albert()
-    task = client.tasks.create(
-        task=PropertyTask(name="Viscosity screen", parent_id="PRO1")
-    )
-    client.tasks.add_block(
-        task_id=task.id, data_template_id="DAT1", workflow_id="WFL1"
-    )
-    ```
     """
 
     _api_version = "v3"
@@ -162,6 +161,14 @@ class TaskCollection(BaseCollection):
         For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
         added separately with [`add_block`][albert.collections.tasks.TaskCollection.add_block] after creation.
 
+        !!! example
+            ```python
+            from albert.resources.tasks import GeneralTask
+            task = client.tasks.create(task=GeneralTask(name="Calibrate balance"))
+            task.id
+            # 'TASGEN1'
+            ```
+
         Parameters
         ----------
         task : PropertyTask or GeneralTask or BatchTask
@@ -172,15 +179,6 @@ class TaskCollection(BaseCollection):
         BaseTask
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.tasks import GeneralTask
-        task = client.tasks.create(task=GeneralTask(name="Calibrate balance"))
-        task.id
-        # 'TASGEN1'
-        ```
         """
         payload = [task.model_dump(mode="json", by_alias=True, exclude_none=True)]
         url = f"{self.base_path}/multi?category={task.category.value}"
@@ -201,6 +199,13 @@ class TaskCollection(BaseCollection):
         blocks, e.g. one per test. Once a block exists, results are written against
         it through the Property Data collection.
 
+        !!! example
+            ```python
+            client.tasks.add_block(
+                task_id="TASFOR1", data_template_id="DAT1", workflow_id="WFL1"
+            )
+            ```
+
         Parameters
         ----------
         task_id : TaskId
@@ -220,14 +225,6 @@ class TaskCollection(BaseCollection):
         --------
         remove_block : Remove a block from a task.
         update_block_workflow : Change the workflow on an existing block.
-
-        Examples
-        --------
-        ```python
-        client.tasks.add_block(
-            task_id="TASFOR1", data_template_id="DAT1", workflow_id="WFL1"
-        )
-        ```
         """
         url = f"{self.base_path}/{task_id}"
         payload = [
@@ -253,6 +250,13 @@ class TaskCollection(BaseCollection):
         Use this to change the conditions a block runs under without removing and
         re-adding the block. The task must be a Property or Batch task.
 
+        !!! example
+            ```python
+            client.tasks.update_block_workflow(
+                task_id="TASFOR1", block_id="BLK1", workflow_id="WFL2"
+            )
+            ```
+
         Parameters
         ----------
         task_id : TaskId
@@ -276,14 +280,6 @@ class TaskCollection(BaseCollection):
         If the block already uses ``workflow_id``, no change is made. A block's
         default placeholder workflow ("No Parameter Group") is skipped when it is
         not the block's only workflow.
-
-        Examples
-        --------
-        ```python
-        client.tasks.update_block_workflow(
-            task_id="TASFOR1", block_id="BLK1", workflow_id="WFL2"
-        )
-        ```
         """
         url = f"{self.base_path}/{task_id}"
         task = self.get_by_id(id=task_id)
@@ -324,6 +320,11 @@ class TaskCollection(BaseCollection):
         Removing a block also removes the results captured against it. To keep the
         block but change its conditions, use [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
 
+        !!! example
+            ```python
+            client.tasks.remove_block(task_id="TASFOR1234", block_id="BLK1")
+            ```
+
         Parameters
         ----------
         task_id : TaskId
@@ -334,12 +335,6 @@ class TaskCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.tasks.remove_block(task_id="TASFOR1234", block_id="BLK1")
-        ```
         """
         url = f"{self.base_path}/{task_id}"
         payload = [
@@ -376,6 +371,19 @@ class TaskCollection(BaseCollection):
         Import results from an attachment into property data. Reuse an existing attachment or upload a
         new one, optionally provide header-to-column mappings, and target the desired block, lot,
         and interval. Returns the task after the import.
+
+        !!! example
+            ```python
+            from albert.resources.data_templates import ImportMode
+            task = client.tasks.import_results(
+                task_id="TAS123",
+                inventory_id="INVA123",
+                data_template_id="DAT123",
+                file_path="path/to/results.csv",
+                field_mapping={"comm": "Comments"},
+                mode=ImportMode.CSV,
+            )
+            ```
 
         Parameters
         ----------
@@ -417,20 +425,6 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The task with the newly imported results.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.data_templates import ImportMode
-        task = client.tasks.import_results(
-            task_id="TAS123",
-            inventory_id="INVA123",
-            data_template_id="DAT123",
-            file_path="path/to/results.csv",
-            field_mapping={"comm": "Comments"},
-            mode=ImportMode.CSV,
-        )
-        ```
         """
         logger.info("Importing results for task %s using %s mode", task_id, mode)
 
@@ -603,6 +597,11 @@ class TaskCollection(BaseCollection):
 
         Deleting a task also removes any results recorded against its blocks.
 
+        !!! example
+            ```python
+            client.tasks.delete(id="TASFOR1")
+            ```
+
         Parameters
         ----------
         id : TaskId
@@ -611,12 +610,6 @@ class TaskCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.tasks.delete(id="TASFOR1")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -629,6 +622,13 @@ class TaskCollection(BaseCollection):
         ``PropertyTask``, ``BatchTask``, or ``GeneralTask``. For a PropertyTask
         this includes its blocks.
 
+        !!! example
+            ```python
+            task = client.tasks.get_by_id(id="TASFOR1")
+            task.name
+            # 'Viscosity screen'
+            ```
+
         Parameters
         ----------
         id : TaskId
@@ -638,14 +638,6 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The fully populated task.
-
-        Examples
-        --------
-        ```python
-        task = client.tasks.get_by_id(id="TASFOR1")
-        task.name
-        # 'Viscosity screen'
-        ```
         """
         url = f"{self.base_path}/multi/{id}"
         response = self.session.get(url)
@@ -680,6 +672,16 @@ class TaskCollection(BaseCollection):
         look tasks up. When you need complete tasks (e.g. a PropertyTask's blocks),
         use [`get_all`][albert.collections.tasks.TaskCollection.get_all] with the same filters, or pass the resulting IDs to
         [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id]. Results are returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskCategory
+            hits = client.tasks.search(
+                category=TaskCategory.PROPERTY, status=["Open"], max_items=20
+            )
+            for t in hits:
+                print(t.id, t.name)
+            ```
 
         Parameters
         ----------
@@ -724,17 +726,6 @@ class TaskCollection(BaseCollection):
         -------
         Iterator[TaskSearchItem]
             A lazily paginated iterator of partially populated search results.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.tasks import TaskCategory
-        hits = client.tasks.search(
-            category=TaskCategory.PROPERTY, status=["Open"], max_items=20
-        )
-        for t in hits:
-            print(t.id, t.name)
-        ```
         """
         if project_id is not None:
             project_id = remove_id_prefix(project_id, "ProjectId")
@@ -803,6 +794,15 @@ class TaskCollection(BaseCollection):
         for every match, so prefer [`search`][albert.collections.tasks.TaskCollection.search] when you only need names, IDs, or
         status. Results are returned as a lazily paginated iterator.
 
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskCategory
+            for task in client.tasks.get_all(
+                category=TaskCategory.PROPERTY, max_items=50
+            ):
+                print(task.id, task.name)
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -847,16 +847,6 @@ class TaskCollection(BaseCollection):
         BaseTask
             Each fully populated task (``PropertyTask``, ``BatchTask``, or
             ``GeneralTask``).
-
-        Examples
-        --------
-        ```python
-        from albert.resources.tasks import TaskCategory
-        for task in client.tasks.get_all(
-            category=TaskCategory.PROPERTY, max_items=50
-        ):
-            print(task.id, task.name)
-        ```
         """
         for task in self.search(
             text=text,
@@ -895,6 +885,14 @@ class TaskCollection(BaseCollection):
         task's blocks, use [`add_block`][albert.collections.tasks.TaskCollection.add_block], [`remove_block`][albert.collections.tasks.TaskCollection.remove_block], or
         [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
 
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskPriority
+            task = client.tasks.get_by_id(id="TASFOR1")
+            task.priority = TaskPriority.HIGH
+            updated = client.tasks.update(task=task)
+            ```
+
         Parameters
         ----------
         task : BaseTask
@@ -909,15 +907,6 @@ class TaskCollection(BaseCollection):
         -----
         The following fields can be updated: ``due_date``, ``metadata``, ``name``,
         ``priority``, ``project``, ``state``.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.tasks import TaskPriority
-        task = client.tasks.get_by_id(id="TASFOR1")
-        task.priority = TaskPriority.HIGH
-        updated = client.tasks.update(task=task)
-        ```
         """
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(
@@ -956,6 +945,13 @@ class TaskCollection(BaseCollection):
         Returns the chronological record of changes made to the task (and,
         optionally, a specific block).
 
+        !!! example
+            ```python
+            history = client.tasks.get_history(id="TASFOR1")
+            len(history.items)
+            # 12
+            ```
+
         Parameters
         ----------
         id : TaskId
@@ -975,14 +971,6 @@ class TaskCollection(BaseCollection):
         -------
         TaskHistory
             The task's history entries plus pagination metadata.
-
-        Examples
-        --------
-        ```python
-        history = client.tasks.get_history(id="TASFOR1")
-        len(history.items)
-        # 12
-        ```
         """
         params = {
             "limit": limit,

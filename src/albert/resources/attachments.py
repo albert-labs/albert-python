@@ -80,6 +80,16 @@ class Attachment(BaseResource):
     Attachments are managed through the
     [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
 
+    !!! example
+        ```python
+        from albert.resources.attachments import Attachment
+        attachment = Attachment(
+            parent_id="INVA1",
+            name="datasheet.pdf",
+            key="INVA1/documents/datasheet.pdf",
+        )
+        ```
+
     Attributes
     ----------
     id : AttachmentId | None
@@ -109,17 +119,6 @@ class Attachment(BaseResource):
     metadata : AttachmentMetadata | None
         Optional safety and classification metadata. See
         [`AttachmentMetadata`][albert.resources.attachments.AttachmentMetadata].
-
-    Examples
-    --------
-    ```python
-    from albert.resources.attachments import Attachment
-    attachment = Attachment(
-        parent_id="INVA1",
-        name="datasheet.pdf",
-        key="INVA1/documents/datasheet.pdf",
-    )
-    ```
     """
 
     id: AttachmentId | None = Field(default=None, alias="albertId")

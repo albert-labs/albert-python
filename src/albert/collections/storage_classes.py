@@ -20,6 +20,14 @@ class StorageClassesCollection(BaseCollection):
 
     This collection is accessed as ``client.storage_classes``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        for storage_class in client.storage_classes.get_all():
+            print(storage_class.storage_class_number, storage_class.storage_class_name)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -34,15 +42,6 @@ class StorageClassesCollection(BaseCollection):
     -------
     get_all() -> list[StorageClass]
         Get every storage class and its compatibility matrix.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    for storage_class in client.storage_classes.get_all():
-        print(storage_class.storage_class_number, storage_class.storage_class_name)
-    ```
     """
 
     _api_version = "v3"
@@ -55,19 +54,18 @@ class StorageClassesCollection(BaseCollection):
     def get_all(self) -> list[StorageClass]:
         """Get every Storage Class and its compatibility matrix.
 
+        !!! example
+            ```python
+            storage_classes = client.storage_classes.get_all()
+            for storage_class in storage_classes:
+                print(storage_class.storage_class_name)
+            ```
+
         Returns
         -------
         list[StorageClass]
             All storage class records, each with its co-storage compatibility
             matrix.
-
-        Examples
-        --------
-        ```python
-        storage_classes = client.storage_classes.get_all()
-        for storage_class in storage_classes:
-            print(storage_class.storage_class_name)
-        ```
         """
         response = self.session.get(self.base_path)
         return [StorageClass(**item) for item in response.json()]

@@ -102,6 +102,12 @@ class Unit(BaseResource):
     parameter values, and property results. Managed through
     [`UnitCollection`][albert.collections.units.UnitCollection] (``client.units``).
 
+    !!! example
+        ```python
+        from albert.resources.units import Unit, UnitCategory
+        unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
+        ```
+
     Attributes
     ----------
     id : str or None
@@ -117,13 +123,6 @@ class Unit(BaseResource):
         The physical quantity the unit measures (e.g. ``Mass``, ``Volume``).
     verified : bool or None
         Whether the unit has been verified in Albert. Read-only.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.units import Unit, UnitCategory
-    unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
-    ```
     """
 
     id: str | None = Field(None, alias="albertId")

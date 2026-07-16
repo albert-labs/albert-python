@@ -16,6 +16,16 @@ class NotesCollection(BaseCollection):
 
     This collection is accessed as ``client.notes``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        note = client.notes.create(
+            note=Note(parent_id="TASA1", note="Reviewed the results.")
+        )
+        print(note.id)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -38,17 +48,6 @@ class NotesCollection(BaseCollection):
         Delete a note by its ID.
     get_by_parent_id(parent_id, order_by=OrderBy.DESCENDING) -> list[Note]
         List all notes attached to a given parent entity.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    note = client.notes.create(
-        note=Note(parent_id="TASA1", note="Reviewed the results.")
-    )
-    print(note.id)
-    ```
     """
 
     _updatable_attributes = {"note", "parent_id"}
@@ -61,6 +60,15 @@ class NotesCollection(BaseCollection):
     def create(self, *, note: Note) -> Note:
         """Create a new note.
 
+        !!! example
+            ```python
+            from albert.resources.notes import Note
+            note = client.notes.create(
+                note=Note(parent_id="TASA1", note="Kicked off the experiment.")
+            )
+            print(note.id)
+            ```
+
         Parameters
         ----------
         note : Note
@@ -71,16 +79,6 @@ class NotesCollection(BaseCollection):
         -------
         Note
             The created note, populated with its assigned ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.notes import Note
-        note = client.notes.create(
-            note=Note(parent_id="TASA1", note="Kicked off the experiment.")
-        )
-        print(note.id)
-        ```
         """
         response = self.session.post(
             self.base_path, json=note.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -89,6 +87,13 @@ class NotesCollection(BaseCollection):
 
     def get_by_id(self, *, id: str) -> Note:
         """Get a note by its ID.
+
+        !!! example
+            ```python
+            note = client.notes.get_by_id(id="...")
+            note.note
+            # 'Reviewed the results.'
+            ```
 
         Parameters
         ----------
@@ -99,14 +104,6 @@ class NotesCollection(BaseCollection):
         -------
         Note
             The fully populated note.
-
-        Examples
-        --------
-        ```python
-        note = client.notes.get_by_id(id="...")
-        note.note
-        # 'Reviewed the results.'
-        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Note(**response.json())
@@ -116,6 +113,13 @@ class NotesCollection(BaseCollection):
 
         Fetch a note (e.g. via [`get_by_id`][albert.collections.notes.NotesCollection.get_by_id]), modify its
         fields, then pass it here. The note is matched by its ``id``.
+
+        !!! example
+            ```python
+            note = client.notes.get_by_id(id="...")
+            note.note = "Updated comment."
+            updated = client.notes.update(note=note)
+            ```
 
         Parameters
         ----------
@@ -130,14 +134,6 @@ class NotesCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``note``, ``parent_id``.
-
-        Examples
-        --------
-        ```python
-        note = client.notes.get_by_id(id="...")
-        note.note = "Updated comment."
-        updated = client.notes.update(note=note)
-        ```
         """
         patch = self._generate_patch_payload(
             existing=self.get_by_id(id=note.id), updated=note, generate_metadata_diff=False
@@ -151,6 +147,11 @@ class NotesCollection(BaseCollection):
     def delete(self, *, id: str) -> None:
         """Delete a note by its ID.
 
+        !!! example
+            ```python
+            client.notes.delete(id="...")
+            ```
+
         Parameters
         ----------
         id : str
@@ -159,12 +160,6 @@ class NotesCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.notes.delete(id="...")
-        ```
         """
         self.session.delete(f"{self.base_path}/{id}")
 
@@ -175,6 +170,13 @@ class NotesCollection(BaseCollection):
         order_by: OrderBy = OrderBy.DESCENDING,
     ) -> list[Note]:
         """List all notes attached to a parent entity.
+
+        !!! example
+            ```python
+            notes = client.notes.get_by_parent_id(parent_id="TASA1")
+            for note in notes:
+                print(note.note)
+            ```
 
         Parameters
         ----------
@@ -188,14 +190,6 @@ class NotesCollection(BaseCollection):
         -------
         list[Note]
             The notes attached to the parent entity.
-
-        Examples
-        --------
-        ```python
-        notes = client.notes.get_by_parent_id(parent_id="TASA1")
-        for note in notes:
-            print(note.note)
-        ```
         """
         params = {
             "parentId": parent_id,

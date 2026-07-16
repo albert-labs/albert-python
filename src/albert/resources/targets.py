@@ -153,6 +153,24 @@ class Target(BaseResource):
     parameter conditions. Managed through
     [`TargetCollection`][albert.collections.targets.TargetCollection] (``client.targets``).
 
+    !!! example
+        ```python
+        from albert.resources.targets import (
+            Target,
+            TargetType,
+            Criterion,
+            ComparisonOperator,
+        )
+        target = Target(
+            name="Viscosity spec",
+            type=TargetType.PERFORMANCE,
+            data_template_id="DAT1",
+            data_column_id="DAC1",
+            target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
+            is_required=True,
+        )
+        ```
+
     Attributes
     ----------
     id : str or None
@@ -179,25 +197,6 @@ class Target(BaseResource):
         Whether meeting this target is required.
     validation : list[dict] or None
         Validation rules applied to the target value.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.targets import (
-        Target,
-        TargetType,
-        Criterion,
-        ComparisonOperator,
-    )
-    target = Target(
-        name="Viscosity spec",
-        type=TargetType.PERFORMANCE,
-        data_template_id="DAT1",
-        data_column_id="DAC1",
-        target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
-        is_required=True,
-    )
-    ```
     """
 
     id: str | None = Field(default=None)

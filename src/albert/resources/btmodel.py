@@ -48,6 +48,17 @@ class BTModelSession(BaseResource, protected_namespaces=()):
     [`BTModelSessionCollection`][albert.collections.btmodel.BTModelSessionCollection] and
     [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
+    !!! example
+        ```python
+        from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
+
+        session = BTModelSession(
+            name="Tensile strength study",
+            category=BTModelSessionCategory.USER_MODEL,
+            dataset_id="DST1",
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -74,18 +85,6 @@ class BTModelSession(BaseResource, protected_namespaces=()):
         Details specific to an Albert-built session, when applicable.
     flag : bool
         Boolean marker on the session. Defaults to False.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
-
-    session = BTModelSession(
-        name="Tensile strength study",
-        category=BTModelSessionCategory.USER_MODEL,
-        dataset_id="DST1",
-    )
-    ```
     """
 
     name: str
@@ -148,6 +147,13 @@ class BTModel(BaseResource, protected_namespaces=()):
     the session ID, or be a detached, standalone model. Models are managed through
     [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
+    !!! example
+        ```python
+        from albert.resources.btmodel import BTModel
+
+        model = BTModel(name="Random forest v1")
+        ```
+
     Attributes
     ----------
     name : str
@@ -178,14 +184,6 @@ class BTModel(BaseResource, protected_namespaces=()):
         Storage key for the trained model artifact, if applicable.
     flag : bool
         Boolean marker on the model. Defaults to False.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.btmodel import BTModel
-
-    model = BTModel(name="Random forest v1")
-    ```
     """
 
     name: str

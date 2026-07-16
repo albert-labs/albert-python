@@ -155,6 +155,13 @@ class ChatSession(BaseResource):
     [`ChatSessionCollection`][albert.collections.chat_sessions.ChatSessionCollection]
     (``client.chat_sessions``).
 
+    !!! example
+        ```python
+        from albert.resources.chats import ChatSession
+
+        session = ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -177,14 +184,6 @@ class ChatSession(BaseResource):
     albert.collections.chat_sessions.ChatSessionCollection : Create and manage sessions.
     ChatMessage : The turns that make up a session.
     ChatFolder : Folders that organize sessions.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.chats import ChatSession
-
-    session = ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
-    ```
     """
 
     id: str | None = Field(default=None)
@@ -235,6 +234,19 @@ class ChatMessage(BaseResource):
     Messages are managed through
     [`ChatMessageCollection`][albert.collections.chat_messages.ChatMessageCollection]
     (``client.chat_messages``).
+
+    !!! example
+        ```python
+        from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
+
+        message = ChatMessage(
+            parent_id="<session id>",
+            component_type=ChatComponentType.TEXT,
+            user_type=ChatUserType.USER,
+            role=ChatRole.USER,
+            content="What raw materials contain titanium dioxide?",
+        )
+        ```
 
     Attributes
     ----------
@@ -297,20 +309,6 @@ class ChatMessage(BaseResource):
     albert.collections.chat_messages.ChatMessageCollection : Add and manage messages.
     ChatSession : The conversation a message belongs to.
     ChatComponentType : The set of component types.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.chats import ChatMessage, ChatComponentType, ChatUserType, ChatRole
-
-    message = ChatMessage(
-        parent_id="<session id>",
-        component_type=ChatComponentType.TEXT,
-        user_type=ChatUserType.USER,
-        role=ChatRole.USER,
-        content="What raw materials contain titanium dioxide?",
-    )
-    ```
     """
 
     id: str | None = Field(default=None)
@@ -345,6 +343,13 @@ class ChatFolder(BaseResource):
     [`ChatFolderCollection`][albert.collections.chat_folders.ChatFolderCollection]
     (``client.chat_folders``).
 
+    !!! example
+        ```python
+        from albert.resources.chats import ChatFolder
+
+        folder = ChatFolder(name="Formulation questions")
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -362,14 +367,6 @@ class ChatFolder(BaseResource):
     --------
     albert.collections.chat_folders.ChatFolderCollection : Create and manage folders.
     ChatSession : The conversations a folder organizes.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.chats import ChatFolder
-
-    folder = ChatFolder(name="Formulation questions")
-    ```
     """
 
     id: str | None = Field(default=None)

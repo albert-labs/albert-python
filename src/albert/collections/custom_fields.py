@@ -44,6 +44,37 @@ class CustomFieldCollection(BaseCollection):
 
     This collection is accessed as ``client.custom_fields``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.custom_fields import (
+            CustomField,
+            FieldCategory,
+            FieldType,
+            ServiceType,
+        )
+        client = Albert()
+        # A business-defined single-select list field on Projects
+        stage_gate_field = CustomField(
+            name="stage_gate_status",
+            display_name="Stage Gate",
+            field_type=FieldType.LIST,
+            service=ServiceType.PROJECTS,
+            min=1,
+            max=1,
+            category=FieldCategory.BUSINESS_DEFINED,
+        )
+        # A free-text field on Projects
+        justification_field = CustomField(
+            name="justification",
+            display_name="Project Justification",
+            field_type=FieldType.STRING,
+            service=ServiceType.PROJECTS,
+        )
+        client.custom_fields.create(custom_field=stage_gate_field)
+        client.custom_fields.create(custom_field=justification_field)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -70,38 +101,6 @@ class CustomFieldCollection(BaseCollection):
         Update an existing custom field.
     delete(id) -> None
         Delete a custom field by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.custom_fields import (
-        CustomField,
-        FieldCategory,
-        FieldType,
-        ServiceType,
-    )
-    client = Albert()
-    # A business-defined single-select list field on Projects
-    stage_gate_field = CustomField(
-        name="stage_gate_status",
-        display_name="Stage Gate",
-        field_type=FieldType.LIST,
-        service=ServiceType.PROJECTS,
-        min=1,
-        max=1,
-        category=FieldCategory.BUSINESS_DEFINED,
-    )
-    # A free-text field on Projects
-    justification_field = CustomField(
-        name="justification",
-        display_name="Project Justification",
-        field_type=FieldType.STRING,
-        service=ServiceType.PROJECTS,
-    )
-    client.custom_fields.create(custom_field=stage_gate_field)
-    client.custom_fields.create(custom_field=justification_field)
-    ```
     """
 
     _updatable_attributes = {
@@ -138,6 +137,13 @@ class CustomFieldCollection(BaseCollection):
     def get_by_id(self, *, id: CustomFieldId) -> CustomField:
         """Get a single custom field by its ID.
 
+        !!! example
+            ```python
+            cf = client.custom_fields.get_by_id(id="CTF1")
+            cf.name
+            # 'stage_gate_status'
+            ```
+
         Parameters
         ----------
         id : CustomFieldId
@@ -147,14 +153,6 @@ class CustomFieldCollection(BaseCollection):
         -------
         CustomField
             The fully populated custom field.
-
-        Examples
-        --------
-        ```python
-        cf = client.custom_fields.get_by_id(id="CTF1")
-        cf.name
-        # 'stage_gate_status'
-        ```
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return CustomField(**response.json())
@@ -164,6 +162,17 @@ class CustomFieldCollection(BaseCollection):
 
         Matching is case-insensitive. Pass ``service`` to disambiguate when the
         same field name is used across different services.
+
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            cf = client.custom_fields.get_by_name(
+                name="stage_gate_status",
+                service=ServiceType.PROJECTS,
+            )
+            cf.id if cf else "not found"
+            # 'CTF1'
+            ```
 
         Parameters
         ----------
@@ -177,18 +186,6 @@ class CustomFieldCollection(BaseCollection):
         -------
         CustomField or None
             The matching custom field, or None if not found.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.custom_fields import ServiceType
-        cf = client.custom_fields.get_by_name(
-            name="stage_gate_status",
-            service=ServiceType.PROJECTS,
-        )
-        cf.id if cf else "not found"
-        # 'CTF1'
-        ```
         """
         for custom_field in self.get_all(name=name, service=service):
             if custom_field.name.lower() == name.lower():
@@ -212,6 +209,16 @@ class CustomFieldCollection(BaseCollection):
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand.
+
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            for cf in client.custom_fields.get_all(
+                service=ServiceType.PROJECTS,
+                max_items=50,
+            ):
+                print(cf.id, cf.name)
+            ```
 
         Parameters
         ----------
@@ -239,17 +246,6 @@ class CustomFieldCollection(BaseCollection):
         -------
         Iterator[CustomField]
             A lazily paginated iterator of matching custom fields.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.custom_fields import ServiceType
-        for cf in client.custom_fields.get_all(
-            service=ServiceType.PROJECTS,
-            max_items=50,
-        ):
-            print(cf.id, cf.name)
-        ```
         """
         params = {
             "name": name,
@@ -278,6 +274,16 @@ class CustomFieldCollection(BaseCollection):
         Only ``string`` and ``list`` fields can be made searchable. Use this to
         discover which metadata paths on an entity can be queried in search.
 
+        !!! example
+            ```python
+            from albert.resources.custom_fields import ServiceType
+            fields = client.custom_fields.get_searchable_fields(
+                entity=ServiceType.PROJECTS
+            )
+            list(fields)
+            # ['Metadata.stage_gate_status', ...]
+            ```
+
         Parameters
         ----------
         entity : ServiceType
@@ -287,17 +293,6 @@ class CustomFieldCollection(BaseCollection):
         -------
         dict[str, SearchableCustomField]
             Mapping of metadata paths to their searchable field descriptors.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.custom_fields import ServiceType
-        fields = client.custom_fields.get_searchable_fields(
-            entity=ServiceType.PROJECTS
-        )
-        list(fields)
-        # ['Metadata.stage_gate_status', ...]
-        ```
         """
 
         response = self.session.get(
@@ -309,6 +304,26 @@ class CustomFieldCollection(BaseCollection):
 
     def create(self, *, custom_field: CustomField) -> CustomField:
         """Create a new custom field.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.custom_fields import (
+                CustomField,
+                FieldType,
+                ServiceType,
+            )
+            client = Albert()
+            field = CustomField(
+                name="justification",
+                display_name="Project Justification",
+                field_type=FieldType.STRING,
+                service=ServiceType.PROJECTS,
+            )
+            created = client.custom_fields.create(custom_field=field)
+            created.id
+            # 'CTF1'
+            ```
 
         Parameters
         ----------
@@ -322,27 +337,6 @@ class CustomFieldCollection(BaseCollection):
         CustomField
             The newly created custom field, populated with its assigned Custom
             Field ID.
-
-        Examples
-        --------
-        ```python
-        from albert import Albert
-        from albert.resources.custom_fields import (
-            CustomField,
-            FieldType,
-            ServiceType,
-        )
-        client = Albert()
-        field = CustomField(
-            name="justification",
-            display_name="Project Justification",
-            field_type=FieldType.STRING,
-            service=ServiceType.PROJECTS,
-        )
-        created = client.custom_fields.create(custom_field=field)
-        created.id
-        # 'CTF1'
-        ```
         """
         response = self.session.post(
             self.base_path,
@@ -356,6 +350,15 @@ class CustomFieldCollection(BaseCollection):
         Fetch the field (e.g. with [`get_by_id`][albert.collections.custom_fields.CustomFieldCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
+
+        !!! example
+            ```python
+            cf = client.custom_fields.get_by_id(id="CTF1")
+            cf.display_name = "Updated display name"
+            updated = client.custom_fields.update(custom_field=cf)
+            updated.display_name
+            # 'Updated display name'
+            ```
 
         Parameters
         ----------
@@ -375,16 +378,6 @@ class CustomFieldCollection(BaseCollection):
         ``hidden``, ``lookup_column``, ``lookup_row``, ``max``, ``min``,
         ``multiselect``, ``pattern``, ``required``, ``searchable``,
         ``ui_components``.
-
-        Examples
-        --------
-        ```python
-        cf = client.custom_fields.get_by_id(id="CTF1")
-        cf.display_name = "Updated display name"
-        updated = client.custom_fields.update(custom_field=cf)
-        updated.display_name
-        # 'Updated display name'
-        ```
         """
         # fetch current object state
         current_object = self.get_by_id(id=custom_field.id)
@@ -412,6 +405,11 @@ class CustomFieldCollection(BaseCollection):
     def delete(self, *, id: CustomFieldId) -> None:
         """Delete a custom field by its ID.
 
+        !!! example
+            ```python
+            client.custom_fields.delete(id="CTF1")
+            ```
+
         Parameters
         ----------
         id : CustomFieldId
@@ -420,11 +418,5 @@ class CustomFieldCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.custom_fields.delete(id="CTF1")
-        ```
         """
         self.session.delete(f"{self.base_path}/{id}")

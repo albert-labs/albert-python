@@ -30,6 +30,17 @@ class ReportCollection(BaseCollection):
 
     This collection is accessed as ``client.reports``.
 
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        report = client.reports.get_datascience_report(
+            report_type_id="RET51",
+            input_data={"projectId": ["PRO123"], "uniqueId": ["DAT123_DAC123"]},
+        )
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -54,18 +65,6 @@ class ReportCollection(BaseCollection):
         Persist a new analytical report configuration.
     delete(id) -> None
         Delete a saved report by its ID.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-
-    client = Albert()
-    report = client.reports.get_datascience_report(
-        report_type_id="RET51",
-        input_data={"projectId": ["PRO123"], "uniqueId": ["DAT123_DAC123"]},
-    )
-    ```
     """
 
     _api_version = "v3"
@@ -86,6 +85,15 @@ class ReportCollection(BaseCollection):
     ) -> ReportInfo:
         """Run a report of a given category and return its results.
 
+        !!! example
+            ```python
+            report = client.reports.get_report(
+                category="datascience",
+                report_type_id="ALB#RET51",
+                input_data={"project": ["PRO123"]},
+            )
+            ```
+
         Parameters
         ----------
         category : str
@@ -101,16 +109,6 @@ class ReportCollection(BaseCollection):
         -------
         ReportInfo
             The report type metadata and computed result items.
-
-        Examples
-        --------
-        ```python
-        report = client.reports.get_report(
-            category="datascience",
-            report_type_id="ALB#RET51",
-            input_data={"project": ["PRO123"]},
-        )
-        ```
         """
         path = f"{self.base_path}/{category}/{report_type_id}"
 
@@ -133,6 +131,14 @@ class ReportCollection(BaseCollection):
         Convenience wrapper around [`get_report`][albert.collections.reports.ReportCollection.get_report] with
         ``category="analytics"``.
 
+        !!! example
+            ```python
+            report = client.reports.get_analytics_report(
+                report_type_id="RET22",
+                input_data={"inventoryId": "INVA123"},
+            )
+            ```
+
         Parameters
         ----------
         report_type_id : str
@@ -146,15 +152,6 @@ class ReportCollection(BaseCollection):
         -------
         ReportInfo
             The report type metadata and computed result items.
-
-        Examples
-        --------
-        ```python
-        report = client.reports.get_analytics_report(
-            report_type_id="RET22",
-            input_data={"inventoryId": "INVA123"},
-        )
-        ```
         """
         return self.get_report(
             category="analytics",
@@ -173,6 +170,17 @@ class ReportCollection(BaseCollection):
         Convenience wrapper around [`get_report`][albert.collections.reports.ReportCollection.get_report] with
         ``category="datascience"``.
 
+        !!! example
+            ```python
+            report = client.reports.get_datascience_report(
+                report_type_id="RET51",
+                input_data={
+                    "projectId": ["PRO123"],
+                    "uniqueId": ["DAT123_DAC123"],
+                },
+            )
+            ```
+
         Parameters
         ----------
         report_type_id : str
@@ -186,18 +194,6 @@ class ReportCollection(BaseCollection):
         -------
         ReportInfo
             The report type metadata and computed result items.
-
-        Examples
-        --------
-        ```python
-        report = client.reports.get_datascience_report(
-            report_type_id="RET51",
-            input_data={
-                "projectId": ["PRO123"],
-                "uniqueId": ["DAT123_DAC123"],
-            },
-        )
-        ```
         """
         return self.get_report(
             category="datascience",
@@ -209,6 +205,12 @@ class ReportCollection(BaseCollection):
     def get_full_report(self, *, report_id: ReportId) -> FullAnalyticalReport:
         """Get a saved analytical report by its ID.
 
+        !!! example
+            ```python
+            report = client.reports.get_full_report(report_id="REP14")
+            report_dataframe = report.get_raw_dataframe()
+            ```
+
         Parameters
         ----------
         report_id : ReportId
@@ -218,13 +220,6 @@ class ReportCollection(BaseCollection):
         -------
         FullAnalyticalReport
             The saved report with all of its configuration and data.
-
-        Examples
-        --------
-        ```python
-        report = client.reports.get_full_report(report_id="REP14")
-        report_dataframe = report.get_raw_dataframe()
-        ```
         """
         path = f"{self.base_path}/{report_id}"
         params = {"viewReport": "1"}
@@ -238,6 +233,18 @@ class ReportCollection(BaseCollection):
         Read-only fields on the supplied report (``report_data_id``,
         ``created_by``, and ``report``) are ignored on creation.
 
+        !!! example
+            ```python
+            from albert.resources.reports import FullAnalyticalReport
+
+            new_report = FullAnalyticalReport(
+                report_type_id="ALB#RET22",
+                name="My New Report",
+                description="A test report",
+            )
+            created_report = client.reports.create_report(report=new_report)
+            ```
+
         Parameters
         ----------
         report : FullAnalyticalReport
@@ -248,19 +255,6 @@ class ReportCollection(BaseCollection):
         FullAnalyticalReport
             The created report as returned by the server, including its assigned
             ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.reports import FullAnalyticalReport
-
-        new_report = FullAnalyticalReport(
-            report_type_id="ALB#RET22",
-            name="My New Report",
-            description="A test report",
-        )
-        created_report = client.reports.create_report(report=new_report)
-        ```
         """
         path = self.base_path
 
@@ -276,6 +270,11 @@ class ReportCollection(BaseCollection):
     def delete(self, *, id: ReportId) -> None:
         """Delete a saved report by its ID.
 
+        !!! example
+            ```python
+            client.reports.delete(id="REP14")
+            ```
+
         Parameters
         ----------
         id : ReportId
@@ -284,12 +283,6 @@ class ReportCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.reports.delete(id="REP14")
-        ```
         """
         path = f"{self.base_path}/{id}"
         self.session.delete(path)

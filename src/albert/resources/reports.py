@@ -161,6 +161,17 @@ class FullAnalyticalReport(BaseResource):
     [`get_full_report`][albert.collections.reports.ReportCollection.get_full_report] or create
     one with [`create_report`][albert.collections.reports.ReportCollection.create_report].
 
+    !!! example
+        ```python
+        from albert.resources.reports import FullAnalyticalReport
+
+        report = FullAnalyticalReport(
+            report_type_id="ALB#RET22",
+            name="My New Report",
+            description="A test report",
+        )
+        ```
+
     Attributes
     ----------
     id : ReportId | None
@@ -202,18 +213,6 @@ class FullAnalyticalReport(BaseResource):
     report : list[dict[str, Any]] | None
         The raw report result rows. Populated when the report is retrieved;
         read-only. Use [`get_raw_dataframe`][albert.resources.reports.FullAnalyticalReport.get_raw_dataframe] to read it as a DataFrame.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.reports import FullAnalyticalReport
-
-    report = FullAnalyticalReport(
-        report_type_id="ALB#RET22",
-        name="My New Report",
-        description="A test report",
-    )
-    ```
     """
 
     # Read-only fields

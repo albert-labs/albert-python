@@ -59,6 +59,16 @@ class User(BaseResource):
     ([`Team`][albert.resources.teams.Team]), and are referenced across the
     platform, for example as the assignee of a Task or in an entity's ACL.
 
+    !!! example
+        ```python
+        from albert.resources.users import User, UserClass
+        user = User(
+            name="Ada Lovelace",
+            email="ada@example.com",
+            user_class=UserClass.STANDARD,
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -79,17 +89,6 @@ class User(BaseResource):
         is enabled for the tenant).
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Custom metadata attached to the user.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.users import User, UserClass
-    user = User(
-        name="Ada Lovelace",
-        email="ada@example.com",
-        user_class=UserClass.STANDARD,
-    )
-    ```
     """
 
     name: str

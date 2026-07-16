@@ -31,6 +31,21 @@ class ActivityCollection(BaseCollection):
 
     This collection is accessed as ``client.activities``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.activities import ActivityType
+
+        client = Albert()
+        # Recent activity for a single entity, newest first
+        for activity in client.activities.get_all(
+            type=ActivityType.ENTITY_ID,
+            id="INVA1",
+            max_items=25,
+        ):
+            print(activity.name, activity.action)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -47,22 +62,6 @@ class ActivityCollection(BaseCollection):
         Page through the activity feed scoped by entity, user, or date.
     search(...) -> Iterator[ActivitySearchItem]
         Search activity records using full-text and filter criteria.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.activities import ActivityType
-
-    client = Albert()
-    # Recent activity for a single entity, newest first
-    for activity in client.activities.get_all(
-        type=ActivityType.ENTITY_ID,
-        id="INVA1",
-        max_items=25,
-    ):
-        print(activity.name, activity.action)
-    ```
     """
 
     _api_version = "v3"
@@ -99,6 +98,18 @@ class ActivityCollection(BaseCollection):
         fetches additional pages on demand. To run a broader full-text or
         multi-filter query instead, use [`search`][albert.collections.activities.ActivityCollection.search].
 
+        !!! example
+            ```python
+            from albert.resources.activities import ActivityType
+
+            for activity in client.activities.get_all(
+                type=ActivityType.ENTITY_ID,
+                id="INVA1",
+                max_items=10,
+            ):
+                print(activity.name, activity.action)
+            ```
+
         Parameters
         ----------
         type : ActivityType
@@ -130,19 +141,6 @@ class ActivityCollection(BaseCollection):
         -------
         Iterator[Activity]
             A lazily paginated iterator of activity records.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.activities import ActivityType
-
-        for activity in client.activities.get_all(
-            type=ActivityType.ENTITY_ID,
-            id="INVA1",
-            max_items=10,
-        ):
-            print(activity.name, activity.action)
-        ```
         """
         params = {
             "type": type,
@@ -191,6 +189,13 @@ class ActivityCollection(BaseCollection):
         type in a date window). To page the raw feed for a single entity or user
         instead, use [`get_all`][albert.collections.activities.ActivityCollection.get_all]. Results are a lazily paginated iterator.
 
+        !!! example
+            ```python
+            hits = client.activities.search(text="titanium dioxide", max_items=10)
+            for hit in hits:
+                print(hit.logged_at, hit.name)
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -229,14 +234,6 @@ class ActivityCollection(BaseCollection):
         -------
         Iterator[ActivitySearchItem]
             A lazily paginated iterator of matching search results.
-
-        Examples
-        --------
-        ```python
-        hits = client.activities.search(text="titanium dioxide", max_items=10)
-        for hit in hits:
-            print(hit.logged_at, hit.name)
-        ```
         """
         params = {
             "text": text,

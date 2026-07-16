@@ -36,6 +36,18 @@ class ProductDesignCollection(BaseCollection):
 
     This collection is accessed as ``client.product_design``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        unpacked = client.product_design.get_unpacked_products(
+            inventory_ids=["INVA1", "INVA2"],
+        )
+        for product in unpacked:
+            for ingredient in product.inventories or []:
+                print(ingredient.name, ingredient.value)
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -50,19 +62,6 @@ class ProductDesignCollection(BaseCollection):
     -------
     get_unpacked_products(inventory_ids, unpack_id="PREDICTION") -> list[UnpackedProductDesign]
         Unpack one or more formulas into their full CAS-level substance composition.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    unpacked = client.product_design.get_unpacked_products(
-        inventory_ids=["INVA1", "INVA2"],
-    )
-    for product in unpacked:
-        for ingredient in product.inventories or []:
-            print(ingredient.name, ingredient.value)
-    ```
     """
 
     _updatable_attributes = {}
@@ -94,6 +93,17 @@ class ProductDesignCollection(BaseCollection):
         per input formula. Requests are automatically split into batches of 50
         inventory IDs, so large lists can be passed in a single call.
 
+        !!! example
+            ```python
+            unpacked = client.product_design.get_unpacked_products(
+                inventory_ids=["INVA1"],
+                unpack_id="DESIGN",
+            )
+            substances = unpacked[0].cas_level_substances or []
+            for substance in substances:
+                print(substance.cas_id, substance.amount)
+            ```
+
         Parameters
         ----------
         inventory_ids : list[InventoryId]
@@ -105,18 +115,6 @@ class ProductDesignCollection(BaseCollection):
         -------
         list[UnpackedProductDesign]
             The unpacked composition, one entry per input formula.
-
-        Examples
-        --------
-        ```python
-        unpacked = client.product_design.get_unpacked_products(
-            inventory_ids=["INVA1"],
-            unpack_id="DESIGN",
-        )
-        substances = unpacked[0].cas_level_substances or []
-        for substance in substances:
-            print(substance.cas_id, substance.amount)
-        ```
         """
         url = f"{self.base_path}/{unpack_id}/unpack"
         batches = [inventory_ids[i : i + 50] for i in range(0, len(inventory_ids), 50)]

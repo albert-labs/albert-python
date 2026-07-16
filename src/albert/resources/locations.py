@@ -12,6 +12,18 @@ class Location(BaseResource):
     ([`StorageLocation`][albert.resources.storage_locations.StorageLocation]). Managed
     through [`LocationCollection`][albert.collections.locations.LocationCollection].
 
+    !!! example
+        ```python
+        from albert.resources.locations import Location
+        location = Location(
+            name="Boston Lab",
+            latitude=42.3601,
+            longitude=-71.0589,
+            address="1 Main St",
+            country="US",
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -27,19 +39,6 @@ class Location(BaseResource):
         The street address of the location.
     country : str | None
         The two-letter country code of the location (for example, ``"US"``).
-
-    Examples
-    --------
-    ```python
-    from albert.resources.locations import Location
-    location = Location(
-        name="Boston Lab",
-        latitude=42.3601,
-        longitude=-71.0589,
-        address="1 Main St",
-        country="US",
-    )
-    ```
     """
 
     name: str

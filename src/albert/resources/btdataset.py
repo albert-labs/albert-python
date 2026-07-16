@@ -50,6 +50,13 @@ class BTDataset(BaseResource):
     rows are stored in S3), while a ``SmartDataset`` is a Smart Projects entity. A
     SmartDataset is not itself an input to Albert Breakthrough.
 
+    !!! example
+        ```python
+        from albert.resources.btdataset import BTDataset
+
+        dataset = BTDataset(name="Coatings training set")
+        ```
+
     Attributes
     ----------
     name : str
@@ -67,14 +74,6 @@ class BTDataset(BaseResource):
         Link to a related report, if any.
     references : BTDatasetReferences or None
         The Albert entities the dataset was assembled from.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.btdataset import BTDataset
-
-    dataset = BTDataset(name="Coatings training set")
-    ```
     """
 
     name: str

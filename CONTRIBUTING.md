@@ -99,6 +99,16 @@ All **public methods and classes** in this repository should follow the **Numpy-
 class CasCollection(BaseCollection):
     """Manage CAS entries in the Albert platform.
 
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -115,6 +125,13 @@ class CasCollection(BaseCollection):
     def get_by_id(self, *, id: str) -> Cas:
         """Get a single CAS by its ID.
 
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.number
+            # '7732-18-5'
+            ```
+
         Parameters
         ----------
         id : str
@@ -124,17 +141,6 @@ class CasCollection(BaseCollection):
         -------
         Cas
             The fully populated CAS. See [`Cas`][albert.resources.cas.Cas].
-
-        Examples
-        --------
-        ```python
-        from albert import Albert
-
-        client = Albert()
-        cas = client.cas.get_by_id(id="CAS1")
-        cas.number
-        # '7732-18-5'
-        ```
         """
         ...
 ```
@@ -154,9 +160,44 @@ Ensure *all public members* have properly formatted Numpy-style docstrings.
   `` [`get_all`][albert.collections.cas.CasCollection.get_all] ``.
 - The `autorefs` plugin (bundled with `mkdocstrings`) is enabled in `mkdocs.yml`. A target only resolves if that class/method is rendered on a docs page — if you reference something in an undocumented module, add a page for it (see [Adding New Classes](#adding-new-classes)) or don't link it.
 
-#### Examples: use an `Examples` section with a bare code fence
+#### Examples: use `!!! example` admonitions, placed before `Parameters`
 
-Put runnable snippets under a Numpy `Examples` section using a plain ` ```python ` fence (as in the example above). **Do not** use `!!! example` admonitions: without a section header the admonition is absorbed into the preceding `Returns`/`Notes` section (it renders as a stray table row), and with one you get a duplicate "Examples / Example" heading.
+Use `!!! example` admonitions -- they render as a styled purple box. Placement is critical:
+
+**Always place `!!! example` in the description block, before the first numpy section.** Every numpy section (`Parameters`, `Attributes`, `Methods`, `Returns`, `Notes`, `Raises`) renders its content as a table. Any markdown placed after the last entry of a section -- including admonitions -- is absorbed into that section and rendered as a stray table row.
+
+**Method docstrings** -- place before `Parameters`:
+
+```python
+def get_by_id(self, *, id: str) -> Cas:
+    """Get a single CAS by its ID.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
+    Parameters
+    ----------
+    id : str
+        The CAS ID.
+
+    Returns
+    -------
+    Cas
+        The fully populated CAS. See [`Cas`][albert.resources.cas.Cas].
+    """
+```
+
+**Class docstrings** (collections and resources alike) -- place before `Parameters` or `Attributes`, whichever comes first. Do not place after `Methods` or `Attributes` -- those render as tables too.
+
+**Do not** wrap examples in `Examples\n--------` -- it adds a redundant "Examples:" label above the box.
+**Do not** use a bare ` ```python ` fence inside an `Examples` numpy section -- it loses the box styling entirely.
 
 - Instantiate the client zero-arg: `client = Albert()`. Show it once in the class-level example and reuse `client` afterward.
 - Async collections use `async with AsyncAlbert() as client:` and `await`.

@@ -29,6 +29,18 @@ class ProjectCollection(BaseCollection):
 
     This collection is accessed as ``client.projects``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.projects import Project
+        client = Albert()
+        project = client.projects.create(
+            project=Project(description="Weatherproof Coatings 2026")
+        )
+        print(project.id)
+        # 'PRO123'
+        ```
+
     Parameters
     ----------
     session : AlbertSession
@@ -55,19 +67,6 @@ class ProjectCollection(BaseCollection):
         Same filters as search, but returns fully populated projects (slower).
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.projects import Project
-    client = Albert()
-    project = client.projects.create(
-        project=Project(description="Weatherproof Coatings 2026")
-    )
-    print(project.id)
-    # 'PRO123'
-    ```
     """
 
     _api_version = "v3"
@@ -92,6 +91,16 @@ class ProjectCollection(BaseCollection):
         ``locations``, ``project_class`` (defaults to private), ``metadata``, and
         other fields on the [`Project`][albert.resources.projects.Project] first.
 
+        !!! example
+            ```python
+            from albert.resources.projects import Project
+            project = client.projects.create(
+                project=Project(description="Weatherproof Coatings 2026")
+            )
+            project.id
+            # 'PRO123'
+            ```
+
         Parameters
         ----------
         project : Project
@@ -101,17 +110,6 @@ class ProjectCollection(BaseCollection):
         -------
         Project
             The newly created project, populated with its assigned Project ID.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.projects import Project
-        project = client.projects.create(
-            project=Project(description="Weatherproof Coatings 2026")
-        )
-        project.id
-        # 'PRO123'
-        ```
         """
         response = self.session.post(
             self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -125,6 +123,13 @@ class ProjectCollection(BaseCollection):
         To find projects without knowing their IDs, use [`search`][albert.collections.projects.ProjectCollection.search] or
         [`get_all`][albert.collections.projects.ProjectCollection.get_all].
 
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description
+            # 'Weatherproof Coatings 2026'
+            ```
+
         Parameters
         ----------
         id : ProjectId
@@ -134,14 +139,6 @@ class ProjectCollection(BaseCollection):
         -------
         Project
             The fully populated project.
-
-        Examples
-        --------
-        ```python
-        project = client.projects.get_by_id(id="PRO123")
-        project.description
-        # 'Weatherproof Coatings 2026'
-        ```
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -154,6 +151,13 @@ class ProjectCollection(BaseCollection):
         Retrieve the project (e.g. with
         [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]), modify the updatable fields, then pass it
         here. Only the fields listed in Notes are applied.
+
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description = "Weatherproof Coatings 2026 (rev B)"
+            updated = client.projects.update(project=project)
+            ```
 
         Parameters
         ----------
@@ -170,14 +174,6 @@ class ProjectCollection(BaseCollection):
         -----
         The following fields can be updated: ``description``, ``grid``,
         ``metadata``, ``state``.
-
-        Examples
-        --------
-        ```python
-        project = client.projects.get_by_id(id="PRO123")
-        project.description = "Weatherproof Coatings 2026 (rev B)"
-        updated = client.projects.update(project=project)
-        ```
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
@@ -191,6 +187,11 @@ class ProjectCollection(BaseCollection):
     def delete(self, *, id: ProjectId) -> None:
         """Delete a project by its ID.
 
+        !!! example
+            ```python
+            client.projects.delete(id="PRO123")
+            ```
+
         Parameters
         ----------
         id : ProjectId
@@ -199,12 +200,6 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         None
-
-        Examples
-        --------
-        ```python
-        client.projects.delete(id="PRO123")
-        ```
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
@@ -247,6 +242,12 @@ class ProjectCollection(BaseCollection):
 
         All filters are optional; with no arguments this iterates over all
         projects you can access.
+
+        !!! example
+            ```python
+            for hit in client.projects.search(text="coatings", max_items=25):
+                print(hit.id, hit.description)
+            ```
 
         Parameters
         ----------
@@ -302,13 +303,6 @@ class ProjectCollection(BaseCollection):
         -------
         Iterator[ProjectSearchItem]
             An iterator of matching partial (unhydrated) project results.
-
-        Examples
-        --------
-        ```python
-        for hit in client.projects.search(text="coatings", max_items=25):
-            print(hit.id, hit.description)
-        ```
         """
         query_params = {
             "order": order_by,
@@ -379,6 +373,12 @@ class ProjectCollection(BaseCollection):
         [`DocumentSearchItem`][albert.resources.projects.DocumentSearchItem] describing an
         attachment (name, MIME type, size, uploader) rather than the file itself.
 
+        !!! example
+            ```python
+            for doc in client.projects.document_search(linked_to="PRO123"):
+                print(doc.name, doc.mime_type)
+            ```
+
         Parameters
         ----------
         linked_to : SearchProjectId
@@ -397,13 +397,6 @@ class ProjectCollection(BaseCollection):
         -------
         Iterator[DocumentSearchItem]
             Matching document search results.
-
-        Examples
-        --------
-        ```python
-        for doc in client.projects.document_search(linked_to="PRO123"):
-            print(doc.name, doc.mime_type)
-        ```
         """
         query_params = {
             "linkedTo": linked_to,
@@ -456,6 +449,12 @@ class ProjectCollection(BaseCollection):
         match individually via [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]. This is convenient but slower;
         prefer [`search`][albert.collections.projects.ProjectCollection.search] when you only need IDs or a few summary fields.
 
+        !!! example
+            ```python
+            for project in client.projects.get_all(text="coatings", max_items=10):
+                print(project.id, project.description)
+            ```
+
         Parameters
         ----------
         text : str, optional
@@ -505,13 +504,6 @@ class ProjectCollection(BaseCollection):
         -------
         Iterator[Project]
             An iterator of fully populated Project entities.
-
-        Examples
-        --------
-        ```python
-        for project in client.projects.get_all(text="coatings", max_items=10):
-            print(project.id, project.description)
-        ```
         """
         for project in self.search(
             text=text,

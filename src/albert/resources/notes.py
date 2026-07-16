@@ -39,6 +39,12 @@ class Note(BaseResource):
     example ``f"Hello {tagged_user.to_note_mention()}!"``. Notes are managed
     through the [`NotesCollection`][albert.collections.notes.NotesCollection].
 
+    !!! example
+        ```python
+        from albert.resources.notes import Note
+        note = Note(parent_id="TASA1", note="Reviewed the results.")
+        ```
+
     Attributes
     ----------
     parent_id : str
@@ -51,13 +57,6 @@ class Note(BaseResource):
     attachments : list[NoteAttachmentEntityLink] | None
         Files attached to the note. Read-only; populated when the note is
         retrieved.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.notes import Note
-    note = Note(parent_id="TASA1", note="Reviewed the results.")
-    ```
     """
 
     parent_id: str = Field(..., alias="parentId")

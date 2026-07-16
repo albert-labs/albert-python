@@ -17,6 +17,17 @@ class BatchValuePatchDatum(BaseAlbertModel):
     a batch value. See
     [`update_used_batch_amounts`][albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts].
 
+    !!! example
+        ```python
+        from albert.resources.batch_data import BatchValuePatchDatum
+
+        datum = BatchValuePatchDatum(
+            operation="update",
+            new_value="LOT123",
+            old_value="LOT100",
+        )
+        ```
+
     Attributes
     ----------
     attribute : str
@@ -29,18 +40,6 @@ class BatchValuePatchDatum(BaseAlbertModel):
         The previous value being replaced, when performing an update.
     operation : str
         The kind of change to apply (e.g. ``"add"``, ``"update"``, ``"delete"``).
-
-    Examples
-    --------
-    ```python
-    from albert.resources.batch_data import BatchValuePatchDatum
-
-    datum = BatchValuePatchDatum(
-        operation="update",
-        new_value="LOT123",
-        old_value="LOT100",
-    )
-    ```
     """
 
     attribute: str = Field(default="lotId")
@@ -56,20 +55,19 @@ class BatchValueId(BaseAlbertModel):
     A value lives at the intersection of a row and a product column, so it is
     addressed by its row and (optionally) column identifiers.
 
+    !!! example
+        ```python
+        from albert.resources.batch_data import BatchValueId
+
+        location = BatchValueId(row_id="ROW1", col_id="COL1")
+        ```
+
     Attributes
     ----------
     row_id : str
         The identifier of the row the value belongs to. Required.
     col_id : str, optional
         The identifier of the product column the value belongs to.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.batch_data import BatchValueId
-
-    location = BatchValueId(row_id="ROW1", col_id="COL1")
-    ```
     """
 
     col_id: str | None = Field(default=None, alias="colId")
@@ -83,6 +81,20 @@ class BatchValuePatchPayload(BaseAlbertModel):
     [`update_used_batch_amounts`][albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts]
     to record which lots were used for recorded batch amounts.
 
+    !!! example
+        ```python
+        from albert.resources.batch_data import (
+            BatchValueId,
+            BatchValuePatchDatum,
+            BatchValuePatchPayload,
+        )
+
+        patch = BatchValuePatchPayload(
+            id=BatchValueId(row_id="ROW1", col_id="COL1"),
+            data=[BatchValuePatchDatum(operation="update", new_value="LOT123")],
+        )
+        ```
+
     Attributes
     ----------
     id : BatchValueId
@@ -91,21 +103,6 @@ class BatchValuePatchPayload(BaseAlbertModel):
         The individual changes to apply to that cell.
     lot_id : str, optional
         The lot identifier associated with the change, when applicable.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.batch_data import (
-        BatchValueId,
-        BatchValuePatchDatum,
-        BatchValuePatchPayload,
-    )
-
-    patch = BatchValuePatchPayload(
-        id=BatchValueId(row_id="ROW1", col_id="COL1"),
-        data=[BatchValuePatchDatum(operation="update", new_value="LOT123")],
-    )
-    ```
     """
 
     id: BatchValueId = Field(alias="Id")

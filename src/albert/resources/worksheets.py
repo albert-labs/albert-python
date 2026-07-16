@@ -19,6 +19,15 @@ class Worksheet(BaseSessionResource):
     contents of a Sheet is done through the [`Sheet`][albert.resources.sheets.Sheet]
     objects themselves, which remain connected to the live session.
 
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        for sheet in worksheet.sheets:
+            print(sheet.id, sheet.name)
+        ```
+
     Attributes
     ----------
     sheets : list[Sheet]
@@ -29,16 +38,6 @@ class Worksheet(BaseSessionResource):
         Whether Sheets are enabled for this Worksheet.
     project_id : str
         The ID of the paired Project (format ``PRO...``).
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    client = Albert()
-    worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
-    for sheet in worksheet.sheets:
-        print(sheet.id, sheet.name)
-    ```
     """
 
     sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")

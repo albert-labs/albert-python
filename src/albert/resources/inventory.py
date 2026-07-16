@@ -145,6 +145,14 @@ class CasAmount(BaseAlbertModel):
     object as ``cas`` (its ``id``, ``number``, and ``cas_smiles`` are then copied onto
     this amount), or pass just the CAS resource ``id`` string. Do not pass both.
 
+    !!! example
+        ```python
+        from albert.resources.inventory import CasAmount
+
+        # Reference an existing CAS resource by its Albert ID, 10-30% concentration
+        amount = CasAmount(min=10.0, max=30.0, id="CAS1")
+        ```
+
     Attributes
     ----------
     min : float
@@ -181,15 +189,6 @@ class CasAmount(BaseAlbertModel):
     --------
     albert.resources.cas.Cas : The CAS resource referenced by this amount.
     InventoryItem : Holds the list of ``CasAmount`` entries for an item.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.inventory import CasAmount
-
-    # Reference an existing CAS resource by its Albert ID, 10-30% concentration
-    amount = CasAmount(min=10.0, max=30.0, id="CAS1")
-    ```
     """
 
     min: float
@@ -238,6 +237,13 @@ class InventoryMinimum(BaseAlbertModel):
     then copied onto ``id``), or by passing the location ``id`` string directly. Provide
     one or the other, not both.
 
+    !!! example
+        ```python
+        from albert.resources.inventory import InventoryMinimum
+
+        minimum = InventoryMinimum(id="LOC1", minimum=500)
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -254,14 +260,6 @@ class InventoryMinimum(BaseAlbertModel):
     --------
     albert.resources.locations.Location : The Location referenced by this minimum.
     InventoryItem : Holds the list of ``InventoryMinimum`` entries for an item.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.inventory import InventoryMinimum
-
-    minimum = InventoryMinimum(id="LOC1", minimum=500)
-    ```
     """
 
     id: str | None = Field(default=None)
@@ -304,6 +302,17 @@ class InventoryItem(BaseTaggedResource):
 
     Items are managed through
     [`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).
+
+    !!! example
+        ```python
+        from albert.resources.inventory import InventoryItem, InventoryCategory
+
+        item = InventoryItem(
+            name="Titanium Dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            company="Acme Chemicals",
+        )
+        ```
 
     Attributes
     ----------
@@ -367,18 +376,6 @@ class InventoryItem(BaseTaggedResource):
     CasAmount : Compositional entries used in ``cas``.
     InventoryMinimum : Per-Location reorder thresholds used in ``minimum``.
     InventorySpec : Declared property specifications for an item.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.inventory import InventoryItem, InventoryCategory
-
-    item = InventoryItem(
-        name="Titanium Dioxide",
-        category=InventoryCategory.RAW_MATERIALS,
-        company="Acme Chemicals",
-    )
-    ```
     """
 
     name: str | None = None
@@ -485,6 +482,17 @@ class InventorySpec(BaseAlbertModel):
     [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs], and are
     grouped for an item by [`InventorySpecList`][albert.resources.inventory.InventorySpecList].
 
+    !!! example
+        ```python
+        from albert.resources.inventory import InventorySpec, InventorySpecValue
+
+        spec = InventorySpec(
+            name="Viscosity",
+            data_column_id="DAC1",
+            value=InventorySpecValue(min=100, max=200),
+        )
+        ```
+
     Attributes
     ----------
     id : str | None
@@ -517,18 +525,6 @@ class InventorySpec(BaseAlbertModel):
     --------
     InventorySpecValue : The value/range carried by a spec.
     InventorySpecList : Groups the specs attached to a single item.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.inventory import InventorySpec, InventorySpecValue
-
-    spec = InventorySpec(
-        name="Viscosity",
-        data_column_id="DAC1",
-        value=InventorySpecValue(min=100, max=200),
-    )
-    ```
     """
 
     id: str | None = Field(default=None, alias="albertId")
@@ -654,6 +650,16 @@ class MergeInventory(BaseAlbertModel):
     [`merge`][albert.collections.inventory.InventoryCollection.merge]; when ``modules``
     is omitted, all [`InventoryMergeModule`][albert.resources.inventory.InventoryMergeModule] values are included.
 
+    !!! example
+        ```python
+        from albert.resources.inventory import MergeInventory
+
+        merge = MergeInventory(
+            parent_id="INVA1",
+            child_inventories=[{"id": "INVB1"}, {"id": "INVC1"}],
+        )
+        ```
+
     Attributes
     ----------
     parent_id : InventoryId
@@ -670,17 +676,6 @@ class MergeInventory(BaseAlbertModel):
     --------
     InventoryMergeModule : The set of mergeable data categories.
     albert.collections.inventory.InventoryCollection.merge : Consumes this payload.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.inventory import MergeInventory
-
-    merge = MergeInventory(
-        parent_id="INVA1",
-        child_inventories=[{"id": "INVB1"}, {"id": "INVC1"}],
-    )
-    ```
     """
 
     parent_id: InventoryId = Field(alias="parentId")

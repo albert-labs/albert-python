@@ -159,6 +159,12 @@ class ReactantValues(BaseAlbertModel):
     [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values]
     to set a reactant's amounts. Any field left as ``None`` is not set.
 
+    !!! example
+        ```python
+        from albert.resources.synthesis import ReactantValues
+        values = ReactantValues(mass=10.0, eq=1.0)
+        ```
+
     Attributes
     ----------
     mass : float, optional
@@ -169,13 +175,6 @@ class ReactantValues(BaseAlbertModel):
         The number of equivalents of the reactant.
     concentration : float or int, optional
         The concentration of the reactant.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.synthesis import ReactantValues
-    values = ReactantValues(mass=10.0, eq=1.0)
-    ```
     """
 
     mass: float | None = None

@@ -19,6 +19,17 @@ class DataColumn(BaseResource):
     [`DataColumnCollection`][albert.collections.data_columns.DataColumnCollection], accessed as
     ``client.data_columns``.
 
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.data_columns import DataColumn
+        client = Albert()
+        column = DataColumn(name="Viscosity")
+        created = client.data_columns.create(data_column=column)
+        created.id
+        # 'DAC1'
+        ```
+
     Attributes
     ----------
     name : str
@@ -31,18 +42,6 @@ class DataColumn(BaseResource):
         server on creation; leave unset when building a column to create.
     status : Status or None
         The lifecycle status of the data column.
-
-    Examples
-    --------
-    ```python
-    from albert import Albert
-    from albert.resources.data_columns import DataColumn
-    client = Albert()
-    column = DataColumn(name="Viscosity")
-    created = client.data_columns.create(data_column=column)
-    created.id
-    # 'DAC1'
-    ```
     """
 
     name: str

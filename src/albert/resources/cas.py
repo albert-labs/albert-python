@@ -57,6 +57,13 @@ class Cas(BaseResource):
     are populated by Albert, so you typically only build a ``Cas`` from a registry
     ``number`` when creating a new entry.
 
+    !!! example
+        ```python
+        from albert.resources.cas import Cas
+        # Build a CAS entry to register a new substance
+        cas = Cas(number="7727-37-9")
+        ```
+
     Attributes
     ----------
     number : str
@@ -95,14 +102,6 @@ class Cas(BaseResource):
         CAS order value.
     metadata : dict[str, MetadataItem]
         Custom metadata keyed by field. Updatable.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.cas import Cas
-    # Build a CAS entry to register a new substance
-    cas = Cas(number="7727-37-9")
-    ```
     """
 
     number: str = Field(..., description="The CAS number.")
@@ -134,6 +133,12 @@ class Cas(BaseResource):
         only have the registry number and want a ``Cas`` object to pass to
         [`CasCollection`][albert.collections.cas.CasCollection].
 
+        !!! example
+            ```python
+            from albert.resources.cas import Cas
+            cas = Cas.from_string(number="7727-37-9")
+            ```
+
         Parameters
         ----------
         number : str
@@ -143,12 +148,5 @@ class Cas(BaseResource):
         -------
         Cas
             A ``Cas`` with only ``number`` set.
-
-        Examples
-        --------
-        ```python
-        from albert.resources.cas import Cas
-        cas = Cas.from_string(number="7727-37-9")
-        ```
         """
         return cls(number=number)

@@ -135,6 +135,13 @@ class DataColumnValue(BaseResource):
     details page rather than measured data; actual measurements are stored as Property
     Data. When constructing one, provide either ``data_column`` or ``data_column_id``.
 
+    !!! example
+        ```python
+        from albert.resources.data_templates import DataColumnValue
+
+        column = DataColumnValue(data_column_id="DAC1", value="42")
+        ```
+
     Attributes
     ----------
     data_column : DataColumn | None
@@ -161,14 +168,6 @@ class DataColumnValue(BaseResource):
         For curve columns, the linked X/Y curve result columns.
     original_name : str | None
         The original column name as stored in Albert. Read-only.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.data_templates import DataColumnValue
-
-    column = DataColumnValue(data_column_id="DAC1", value="42")
-    ```
     """
 
     data_column: DataColumn | None = Field(exclude=True, default=None)
@@ -230,6 +229,16 @@ class DataTemplate(BaseTaggedResource):
     [`DataTemplateCollection`][albert.collections.data_templates.DataTemplateCollection]
     (``client.data_templates``).
 
+    !!! example
+        ```python
+        from albert.resources.data_templates import DataTemplate, DataColumnValue
+
+        template = DataTemplate(
+            name="Tensile Strength Test",
+            data_column_values=[DataColumnValue(data_column_id="DAC1")],
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -268,17 +277,6 @@ class DataTemplate(BaseTaggedResource):
     albert.collections.data_templates.DataTemplateCollection : Create, search, and manage templates.
     DataColumnValue : Result data columns used in ``data_column_values``.
     albert.resources.parameter_groups.ParameterValue : Condition parameters used in ``parameter_values``.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.data_templates import DataTemplate, DataColumnValue
-
-    template = DataTemplate(
-        name="Tensile Strength Test",
-        data_column_values=[DataColumnValue(data_column_id="DAC1")],
-    )
-    ```
     """
 
     name: str
@@ -328,6 +326,13 @@ class CurveExample(BaseAlbertModel):
     source: a local ``file_path`` or an existing ``attachment_id``. Pass this to
     [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example].
 
+    !!! example
+        ```python
+        from albert.resources.data_templates import CurveExample
+
+        example = CurveExample(file_path="viscosity_curve.csv")
+        ```
+
     Attributes
     ----------
     mode : ImportMode
@@ -341,14 +346,6 @@ class CurveExample(BaseAlbertModel):
     attachment_id : AttachmentId | None
         Existing attachment ID of the source CSV file.
         Provide exactly one source CSV (local path or existing attachment).
-
-    Examples
-    --------
-    ```python
-    from albert.resources.data_templates import CurveExample
-
-    example = CurveExample(file_path="viscosity_curve.csv")
-    ```
     """
 
     type: Literal[DataType.CURVE] = DataType.CURVE
@@ -373,18 +370,17 @@ class ImageExample(BaseAlbertModel):
     An image is a complex type sourced from a local file. Pass this to
     [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example].
 
+    !!! example
+        ```python
+        from albert.resources.data_templates import ImageExample
+
+        example = ImageExample(file_path="fracture_surface.png")
+        ```
+
     Attributes
     ----------
     file_path : str | Path
         Local path to the source image file.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.data_templates import ImageExample
-
-    example = ImageExample(file_path="fracture_surface.png")
-    ```
     """
 
     type: Literal[DataType.IMAGE] = DataType.IMAGE

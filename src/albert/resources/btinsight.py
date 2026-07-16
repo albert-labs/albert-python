@@ -111,6 +111,16 @@ class BTInsight(BaseResource, protected_namespaces=()):
     [`BTModel`][albert.resources.btmodel.BTModel]). Insights are managed through
     [`BTInsightCollection`][albert.collections.btinsight.BTInsightCollection].
 
+    !!! example
+        ```python
+        from albert.resources.btinsight import BTInsight, BTInsightCategory
+
+        insight = BTInsight(
+            name="Cost optimizer run",
+            category=BTInsightCategory.OPTIMIZER,
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -148,17 +158,6 @@ class BTInsight(BaseResource, protected_namespaces=()):
         Result metadata (logs, metrics, settings) recorded for the insight.
     content_edited : bool or None
         Whether the insight's content has been manually edited.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.btinsight import BTInsight, BTInsightCategory
-
-    insight = BTInsight(
-        name="Cost optimizer run",
-        category=BTInsightCategory.OPTIMIZER,
-    )
-    ```
     """
 
     name: str

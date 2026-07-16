@@ -357,6 +357,15 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     priority, and so on). Manage templates through
     [`CustomTemplatesCollection`][albert.collections.custom_templates.CustomTemplatesCollection].
 
+    !!! example
+        ```python
+        from albert.resources.custom_templates import CustomTemplate, TemplateCategory
+        template = CustomTemplate(
+            name="Standard Property Task",
+            category=TemplateCategory.PROPERTY,
+        )
+        ```
+
     Attributes
     ----------
     name : str
@@ -381,16 +390,6 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
         The teams associated with the template.
     acl : TemplateACL or None
         The access-control list governing who can use the template.
-
-    Examples
-    --------
-    ```python
-    from albert.resources.custom_templates import CustomTemplate, TemplateCategory
-    template = CustomTemplate(
-        name="Standard Property Task",
-        category=TemplateCategory.PROPERTY,
-    )
-    ```
     """
 
     name: str
