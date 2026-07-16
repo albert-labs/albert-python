@@ -72,9 +72,9 @@ class TaskCollection(BaseCollection):
       property task (e.g. equipment calibration). Has no blocks.
 
     Typical PropertyTask flow: create the task, attach a Block with
-    :meth:`add_block` (a Data Template + a Workflow), then record results through
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block] (a Data Template + a Workflow), then record results through
     the Property Data collection
-    (:class:`~albert.collections.property_data.PropertyDataCollection`). Measured
+    ([`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]). Measured
     results roll up to the associated inventory item's properties.
 
     This collection is accessed as ``client.tasks``.
@@ -114,8 +114,6 @@ class TaskCollection(BaseCollection):
     get_history(id, ...) -> TaskHistory
         Retrieve a task's audit history.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -156,12 +154,12 @@ class TaskCollection(BaseCollection):
         Pass the concrete task type you want to create. Its ``category`` is set
         automatically by the type, so the platform routes it correctly:
 
-        - :class:`~albert.resources.tasks.PropertyTask`: test/document properties.
-        - :class:`~albert.resources.tasks.BatchTask`: manufacture a batch.
-        - :class:`~albert.resources.tasks.GeneralTask`: any other lab work.
+        - [`PropertyTask`][albert.resources.tasks.PropertyTask]: test/document properties.
+        - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch.
+        - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work.
 
         For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
-        added separately with :meth:`add_block` after creation.
+        added separately with [`add_block`][albert.collections.tasks.TaskCollection.add_block] after creation.
 
         Parameters
         ----------
@@ -174,8 +172,6 @@ class TaskCollection(BaseCollection):
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.tasks import GeneralTask
@@ -223,8 +219,6 @@ class TaskCollection(BaseCollection):
         remove_block : Remove a block from a task.
         update_block_workflow : Change the workflow on an existing block.
 
-        Examples
-        --------
         !!! example
             ```python
             client.tasks.add_block(
@@ -280,8 +274,6 @@ class TaskCollection(BaseCollection):
         default placeholder workflow ("No Parameter Group") is skipped when it is
         not the block's only workflow.
 
-        Examples
-        --------
         !!! example
             ```python
             client.tasks.update_block_workflow(
@@ -326,7 +318,7 @@ class TaskCollection(BaseCollection):
         """Remove a Block from a Property or Batch task.
 
         Removing a block also removes the results captured against it. To keep the
-        block but change its conditions, use :meth:`update_block_workflow` instead.
+        block but change its conditions, use [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
 
         Parameters
         ----------
@@ -339,8 +331,6 @@ class TaskCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.tasks.remove_block(task_id="TASFOR1234", block_id="BLK1")
@@ -408,7 +398,7 @@ class TaskCollection(BaseCollection):
             single intervalized parameter, ``"ROW1XROW2"`` for two). Defaults to
             ``"default"`` when the block has no intervalized parameters. Build the
             ID from parameter values with
-            :meth:`~albert.resources.workflows.Workflow.get_interval_id`.
+            [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
         field_mapping : dict[str, str] | None, optional
             Optional mapping from CSV header labels to data column names. Keys should match the
             header text from the CSV (case-insensitive comparison is applied), and values should
@@ -423,8 +413,6 @@ class TaskCollection(BaseCollection):
         BaseTask
             The task with the newly imported results.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_templates import ImportMode
@@ -618,8 +606,6 @@ class TaskCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.tasks.delete(id="TASFOR1")
@@ -646,8 +632,6 @@ class TaskCollection(BaseCollection):
         BaseTask
             The fully populated task.
 
-        Examples
-        --------
         !!! example
             ```python
             task = client.tasks.get_by_id(id="TASFOR1")
@@ -686,8 +670,8 @@ class TaskCollection(BaseCollection):
 
         Returns lightweight, partially populated results and is the fastest way to
         look tasks up. When you need complete tasks (e.g. a PropertyTask's blocks),
-        use :meth:`get_all` with the same filters, or pass the resulting IDs to
-        :meth:`get_by_id`. Results are returned as a lazily paginated iterator.
+        use [`get_all`][albert.collections.tasks.TaskCollection.get_all] with the same filters, or pass the resulting IDs to
+        [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id]. Results are returned as a lazily paginated iterator.
 
         Parameters
         ----------
@@ -733,8 +717,6 @@ class TaskCollection(BaseCollection):
         Iterator[TaskSearchItem]
             A lazily paginated iterator of partially populated search results.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.tasks import TaskCategory
@@ -806,10 +788,10 @@ class TaskCollection(BaseCollection):
     ) -> Iterator[BaseTask]:
         """Retrieve fully populated tasks matching the given filters.
 
-        Accepts the same filters as :meth:`search` but returns complete task
+        Accepts the same filters as [`search`][albert.collections.tasks.TaskCollection.search] but returns complete task
         entities (``PropertyTask``, ``BatchTask``, or ``GeneralTask``) rather than
         lightweight search results. This is slower because it fetches full detail
-        for every match, so prefer :meth:`search` when you only need names, IDs, or
+        for every match, so prefer [`search`][albert.collections.tasks.TaskCollection.search] when you only need names, IDs, or
         status. Results are returned as a lazily paginated iterator.
 
         Parameters
@@ -857,8 +839,6 @@ class TaskCollection(BaseCollection):
             Each fully populated task (``PropertyTask``, ``BatchTask``, or
             ``GeneralTask``).
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.tasks import TaskCategory
@@ -900,10 +880,10 @@ class TaskCollection(BaseCollection):
     def update(self, *, task: BaseTask) -> BaseTask:
         """Update an existing task.
 
-        Fetch the task (e.g. with :meth:`get_by_id`), modify the updatable fields,
+        Fetch the task (e.g. with [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id]), modify the updatable fields,
         then pass it here. Only the fields listed in Notes are applied. To change a
-        task's blocks, use :meth:`add_block`, :meth:`remove_block`, or
-        :meth:`update_block_workflow` instead.
+        task's blocks, use [`add_block`][albert.collections.tasks.TaskCollection.add_block], [`remove_block`][albert.collections.tasks.TaskCollection.remove_block], or
+        [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
 
         Parameters
         ----------
@@ -920,8 +900,6 @@ class TaskCollection(BaseCollection):
         The following fields can be updated: ``due_date``, ``metadata``, ``name``,
         ``priority``, ``project``, ``state``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.tasks import TaskPriority
@@ -987,8 +965,6 @@ class TaskCollection(BaseCollection):
         TaskHistory
             The task's history entries plus pagination metadata.
 
-        Examples
-        --------
         !!! example
             ```python
             history = client.tasks.get_history(id="TASFOR1")

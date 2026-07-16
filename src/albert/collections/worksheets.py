@@ -19,22 +19,22 @@ class WorksheetCollection(BaseCollection):
     """Manage Worksheets in the Albert platform.
 
     A Worksheet is the Excel-like command center where formulations are designed.
-    Each Worksheet is paired one-to-one with a Project (:class:`~albert.resources.projects.Project`)
-    and is retrieved by that Project's ID with :meth:`get_by_project_id`.
+    Each Worksheet is paired one-to-one with a Project ([`Project`][albert.resources.projects.Project])
+    and is retrieved by that Project's ID with [`get_by_project_id`][albert.collections.worksheets.WorksheetCollection.get_by_project_id].
 
-    A Worksheet holds one or more Sheets (:class:`~albert.resources.sheets.Sheet`).
+    A Worksheet holds one or more Sheets ([`Sheet`][albert.resources.sheets.Sheet]).
     Each Sheet is an interactive grid organized into stacked sections (given by
-    :class:`~albert.resources.sheets.DesignType`): Product Design (where
+    [`DesignType`][albert.resources.sheets.DesignType]): Product Design (where
     formulations are built), Process Design, Results (Property Tasks and their
     data), and Apps (insights and notes). Building a formulation on a Sheet is
     what registers a Formula inventory item
-    (:class:`~albert.resources.inventory.InventoryItem`): Formulas originate
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]): Formulas originate
     here rather than through the Inventory collection.
 
     This collection manages Worksheet- and Sheet-level structure (retrieving a
     Worksheet, adding Sheets, duplicating Sheets, and creating Sheet templates).
     Editing the contents of a Sheet (columns, rows, cells, and formulations) is
-    done through the returned :class:`~albert.resources.sheets.Sheet` objects.
+    done through the returned [`Sheet`][albert.resources.sheets.Sheet] objects.
 
     This collection is accessed as ``client.worksheets``.
 
@@ -63,8 +63,6 @@ class WorksheetCollection(BaseCollection):
     create_sheet_template(project_id, source_sheet_name, template_name, ...) -> CustomTemplate
         Save an existing Sheet as a reusable Sheet template.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -104,7 +102,7 @@ class WorksheetCollection(BaseCollection):
         Projects and Worksheets are one-to-one in Albert, so a Project ID uniquely
         identifies a Worksheet. This is the usual entry point for working with a
         Worksheet: the returned object exposes its Sheets
-        (:class:`~albert.resources.sheets.Sheet`), each of which can then be
+        ([`Sheet`][albert.resources.sheets.Sheet]), each of which can then be
         edited in place.
 
         Parameters
@@ -117,8 +115,6 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet paired with the Project.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -144,7 +140,7 @@ class WorksheetCollection(BaseCollection):
 
         Most Projects already have a Worksheet; use this only when a Project's
         Worksheet has not been set up. To retrieve an existing Worksheet, use
-        :meth:`get_by_project_id`.
+        [`get_by_project_id`][albert.collections.worksheets.WorksheetCollection.get_by_project_id].
 
         Parameters
         ----------
@@ -158,8 +154,6 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet for the Project.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -180,7 +174,7 @@ class WorksheetCollection(BaseCollection):
         """Add a new Sheet to a Project's Worksheet, built from a Sheet template.
 
         The template supplies the starting structure (columns and rows) for the
-        new Sheet. Sheet templates are created with :meth:`create_sheet_template`.
+        new Sheet. Sheet templates are created with [`create_sheet_template`][albert.collections.worksheets.WorksheetCollection.create_sheet_template].
 
         Parameters
         ----------
@@ -196,8 +190,6 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -220,7 +212,7 @@ class WorksheetCollection(BaseCollection):
         """Add a new blank Sheet to a Project's Worksheet.
 
         The new Sheet starts empty. To start from an existing structure instead,
-        use :meth:`setup_new_sheet_from_template` or :meth:`duplicate_sheet`.
+        use [`setup_new_sheet_from_template`][albert.collections.worksheets.WorksheetCollection.setup_new_sheet_from_template] or [`duplicate_sheet`][albert.collections.worksheets.WorksheetCollection.duplicate_sheet].
 
         Parameters
         ----------
@@ -234,8 +226,6 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -298,8 +288,6 @@ class WorksheetCollection(BaseCollection):
         Worksheet
             The Worksheet, now including the newly created Sheet.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -355,7 +343,7 @@ class WorksheetCollection(BaseCollection):
         """Save an existing Sheet as a reusable Sheet template.
 
         The template captures the structure of the source Sheet so new Sheets can
-        be built from it later with :meth:`setup_new_sheet_from_template`. At least
+        be built from it later with [`setup_new_sheet_from_template`][albert.collections.worksheets.WorksheetCollection.setup_new_sheet_from_template]. At least
         one column must be selected, or a ``ValueError`` is raised. The set of
         columns saved is the union of pinned columns, unpinned columns, and any
         explicitly listed ``column_names`` (per the flags below).
@@ -396,8 +384,6 @@ class WorksheetCollection(BaseCollection):
         ValueError
             If no columns are selected to include in the template.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert

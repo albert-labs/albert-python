@@ -19,12 +19,12 @@ class ParameterCollection(BaseCollection):
     single condition or input variable used when running experiments, such as
     Temperature, Spin Speed, or Instrument. It is often called an "indirect
     variable": the Parameter itself only names the variable, and its actual value
-    and unit are fixed to a setpoint later, inside a :class:`~albert.resources.workflows.Workflow`.
+    and unit are fixed to a setpoint later, inside a [`Workflow`][albert.resources.workflows.Workflow].
 
     Parameters are the building blocks of Parameter Groups
-    (:class:`~albert.resources.parameter_groups.ParameterGroup`) and form the
+    ([`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup]) and form the
     parameter side of Data Templates
-    (:class:`~albert.resources.data_templates.DataTemplate`).
+    ([`DataTemplate`][albert.resources.data_templates.DataTemplate]).
 
     This collection is accessed as ``client.parameters``.
 
@@ -53,8 +53,6 @@ class ParameterCollection(BaseCollection):
     delete(id) -> None
         Delete a parameter by its Parameter ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -83,7 +81,7 @@ class ParameterCollection(BaseCollection):
     def get_by_id(self, *, id: ParameterId) -> Parameter:
         """Retrieve a single parameter by its ID.
 
-        To find parameters without knowing their IDs, use :meth:`get_all`.
+        To find parameters without knowing their IDs, use [`get_all`][albert.collections.parameters.ParameterCollection.get_all].
 
         Parameters
         ----------
@@ -95,8 +93,6 @@ class ParameterCollection(BaseCollection):
         Parameter
             The parameter with the given ID.
 
-        Examples
-        --------
         !!! example
             ```python
             param = client.parameters.get_by_id(id="PRM1")
@@ -114,7 +110,7 @@ class ParameterCollection(BaseCollection):
         This registers a new condition or input variable (e.g. Temperature or Spin
         Speed) that can then be used in Parameter Groups and Data Templates. To
         avoid creating duplicates when a parameter of the same name may already
-        exist, use :meth:`get_or_create` instead.
+        exist, use [`get_or_create`][albert.collections.parameters.ParameterCollection.get_or_create] instead.
 
         Parameters
         ----------
@@ -126,8 +122,6 @@ class ParameterCollection(BaseCollection):
         Parameter
             The newly created parameter, populated with its assigned Parameter ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.parameters import Parameter
@@ -146,7 +140,7 @@ class ParameterCollection(BaseCollection):
         """Return the existing parameter matching by name, or create it.
 
         Matches an existing parameter by exact ``name``. If a match is found, it is
-        returned unchanged; otherwise a new parameter is created via :meth:`create`.
+        returned unchanged; otherwise a new parameter is created via [`create`][albert.collections.parameters.ParameterCollection.create].
         Use this to avoid creating duplicate parameters.
 
         Parameters
@@ -159,8 +153,6 @@ class ParameterCollection(BaseCollection):
         Parameter
             The existing or newly created parameter.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.parameters import Parameter
@@ -192,8 +184,6 @@ class ParameterCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.parameters.delete(id="PRM1")
@@ -240,8 +230,6 @@ class ParameterCollection(BaseCollection):
         Iterator[Parameter]
             A lazily paginated iterator of parameters matching the given criteria.
 
-        Examples
-        --------
         !!! example
             ```python
             for param in client.parameters.get_all(names="Temperature", max_items=10):
@@ -287,7 +275,7 @@ class ParameterCollection(BaseCollection):
     def update(self, *, parameter: Parameter) -> Parameter:
         """Update an existing parameter.
 
-        Fetch the parameter (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the parameter (e.g. with [`get_by_id`][albert.collections.parameters.ParameterCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. Only the fields listed in
         Notes are applied; changes to other fields are ignored.
 
@@ -305,8 +293,6 @@ class ParameterCollection(BaseCollection):
         -----
         The following fields can be updated: ``metadata``, ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             param = client.parameters.get_by_id(id="PRM1")

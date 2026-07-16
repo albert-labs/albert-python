@@ -16,7 +16,7 @@ class LinksCollection(BaseCollection):
     A Link represents a directional relationship between two entities in Albert:
     a parent and a child. Links capture cross-entity relationships such as a
     mention, a linked Task, a synthesis relationship, or a linked Inventory
-    Item (see :class:`~albert.resources.links.LinkCategory`). Links have no
+    Item (see [`LinkCategory`][albert.resources.links.LinkCategory]). Links have no
     updatable fields; they are created, retrieved, and deleted.
 
     This collection is accessed as ``client.links``.
@@ -42,8 +42,6 @@ class LinksCollection(BaseCollection):
     delete(id) -> None
         Delete a link by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -83,8 +81,6 @@ class LinksCollection(BaseCollection):
         list[Link]
             The created links, each populated with its assigned Link ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.links import Link, LinkCategory
@@ -128,7 +124,7 @@ class LinksCollection(BaseCollection):
         category : LinkCategory, optional
             The link category to filter by (e.g. ``mention``, ``linkedTask``,
             ``synthesis``, ``linkedInventory``). See
-            :class:`~albert.resources.links.LinkCategory`.
+            [`LinkCategory`][albert.resources.links.LinkCategory].
         id : str, optional
             The ID of the entity to fetch links for. Must include the full entity
             prefix (e.g. ``"INVA1"``).
@@ -142,8 +138,6 @@ class LinksCollection(BaseCollection):
         Iterator[Link]
             An iterator over the matching links.
 
-        Examples
-        --------
         !!! example
             ```python
             for link in client.links.get_all(id="INVA1", type="all"):
@@ -180,8 +174,6 @@ class LinksCollection(BaseCollection):
         Link
             The matching link.
 
-        Examples
-        --------
         !!! example
             ```python
             link = client.links.get_by_id(id="LNK1")
@@ -206,8 +198,6 @@ class LinksCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.links.delete(id="LNK1")

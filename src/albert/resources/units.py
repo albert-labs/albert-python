@@ -100,7 +100,7 @@ class Unit(BaseResource):
 
     Units qualify quantities throughout the platform: inventory amounts,
     parameter values, and property results. Managed through
-    :class:`~albert.collections.units.UnitCollection` (``client.units``).
+    [`UnitCollection`][albert.collections.units.UnitCollection] (``client.units``).
 
     Attributes
     ----------
@@ -118,8 +118,6 @@ class Unit(BaseResource):
     verified : bool or None
         Whether the unit has been verified in Albert. Read-only.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.units import Unit, UnitCategory

@@ -12,15 +12,15 @@ from albert.resources.chats import ChatFolder
 class ChatFolderCollection:
     """Manage folders that organize "Ask Albert" chat sessions (🧪 Beta).
 
-    A chat folder (:class:`~albert.resources.chats.ChatFolder`) groups related
+    A chat folder ([`ChatFolder`][albert.resources.chats.ChatFolder]) groups related
     conversations with Albert's AI assistant. Sessions
-    (:class:`~albert.resources.chats.ChatSession`, managed by
-    :class:`~albert.collections.chat_sessions.ChatSessionCollection`) are filed
+    ([`ChatSession`][albert.resources.chats.ChatSession], managed by
+    [`ChatSessionCollection`][albert.collections.chat_sessions.ChatSessionCollection]) are filed
     under a folder via the session's ``parent_id``, and folders can be nested
     inside one another.
 
     This is an async collection accessed as ``client.chat_folders`` on an
-    :class:`~albert.client.AsyncAlbert` client.
+    [`AsyncAlbert`][albert.client.AsyncAlbert] client.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -49,8 +49,6 @@ class ChatFolderCollection:
     delete(id) -> None
         Delete a folder by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import AsyncAlbert
@@ -94,8 +92,6 @@ class ChatFolderCollection:
         ChatFolder
             The created folder, populated with its server-assigned ``id``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -127,8 +123,6 @@ class ChatFolderCollection:
         ChatFolder
             The matching folder.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -168,8 +162,6 @@ class ChatFolderCollection:
         ChatFolder
             Folders matching the given filters.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -226,8 +218,6 @@ class ChatFolderCollection:
         -----
         The following fields can be updated: ``name``, ``sequence``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -259,8 +249,6 @@ class ChatFolderCollection:
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert

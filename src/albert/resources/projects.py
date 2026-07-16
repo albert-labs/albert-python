@@ -81,7 +81,7 @@ class Project(BaseSessionResource):
     A project groups the formulations designed for the work, its Worksheet (1:1
     with the project), the Tasks run against it, and the inventory it references.
     Create and manage projects through the
-    :class:`~albert.collections.projects.ProjectCollection` (``client.projects``).
+    [`ProjectCollection`][albert.collections.projects.ProjectCollection] (``client.projects``).
 
     Only ``description`` is required to build one; it doubles as the project's
     display name. The ``id`` and ``state`` are assigned by Albert and are read
@@ -118,12 +118,10 @@ class Project(BaseSessionResource):
         Read-only status string returned by Albert.
     state : State | None
         The project's lifecycle state. Read only on create; can be changed via
-        :meth:`~albert.collections.projects.ProjectCollection.update`.
+        [`update`][albert.collections.projects.ProjectCollection.update].
     old_api_params : dict | None
         Read-only. Do not use.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -194,11 +192,11 @@ class Project(BaseSessionResource):
 class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
     """A lightweight (partial) project returned by project search.
 
-    Returned by :meth:`~albert.collections.projects.ProjectCollection.search`,
+    Returned by [`search`][albert.collections.projects.ProjectCollection.search],
     this carries only summary fields for fast listing. Use its hydration support
     (or fetch by ``id`` via
-    :meth:`~albert.collections.projects.ProjectCollection.get_by_id`) to obtain
-    the full :class:`Project`.
+    [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]) to obtain
+    the full [`Project`][albert.resources.projects.Project].
 
     Attributes
     ----------
@@ -219,7 +217,7 @@ class DocumentSearchItem(BaseAlbertModel):
     """A document (attachment) search result linked to a project.
 
     Returned by
-    :meth:`~albert.collections.projects.ProjectCollection.document_search`. Each
+    [`document_search`][albert.collections.projects.ProjectCollection.document_search]. Each
     item describes an attachment's metadata rather than its file contents.
 
     Attributes

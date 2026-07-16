@@ -89,7 +89,7 @@ class FieldSection(str, Enum):
     """Where a field is displayed within an entity's form.
 
     Only fields placed in the top section can be referenced by an entity type's
-    search query strings (see :class:`EntityTypeSearchQueryStrings`).
+    search query strings (see [`EntityTypeSearchQueryStrings`][albert.resources.entity_types.EntityTypeSearchQueryStrings]).
 
     Attributes
     ----------
@@ -106,7 +106,7 @@ class FieldSection(str, Enum):
 class EntityCustomField(BaseAlbertModel):
     """A custom field attached to an entity type.
 
-    Links a defined :class:`~albert.resources.custom_fields.CustomField` to an
+    Links a defined [`CustomField`][albert.resources.custom_fields.CustomField] to an
     entity type and describes how it appears on that entity's form (where it
     sits, whether it is hidden, its default value, and whether it is required).
 
@@ -191,8 +191,6 @@ class EntityTypeSearchQueryStrings(BaseAlbertModel):
     PRG : str or None
         Search string for Parameter Groups.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.entity_types import EntityTypeSearchQueryStrings
@@ -218,7 +216,7 @@ class EntityType(BaseResource):
     how the standard Notes/Tags/Due Date fields behave, and how related-entity
     searches are built. Entity types can be built-in (``system``) or
     organization-defined (``custom``), and may carry conditional field rules (see
-    :class:`EntityTypeRule`).
+    [`EntityTypeRule`][albert.resources.entity_types.EntityTypeRule]).
 
     Attributes
     ----------
@@ -253,8 +251,6 @@ class EntityType(BaseResource):
     search_query_string : EntityTypeSearchQueryStrings or None
         Query strings used to find related Data Templates and Parameter Groups.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.entity_types import (
@@ -324,7 +320,7 @@ class EntityLinkOption(EntityLink):
     """An entity link used as a selectable field option.
 
     Field options serialize their linked entities differently from a base
-    :class:`~albert.core.shared.models.base.EntityLink`; this class handles that
+    [`EntityLink`][albert.core.shared.models.base.EntityLink]; this class handles that
     alternate (de)serialization.
 
     Attributes
@@ -430,8 +426,8 @@ class EntityTypeRule(BaseResource):
     A rule watches one custom field (the trigger) and, depending on its value,
     applies actions to other fields, such as showing, hiding, requiring, or
     setting default options. Rules are read and set via
-    :meth:`~albert.collections.entity_types.EntityTypeCollection.get_rules` and
-    :meth:`~albert.collections.entity_types.EntityTypeCollection.set_rules`.
+    [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules] and
+    [`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules].
 
     Attributes
     ----------

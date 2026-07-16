@@ -35,7 +35,7 @@ class LotStatus(str, Enum):
 class LotAdjustmentAction(str, Enum):
     """How a quantity adjustment is applied to a lot's inventory on hand.
 
-    Used with :meth:`~albert.collections.lots.LotCollection.adjust`.
+    Used with [`adjust`][albert.collections.lots.LotCollection.adjust].
 
     Attributes
     ----------
@@ -62,9 +62,9 @@ class Lot(BaseResource):
     Inventory Item (identified by ``inventory_id``), tracking batch-specific
     details such as how much is currently on hand, where it is stored, its cost,
     and who owns it. Lots are managed through the Lot collection
-    (:class:`~albert.collections.lots.LotCollection`, accessed as
+    ([`LotCollection`][albert.collections.lots.LotCollection], accessed as
     ``client.lots``); their parent items live in the Inventory collection
-    (:class:`~albert.collections.inventory.InventoryCollection`). A ``lot_id``
+    ([`InventoryCollection`][albert.collections.inventory.InventoryCollection]). A ``lot_id``
     is used throughout property data to scope results to a single batch.
 
     A lot's own ID has the format ``LOT...``; its parent ``inventory_id`` has the
@@ -96,7 +96,7 @@ class Lot(BaseResource):
         The cost of the lot.
     inventory_on_hand : NonNegativeFloat
         The quantity currently in stock, in the parent item's units. Change it
-        with :meth:`~albert.collections.lots.LotCollection.adjust` rather than by
+        with [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by
         editing directly.
     owner : list[User] | None
         The user(s) who own the lot. A lot may have at most one owner.
@@ -131,8 +131,6 @@ class Lot(BaseResource):
     task_completion_date : str | None
         The completion date of the Task that produced the lot. Read-only.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -231,11 +229,11 @@ class Lot(BaseResource):
 
 
 class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
-    """Lightweight, partial view of a :class:`Lot` returned by search.
+    """Lightweight, partial view of a [`Lot`][albert.resources.lots.Lot] returned by search.
 
-    Returned by :meth:`~albert.collections.lots.LotCollection.search`. It carries
+    Returned by [`search`][albert.collections.lots.LotCollection.search]. It carries
     only the most commonly needed fields for fast lookups; call
-    :meth:`hydrate` to fetch the full :class:`Lot` when you need every field.
+    [`hydrate`][albert.resources.lots.LotSearchItem.hydrate] to fetch the full [`Lot`][albert.resources.lots.Lot] when you need every field.
 
     Attributes
     ----------

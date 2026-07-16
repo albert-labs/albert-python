@@ -351,11 +351,11 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     """A reusable custom template in Albert.
 
     A custom template captures a standard entity setup so it can be applied
-    repeatedly. Its :attr:`category` selects what kind of entity it configures
-    (see :class:`TemplateCategory`), and its :attr:`data` holds the category-
+    repeatedly. Its [`category`][albert.resources.custom_templates.CustomTemplate.category] selects what kind of entity it configures
+    (see [`TemplateCategory`][albert.resources.custom_templates.TemplateCategory]), and its [`data`][albert.resources.custom_templates.CustomTemplate.data] holds the category-
     specific defaults (project, location, assignee, inventories, workflow,
     priority, and so on). Manage templates through
-    :class:`~albert.collections.custom_templates.CustomTemplatesCollection`.
+    [`CustomTemplatesCollection`][albert.collections.custom_templates.CustomTemplatesCollection].
 
     Attributes
     ----------
@@ -370,7 +370,7 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     metadata : dict[str, MetadataItem] or None
         Metadata values for the template. Allowed metadata keys are those defined
         as Custom Fields (see
-        :class:`~albert.collections.custom_fields.CustomFieldCollection`).
+        [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection]).
     data : CustomTemplateData or None
         The category-specific configuration the template applies.
     entity_type : TemplateEntityType or None
@@ -382,8 +382,6 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
     acl : TemplateACL or None
         The access-control list governing who can use the template.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.custom_templates import CustomTemplate, TemplateCategory
@@ -443,11 +441,11 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     """A lightweight custom template returned by search.
 
     Returned by
-    :meth:`~albert.collections.custom_templates.CustomTemplatesCollection.search`,
+    [`search`][albert.collections.custom_templates.CustomTemplatesCollection.search],
     this is a partially populated view of a template optimized for fast lookups.
     Hydrate it (or call
-    :meth:`~albert.collections.custom_templates.CustomTemplatesCollection.get_by_id`)
-    to obtain the full :class:`CustomTemplate`.
+    [`get_by_id`][albert.collections.custom_templates.CustomTemplatesCollection.get_by_id])
+    to obtain the full [`CustomTemplate`][albert.resources.custom_templates.CustomTemplate].
 
     Attributes
     ----------

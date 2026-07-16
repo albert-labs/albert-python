@@ -13,7 +13,7 @@ class ReportInfo(BaseAlbertModel):
     """The result of running a report on demand.
 
     Returned by the ``get_report`` family of methods on
-    :class:`~albert.collections.reports.ReportCollection`.
+    [`ReportCollection`][albert.collections.reports.ReportCollection].
 
     Attributes
     ----------
@@ -158,8 +158,8 @@ class FullAnalyticalReport(BaseResource):
     This resource represents a complete analytical report: its report type, the
     data it was run over, and its saved display state (columns, filters, grouping,
     and charts). Retrieve one with
-    :meth:`~albert.collections.reports.ReportCollection.get_full_report` or create
-    one with :meth:`~albert.collections.reports.ReportCollection.create_report`.
+    [`get_full_report`][albert.collections.reports.ReportCollection.get_full_report] or create
+    one with [`create_report`][albert.collections.reports.ReportCollection.create_report].
 
     Attributes
     ----------
@@ -201,10 +201,8 @@ class FullAnalyticalReport(BaseResource):
         The ID of the user who created the report. Read-only.
     report : list[dict[str, Any]] | None
         The raw report result rows. Populated when the report is retrieved;
-        read-only. Use :meth:`get_raw_dataframe` to read it as a DataFrame.
+        read-only. Use [`get_raw_dataframe`][albert.resources.reports.FullAnalyticalReport.get_raw_dataframe] to read it as a DataFrame.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.reports import FullAnalyticalReport

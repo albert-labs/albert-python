@@ -44,8 +44,6 @@ class UnNumberCollection(BaseCollection):
     Creating UN Numbers is not supported via the SDK, as UN Numbers are highly
     controlled by Albert.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -99,8 +97,6 @@ class UnNumberCollection(BaseCollection):
         UnNumber
             The matching UN Number.
 
-        Examples
-        --------
         !!! example
             ```python
             un_number = client.un_numbers.get_by_id(id="...")
@@ -115,7 +111,7 @@ class UnNumberCollection(BaseCollection):
         """Retrieve a UN Number by its exact name.
 
         Runs an exact-match lookup and returns the first result. To browse or
-        do partial-name matching, use :meth:`get_all`.
+        do partial-name matching, use [`get_all`][albert.collections.un_numbers.UnNumberCollection.get_all].
 
         Parameters
         ----------
@@ -127,8 +123,6 @@ class UnNumberCollection(BaseCollection):
         UnNumber | None
             The matching UN Number, or None if no exact match is found.
 
-        Examples
-        --------
         !!! example
             ```python
             un_number = client.un_numbers.get_by_name(name="UN1090")
@@ -169,8 +163,6 @@ class UnNumberCollection(BaseCollection):
         Iterator[UnNumber]
             The UN Numbers matching the search criteria.
 
-        Examples
-        --------
         !!! example
             ```python
             for un_number in client.un_numbers.get_all(name="acetone", max_items=10):

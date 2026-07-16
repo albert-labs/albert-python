@@ -9,7 +9,7 @@ class RoleCollection(BaseCollection):
     """Manage Roles in the Albert platform.
 
     A Role defines a set of access permissions (policies) within a tenant.
-    Roles are assigned to users (:class:`~albert.resources.users.User`) to
+    Roles are assigned to users ([`User`][albert.resources.users.User]) to
     govern what they can do, and are referenced by entity ACLs alongside the
     users they apply to.
 
@@ -34,8 +34,6 @@ class RoleCollection(BaseCollection):
     create(role) -> Role
         Register a new role.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -73,8 +71,6 @@ class RoleCollection(BaseCollection):
         Role
             The retrieved role.
 
-        Examples
-        --------
         !!! example
             ```python
             role = client.roles.get_by_id(id="role#admin")
@@ -100,8 +96,6 @@ class RoleCollection(BaseCollection):
         Role
             The newly created role.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.roles import Role
@@ -129,8 +123,6 @@ class RoleCollection(BaseCollection):
         list[Role]
             All roles available in the tenant.
 
-        Examples
-        --------
         !!! example
             ```python
             roles = client.roles.get_all()

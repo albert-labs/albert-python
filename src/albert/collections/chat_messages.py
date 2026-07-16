@@ -13,18 +13,18 @@ from albert.resources.chats import ChatComponentType, ChatMessage
 class ChatMessageCollection:
     """Manage the message turns within an "Ask Albert" chat session (🧪 Beta).
 
-    A chat message (:class:`~albert.resources.chats.ChatMessage`) is one turn, or
+    A chat message ([`ChatMessage`][albert.resources.chats.ChatMessage]) is one turn, or
     turn component, of a conversation with Albert's AI assistant. Messages always
     belong to a parent session
-    (:class:`~albert.resources.chats.ChatSession`, managed by
-    :class:`~albert.collections.chat_sessions.ChatSessionCollection`), so every
+    ([`ChatSession`][albert.resources.chats.ChatSession], managed by
+    [`ChatSessionCollection`][albert.collections.chat_sessions.ChatSessionCollection]), so every
     method here takes a ``session_id``. Within a session a message is addressed by
     the pair ``(source_request_id, sequence)``, and
-    :class:`~albert.resources.chats.ChatComponentType` distinguishes components
+    [`ChatComponentType`][albert.resources.chats.ChatComponentType] distinguishes components
     that share a request.
 
     This is an async collection accessed as ``client.chat_messages`` on an
-    :class:`~albert.client.AsyncAlbert` client.
+    [`AsyncAlbert`][albert.client.AsyncAlbert] client.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -48,8 +48,6 @@ class ChatMessageCollection:
     delete(session_id, source_request_id, sequence) -> None
         Delete a message from a session.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import AsyncAlbert
@@ -92,7 +90,7 @@ class ChatMessageCollection:
         ----------
         message : ChatMessage
             The message to create. ``parent_id`` must be set to the target
-            :class:`~albert.resources.chats.ChatSession` ID. ``source_request_id``
+            [`ChatSession`][albert.resources.chats.ChatSession] ID. ``source_request_id``
             is auto-generated when not provided.
 
         Returns
@@ -103,11 +101,9 @@ class ChatMessageCollection:
         Notes
         -----
         The create response does not currently echo the message ``content``, so the
-        returned object's ``content`` may be ``None``. Use :meth:`get_by_id` to read
+        returned object's ``content`` may be ``None``. Use [`get_by_id`][albert.collections.chat_messages.ChatMessageCollection.get_by_id] to read
         the stored message back in full.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -151,7 +147,7 @@ class ChatMessageCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
@@ -159,7 +155,7 @@ class ChatMessageCollection:
             (e.g. ``"000"``).
         component_type : ChatComponentType | None, optional
             Narrow the lookup to a single
-            :class:`~albert.resources.chats.ChatComponentType` when a request holds
+            [`ChatComponentType`][albert.resources.chats.ChatComponentType] when a request holds
             more than one component.
 
         Returns
@@ -167,8 +163,6 @@ class ChatMessageCollection:
         ChatMessage
             The matching message.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -202,7 +196,7 @@ class ChatMessageCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the :class:`~albert.resources.chats.ChatSession` whose
+            The ID of the [`ChatSession`][albert.resources.chats.ChatSession] whose
             messages to list.
         max_items : int | None, optional
             Maximum number of messages to yield in total. If ``None``, yields every
@@ -213,8 +207,6 @@ class ChatMessageCollection:
         ChatMessage
             Messages in the session, oldest first.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -247,7 +239,7 @@ class ChatMessageCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
@@ -256,7 +248,7 @@ class ChatMessageCollection:
         content : str | dict
             The new content for the message. Use a string for text components or an
             object for richer components, matching the message's
-            :class:`~albert.resources.chats.ChatComponentType`.
+            [`ChatComponentType`][albert.resources.chats.ChatComponentType].
 
         Returns
         -------
@@ -267,8 +259,6 @@ class ChatMessageCollection:
         -----
         The following fields can be updated: ``content``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -304,7 +294,7 @@ class ChatMessageCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
@@ -315,8 +305,6 @@ class ChatMessageCollection:
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert

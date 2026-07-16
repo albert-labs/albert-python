@@ -16,17 +16,17 @@ class ReportCollection(BaseCollection):
     ``"analytics"`` and ``"datascience"``, and each is identified by a report type
     ID (e.g. ``"RET22"`` or the fully qualified ``"ALB#RET51"``). The set of
     available report types is defined by Report Templates (see
-    :class:`~albert.collections.report_templates.ReportTemplateCollection`).
+    [`ReportTemplateCollection`][albert.collections.report_templates.ReportTemplateCollection]).
 
     Two styles of access are provided:
 
     - Run a report on demand and read its results directly with
-      :meth:`get_report` (or the category-specific :meth:`get_analytics_report`
-      and :meth:`get_datascience_report`). These take ``input_data`` describing
+      [`get_report`][albert.collections.reports.ReportCollection.get_report] (or the category-specific [`get_analytics_report`][albert.collections.reports.ReportCollection.get_analytics_report]
+      and [`get_datascience_report`][albert.collections.reports.ReportCollection.get_datascience_report]). These take ``input_data`` describing
       what to run the report over (e.g. project or inventory IDs).
-    - Persist a report configuration as a :class:`~albert.resources.reports.FullAnalyticalReport`
-      with :meth:`create_report`, then fetch it later by its Report ID (format
-      ``REP...``) with :meth:`get_full_report`.
+    - Persist a report configuration as a [`FullAnalyticalReport`][albert.resources.reports.FullAnalyticalReport]
+      with [`create_report`][albert.collections.reports.ReportCollection.create_report], then fetch it later by its Report ID (format
+      ``REP...``) with [`get_full_report`][albert.collections.reports.ReportCollection.get_full_report].
 
     This collection is accessed as ``client.reports``.
 
@@ -55,8 +55,6 @@ class ReportCollection(BaseCollection):
     delete(id) -> None
         Delete a saved report by its Report ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -103,8 +101,6 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        Examples
-        --------
         !!! example
             ```python
             report = client.reports.get_report(
@@ -132,7 +128,7 @@ class ReportCollection(BaseCollection):
     ) -> ReportInfo:
         """Run an analytics report and return its results.
 
-        Convenience wrapper around :meth:`get_report` with
+        Convenience wrapper around [`get_report`][albert.collections.reports.ReportCollection.get_report] with
         ``category="analytics"``.
 
         Parameters
@@ -149,8 +145,6 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        Examples
-        --------
         !!! example
             ```python
             report = client.reports.get_analytics_report(
@@ -173,7 +167,7 @@ class ReportCollection(BaseCollection):
     ) -> ReportInfo:
         """Run a datascience report and return its results.
 
-        Convenience wrapper around :meth:`get_report` with
+        Convenience wrapper around [`get_report`][albert.collections.reports.ReportCollection.get_report] with
         ``category="datascience"``.
 
         Parameters
@@ -190,8 +184,6 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
 
-        Examples
-        --------
         !!! example
             ```python
             report = client.reports.get_datascience_report(
@@ -223,8 +215,6 @@ class ReportCollection(BaseCollection):
         FullAnalyticalReport
             The saved report with all of its configuration and data.
 
-        Examples
-        --------
         !!! example
             ```python
             report = client.reports.get_full_report(report_id="REP14")
@@ -254,8 +244,6 @@ class ReportCollection(BaseCollection):
             The created report as returned by the server, including its assigned
             ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.reports import FullAnalyticalReport
@@ -291,8 +279,6 @@ class ReportCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.reports.delete(id="REP14")

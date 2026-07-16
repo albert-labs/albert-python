@@ -31,7 +31,7 @@ class StorageClass(BaseAlbertModel):
     A Storage Class governs which materials may be safely stored together.
     Inventory Items carry a storage/security class that ties back to one of these
     classifications. Retrieved through
-    :class:`~albert.collections.storage_classes.StorageClassesCollection`.
+    [`StorageClassesCollection`][albert.collections.storage_classes.StorageClassesCollection].
 
     Attributes
     ----------

@@ -32,10 +32,10 @@ class Pricing(BaseResource):
     """A price entry for an Inventory Item at a given company and location.
 
     A pricing records the cost of a material
-    (:class:`~albert.resources.inventory.InventoryItem`) from a particular
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) from a particular
     company, at a particular location. A single item can have many pricings.
     Create pricings with
-    :meth:`~albert.collections.pricings.PricingCollection.create`.
+    [`create`][albert.collections.pricings.PricingCollection.create].
 
     Attributes
     ----------
@@ -69,8 +69,6 @@ class Pricing(BaseResource):
         Whether the default price is being used rather than an overridden price (a
         flag).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.pricings import Pricing
@@ -107,7 +105,7 @@ class InventoryPricings(BaseAlbertModel):
     """The pricings belonging to a single Inventory Item.
 
     Returned by
-    :meth:`~albert.collections.pricings.PricingCollection.get_by_inventory_ids`
+    [`get_by_inventory_ids`][albert.collections.pricings.PricingCollection.get_by_inventory_ids]
     to group each item's pricings under its inventory ID.
 
     Attributes

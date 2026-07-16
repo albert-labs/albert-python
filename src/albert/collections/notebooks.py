@@ -42,9 +42,9 @@ class NotebookCollection(BaseCollection):
     referenced by its Notebook ID (format ``NTB...``, e.g. ``"NTB123"``).
 
     Notebook content is edited block-by-block rather than by overwriting the whole
-    document. Create an empty Notebook with :meth:`create`, then add or change
-    blocks with :meth:`update_block_content` or :meth:`append_blocks`. The
-    :meth:`update` method changes only the Notebook name.
+    document. Create an empty Notebook with [`create`][albert.collections.notebooks.NotebookCollection.create], then add or change
+    blocks with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks]. The
+    [`update`][albert.collections.notebooks.NotebookCollection.update] method changes only the Notebook name.
 
     This collection is accessed as ``client.notebooks``.
 
@@ -79,8 +79,6 @@ class NotebookCollection(BaseCollection):
     copy(notebook_copy_info, type) -> Notebook
         Copy a notebook into a specified parent.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -122,8 +120,6 @@ class NotebookCollection(BaseCollection):
         Notebook
             The fully populated notebook, including its ordered content blocks.
 
-        Examples
-        --------
         !!! example
             ```python
             notebook = client.notebooks.get_by_id(id="NTB123")
@@ -148,8 +144,6 @@ class NotebookCollection(BaseCollection):
         list[Notebook]
             The fully populated notebooks attached to the parent.
 
-        Examples
-        --------
         !!! example
             ```python
             notebooks = client.notebooks.list_by_parent_id(parent_id="PRO123")
@@ -171,8 +165,8 @@ class NotebookCollection(BaseCollection):
         notebook is created.
 
         The notebook must be created empty: the ``blocks`` field must be empty.
-        Add content afterward with :meth:`update_block_content` or
-        :meth:`append_blocks`.
+        Add content afterward with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or
+        [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks].
 
         Parameters
         ----------
@@ -190,8 +184,6 @@ class NotebookCollection(BaseCollection):
         AlbertException
             If the notebook has pre-filled blocks.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.notebooks import Notebook
@@ -229,8 +221,6 @@ class NotebookCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.notebooks.delete(id="NTB123")
@@ -242,7 +232,7 @@ class NotebookCollection(BaseCollection):
         """Update a Notebook's name.
 
         This method changes only the notebook name; it does not modify block
-        content. Use :meth:`update_block_content` to change the blocks.
+        content. Use [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] to change the blocks.
 
         Parameters
         ----------
@@ -258,8 +248,6 @@ class NotebookCollection(BaseCollection):
         -----
         The following fields can be updated: ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             notebook = client.notebooks.get_by_id(id="NTB123")
@@ -281,7 +269,7 @@ class NotebookCollection(BaseCollection):
         The notebook's ``blocks`` list is treated as the desired final state: the
         order of the blocks is preserved, any block not already on Albert is
         created, and any existing block that is no longer present is deleted. This
-        does not change the notebook name (use :meth:`update` for that).
+        does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).
 
         !!! warning
             Updating existing Ketcher blocks is not supported. To change a Ketcher
@@ -304,8 +292,6 @@ class NotebookCollection(BaseCollection):
             If the notebook has no ``id``, if two blocks share the same id, or if
             an existing block's type is changed in place.
 
-        Examples
-        --------
         !!! example "Add a Ketcher block from SMILES"
             ```python
             from albert.resources.notebooks import KetcherBlock, KetcherContent
@@ -338,7 +324,7 @@ class NotebookCollection(BaseCollection):
     def append_blocks(self, *, id: NotebookId, blocks: list[NotebookBlock]) -> Notebook:
         """Append blocks to the end of a Notebook, preserving existing blocks.
 
-        This is a convenience wrapper around :meth:`update_block_content`: it
+        This is a convenience wrapper around [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content]: it
         fetches the current notebook, adds the given blocks after the existing
         ones, and saves.
 
@@ -354,8 +340,6 @@ class NotebookCollection(BaseCollection):
         Notebook
             The updated notebook.
 
-        Examples
-        --------
         !!! example "Append a paragraph block"
             ```python
             from albert.resources.notebooks import ParagraphBlock, ParagraphContent
@@ -385,10 +369,8 @@ class NotebookCollection(BaseCollection):
         -------
         NotebookBlock
             The requested block, typed according to its block type (e.g.
-            :class:`~albert.resources.notebooks.ParagraphBlock`).
+            [`ParagraphBlock`][albert.resources.notebooks.ParagraphBlock]).
 
-        Examples
-        --------
         !!! example
             ```python
             block = client.notebooks.get_block_by_id(
@@ -541,8 +523,6 @@ class NotebookCollection(BaseCollection):
         Notebook
             The newly created copy.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.notebooks import NotebookCopyInfo, NotebookCopyType

@@ -459,7 +459,7 @@ class SubstanceInfo(BaseAlbertModel):
     chemical and region.
 
     This is read-only reference data retrieved by CAS number through
-    :class:`~albert.collections.substance.SubstanceCollection`
+    [`SubstanceCollection`][albert.collections.substance.SubstanceCollection]
     (``client.substances``); it is not constructed directly. Many list-valued
     fields hold repeated study records (e.g. one entry per toxicity study).
 
@@ -824,7 +824,7 @@ class SubstanceResponse(BaseAlbertModel):
     """Raw API response wrapping the substances returned for a lookup.
 
     Returned internally by
-    :class:`~albert.collections.substance.SubstanceCollection`, which unwraps the
+    [`SubstanceCollection`][albert.collections.substance.SubstanceCollection], which unwraps the
     ``substances`` list for callers; you typically will not use this directly.
 
     Attributes

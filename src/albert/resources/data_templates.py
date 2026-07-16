@@ -128,7 +128,7 @@ class CurveDataEntityLink(EntityLinkWithName):
 class DataColumnValue(BaseResource):
     """A result data column on a Data Template.
 
-    A ``DataColumnValue`` binds a :class:`~albert.resources.data_columns.DataColumn` to
+    A ``DataColumnValue`` binds a [`DataColumn`][albert.resources.data_columns.DataColumn] to
     a Data Template as one of the results the test captures (a "direct variable"). Data
     columns can be typed numeric, text, dropdown/enum, image, curve, date, or timestamp.
     On a Data Template the ``value`` typically holds an example value shown on the
@@ -162,8 +162,6 @@ class DataColumnValue(BaseResource):
     original_name : str | None
         The original column name as stored in Albert. Read-only.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.data_templates import DataColumnValue
@@ -228,7 +226,7 @@ class DataTemplate(BaseTaggedResource):
     into the Workflow's setpoints.
 
     Templates are managed through
-    :class:`~albert.collections.data_templates.DataTemplateCollection`
+    [`DataTemplateCollection`][albert.collections.data_templates.DataTemplateCollection]
     (``client.data_templates``).
 
     Attributes
@@ -249,16 +247,16 @@ class DataTemplate(BaseTaggedResource):
         ``ACL``.
     data_column_values : list[DataColumnValue] | None
         The measured results the test captures (its data columns / direct variables).
-        See :class:`DataColumnValue`.
+        See [`DataColumnValue`][albert.resources.data_templates.DataColumnValue].
     parameter_values : list[ParameterValue] | None
         The conditions under which the test is run (its indirect variables). See
-        :class:`~albert.resources.parameter_groups.ParameterValue`.
+        [`ParameterValue`][albert.resources.parameter_groups.ParameterValue].
     metadata : dict[str, MetadataItem] | None
         Custom metadata fields. Allowed keys are defined by the workspace's
         CustomFields configuration.
     tags : list[Tag | str] | None
         Tags on the template. Inherited from
-        :class:`~albert.resources.tagged_base.BaseTaggedResource`.
+        [`BaseTaggedResource`][albert.resources.tagged_base.BaseTaggedResource].
     original_name : str | None
         The original template name as stored in Albert. Read-only.
     full_name : str | None
@@ -270,8 +268,6 @@ class DataTemplate(BaseTaggedResource):
     DataColumnValue : Result data columns used in ``data_column_values``.
     albert.resources.parameter_groups.ParameterValue : Condition parameters used in ``parameter_values``.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.data_templates import DataTemplate, DataColumnValue
@@ -328,7 +324,7 @@ class CurveExample(BaseAlbertModel):
     Sets the example row shown only on the Data Template details page (not in tasks).
     A curve is a complex type, so it is sourced from a CSV file. Provide exactly one
     source: a local ``file_path`` or an existing ``attachment_id``. Pass this to
-    :meth:`~albert.collections.data_templates.DataTemplateCollection.set_curve_example`.
+    [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example].
 
     Attributes
     ----------
@@ -344,8 +340,6 @@ class CurveExample(BaseAlbertModel):
         Existing attachment ID of the source CSV file.
         Provide exactly one source CSV (local path or existing attachment).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.data_templates import CurveExample
@@ -374,15 +368,13 @@ class ImageExample(BaseAlbertModel):
 
     Sets the example row shown only on the Data Template details page (not in tasks).
     An image is a complex type sourced from a local file. Pass this to
-    :meth:`~albert.collections.data_templates.DataTemplateCollection.set_image_example`.
+    [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example].
 
     Attributes
     ----------
     file_path : str | Path
         Local path to the source image file.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.data_templates import ImageExample

@@ -6,9 +6,9 @@ from albert.core.shared.models.base import BaseResource, EntityLinkWithName
 class NoteAttachmentEntityLink(EntityLinkWithName):
     """A file attached to a note, with an optional signed download URL.
 
-    Returned as part of a :class:`Note` when it has attached files. Not
+    Returned as part of a [`Note`][albert.resources.notes.Note] when it has attached files. Not
     constructed directly; files are attached via the
-    :class:`~albert.collections.attachments.AttachmentCollection`.
+    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
 
     Attributes
     ----------
@@ -35,9 +35,9 @@ class Note(BaseResource):
     A note records a comment or observation against a parent entity (its
     ``parent_id``), such as a Task, Project, or Inventory Item. Users can be
     mentioned inside the ``note`` text by embedding
-    :meth:`~albert.resources.users.User.to_note_mention` in an f-string, for
+    [`to_note_mention`][albert.resources.users.User.to_note_mention] in an f-string, for
     example ``f"Hello {tagged_user.to_note_mention()}!"``. Notes are managed
-    through the :class:`~albert.collections.notes.NotesCollection`.
+    through the [`NotesCollection`][albert.collections.notes.NotesCollection].
 
     Attributes
     ----------
@@ -52,8 +52,6 @@ class Note(BaseResource):
         Files attached to the note. Read-only; populated when the note is
         retrieved.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notes import Note

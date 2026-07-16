@@ -23,7 +23,7 @@ class TagCollection(BaseCollection):
     grouping and filtering related records.
 
     Because tags are identified by their text, the common pattern is to find an
-    existing tag or create it on demand via :meth:`get_or_create`. Tags are
+    existing tag or create it on demand via [`get_or_create`][albert.collections.tags.TagCollection.get_or_create]. Tags are
     referenced by their Tag ID (format ``TAG...``, e.g. ``"TAG1"``).
 
     This collection is accessed as ``client.tags``.
@@ -59,8 +59,6 @@ class TagCollection(BaseCollection):
     exists(tag, exact_match=True) -> bool
         Check whether a tag with the given name exists.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -99,8 +97,6 @@ class TagCollection(BaseCollection):
         bool
             True if a matching tag exists, False otherwise.
 
-        Examples
-        --------
         !!! example
             ```python
             if client.tags.exists(tag="high-priority"):
@@ -116,15 +112,13 @@ class TagCollection(BaseCollection):
         Parameters
         ----------
         tag : str or Tag
-            The tag to create, given either as a plain name or a :class:`~albert.resources.tags.Tag`.
+            The tag to create, given either as a plain name or a [`Tag`][albert.resources.tags.Tag].
 
         Returns
         -------
         Tag
             The newly created tag, including its assigned Tag ID.
 
-        Examples
-        --------
         !!! example
             ```python
             tag = client.tags.create(tag="experimental")
@@ -149,15 +143,13 @@ class TagCollection(BaseCollection):
         ----------
         tag : str or Tag
             The tag to find or create, given either as a plain name or a
-            :class:`~albert.resources.tags.Tag`.
+            [`Tag`][albert.resources.tags.Tag].
 
         Returns
         -------
         Tag
             The existing or newly created tag.
 
-        Examples
-        --------
         !!! example
             ```python
             tag = client.tags.get_or_create(tag="high-priority")
@@ -185,8 +177,6 @@ class TagCollection(BaseCollection):
         Tag
             The matching tag.
 
-        Examples
-        --------
         !!! example
             ```python
             tag = client.tags.get_by_id(id="TAG1")
@@ -212,8 +202,6 @@ class TagCollection(BaseCollection):
         list[Tag]
             The matching tags. Tags not found are omitted.
 
-        Examples
-        --------
         !!! example
             ```python
             tags = client.tags.get_by_ids(ids=["TAG1", "TAG2"])
@@ -242,8 +230,6 @@ class TagCollection(BaseCollection):
         Tag or None
             The matching tag, or None if no tag with that name exists.
 
-        Examples
-        --------
         !!! example
             ```python
             tag = client.tags.get_by_name(name="high-priority")
@@ -265,8 +251,6 @@ class TagCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.tags.delete(id="TAG1")
@@ -298,8 +282,6 @@ class TagCollection(BaseCollection):
         AlbertException
             If no tag with ``old_name`` is found.
 
-        Examples
-        --------
         !!! example
             ```python
             tag = client.tags.rename(old_name="high-priority", new_name="urgent")
@@ -360,8 +342,6 @@ class TagCollection(BaseCollection):
         Iterator[Tag]
             An iterator over the matching tags.
 
-        Examples
-        --------
         !!! example
             ```python
             for tag in client.tags.get_all(max_items=100):

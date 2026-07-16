@@ -27,7 +27,7 @@ class AttachmentCollection(BaseCollection):
 
     An Attachment links an uploaded file to a parent entity (its ``parent_id``),
     such as a Task, Project, Inventory Item, or Note. The file itself is stored
-    and uploaded through the :class:`~albert.collections.files.FileCollection`;
+    and uploaded through the [`FileCollection`][albert.collections.files.FileCollection];
     an Attachment is the record that associates that stored file with an entity.
     A common pattern is to upload a file and attach it in one step using the
     ``upload_and_attach_*`` helpers below.
@@ -69,8 +69,6 @@ class AttachmentCollection(BaseCollection):
     get_language_codes() -> dict[str, str]
         Retrieve available SDS language codes.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -119,8 +117,6 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The matching attachment.
 
-        Examples
-        --------
         !!! example
             ```python
             attachment = client.attachments.get_by_id(id="ATT1")
@@ -136,8 +132,8 @@ class AttachmentCollection(BaseCollection):
         """Create an attachment record for an already-uploaded file.
 
         Use this when the underlying file has already been uploaded via the
-        :class:`~albert.collections.files.FileCollection`; the attachment's
-        ``key`` should match the stored :attr:`~albert.resources.files.FileInfo.name`.
+        [`FileCollection`][albert.collections.files.FileCollection]; the attachment's
+        ``key`` should match the stored [`name`][albert.resources.files.FileInfo.name].
         To upload and attach in a single call, use one of the
         ``upload_and_attach_*`` helpers instead.
 
@@ -152,8 +148,6 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.attachments import Attachment
@@ -190,8 +184,6 @@ class AttachmentCollection(BaseCollection):
         Metadata fields such as hazard symbols, hazard statements, storage class,
         UN number, jurisdiction code, and language code can also be updated.
 
-        Examples
-        --------
         !!! example
             ```python
             attachment = client.attachments.get_by_id(id="ATT1")
@@ -331,8 +323,6 @@ class AttachmentCollection(BaseCollection):
         dict[str, list[Attachment]]
             A dictionary mapping parent IDs to lists of Attachment objects associated with each parent ID.
 
-        Examples
-        --------
         !!! example
             ```python
             by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA1", "PROA1"])
@@ -378,8 +368,6 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment linking the file to the note.
 
-        Examples
-        --------
         !!! example
             ```python
             attachment = client.attachments.attach_file_to_note(
@@ -398,15 +386,13 @@ class AttachmentCollection(BaseCollection):
         """Return available SDS jurisdiction codes.
 
         Useful for supplying ``jurisdiction_code`` to
-        :meth:`upload_and_attach_sds_to_inventory_item`.
+        [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
 
         Returns
         -------
         dict[str, str]
             Mapping of jurisdiction name to code (e.g. ``{"Germany": "DE", "USA": "US"}``).
 
-        Examples
-        --------
         !!! example
             ```python
             codes = client.attachments.get_jurisdiction_codes()
@@ -423,15 +409,13 @@ class AttachmentCollection(BaseCollection):
         """Return available SDS language codes.
 
         Useful for supplying ``language_code`` to
-        :meth:`upload_and_attach_sds_to_inventory_item`.
+        [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
 
         Returns
         -------
         dict[str, str]
             Mapping of language name to code (e.g. ``{"English": "EN", "German": "DE"}``).
 
-        Examples
-        --------
         !!! example
             ```python
             codes = client.attachments.get_language_codes()
@@ -457,8 +441,6 @@ class AttachmentCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.attachments.delete(id="ATT1")
@@ -497,8 +479,6 @@ class AttachmentCollection(BaseCollection):
         Note
             The created note, with the uploaded file attached.
 
-        Examples
-        --------
         !!! example
             ```python
             with open("results.csv", "rb") as fh:
@@ -594,8 +574,6 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created SDS attachment linked to the inventory item.
 
-        Examples
-        --------
         !!! example
             ```python
             from datetime import date
@@ -691,8 +669,6 @@ class AttachmentCollection(BaseCollection):
         Attachment
             The created attachment record.
 
-        Examples
-        --------
         !!! example
             ```python
             from pathlib import Path

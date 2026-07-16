@@ -10,9 +10,9 @@ class NotesCollection(BaseCollection):
     A Note is a free-text comment attached to another entity (its "parent"),
     such as a Task, Project, or Inventory Item. Notes are commonly used to record
     observations, discussion, or context alongside an entity. Users can be
-    mentioned inside a note's text via :meth:`~albert.resources.users.User.to_note_mention`,
+    mentioned inside a note's text via [`to_note_mention`][albert.resources.users.User.to_note_mention],
     and files can be attached to a note through the
-    :class:`~albert.collections.attachments.AttachmentCollection`.
+    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
 
     This collection is accessed as ``client.notes``.
 
@@ -39,8 +39,6 @@ class NotesCollection(BaseCollection):
     get_by_parent_id(parent_id, order_by=OrderBy.DESCENDING) -> list[Note]
         List all notes attached to a given parent entity.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -73,8 +71,6 @@ class NotesCollection(BaseCollection):
         Note
             The created note, populated with its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.notes import Note
@@ -102,8 +98,6 @@ class NotesCollection(BaseCollection):
         Note
             The matching note.
 
-        Examples
-        --------
         !!! example
             ```python
             note = client.notes.get_by_id(id="...")
@@ -134,8 +128,6 @@ class NotesCollection(BaseCollection):
         -----
         The following fields can be updated: ``note``, ``parent_id``.
 
-        Examples
-        --------
         !!! example
             ```python
             note = client.notes.get_by_id(id="...")
@@ -164,8 +156,6 @@ class NotesCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.notes.delete(id="...")
@@ -194,8 +184,6 @@ class NotesCollection(BaseCollection):
         list[Note]
             The notes attached to the parent entity.
 
-        Examples
-        --------
         !!! example
             ```python
             notes = client.notes.get_by_parent_id(parent_id="TASA1")

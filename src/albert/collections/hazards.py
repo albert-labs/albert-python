@@ -13,7 +13,7 @@ class HazardsCollection(BaseCollection):
     lists Albert maintains: the hazard pictogram symbols and the hazard
     statements. These are the master lists you draw from when classifying
     materials; the specific hazards recorded on a substance appear on its CAS
-    record (see :class:`~albert.resources.cas.Hazard`).
+    record (see [`Hazard`][albert.resources.cas.Hazard]).
 
     This collection is read-only and accessed as ``client.hazards``.
 
@@ -34,8 +34,6 @@ class HazardsCollection(BaseCollection):
     get_statements() -> list[HazardStatement]
         Fetch all available hazard statements.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -68,8 +66,6 @@ class HazardsCollection(BaseCollection):
         list[HazardSymbol]
             The full reference list of hazard symbols.
 
-        Examples
-        --------
         !!! example
             ```python
             symbols = client.hazards.get_symbols()
@@ -91,8 +87,6 @@ class HazardsCollection(BaseCollection):
         list[HazardStatement]
             The full reference list of hazard statements.
 
-        Examples
-        --------
         !!! example
             ```python
             statements = client.hazards.get_statements()

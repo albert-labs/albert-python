@@ -126,7 +126,7 @@ class UnpackedInventoryListItem(BaseAlbertModel):
 class UnpackedInventory(UnpackedInventoryListItem):
     """A fully unpacked ingredient (inventory item) within a product.
 
-    Extends :class:`UnpackedInventoryListItem` with the item's identity plus its
+    Extends [`UnpackedInventoryListItem`][albert.resources.product_design.UnpackedInventoryListItem] with the item's identity plus its
     resolved SDS information and CAS-level breakdown.
 
     Attributes
@@ -160,7 +160,7 @@ class UnpackedProductDesign(BaseAlbertModel):
     """The full unpacked composition of a single formulated product.
 
     Returned by
-    :meth:`~albert.collections.product_design.ProductDesignCollection.get_unpacked_products`,
+    [`get_unpacked_products`][albert.collections.product_design.ProductDesignCollection.get_unpacked_products],
     one per formula that was unpacked. Unpacking recursively resolves the
     formulation's ingredient tree into two views: a row-level inventory list (the
     direct worksheet ingredients, some of which may be sub-formulations) and a flat

@@ -18,7 +18,7 @@ class DataColumnCollection(BaseCollection):
     A Data Column (DAC, IDs ``DAC...``) is the definition of a single measured
     result variable, such as ``Viscosity`` or ``APHA Color``. Data columns are the
     reusable building blocks of a Data Template's results: a
-    :class:`~albert.resources.data_templates.DataTemplate` references them through
+    [`DataTemplate`][albert.resources.data_templates.DataTemplate] references them through
     its ``data_column_values``, and the values recorded against a data column
     during experiments are stored as Property Data.
 
@@ -51,8 +51,6 @@ class DataColumnCollection(BaseCollection):
     delete(id) -> None
         Delete a data column by its Data Column ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -82,7 +80,7 @@ class DataColumnCollection(BaseCollection):
         """Retrieve a single data column by its exact name.
 
         Matching is case-insensitive. To retrieve multiple columns or use partial
-        matching, use :meth:`get_all` instead.
+        matching, use [`get_all`][albert.collections.data_columns.DataColumnCollection.get_all] instead.
 
         Parameters
         ----------
@@ -94,8 +92,6 @@ class DataColumnCollection(BaseCollection):
         DataColumn or None
             The matching data column, or None if no exact match is found.
 
-        Examples
-        --------
         !!! example
             ```python
             dc = client.data_columns.get_by_name(name="Viscosity")
@@ -112,8 +108,8 @@ class DataColumnCollection(BaseCollection):
     def get_by_id(self, *, id: DataColumnId) -> DataColumn:
         """Retrieve a single data column by its ID.
 
-        To find a column without knowing its ID, use :meth:`get_by_name` or
-        :meth:`get_all`.
+        To find a column without knowing its ID, use [`get_by_name`][albert.collections.data_columns.DataColumnCollection.get_by_name] or
+        [`get_all`][albert.collections.data_columns.DataColumnCollection.get_all].
 
         Parameters
         ----------
@@ -125,8 +121,6 @@ class DataColumnCollection(BaseCollection):
         DataColumn
             The matching data column.
 
-        Examples
-        --------
         !!! example
             ```python
             dc = client.data_columns.get_by_id(id="DAC1")
@@ -154,7 +148,7 @@ class DataColumnCollection(BaseCollection):
 
         Results are returned as a lazily paginated iterator, so iterating fetches
         additional pages on demand. To retrieve a single column by its exact name,
-        use :meth:`get_by_name`; by ID, use :meth:`get_by_id`.
+        use [`get_by_name`][albert.collections.data_columns.DataColumnCollection.get_by_name]; by ID, use [`get_by_id`][albert.collections.data_columns.DataColumnCollection.get_by_id].
 
         Parameters
         ----------
@@ -180,8 +174,6 @@ class DataColumnCollection(BaseCollection):
         Iterator[DataColumn]
             A lazily paginated iterator of matching data columns.
 
-        Examples
-        --------
         !!! example
             ```python
             for dc in client.data_columns.get_all(name="Color", max_items=10):
@@ -214,7 +206,7 @@ class DataColumnCollection(BaseCollection):
         """Create a new data column.
 
         To avoid creating a duplicate when a column with the same name may already
-        exist, use :meth:`get_or_create` instead.
+        exist, use [`get_or_create`][albert.collections.data_columns.DataColumnCollection.get_or_create] instead.
 
         Parameters
         ----------
@@ -226,8 +218,6 @@ class DataColumnCollection(BaseCollection):
         DataColumn
             The newly created data column, populated with its assigned Data Column ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_columns import DataColumn
@@ -246,7 +236,7 @@ class DataColumnCollection(BaseCollection):
 
         If a data column with the same name already exists, that existing column is
         returned instead of creating a duplicate; otherwise a new column is created
-        via :meth:`create`.
+        via [`create`][albert.collections.data_columns.DataColumnCollection.create].
 
         Parameters
         ----------
@@ -258,8 +248,6 @@ class DataColumnCollection(BaseCollection):
         DataColumn
             The existing or newly created data column.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_columns import DataColumn
@@ -289,8 +277,6 @@ class DataColumnCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.data_columns.delete(id="DAC1")
@@ -316,7 +302,7 @@ class DataColumnCollection(BaseCollection):
     def update(self, *, data_column: DataColumn) -> DataColumn:
         """Update an existing data column.
 
-        Fetch the column (e.g. with :meth:`get_by_id`), modify the updatable fields
+        Fetch the column (e.g. with [`get_by_id`][albert.collections.data_columns.DataColumnCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
@@ -335,8 +321,6 @@ class DataColumnCollection(BaseCollection):
         -----
         The following fields can be updated: ``metadata``, ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             dc = client.data_columns.get_by_id(id="DAC1")

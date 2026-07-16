@@ -20,7 +20,7 @@ class UnitCollection(BaseCollection):
     throughout the platform: they qualify inventory quantities, parameter values,
     and property results. Each unit has a name, an optional display symbol, an
     optional list of synonyms (alternate spellings), and a category
-    (:class:`~albert.resources.units.UnitCategory`, e.g. ``Mass`` or ``Volume``).
+    ([`UnitCategory`][albert.resources.units.UnitCategory], e.g. ``Mass`` or ``Volume``).
 
     Units are referenced by their Unit ID (format ``UNI...``, e.g. ``"UNI1"``).
 
@@ -57,8 +57,6 @@ class UnitCollection(BaseCollection):
     exists(name, exact_match=True) -> bool
         Check whether a unit with the given name exists.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -96,8 +94,6 @@ class UnitCollection(BaseCollection):
         Unit
             The newly created unit, including its assigned Unit ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.units import Unit, UnitCategory
@@ -128,8 +124,6 @@ class UnitCollection(BaseCollection):
         Unit
             The existing or newly created unit.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.units import Unit, UnitCategory
@@ -160,8 +154,6 @@ class UnitCollection(BaseCollection):
         Unit
             The matching unit.
 
-        Examples
-        --------
         !!! example
             ```python
             unit = client.units.get_by_id(id="UNI1")
@@ -188,8 +180,6 @@ class UnitCollection(BaseCollection):
         list[Unit]
             The matching units. Units not found are omitted.
 
-        Examples
-        --------
         !!! example
             ```python
             units = client.units.get_by_ids(ids=["UNI1", "UNI2"])
@@ -207,7 +197,7 @@ class UnitCollection(BaseCollection):
     def update(self, *, unit: Unit) -> Unit:
         """Apply changes to an existing unit.
 
-        Fetch a unit (e.g. via :meth:`get_by_id`), modify the updatable fields on
+        Fetch a unit (e.g. via [`get_by_id`][albert.collections.units.UnitCollection.get_by_id]), modify the updatable fields on
         the returned object, then pass it here. The unit is matched by its ``id``.
 
         Parameters
@@ -224,8 +214,6 @@ class UnitCollection(BaseCollection):
         -----
         The following fields can be updated: ``category``, ``symbol``, ``synonyms``.
 
-        Examples
-        --------
         !!! example
             ```python
             unit = client.units.get_by_id(id="UNI1")
@@ -289,8 +277,6 @@ class UnitCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.units.delete(id="UNI1")
@@ -338,8 +324,6 @@ class UnitCollection(BaseCollection):
         Iterator[Unit]
             An iterator over the matching units.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.units import UnitCategory
@@ -380,8 +364,6 @@ class UnitCollection(BaseCollection):
         Unit or None
             The matching unit, or None if no unit with that name exists.
 
-        Examples
-        --------
         !!! example
             ```python
             unit = client.units.get_by_name(name="gram", exact_match=True)
@@ -409,8 +391,6 @@ class UnitCollection(BaseCollection):
         bool
             True if a matching unit exists, False otherwise.
 
-        Examples
-        --------
         !!! example
             ```python
             if client.units.exists(name="gram"):

@@ -14,12 +14,12 @@ class BTDatasetCollection(BaseCollection):
     """Manage Breakthrough datasets in the Albert platform.
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **dataset**
-    (:class:`~albert.resources.btdataset.BTDataset`) is the tabular data used to
+    ([`BTDataset`][albert.resources.btdataset.BTDataset]) is the tabular data used to
     build and train Breakthrough models. A dataset can reference the Albert entities
     it was assembled from (projects, data columns, targets, and worksheets) via its
     ``references``. Datasets feed into model sessions and models
-    (:class:`~albert.collections.btmodel.BTModelSessionCollection`,
-    :class:`~albert.collections.btmodel.BTModelCollection`), whose ``dataset_id``
+    ([`BTModelSessionCollection`][albert.collections.btmodel.BTModelSessionCollection],
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection]), whose ``dataset_id``
     points back here.
 
     Datasets are identified by a dataset ID (format ``DST...``, e.g. ``"DST1"``).
@@ -49,8 +49,6 @@ class BTDatasetCollection(BaseCollection):
     delete(id) -> None
         Delete a dataset by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -91,8 +89,6 @@ class BTDatasetCollection(BaseCollection):
         BTDataset
             The newly created dataset, populated with its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -125,8 +121,6 @@ class BTDatasetCollection(BaseCollection):
         BTDataset
             The retrieved dataset.
 
-        Examples
-        --------
         !!! example
             ```python
             dataset = client.btdatasets.get_by_id(id="DST1")
@@ -141,7 +135,7 @@ class BTDatasetCollection(BaseCollection):
     def update(self, *, dataset: BTDataset) -> BTDataset:
         """Update an existing dataset.
 
-        Fetch the dataset (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the dataset (e.g. with [`get_by_id`][albert.collections.btdataset.BTDatasetCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. Only the fields listed in
         Notes are applied; changes to other fields are ignored.
 
@@ -160,8 +154,6 @@ class BTDatasetCollection(BaseCollection):
         The following fields can be updated: ``file_name``, ``key``, ``name``,
         ``references``.
 
-        Examples
-        --------
         !!! example
             ```python
             dataset = client.btdatasets.get_by_id(id="DST1")
@@ -192,8 +184,6 @@ class BTDatasetCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.btdatasets.delete(id="DST1")
@@ -232,8 +222,6 @@ class BTDatasetCollection(BaseCollection):
         Iterator[BTDataset]
             A lazily paginated iterator over datasets.
 
-        Examples
-        --------
         !!! example
             ```python
             for dataset in client.btdatasets.get_all(max_items=25):

@@ -9,16 +9,16 @@ from albert.resources.chats import ChatComponentType, ChatFlag, ChatFlagsInMessa
 class ChatFlagCollection:
     """Manage flags on "Ask Albert" chat messages (🧪 Beta).
 
-    A chat flag (:class:`~albert.resources.chats.ChatFlag`) is a marker set on a
+    A chat flag ([`ChatFlag`][albert.resources.chats.ChatFlag]) is a marker set on a
     single message turn in a conversation with Albert's AI assistant, used chiefly
     to capture feedback and interaction state. A message can be flagged as
     starred, downloaded, requested, or hallucinated (see
-    :class:`~albert.resources.chats.ChatFlagType`). Flags reference a message by
+    [`ChatFlagType`][albert.resources.chats.ChatFlagType]). Flags reference a message by
     its session, request, and sequence, the same coordinates used by
-    :class:`~albert.collections.chat_messages.ChatMessageCollection`.
+    [`ChatMessageCollection`][albert.collections.chat_messages.ChatMessageCollection].
 
     This is an async collection accessed as ``client.chat_flags`` on an
-    :class:`~albert.client.AsyncAlbert` client.
+    [`AsyncAlbert`][albert.client.AsyncAlbert] client.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -40,8 +40,6 @@ class ChatFlagCollection:
     remove(session_id, source_request_id, sequence, type, component_type=None) -> None
         Remove a flag from a message.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import AsyncAlbert
@@ -78,7 +76,7 @@ class ChatFlagCollection:
         """List all flagged messages of a given type.
 
         Returns flag records for the given
-        :class:`~albert.resources.chats.ChatFlagType` across ALL sessions the
+        [`ChatFlagType`][albert.resources.chats.ChatFlagType] across ALL sessions the
         authenticated user can access (not a single session). Each record is a
         pointer, not the full message body: ``parent_id`` (session id),
         ``source_request_id``, ``sequence``, and an optional ``component_type``.
@@ -93,8 +91,6 @@ class ChatFlagCollection:
         list[ChatFlag]
             Flagged messages matching the given type.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -121,7 +117,7 @@ class ChatFlagCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str | None, optional
@@ -133,8 +129,6 @@ class ChatFlagCollection:
         ChatFlagsInMessage
             A summary of the flag types set on the message.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -169,7 +163,7 @@ class ChatFlagCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
@@ -179,7 +173,7 @@ class ChatFlagCollection:
             The flag type to add.
         component_type : ChatComponentType | None, optional
             Narrow the flag to a single
-            :class:`~albert.resources.chats.ChatComponentType` when a request holds
+            [`ChatComponentType`][albert.resources.chats.ChatComponentType] when a request holds
             more than one component.
 
         Returns
@@ -187,8 +181,6 @@ class ChatFlagCollection:
         ChatFlag
             The created flag.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -225,7 +217,7 @@ class ChatFlagCollection:
         Parameters
         ----------
         session_id : str
-            The ID of the parent :class:`~albert.resources.chats.ChatSession`.
+            The ID of the parent [`ChatSession`][albert.resources.chats.ChatSession].
         source_request_id : str
             The request trace identifier of the message.
         sequence : str
@@ -235,15 +227,13 @@ class ChatFlagCollection:
             The flag type to remove.
         component_type : ChatComponentType | None, optional
             Narrow the removal to a single
-            :class:`~albert.resources.chats.ChatComponentType` when a request holds
+            [`ChatComponentType`][albert.resources.chats.ChatComponentType] when a request holds
             more than one component.
 
         Returns
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert

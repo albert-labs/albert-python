@@ -43,10 +43,10 @@ class BTModelSession(BaseResource, protected_namespaces=()):
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model session ties
     together the models produced from a single dataset
-    (:class:`~albert.resources.btdataset.BTDataset`) in one modeling run. The
-    individual models are represented by :class:`BTModel` and managed through
-    :class:`~albert.collections.btmodel.BTModelSessionCollection` and
-    :class:`~albert.collections.btmodel.BTModelCollection`.
+    ([`BTDataset`][albert.resources.btdataset.BTDataset]) in one modeling run. The
+    individual models are represented by [`BTModel`][albert.resources.btmodel.BTModel] and managed through
+    [`BTModelSessionCollection`][albert.collections.btmodel.BTModelSessionCollection] and
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
     Attributes
     ----------
@@ -75,8 +75,6 @@ class BTModelSession(BaseResource, protected_namespaces=()):
     flag : bool
         Boolean marker on the session. Defaults to False.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
@@ -145,9 +143,9 @@ class BTModel(BaseResource, protected_namespaces=()):
     """A single trained Breakthrough model.
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model can belong to a
-    parent session (:class:`BTModelSession`), in which case ``parent_id`` is set to
+    parent session ([`BTModelSession`][albert.resources.btmodel.BTModelSession]), in which case ``parent_id`` is set to
     the session ID, or be a detached, standalone model. Models are managed through
-    :class:`~albert.collections.btmodel.BTModelCollection`.
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
     Attributes
     ----------
@@ -180,8 +178,6 @@ class BTModel(BaseResource, protected_namespaces=()):
     flag : bool
         Boolean marker on the model. Defaults to False.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.btmodel import BTModel

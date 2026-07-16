@@ -24,8 +24,8 @@ class InventoryMergeModule(str, Enum):
     """
     A data category that can be carried over when merging inventory items.
 
-    When duplicate inventory items are merged (see :class:`MergeInventory` and
-    :meth:`~albert.collections.inventory.InventoryCollection.merge`), each selected
+    When duplicate inventory items are merged (see [`MergeInventory`][albert.resources.inventory.MergeInventory] and
+    [`merge`][albert.collections.inventory.InventoryCollection.merge]), each selected
     module names a body of data to fold from the child item(s) into the surviving
     parent item. When no modules are specified, all modules are included.
 
@@ -73,7 +73,7 @@ ALL_MERGE_MODULES: list[InventoryMergeModule] = list(InventoryMergeModule)
 
 
 class InventoryCategory(str, Enum):
-    """The kind of material an :class:`InventoryItem` represents.
+    """The kind of material an [`InventoryItem`][albert.resources.inventory.InventoryItem] represents.
 
     Every inventory item belongs to exactly one category, which determines how it
     is used across the platform and which fields are relevant to it.
@@ -90,7 +90,7 @@ class InventoryCategory(str, Enum):
     FORMULAS : str
         A mixture designed in Albert through a Worksheet. Formulas are not created
         through the inventory collection; they are produced by the Worksheet
-        collection (:class:`~albert.collections.worksheets.WorksheetCollection`).
+        collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]).
     """
 
     RAW_MATERIALS = "RawMaterials"
@@ -100,10 +100,10 @@ class InventoryCategory(str, Enum):
 
 
 class InventoryUnitCategory(str, Enum):
-    """The dimension of the unit an :class:`InventoryItem` is measured and stocked in.
+    """The dimension of the unit an [`InventoryItem`][albert.resources.inventory.InventoryItem] is measured and stocked in.
 
     Determines how quantities on hand and in formulas are interpreted. When not
-    supplied, the category defaults based on :class:`InventoryCategory`: ``MASS``
+    supplied, the category defaults based on [`InventoryCategory`][albert.resources.inventory.InventoryCategory]: ``MASS``
     for raw materials and formulas, ``UNITS`` for equipment and consumables.
 
     Attributes
@@ -134,14 +134,14 @@ class CasAuditFieldsWithEmail(AuditFields):
 
 
 class CasAmount(BaseAlbertModel):
-    """A single CAS constituent and its concentration within an :class:`InventoryItem`.
+    """A single CAS constituent and its concentration within an [`InventoryItem`][albert.resources.inventory.InventoryItem].
 
     A ``CasAmount`` links one CAS number (a chemical substance identifier) to the
     amount of that substance present in an inventory item, expressed as a range
     (``min`` to ``max``) with an optional ``target``. A list of these on an
-    :class:`InventoryItem` gives the item's compositional breakdown.
+    [`InventoryItem`][albert.resources.inventory.InventoryItem] gives the item's compositional breakdown.
 
-    Identify the CAS in one of two ways: pass a full :class:`~albert.resources.cas.Cas`
+    Identify the CAS in one of two ways: pass a full [`Cas`][albert.resources.cas.Cas]
     object as ``cas`` (its ``id``, ``number``, and ``cas_smiles`` are then copied onto
     this amount), or pass just the CAS resource ``id`` string. Do not pass both.
 
@@ -182,8 +182,6 @@ class CasAmount(BaseAlbertModel):
     albert.resources.cas.Cas : The CAS resource referenced by this amount.
     InventoryItem : Holds the list of ``CasAmount`` entries for an item.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.inventory import CasAmount
@@ -230,12 +228,12 @@ class CasAmount(BaseAlbertModel):
 
 
 class InventoryMinimum(BaseAlbertModel):
-    """A reorder threshold: the minimum stock of an :class:`InventoryItem` to keep at a Location.
+    """A reorder threshold: the minimum stock of an [`InventoryItem`][albert.resources.inventory.InventoryItem] to keep at a Location.
 
     Each entry pairs one Location with the minimum quantity of an item that must be
-    kept on hand there. An :class:`InventoryItem` may carry several of these, one per
+    kept on hand there. An [`InventoryItem`][albert.resources.inventory.InventoryItem] may carry several of these, one per
     Location. Identify the Location either by passing a full
-    :class:`~albert.resources.locations.Location` object as ``location`` (its ``id`` is
+    [`Location`][albert.resources.locations.Location] object as ``location`` (its ``id`` is
     then copied onto ``id``), or by passing the location ``id`` string directly. Provide
     one or the other, not both.
 
@@ -256,8 +254,6 @@ class InventoryMinimum(BaseAlbertModel):
     albert.resources.locations.Location : The Location referenced by this minimum.
     InventoryItem : Holds the list of ``InventoryMinimum`` entries for an item.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.inventory import InventoryMinimum
@@ -296,16 +292,16 @@ class InventoryItem(BaseTaggedResource):
     """A catalog entry for a material tracked in Albert.
 
     An ``InventoryItem`` is the canonical record for a raw material, consumable,
-    piece of equipment, or formula. Its :class:`InventoryCategory` determines how it
+    piece of equipment, or formula. Its [`InventoryCategory`][albert.resources.inventory.InventoryCategory] determines how it
     is used across the platform, and once saved it is referenced everywhere by its
     Inventory ID (format ``INV...``, e.g. ``"INVA1"``). Raw materials are typically
     linked to a manufacturing ``company`` and a compositional breakdown of CAS
     amounts. Formula items are designed in Worksheets rather than created here (the
-    :meth:`~albert.collections.inventory.InventoryCollection.create` method rejects
+    [`create`][albert.collections.inventory.InventoryCollection.create] method rejects
     Formula items), and a Formula requires a ``project_id``.
 
     Items are managed through
-    :class:`~albert.collections.inventory.InventoryCollection` (``client.inventory``).
+    [`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).
 
     Attributes
     ----------
@@ -327,14 +323,14 @@ class InventoryItem(BaseTaggedResource):
         The access/security class of the item (e.g. confidential, shared, restricted).
     company : Company | str | None
         The manufacturing Company associated with the item (links to the Company
-        collection). Accepts a :class:`~albert.resources.companies.Company` or a name
+        collection). Accepts a [`Company`][albert.resources.companies.Company] or a name
         string; a string is turned into a Company that is first-or-created on save.
     minimum : list[InventoryMinimum] | None
-        Per-Location reorder thresholds for the item. See :class:`InventoryMinimum`.
+        Per-Location reorder thresholds for the item. See [`InventoryMinimum`][albert.resources.inventory.InventoryMinimum].
     alias : str | None
         An alternate name for the item.
     cas : list[CasAmount] | None
-        The item's compositional breakdown as CAS amounts. See :class:`CasAmount`.
+        The item's compositional breakdown as CAS amounts. See [`CasAmount`][albert.resources.inventory.CasAmount].
     is_formula_override : bool | None
         Whether the substance/CAS-level breakdown for this formula has been overridden
         from the auto-calculated value; commonly set to indicate the formula is not a
@@ -348,7 +344,7 @@ class InventoryItem(BaseTaggedResource):
         Access-control entries governing who can act on the item.
     tags : list[Tag | str] | None
         Tags on the item. A string is turned into a Tag that is first-or-created.
-        Inherited from :class:`~albert.resources.tagged_base.BaseTaggedResource`.
+        Inherited from [`BaseTaggedResource`][albert.resources.tagged_base.BaseTaggedResource].
     inventory_on_hand : float
         Total amount currently on hand across all lots. Read-only.
     formula_id : str | None
@@ -370,8 +366,6 @@ class InventoryItem(BaseTaggedResource):
     InventoryMinimum : Per-Location reorder thresholds used in ``minimum``.
     InventorySpec : Declared property specifications for an item.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.inventory import InventoryItem, InventoryCategory
@@ -445,7 +439,7 @@ class InventoryItem(BaseTaggedResource):
 
 
 class InventorySpecValue(BaseAlbertModel):
-    """The acceptance value(s) of an :class:`InventorySpec`.
+    """The acceptance value(s) of an [`InventorySpec`][albert.resources.inventory.InventorySpec].
 
     Expresses the expected value of a declared property as a range (``min`` to ``max``),
     a single ``reference`` value, and/or a ``comparison_operator``. Numeric inputs are
@@ -478,15 +472,15 @@ class InventorySpecValue(BaseAlbertModel):
 
 
 class InventorySpec(BaseAlbertModel):
-    """A declared property of an :class:`InventoryItem`.
+    """A declared property of an [`InventoryItem`][albert.resources.inventory.InventoryItem].
 
     A spec is a property asserted directly on an item (a declared expectation), as
     opposed to a value measured through a Task. Each spec points at a data column
     (``data_column_id``, format ``DAC...``) and carries the expected
-    :class:`InventorySpecValue`. Specs are attached to and retrieved from an item via
-    :meth:`~albert.collections.inventory.InventoryCollection.add_specs` and
-    :meth:`~albert.collections.inventory.InventoryCollection.get_specs`, and are
-    grouped for an item by :class:`InventorySpecList`.
+    [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue]. Specs are attached to and retrieved from an item via
+    [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] and
+    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs], and are
+    grouped for an item by [`InventorySpecList`][albert.resources.inventory.InventorySpecList].
 
     Attributes
     ----------
@@ -521,8 +515,6 @@ class InventorySpec(BaseAlbertModel):
     InventorySpecValue : The value/range carried by a spec.
     InventorySpecList : Groups the specs attached to a single item.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.inventory import InventorySpec, InventorySpecValue
@@ -550,11 +542,11 @@ class InventorySpec(BaseAlbertModel):
 
 
 class InventorySpecList(BaseAlbertModel):
-    """The set of :class:`InventorySpec` entries attached to one :class:`InventoryItem`.
+    """The set of [`InventorySpec`][albert.resources.inventory.InventorySpec] entries attached to one [`InventoryItem`][albert.resources.inventory.InventoryItem].
 
     Returned by
-    :meth:`~albert.collections.inventory.InventoryCollection.get_specs` and accepted by
-    :meth:`~albert.collections.inventory.InventoryCollection.add_specs`, this binds a
+    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs] and accepted by
+    [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs], this binds a
     list of specs to the item they belong to.
 
     Attributes
@@ -577,7 +569,7 @@ class InventorySpecList(BaseAlbertModel):
 # and see if this is unique to the search endpoint or a
 # common resource
 class InventorySearchPictogramItem(BaseAlbertModel):
-    """A hazard pictogram entry returned on an :class:`InventorySearchItem`."""
+    """A hazard pictogram entry returned on an [`InventorySearchItem`][albert.resources.inventory.InventorySearchItem]."""
 
     id: str
     name: str
@@ -589,7 +581,7 @@ class InventorySearchPictogramItem(BaseAlbertModel):
 # if UnNumber doesn't require all fields we can
 # merge these two classes together
 class InventorySearchSDSItem(BaseAlbertModel):
-    """Safety Data Sheet summary fields returned on an :class:`InventorySearchItem`."""
+    """Safety Data Sheet summary fields returned on an [`InventorySearchItem`][albert.resources.inventory.InventorySearchItem]."""
 
     un_number: str | None = Field(default=None, alias="unNumber")
     storage_class_name: str | None = Field(default=None, alias="storageClassName")
@@ -599,13 +591,13 @@ class InventorySearchSDSItem(BaseAlbertModel):
 
 
 class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
-    """A lightweight :class:`InventoryItem` result returned by the search endpoint.
+    """A lightweight [`InventoryItem`][albert.resources.inventory.InventoryItem] result returned by the search endpoint.
 
     Search returns these partial records for speed; they carry the fields most useful
     for lookups, counts, and display rather than the full item. Produced by
-    :meth:`~albert.collections.inventory.InventoryCollection.search`. Because it mixes
-    in :class:`~albert.resources._mixins.HydrationMixin`, calling ``hydrate()`` on a
-    bound instance fetches the corresponding fully populated :class:`InventoryItem`.
+    [`search`][albert.collections.inventory.InventoryCollection.search]. Because it mixes
+    in [`HydrationMixin`][albert.resources._mixins.HydrationMixin], calling ``hydrate()`` on a
+    bound instance fetches the corresponding fully populated [`InventoryItem`][albert.resources.inventory.InventoryItem].
 
     Attributes
     ----------
@@ -655,8 +647,8 @@ class MergeInventory(BaseAlbertModel):
 
     Describes a merge: one surviving parent item plus the child item(s) to fold into
     it, and optionally which data modules to carry over. This is the body used by
-    :meth:`~albert.collections.inventory.InventoryCollection.merge`; when ``modules``
-    is omitted, all :class:`InventoryMergeModule` values are included.
+    [`merge`][albert.collections.inventory.InventoryCollection.merge]; when ``modules``
+    is omitted, all [`InventoryMergeModule`][albert.resources.inventory.InventoryMergeModule] values are included.
 
     Attributes
     ----------
@@ -675,8 +667,6 @@ class MergeInventory(BaseAlbertModel):
     InventoryMergeModule : The set of mergeable data categories.
     albert.collections.inventory.InventoryCollection.merge : Consumes this payload.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.inventory import MergeInventory

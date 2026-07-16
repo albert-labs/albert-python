@@ -27,18 +27,18 @@ class WorkflowCollection(BaseCollection):
 
     A Workflow does **not** include a Data Template's **Data Columns** (also called
     *Results*). Those are the *dependent variables*, and they are recorded only in
-    Property Data (:class:`~albert.collections.property_data.PropertyDataCollection`). In
+    Property Data ([`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]). In
     short, the Workflow holds the independent variables and Property Data holds the
     dependent ones. A Workflow is also not itself a task: it becomes actionable when
     paired with a Data Template inside a *Block* on a Property or Batch Task (see
-    :meth:`~albert.collections.tasks.TaskCollection.add_block`).
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block]).
 
     **Uniqueness.** A Workflow is uniquely identified by its full setpoint
     configuration: the value (and unit) of every parameter setpoint, the order of
     the parameters within each Data Template / Parameter Group, and the order of
     the Data Templates / Parameter Groups within the workflow. Because of this,
     workflows are *found-or-created* rather than blindly created: to obtain a
-    workflow ID, build the Workflow object you want and let :meth:`create` return
+    workflow ID, build the Workflow object you want and let [`create`][albert.collections.workflows.WorkflowCollection.create] return
     the existing match or make a new one.
 
     **Intervals.** When one or two parameters are "intervalized" (varied across
@@ -47,7 +47,7 @@ class WorkflowCollection(BaseCollection):
     ``ROW1`` (one intervalized parameter) or ``ROW1XROW2`` (the product of two).
     That interval ID is how you target a specific condition when reading or writing
     Property Data. Use
-    :meth:`~albert.resources.workflows.Workflow.get_interval_id` to build the
+    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the
     correct interval ID from parameter values.
 
     This collection is accessed as ``client.workflows``.
@@ -73,8 +73,6 @@ class WorkflowCollection(BaseCollection):
     get_all(max_items=None) -> Iterator[Workflow]
         Iterate over all workflows (rarely needed in production).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -116,7 +114,7 @@ class WorkflowCollection(BaseCollection):
         ----------
         workflows : list[Workflow]
             The workflows to find or create. Each is built from parameter group
-            setpoints (see :class:`~albert.resources.workflows.Workflow`).
+            setpoints (see [`Workflow`][albert.resources.workflows.Workflow]).
 
         Returns
         -------
@@ -126,11 +124,9 @@ class WorkflowCollection(BaseCollection):
         Notes
         -----
         Returned workflows carry an empty ``parameter_group_setpoints`` list
-        whether they were newly created or matched. Call :meth:`get_by_id` to
+        whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
         fetch the full setpoints.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.workflows import (
@@ -267,7 +263,7 @@ class WorkflowCollection(BaseCollection):
     def get_by_id(self, *, id: WorkflowId) -> Workflow:
         """Retrieve a single workflow by its ID, including its full setpoints.
 
-        Unlike the workflows returned by :meth:`create`, this includes the fully
+        Unlike the workflows returned by [`create`][albert.collections.workflows.WorkflowCollection.create], this includes the fully
         populated ``parameter_group_setpoints`` and any interval combinations.
 
         Parameters
@@ -280,8 +276,6 @@ class WorkflowCollection(BaseCollection):
         Workflow
             The fully populated workflow.
 
-        Examples
-        --------
         !!! example
             ```python
             wf = client.workflows.get_by_id(id="WFL1")
@@ -309,8 +303,6 @@ class WorkflowCollection(BaseCollection):
         list[Workflow]
             The matching workflows.
 
-        Examples
-        --------
         !!! example
             ```python
             workflows = client.workflows.get_by_ids(ids=["WFL1", "WFL2"])
@@ -332,7 +324,7 @@ class WorkflowCollection(BaseCollection):
     ) -> Iterator[Workflow]:
         """Iterate over all workflows.
 
-        Workflows are usually retrieved by ID (via :meth:`get_by_id`) or created
+        Workflows are usually retrieved by ID (via [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]) or created
         as part of building a task, so a full listing is rarely needed in
         production. Results are returned as a lazily paginated iterator.
 
@@ -347,8 +339,6 @@ class WorkflowCollection(BaseCollection):
         Workflow
             Each workflow, fully populated.
 
-        Examples
-        --------
         !!! example
             ```python
             for wf in client.workflows.get_all(max_items=10):

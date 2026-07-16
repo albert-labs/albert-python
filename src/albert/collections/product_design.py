@@ -30,9 +30,9 @@ class ProductDesignCollection(BaseCollection):
     Use this when you need the resolved composition of a formula rather than just
     its immediate ingredient list, for example to compute regulatory or safety
     rollups. The formulas being unpacked are Inventory Items in the ``Formulas``
-    category (see :class:`~albert.collections.inventory.InventoryCollection`), and
+    category (see [`InventoryCollection`][albert.collections.inventory.InventoryCollection]), and
     the substances resolve to CAS entries (see
-    :class:`~albert.collections.cas.CasCollection`).
+    [`CasCollection`][albert.collections.cas.CasCollection]).
 
     This collection is accessed as ``client.product_design``.
 
@@ -51,8 +51,6 @@ class ProductDesignCollection(BaseCollection):
     get_unpacked_products(inventory_ids, unpack_id="PREDICTION") -> list[UnpackedProductDesign]
         Unpack one or more formulas into their full CAS-level substance composition.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -91,7 +89,7 @@ class ProductDesignCollection(BaseCollection):
 
         Each supplied formula is flattened into its constituent substances, with
         their amounts, CAS information, and SDS / regulatory details. One
-        :class:`~albert.resources.product_design.UnpackedProductDesign` is returned
+        [`UnpackedProductDesign`][albert.resources.product_design.UnpackedProductDesign] is returned
         per input formula. Requests are automatically split into batches of 50
         inventory IDs, so large lists can be passed in a single call.
 
@@ -107,8 +105,6 @@ class ProductDesignCollection(BaseCollection):
         list[UnpackedProductDesign]
             The unpacked composition, one entry per input formula.
 
-        Examples
-        --------
         !!! example
             ```python
             unpacked = client.product_design.get_unpacked_products(

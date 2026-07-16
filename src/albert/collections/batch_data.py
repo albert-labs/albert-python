@@ -11,23 +11,23 @@ class BatchDataCollection(BaseCollection):
     """Manage Batch Data for Batch Tasks in the Albert platform.
 
     Batch Data is the tabular record behind a Batch Task
-    (:class:`~albert.resources.tasks.BatchTask`): the grid that captures how a
+    ([`BatchTask`][albert.resources.tasks.BatchTask]): the grid that captures how a
     physical batch of a formulation was actually made. It is organized as:
 
-    - **Rows** (:class:`~albert.resources.batch_data.BatchDataRow`): the
+    - **Rows** ([`BatchDataRow`][albert.resources.batch_data.BatchDataRow]): the
       formulation components (ingredients) that go into the batch, along with
       nested child rows for sub-formulas.
-    - **Product columns** (:class:`~albert.resources.batch_data.BatchDataColumn`):
+    - **Product columns** ([`BatchDataColumn`][albert.resources.batch_data.BatchDataColumn]):
       the batch/product being manufactured, carrying batch totals, reference
       totals, and any lot breakdowns.
-    - **Values** (:class:`~albert.resources.batch_data.BatchDataValue`): the
+    - **Values** ([`BatchDataValue`][albert.resources.batch_data.BatchDataValue]): the
       amount recorded for a given row within a given column.
 
     Batch Data is keyed by the Task ID of its Batch Task (format ``TAS...``); it
     is not a standalone catalog entity, so there is no free-text search. Retrieve
-    it with :meth:`get_by_id` using the owning Task ID, initialize it for a task
-    with :meth:`create_batch_data`, and record which lots were consumed with
-    :meth:`update_used_batch_amounts`.
+    it with [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id] using the owning Task ID, initialize it for a task
+    with [`create_batch_data`][albert.collections.batch_data.BatchDataCollection.create_batch_data], and record which lots were consumed with
+    [`update_used_batch_amounts`][albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts].
 
     This collection is accessed as ``client.batch_data``.
 
@@ -50,8 +50,6 @@ class BatchDataCollection(BaseCollection):
     update_used_batch_amounts(task_id, patches) -> None
         Record which lots were used for the batch's recorded amounts.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -82,7 +80,7 @@ class BatchDataCollection(BaseCollection):
 
         Sets up the empty batch data grid for the given Batch Task so that
         amounts and lots can subsequently be recorded. Retrieve the populated
-        grid afterwards with :meth:`get_by_id`.
+        grid afterwards with [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id].
 
         Parameters
         ----------
@@ -95,8 +93,6 @@ class BatchDataCollection(BaseCollection):
         BatchData
             The created batch data entry.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -122,7 +118,7 @@ class BatchDataCollection(BaseCollection):
         """Retrieve the batch data for a batch task by its Task ID.
 
         Returns the batch data grid (rows, product columns, and recorded values)
-        for the owning Batch Task (:class:`~albert.resources.tasks.BatchTask`).
+        for the owning Batch Task ([`BatchTask`][albert.resources.tasks.BatchTask]).
 
         Parameters
         ----------
@@ -131,7 +127,7 @@ class BatchDataCollection(BaseCollection):
             this is the Task ID of the batch task (format ``TAS...``).
         type : BatchDataType, optional
             The kind of identifier passed as ``id``. Defaults to
-            :attr:`~albert.resources.batch_data.BatchDataType.TASK_ID`.
+            [`TASK_ID`][albert.resources.batch_data.BatchDataType.TASK_ID].
         limit : int, optional
             Maximum number of row entries to return per response. Defaults to 100.
         start_key : str, optional
@@ -139,15 +135,13 @@ class BatchDataCollection(BaseCollection):
             ``last_key`` from a previous response to continue where it left off.
         order_by : OrderBy, optional
             Direction in which results are sorted. Defaults to
-            :attr:`~albert.core.shared.enums.OrderBy.DESCENDING`.
+            [`DESCENDING`][albert.core.shared.enums.OrderBy.DESCENDING].
 
         Returns
         -------
         BatchData
             The batch data for the task.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -177,9 +171,9 @@ class BatchDataCollection(BaseCollection):
         Applies patch entries that set the lot consumed for individual cells of
         the batch data grid, identified by their row (and optional column). Each
         patch targets a value via a
-        :class:`~albert.resources.batch_data.BatchValueId` and describes the
+        [`BatchValueId`][albert.resources.batch_data.BatchValueId] and describes the
         change with one or more
-        :class:`~albert.resources.batch_data.BatchValuePatchDatum` entries.
+        [`BatchValuePatchDatum`][albert.resources.batch_data.BatchValuePatchDatum] entries.
 
         Parameters
         ----------
@@ -193,8 +187,6 @@ class BatchDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert

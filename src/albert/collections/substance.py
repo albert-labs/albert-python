@@ -9,7 +9,7 @@ class SubstanceCollection(BaseCollection):
     """Look up regulatory and hazard information for chemical substances.
 
     A Substance is the regulatory/compliance profile of a chemical, keyed by its
-    CAS number. Each :class:`~albert.resources.substance.SubstanceInfo` bundles
+    CAS number. Each [`SubstanceInfo`][albert.resources.substance.SubstanceInfo] bundles
     the data Albert holds for that chemical, including GHS hazard
     classifications, toxicity and ecotoxicity data, exposure limits, physical
     properties, and membership on regulatory lists across many jurisdictions.
@@ -18,7 +18,7 @@ class SubstanceCollection(BaseCollection):
     Substances are read-only reference data: this collection only retrieves
     information and does not create or modify it. They are addressed by CAS
     number (e.g. ``"64-17-5"``) rather than by an Albert ID, and relate to
-    :class:`~albert.resources.cas.Cas` records used elsewhere in the platform.
+    [`Cas`][albert.resources.cas.Cas] records used elsewhere in the platform.
 
     This collection is accessed as ``client.substances``.
 
@@ -39,8 +39,6 @@ class SubstanceCollection(BaseCollection):
     get_by_id(cas_id, region="US", catch_errors=None) -> SubstanceInfo | None
         Retrieve regulatory information for a single CAS number.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -74,7 +72,7 @@ class SubstanceCollection(BaseCollection):
     ) -> list[SubstanceInfo]:
         """Retrieve regulatory information for several CAS numbers at once.
 
-        For a single CAS number, use :meth:`get_by_id`.
+        For a single CAS number, use [`get_by_id`][albert.collections.substance.SubstanceCollection.get_by_id].
 
         Parameters
         ----------
@@ -93,8 +91,6 @@ class SubstanceCollection(BaseCollection):
         list[SubstanceInfo]
             The substances found for the given CAS numbers.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -123,7 +119,7 @@ class SubstanceCollection(BaseCollection):
     ) -> SubstanceInfo | None:
         """Retrieve regulatory information for a single CAS number.
 
-        To look up several CAS numbers in one call, use :meth:`get_by_ids`.
+        To look up several CAS numbers in one call, use [`get_by_ids`][albert.collections.substance.SubstanceCollection.get_by_ids].
 
         Parameters
         ----------
@@ -141,8 +137,6 @@ class SubstanceCollection(BaseCollection):
         SubstanceInfo or None
             The substance for the given CAS number, or None if it is not found.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert

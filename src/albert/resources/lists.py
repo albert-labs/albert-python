@@ -36,11 +36,11 @@ class ListItem(BaseResource):
 
     List items back the choices offered by ``list``-type custom fields (e.g.
     dropdown options) and other fixed option sets in Albert. A
-    :class:`~albert.resources.custom_fields.CustomField` with
-    :attr:`~albert.resources.custom_fields.FieldType.LIST` defines a list (keyed
+    [`CustomField`][albert.resources.custom_fields.CustomField] with
+    [`LIST`][albert.resources.custom_fields.FieldType.LIST] defines a list (keyed
     by ``list_type``, typically the field's name); its selectable options are
     ``ListItem`` records with a matching ``list_type``. Managed through
-    :class:`~albert.collections.lists.ListsCollection` (``client.lists``).
+    [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
 
     Attributes
     ----------
@@ -55,13 +55,11 @@ class ListItem(BaseResource):
     list_type : str or None
         The list this item belongs to. For a list-type custom field this is
         typically the field's name (see
-        :class:`~albert.resources.custom_fields.CustomField`). For built-in
+        [`CustomField`][albert.resources.custom_fields.CustomField]). For built-in
         categories the allowed values are ``projectState`` for ``projects``,
         ``extensions`` for ``extensions``, and ``casCategory`` or
         ``inventoryFunction`` for ``inventory``.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.lists import ListItem, ListItemCategory

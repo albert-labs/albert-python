@@ -15,7 +15,7 @@ class LocationCollection(BaseCollection):
     campus) where work happens in Albert. Locations are referenced by Tasks and
     by Inventory Items to record where an activity is performed or where a
     material lives, and each Location can hold one or more Storage Locations
-    (:class:`~albert.resources.storage_locations.StorageLocation`).
+    ([`StorageLocation`][albert.resources.storage_locations.StorageLocation]).
 
     This collection is accessed as ``client.locations``.
 
@@ -46,8 +46,6 @@ class LocationCollection(BaseCollection):
     delete(id) -> None
         Delete a location by its Albert ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -107,8 +105,6 @@ class LocationCollection(BaseCollection):
         Iterator[Location]
             Locations matching the given filters.
 
-        Examples
-        --------
         !!! example
             ```python
             for location in client.locations.get_all(name="Boston Lab"):
@@ -146,8 +142,6 @@ class LocationCollection(BaseCollection):
         Location
             The fully populated location.
 
-        Examples
-        --------
         !!! example
             ```python
             location = client.locations.get_by_id(id="...")
@@ -179,8 +173,6 @@ class LocationCollection(BaseCollection):
         The following fields can be updated: ``address``, ``country``,
         ``latitude``, ``longitude``, ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             location = client.locations.get_by_id(id="...")
@@ -216,8 +208,6 @@ class LocationCollection(BaseCollection):
         Location or None
             The matching registered location, or None if no match is found.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.locations import Location
@@ -250,8 +240,6 @@ class LocationCollection(BaseCollection):
         Location
             The newly created location, populated with its assigned ``id``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.locations import Location
@@ -274,7 +262,7 @@ class LocationCollection(BaseCollection):
     def get_or_create(self, *, location: Location) -> Location:
         """Return the matching Location if it exists, otherwise create it.
 
-        Looks for an existing location with the same name (see :meth:`exists`)
+        Looks for an existing location with the same name (see [`exists`][albert.collections.locations.LocationCollection.exists])
         and returns it; if none is found, creates the location.
 
         Parameters
@@ -287,8 +275,6 @@ class LocationCollection(BaseCollection):
         Location
             The existing or newly created location.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.locations import Location
@@ -321,8 +307,6 @@ class LocationCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.locations.delete(id="...")

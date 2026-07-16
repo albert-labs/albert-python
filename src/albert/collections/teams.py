@@ -17,7 +17,7 @@ class TeamCollection(BaseCollection):
     """Manage Teams in the Albert platform.
 
     A Team is a named group of users
-    (:class:`~albert.resources.users.User`). Each member holds a team role
+    ([`User`][albert.resources.users.User]). Each member holds a team role
     (owner or viewer) that governs their rights within the team. Teams are used
     to share access: entity ACLs and Task assignments can reference a whole team
     rather than individual users. A team is identified by its Team ID (format
@@ -52,8 +52,6 @@ class TeamCollection(BaseCollection):
     remove_users(id, users) -> Team
         Removes users from a team.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -115,8 +113,6 @@ class TeamCollection(BaseCollection):
         Iterator[Team]
             An iterator of Team entities matching the filters.
 
-        Examples
-        --------
         !!! example
             ```python
             for team in client.teams.get_all(name="Coatings", exact_match=False):
@@ -157,8 +153,6 @@ class TeamCollection(BaseCollection):
         Team
             The Team entity.
 
-        Examples
-        --------
         !!! example
             ```python
             team = client.teams.get_by_id(id="TEM1")
@@ -193,8 +187,6 @@ class TeamCollection(BaseCollection):
         Team
             The created Team, populated with its assigned Team ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.teams import TeamMember
@@ -233,12 +225,10 @@ class TeamCollection(BaseCollection):
         Notes
         -----
         The following can be updated: the team ``name``, its membership (adding
-        or removing :class:`~albert.resources.teams.TeamMember` entries), and
+        or removing [`TeamMember`][albert.resources.teams.TeamMember] entries), and
         each member's ``role``. Setting ``members`` to an empty list removes all
         members; leaving it as ``None`` leaves membership unchanged.
 
-        Examples
-        --------
         !!! example
             ```python
             team = client.teams.get_by_id(id="TEM1")
@@ -328,8 +318,6 @@ class TeamCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.teams.delete(id="TEM1")
@@ -358,7 +346,7 @@ class TeamCollection(BaseCollection):
         Raises
         ------
         AlbertException
-            If any of the provided users is already a member. Use :meth:`update`
+            If any of the provided users is already a member. Use [`update`][albert.collections.teams.TeamCollection.update]
             to change an existing member's role.
 
         Returns
@@ -366,8 +354,6 @@ class TeamCollection(BaseCollection):
         Team
             The updated Team.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.teams import TeamMember
@@ -427,8 +413,6 @@ class TeamCollection(BaseCollection):
         Team
             The updated Team.
 
-        Examples
-        --------
         !!! example
             ```python
             client.teams.remove_users(id="TEM1", users=["USR34"])

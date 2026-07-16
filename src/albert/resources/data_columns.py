@@ -10,13 +10,13 @@ class DataColumn(BaseResource):
     A Data Column (DAC) defines one direct output variable that a task can
     measure, such as ``Viscosity`` or ``APHA Color``. Data columns are the
     reusable building blocks of a Data Template's results: a
-    :class:`~albert.resources.data_templates.DataTemplate` references data columns
+    [`DataTemplate`][albert.resources.data_templates.DataTemplate] references data columns
     through its ``data_column_values``, and the values recorded against a data
     column during experiments are stored as Property Data.
 
     Data columns are identified by a Data Column ID (format ``DAC...``, e.g.
     ``"DAC1"``) and are managed through
-    :class:`~albert.collections.data_columns.DataColumnCollection`, accessed as
+    [`DataColumnCollection`][albert.collections.data_columns.DataColumnCollection], accessed as
     ``client.data_columns``.
 
     Attributes
@@ -32,8 +32,6 @@ class DataColumn(BaseResource):
     status : Status or None
         The lifecycle status of the data column.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert

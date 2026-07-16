@@ -15,14 +15,14 @@ class BTInsightCollection(BaseCollection):
     """Manage Breakthrough insights in the Albert platform.
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. An **insight**
-    (:class:`~albert.resources.btinsight.BTInsight`) is an output produced by
+    ([`BTInsight`][albert.resources.btinsight.BTInsight]) is an output produced by
     Breakthrough, such as an optimizer result, impact chart, or generated
     candidate. An insight is categorized by its
-    :class:`~albert.resources.btinsight.BTInsightCategory` and can trace back to the
+    [`BTInsightCategory`][albert.resources.btinsight.BTInsightCategory] and can trace back to the
     dataset, model session, and model it came from (``dataset_id``,
     ``model_session_id``, ``model_id``), which link to
-    :class:`~albert.collections.btdataset.BTDatasetCollection` and
-    :class:`~albert.collections.btmodel.BTModelCollection`.
+    [`BTDatasetCollection`][albert.collections.btdataset.BTDatasetCollection] and
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
     Insights are identified by an insight ID (format ``INS...``, e.g. ``"INS7"``).
 
@@ -51,8 +51,6 @@ class BTInsightCollection(BaseCollection):
     delete(id) -> None
         Delete an insight by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -104,8 +102,6 @@ class BTInsightCollection(BaseCollection):
         BTInsight
             The newly created insight, populated with its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -141,8 +137,6 @@ class BTInsightCollection(BaseCollection):
         BTInsight
             The retrieved insight.
 
-        Examples
-        --------
         !!! example
             ```python
             insight = client.btinsights.get_by_id(id="INS7")
@@ -194,8 +188,6 @@ class BTInsightCollection(BaseCollection):
         Iterator[BTInsight]
             A lazily paginated iterator of matching insights.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.btinsight import BTInsightCategory
@@ -235,7 +227,7 @@ class BTInsightCollection(BaseCollection):
     def update(self, *, insight: BTInsight) -> BTInsight:
         """Update an existing insight.
 
-        Fetch the insight (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the insight (e.g. with [`get_by_id`][albert.collections.btinsight.BTInsightCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. Only the fields listed in
         Notes are applied; changes to other fields are ignored.
 
@@ -255,8 +247,6 @@ class BTInsightCollection(BaseCollection):
         ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``,
         ``registry``, ``start_time``, ``state``, ``total_time``.
 
-        Examples
-        --------
         !!! example
             ```python
             insight = client.btinsights.get_by_id(id="INS7")
@@ -288,8 +278,6 @@ class BTInsightCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.btinsights.delete(id="INS7")

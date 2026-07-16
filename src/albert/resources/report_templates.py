@@ -127,8 +127,8 @@ class ReportTemplate(BaseResource):
     A report template defines a report type that can be run: its available
     filters and its default column, chart, and metadata state. Templates are
     retrieved through
-    :class:`~albert.collections.report_templates.ReportTemplateCollection` and are
-    grouped by :class:`ReportTemplateCategory` and :class:`ReportTemplateSubCategory`.
+    [`ReportTemplateCollection`][albert.collections.report_templates.ReportTemplateCollection] and are
+    grouped by [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory] and [`ReportTemplateSubCategory`][albert.resources.report_templates.ReportTemplateSubCategory].
 
     Attributes
     ----------

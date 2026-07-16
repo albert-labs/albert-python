@@ -17,7 +17,7 @@ class CompanyCollection(BaseCollection):
 
     A Company is a manufacturing company or supplier: the organization that makes
     or supplies a material. Companies are the ``company`` linked on raw-material
-    inventory items (see :class:`~albert.resources.inventory.InventoryItem`), so
+    inventory items (see [`InventoryItem`][albert.resources.inventory.InventoryItem]), so
     they are usually created as a side effect of registering raw materials, but
     they can also be managed directly here.
 
@@ -60,8 +60,6 @@ class CompanyCollection(BaseCollection):
     delete(id) -> None
         Delete a company by its Company ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -97,8 +95,8 @@ class CompanyCollection(BaseCollection):
         """Iterate over companies, optionally filtered by name.
 
         Use this to list companies or to find companies whose name matches a
-        search term. To fetch a single company, prefer :meth:`get_by_id` (by ID)
-        or :meth:`get_by_name` (by name).
+        search term. To fetch a single company, prefer [`get_by_id`][albert.collections.companies.CompanyCollection.get_by_id] (by ID)
+        or [`get_by_name`][albert.collections.companies.CompanyCollection.get_by_name] (by name).
 
         Parameters
         ----------
@@ -118,11 +116,9 @@ class CompanyCollection(BaseCollection):
         Returns
         -------
         Iterator[Company]
-            An iterator over the matching :class:`~albert.resources.companies.Company`
+            An iterator over the matching [`Company`][albert.resources.companies.Company]
             objects.
 
-        Examples
-        --------
         !!! example
             ```python
             # All companies whose name contains "chem"
@@ -150,8 +146,8 @@ class CompanyCollection(BaseCollection):
         """Check whether a company with the given name exists.
 
         Useful before creating a company to avoid duplicates. To get the matching
-        company itself, use :meth:`get_by_name`; to look up or create in one step,
-        use :meth:`get_or_create`.
+        company itself, use [`get_by_name`][albert.collections.companies.CompanyCollection.get_by_name]; to look up or create in one step,
+        use [`get_or_create`][albert.collections.companies.CompanyCollection.get_or_create].
 
         Parameters
         ----------
@@ -166,8 +162,6 @@ class CompanyCollection(BaseCollection):
         bool
             True if a matching company exists, False otherwise.
 
-        Examples
-        --------
         !!! example
             ```python
             client.companies.exists(name="Acme Chemicals")
@@ -181,7 +175,7 @@ class CompanyCollection(BaseCollection):
     def get_by_id(self, *, id: CompanyId) -> Company:
         """Retrieve a single company by its Company ID.
 
-        To look up a company when you only know its name, use :meth:`get_by_name`.
+        To look up a company when you only know its name, use [`get_by_name`][albert.collections.companies.CompanyCollection.get_by_name].
 
         Parameters
         ----------
@@ -191,10 +185,8 @@ class CompanyCollection(BaseCollection):
         Returns
         -------
         Company
-            The matching :class:`~albert.resources.companies.Company`.
+            The matching [`Company`][albert.resources.companies.Company].
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.get_by_id(id="COM123")
@@ -211,8 +203,8 @@ class CompanyCollection(BaseCollection):
         """Retrieve a single company by name.
 
         Returns the first match, or None if no company matches. To check only for
-        existence, use :meth:`exists`; to look up or create in one step, use
-        :meth:`get_or_create`.
+        existence, use [`exists`][albert.collections.companies.CompanyCollection.exists]; to look up or create in one step, use
+        [`get_or_create`][albert.collections.companies.CompanyCollection.get_or_create].
 
         Parameters
         ----------
@@ -225,11 +217,9 @@ class CompanyCollection(BaseCollection):
         Returns
         -------
         Company or None
-            The matching :class:`~albert.resources.companies.Company`, or None if
+            The matching [`Company`][albert.resources.companies.Company], or None if
             no company matches.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.get_by_name(name="Acme Chemicals")
@@ -244,21 +234,19 @@ class CompanyCollection(BaseCollection):
         """Create a new company.
 
         To avoid creating a duplicate when a company with the same name may
-        already exist, use :meth:`get_or_create` instead.
+        already exist, use [`get_or_create`][albert.collections.companies.CompanyCollection.get_or_create] instead.
 
         Parameters
         ----------
         company : str or Company
             The company to create. Pass a plain name string, or a
-            :class:`~albert.resources.companies.Company` object.
+            [`Company`][albert.resources.companies.Company] object.
 
         Returns
         -------
         Company
             The newly created company, populated with its assigned Company ID.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.create(company="Acme Chemicals")
@@ -277,15 +265,15 @@ class CompanyCollection(BaseCollection):
     def get_or_create(self, *, company: str | Company) -> Company:
         """Return the existing company with this name, or create it if none exists.
 
-        A find-or-create helper: matches on exact name via :meth:`get_by_name`,
-        and falls back to :meth:`create` when there is no match. This is the safe
+        A find-or-create helper: matches on exact name via [`get_by_name`][albert.collections.companies.CompanyCollection.get_by_name],
+        and falls back to [`create`][albert.collections.companies.CompanyCollection.create] when there is no match. This is the safe
         way to reference a company without risking a duplicate.
 
         Parameters
         ----------
         company : str or Company
             The company to look up or create. Pass a plain name string, or a
-            :class:`~albert.resources.companies.Company` object.
+            [`Company`][albert.resources.companies.Company] object.
 
         Returns
         -------
@@ -293,8 +281,6 @@ class CompanyCollection(BaseCollection):
             The existing company if one matches by name, otherwise the newly
             created company.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.get_or_create(company="Acme Chemicals")
@@ -335,8 +321,6 @@ class CompanyCollection(BaseCollection):
         Company
             The parent company, re-fetched after the merge.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.merge(
@@ -372,8 +356,6 @@ class CompanyCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.companies.delete(id="COM123")
@@ -386,8 +368,8 @@ class CompanyCollection(BaseCollection):
         """Rename an existing company, looking it up by its current name.
 
         A convenience wrapper that finds the company by name and updates its name.
-        If you already hold a :class:`~albert.resources.companies.Company` object,
-        you can instead set ``name`` and call :meth:`update`.
+        If you already hold a [`Company`][albert.resources.companies.Company] object,
+        you can instead set ``name`` and call [`update`][albert.collections.companies.CompanyCollection.update].
 
         Parameters
         ----------
@@ -406,8 +388,6 @@ class CompanyCollection(BaseCollection):
         AlbertException
             If no company with ``old_name`` is found.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.rename(
@@ -443,7 +423,7 @@ class CompanyCollection(BaseCollection):
         The company is identified by its ``id``, which must be set. The current
         server state is fetched and diffed against the passed object, and only the
         updatable fields are patched. To rename a company by its current name
-        rather than by ID, use :meth:`rename`.
+        rather than by ID, use [`rename`][albert.collections.companies.CompanyCollection.rename].
 
         Parameters
         ----------
@@ -460,8 +440,6 @@ class CompanyCollection(BaseCollection):
         -----
         The following fields can be updated: ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             company = client.companies.get_by_id(id="COM123")

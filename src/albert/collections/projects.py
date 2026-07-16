@@ -24,7 +24,7 @@ class ProjectCollection(BaseCollection):
 
     Every project is identified by a Project ID (format ``PRO...``, e.g.
     ``"PRO123"``). A project always has a ``description`` (which doubles as its
-    display name) and a :class:`~albert.resources.projects.ProjectClass`
+    display name) and a [`ProjectClass`][albert.resources.projects.ProjectClass]
     controlling its access level (private, shared, or confidential).
 
     This collection is accessed as ``client.projects``.
@@ -56,8 +56,6 @@ class ProjectCollection(BaseCollection):
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -91,7 +89,7 @@ class ProjectCollection(BaseCollection):
         Use this to register a new R&D container. Only ``description`` is
         required; it doubles as the project's display name. Optionally set
         ``locations``, ``project_class`` (defaults to private), ``metadata``, and
-        other fields on the :class:`~albert.resources.projects.Project` first.
+        other fields on the [`Project`][albert.resources.projects.Project] first.
 
         Parameters
         ----------
@@ -103,8 +101,6 @@ class ProjectCollection(BaseCollection):
         Project
             The newly created project, populated with its assigned Project ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.projects import Project
@@ -124,8 +120,8 @@ class ProjectCollection(BaseCollection):
     def get_by_id(self, *, id: ProjectId) -> Project:
         """Retrieve a single project by its ID.
 
-        To find projects without knowing their IDs, use :meth:`search` or
-        :meth:`get_all`.
+        To find projects without knowing their IDs, use [`search`][albert.collections.projects.ProjectCollection.search] or
+        [`get_all`][albert.collections.projects.ProjectCollection.get_all].
 
         Parameters
         ----------
@@ -137,8 +133,6 @@ class ProjectCollection(BaseCollection):
         Project
             The fully hydrated project.
 
-        Examples
-        --------
         !!! example
             ```python
             project = client.projects.get_by_id(id="PRO123")
@@ -156,7 +150,7 @@ class ProjectCollection(BaseCollection):
 
         Fetches the current server-side project, diffs it against the object you
         pass in, and applies the difference. Retrieve the project (e.g. with
-        :meth:`get_by_id`), modify the updatable fields, then pass it here.
+        [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]), modify the updatable fields, then pass it here.
 
         Parameters
         ----------
@@ -174,8 +168,6 @@ class ProjectCollection(BaseCollection):
         The following fields can be updated: ``description``, ``grid``,
         ``metadata``, ``state``.
 
-        Examples
-        --------
         !!! example
             ```python
             project = client.projects.get_by_id(id="PRO123")
@@ -204,8 +196,6 @@ class ProjectCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.projects.delete(id="PRO123")
@@ -245,10 +235,10 @@ class ProjectCollection(BaseCollection):
         """Search for projects matching the provided criteria.
 
         This is the fast way to find projects: it returns lightweight, partial
-        (unhydrated) :class:`~albert.resources.projects.ProjectSearchItem` results
+        (unhydrated) [`ProjectSearchItem`][albert.resources.projects.ProjectSearchItem] results
         and is best for lookups, counts, and pulling IDs. To retrieve fully
-        detailed :class:`~albert.resources.projects.Project` entities, use
-        :meth:`get_all` instead (slower, one full fetch per result).
+        detailed [`Project`][albert.resources.projects.Project] entities, use
+        [`get_all`][albert.collections.projects.ProjectCollection.get_all] instead (slower, one full fetch per result).
 
         All filters are optional; with no arguments this iterates over all
         projects you can access.
@@ -308,8 +298,6 @@ class ProjectCollection(BaseCollection):
         Iterator[ProjectSearchItem]
             An iterator of matching partial (unhydrated) project results.
 
-        Examples
-        --------
         !!! example
             ```python
             for hit in client.projects.search(text="coatings", max_items=25):
@@ -382,7 +370,7 @@ class ProjectCollection(BaseCollection):
         """Search for documents (attachments) linked to a project.
 
         Each result is a lightweight
-        :class:`~albert.resources.projects.DocumentSearchItem` describing an
+        [`DocumentSearchItem`][albert.resources.projects.DocumentSearchItem] describing an
         attachment (name, MIME type, size, uploader) rather than the file itself.
 
         Parameters
@@ -404,8 +392,6 @@ class ProjectCollection(BaseCollection):
         Iterator[DocumentSearchItem]
             Matching document search results.
 
-        Examples
-        --------
         !!! example
             ```python
             for doc in client.projects.document_search(linked_to="PRO123"):
@@ -458,10 +444,10 @@ class ProjectCollection(BaseCollection):
     ) -> Iterator[Project]:
         """Retrieve fully hydrated projects matching optional filters.
 
-        Accepts the same filters as :meth:`search`, but yields complete
-        :class:`~albert.resources.projects.Project` entities by fetching each
-        match individually via :meth:`get_by_id`. This is convenient but slower;
-        prefer :meth:`search` when you only need IDs or a few summary fields.
+        Accepts the same filters as [`search`][albert.collections.projects.ProjectCollection.search], but yields complete
+        [`Project`][albert.resources.projects.Project] entities by fetching each
+        match individually via [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]. This is convenient but slower;
+        prefer [`search`][albert.collections.projects.ProjectCollection.search] when you only need IDs or a few summary fields.
 
         Parameters
         ----------
@@ -513,8 +499,6 @@ class ProjectCollection(BaseCollection):
         Iterator[Project]
             An iterator of fully hydrated Project entities.
 
-        Examples
-        --------
         !!! example
             ```python
             for project in client.projects.get_all(text="coatings", max_items=10):

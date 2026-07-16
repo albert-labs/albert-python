@@ -27,19 +27,19 @@ class SmartDatasetCollection(BaseCollection):
     the material amounts, parameters, molecules, and measured properties observed
     across those experiments.
 
-    A Smart Dataset is built asynchronously: after :meth:`create` (or an
-    :meth:`update` that changes the scope) the dataset moves through a build state
-    (:class:`~albert.resources.smart_datasets.SmartDatasetBuildState`) and only
-    exposes its data once it is ``ready``. Use :meth:`get_data` to pull the built
+    A Smart Dataset is built asynchronously: after [`create`][albert.collections.smart_datasets.SmartDatasetCollection.create] (or an
+    [`update`][albert.collections.smart_datasets.SmartDatasetCollection.update] that changes the scope) the dataset moves through a build state
+    ([`SmartDatasetBuildState`][albert.resources.smart_datasets.SmartDatasetBuildState]) and only
+    exposes its data once it is ``ready``. Use [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data] to pull the built
     matrix, choosing how rows are aggregated with
-    :class:`~albert.resources.smart_datasets.SmartDatasetAggregateBy`.
+    [`SmartDatasetAggregateBy`][albert.resources.smart_datasets.SmartDatasetAggregateBy].
 
     Smart Datasets are referenced by their Smart Dataset ID (format ``SDT...``).
     They aggregate the same experiment Property Data managed through
-    :class:`~albert.collections.property_data.PropertyDataCollection`.
+    [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection].
 
-    A :class:`~albert.resources.smart_datasets.SmartDataset` and a
-    :class:`~albert.resources.btdataset.BTDataset` are distinct entities that share
+    A [`SmartDataset`][albert.resources.smart_datasets.SmartDataset] and a
+    [`BTDataset`][albert.resources.btdataset.BTDataset] are distinct entities that share
     an ETL engine (Zeus stored procedures) but are not interchangeable: a
     ``BTDataset`` is a Breakthrough pointer record (its dataset rows are stored in
     S3), while a ``SmartDataset`` is a Smart Projects entity (also S3-backed, via
@@ -77,8 +77,6 @@ class SmartDatasetCollection(BaseCollection):
     get_data(id, parent_id=None, aggregate_by=..., ids=None, variables=None) -> SmartDatasetData
         Retrieve the built experiment data matrix for a smart dataset.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -123,9 +121,9 @@ class SmartDatasetCollection(BaseCollection):
         The ``scope`` defines which experiments feed the dataset (by project,
         target, and optionally worksheet). When ``build`` is True the dataset is
         populated asynchronously from Albert; poll its
-        :attr:`~albert.resources.smart_datasets.SmartDataset.build_state` (or
-        re-fetch with :meth:`get_by_id`) until it reaches ``ready`` before calling
-        :meth:`get_data`.
+        [`build_state`][albert.resources.smart_datasets.SmartDataset.build_state] (or
+        re-fetch with [`get_by_id`][albert.collections.smart_datasets.SmartDatasetCollection.get_by_id]) until it reaches ``ready`` before calling
+        [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data].
 
         Parameters
         ----------
@@ -144,8 +142,6 @@ class SmartDatasetCollection(BaseCollection):
         SmartDataset
             The created smart dataset, populated with its assigned Smart Dataset ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -187,8 +183,6 @@ class SmartDatasetCollection(BaseCollection):
         Iterator[SmartDataset]
             An iterator over the tenant's smart datasets.
 
-        Examples
-        --------
         !!! example
             ```python
             for ds in client.smart_datasets.get_all(max_items=10):
@@ -220,8 +214,6 @@ class SmartDatasetCollection(BaseCollection):
         SmartDataset
             The requested smart dataset.
 
-        Examples
-        --------
         !!! example
             ```python
             ds = client.smart_datasets.get_by_id(id="SDT123")
@@ -243,7 +235,7 @@ class SmartDatasetCollection(BaseCollection):
 
         The current server-side record is fetched and diffed against the supplied
         ``smart_dataset``; only changed, updatable fields are patched. Pass an
-        object retrieved via :meth:`get_by_id` with the desired fields modified.
+        object retrieved via [`get_by_id`][albert.collections.smart_datasets.SmartDatasetCollection.get_by_id] with the desired fields modified.
 
         Parameters
         ----------
@@ -260,8 +252,6 @@ class SmartDatasetCollection(BaseCollection):
         Only the following fields are updatable: ``scope``, ``build_state``,
         ``storage_key``, and ``schema_``. Changes to any other field are ignored.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.smart_datasets import SmartDatasetScope
@@ -325,8 +315,6 @@ class SmartDatasetCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.smart_datasets.delete(id="SDT123")
@@ -377,8 +365,6 @@ class SmartDatasetCollection(BaseCollection):
         ValueError
             If the smart dataset's build state is not ``ready``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.smart_datasets import SmartDatasetAggregateBy

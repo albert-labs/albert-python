@@ -24,15 +24,15 @@ class EntityTypeCollection(BaseCollection):
     An Entity Type is a configurable definition that determines how a particular
     kind of entity (a Task, Inventory Item, Project, Data Template, Parameter
     Group, or Lot) looks and behaves. It groups together the custom category the
-    entity falls under, which :class:`~albert.resources.custom_fields.CustomField`
+    entity falls under, which [`CustomField`][albert.resources.custom_fields.CustomField]
     values appear on it, how the standard Notes/Tags/Due Date fields are shown or
     required, and how searches for related entities are built.
 
     Entity Types come in two flavors (see
-    :class:`~albert.resources.entity_types.EntityTypeType`): ``system`` types
+    [`EntityTypeType`][albert.resources.entity_types.EntityTypeType]): ``system`` types
     ship with the platform, while ``custom`` types are defined by an organization
     to model its own categories of work. Each type is scoped to a single service
-    (see :class:`~albert.resources.entity_types.EntityServiceType`), such as
+    (see [`EntityServiceType`][albert.resources.entity_types.EntityServiceType]), such as
     ``tasks`` or ``inventories``.
 
     Entity Types are referenced by their Entity Type ID (format ``ETT...``).
@@ -70,8 +70,6 @@ class EntityTypeCollection(BaseCollection):
     delete_rules(id) -> None
         Remove the conditional field rules for an entity type.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -119,8 +117,6 @@ class EntityTypeCollection(BaseCollection):
         EntityType
             The matching entity type.
 
-        Examples
-        --------
         !!! example
             ```python
             et = client.entity_types.get_by_id(id="ETT1")
@@ -147,8 +143,6 @@ class EntityTypeCollection(BaseCollection):
             The newly created entity type, populated with its assigned Entity
             Type ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -176,7 +170,7 @@ class EntityTypeCollection(BaseCollection):
     def update(self, *, entity_type: EntityType) -> EntityType:
         """Update an existing entity type.
 
-        Fetch the entity type (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the entity type (e.g. with [`get_by_id`][albert.collections.entity_types.EntityTypeCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. Only the fields listed
         in Notes are applied; changes to other fields are ignored.
 
@@ -196,8 +190,6 @@ class EntityTypeCollection(BaseCollection):
         ``locked_template``, ``search_query_string``, ``standard_field_required``,
         ``standard_field_visibility``, ``template_based``.
 
-        Examples
-        --------
         !!! example
             ```python
             et = client.entity_types.get_by_id(id="ETT1")
@@ -359,8 +351,6 @@ class EntityTypeCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.entity_types.delete(id="ETT1")
@@ -372,7 +362,7 @@ class EntityTypeCollection(BaseCollection):
     def get_rules(self, *, id: EntityTypeId) -> list[EntityTypeRule]:
         """Retrieve the conditional field rules configured for an entity type.
 
-        A rule (see :class:`~albert.resources.entity_types.EntityTypeRule`) makes
+        A rule (see [`EntityTypeRule`][albert.resources.entity_types.EntityTypeRule]) makes
         one field's behavior depend on the value of another: for example, showing,
         hiding, requiring, or setting default options on a target field when a
         trigger custom field takes a certain value.
@@ -387,8 +377,6 @@ class EntityTypeCollection(BaseCollection):
         list[EntityTypeRule]
             The configured rules for the entity type.
 
-        Examples
-        --------
         !!! example
             ```python
             rules = client.entity_types.get_rules(id="ETT1")
@@ -404,8 +392,8 @@ class EntityTypeCollection(BaseCollection):
         """Create or replace the conditional field rules for an entity type.
 
         This replaces the entity type's full set of rules with the ones provided.
-        To read the current rules first, use :meth:`get_rules`; to remove all
-        rules, use :meth:`delete_rules`.
+        To read the current rules first, use [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules]; to remove all
+        rules, use [`delete_rules`][albert.collections.entity_types.EntityTypeCollection.delete_rules].
 
         Parameters
         ----------
@@ -419,8 +407,6 @@ class EntityTypeCollection(BaseCollection):
         list[EntityTypeRule]
             The updated rules as registered in Albert.
 
-        Examples
-        --------
         !!! example
             ```python
             existing = client.entity_types.get_rules(id="ETT1")
@@ -446,8 +432,6 @@ class EntityTypeCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.entity_types.delete_rules(id="ETT1")
@@ -486,8 +470,6 @@ class EntityTypeCollection(BaseCollection):
         Iterator[EntityType]
             A lazily paginated iterator of matching entity types.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.entity_types import EntityServiceType

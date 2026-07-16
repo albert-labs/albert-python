@@ -107,9 +107,9 @@ class BTInsight(BaseResource, protected_namespaces=()):
     Breakthrough result, such as an optimizer run, impact chart, or set of
     generated candidates. It can trace back to the dataset, model session, and
     model it came from via ``dataset_id``, ``model_session_id``, and ``model_id``
-    (see :class:`~albert.resources.btdataset.BTDataset` and
-    :class:`~albert.resources.btmodel.BTModel`). Insights are managed through
-    :class:`~albert.collections.btinsight.BTInsightCollection`.
+    (see [`BTDataset`][albert.resources.btdataset.BTDataset] and
+    [`BTModel`][albert.resources.btmodel.BTModel]). Insights are managed through
+    [`BTInsightCollection`][albert.collections.btinsight.BTInsightCollection].
 
     Attributes
     ----------
@@ -149,8 +149,6 @@ class BTInsight(BaseResource, protected_namespaces=()):
     content_edited : bool or None
         Whether the insight's content has been manually edited.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.btinsight import BTInsight, BTInsightCategory

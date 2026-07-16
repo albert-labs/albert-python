@@ -135,12 +135,10 @@ class HeaderBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.HEADER`.
+        Always [`HEADER`][albert.resources.notebooks.BlockType.HEADER].
     content : HeaderContent
         The heading level and text.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import HeaderBlock, HeaderContent
@@ -171,12 +169,10 @@ class ParagraphBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.PARAGRAPH`.
+        Always [`PARAGRAPH`][albert.resources.notebooks.BlockType.PARAGRAPH].
     content : ParagraphContent
         The paragraph text.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import ParagraphBlock, ParagraphContent
@@ -222,12 +218,10 @@ class ChecklistBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.CHECKLIST`.
+        Always [`CHECKLIST`][albert.resources.notebooks.BlockType.CHECKLIST].
     content : ChecklistContent
         The checklist items.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import (
@@ -308,12 +302,10 @@ class AttachesBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.ATTACHES`.
+        Always [`ATTACHES`][albert.resources.notebooks.BlockType.ATTACHES].
     content : AttachesContent
         The attachment details.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import AttachesBlock, AttachesContent
@@ -374,12 +366,10 @@ class ImageBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.IMAGE`.
+        Always [`IMAGE`][albert.resources.notebooks.BlockType.IMAGE].
     content : ImageContent
         The image details.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import ImageBlock, ImageContent
@@ -439,12 +429,10 @@ class KetcherBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.KETCHER`.
+        Always [`KETCHER`][albert.resources.notebooks.BlockType.KETCHER].
     content : KetcherContent
         The structure details, typically built from a SMILES string.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import KetcherBlock, KetcherContent
@@ -478,12 +466,10 @@ class TableBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.TABLE`.
+        Always [`TABLE`][albert.resources.notebooks.BlockType.TABLE].
     content : TableContent
         The table cells.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import TableBlock, TableContent
@@ -552,7 +538,7 @@ class BulletedListContent(BaseAlbertModel):
     items : list[NotebookListItem]
         The list entries, in order.
     style : ListBlockStyle
-        Always :attr:`ListBlockStyle.UNORDERED`.
+        Always [`UNORDERED`][albert.resources.notebooks.ListBlockStyle.UNORDERED].
     """
 
     items: list[NotebookListItem]
@@ -567,7 +553,7 @@ class NumberedListContent(BaseAlbertModel):
     items : list[NotebookListItem]
         The list entries, in order.
     style : ListBlockStyle
-        Always :attr:`ListBlockStyle.ORDERED`.
+        Always [`ORDERED`][albert.resources.notebooks.ListBlockStyle.ORDERED].
     """
 
     items: list[NotebookListItem]
@@ -583,12 +569,10 @@ class ListBlock(BaseBlock):
     Attributes
     ----------
     type : BlockType
-        Always :attr:`BlockType.LIST`.
+        Always [`LIST`][albert.resources.notebooks.BlockType.LIST].
     content : NumberedListContent | BulletedListContent
         The list entries and style.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import (
@@ -644,7 +628,7 @@ class Notebook(BaseResource):
     checklists, tables, images, attachments, lists, and Ketcher chemical drawings)
     attached to a parent Project, Task, or custom template. Notebooks are created
     empty and then populated block-by-block; see
-    :class:`~albert.collections.notebooks.NotebookCollection` for the workflow.
+    [`NotebookCollection`][albert.collections.notebooks.NotebookCollection] for the workflow.
 
     Attributes
     ----------
@@ -663,8 +647,6 @@ class Notebook(BaseResource):
     links : list[NotebookLink] | None
         Links from this notebook to other Albert entities.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import Notebook
@@ -799,8 +781,6 @@ class NotebookCopyInfo(BaseAlbertModel):
     acl : ACLContainer | NotebookCopyACL | None
         Access-control settings to apply to the copy.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.notebooks import NotebookCopyInfo

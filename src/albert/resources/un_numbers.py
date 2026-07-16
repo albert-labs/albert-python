@@ -10,7 +10,7 @@ class UnNumber(BaseResource):
     associated shipping description and storage-class metadata used when
     classifying substances and inventory items. UN Numbers are highly controlled
     within Albert and cannot be created through the SDK; retrieve them with
-    :class:`~albert.collections.un_numbers.UnNumberCollection`.
+    [`UnNumberCollection`][albert.collections.un_numbers.UnNumberCollection].
 
     Attributes
     ----------

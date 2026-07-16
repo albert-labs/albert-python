@@ -33,7 +33,7 @@ class ComparisonOperator(str, Enum):
     LTE : str
         Less than or equal to the target value.
     BETWEEN : str
-        Within an inclusive range; pairs with a :class:`NumericRange` value.
+        Within an inclusive range; pairs with a [`NumericRange`][albert.resources.targets.NumericRange] value.
     IN_SET : str
         Among a set of allowed values; pairs with a list value.
     """
@@ -70,7 +70,7 @@ class Criterion(BaseAlbertModel):
     operator : ComparisonOperator
         How the measured value is compared against ``value``.
     value : NumericRange or str or float or list
-        The value being compared against. Use a :class:`NumericRange` with the
+        The value being compared against. Use a [`NumericRange`][albert.resources.targets.NumericRange] with the
         ``between`` operator, a list with the ``in-set`` operator, or a single
         number/string for the scalar operators.
     """
@@ -151,7 +151,7 @@ class Target(BaseResource):
     A target links a data template and data column (the property being measured)
     to a target value constraint, optionally scoped to a project and to specific
     parameter conditions. Managed through
-    :class:`~albert.collections.targets.TargetCollection` (``client.targets``).
+    [`TargetCollection`][albert.collections.targets.TargetCollection] (``client.targets``).
 
     Attributes
     ----------
@@ -180,8 +180,6 @@ class Target(BaseResource):
     validation : list[dict] or None
         Validation rules applied to the target value.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.targets import (

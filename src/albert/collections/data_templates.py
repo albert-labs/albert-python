@@ -64,10 +64,10 @@ class DataTemplateCollection(BaseCollection):
     has two parts:
 
     - ``data_column_values``: the measured RESULTS of the test (its data columns, also
-      called "direct variables"). See :class:`~albert.resources.data_templates.DataColumnValue`
-      and :class:`~albert.resources.data_columns.DataColumn`.
+      called "direct variables"). See [`DataColumnValue`][albert.resources.data_templates.DataColumnValue]
+      and [`DataColumn`][albert.resources.data_columns.DataColumn].
     - ``parameter_values``: the CONDITIONS under which the test is run (also called
-      "indirect variables"). See :class:`~albert.resources.parameter_groups.ParameterValue`
+      "indirect variables"). See [`ParameterValue`][albert.resources.parameter_groups.ParameterValue]
       and the Parameter collection.
 
     A Data Template does not itself store measured values; those live as Property Data.
@@ -113,8 +113,6 @@ class DataTemplateCollection(BaseCollection):
     set_image_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for an image data column (shown on the details page).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -159,8 +157,6 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The newly created template, populated with its assigned Data Template ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_templates import DataTemplate, DataColumnValue
@@ -203,8 +199,8 @@ class DataTemplateCollection(BaseCollection):
     def get_by_id(self, *, id: DataTemplateId) -> DataTemplate:
         """Retrieve a single, fully populated data template by its ID.
 
-        For retrieving many templates at once, use :meth:`get_by_ids`. To find
-        templates without knowing their IDs, use :meth:`search` or :meth:`get_all`.
+        For retrieving many templates at once, use [`get_by_ids`][albert.collections.data_templates.DataTemplateCollection.get_by_ids]. To find
+        templates without knowing their IDs, use [`search`][albert.collections.data_templates.DataTemplateCollection.search] or [`get_all`][albert.collections.data_templates.DataTemplateCollection.get_all].
 
         Parameters
         ----------
@@ -216,8 +212,6 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The fully populated template.
 
-        Examples
-        --------
         !!! example
             ```python
             dt = client.data_templates.get_by_id(id="DAT1")
@@ -245,8 +239,6 @@ class DataTemplateCollection(BaseCollection):
         list[DataTemplate]
             The matching templates.
 
-        Examples
-        --------
         !!! example
             ```python
             templates = client.data_templates.get_by_ids(ids=["DAT1", "DAT2"])
@@ -278,8 +270,6 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate or None
             The matching template, or None if not found.
 
-        Examples
-        --------
         !!! example
             ```python
             dt = client.data_templates.get_by_name(name="Tensile Strength Test")
@@ -308,15 +298,13 @@ class DataTemplateCollection(BaseCollection):
             The Data Template ID to add the columns to (format ``DAT...``).
         data_columns : list[DataColumnValue]
             The result columns to add. See
-            :class:`~albert.resources.data_templates.DataColumnValue`.
+            [`DataColumnValue`][albert.resources.data_templates.DataColumnValue].
 
         Returns
         -------
         DataTemplate
             The updated template, re-fetched with the new columns.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_templates import DataColumnValue
@@ -352,15 +340,13 @@ class DataTemplateCollection(BaseCollection):
             The Data Template ID to add the parameters to (format ``DAT...``).
         parameters : list[ParameterValue]
             The parameters to add. See
-            :class:`~albert.resources.parameter_groups.ParameterValue`.
+            [`ParameterValue`][albert.resources.parameter_groups.ParameterValue].
 
         Returns
         -------
         DataTemplate
             The updated template, re-fetched with the new parameters.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.parameter_groups import ParameterValue
@@ -400,9 +386,9 @@ class DataTemplateCollection(BaseCollection):
         """Search for data templates matching the provided criteria.
 
         This is the fast path: it returns partial (unhydrated)
-        :class:`~albert.resources.data_templates.DataTemplateSearchItem` entities and is
+        [`DataTemplateSearchItem`][albert.resources.data_templates.DataTemplateSearchItem] entities and is
         best for lookups, counts, and pulling IDs. To retrieve fully populated
-        templates, use :meth:`get_all` instead. Results are returned lazily as an
+        templates, use [`get_all`][albert.collections.data_templates.DataTemplateCollection.get_all] instead. Results are returned lazily as an
         iterator that pages through the API on demand.
 
         Parameters
@@ -432,11 +418,9 @@ class DataTemplateCollection(BaseCollection):
         -------
         Iterator[DataTemplateSearchItem]
             A lazy iterator of matching partial templates. Call
-            :meth:`~albert.resources.data_templates.DataTemplateSearchItem.hydrate` on an
-            item to fetch its full :class:`DataTemplate`.
+            [`hydrate`][albert.resources.data_templates.DataTemplateSearchItem.hydrate] on an
+            item to fetch its full [`DataTemplate`][albert.resources.data_templates.DataTemplate].
 
-        Examples
-        --------
         !!! example
             ```python
             for item in client.data_templates.search(name="Tensile", max_items=10):
@@ -483,7 +467,7 @@ class DataTemplateCollection(BaseCollection):
         ----------
         data_template : DataTemplate
             The template to update. Its ``id`` must be set and match the template to
-            update. Retrieve it with :meth:`get_by_id`, modify the fields listed in
+            update. Retrieve it with [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id], modify the fields listed in
             Notes, then pass it here.
 
         Returns
@@ -500,11 +484,9 @@ class DataTemplateCollection(BaseCollection):
         Warnings
         --------
         Only scalar data column values (text, number, dropdown) can be updated with
-        this method. Use :meth:`set_curve_example` or :meth:`set_image_example` to set
+        this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
 
-        Examples
-        --------
         !!! example
             ```python
             dt = client.data_templates.get_by_id(id="DAT1")
@@ -675,8 +657,6 @@ class DataTemplateCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.data_templates.delete(id="DAT1")
@@ -696,9 +676,9 @@ class DataTemplateCollection(BaseCollection):
     ) -> Iterator[DataTemplate]:
         """Retrieve fully populated data templates matching the provided criteria.
 
-        This mirrors :meth:`search` but hydrates each match into a complete
-        :class:`DataTemplate` (via :meth:`get_by_ids`), so it is slower. Use
-        :meth:`search` when you only need lightweight, partial entities. Results are
+        This mirrors [`search`][albert.collections.data_templates.DataTemplateCollection.search] but hydrates each match into a complete
+        [`DataTemplate`][albert.resources.data_templates.DataTemplate] (via [`get_by_ids`][albert.collections.data_templates.DataTemplateCollection.get_by_ids]), so it is slower. Use
+        [`search`][albert.collections.data_templates.DataTemplateCollection.search] when you only need lightweight, partial entities. Results are
         returned lazily as an iterator that pages through the API on demand.
 
         Parameters
@@ -718,8 +698,6 @@ class DataTemplateCollection(BaseCollection):
         Iterator[DataTemplate]
             A lazy iterator over fully populated templates.
 
-        Examples
-        --------
         !!! example
             ```python
             for dt in client.data_templates.get_all(name="Tensile", max_items=10):
@@ -780,15 +758,13 @@ class DataTemplateCollection(BaseCollection):
             or ``data_column_name``.
         example : CurveExample
             The curve example to apply. See
-            :class:`~albert.resources.data_templates.CurveExample`.
+            [`CurveExample`][albert.resources.data_templates.CurveExample].
 
         Returns
         -------
         DataTemplate
             The updated template, re-fetched after the example is applied.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_templates import CurveExample
@@ -849,15 +825,13 @@ class DataTemplateCollection(BaseCollection):
             or ``data_column_name``.
         example : ImageExample
             The image example to apply. See
-            :class:`~albert.resources.data_templates.ImageExample`.
+            [`ImageExample`][albert.resources.data_templates.ImageExample].
 
         Returns
         -------
         DataTemplate
             The updated template, re-fetched after the example is applied.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.data_templates import ImageExample

@@ -22,8 +22,8 @@ class Link(BaseResource):
     """A directional relationship between two entities in Albert.
 
     A link connects a ``parent`` entity to a ``child`` entity under a given
-    :class:`LinkCategory`. Links are managed through the
-    :class:`~albert.collections.links.LinksCollection`.
+    [`LinkCategory`][albert.resources.links.LinkCategory]. Links are managed through the
+    [`LinksCollection`][albert.collections.links.LinksCollection].
 
     Attributes
     ----------
@@ -40,8 +40,6 @@ class Link(BaseResource):
         The Albert ID of the link (format ``LNK...``). Assigned by Albert when
         the link is created.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.links import Link, LinkCategory

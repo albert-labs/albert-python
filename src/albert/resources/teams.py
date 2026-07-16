@@ -23,8 +23,6 @@ class TeamMember(BaseAlbertModel):
         team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"``
         when unset.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.teams import TeamMember
@@ -42,8 +40,8 @@ class Team(BaseResource):
 
     Teams share access: entity ACLs and Task assignments can reference a whole
     team rather than individual users. Each member is a
-    :class:`~albert.resources.teams.TeamMember` pairing a
-    :class:`~albert.resources.users.User` with a team role.
+    [`TeamMember`][albert.resources.teams.TeamMember] pairing a
+    [`User`][albert.resources.users.User] with a team role.
 
     Attributes
     ----------
@@ -55,8 +53,6 @@ class Team(BaseResource):
     members : list[TeamMember] | None
         The members of the team, each with their name and team role.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.teams import Team, TeamMember

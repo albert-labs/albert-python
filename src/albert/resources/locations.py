@@ -9,8 +9,8 @@ class Location(BaseResource):
     Locations are referenced by Tasks and Inventory Items to record where an
     activity is performed or where a material lives, and each Location can hold
     one or more Storage Locations
-    (:class:`~albert.resources.storage_locations.StorageLocation`). Managed
-    through :class:`~albert.collections.locations.LocationCollection`.
+    ([`StorageLocation`][albert.resources.storage_locations.StorageLocation]). Managed
+    through [`LocationCollection`][albert.collections.locations.LocationCollection].
 
     Attributes
     ----------
@@ -28,8 +28,6 @@ class Location(BaseResource):
     country : str | None
         The two-letter country code of the location (for example, ``"US"``).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.locations import Location

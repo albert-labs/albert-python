@@ -25,8 +25,8 @@ class IntervalParameter(BaseAlbertModel):
     """A single intervalized parameter value flattened out of a workflow's interval data.
 
     This is not a platform entity. It is an internal helper that
-    :class:`Workflow` builds (one per interval value of each intervalized parameter)
-    so that :meth:`Workflow.get_interval_id` can look up the row ID that matches a
+    [`Workflow`][albert.resources.workflows.Workflow] builds (one per interval value of each intervalized parameter)
+    so that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] can look up the row ID that matches a
     given parameter name and value. You do not normally construct this yourself.
 
     Attributes
@@ -35,7 +35,7 @@ class IntervalParameter(BaseAlbertModel):
         The name of the intervalized parameter (e.g. ``"Temperature"``).
     interval_id : IntervalId | None
         The row ID of this single interval value (e.g. ``"ROW1"``). These are the
-        building blocks that :meth:`Workflow.get_interval_id` joins with ``X`` to
+        building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to
         form a composite interval ID.
     interval_value : str | None
         The value of this interval, as a string (e.g. ``"25"``).
@@ -58,9 +58,9 @@ class Interval(BaseAlbertModel):
     """One value that an intervalized parameter is varied across.
 
     When a parameter is "intervalized" (tested at several values rather than a single
-    setpoint), each of those values is represented by an :class:`Interval`. A list of
-    them is placed on the parameter's :class:`ParameterSetpoint` via its ``intervals``
-    field. The workflow then carries the resulting :class:`IntervalCombination` entries,
+    setpoint), each of those values is represented by an [`Interval`][albert.resources.workflows.Interval]. A list of
+    them is placed on the parameter's [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] via its ``intervals``
+    field. The workflow then carries the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries,
     one per interval (or per cartesian product of two intervalized parameters).
 
     Attributes
@@ -80,8 +80,6 @@ class Interval(BaseAlbertModel):
     ParameterSetpoint : Holds a list of intervals when a parameter is intervalized.
     Workflow.get_interval_id : Resolves interval values to a composite interval ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.workflows import Interval
@@ -109,7 +107,7 @@ class Interval(BaseAlbertModel):
 class IntervalDetail(BaseAlbertModel):
     """A single parameter's contribution to an interval combination.
 
-    This appears inside :class:`IntervalCombination` (as its ``interval_details``) to
+    This appears inside [`IntervalCombination`][albert.resources.workflows.IntervalCombination] (as its ``interval_details``) to
     break a combination down into the individual parameters that make it up. It is
     read from the workflow endpoint; you do not construct it directly.
 
@@ -143,7 +141,7 @@ class IntervalCombination(BaseAlbertModel):
     interval_id : IntervalId | None
         The interval ID this combination is associated with. It has the form ``ROW#``
         for a single interval or ``ROW#XROW#`` for a product of two intervals. This is
-        the same value :meth:`Workflow.get_interval_id` returns.
+        the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns.
     interval_params : str | None
         The parameters participating in the interval.
     interval_string : str | None
@@ -173,8 +171,8 @@ class ParameterSetpoint(BaseAlbertModel):
     (plus ``unit`` where applicable) for a fixed setpoint, or a list of ``intervals`` to
     intervalize the parameter across several values. You must identify the parameter by
     passing either a full ``parameter`` object or its ``parameter_id``. Setpoints are
-    grouped under a :class:`ParameterGroupSetpoints`, which is in turn placed on a
-    :class:`Workflow`.
+    grouped under a [`ParameterGroupSetpoints`][albert.resources.workflows.ParameterGroupSetpoints], which is in turn placed on a
+    [`Workflow`][albert.resources.workflows.Workflow].
 
     Normal parameters take exactly one of ``value`` or ``intervals``. Special parameters
     (Equipment, Consumables, Templates) take an entity ID as their value.
@@ -189,7 +187,7 @@ class ParameterSetpoint(BaseAlbertModel):
         ``parameter_id``.
     value : str | dict | EntityLink | None
         The value of the setpoint. For a Special parameter (an inventory item), provide
-        the item's :class:`~albert.core.shared.models.base.EntityLink` (or a mapping with
+        the item's [`EntityLink`][albert.core.shared.models.base.EntityLink] (or a mapping with
         an ``id``). Mutually exclusive with ``intervals`` for Normal parameters.
     unit : Unit | None
         The unit of ``value``, where applicable.
@@ -214,8 +212,6 @@ class ParameterSetpoint(BaseAlbertModel):
     ParameterGroupSetpoints : Groups setpoints under one parameter group.
     Interval : The interval values supplied to ``intervals``.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.workflows import ParameterSetpoint, Interval
@@ -300,10 +296,10 @@ class ParameterSetpoint(BaseAlbertModel):
 class ParameterGroupSetpoints(BaseAlbertModel):
     """All parameter setpoints belonging to one Data Template or Parameter Group.
 
-    A workflow is organized by group: each :class:`ParameterGroupSetpoints` names one
+    A workflow is organized by group: each [`ParameterGroupSetpoints`][albert.resources.workflows.ParameterGroupSetpoints] names one
     Data Template or Parameter Group (by ``id`` or by a full ``parameter_group`` object)
-    and carries the :class:`ParameterSetpoint` list for the parameters in it. A
-    :class:`Workflow` holds one of these per group. Both the order of setpoints within a
+    and carries the [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] list for the parameters in it. A
+    [`Workflow`][albert.resources.workflows.Workflow] holds one of these per group. Both the order of setpoints within a
     group and the order of groups within the workflow are part of what makes a workflow
     unique, so preserve the order you intend.
 
@@ -331,8 +327,6 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     Workflow : Holds one of these per Data Template / Parameter Group.
     ParameterSetpoint : A single parameter's setpoint within this group.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.workflows import (
@@ -390,7 +384,7 @@ class Workflow(BaseResource):
 
     A workflow does NOT include a Data Template's Data Columns (also called Results). Those are
     the *dependent variables*, and they are recorded only in Property Data
-    (:class:`~albert.resources.property_data.TaskPropertyData`). In short: the Workflow holds
+    ([`TaskPropertyData`][albert.resources.property_data.TaskPropertyData]). In short: the Workflow holds
     the independent variables; Property Data holds the dependent variables (the measured
     results).
 
@@ -398,13 +392,13 @@ class Workflow(BaseResource):
     unit of every setpoint, the order of parameters within each Data Template / Parameter
     Group, and the order of those groups within the workflow. For this reason workflows are
     *found-or-created* rather than blindly created: build the object you want and pass it to
-    :meth:`~albert.collections.workflows.WorkflowCollection.create`, which returns the
+    [`create`][albert.collections.workflows.WorkflowCollection.create], which returns the
     existing match or makes a new one. IDs look like ``WFL...``.
 
     When one or two parameters are intervalized, the workflow acts as a *parent* that carries
-    the resulting :class:`IntervalCombination` entries. Each combination has an interval ID of
+    the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries. Each combination has an interval ID of
     the form ``ROW1`` (one intervalized parameter) or ``ROW1XROW2`` (product of two). Use
-    :meth:`get_interval_id` to build the interval ID for a condition, then use it with the
+    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the interval ID for a condition, then use it with the
     property_data endpoints to read or write that condition's results.
 
     Attributes
@@ -430,8 +424,6 @@ class Workflow(BaseResource):
     IntervalCombination : A single realized condition carried by an intervalized workflow.
     albert.collections.workflows.WorkflowCollection.create : Find-or-create a workflow.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -547,8 +539,6 @@ class Workflow(BaseResource):
         --------
         IntervalCombination : The conditions whose interval IDs this method reproduces.
 
-        Examples
-        --------
         !!! example
             ```python
             # Single intervalized parameter

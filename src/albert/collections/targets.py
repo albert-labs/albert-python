@@ -11,7 +11,7 @@ class TargetCollection(BaseCollection):
 
     A Target is a desired value or acceptable range for a measured property. It
     ties a data template and data column (the property being measured) to a
-    target value constraint (:class:`~albert.resources.targets.Criterion`, e.g.
+    target value constraint ([`Criterion`][albert.resources.targets.Criterion], e.g.
     "greater than or equal to 90" or "between 10 and 20"), optionally scoped to a
     project and to specific parameter conditions. Targets let you express the
     performance a formulation is aiming for and compare results against it.
@@ -45,8 +45,6 @@ class TargetCollection(BaseCollection):
     delete(id) -> None
         Delete a target by its Target ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -83,8 +81,6 @@ class TargetCollection(BaseCollection):
         Target
             The newly created target, including its assigned Target ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.targets import (
@@ -129,8 +125,6 @@ class TargetCollection(BaseCollection):
         Target
             The matching target.
 
-        Examples
-        --------
         !!! example
             ```python
             target = client.targets.get_by_id(id="TAR1")
@@ -154,8 +148,6 @@ class TargetCollection(BaseCollection):
         list[Target]
             The matching targets. Targets not found are omitted.
 
-        Examples
-        --------
         !!! example
             ```python
             targets = client.targets.get_by_ids(ids=["TAR1", "TAR2"])
@@ -178,8 +170,6 @@ class TargetCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.targets.delete(id="TAR1")

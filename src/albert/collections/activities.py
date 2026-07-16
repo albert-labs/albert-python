@@ -25,8 +25,8 @@ class ActivityCollection(BaseCollection):
     "what has this user done recently". Activities are produced by the platform
     and are read-only through the SDK; there is no create, update, or delete.
 
-    Use :meth:`get_all` to page through the raw feed scoped to a single entity,
-    user, or date, and :meth:`search` to run a full-text/filtered query across
+    Use [`get_all`][albert.collections.activities.ActivityCollection.get_all] to page through the raw feed scoped to a single entity,
+    user, or date, and [`search`][albert.collections.activities.ActivityCollection.search] to run a full-text/filtered query across
     activity records.
 
     This collection is accessed as ``client.activities``.
@@ -48,8 +48,6 @@ class ActivityCollection(BaseCollection):
     search(...) -> Iterator[ActivitySearchItem]
         Search activity records using full-text and filter criteria.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -98,13 +96,13 @@ class ActivityCollection(BaseCollection):
         the events for one entity, one user, one parent entity, one UUID, or a
         date/date range. Results are a lazily paginated iterator, so iterating
         fetches additional pages on demand. To run a broader full-text or
-        multi-filter query instead, use :meth:`search`.
+        multi-filter query instead, use [`search`][albert.collections.activities.ActivityCollection.search].
 
         Parameters
         ----------
         type : ActivityType
             Which kind of scope ``id`` (and the date filters) refer to, for example
-            a single entity, a user, or a date range. See :class:`~albert.resources.activities.ActivityType`.
+            a single entity, a user, or a date range. See [`ActivityType`][albert.resources.activities.ActivityType].
         id : str, optional
             The identifier of the scope selected by ``type`` (e.g. an entity or
             user ID). Not supported when ``type`` is ``ActivityType.DATE_RANGE``.
@@ -115,7 +113,7 @@ class ActivityCollection(BaseCollection):
         operation_id : ActivityOperationId, optional
             Restrict to a specific logged operation. Applies only to recency
             support for SDS/label events. See
-            :class:`~albert.resources.activities.ActivityOperationId`.
+            [`ActivityOperationId`][albert.resources.activities.ActivityOperationId].
         action : ActivityAction, optional
             Whether to list read or write activities. Defaults to
             ``ActivityAction.WRITE``.
@@ -132,8 +130,6 @@ class ActivityCollection(BaseCollection):
         Iterator[Activity]
             A lazily paginated iterator of activity records.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.activities import ActivityType
@@ -187,11 +183,11 @@ class ActivityCollection(BaseCollection):
     ) -> Iterator[ActivitySearchItem]:
         """Search activity records using full-text and filter criteria.
 
-        Returns lightweight :class:`~albert.resources.activities.ActivitySearchItem`
+        Returns lightweight [`ActivitySearchItem`][albert.resources.activities.ActivitySearchItem]
         results and is the flexible way to query the audit trail across entities
         and users at once (e.g. everything a set of users did to a given object
         type in a date window). To page the raw feed for a single entity or user
-        instead, use :meth:`get_all`. Results are a lazily paginated iterator.
+        instead, use [`get_all`][albert.collections.activities.ActivityCollection.get_all]. Results are a lazily paginated iterator.
 
         Parameters
         ----------
@@ -232,8 +228,6 @@ class ActivityCollection(BaseCollection):
         Iterator[ActivitySearchItem]
             A lazily paginated iterator of matching search results.
 
-        Examples
-        --------
         !!! example
             ```python
             hits = client.activities.search(text="titanium dioxide", max_items=10)

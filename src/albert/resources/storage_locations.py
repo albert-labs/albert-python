@@ -10,9 +10,9 @@ class StorageLocation(BaseResource):
 
     Examples include a flammables cabinet, a freezer, or a storeroom shelf. Every
     storage location belongs to a parent Location
-    (:class:`~albert.resources.locations.Location`), and Inventory search filters
+    ([`Location`][albert.resources.locations.Location]), and Inventory search filters
     can narrow results to items held in a given storage location. Managed through
-    :class:`~albert.collections.storage_locations.StorageLocationsCollection`.
+    [`StorageLocationsCollection`][albert.collections.storage_locations.StorageLocationsCollection].
 
     Attributes
     ----------
@@ -25,8 +25,6 @@ class StorageLocation(BaseResource):
     location : Location
         The parent Location this storage location belongs to.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert

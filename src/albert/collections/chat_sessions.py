@@ -27,16 +27,16 @@ class ChatSessionCollection:
     """Manage "Ask Albert" chat sessions in the Albert platform (🧪 Beta).
 
     A chat session is a single conversation with Albert's AI assistant, "Ask
-    Albert". Each session (:class:`~albert.resources.chats.ChatSession`) holds an
+    Albert". Each session ([`ChatSession`][albert.resources.chats.ChatSession]) holds an
     ordered series of message turns
-    (:class:`~albert.resources.chats.ChatMessage`, managed by
-    :class:`~albert.collections.chat_messages.ChatMessageCollection`) and can be
+    ([`ChatMessage`][albert.resources.chats.ChatMessage], managed by
+    [`ChatMessageCollection`][albert.collections.chat_messages.ChatMessageCollection]) and can be
     filed under a folder
-    (:class:`~albert.resources.chats.ChatFolder`, managed by
-    :class:`~albert.collections.chat_folders.ChatFolderCollection`).
+    ([`ChatFolder`][albert.resources.chats.ChatFolder], managed by
+    [`ChatFolderCollection`][albert.collections.chat_folders.ChatFolderCollection]).
 
     This is an async collection accessed as ``client.chat_sessions`` on an
-    :class:`~albert.client.AsyncAlbert` client.
+    [`AsyncAlbert`][albert.client.AsyncAlbert] client.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -67,8 +67,6 @@ class ChatSessionCollection:
     delete(id) -> None
         Delete a session by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import AsyncAlbert
@@ -106,15 +104,13 @@ class ChatSessionCollection:
         session : ChatSession
             The session to create. ``name`` and ``source_session_id`` are required;
             set ``parent_id`` to file the session under a
-            :class:`~albert.resources.chats.ChatFolder`.
+            [`ChatFolder`][albert.resources.chats.ChatFolder].
 
         Returns
         -------
         ChatSession
             The created session, populated with its server-assigned ``id``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -146,8 +142,6 @@ class ChatSessionCollection:
         ChatSession
             The matching session.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -177,8 +171,6 @@ class ChatSessionCollection:
         ChatSession
             The matching session.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -212,7 +204,7 @@ class ChatSessionCollection:
             substring. Defaults to ``False``.
         parent_id : str | None, optional
             Filter to sessions filed under the given
-            :class:`~albert.resources.chats.ChatFolder`.
+            [`ChatFolder`][albert.resources.chats.ChatFolder].
         max_items : int | None, optional
             Maximum number of sessions to yield in total. If ``None``, yields all
             matching sessions.
@@ -222,8 +214,6 @@ class ChatSessionCollection:
         ChatSession
             Sessions matching the given filters.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -270,7 +260,7 @@ class ChatSessionCollection:
         name : str | None, optional
             A new display name for the session.
         parent_id : str | None, optional
-            The :class:`~albert.resources.chats.ChatFolder` to move the session
+            The [`ChatFolder`][albert.resources.chats.ChatFolder] to move the session
             into. Pass ``None`` to remove the session from its current folder. When
             omitted entirely, the folder is left unchanged.
 
@@ -283,8 +273,6 @@ class ChatSessionCollection:
         -----
         The following fields can be updated: ``name``, ``parent_id``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert
@@ -316,8 +304,6 @@ class ChatSessionCollection:
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import AsyncAlbert

@@ -60,8 +60,8 @@ class PropertyDataCollection(BaseCollection):
     - *Interval*: one specific combination of parameter setpoints (e.g. "measured
       at 25°C"). It is identified by an interval ID of the form ``ROW1`` (one
       intervalized parameter) or ``ROW1XROW2`` (two). Build this ID from parameter
-      values with :meth:`~albert.resources.workflows.Workflow.get_interval_id`, or
-      list the intervals present on a task with :meth:`check_for_task_data`. When a
+      values with [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id], or
+      list the intervals present on a task with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data]. When a
       block has no intervalized parameters, use the literal ``"default"``.
     - *Trial*: one replicate measurement of a given interval, identified by an
       integer trial number.
@@ -70,9 +70,9 @@ class PropertyDataCollection(BaseCollection):
     single interval, or a single trial. Voided data is retained but excluded from
     results; unvoiding restores it.
 
-    **Writing results.** Use :meth:`add_properties_to_task` for brand-new values,
-    :meth:`update_or_create_task_properties` to upsert, and
-    :meth:`bulk_load_task_properties` to load a whole table at once. When adding
+    **Writing results.** Use [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] for brand-new values,
+    [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] to upsert, and
+    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties] to load a whole table at once. When adding
     trials, supply a trial number only for an existing trial; omit it to create a
     new trial, and create new trials one call at a time (loop for many).
 
@@ -123,8 +123,6 @@ class PropertyDataCollection(BaseCollection):
     search(...) -> Iterator[PropertyDataSearchItem]
         Search recorded property data across the platform.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -156,7 +154,7 @@ class PropertyDataCollection(BaseCollection):
 
         This includes both task-measured results that have rolled up to the item
         and properties added directly to it. For results in the context of a
-        specific task, use :meth:`get_task_block_properties` instead.
+        specific task, use [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties] instead.
 
         Parameters
         ----------
@@ -168,8 +166,6 @@ class PropertyDataCollection(BaseCollection):
         InventoryPropertyData
             The item's properties, split into task-derived and directly-added data.
 
-        Examples
-        --------
         !!! example
             ```python
             props = client.property_data.get_properties_on_inventory(
@@ -206,8 +202,6 @@ class PropertyDataCollection(BaseCollection):
         list[InventoryPropertyDataCreate]
             The registered properties.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import InventoryDataColumn
@@ -253,8 +247,6 @@ class PropertyDataCollection(BaseCollection):
         InventoryPropertyData
             The item's properties after the update.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import InventoryDataColumn
@@ -318,7 +310,7 @@ class PropertyDataCollection(BaseCollection):
 
         This is the focused read for a single block/inventory (and optionally lot)
         combination. To sweep every combination on a task at once, use
-        :meth:`get_all_task_properties`.
+        [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties].
 
         Parameters
         ----------
@@ -337,8 +329,6 @@ class PropertyDataCollection(BaseCollection):
             The results in the block for the given inventory item, organized by
             interval and trial.
 
-        Examples
-        --------
         !!! example
             ```python
             data = client.property_data.get_task_block_properties(
@@ -380,8 +370,6 @@ class PropertyDataCollection(BaseCollection):
         list[CheckPropertyData]
             The data status of each block/interval/inventory combination.
 
-        Examples
-        --------
         !!! example
             ```python
             statuses = client.property_data.check_for_task_data(task_id="TASFOR1")
@@ -407,7 +395,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> CheckPropertyData:
         """Report whether one specific block interval has data.
 
-        A single-interval version of :meth:`check_for_task_data`.
+        A single-interval version of [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
 
         Parameters
         ----------
@@ -417,15 +405,13 @@ class PropertyDataCollection(BaseCollection):
             The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
             The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
-            or ``"default"``). See :meth:`check_for_task_data` to list interval IDs.
+            or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------
         CheckPropertyData
             The data status of the given block interval.
 
-        Examples
-        --------
         !!! example
             ```python
             status = client.property_data.check_block_interval_for_data(
@@ -453,7 +439,7 @@ class PropertyDataCollection(BaseCollection):
         """Get recorded results across all block/inventory combinations of a task.
 
         Sweeps every block/inventory/lot combination on the task and returns its
-        results. For a single known combination, :meth:`get_task_block_properties`
+        results. For a single known combination, [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
         is more direct.
 
         Parameters
@@ -469,8 +455,6 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             Results for each block/inventory/lot combination on the task.
 
-        Examples
-        --------
         !!! example
             ```python
             blocks = client.property_data.get_all_task_properties(
@@ -510,8 +494,8 @@ class PropertyDataCollection(BaseCollection):
 
         This is the low-level update path: it applies a list of explicit patch
         operations to values that already exist. For most cases prefer
-        :meth:`update_or_create_task_properties` (upsert) or
-        :meth:`add_properties_to_task` (new values), which build the patches for
+        [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] (upsert) or
+        [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] (new values), which build the patches for
         you.
 
         Parameters
@@ -520,7 +504,7 @@ class PropertyDataCollection(BaseCollection):
             The task to update (format ``TAS...``).
         patch_payload : list[PropertyDataPatchDatum]
             The patch operations to apply. Image and curve values cannot be updated
-            here; use :meth:`update_or_create_task_properties` for those.
+            here; use [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] for those.
         inventory_id : InventoryId | None, optional
             Required when return_scope="block".
         block_id : BlockId | None, optional
@@ -536,8 +520,6 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's properties after the update, scoped per ``return_scope``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import PropertyDataPatchDatum
@@ -587,8 +569,8 @@ class PropertyDataCollection(BaseCollection):
         """Void all recorded results in a task block for one inventory item.
 
         Voided data is retained but excluded from results; restore it with
-        :meth:`unvoid_task_data`. To void a narrower scope, use
-        :meth:`void_interval_data` or :meth:`void_trial_data`.
+        [`unvoid_task_data`][albert.collections.property_data.PropertyDataCollection.unvoid_task_data]. To void a narrower scope, use
+        [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data] or [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
 
         Parameters
         ----------
@@ -605,8 +587,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.void_task_data(
@@ -639,7 +619,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Restore previously voided results in a task block for one inventory item.
 
-        The inverse of :meth:`void_task_data`.
+        The inverse of [`void_task_data`][albert.collections.property_data.PropertyDataCollection.void_task_data].
 
         Parameters
         ----------
@@ -656,8 +636,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.unvoid_task_data(
@@ -693,7 +671,7 @@ class PropertyDataCollection(BaseCollection):
         """Void the results of one interval combination in a task block.
 
         Voided data is retained but excluded from results; restore it with
-        :meth:`unvoid_interval_data`.
+        [`unvoid_interval_data`][albert.collections.property_data.PropertyDataCollection.unvoid_interval_data].
 
         Parameters
         ----------
@@ -701,8 +679,8 @@ class PropertyDataCollection(BaseCollection):
             The task containing the block (format ``TAS...``).
         interval_id : str
             The interval combination to void (e.g. ``"ROW1"``, ``"ROW1XROW2"``).
-            List a task's interval IDs with :meth:`check_for_task_data`, or build
-            one with :meth:`~albert.resources.workflows.Workflow.get_interval_id`.
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data], or build
+            one with [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
         inventory_id : InventoryId
             The inventory item whose results to void (format ``INV...``).
         block_id : BlockId
@@ -716,8 +694,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.void_interval_data(
@@ -757,7 +733,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Restore previously voided results of one interval combination.
 
-        The inverse of :meth:`void_interval_data`.
+        The inverse of [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data].
 
         Parameters
         ----------
@@ -765,7 +741,7 @@ class PropertyDataCollection(BaseCollection):
             The task containing the block (format ``TAS...``).
         interval_id : str
             The interval combination to restore (e.g. ``"ROW1"``, ``"ROW1XROW2"``).
-            List a task's interval IDs with :meth:`check_for_task_data`.
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
         inventory_id : InventoryId
             The inventory item whose results to restore (format ``INV...``).
         block_id : BlockId
@@ -779,8 +755,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.unvoid_interval_data(
@@ -821,7 +795,7 @@ class PropertyDataCollection(BaseCollection):
         """Void one trial (replicate) within an interval combination.
 
         The narrowest void scope: a single replicate measurement. Restore it with
-        :meth:`unvoid_trial_data`.
+        [`unvoid_trial_data`][albert.collections.property_data.PropertyDataCollection.unvoid_trial_data].
 
         Parameters
         ----------
@@ -829,7 +803,7 @@ class PropertyDataCollection(BaseCollection):
             The task containing the block (format ``TAS...``).
         interval_id : str
             The interval combination the trial belongs to (e.g. ``"ROW1"``).
-            List a task's interval IDs with :meth:`check_for_task_data`.
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
         trial_number : int
             The 1-based trial (replicate) number to void.
         inventory_id : InventoryId
@@ -843,8 +817,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.void_trial_data(
@@ -886,7 +858,7 @@ class PropertyDataCollection(BaseCollection):
     ) -> None:
         """Restore one previously voided trial (replicate).
 
-        The inverse of :meth:`void_trial_data`.
+        The inverse of [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
 
         Parameters
         ----------
@@ -894,7 +866,7 @@ class PropertyDataCollection(BaseCollection):
             The task containing the block (format ``TAS...``).
         interval_id : str
             The interval combination the trial belongs to (e.g. ``"ROW1"``).
-            List a task's interval IDs with :meth:`check_for_task_data`.
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
         trial_number : int
             The 1-based trial (replicate) number to restore.
         inventory_id : InventoryId
@@ -908,8 +880,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.unvoid_trial_data(
@@ -952,10 +922,10 @@ class PropertyDataCollection(BaseCollection):
         """Add new result values to a task block.
 
         This path is for **new** values only; to update existing values or upsert,
-        use :meth:`update_or_create_task_properties`, and to overwrite a whole
-        table use :meth:`bulk_load_task_properties`. Each value targets a data
+        use [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties], and to overwrite a whole
+        table use [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties]. Each value targets a data
         column and an interval combination (build the interval ID with
-        :meth:`~albert.resources.workflows.Workflow.get_interval_id`).
+        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]).
 
         Parameters
         ----------
@@ -984,8 +954,6 @@ class PropertyDataCollection(BaseCollection):
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
@@ -1082,9 +1050,9 @@ class PropertyDataCollection(BaseCollection):
 
         Updates values that already exist and adds those that do not, in a single
         call. This is the recommended general-purpose write method; use
-        :meth:`add_properties_to_task` when you know all values are new, or
-        :meth:`bulk_load_task_properties` to overwrite an entire table. Handles
-        image and curve values, which :meth:`update_property_on_task` cannot.
+        [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] when you know all values are new, or
+        [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties] to overwrite an entire table. Handles
+        image and curve values, which [`update_property_on_task`][albert.collections.property_data.PropertyDataCollection.update_property_on_task] cannot.
 
         Parameters
         ----------
@@ -1113,8 +1081,6 @@ class PropertyDataCollection(BaseCollection):
         ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
         trials one call at a time (loop for many) to avoid unexpected behavior.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
@@ -1270,7 +1236,7 @@ class PropertyDataCollection(BaseCollection):
         interval : str, optional
             The interval combination to load into (e.g. ``"ROW1"``). Defaults to
             ``"default"``. Build it with
-            :meth:`~albert.resources.workflows.Workflow.get_interval_id`.
+            [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
         property_data : BulkPropertyData
             Column-wise data holding all rows for a single interval. Create it with
             ``BulkPropertyData.from_dataframe``.
@@ -1283,8 +1249,6 @@ class PropertyDataCollection(BaseCollection):
         list[TaskPropertyData]
             The task's results after the load, scoped per ``return_scope``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.property_data import BulkPropertyData
@@ -1346,7 +1310,7 @@ class PropertyDataCollection(BaseCollection):
 
         Permanently removes results for the block/inventory combination (optionally
         narrowed to one interval). To hide data reversibly instead of deleting it,
-        use the void methods (:meth:`void_task_data`, :meth:`void_interval_data`).
+        use the void methods ([`void_task_data`][albert.collections.property_data.PropertyDataCollection.void_task_data], [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data]).
 
         Parameters
         ----------
@@ -1366,8 +1330,6 @@ class PropertyDataCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.property_data.bulk_delete_task_data(
@@ -1473,8 +1435,6 @@ class PropertyDataCollection(BaseCollection):
         Iterator[PropertyDataSearchItem]
             A lazily paginated iterator of matching property data search items.
 
-        Examples
-        --------
         !!! example
             ```python
             hits = client.property_data.search(

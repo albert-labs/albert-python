@@ -41,7 +41,7 @@ class LotCollection(BaseCollection):
     ``task_id`` linking them back to that Task.
 
     Inventory Items themselves are managed through the Inventory collection
-    (:class:`~albert.collections.inventory.InventoryCollection`).
+    ([`InventoryCollection`][albert.collections.inventory.InventoryCollection]).
 
     This collection is accessed as ``client.lots``.
 
@@ -76,8 +76,6 @@ class LotCollection(BaseCollection):
     delete(id) -> None
         Delete a lot by its Lot ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -146,8 +144,6 @@ class LotCollection(BaseCollection):
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -193,8 +189,8 @@ class LotCollection(BaseCollection):
     def get_by_id(self, *, id: LotId) -> Lot:
         """Retrieve a single, fully populated lot by its ID.
 
-        To retrieve many lots at once, use :meth:`get_by_ids`. To find lots
-        without knowing their IDs, use :meth:`search` or :meth:`get_all`.
+        To retrieve many lots at once, use [`get_by_ids`][albert.collections.lots.LotCollection.get_by_ids]. To find lots
+        without knowing their IDs, use [`search`][albert.collections.lots.LotCollection.search] or [`get_all`][albert.collections.lots.LotCollection.get_all].
 
         Parameters
         ----------
@@ -206,8 +202,6 @@ class LotCollection(BaseCollection):
         Lot
             The lot with the provided ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -225,7 +219,7 @@ class LotCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[LotId]) -> list[Lot]:
         """Retrieve many fully populated lots by their IDs.
 
-        Use this instead of repeated :meth:`get_by_id` calls when you already
+        Use this instead of repeated [`get_by_id`][albert.collections.lots.LotCollection.get_by_id] calls when you already
         have several Lot IDs to fetch.
 
         Parameters
@@ -238,8 +232,6 @@ class LotCollection(BaseCollection):
         list[Lot]
             The lots matching the provided IDs.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -264,8 +256,6 @@ class LotCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -299,9 +289,9 @@ class LotCollection(BaseCollection):
         """Search for lots matching the provided filters.
 
         This is the fast way to look up lots or count matches. It returns partial
-        (unhydrated) lots (:class:`~albert.resources.lots.LotSearchItem`) rather
+        (unhydrated) lots ([`LotSearchItem`][albert.resources.lots.LotSearchItem]) rather
         than full ones, so it is well suited to lookups. When you need every field
-        of each lot, use :meth:`get_all` instead, or hydrate individual results.
+        of each lot, use [`get_all`][albert.collections.lots.LotCollection.get_all] instead, or hydrate individual results.
 
         All filters are optional and combined together (AND). With no filters, all
         lots are returned.
@@ -343,8 +333,6 @@ class LotCollection(BaseCollection):
         Iterator[LotSearchItem]
             An iterator over matching partial (unhydrated) lots.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -403,9 +391,9 @@ class LotCollection(BaseCollection):
     ) -> Iterator[Lot]:
         """Retrieve fully populated lots matching the given filters.
 
-        Same purpose as :meth:`search`, but returns fully hydrated
-        :class:`~albert.resources.lots.Lot` objects (every field populated), which
-        is slower. Use :meth:`search` when a lightweight result is enough.
+        Same purpose as [`search`][albert.collections.lots.LotCollection.search], but returns fully hydrated
+        [`Lot`][albert.resources.lots.Lot] objects (every field populated), which
+        is slower. Use [`search`][albert.collections.lots.LotCollection.search] when a lightweight result is enough.
 
         All filters are optional and combined together (AND). A common use is
         passing ``parent_id`` to list every lot of one Inventory Item.
@@ -441,8 +429,6 @@ class LotCollection(BaseCollection):
         Iterator[Lot]
             An iterator over the fully populated lots matching the filters.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -545,7 +531,7 @@ class LotCollection(BaseCollection):
 
         Use this to change how much of a lot is currently in stock, for example
         to record consumption, restocking, or a physical recount. To move
-        quantity to a different storage location instead, use :meth:`transfer`.
+        quantity to a different storage location instead, use [`transfer`][albert.collections.lots.LotCollection.transfer].
 
         Parameters
         ----------
@@ -575,8 +561,6 @@ class LotCollection(BaseCollection):
             If ``quantity`` is supplied for ``ZERO``, or missing/non-positive for
             ``ADD``, ``SUBTRACT``, or ``SET``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -645,7 +629,7 @@ class LotCollection(BaseCollection):
         source and a new lot is created at the destination.
 
         To change how much is in stock (rather than where it is), use
-        :meth:`adjust`.
+        [`adjust`][albert.collections.lots.LotCollection.adjust].
 
         Parameters
         ----------
@@ -672,8 +656,6 @@ class LotCollection(BaseCollection):
             If a numeric ``quantity`` is not greater than zero, or the current
             user cannot be resolved when ``owner`` is omitted.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -730,12 +712,12 @@ class LotCollection(BaseCollection):
     def update(self, *, lot: Lot) -> Lot:
         """Apply changes to an existing lot.
 
-        Fetch the lot (e.g. with :meth:`get_by_id`), modify the updatable fields
+        Fetch the lot (e.g. with [`get_by_id`][albert.collections.lots.LotCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the changed fields are
         sent. The lot is matched by its ``id``.
 
-        For quantity changes, prefer :meth:`adjust`; for relocations, prefer
-        :meth:`transfer`. Both handle the inventory-on-hand bookkeeping for you.
+        For quantity changes, prefer [`adjust`][albert.collections.lots.LotCollection.adjust]; for relocations, prefer
+        [`transfer`][albert.collections.lots.LotCollection.transfer]. Both handle the inventory-on-hand bookkeeping for you.
 
         Parameters
         ----------
@@ -755,8 +737,6 @@ class LotCollection(BaseCollection):
         ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
         ``status``, ``storage_location``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert

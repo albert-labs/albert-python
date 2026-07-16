@@ -17,13 +17,13 @@ class UserCollection(BaseCollection):
 
     A User is an Albert user account: a person who can log in and act in the
     platform. Each user has a name and email, a set of
-    :class:`~albert.resources.roles.Role` objects that govern what they can do,
-    an optional home :class:`~albert.resources.locations.Location`, and an ACL
-    class level (:class:`~albert.resources.users.UserClass`) that sets a broad
+    [`Role`][albert.resources.roles.Role] objects that govern what they can do,
+    an optional home [`Location`][albert.resources.locations.Location], and an ACL
+    class level ([`UserClass`][albert.resources.users.UserClass]) that sets a broad
     permission tier.
 
     Users are grouped into teams (see
-    :class:`~albert.collections.teams.TeamCollection`), and are referenced
+    [`TeamCollection`][albert.collections.teams.TeamCollection]), and are referenced
     throughout the platform: Tasks can be assigned to a user, and entities carry
     ACLs that reference users and their roles. A user is identified by its User
     ID (format ``USR...``, e.g. ``"USR12"``).
@@ -55,8 +55,6 @@ class UserCollection(BaseCollection):
     update(user) -> User
         Apply changes to an existing user.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -94,8 +92,6 @@ class UserCollection(BaseCollection):
         User
             The fully populated user for the authenticated session.
 
-        Examples
-        --------
         !!! example
             ```python
             me = client.users.get_current_user()
@@ -117,8 +113,8 @@ class UserCollection(BaseCollection):
     def get_by_id(self, *, id: UserId) -> User:
         """Retrieve a single, fully populated user by their ID.
 
-        To find users without knowing their IDs, use :meth:`search` or
-        :meth:`get_all`.
+        To find users without knowing their IDs, use [`search`][albert.collections.users.UserCollection.search] or
+        [`get_all`][albert.collections.users.UserCollection.get_all].
 
         Parameters
         ----------
@@ -130,8 +126,6 @@ class UserCollection(BaseCollection):
         User
             The fully populated user.
 
-        Examples
-        --------
         !!! example
             ```python
             user = client.users.get_by_id(id="USR12")
@@ -167,10 +161,10 @@ class UserCollection(BaseCollection):
     ) -> Iterator[UserSearchItem]:
         """Search for users matching the provided filters.
 
-        This returns lightweight, partial results (:class:`UserSearchItem`) and
+        This returns lightweight, partial results ([`UserSearchItem`][albert.resources.users.UserSearchItem]) and
         is the fastest way to look users up by name, role, team, or location.
-        For fully populated :class:`User` entities, use :meth:`get_all`, or call
-        :meth:`~albert.resources._mixins.HydrationMixin.hydrate` on a search item.
+        For fully populated [`User`][albert.resources.users.User] entities, use [`get_all`][albert.collections.users.UserCollection.get_all], or call
+        [`hydrate`][albert.resources._mixins.HydrationMixin.hydrate] on a search item.
 
         Parameters
         ----------
@@ -214,8 +208,6 @@ class UserCollection(BaseCollection):
         Iterator[UserSearchItem]
             An iterator of partial users matching the filters.
 
-        Examples
-        --------
         !!! example
             ```python
             # Find users whose name or email mentions "ada"
@@ -265,8 +257,8 @@ class UserCollection(BaseCollection):
     ) -> Iterator[User]:
         """Retrieve fully populated users, with optional filters.
 
-        Each result is fetched individually via :meth:`get_by_id`, so this is
-        convenient but slower than :meth:`search`. Prefer :meth:`search` when
+        Each result is fetched individually via [`get_by_id`][albert.collections.users.UserCollection.get_by_id], so this is
+        convenient but slower than [`search`][albert.collections.users.UserCollection.search]. Prefer [`search`][albert.collections.users.UserCollection.search] when
         you only need lightweight, partial results.
 
         Parameters
@@ -290,8 +282,6 @@ class UserCollection(BaseCollection):
         Iterator[User]
             An iterator of fully populated users.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.core.shared.enums import Status
@@ -339,8 +329,6 @@ class UserCollection(BaseCollection):
         User
             The newly created user, populated with its assigned User ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.users import User, UserClass
@@ -364,7 +352,7 @@ class UserCollection(BaseCollection):
     def update(self, *, user: User) -> User:
         """Apply changes to an existing user.
 
-        Fetch the user (e.g. via :meth:`get_by_id`), modify the updatable
+        Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
         fields, then pass it here. Only the difference against the current
         server state is sent.
 
@@ -383,8 +371,6 @@ class UserCollection(BaseCollection):
         The following fields can be updated: ``email``, ``metadata``, ``name``,
         ``status``.
 
-        Examples
-        --------
         !!! example
             ```python
             user = client.users.get_by_id(id="USR12")

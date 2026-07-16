@@ -12,7 +12,7 @@ class PricingCollection(BaseCollection):
     """Manage Pricing entries for Inventory Items in the Albert platform.
 
     A Pricing is a price entry for an Inventory Item
-    (:class:`~albert.resources.inventory.InventoryItem`): a cost for a given
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]): a cost for a given
     amount of the material, recorded for a specific company and location. An item
     can have many pricings (for example, different suppliers, sites, or pack
     sizes), so pricings are usually retrieved by the inventory item they belong to
@@ -45,8 +45,6 @@ class PricingCollection(BaseCollection):
     delete(id) -> None
         Delete a pricing by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -90,15 +88,13 @@ class PricingCollection(BaseCollection):
         pricing : Pricing
             The pricing to create. ``inventory_id``, ``company``, ``location``, and
             ``price`` identify the item, source, site, and cost; see
-            :class:`~albert.resources.pricings.Pricing`.
+            [`Pricing`][albert.resources.pricings.Pricing].
 
         Returns
         -------
         Pricing
             The newly created pricing, populated with its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.pricings import Pricing
@@ -133,8 +129,6 @@ class PricingCollection(BaseCollection):
         Pricing
             The matching pricing.
 
-        Examples
-        --------
         !!! example
             ```python
             pricing = client.pricings.get_by_id(id="...")
@@ -159,7 +153,7 @@ class PricingCollection(BaseCollection):
 
         Returns every pricing entry attached to the given inventory item, with
         optional grouping, filtering, and sorting. To pull pricings for many items
-        at once, use :meth:`get_by_inventory_ids`.
+        at once, use [`get_by_inventory_ids`][albert.collections.pricings.PricingCollection.get_by_inventory_ids].
 
         Parameters
         ----------
@@ -167,7 +161,7 @@ class PricingCollection(BaseCollection):
             The Inventory ID to retrieve pricings for (format ``INV...``).
         group_by : PricingBy, optional
             Group the results by company or location. See
-            :class:`~albert.resources.pricings.PricingBy`.
+            [`PricingBy`][albert.resources.pricings.PricingBy].
         filter_by : PricingBy, optional
             The dimension (company or location) to filter on. Pair with
             ``filter_id``.
@@ -181,8 +175,6 @@ class PricingCollection(BaseCollection):
         list[Pricing]
             The pricings for the item matching the provided parameters.
 
-        Examples
-        --------
         !!! example
             ```python
             pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
@@ -205,7 +197,7 @@ class PricingCollection(BaseCollection):
     def get_by_inventory_ids(self, *, inventory_ids: list[InventoryId]) -> list[InventoryPricings]:
         """Retrieve pricings for several inventory items at once.
 
-        Each returned :class:`~albert.resources.pricings.InventoryPricings` groups
+        Each returned [`InventoryPricings`][albert.resources.pricings.InventoryPricings] groups
         one item's pricings under its inventory ID.
 
         Parameters
@@ -218,8 +210,6 @@ class PricingCollection(BaseCollection):
         list[InventoryPricings]
             One entry per item, each holding that item's pricings.
 
-        Examples
-        --------
         !!! example
             ```python
             grouped = client.pricings.get_by_inventory_ids(
@@ -245,8 +235,6 @@ class PricingCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.pricings.delete(id="...")
@@ -275,7 +263,7 @@ class PricingCollection(BaseCollection):
     def update(self, *, pricing: Pricing) -> Pricing:
         """Update an existing pricing.
 
-        Fetch the pricing (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the pricing (e.g. with [`get_by_id`][albert.collections.pricings.PricingCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. The ``company`` and
         ``location`` links can also be reassigned.
 
@@ -295,8 +283,6 @@ class PricingCollection(BaseCollection):
         ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
         ``lead_time_unit``, ``pack_size``, ``price``.
 
-        Examples
-        --------
         !!! example
             ```python
             pricing = client.pricings.get_by_id(id="...")

@@ -17,8 +17,8 @@ class FieldType(str, Enum):
     LIST : str
         A value (or values) chosen from a predefined list. A ``list`` field
         defines its own list; the selectable options are
-        :class:`~albert.resources.lists.ListItem` records (see
-        :class:`~albert.collections.lists.ListsCollection`).
+        [`ListItem`][albert.resources.lists.ListItem] records (see
+        [`ListsCollection`][albert.collections.lists.ListsCollection]).
     STRING : str
         A free-text string value.
     NUMBER : str
@@ -248,13 +248,13 @@ class CustomField(BaseResource):
     matching entity (Project, Inventory Item, User, Task, Lot, etc.), and its
     type and validation rules constrain the stored value. Create and manage
     custom fields through
-    :class:`~albert.collections.custom_fields.CustomFieldCollection`.
+    [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection].
 
-    When ``field_type`` is :attr:`FieldType.LIST`, the field defines a new list
+    When ``field_type`` is [`LIST`][albert.resources.custom_fields.FieldType.LIST], the field defines a new list
     (identified by a ``list_type``, typically the field's ``name``). The
-    selectable options are :class:`~albert.resources.lists.ListItem` records with
+    selectable options are [`ListItem`][albert.resources.lists.ListItem] records with
     a matching ``list_type``, managed through
-    :class:`~albert.collections.lists.ListsCollection` (``client.lists``).
+    [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
 
     Attributes
     ----------
@@ -310,8 +310,6 @@ class CustomField(BaseResource):
     api : CustomFieldAPI or None
         Configuration for fields whose values are backed by a remote API.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.custom_fields import (
@@ -393,7 +391,7 @@ class SearchableCustomField(BaseAlbertModel):
     """A descriptor for a custom field that is exposed to search.
 
     Returned by
-    :meth:`~albert.collections.custom_fields.CustomFieldCollection.get_searchable_fields`
+    [`get_searchable_fields`][albert.collections.custom_fields.CustomFieldCollection.get_searchable_fields]
     to describe how a field can be queried and sorted in search.
 
     Attributes

@@ -26,7 +26,7 @@ class AttachmentMetadata(BaseAlbertModel):
     """Optional safety and classification metadata for an attachment.
 
     Populated primarily for SDS attachments (see
-    :meth:`~albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item`).
+    [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item]).
 
     Attributes
     ----------
@@ -75,10 +75,10 @@ class Attachment(BaseResource):
 
     Attachments associate a stored file with a parent entity such as a Note,
     Task, Project, or Inventory Item. The file itself is uploaded through the
-    :class:`~albert.collections.files.FileCollection`; the attachment's ``key``
-    must match the stored :attr:`~albert.resources.files.FileInfo.name`.
+    [`FileCollection`][albert.collections.files.FileCollection]; the attachment's ``key``
+    must match the stored [`name`][albert.resources.files.FileInfo.name].
     Attachments are managed through the
-    :class:`~albert.collections.attachments.AttachmentCollection`.
+    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
 
     Attributes
     ----------
@@ -95,7 +95,7 @@ class Attachment(BaseResource):
     namespace : str
         The storage namespace of the file. Defaults to ``"result"``.
     category : AttachmentCategory | str | None
-        The kind of file (e.g. SDS, Label). See :class:`AttachmentCategory`.
+        The kind of file (e.g. SDS, Label). See [`AttachmentCategory`][albert.resources.attachments.AttachmentCategory].
     revision_date : date | None
         The revision date of the document, when applicable (e.g. for SDS files).
     file_size : int | None
@@ -108,10 +108,8 @@ class Attachment(BaseResource):
         A temporary signed download URL (v2). Read-only.
     metadata : AttachmentMetadata | None
         Optional safety and classification metadata. See
-        :class:`AttachmentMetadata`.
+        [`AttachmentMetadata`][albert.resources.attachments.AttachmentMetadata].
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.attachments import Attachment

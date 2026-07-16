@@ -36,7 +36,7 @@ class SignURLPOSTFile(BaseAlbertModel):
     """Request entry describing a single file to be signed for upload.
 
     Used internally to build the payload for
-    :meth:`~albert.collections.files.FileCollection.get_signed_upload_url`.
+    [`get_signed_upload_url`][albert.collections.files.FileCollection.get_signed_upload_url].
 
     Attributes
     ----------
@@ -78,9 +78,9 @@ class FileInfo(BaseAlbertModel):
     """Metadata about a stored file in Albert.
 
     Returned by
-    :meth:`~albert.collections.files.FileCollection.get_by_name`. Its ``name``
+    [`get_by_name`][albert.collections.files.FileCollection.get_by_name]. Its ``name``
     can be used as the ``key`` of an
-    :class:`~albert.resources.attachments.Attachment`.
+    [`Attachment`][albert.resources.attachments.Attachment].
 
     Attributes
     ----------

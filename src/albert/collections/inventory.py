@@ -46,8 +46,8 @@ class InventoryCollection(BaseCollection):
     - ``Consumables``: supplies consumed during lab work (e.g. gloves, vials).
     - ``Equipment``: instruments and apparatus.
     - ``Formulas``: mixtures designed in Albert. Formulas are created through the
-      Worksheet collection (:class:`~albert.collections.worksheets.WorksheetCollection`),
-      not here; :meth:`create` rejects Formula items.
+      Worksheet collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]),
+      not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
     (format ``INV...``, e.g. ``"INVA1"``). They are the building blocks that
@@ -96,8 +96,6 @@ class InventoryCollection(BaseCollection):
     get_facet_by_name(name, ...) -> list[FacetItem]
         Retrieve a single named facet group for a query.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -164,8 +162,6 @@ class InventoryCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
@@ -196,7 +192,7 @@ class InventoryCollection(BaseCollection):
     def exists(self, *, inventory_item: InventoryItem) -> bool:
         """Check whether a matching inventory item already exists.
 
-        A match is determined by name and company, the same way :meth:`create`
+        A match is determined by name and company, the same way [`create`][albert.collections.inventory.InventoryCollection.create]
         detects duplicates. Useful before creating an item to avoid duplicates.
 
         Parameters
@@ -209,8 +205,6 @@ class InventoryCollection(BaseCollection):
         bool
             True if a matching item exists, False otherwise.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.inventory import InventoryItem, InventoryCategory
@@ -230,7 +224,7 @@ class InventoryCollection(BaseCollection):
     def get_match_or_none(self, *, inventory_item: InventoryItem) -> InventoryItem | None:
         """Return the existing item matching name and company, or None.
 
-        Like :meth:`exists`, but returns the matched item itself so you can reuse
+        Like [`exists`][albert.collections.inventory.InventoryCollection.exists], but returns the matched item itself so you can reuse
         its ID instead of creating a duplicate.
 
         Parameters
@@ -243,8 +237,6 @@ class InventoryCollection(BaseCollection):
         InventoryItem or None
             The matching item, or None if no match is found.
 
-        Examples
-        --------
         !!! example
             ```python
             existing = client.inventory.get_match_or_none(inventory_item=candidate)
@@ -281,8 +273,8 @@ class InventoryCollection(BaseCollection):
 
         Any tags or company on the item that do not yet exist in Albert are
         created automatically before the item is registered (see
-        :class:`~albert.collections.companies.CompanyCollection` and
-        :class:`~albert.collections.tags.TagCollection`).
+        [`CompanyCollection`][albert.collections.companies.CompanyCollection] and
+        [`TagCollection`][albert.collections.tags.TagCollection]).
 
         Parameters
         ----------
@@ -305,8 +297,6 @@ class InventoryCollection(BaseCollection):
         NotImplementedError
             If ``inventory_item.category`` is ``Formulas``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.inventory import InventoryItem, InventoryCategory
@@ -361,8 +351,8 @@ class InventoryCollection(BaseCollection):
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
         """Retrieve a single, fully populated inventory item by its ID.
 
-        For retrieving many items at once, use :meth:`get_by_ids`. To find items
-        without knowing their IDs, use :meth:`search` or :meth:`get_all`.
+        For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
+        without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
 
         Parameters
         ----------
@@ -374,8 +364,6 @@ class InventoryCollection(BaseCollection):
         InventoryItem
             The fully populated item.
 
-        Examples
-        --------
         !!! example
             ```python
             item = client.inventory.get_by_id(id="INVA1")
@@ -404,8 +392,6 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The matching items. Order is not guaranteed to match the input.
 
-        Examples
-        --------
         !!! example
             ```python
             items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
@@ -425,7 +411,7 @@ class InventoryCollection(BaseCollection):
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
         """Retrieve the specs attached to a list of inventory items.
 
-        A spec is a declared property of an item (see :meth:`add_specs` for the
+        A spec is a declared property of an item (see [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] for the
         distinction between specs and task-measured Property Data). Requests are
         automatically batched.
 
@@ -439,8 +425,6 @@ class InventoryCollection(BaseCollection):
         list[InventorySpecList]
             One entry per item, each holding that item's specs.
 
-        Examples
-        --------
         !!! example
             ```python
             spec_lists = client.inventory.get_specs(ids=["INVA1"])
@@ -485,8 +469,6 @@ class InventoryCollection(BaseCollection):
         InventorySpecList
             The full set of specs now attached to the item.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.inventory import InventorySpec, InventorySpecValue
@@ -511,7 +493,7 @@ class InventoryCollection(BaseCollection):
         """Delete an inventory item by its ID.
 
         This permanently removes the item. To consolidate duplicates while
-        preserving data, use :meth:`merge` instead.
+        preserving data, use [`merge`][albert.collections.inventory.InventoryCollection.merge] instead.
 
         Parameters
         ----------
@@ -522,8 +504,6 @@ class InventoryCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.inventory.delete(id="INVA1")
@@ -613,7 +593,7 @@ class InventoryCollection(BaseCollection):
         refinement sidebar of a search UI (e.g. how many matching items fall under
         each category, company, or tag). Use them to build progressive filtering
         or to summarize a result set without fetching every item. To pull a single
-        named facet, use :meth:`get_facet_by_name`.
+        named facet, use [`get_facet_by_name`][albert.collections.inventory.InventoryCollection.get_facet_by_name].
 
         Parameters
         ----------
@@ -649,8 +629,6 @@ class InventoryCollection(BaseCollection):
         list[FacetItem]
             The facet groups available for the query.
 
-        Examples
-        --------
         !!! example
             ```python
             facets = client.inventory.get_all_facets(text="titanium dioxide")
@@ -702,7 +680,7 @@ class InventoryCollection(BaseCollection):
     ) -> list[FacetItem]:
         """Return one or more named facets for an inventory search.
 
-        A convenience wrapper over :meth:`get_all_facets` that keeps only the
+        A convenience wrapper over [`get_all_facets`][albert.collections.inventory.InventoryCollection.get_all_facets] that keeps only the
         facet group(s) you name. Useful for iterative search refinement, e.g.
         fetching the remaining ``Tags`` facet after other filters are applied.
 
@@ -742,8 +720,6 @@ class InventoryCollection(BaseCollection):
         list[FacetItem]
             The facet group(s) matching ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             tags = client.inventory.get_facet_by_name("Tags", text="acetone")
@@ -801,8 +777,8 @@ class InventoryCollection(BaseCollection):
         Returns lightweight, partially populated results and is the fastest way to
         look items up (best for name lookups, counts, or feeding IDs into another
         call). Fields such as full CAS breakdowns and metadata are omitted; when
-        you need complete items, use :meth:`get_all` with the same filters, or pass
-        the resulting IDs to :meth:`get_by_ids`.
+        you need complete items, use [`get_all`][albert.collections.inventory.InventoryCollection.get_all] with the same filters, or pass
+        the resulting IDs to [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids].
 
         Filters are combined with OR logic by default (an item matches if it
         satisfies any filter); set ``match_all_conditions=True`` to require every
@@ -853,8 +829,6 @@ class InventoryCollection(BaseCollection):
         Iterator[InventorySearchItem]
             A lazily paginated iterator of partially populated search results.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.inventory import InventoryCategory
@@ -927,10 +901,10 @@ class InventoryCollection(BaseCollection):
     ) -> Iterator[InventoryItem]:
         """Retrieve fully populated inventory items matching the given filters.
 
-        Accepts the same filters as :meth:`search` but returns complete
+        Accepts the same filters as [`search`][albert.collections.inventory.InventoryCollection.search] but returns complete
         ``InventoryItem`` entities rather than lightweight search results. This is
         slower because it fetches full detail for every match, so prefer
-        :meth:`search` when you only need names, IDs, or counts.
+        [`search`][albert.collections.inventory.InventoryCollection.search] when you only need names, IDs, or counts.
 
         Filters are combined with OR logic by default; set
         ``match_all_conditions=True`` to require every filter to match. Results are
@@ -980,8 +954,6 @@ class InventoryCollection(BaseCollection):
         Iterator[InventoryItem]
             A lazily paginated iterator of fully populated items.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.inventory import InventoryCategory
@@ -1196,7 +1168,7 @@ class InventoryCollection(BaseCollection):
     def update(self, *, inventory_item: InventoryItem) -> InventoryItem:
         """Update an existing inventory item.
 
-        Fetch the item (e.g. with :meth:`get_by_id`), modify the updatable fields
+        Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
@@ -1216,8 +1188,6 @@ class InventoryCollection(BaseCollection):
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
 
-        Examples
-        --------
         !!! example
             ```python
             item = client.inventory.get_by_id(id="INVA1")

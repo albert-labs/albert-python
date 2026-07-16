@@ -37,7 +37,7 @@ class ActivityAction(str, Enum):
 
 
 class ActivityType(str, Enum):
-    """The scope a :meth:`~albert.collections.activities.ActivityCollection.get_all`
+    """The scope a [`get_all`][albert.collections.activities.ActivityCollection.get_all]
     query is anchored to.
 
     Attributes
@@ -65,7 +65,7 @@ class ActivityType(str, Enum):
 
 
 class ActivitySearchItemUser(BaseAlbertModel):
-    """The user associated with an :class:`ActivitySearchItem`.
+    """The user associated with an [`ActivitySearchItem`][albert.resources.activities.ActivitySearchItem].
 
     Attributes
     ----------
@@ -87,7 +87,7 @@ class ActivitySearchItemUser(BaseAlbertModel):
 
 class ActivitySearchItem(BaseAlbertModel):
     """A lightweight activity record returned by
-    :meth:`~albert.collections.activities.ActivityCollection.search`.
+    [`search`][albert.collections.activities.ActivityCollection.search].
 
     Attributes
     ----------
@@ -128,7 +128,7 @@ class ActivitySearchItem(BaseAlbertModel):
 class Activity(BaseResource):
     """A single event in the Albert activity feed (audit trail).
 
-    Returned by :meth:`~albert.collections.activities.ActivityCollection.get_all`.
+    Returned by [`get_all`][albert.collections.activities.ActivityCollection.get_all].
     Each record captures an action performed on an entity, together with metadata
     about where in the platform it occurred. Activities are produced by the
     platform and are read-only.

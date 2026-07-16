@@ -25,9 +25,9 @@ class CustomFieldCollection(BaseCollection):
     and Lots may only use fields that have been defined here; a Custom Field is
     the schema that gives a metadata key its name, type, and validation rules.
 
-    The field's :class:`~albert.resources.custom_fields.FieldType` determines the
+    The field's [`FieldType`][albert.resources.custom_fields.FieldType] determines the
     shape of the stored value (e.g. ``string``, ``number``, ``list``). When the
-    type is ``list``, the :class:`~albert.resources.custom_fields.FieldCategory`
+    type is ``list``, the [`FieldCategory`][albert.resources.custom_fields.FieldCategory]
     determines who may add new allowed items to that list:
 
     - ``FieldCategory.USER_DEFINED``: general users can add items.
@@ -35,8 +35,8 @@ class CustomFieldCollection(BaseCollection):
 
     Creating a ``list`` custom field establishes a new list (identified by a
     ``list_type``, typically the field's name) for options to be added to. Those
-    options are :class:`~albert.resources.lists.ListItem` records managed through
-    :class:`~albert.collections.lists.ListsCollection` (``client.lists``); add
+    options are [`ListItem`][albert.resources.lists.ListItem] records managed through
+    [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``); add
     each option with its ``list_type`` set to this field.
 
     Custom Field IDs use the ``CTF`` prefix. This is configuration/schema-level
@@ -71,8 +71,6 @@ class CustomFieldCollection(BaseCollection):
     delete(id) -> None
         Delete a custom field by its Custom Field ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -149,8 +147,6 @@ class CustomFieldCollection(BaseCollection):
         CustomField
             The matching custom field.
 
-        Examples
-        --------
         !!! example
             ```python
             cf = client.custom_fields.get_by_id(id="CTF1")
@@ -180,8 +176,6 @@ class CustomFieldCollection(BaseCollection):
         CustomField or None
             The matching custom field, or None if not found.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.custom_fields import ServiceType
@@ -243,8 +237,6 @@ class CustomFieldCollection(BaseCollection):
         Iterator[CustomField]
             A lazily paginated iterator of matching custom fields.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.custom_fields import ServiceType
@@ -292,8 +284,6 @@ class CustomFieldCollection(BaseCollection):
         dict[str, SearchableCustomField]
             Mapping of metadata paths to their searchable field descriptors.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.custom_fields import ServiceType
@@ -328,8 +318,6 @@ class CustomFieldCollection(BaseCollection):
             The newly created custom field, populated with its assigned Custom
             Field ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -359,7 +347,7 @@ class CustomFieldCollection(BaseCollection):
     def update(self, *, custom_field: CustomField) -> CustomField:
         """Update an existing custom field.
 
-        Fetch the field (e.g. with :meth:`get_by_id`), modify the updatable fields
+        Fetch the field (e.g. with [`get_by_id`][albert.collections.custom_fields.CustomFieldCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
@@ -382,8 +370,6 @@ class CustomFieldCollection(BaseCollection):
         ``multiselect``, ``pattern``, ``required``, ``searchable``,
         ``ui_components``.
 
-        Examples
-        --------
         !!! example
             ```python
             cf = client.custom_fields.get_by_id(id="CTF1")
@@ -428,8 +414,6 @@ class CustomFieldCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.custom_fields.delete(id="CTF1")

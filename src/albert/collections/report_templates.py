@@ -12,8 +12,8 @@ class ReportTemplateCollection(BaseCollection):
     A Report Template defines a reusable report configuration: the report type it
     is based on, its available filters, and its default column, chart, and
     metadata state. Templates are the catalog of report types that can be run via
-    :class:`~albert.collections.reports.ReportCollection`. Each template belongs
-    to a :class:`~albert.resources.report_templates.ReportTemplateCategory`
+    [`ReportCollection`][albert.collections.reports.ReportCollection]. Each template belongs
+    to a [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory]
     (``analytics``, ``datascience``, or ``reports``).
 
     This collection is read-only: it retrieves and lists existing templates.
@@ -37,8 +37,6 @@ class ReportTemplateCollection(BaseCollection):
     get_all(category=None) -> list[ReportTemplate]
         List all report templates, optionally filtered by category.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -80,8 +78,6 @@ class ReportTemplateCollection(BaseCollection):
         ReportTemplate
             The requested report template.
 
-        Examples
-        --------
         !!! example
             ```python
             template = client.report_templates.get_by_id(id="...")
@@ -109,8 +105,6 @@ class ReportTemplateCollection(BaseCollection):
         list[ReportTemplate]
             The matching report templates.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.report_templates import ReportTemplateCategory

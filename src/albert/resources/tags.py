@@ -27,8 +27,8 @@ class Tag(BaseResource):
 
     Tags are shared by name across the platform and can be applied to inventory
     items, companies, tasks, and other records to group and filter them. Managed
-    through :class:`~albert.collections.tags.TagCollection` (``client.tags``);
-    the usual entry point is :meth:`~albert.collections.tags.TagCollection.get_or_create`.
+    through [`TagCollection`][albert.collections.tags.TagCollection] (``client.tags``);
+    the usual entry point is [`get_or_create`][albert.collections.tags.TagCollection.get_or_create].
 
     Attributes
     ----------
@@ -43,8 +43,6 @@ class Tag(BaseResource):
     from_string(tag) -> Tag
         Build a Tag from its name string.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.tags import Tag
@@ -78,8 +76,6 @@ class Tag(BaseResource):
         Tag
             A Tag with the given name.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.tags import Tag

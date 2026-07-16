@@ -8,15 +8,15 @@ class Worksheet(BaseSessionResource):
     """An Excel-like grid paired one-to-one with a Project.
 
     A Worksheet is the command center where formulations are designed. It groups
-    one or more Sheets (:class:`~albert.resources.sheets.Sheet`), each an
+    one or more Sheets ([`Sheet`][albert.resources.sheets.Sheet]), each an
     interactive grid organized into stacked sections (Product Design, Process
     Design, Results, and Apps). Building a formulation on a Sheet is what
     registers a Formula inventory item.
 
     Retrieve a Worksheet with
-    :meth:`~albert.collections.worksheets.WorksheetCollection.get_by_project_id`,
-    then work with its Sheets through the :attr:`sheets` attribute. Editing the
-    contents of a Sheet is done through the :class:`~albert.resources.sheets.Sheet`
+    [`get_by_project_id`][albert.collections.worksheets.WorksheetCollection.get_by_project_id],
+    then work with its Sheets through the [`sheets`][albert.resources.worksheets.Worksheet.sheets] attribute. Editing the
+    contents of a Sheet is done through the [`Sheet`][albert.resources.sheets.Sheet]
     objects themselves, which remain connected to the live session.
 
     Attributes
@@ -30,8 +30,6 @@ class Worksheet(BaseSessionResource):
     project_id : str
         The ID of the paired Project (format ``PRO...``).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert

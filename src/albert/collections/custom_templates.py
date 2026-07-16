@@ -24,7 +24,7 @@ class CustomTemplatesCollection(BaseCollection):
 
     A Custom Template is a reusable, pre-configured template that seeds a new
     entity with a standard setup. Depending on its
-    :class:`~albert.resources.custom_templates.TemplateCategory`, a template can
+    [`TemplateCategory`][albert.resources.custom_templates.TemplateCategory], a template can
     prefill a Property task, Batch task, Sheet, Notebook, or a general task with
     default fields such as project, location, assignee, inventories, workflow,
     priority, and metadata. Applying a template saves users from rebuilding the
@@ -60,8 +60,6 @@ class CustomTemplatesCollection(BaseCollection):
     update_acl(custom_template_id, acl_class=None, acls=None) -> CustomTemplate
         Replace a template's ACL class and/or access entries.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -113,8 +111,6 @@ class CustomTemplatesCollection(BaseCollection):
         ValueError
             If no templates are provided, or if more than 10 are provided.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -217,8 +213,6 @@ class CustomTemplatesCollection(BaseCollection):
         CustomTemplate
             The fully populated template.
 
-        Examples
-        --------
         !!! example
             ```python
             template = client.custom_templates.get_by_id(id="CTP1")
@@ -252,8 +246,8 @@ class CustomTemplatesCollection(BaseCollection):
         """Search for custom templates matching the given criteria.
 
         Returns lightweight, partially populated results and is the fastest way to
-        look templates up. When you need complete templates, use :meth:`get_all`,
-        or pass a resulting ID to :meth:`get_by_id`. Results are returned as a
+        look templates up. When you need complete templates, use [`get_all`][albert.collections.custom_templates.CustomTemplatesCollection.get_all],
+        or pass a resulting ID to [`get_by_id`][albert.collections.custom_templates.CustomTemplatesCollection.get_by_id]. Results are returned as a
         lazily paginated iterator.
 
         Parameters
@@ -294,8 +288,6 @@ class CustomTemplatesCollection(BaseCollection):
         Iterator[CustomTemplateSearchItem]
             A lazily paginated iterator of partially populated search results.
 
-        Examples
-        --------
         !!! example
             ```python
             hits = client.custom_templates.search(text="stability", max_items=10)
@@ -345,7 +337,7 @@ class CustomTemplatesCollection(BaseCollection):
         """Iterate over fully populated custom templates matching the filters.
 
         Returns complete ``CustomTemplate`` entities rather than lightweight
-        search results, so prefer :meth:`search` when you only need names, IDs, or
+        search results, so prefer [`search`][albert.collections.custom_templates.CustomTemplatesCollection.search] when you only need names, IDs, or
         counts. Results are returned as a lazily paginated iterator.
 
         Parameters
@@ -367,8 +359,6 @@ class CustomTemplatesCollection(BaseCollection):
         Iterator[CustomTemplate]
             A lazily paginated iterator of fully populated templates.
 
-        Examples
-        --------
         !!! example
             ```python
             for template in client.custom_templates.get_all(max_items=25):
@@ -404,8 +394,6 @@ class CustomTemplatesCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.custom_templates.delete(id="CTP1")
@@ -449,8 +437,6 @@ class CustomTemplatesCollection(BaseCollection):
         ValueError
             If neither ``acl_class`` nor ``acls`` is provided.
 
-        Examples
-        --------
         !!! example
             ```python
             template = client.custom_templates.update_acl(

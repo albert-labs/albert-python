@@ -35,16 +35,16 @@ class TaskCategory(str, Enum):
     ----------
     PROPERTY : str
         Testing and documenting the properties of products, formulas, or raw
-        materials. Corresponds to :class:`PropertyTask`.
+        materials. Corresponds to [`PropertyTask`][albert.resources.tasks.PropertyTask].
     BATCH : str
         Manufacturing a batch of a formulation inside Albert. Corresponds to
-        :class:`BatchTask`.
+        [`BatchTask`][albert.resources.tasks.BatchTask].
     GENERAL : str
         Any lab work that is not a batch or property task (for example
-        equipment calibration). Corresponds to :class:`GeneralTask`.
+        equipment calibration). Corresponds to [`GeneralTask`][albert.resources.tasks.GeneralTask].
     BATCH_WITH_QC : str
         A batch task that also carries quality-control data. A variant of
-        :class:`BatchTask`.
+        [`BatchTask`][albert.resources.tasks.BatchTask].
     """
 
     PROPERTY = "Property"
@@ -54,7 +54,7 @@ class TaskCategory(str, Enum):
 
 
 class BatchSizeUnit(str, Enum):
-    """Unit of measure for the size of a batch made in a :class:`BatchTask`.
+    """Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].
 
     Attributes
     ----------
@@ -89,7 +89,7 @@ class TaskSourceType(str, Enum):
 class TaskSource(BaseAlbertModel):
     """A reference to the task or template a task was created from.
 
-    Recorded in :attr:`BaseTask.sources` to trace where a task originated.
+    Recorded in [`sources`][albert.resources.tasks.BaseTask.sources] to trace where a task originated.
 
     Attributes
     ----------
@@ -125,7 +125,7 @@ class HistoryEntity(str, Enum):
     """The kind of entity a task-history query is scoped to.
 
     Used when requesting the change history of a task (see
-    :meth:`~albert.collections.tasks.TaskCollection.get_history`).
+    [`get_history`][albert.collections.tasks.TaskCollection.get_history]).
 
     Attributes
     ----------
@@ -226,12 +226,12 @@ class TaskInventoryInformation(BaseAlbertModel):
     """Which inventory item (and optionally which lot) a task acts on.
 
     Every task references one or more inventory items through this model, stored
-    on :attr:`BaseTask.inventory_information`. What is required depends on the
+    on [`inventory_information`][albert.resources.tasks.BaseTask.inventory_information]. What is required depends on the
     task type:
 
-    - :class:`BatchTask`: ``inventory_id`` and ``batch_size`` are required
+    - [`BatchTask`][albert.resources.tasks.BatchTask]: ``inventory_id`` and ``batch_size`` are required
       (you are making a quantity of that item).
-    - :class:`PropertyTask` and :class:`GeneralTask`: ``inventory_id`` is
+    - [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`GeneralTask`][albert.resources.tasks.GeneralTask]: ``inventory_id`` is
       required and ``lot_id`` is recommended (the specific physical lot tested).
 
     Attributes
@@ -247,8 +247,8 @@ class TaskInventoryInformation(BaseAlbertModel):
         A combined inventory-and-lot identifier used internally.
     batch_size : float, optional
         The quantity to make of the related inventory item. Required for
-        :class:`BatchTask`; the unit is given by
-        :attr:`BatchTask.batch_size_unit`.
+        [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by
+        [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit].
     selected_lot : bool, optional
         Read-only. Whether this lot is the one selected for the task.
     barcode_id : str, optional
@@ -271,20 +271,20 @@ class TaskInventoryInformation(BaseAlbertModel):
 class Block(BaseAlbertModel):
     """A single unit of testing within a property or batch task.
 
-    A block pairs a :class:`~albert.resources.data_templates.DataTemplate`
+    A block pairs a [`DataTemplate`][albert.resources.data_templates.DataTemplate]
     (the results/data columns to capture) with a
-    :class:`~albert.resources.workflows.Workflow` (the parameter conditions
-    under which the data is collected). A :class:`PropertyTask` or
-    :class:`BatchTask` can hold multiple blocks. Block IDs look like
+    [`Workflow`][albert.resources.workflows.Workflow] (the parameter conditions
+    under which the data is collected). A [`PropertyTask`][albert.resources.tasks.PropertyTask] or
+    [`BatchTask`][albert.resources.tasks.BatchTask] can hold multiple blocks. Block IDs look like
     ``"BLK..."``.
 
     Blocks are normally created and modified through the task collection rather
     than constructed directly; see
-    :meth:`~albert.collections.tasks.TaskCollection.add_block`,
-    :meth:`~albert.collections.tasks.TaskCollection.update_block_workflow`, and
-    :meth:`~albert.collections.tasks.TaskCollection.remove_block`. Measured
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block],
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow], and
+    [`remove_block`][albert.collections.tasks.TaskCollection.remove_block]. Measured
     results for a block are recorded through
-    :class:`~albert.collections.property_data.PropertyDataCollection`.
+    [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection].
 
     Attributes
     ----------
@@ -349,16 +349,16 @@ class BaseTask(BaseTaggedResource):
     A task is a unit of lab work. This base class is not used directly; instead
     pick the concrete type that matches the work:
 
-    - :class:`PropertyTask`: test and document properties of products,
-      formulas, or raw materials. Holds :class:`Block` objects and captures
+    - [`PropertyTask`][albert.resources.tasks.PropertyTask]: test and document properties of products,
+      formulas, or raw materials. Holds [`Block`][albert.resources.tasks.Block] objects and captures
       measured property data.
-    - :class:`BatchTask`: manufacture a batch of a formulation inside Albert.
-    - :class:`GeneralTask`: any other lab work (for example equipment
+    - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch of a formulation inside Albert.
+    - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work (for example equipment
       calibration) that is neither a batch nor a property task.
 
     Tasks are managed through
-    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``). The
-    :attr:`category` field distinguishes the subclasses and is set
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``). The
+    [`category`][albert.resources.tasks.BaseTask.category] field distinguishes the subclasses and is set
     automatically by each one. Task IDs look like ``"TAS..."``.
 
     Attributes
@@ -456,17 +456,17 @@ class PropertyTask(BaseTask):
     """A task that tests and documents the properties of a material.
 
     Use a property task to measure and record properties of products, formulas,
-    or raw materials. A property task holds one or more :class:`Block` objects,
+    or raw materials. A property task holds one or more [`Block`][albert.resources.tasks.Block] objects,
     each pairing a data template (what to capture) with a workflow (the
     conditions). Measured results are recorded per block, interval, and trial
-    through :class:`~albert.collections.property_data.PropertyDataCollection`
+    through [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
     (``client.property_data``) and roll up to the associated inventory item's
     properties.
 
-    Inherits all shared fields from :class:`BaseTask`. Its :attr:`category` is
-    always :attr:`TaskCategory.PROPERTY`. Create and manage property tasks with
-    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``); add
-    blocks with :meth:`~albert.collections.tasks.TaskCollection.add_block`.
+    Inherits all shared fields from [`BaseTask`][albert.resources.tasks.BaseTask]. Its [`category`][albert.resources.tasks.PropertyTask.category] is
+    always [`PROPERTY`][albert.resources.tasks.TaskCategory.PROPERTY]. Create and manage property tasks with
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``); add
+    blocks with [`add_block`][albert.collections.tasks.TaskCollection.add_block].
 
     Attributes
     ----------
@@ -489,10 +489,8 @@ class PropertyTask(BaseTask):
     Notes
     -----
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
-    ``assigned_to``, dates, and so on) are inherited from :class:`BaseTask`.
+    ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.tasks import PropertyTask
@@ -513,13 +511,13 @@ class BatchTask(BaseTask):
 
     Use a batch task after creating a new formulation to make a physical
     quantity of it. The item to make and the amount are given through
-    :attr:`inventory_information` (``inventory_id`` and ``batch_size`` are
-    required for batch tasks), with the unit set by :attr:`batch_size_unit`.
+    [`inventory_information`][albert.resources.tasks.BatchTask.inventory_information] (``inventory_id`` and ``batch_size`` are
+    required for batch tasks), with the unit set by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit].
 
-    Inherits all shared fields from :class:`BaseTask`. Its :attr:`category` is
-    :attr:`TaskCategory.BATCH` (or :attr:`TaskCategory.BATCH_WITH_QC` when
+    Inherits all shared fields from [`BaseTask`][albert.resources.tasks.BaseTask]. Its [`category`][albert.resources.tasks.BatchTask.category] is
+    [`BATCH`][albert.resources.tasks.TaskCategory.BATCH] (or [`BATCH_WITH_QC`][albert.resources.tasks.TaskCategory.BATCH_WITH_QC] when
     quality-control data is attached). Create and manage batch tasks with
-    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``).
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
 
     Attributes
     ----------
@@ -548,10 +546,8 @@ class BatchTask(BaseTask):
     Notes
     -----
     All other fields (``location``, ``priority``, ``due_date``, ``state``,
-    ``assigned_to``, dates, and so on) are inherited from :class:`BaseTask`.
+    ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.tasks import BatchTask
@@ -584,13 +580,11 @@ class GeneralTask(BaseTask):
     as equipment calibration or maintenance. General tasks do not hold blocks
     and capture no property data.
 
-    Inherits all fields from :class:`BaseTask`; its :attr:`category` is always
-    :attr:`TaskCategory.GENERAL`. Only :attr:`~BaseTask.name` is required.
+    Inherits all fields from [`BaseTask`][albert.resources.tasks.BaseTask]; its [`category`][albert.resources.tasks.GeneralTask.category] is always
+    [`GENERAL`][albert.resources.tasks.TaskCategory.GENERAL]. Only [`name`][albert.resources.tasks.BaseTask.name] is required.
     Create and manage general tasks with
-    :class:`~albert.collections.tasks.TaskCollection` (``client.tasks``).
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.tasks import GeneralTask
@@ -618,7 +612,7 @@ class TaskHistoryEvent(BaseAlbertModel):
 class TaskHistory(BaseAlbertModel):
     """The chronological record of changes made to a task.
 
-    Returned by :meth:`~albert.collections.tasks.TaskCollection.get_history`,
+    Returned by [`get_history`][albert.collections.tasks.TaskCollection.get_history],
     this wraps the individual change events (state changes, field edits, and so
     on) recorded for a task.
 

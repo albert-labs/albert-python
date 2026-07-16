@@ -20,8 +20,8 @@ class FileCollection(BaseCollection):
     This collection is the low-level file storage mechanism behind Albert. Files
     are uploaded to and downloaded from S3-backed storage using short-lived
     signed URLs, and are organized by namespace (see
-    :class:`~albert.resources.files.FileNamespace`). Files are the underlying
-    storage for :class:`~albert.collections.attachments.AttachmentCollection`;
+    [`FileNamespace`][albert.resources.files.FileNamespace]). Files are the underlying
+    storage for [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection];
     to attach a file to an entity, upload it here and then create an attachment
     whose ``key`` matches the stored file name. The ``upload_and_attach_*``
     helpers on the attachment collection combine both steps.
@@ -49,8 +49,6 @@ class FileCollection(BaseCollection):
     sign_and_upload_file(data, name, namespace, content_type, ...) -> None
         Sign and upload a file in one step.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -104,8 +102,6 @@ class FileCollection(BaseCollection):
         FileInfo
             Metadata for the matching file.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.files import FileNamespace
@@ -155,8 +151,6 @@ class FileCollection(BaseCollection):
         str
             A short-lived S3 signed download URL.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.files import FileNamespace
@@ -190,7 +184,7 @@ class FileCollection(BaseCollection):
         """Get a temporary signed URL for uploading a file.
 
         The returned URL can be used with an HTTP ``PUT`` to upload file contents
-        directly to storage. In most cases, prefer :meth:`sign_and_upload_file`,
+        directly to storage. In most cases, prefer [`sign_and_upload_file`][albert.collections.files.FileCollection.sign_and_upload_file],
         which performs both the signing and the upload.
 
         Parameters
@@ -213,8 +207,6 @@ class FileCollection(BaseCollection):
         str
             A short-lived S3 signed upload URL.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.files import FileNamespace
@@ -259,7 +251,7 @@ class FileCollection(BaseCollection):
         Requests a signed upload URL and streams the file contents to storage.
         This is the primary way to store a file; the resulting stored name can
         then be used as an attachment ``key`` (see
-        :class:`~albert.collections.attachments.AttachmentCollection`).
+        [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection]).
 
         Parameters
         ----------
@@ -282,8 +274,6 @@ class FileCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.files import FileNamespace

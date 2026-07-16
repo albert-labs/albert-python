@@ -9,8 +9,8 @@ class Company(BaseResource):
     A Company is the organization that makes or supplies a material. It is the
     ``company`` linked on raw-material inventory items: each raw material points
     back to the Company that manufactures it (see
-    :class:`~albert.resources.inventory.InventoryItem`). Companies are managed
-    through :class:`~albert.collections.companies.CompanyCollection`, accessed as
+    [`InventoryItem`][albert.resources.inventory.InventoryItem]). Companies are managed
+    through [`CompanyCollection`][albert.collections.companies.CompanyCollection], accessed as
     ``client.companies``.
 
     Companies are identified by a Company ID (format ``COM...``). A Company is
@@ -31,10 +31,8 @@ class Company(BaseResource):
         result. Read-only; not set on companies you build yourself.
     status : Status | None
         Lifecycle status of the company (inherited from
-        :class:`~albert.core.shared.models.base.BaseResource`).
+        [`BaseResource`][albert.core.shared.models.base.BaseResource]).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.companies import Company

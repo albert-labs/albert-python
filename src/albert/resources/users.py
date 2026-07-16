@@ -52,11 +52,11 @@ class User(BaseResource):
     """An Albert user account: a person who can log in and act in the platform.
 
     A user has a name and email, an optional home
-    :class:`~albert.resources.locations.Location`, and a set of
-    :class:`~albert.resources.roles.Role` objects that govern what they can do.
+    [`Location`][albert.resources.locations.Location], and a set of
+    [`Role`][albert.resources.roles.Role] objects that govern what they can do.
     The ``user_class`` sets a broad permission tier
-    (:class:`~albert.resources.users.UserClass`). Users are grouped into teams
-    (:class:`~albert.resources.teams.Team`), and are referenced across the
+    ([`UserClass`][albert.resources.users.UserClass]). Users are grouped into teams
+    ([`Team`][albert.resources.teams.Team]), and are referenced across the
     platform, for example as the assignee of a Task or in an entity's ACL.
 
     Attributes
@@ -80,8 +80,6 @@ class User(BaseResource):
     metadata : dict[str, str | list[EntityLink] | EntityLink] | None
         Custom metadata attached to the user.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.users import User, UserClass
@@ -131,11 +129,11 @@ class UserSearchRoleItem(BaseAlbertModel):
 
 
 class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
-    """A partial user as returned by :meth:`~albert.collections.users.UserCollection.search`.
+    """A partial user as returned by [`search`][albert.collections.users.UserCollection.search].
 
     Search returns these lightweight items for speed. Call
-    :meth:`~albert.resources._mixins.HydrationMixin.hydrate` to fetch the full
-    :class:`User`.
+    [`hydrate`][albert.resources._mixins.HydrationMixin.hydrate] to fetch the full
+    [`User`][albert.resources.users.User].
 
     Attributes
     ----------

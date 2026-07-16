@@ -70,7 +70,7 @@ class ReactionParticipant(BaseAlbertModel):
     ----------
     row_id : str
         The identifier of this row, used to target it in
-        :meth:`~albert.collections.synthesis.SynthesisCollection.update_reactant_row_values`.
+        [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values].
     smiles : str, optional
         The SMILES string of this participant's structure.
     values : dict, optional
@@ -93,9 +93,9 @@ class Synthesis(BaseAlbertModel):
 
     Captures a reaction drawn on a Ketcher canvas together with its reactant and
     product rows and their quantities. Retrieve one with
-    :meth:`~albert.collections.synthesis.SynthesisCollection.get_by_id`, edit the
+    [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id], edit the
     updatable fields, and save with
-    :meth:`~albert.collections.synthesis.SynthesisCollection.update`.
+    [`update`][albert.collections.synthesis.SynthesisCollection.update].
 
     Attributes
     ----------
@@ -156,7 +156,7 @@ class ReactantValues(BaseAlbertModel):
     """The quantities entered for a single reactant row.
 
     Passed to
-    :meth:`~albert.collections.synthesis.SynthesisCollection.update_reactant_row_values`
+    [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values]
     to set a reactant's amounts. Any field left as ``None`` is not set.
 
     Attributes
@@ -170,8 +170,6 @@ class ReactantValues(BaseAlbertModel):
     concentration : float or int, optional
         The concentration of the reactant.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.synthesis import ReactantValues

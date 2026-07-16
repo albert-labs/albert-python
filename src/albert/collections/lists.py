@@ -13,17 +13,17 @@ class ListsCollection(BaseCollection):
     A List Item is a single allowed value in a configurable list of options, such
     as the choices offered by a dropdown custom field or a fixed set of category
     values. Each item has a name, a category
-    (:class:`~albert.resources.lists.ListItemCategory`, e.g. ``userDefined`` or
+    ([`ListItemCategory`][albert.resources.lists.ListItemCategory], e.g. ``userDefined`` or
     ``inventory``), and a ``list_type`` that ties it to the specific list it
     belongs to.
 
     List Items most often populate the lists defined by ``list``-type Custom
-    Fields: a :class:`~albert.resources.custom_fields.CustomField` with
-    :attr:`~albert.resources.custom_fields.FieldType.LIST` creates a new list
+    Fields: a [`CustomField`][albert.resources.custom_fields.CustomField] with
+    [`LIST`][albert.resources.custom_fields.FieldType.LIST] creates a new list
     whose ``list_type`` is typically the field's name, and each selectable option
     is a List Item with that same ``list_type``. To offer choices on such a field,
     add List Items here with a matching ``list_type`` (see
-    :class:`~albert.collections.custom_fields.CustomFieldCollection`). Some
+    [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection]). Some
     ``list_type`` values are instead built-in platform lists (e.g. ``projectState``,
     ``casCategory``, ``inventoryFunction``).
 
@@ -54,8 +54,6 @@ class ListsCollection(BaseCollection):
     delete(id) -> None
         Delete a list item by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -135,8 +133,6 @@ class ListsCollection(BaseCollection):
         Iterator[ListItem]
             An iterator over the matching list items.
 
-        Examples
-        --------
         !!! example
             ```python
             items = client.lists.get_all(list_type="Stage Gate", max_items=50)
@@ -174,8 +170,6 @@ class ListsCollection(BaseCollection):
         ListItem
             The matching list item.
 
-        Examples
-        --------
         !!! example
             ```python
             item = client.lists.get_by_id(id="...")
@@ -197,8 +191,6 @@ class ListsCollection(BaseCollection):
         ListItem
             The newly created list item, including its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.lists import ListItem, ListItemCategory
@@ -225,8 +217,6 @@ class ListsCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.lists.delete(id="...")
@@ -254,8 +244,6 @@ class ListsCollection(BaseCollection):
             The matching list item, or None if no item with that name and list
             type exists.
 
-        Examples
-        --------
         !!! example
             ```python
             item = client.lists.get_matching_item(name="In Progress", list_type="Stage Gate")
@@ -270,7 +258,7 @@ class ListsCollection(BaseCollection):
     def update(self, *, list_item=ListItem) -> ListItem:
         """Apply changes to an existing list item.
 
-        Fetch a list item (e.g. via :meth:`get_by_id`), modify its name, then pass
+        Fetch a list item (e.g. via [`get_by_id`][albert.collections.lists.ListsCollection.get_by_id]), modify its name, then pass
         it here. The item is matched by its ``id``. If nothing changed, the
         existing item is returned unmodified.
 
@@ -288,8 +276,6 @@ class ListsCollection(BaseCollection):
         -----
         The following fields can be updated: ``name``.
 
-        Examples
-        --------
         !!! example
             ```python
             item = client.lists.get_by_id(id="...")

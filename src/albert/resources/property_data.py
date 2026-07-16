@@ -40,7 +40,7 @@ class PropertyDataStatus(str, Enum):
     """Outcome status of a property data write operation.
 
     Reported by the API on create/update responses (for example on
-    :class:`InventoryPropertyDataCreate`) to indicate whether the values were
+    [`InventoryPropertyDataCreate`][albert.resources.property_data.InventoryPropertyDataCreate]) to indicate whether the values were
     persisted.
 
     Attributes
@@ -88,7 +88,7 @@ class PropertyDataStorageKey(BaseAlbertModel):
 class PropertyData(BaseAlbertModel):
     """A single stored result value together with any rich-media backing data.
 
-    Returned by the API as part of a :class:`PropertyValue`. For simple numeric or
+    Returned by the API as part of a [`PropertyValue`][albert.resources.property_data.PropertyValue]. For simple numeric or
     text results only ``value`` is populated; for image and curve data columns the
     additional fields carry the uploaded file references and processing metadata.
 
@@ -134,7 +134,7 @@ class PropertyData(BaseAlbertModel):
 class PropertyValue(BaseAlbertModel):
     """A measured result for one data column, with its value, unit, and metadata.
 
-    Appears inside a :class:`Trial` (as one of its ``data_columns``) and represents
+    Appears inside a [`Trial`][albert.resources.property_data.Trial] (as one of its ``data_columns``) and represents
     the value captured for a single data column of a data template. Both a numeric
     and a string form of the value may be present depending on the column type.
 
@@ -190,8 +190,8 @@ class PropertyValue(BaseAlbertModel):
 class Trial(BaseAlbertModel):
     """One replicate measurement of a given interval combination.
 
-    A trial holds the set of :class:`PropertyValue` results recorded for one row of
-    data under a :class:`DataInterval`. Multiple trials under the same interval are
+    A trial holds the set of [`PropertyValue`][albert.resources.property_data.PropertyValue] results recorded for one row of
+    data under a [`DataInterval`][albert.resources.property_data.DataInterval]. Multiple trials under the same interval are
     repeat measurements of the same parameter setpoints.
 
     Attributes
@@ -226,7 +226,7 @@ class DataInterval(BaseAlbertModel):
     An interval combination is one specific set of parameter setpoints, identified
     by an interval ID such as ``ROW1``, ``ROW1XROW2``, or the literal ``"default"``
     when the block has no intervalized parameters. Build the ID with
-    :meth:`~albert.resources.workflows.Workflow.get_interval_id`.
+    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
 
     Attributes
     ----------
@@ -257,7 +257,7 @@ class TaskData(BaseAlbertModel):
     """The measured results captured on a task under a single data template.
 
     Groups the interval data recorded for one block of a task. Returned as part of
-    :class:`InventoryPropertyData` (under ``task_property_data``), where
+    [`InventoryPropertyData`][albert.resources.property_data.InventoryPropertyData] (under ``task_property_data``), where
     task-measured results roll up to the associated inventory item.
 
     Attributes
@@ -306,7 +306,7 @@ class CustomInventoryDataColumn(BaseAlbertModel):
 class CustomData(BaseAlbertModel):
     """A property value stored directly on an inventory item, not from a task.
 
-    Returned inside :class:`InventoryPropertyData` under ``custom_property_data``.
+    Returned inside [`InventoryPropertyData`][albert.resources.property_data.InventoryPropertyData] under ``custom_property_data``.
     Represents a value entered against an inventory item independently of any task
     measurement (for example a supplier-stated value), optionally tied to a lot.
 
@@ -340,9 +340,9 @@ class CheckPropertyData(BaseResource):
     """Result of checking whether property data exists for a task/block/interval.
 
     Returned by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.check_for_task_data`
+    [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data]
     and
-    :meth:`~albert.collections.property_data.PropertyDataCollection.check_block_interval_for_data`
+    [`check_block_interval_for_data`][albert.collections.property_data.PropertyDataCollection.check_block_interval_for_data]
     to report whether values have already been recorded for a given location.
 
     Attributes
@@ -374,7 +374,7 @@ class InventoryPropertyData(BaseResource):
     """All property data associated with one inventory item.
 
     Returned by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.get_properties_on_inventory`.
+    [`get_properties_on_inventory`][albert.collections.property_data.PropertyDataCollection.get_properties_on_inventory].
     Separates results that rolled up from tasks from custom values entered directly
     on the item.
 
@@ -406,16 +406,16 @@ class TaskPropertyData(BaseResource):
     """The property data recorded on a task, for one block and data template.
 
     Returned by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.get_task_block_properties`
+    [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
     and
-    :meth:`~albert.collections.property_data.PropertyDataCollection.get_all_task_properties`.
+    [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties].
     Carries the interval/trial data along with the task's workflows and the
     inventory item the results apply to.
 
     Attributes
     ----------
     entity : Literal[DataEntity.TASK]
-        Always :attr:`DataEntity.TASK`.
+        Always [`TASK`][albert.resources.property_data.DataEntity.TASK].
     parent_id : str
         Governs the ACL model: associates the property data with a controlling parent
         (e.g. a task or inventory item). Serialized as ``parentId``.
@@ -466,8 +466,8 @@ class BulkPropertyDataColumn(BaseAlbertModel):
     """All row values for a single data column of a block, in row order.
 
     A simple, tabular representation of one column's data used for bulk loading.
-    Collected into a :class:`BulkPropertyData` (one entry per column) and consumed by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties`.
+    Collected into a [`BulkPropertyData`][albert.resources.property_data.BulkPropertyData] (one entry per column) and consumed by
+    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
 
     Attributes
     ----------
@@ -493,10 +493,10 @@ class BulkPropertyDataColumn(BaseAlbertModel):
 class BulkPropertyData(BaseAlbertModel):
     """A block's data as a set of columns, for bulk loading property values.
 
-    A simple tabular structure: one :class:`BulkPropertyDataColumn` per data column,
+    A simple tabular structure: one [`BulkPropertyDataColumn`][albert.resources.property_data.BulkPropertyDataColumn] per data column,
     each holding that column's values in row order. Construct it directly, or from a
-    :class:`pandas.DataFrame` with :meth:`from_dataframe`, then pass it to
-    :meth:`~albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties`.
+    [`DataFrame`][albert.resources.property_data.pandas.DataFrame] with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
+    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
 
     Attributes
     ----------
@@ -507,8 +507,6 @@ class BulkPropertyData(BaseAlbertModel):
     --------
     BulkPropertyDataColumn : One column's row values.
 
-    Examples
-    --------
     !!! example
         ```python
         import pandas as pd
@@ -574,7 +572,7 @@ class TaskPropertyValue(BaseAlbertModel):
 class ImagePropertyValue(BaseAlbertModel):
     """Image file input for an image-type data column.
 
-    Pass as the ``value`` of a :class:`TaskPropertyCreate` when the target data
+    Pass as the ``value`` of a [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] when the target data
     column stores an image. The file is uploaded when the property is created.
 
     Attributes
@@ -587,8 +585,6 @@ class ImagePropertyValue(BaseAlbertModel):
     TaskPropertyCreate : Uses this as its ``value`` for image data columns.
     CurvePropertyValue : The equivalent input for curve data columns.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.property_data import ImagePropertyValue
@@ -603,7 +599,7 @@ class ImagePropertyValue(BaseAlbertModel):
 class CurvePropertyValue(BaseAlbertModel):
     """Curve (CSV) file input for a curve-type data column.
 
-    Pass as the ``value`` of a :class:`TaskPropertyCreate` when the target data
+    Pass as the ``value`` of a [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] when the target data
     column stores curve data. The CSV is uploaded and ingested when the property is
     created.
 
@@ -621,8 +617,6 @@ class CurvePropertyValue(BaseAlbertModel):
     TaskPropertyCreate : Uses this as its ``value`` for curve data columns.
     ImagePropertyValue : The equivalent input for image data columns.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.property_data import CurvePropertyValue
@@ -657,9 +651,9 @@ class TaskDataColumn(BaseAlbertModel):
     """A reference to a data column of a task's data template.
 
     Identifies which data column a value targets. Used inside
-    :class:`TaskPropertyCreate` to say which column of a block a value belongs to;
+    [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] to say which column of a block a value belongs to;
     the identifiers are typically read off an existing block returned by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.get_task_block_properties`.
+    [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties].
 
     Attributes
     ----------
@@ -704,9 +698,9 @@ class InventoryDataColumn(BaseAlbertModel):
 
     The input unit for adding or updating a property directly on an inventory item
     via
-    :meth:`~albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory`
+    [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
     and
-    :meth:`~albert.collections.property_data.PropertyDataCollection.update_property_on_inventory`.
+    [`update_property_on_inventory`][albert.collections.property_data.PropertyDataCollection.update_property_on_inventory].
 
     Attributes
     ----------
@@ -719,8 +713,6 @@ class InventoryDataColumn(BaseAlbertModel):
     --------
     InventoryPropertyDataCreate : Wraps these columns for the create request.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.property_data import InventoryDataColumn
@@ -742,29 +734,29 @@ class TaskPropertyCreate(BaseResource):
     Targets a specific data column + interval combination + trial on a task's block,
     with a required link to the block's data template, and carries the value to
     store. Pass a list of these to
-    :meth:`~albert.collections.property_data.PropertyDataCollection.add_properties_to_task`
+    [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task]
     or
-    :meth:`~albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties`.
+    [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties].
 
-    Use :meth:`~albert.resources.workflows.Workflow.get_interval_id` to build the
+    Use [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the
     ``interval_combination`` from parameter setpoints. For image data columns pass an
-    :class:`ImagePropertyValue` as ``value``; for curve data columns pass a
-    :class:`CurvePropertyValue`; numeric values are coerced to strings.
+    [`ImagePropertyValue`][albert.resources.property_data.ImagePropertyValue] as ``value``; for curve data columns pass a
+    [`CurvePropertyValue`][albert.resources.property_data.CurvePropertyValue]; numeric values are coerced to strings.
 
     Attributes
     ----------
     entity : Literal[DataEntity.TASK]
-        The entity type, always :attr:`DataEntity.TASK`.
+        The entity type, always [`TASK`][albert.resources.property_data.DataEntity.TASK].
     interval_combination : str
         The interval combination to write to (e.g. ``"default"``, ``"ROW2"``,
         ``"ROW4XROW2"``), found with
-        :meth:`~albert.resources.workflows.Workflow.get_interval_id`. Serialized as
+        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]. Serialized as
         ``intervalCombination``.
     data_column : TaskDataColumn
         The data column to write to. Serialized as ``DataColumns``.
     value : str | int | float | ImagePropertyValue | CurvePropertyValue | None
-        The value to store. Use :class:`ImagePropertyValue` for image data columns or
-        :class:`CurvePropertyValue` for curve data columns; numeric values are coerced
+        The value to store. Use [`ImagePropertyValue`][albert.resources.property_data.ImagePropertyValue] for image data columns or
+        [`CurvePropertyValue`][albert.resources.property_data.CurvePropertyValue] for curve data columns; numeric values are coerced
         to strings.
     trial_number : int
         The trial (row) number. Supply an existing trial number to write to it; leave
@@ -791,8 +783,6 @@ class TaskPropertyCreate(BaseResource):
     ImagePropertyValue : Value input for image data columns.
     CurvePropertyValue : Value input for curve data columns.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
@@ -874,9 +864,9 @@ class TaskPropertyCreate(BaseResource):
 class PropertyDataPatchDatum(PatchDatum):
     """A single patch operation for updating a task property value.
 
-    Extends :class:`~albert.core.shared.models.patch.PatchDatum` with the ID of the
+    Extends [`PatchDatum`][albert.core.shared.models.patch.PatchDatum] with the ID of the
     property (or data column) to change. Pass a list of these to
-    :meth:`~albert.collections.property_data.PropertyDataCollection.update_property_on_task`.
+    [`update_property_on_task`][albert.collections.property_data.PropertyDataCollection.update_property_on_task].
 
     Attributes
     ----------
@@ -885,7 +875,7 @@ class PropertyDataPatchDatum(PatchDatum):
         Serialized as ``id``.
     operation : str
         The patch operation to perform (see
-        :class:`~albert.core.shared.models.patch.PatchOperation`).
+        [`PatchOperation`][albert.core.shared.models.patch.PatchOperation]).
     attribute : str
         The attribute to change (e.g. ``"value"``).
     new_value : Any | None
@@ -893,8 +883,6 @@ class PropertyDataPatchDatum(PatchDatum):
     old_value : Any | None
         The previous value. Serialized as ``oldValue``.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.property_data import PropertyDataPatchDatum
@@ -917,15 +905,15 @@ class InventoryPropertyDataCreate(BaseResource):
     """Request/response body for writing custom property data to an inventory item.
 
     Built internally by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory`
+    [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
     (one data column per request) and returned to report the registered value. Most
-    users pass :class:`InventoryDataColumn` objects to that method rather than
+    users pass [`InventoryDataColumn`][albert.resources.property_data.InventoryDataColumn] objects to that method rather than
     constructing this directly.
 
     Attributes
     ----------
     entity : Literal[DataEntity.INVENTORY]
-        Always :attr:`DataEntity.INVENTORY`.
+        Always [`INVENTORY`][albert.resources.property_data.DataEntity.INVENTORY].
     inventory_id : InventoryId
         The inventory item (format ``INV...``). Serialized as ``parentId``.
     data_columns : list[InventoryDataColumn]
@@ -963,7 +951,7 @@ class WorkflowItem(BaseAlbertModel):
 
 
 class PropertyDataResult(BaseAlbertModel):
-    """The single measured result carried by a :class:`PropertyDataSearchItem`."""
+    """The single measured result carried by a [`PropertyDataSearchItem`][albert.resources.property_data.PropertyDataSearchItem]."""
 
     value_numeric: float | None = Field(None, alias="valueNumeric")
     name: str
@@ -978,7 +966,7 @@ class PropertyDataSearchItem(BaseAlbertModel):
     """One property data record returned by a property data search.
 
     Yielded by
-    :meth:`~albert.collections.property_data.PropertyDataCollection.search`. Flattens
+    [`search`][albert.collections.property_data.PropertyDataCollection.search]. Flattens
     a single measured result together with the workflow setpoints, data template, and
     the task/inventory/project it belongs to.
 

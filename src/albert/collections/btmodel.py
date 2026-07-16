@@ -10,12 +10,12 @@ class BTModelSessionCollection(BaseCollection):
     """Manage Breakthrough model sessions in the Albert platform.
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **model session**
-    (:class:`~albert.resources.btmodel.BTModelSession`) is the parent record that
+    ([`BTModelSession`][albert.resources.btmodel.BTModelSession]) is the parent record that
     groups a related set of trained models produced in a single modeling run. Each
-    session is built from a dataset (:class:`~albert.resources.btdataset.BTDataset`),
+    session is built from a dataset ([`BTDataset`][albert.resources.btdataset.BTDataset]),
     identified by ``dataset_id`` (format ``DST...``), and the individual models it
     contains are managed through
-    :class:`~albert.collections.btmodel.BTModelCollection`.
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
     Model sessions are identified by a model session ID (format ``MDS...``, e.g.
     ``"MDS12"``).
@@ -43,8 +43,6 @@ class BTModelSessionCollection(BaseCollection):
     delete(id) -> None
         Delete a model session by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -68,7 +66,7 @@ class BTModelSessionCollection(BaseCollection):
         """Create a new model session.
 
         A session groups the models produced from a single dataset. Set
-        ``dataset_id`` to the :class:`~albert.resources.btdataset.BTDataset` the
+        ``dataset_id`` to the [`BTDataset`][albert.resources.btdataset.BTDataset] the
         session is built from, and ``category`` to indicate whether it is a
         user-built or Albert-built session.
 
@@ -83,8 +81,6 @@ class BTModelSessionCollection(BaseCollection):
         BTModelSession
             The newly created session, populated with its assigned ID.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -121,8 +117,6 @@ class BTModelSessionCollection(BaseCollection):
         BTModelSession
             The retrieved model session.
 
-        Examples
-        --------
         !!! example
             ```python
             session = client.btmodelsessions.get_by_id(id="MDS12")
@@ -137,7 +131,7 @@ class BTModelSessionCollection(BaseCollection):
     def update(self, *, model_session: BTModelSession) -> BTModelSession:
         """Update an existing model session.
 
-        Fetch the session (e.g. with :meth:`get_by_id`), modify the updatable
+        Fetch the session (e.g. with [`get_by_id`][albert.collections.btmodel.BTModelSessionCollection.get_by_id]), modify the updatable
         fields on the returned object, then pass it here. Only the fields listed
         in Notes are applied; changes to other fields are ignored.
 
@@ -155,8 +149,6 @@ class BTModelSessionCollection(BaseCollection):
         -----
         The following fields can be updated: ``flag``, ``name``, ``registry``.
 
-        Examples
-        --------
         !!! example
             ```python
             session = client.btmodelsessions.get_by_id(id="MDS12")
@@ -188,8 +180,6 @@ class BTModelSessionCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.btmodelsessions.delete(id="MDS12")
@@ -202,9 +192,9 @@ class BTModelCollection(BaseCollection):
     """Manage individual Breakthrough models in the Albert platform.
 
     Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **model**
-    (:class:`~albert.resources.btmodel.BTModel`) is a single trained model. A model
+    ([`BTModel`][albert.resources.btmodel.BTModel]) is a single trained model. A model
     can either belong to a parent model session
-    (:class:`~albert.resources.btmodel.BTModelSession`), in which case its
+    ([`BTModelSession`][albert.resources.btmodel.BTModelSession]), in which case its
     ``parent_id`` is the session ID, or be **detached** (standalone, with no parent
     session). Most methods here take an optional ``parent_id``: pass the session ID
     to operate on a model within that session, or omit it to operate on a detached
@@ -230,8 +220,6 @@ class BTModelCollection(BaseCollection):
     delete(id, parent_id=None) -> None
         Delete a model by its ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -271,7 +259,7 @@ class BTModelCollection(BaseCollection):
         """Create a new model.
 
         Pass ``parent_id`` to create the model inside an existing session
-        (:class:`~albert.resources.btmodel.BTModelSession`); omit it to create a
+        ([`BTModelSession`][albert.resources.btmodel.BTModelSession]); omit it to create a
         detached, standalone model.
 
         Parameters
@@ -289,12 +277,10 @@ class BTModelCollection(BaseCollection):
 
         Notes
         -----
-        Only ``name`` is required on a :class:`~albert.resources.btmodel.BTModel`.
+        Only ``name`` is required on a [`BTModel`][albert.resources.btmodel.BTModel].
         ``dataset_id`` and ``target`` are optional on the model, but in practice
         they are provided together with ``state``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert import Albert
@@ -330,8 +316,6 @@ class BTModelCollection(BaseCollection):
         BTModel
             The retrieved model.
 
-        Examples
-        --------
         !!! example
             ```python
             model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
@@ -347,7 +331,7 @@ class BTModelCollection(BaseCollection):
     def update(self, *, model: BTModel, parent_id: BTModelSessionId | None = None) -> BTModel:
         """Update an existing model.
 
-        Fetch the model (e.g. with :meth:`get_by_id`), modify the updatable fields
+        Fetch the model (e.g. with [`get_by_id`][albert.collections.btmodel.BTModelCollection.get_by_id]), modify the updatable fields
         on the returned object, then pass it here. Only the fields listed in Notes
         are applied; changes to other fields are ignored.
 
@@ -369,8 +353,6 @@ class BTModelCollection(BaseCollection):
         ``model_binary_key``, ``name``, ``start_time``, ``state``, ``target``,
         ``total_time``, ``type``.
 
-        Examples
-        --------
         !!! example
             ```python
             model = client.btmodels.get_by_id(id="MDL34", parent_id="MDS12")
@@ -407,8 +389,6 @@ class BTModelCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.btmodels.delete(id="MDL34", parent_id="MDS12")

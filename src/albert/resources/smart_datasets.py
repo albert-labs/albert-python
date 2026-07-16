@@ -57,8 +57,6 @@ class SmartDatasetScope(BaseAlbertModel):
         Optional mapping from target ID to a parent project ID. When set, the target
         inherits its ACL policy from the referenced project.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.smart_datasets import SmartDatasetScope
@@ -90,13 +88,13 @@ class SmartDatasetScope(BaseAlbertModel):
 class SmartDataset(BaseResource):
     """A smart dataset: a scoped, built matrix of experiment data.
 
-    A smart dataset is created from a :class:`SmartDatasetScope` and built
+    A smart dataset is created from a [`SmartDatasetScope`][albert.resources.smart_datasets.SmartDatasetScope] and built
     asynchronously by Albert. Its experiment data matrix is retrieved separately
     (see
-    :meth:`~albert.collections.smart_datasets.SmartDatasetCollection.get_data`)
+    [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data])
     rather than being carried on this object.
 
-    A ``SmartDataset`` and a :class:`~albert.resources.btdataset.BTDataset` are
+    A ``SmartDataset`` and a [`BTDataset`][albert.resources.btdataset.BTDataset] are
     distinct entities that share an ETL engine (Zeus stored procedures) but are not
     interchangeable: a ``SmartDataset`` is a Smart Projects entity (S3-backed, via
     ``storage_key`` and ``schema_``), while a ``BTDataset`` is a Breakthrough

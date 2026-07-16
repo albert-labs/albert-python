@@ -22,14 +22,14 @@ class SynthesisCollection(BaseCollection):
     quantities (mass, moles, equivalents, concentration) can be filled in.
 
     A synthesis always belongs to a block inside a Notebook (see
-    :class:`~albert.collections.notebooks.NotebookCollection`); the parent notebook
+    [`NotebookCollection`][albert.collections.notebooks.NotebookCollection]); the parent notebook
     is supplied when the record is created. Synthesis records are referenced by
     their Synthesis ID (format ``SYN...``, e.g. ``"SYNA1"``).
 
-    A typical flow is: :meth:`create` the record, draw the reaction and push the
-    canvas with :meth:`update_canvas_data`, initialize the reactant/product table
-    with :meth:`create_reactant_productant_table`, then set per-row quantities with
-    :meth:`update_reactant_row_values`.
+    A typical flow is: [`create`][albert.collections.synthesis.SynthesisCollection.create] the record, draw the reaction and push the
+    canvas with [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data], initialize the reactant/product table
+    with [`create_reactant_productant_table`][albert.collections.synthesis.SynthesisCollection.create_reactant_productant_table], then set per-row quantities with
+    [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values].
 
     This collection is accessed as ``client.synthesis``.
 
@@ -58,8 +58,6 @@ class SynthesisCollection(BaseCollection):
     create_reactant_productant_table(synthesis_id) -> Synthesis
         Initialize the reactant/product table and reveal the reaction worksheet.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -98,9 +96,9 @@ class SynthesisCollection(BaseCollection):
         """Create a synthesis record for a notebook Ketcher block.
 
         Use this to start documenting a reaction inside a notebook. The new record
-        is empty; draw the reaction and push it with :meth:`update_canvas_data`, and
+        is empty; draw the reaction and push it with [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data], and
         build out the reactant/product table with
-        :meth:`create_reactant_productant_table`.
+        [`create_reactant_productant_table`][albert.collections.synthesis.SynthesisCollection.create_reactant_productant_table].
 
         Parameters
         ----------
@@ -119,8 +117,6 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The created synthesis record, populated with its assigned Synthesis ID.
 
-        Examples
-        --------
         !!! example
             ```python
             synthesis = client.synthesis.create(
@@ -171,8 +167,6 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The requested synthesis record.
 
-        Examples
-        --------
         !!! example
             ```python
             synthesis = client.synthesis.get_by_id(id="SYNA1")
@@ -217,8 +211,6 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The updated synthesis record.
 
-        Examples
-        --------
         !!! example
             ```python
             synthesis = client.synthesis.update_canvas_data(
@@ -243,7 +235,7 @@ class SynthesisCollection(BaseCollection):
     def update(self, *, synthesis: Synthesis) -> Synthesis:
         """Apply changes to an existing synthesis record.
 
-        Fetch the record with :meth:`get_by_id`, modify the updatable fields on the
+        Fetch the record with [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id], modify the updatable fields on the
         returned object, then pass it here. Only the fields listed in Notes are
         sent; other differences are ignored. If nothing changed, the existing
         record is returned unmodified.
@@ -268,8 +260,6 @@ class SynthesisCollection(BaseCollection):
         The following fields can be updated: ``name``, ``status``,
         ``hide_reaction_worksheet``.
 
-        Examples
-        --------
         !!! example
             ```python
             synthesis = client.synthesis.get_by_id(id="SYNA1")
@@ -303,7 +293,7 @@ class SynthesisCollection(BaseCollection):
         Sets the mass, moles, equivalents, and concentration for one row of the
         reaction worksheet table. The row is identified by its row ID, which can be
         read from ``Synthesis.reactants`` (each
-        :class:`~albert.resources.synthesis.ReactionParticipant` has a ``row_id``)
+        [`ReactionParticipant`][albert.resources.synthesis.ReactionParticipant] has a ``row_id``)
         or from ``Synthesis.row_sequence.reactants``.
 
         Parameters
@@ -320,8 +310,6 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The updated synthesis record.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.synthesis import ReactantValues
@@ -361,8 +349,8 @@ class SynthesisCollection(BaseCollection):
         seed, the record is returned unchanged.
 
         Call this after the reaction has been drawn (see
-        :meth:`update_canvas_data`) and before setting per-row quantities with
-        :meth:`update_reactant_row_values`.
+        [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data]) and before setting per-row quantities with
+        [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values].
 
         Parameters
         ----------
@@ -374,8 +362,6 @@ class SynthesisCollection(BaseCollection):
         Synthesis
             The synthesis record with its reactant/product table initialized.
 
-        Examples
-        --------
         !!! example
             ```python
             synthesis = client.synthesis.create_reactant_productant_table(

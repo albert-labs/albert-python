@@ -7,11 +7,11 @@ from albert.core.shared.types import MetadataItem
 
 
 class ParameterCategory(str, Enum):
-    """Whether a :class:`Parameter`'s value is a plain scalar or an entity reference.
+    """Whether a [`Parameter`][albert.resources.parameters.Parameter]'s value is a plain scalar or an entity reference.
 
     Set by the platform and read-only. It determines how a parameter's value is
     interpreted when a setpoint is assigned to it inside a
-    :class:`~albert.resources.workflows.Workflow`.
+    [`Workflow`][albert.resources.workflows.Workflow].
 
     Attributes
     ----------
@@ -34,14 +34,14 @@ class Parameter(BaseResource):
     A Parameter (ID format ``PRM...``) names an "indirect variable" such as
     Temperature, Spin Speed, or Instrument. The Parameter itself only defines the
     variable; its actual value and unit are fixed to a setpoint later, inside a
-    :class:`~albert.resources.workflows.Workflow`. Parameters are the building
+    [`Workflow`][albert.resources.workflows.Workflow]. Parameters are the building
     blocks of Parameter Groups
-    (:class:`~albert.resources.parameter_groups.ParameterGroup`) and form the
+    ([`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup]) and form the
     parameter side of Data Templates
-    (:class:`~albert.resources.data_templates.DataTemplate`).
+    ([`DataTemplate`][albert.resources.data_templates.DataTemplate]).
 
     Manage parameters through
-    :class:`~albert.collections.parameters.ParameterCollection`
+    [`ParameterCollection`][albert.collections.parameters.ParameterCollection]
     (``client.parameters``).
 
     Attributes
@@ -61,8 +61,6 @@ class Parameter(BaseResource):
     required : bool | None
         Whether this parameter must be filled in within a Parameter Group.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert

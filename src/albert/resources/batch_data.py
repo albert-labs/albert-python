@@ -13,9 +13,9 @@ from albert.core.shared.models.base import BaseResource
 class BatchValuePatchDatum(BaseAlbertModel):
     """A single change applied to one cell of the batch data grid.
 
-    Used within a :class:`BatchValuePatchPayload` to record the lot consumed for
+    Used within a [`BatchValuePatchPayload`][albert.resources.batch_data.BatchValuePatchPayload] to record the lot consumed for
     a batch value. See
-    :meth:`~albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts`.
+    [`update_used_batch_amounts`][albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts].
 
     Attributes
     ----------
@@ -30,8 +30,6 @@ class BatchValuePatchDatum(BaseAlbertModel):
     operation : str
         The kind of change to apply (e.g. ``"add"``, ``"update"``, ``"delete"``).
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.batch_data import BatchValuePatchDatum
@@ -64,8 +62,6 @@ class BatchValueId(BaseAlbertModel):
     col_id : str, optional
         The identifier of the product column the value belongs to.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.batch_data import BatchValueId
@@ -82,7 +78,7 @@ class BatchValuePatchPayload(BaseAlbertModel):
     """A batch of changes targeting one cell of the batch data grid.
 
     Passed to
-    :meth:`~albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts`
+    [`update_used_batch_amounts`][albert.collections.batch_data.BatchDataCollection.update_used_batch_amounts]
     to record which lots were used for recorded batch amounts.
 
     Attributes
@@ -94,8 +90,6 @@ class BatchValuePatchPayload(BaseAlbertModel):
     lot_id : str, optional
         The lot identifier associated with the change, when applicable.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.batch_data import (
@@ -176,7 +170,7 @@ class BatchDataRow(BaseAlbertModel):
     id : str, optional
         The identifier of the row.
     row_id : str, optional
-        The row identifier used to locate values (see :class:`BatchValueId`).
+        The row identifier used to locate values (see [`BatchValueId`][albert.resources.batch_data.BatchValueId]).
     type : str, optional
         The type of the row.
     name : str, optional
@@ -223,7 +217,7 @@ class BatchDataColumn(BaseAlbertModel):
     name : str, optional
         The name of the product/batch.
     col_id : str, optional
-        The column identifier used to locate values (see :class:`BatchValueId`).
+        The column identifier used to locate values (see [`BatchValueId`][albert.resources.batch_data.BatchValueId]).
     batch_total : str, optional
         The total amount recorded for the batch.
     reference_total : str, optional
@@ -257,10 +251,10 @@ class BatchData(BaseResource):
     """The tabular record of how a batch of a formulation was made.
 
     Batch Data is the grid behind a Batch Task
-    (:class:`~albert.resources.tasks.BatchTask`). It pairs formulation component
+    ([`BatchTask`][albert.resources.tasks.BatchTask]). It pairs formulation component
     rows with product columns; each cell holds the amount recorded for that
     component in that batch. It is retrieved by the owning Task ID via
-    :class:`~albert.collections.batch_data.BatchDataCollection`
+    [`BatchDataCollection`][albert.collections.batch_data.BatchDataCollection]
     (``client.batch_data``) and is not constructed directly.
 
     Attributes
@@ -272,7 +266,7 @@ class BatchData(BaseResource):
     last_key : str, optional
         Pagination cursor for fetching the next page of rows; pass it back as
         ``start_key`` to
-        :meth:`~albert.collections.batch_data.BatchDataCollection.get_by_id`.
+        [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id].
     product : list[BatchDataColumn], optional
         The product columns, one per batch/product being manufactured.
     rows : list[BatchDataRow], optional

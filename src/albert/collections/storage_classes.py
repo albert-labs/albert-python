@@ -35,8 +35,6 @@ class StorageClassesCollection(BaseCollection):
     get_all() -> list[StorageClass]
         Retrieve every storage class and its compatibility matrix.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -62,8 +60,6 @@ class StorageClassesCollection(BaseCollection):
             All storage class records, each with its co-storage compatibility
             matrix.
 
-        Examples
-        --------
         !!! example
             ```python
             storage_classes = client.storage_classes.get_all()

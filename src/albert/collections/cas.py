@@ -44,16 +44,16 @@ class CasPaginator(AlbertPaginator):
 class CasCollection(BaseCollection):
     """Manage CAS entries in the Albert platform.
 
-    A CAS entry (:class:`~albert.resources.cas.Cas`) records a chemical substance
+    A CAS entry ([`Cas`][albert.resources.cas.Cas]) records a chemical substance
     identified by its CAS Registry Number (e.g. ``"7727-37-9"`` for nitrogen). CAS
     entries are the shared chemical dictionary that raw-material Inventory Items
     point to: a raw material lists the CAS numbers of its constituents, each paired
-    with an amount (see :class:`~albert.resources.inventory.CasAmount`).
+    with an amount (see [`CasAmount`][albert.resources.inventory.CasAmount]).
 
     CAS entries are referenced by their CAS ID (format ``CAS...``, e.g. ``"CAS1"``).
     Most workflows either look a substance up by its registry number
-    (:meth:`get_by_number`) or ensure one exists before linking it
-    (:meth:`get_or_create`).
+    ([`get_by_number`][albert.collections.cas.CasCollection.get_by_number]) or ensure one exists before linking it
+    ([`get_or_create`][albert.collections.cas.CasCollection.get_or_create]).
 
     This collection is accessed as ``client.cas``.
 
@@ -86,8 +86,6 @@ class CasCollection(BaseCollection):
     delete(id) -> None
         Delete a CAS entry by its CAS ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -128,8 +126,8 @@ class CasCollection(BaseCollection):
         Use this to list CAS entries or to search by one or more registry numbers.
         Results are streamed page by page, so you can iterate large result sets
         without loading everything at once. To fetch a single entry when you
-        already know its registry number or CAS ID, prefer :meth:`get_by_number`
-        or :meth:`get_by_id`.
+        already know its registry number or CAS ID, prefer [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]
+        or [`get_by_id`][albert.collections.cas.CasCollection.get_by_id].
 
         Parameters
         ----------
@@ -155,8 +153,6 @@ class CasCollection(BaseCollection):
         Cas
             Matching CAS entries.
 
-        Examples
-        --------
         !!! example
             ```python
             # List the most recent CAS entries
@@ -214,8 +210,8 @@ class CasCollection(BaseCollection):
         """Check whether a CAS entry exists for the given registry number.
 
         Useful before creating an entry to avoid duplicates. To retrieve the
-        matching entry itself (rather than a boolean), use :meth:`get_by_number`;
-        to fetch-or-create in one step, use :meth:`get_or_create`.
+        matching entry itself (rather than a boolean), use [`get_by_number`][albert.collections.cas.CasCollection.get_by_number];
+        to fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
 
         Parameters
         ----------
@@ -233,8 +229,6 @@ class CasCollection(BaseCollection):
         bool
             True if a matching CAS entry exists, False otherwise.
 
-        Examples
-        --------
         !!! example
             ```python
             client.cas.exists(number="7727-37-9")
@@ -250,14 +244,14 @@ class CasCollection(BaseCollection):
         """Register a new CAS entry.
 
         Use this to add a substance to Albert's CAS dictionary. If you are not
-        sure whether the substance already exists, prefer :meth:`get_or_create`,
+        sure whether the substance already exists, prefer [`get_or_create`][albert.collections.cas.CasCollection.get_or_create],
         which avoids creating a duplicate.
 
         Parameters
         ----------
         cas : str or Cas
             The CAS registry number, or a fully built
-            :class:`~albert.resources.cas.Cas` object. A bare string is treated as
+            [`Cas`][albert.resources.cas.Cas] object. A bare string is treated as
             the registry number.
 
         Returns
@@ -265,8 +259,6 @@ class CasCollection(BaseCollection):
         Cas
             The newly created entry, populated with its assigned CAS ID.
 
-        Examples
-        --------
         !!! example
             ```python
             cas = client.cas.create(cas="7727-37-9")
@@ -287,13 +279,13 @@ class CasCollection(BaseCollection):
 
         This is the safest way to obtain a CAS entry to link to a raw material:
         it looks up the registry number with an exact match and returns the
-        existing entry if found, otherwise creates a new one via :meth:`create`.
+        existing entry if found, otherwise creates a new one via [`create`][albert.collections.cas.CasCollection.create].
 
         Parameters
         ----------
         cas : str or Cas
             The CAS registry number, or a fully built
-            :class:`~albert.resources.cas.Cas` object. A bare string is treated as
+            [`Cas`][albert.resources.cas.Cas] object. A bare string is treated as
             the registry number.
 
         Returns
@@ -301,8 +293,6 @@ class CasCollection(BaseCollection):
         Cas
             The existing or newly created entry.
 
-        Examples
-        --------
         !!! example
             ```python
             cas = client.cas.get_or_create(cas="7727-37-9")
@@ -323,7 +313,7 @@ class CasCollection(BaseCollection):
         """Retrieve a single CAS entry by its CAS ID.
 
         To look a substance up by its registry number instead, use
-        :meth:`get_by_number`.
+        [`get_by_number`][albert.collections.cas.CasCollection.get_by_number].
 
         Parameters
         ----------
@@ -335,8 +325,6 @@ class CasCollection(BaseCollection):
         Cas
             The matching CAS entry.
 
-        Examples
-        --------
         !!! example
             ```python
             cas = client.cas.get_by_id(id="CAS1")
@@ -376,7 +364,7 @@ class CasCollection(BaseCollection):
 
         The number is normalized before matching (extra spaces around the dashes
         are removed), mirroring how the Albert backend compares CAS numbers. To
-        fetch-or-create in one step, use :meth:`get_or_create`.
+        fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
 
         Parameters
         ----------
@@ -395,8 +383,6 @@ class CasCollection(BaseCollection):
         Cas or None
             The matching CAS entry, or None if no match is found.
 
-        Examples
-        --------
         !!! example
             ```python
             cas = client.cas.get_by_number(number="7727-37-9")
@@ -430,8 +416,6 @@ class CasCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.cas.delete(id="CAS1")
@@ -443,7 +427,7 @@ class CasCollection(BaseCollection):
     def update(self, *, updated_object: Cas) -> Cas:
         """Apply changes to an existing CAS entry.
 
-        Fetch the entry (e.g. with :meth:`get_by_id` or :meth:`get_by_number`),
+        Fetch the entry (e.g. with [`get_by_id`][albert.collections.cas.CasCollection.get_by_id] or [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]),
         modify the updatable fields on the returned object, then pass it here. The
         entry is matched by its ``id``, so that field must be set.
 
@@ -462,8 +446,6 @@ class CasCollection(BaseCollection):
         Only the following fields are updatable: ``description``, ``metadata``,
         ``notes``, ``smiles``. Changes to other fields are ignored.
 
-        Examples
-        --------
         !!! example
             ```python
             cas = client.cas.get_by_id(id="CAS1")

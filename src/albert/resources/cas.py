@@ -23,7 +23,7 @@ class CasCategory(str, Enum):
 class Hazard(BaseAlbertModel):
     """A single GHS hazard classification associated with a CAS substance.
 
-    Hazards are read from the CAS record; a :class:`Cas` may carry a list of them.
+    Hazards are read from the CAS record; a [`Cas`][albert.resources.cas.Cas] may carry a list of them.
 
     Attributes
     ----------
@@ -51,9 +51,9 @@ class Cas(BaseResource):
 
     A ``Cas`` is Albert's dictionary record for a substance. Raw-material Inventory
     Items reference these entries to declare what they are made of, pairing each
-    ``Cas`` with an amount (see :class:`~albert.resources.inventory.CasAmount`).
+    ``Cas`` with an amount (see [`CasAmount`][albert.resources.inventory.CasAmount]).
     Manage entries through
-    :class:`~albert.collections.cas.CasCollection` (``client.cas``): most fields
+    [`CasCollection`][albert.collections.cas.CasCollection] (``client.cas``): most fields
     are populated by Albert, so you typically only build a ``Cas`` from a registry
     ``number`` when creating a new entry.
 
@@ -65,12 +65,12 @@ class Cas(BaseResource):
         Name of the substance.
     description : str, optional
         Free-text description of the CAS. Updatable via
-        :meth:`~albert.collections.cas.CasCollection.update`.
+        [`update`][albert.collections.cas.CasCollection.update].
     notes : str, optional
         Free-text notes about the CAS. Updatable.
     category : CasCategory, optional
         The source/classification of the entry (e.g. user-created, TSCA listing).
-        See :class:`CasCategory`.
+        See [`CasCategory`][albert.resources.cas.CasCategory].
     smiles : str, optional
         SMILES structure notation for the substance. Updatable. Serialized as
         ``casSmiles``.
@@ -82,7 +82,7 @@ class Cas(BaseResource):
         The Albert CAS ID (format ``CAS...``, e.g. ``"CAS1"``). Assigned by Albert
         on creation. Serialized as ``albertId``.
     hazards : list[Hazard], optional
-        GHS hazard classifications for the substance. See :class:`Hazard`.
+        GHS hazard classifications for the substance. See [`Hazard`][albert.resources.cas.Hazard].
     wgk : str, optional
         German Water Hazard Class (Wassergefährdungsklasse) number.
     ec_number : str, optional
@@ -96,8 +96,6 @@ class Cas(BaseResource):
     metadata : dict[str, MetadataItem]
         Custom metadata keyed by field. Updatable.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert.resources.cas import Cas
@@ -129,11 +127,11 @@ class Cas(BaseResource):
 
     @classmethod
     def from_string(cls, *, number: str) -> Cas:
-        """Build a :class:`Cas` from a bare registry number.
+        """Build a [`Cas`][albert.resources.cas.Cas] from a bare registry number.
 
         Convenience constructor equivalent to ``Cas(number=number)``, for when you
         only have the registry number and want a ``Cas`` object to pass to
-        :class:`~albert.collections.cas.CasCollection`.
+        [`CasCollection`][albert.collections.cas.CasCollection].
 
         Parameters
         ----------
@@ -145,8 +143,6 @@ class Cas(BaseResource):
         Cas
             A ``Cas`` with only ``number`` set.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.cas import Cas

@@ -19,7 +19,7 @@ class StorageLocationsCollection(BaseCollection):
     A Storage Location is a specific place where an Inventory Item is physically
     kept, such as a flammables cabinet, freezer, or storeroom shelf. Every
     Storage Location belongs to a parent Location
-    (:class:`~albert.resources.locations.Location`), and Inventory search filters
+    ([`Location`][albert.resources.locations.Location]), and Inventory search filters
     can narrow results to items held in a given Storage Location.
 
     Storage Location IDs use the format ``STL...`` (for example, ``"STL1"``).
@@ -51,8 +51,6 @@ class StorageLocationsCollection(BaseCollection):
     delete(id) -> None
         Delete a storage location by its Albert ID.
 
-    Examples
-    --------
     !!! example
         ```python
         from albert import Albert
@@ -89,8 +87,6 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The fully populated storage location.
 
-        Examples
-        --------
         !!! example
             ```python
             storage_location = client.storage_locations.get_by_id(id="STL1")
@@ -123,7 +119,7 @@ class StorageLocationsCollection(BaseCollection):
             Default is False.
         location : str or Location, optional
             Restrict results to a parent Location, given either as a location ID
-            or a :class:`~albert.resources.locations.Location` object.
+            or a [`Location`][albert.resources.locations.Location] object.
         start_key : str, optional
             Pagination key to resume iteration from a previous page.
         max_items : int, optional
@@ -135,8 +131,6 @@ class StorageLocationsCollection(BaseCollection):
         Iterator[StorageLocation]
             Storage locations matching the given filters.
 
-        Examples
-        --------
         !!! example
             ```python
             for storage_location in client.storage_locations.get_all(
@@ -188,8 +182,6 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The newly created storage location, populated with its assigned ``id``.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.locations import Location
@@ -223,8 +215,6 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The existing or newly created storage location.
 
-        Examples
-        --------
         !!! example
             ```python
             from albert.resources.storage_locations import StorageLocation
@@ -257,8 +247,6 @@ class StorageLocationsCollection(BaseCollection):
         -------
         None
 
-        Examples
-        --------
         !!! example
             ```python
             client.storage_locations.delete(id="STL1")
@@ -287,8 +275,6 @@ class StorageLocationsCollection(BaseCollection):
         -----
         Only the ``name`` field can be updated.
 
-        Examples
-        --------
         !!! example
             ```python
             storage_location = client.storage_locations.get_by_id(id="STL1")
