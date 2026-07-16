@@ -233,7 +233,7 @@ class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
 
     Returned by [`search`][albert.collections.lots.LotCollection.search]. It carries
     only the most commonly needed fields for fast lookups; call
-    [`hydrate`][albert.resources.lots.LotSearchItem.hydrate] to fetch the full [`Lot`][albert.resources.lots.Lot] when you need every field.
+    `hydrate()` to fetch the full [`Lot`][albert.resources.lots.Lot] when you need every field.
 
     Attributes
     ----------

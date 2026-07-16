@@ -375,7 +375,7 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
 
     Returned by
     [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search].
-    Search results omit some detail for speed; call [`hydrate`][albert.resources.parameter_groups.ParameterGroupSearchItem.hydrate] to fetch the
+    Search results omit some detail for speed; call `hydrate()` to fetch the
     full [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup].
 
     Attributes

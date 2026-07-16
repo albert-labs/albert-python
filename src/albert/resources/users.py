@@ -132,7 +132,7 @@ class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
     """A partial user as returned by [`search`][albert.collections.users.UserCollection.search].
 
     Search returns these lightweight items for speed. Call
-    [`hydrate`][albert.resources._mixins.HydrationMixin.hydrate] to fetch the full
+    `hydrate()` to fetch the full
     [`User`][albert.resources.users.User].
 
     Attributes

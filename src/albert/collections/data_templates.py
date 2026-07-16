@@ -418,7 +418,7 @@ class DataTemplateCollection(BaseCollection):
         -------
         Iterator[DataTemplateSearchItem]
             A lazy iterator of matching partial templates. Call
-            [`hydrate`][albert.resources.data_templates.DataTemplateSearchItem.hydrate] on an
+            `hydrate()` on an
             item to fetch its full [`DataTemplate`][albert.resources.data_templates.DataTemplate].
 
         !!! example

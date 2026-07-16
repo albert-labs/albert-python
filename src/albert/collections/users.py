@@ -164,7 +164,7 @@ class UserCollection(BaseCollection):
         This returns lightweight, partial results ([`UserSearchItem`][albert.resources.users.UserSearchItem]) and
         is the fastest way to look users up by name, role, team, or location.
         For fully populated [`User`][albert.resources.users.User] entities, use [`get_all`][albert.collections.users.UserCollection.get_all], or call
-        [`hydrate`][albert.resources._mixins.HydrationMixin.hydrate] on a search item.
+        `hydrate()` on a search item.
 
         Parameters
         ----------
