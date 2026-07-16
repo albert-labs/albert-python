@@ -10,7 +10,11 @@ from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
-    """The type of the custom field."""
+    """The type of the custom field.
+
+    ``date`` values use ``YYYY-MM-DD`` format. ``timestamp`` values use ISO 8601
+    with a UTC offset (e.g. ``2026-05-21T14:32:00+02:00``).
+    """
 
     LIST = "list"
     STRING = "string"
@@ -90,6 +94,37 @@ class NumberDefault(BaseAlbertModel):
     value: int | float
 
 
+class DateDefault(BaseAlbertModel):
+    """Default value for a date custom field.
+
+    Attributes
+    ----------
+    type : Literal[FieldType.DATE]
+        The field type discriminator.
+    value : str
+        The default date in ``YYYY-MM-DD`` format.
+    """
+
+    type: Literal[FieldType.DATE] = FieldType.DATE
+    value: str
+
+
+class TimestampDefault(BaseAlbertModel):
+    """Default value for a timestamp custom field.
+
+    Attributes
+    ----------
+    type : Literal[FieldType.TIMESTAMP]
+        The field type discriminator.
+    value : str
+        The default timestamp in ISO 8601 format with a UTC offset
+        (e.g. ``2026-05-21T14:32:00+02:00``).
+    """
+
+    type: Literal[FieldType.TIMESTAMP] = FieldType.TIMESTAMP
+    value: str
+
+
 class ListDefault(BaseAlbertModel):
     """
     !!! note
@@ -101,7 +136,7 @@ class ListDefault(BaseAlbertModel):
 
 
 Default = Annotated[
-    StringDefault | NumberDefault | ListDefault,
+    StringDefault | NumberDefault | ListDefault | DateDefault | TimestampDefault,
     Field(discriminator="type"),
 ]
 
@@ -120,8 +155,11 @@ class CustomField(BaseResource):
     id : str | None
         The Albert ID of the custom field.
     field_type : FieldType
-        The type of the custom field. Allowed values are `list`, `string`, and `number`.
-        `string` and `list` fields are searchable; `number` fields are not searchable.
+        The type of the custom field. Allowed values are `list`, `string`, `number`,
+        `date`, and `timestamp`. `string` and `list` fields are searchable; `number`,
+        `date`, and `timestamp` fields are not searchable. `date` values use
+        ``YYYY-MM-DD`` format; `timestamp` values use ISO 8601 with a UTC offset
+        (e.g. ``2026-05-21T14:32:00+02:00``).
     display_name : str
         The display name of the custom field. Can contain spaces.
     searchable : bool | None
@@ -149,6 +187,8 @@ class CustomField(BaseResource):
         The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
     default: Default | None
         The default value of the custom field, optional. Defaults to None.
+        For ``date`` and ``timestamp`` fields, the default ``value`` uses the same
+        string format as documented for :class:`FieldType`.
     editable: bool | None
         Decides whether the field should be editable on UI or not.
     api: CustomFieldAPI | None

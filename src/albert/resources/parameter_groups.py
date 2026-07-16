@@ -27,11 +27,19 @@ class PGType(str, Enum):
 
 
 class DataType(str, Enum):
+    """Data type for parameter and data-column validation values.
+
+    When ``datatype`` is ``date`` or ``timestamp``, ``value``, ``min``, and ``max`` are
+    strings in the corresponding wire format: ``date`` uses ``YYYY-MM-DD``;
+    ``timestamp`` uses ISO 8601 with a UTC offset (e.g. ``2026-05-21T14:32:00+02:00``).
+    """
+
     NUMBER = "number"
     STRING = "string"
     ENUM = "enum"
     IMAGE = "image"
     CURVE = "curve"
+    DATE = "date"
     TIMESTAMP = "timestamp"
 
 
@@ -66,7 +74,25 @@ class EnumValidationValue(BaseAlbertModel):
 
 
 class ValueValidation(BaseAlbertModel):
-    # We may want to abstract this out if we end up reusing on Data Templates
+    """Validation rule for a parameter or data-column value.
+
+    Attributes
+    ----------
+    datatype : DataType
+        The data type this validation applies to.
+    value : str or list[EnumValidationValue] or None
+        The validation value. When ``datatype`` is ``date``, must be ``YYYY-MM-DD``.
+        When ``datatype`` is ``timestamp``, must be ISO 8601 with a UTC offset.
+    min : str or None
+        Minimum bound. For ``date`` and ``timestamp`` datatypes, uses the same
+        string format as ``value``.
+    max : str or None
+        Maximum bound. For ``date`` and ``timestamp`` datatypes, uses the same
+        string format as ``value``.
+    operator : Operator or None
+        Comparison operator for min/max bounds.
+    """
+
     datatype: DataType = Field(...)
     value: str | list[EnumValidationValue] | None = Field(default=None)
     min: str | None = Field(default=None)
