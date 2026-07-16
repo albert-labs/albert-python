@@ -11,9 +11,64 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 
 class AttachmentCategory(str, Enum):
     OTHER = "Other"
+    """Other."""
+
     SDS = "SDS"
+    """Safety Data Sheet."""
+
     LABEL = "Label"
+    """Label."""
+
     SCRIPT = "Script"
+    """Script."""
+
+    ALLERGEN = "Allergen"
+    """Allergen Statement."""
+
+    ANIMAL_DERIVED = "AnimalDerived"
+    """Animal-Derived Materials Declaration."""
+
+    BMR = "BMR"
+    """Batch Manufacturing Record."""
+
+    BROCHURE = "Brochure"
+    """Brochure."""
+
+    CHANGE_NOTIFICATION = "ChangeNotification"
+    """Change Notification."""
+
+    COA = "CoA"
+    """Certificate of Analysis."""
+
+    EPD = "EPD"
+    """Environmental Product Declaration."""
+
+    FOOD_CONTACT = "FoodContact"
+    """Food Contact Compliance Letter."""
+
+    MFR = "MFR"
+    """Master Formula Record."""
+
+    NDA = "NDA"
+    """NDA / Confidentiality Agreement."""
+
+    PATENT = "Patent"
+    """Patent."""
+
+    PCF = "PCF"
+    """Product Carbon Footprint."""
+
+    RELIGIOUS_ORGANIC_CERT = "ReligiousOrganicCert"
+    """Halal / Kosher / Organic Certification."""
+
+    RSL = "RSL"
+    """RSL Compliance Letter."""
+
+    SUPPLIER_QUESTIONNAIRE = "SupplierQuestionnaire"
+    """Supplier Questionnaire."""
+
+    TDS = "TDS"
+    """Technical Data Sheet."""
 
 
 class AttachmentMetadata(BaseAlbertModel):
