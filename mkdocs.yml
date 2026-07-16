@@ -151,6 +151,7 @@ nav:
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
+          - Design Runs (🧪Beta): collections/design_runs.md
           - Entity Types: collections/entity_types.md
           - Files: collections/files.md
           - Hazards: collections/hazards.md
@@ -199,6 +200,7 @@ nav:
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
+          - Design: resources/design.md
           - Entity Types: resources/entity_types.md
           - Enums: resources/enums.md
           - Files: resources/files.md
