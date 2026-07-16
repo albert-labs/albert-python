@@ -38,5 +38,9 @@ def test_design_run_create_out_of_scope_target(
     with pytest.raises(AlbertClientError):
         client.design_runs.create(
             smart_dataset_id=seeded_smart_dataset.id,
-            objectives={"TAR999999999": Criterion(operator=ComparisonOperator.GTE, value=1)},
+            objectives={
+                seeded_smart_dataset.scope.target_ids[0]: Criterion(
+                    operator=ComparisonOperator.GTE, value=1
+                )
+            },
         )
