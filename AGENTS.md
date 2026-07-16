@@ -77,6 +77,56 @@ Expose a `max_items` parameter on public list/search methods where appropriate t
 - When adding a new collection, add a docs page under `docs/collections/` and link it in `mkdocs.yml` (alphabetical in nav).
 - When adding a new resource, add a docs page under `docs/resources/` and link it in `mkdocs.yml` (alphabetical in nav).
 - Keep docstrings Numpy-style for all public APIs.
+
+### Cross-references: use autorefs, NOT Sphinx roles
+
+`mkdocstrings` does not understand Sphinx roles. `:class:`, `:meth:`, and `:attr:` render as **literal text** on the docs site. Use autorefs links instead: `` [`DisplayName`][fully.qualified.path] ``.
+
+- Display text is the short name in backticks; the target is the fully-qualified dotted path.
+- Fully qualify every target, including a reference to a sibling method in the same class.
+- The `autorefs` plugin (bundled with `mkdocstrings`, enabled in `mkdocs.yml`) resolves these. A target only resolves if the class/method is rendered on some docs page.
+
+```text
+Wrong (renders as literal text):
+    See :meth:`get_all` and :class:`~albert.resources.tasks.BatchTask`.
+Right:
+    See [`get_all`][albert.collections.tasks.TaskCollection.get_all] and
+    [`BatchTask`][albert.resources.tasks.BatchTask].
+```
+
+### Examples: use an `Examples` section with a bare code fence
+
+Put runnable examples under a Numpy `Examples` section with a plain ` ```python ` fence. Do **NOT** use `!!! example` admonitions: without a section header the admonition gets absorbed into the preceding section (it renders as a stray `Returns` table row); with one you get a duplicate "Examples / Example" heading.
+
+```text
+        Examples
+        --------
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        item = client.inventory.get_by_id(id="INVA1")
+        item.name
+        # 'Titanium Dioxide'
+        ```
+```
+
+- Instantiate the client zero-arg (`client = Albert()`); show it once in the class-level example and reuse `client` in method examples.
+- Async collections (e.g. chat) use `async with AsyncAlbert() as client:` and `await`.
+- Show returned values as `# comment` lines. Verify example values against the model fields.
+
+### Wording conventions (keep consistent across the SDK)
+
+- Imperative mood: `Get`, `Create`, `Update`, `Delete`, `Search` (not `Gets`/`Retrieves`/`Creates`).
+- **Read** methods start with `Get ` (not `Retrieve`/`Fetch`). **Create** with `Create ` (not `Register`). **Update** with `Update `. **Delete** with `Delete `.
+- Class opener: `Manage <Entity> in the Albert platform.` Read-only collections that cannot create/update use `Access <Entity> …` (the established exception).
+- `__init__`: `Initialize a/an <CollectionClass>.` with the standard `session : AlbertSession` parameter.
+- IDs: refer generically as "by its ID" (keep a ``(format `INV...`)`` hint where useful).
+- Hydration: use "fully populated" (not "fully hydrated"); a `get_by_id` `Returns` reads `The fully populated <Resource>.`.
+- Search summary: `Search for <X> matching the given filters.`.
+- Beta badge: `(🧪 Beta)` (with a space).
+- No em dashes (`—`); use commas, colons, or parentheses (org language policy).
+
 - Docstrings must describe **what** a method does from the caller's perspective — never mention internal implementation details or backend API specifics (e.g. diffing, patching, HTTP methods, "returned by the API").
   - Wrong: `"""Update an attachment by diffing the current server state."""`
   - Right: `"""Update an attachment."""`
@@ -94,29 +144,30 @@ The following fields can be updated: ``field_a``, ``field_b``, ``field_c``.
 
 ```python
 class TagCollection(BaseCollection):
-    """
-    TagCollection manages Tag entities in the Albert platform.
+    """Manage Tags in the Albert platform.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for tag API requests.
+        The base API route for tag requests.
 
     Methods
     -------
     get_all(...) -> Iterator[Tag]
-        Lists all tag entities with optional filters.
+        Get all tags, with optional filters.
     get_by_id(id) -> Tag
-        Retrieves a tag by its ID.
+        Get a single tag by its ID.
     create(tag) -> Tag
-        Creates a new tag entity.
+        Create a new tag.
+    update(tag) -> Tag
+        Update an existing tag.
     delete(id) -> None
-        Deletes a tag by its ID.
+        Delete a tag by its ID.
     """
 ```
 
