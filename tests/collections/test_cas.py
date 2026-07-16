@@ -7,40 +7,22 @@ from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.cas import Cas
-from albert.resources.custom_fields import CustomField, FieldCategory, FieldType, ServiceType
-from albert.resources.lists import ListItem, ListItemCategory
+from albert.resources.custom_fields import CustomField, FieldType, ServiceType
+from albert.resources.lists import ListItem
 
 
-@pytest.fixture
-def cas_list_metadata_field(client: Albert, seed_prefix: str):
-    """Create a list-type CAS custom field and delete it after the test."""
-    field_name = f"test_cas_list_{seed_prefix.replace('-', '_')[:20]}".lower()
-    custom_field = client.custom_fields.create(
-        custom_field=CustomField(
-            name=field_name,
-            display_name=f"TEST CAS List {seed_prefix[:10]}",
-            field_type=FieldType.LIST,
-            service=ServiceType.CAS,
-            category=FieldCategory.USER_DEFINED,
-        )
+def _cas_list_metadata_items(
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> tuple[str, list[ListItem]]:
+    field_name = next(
+        field.name
+        for field in static_custom_fields
+        if field.service == ServiceType.CAS and field.field_type == FieldType.LIST
     )
-    try:
-        yield field_name, custom_field
-    finally:
-        with suppress(NotFoundError):
-            client.custom_fields.delete(id=custom_field.id)
-
-
-def _create_cas_list_item(
-    client: Albert, *, field_name: str, seed_prefix: str, suffix: str
-) -> ListItem:
-    return client.lists.create(
-        list_item=ListItem(
-            name=f"{seed_prefix}-{suffix}",
-            category=ListItemCategory.USER_DEFINED,
-            list_type=field_name,
-        )
-    )
+    list_items = [item for item in static_lists if item.list_type == field_name]
+    assert len(list_items) >= 2, "Expected at least two CAS list items in static seeds"
+    return field_name, list_items
 
 
 def assert_valid_cas_items(items: list[Cas]):
@@ -123,14 +105,15 @@ def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[
 
 
 def test_create_cas_with_list_metadata(
-    client: Albert, seed_prefix: str, cas_list_metadata_field: tuple[str, CustomField]
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
 ):
     """Test that creating a CAS with list-type metadata hydrates list item names."""
-    field_name, _ = cas_list_metadata_field
-    list_item = _create_cas_list_item(
-        client, field_name=field_name, seed_prefix=seed_prefix, suffix="list-value"
-    )
-    cas_number = f"{seed_prefix}-list-meta-50-00-0"
+    field_name, list_items = _cas_list_metadata_items(static_custom_fields, static_lists)
+    list_item = list_items[0]
+    cas_number = f"{seed_prefix}-list-meta-create-50-00-0"
     try:
         created = client.cas_numbers.create(
             cas=Cas(
@@ -146,50 +129,39 @@ def test_create_cas_with_list_metadata(
         with suppress(NotFoundError):
             if "created" in locals():
                 client.cas_numbers.delete(id=created.id)
-        with suppress(NotFoundError):
-            client.lists.delete(id=list_item.id)
 
 
 def test_update_cas_list_metadata(
-    client: Albert, seed_prefix: str, cas_list_metadata_field: tuple[str, CustomField]
+    client: Albert,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+    seeded_cas: list[Cas],
 ):
     """Test that updating CAS list-type metadata stores entity links and round-trips."""
-    field_name, _ = cas_list_metadata_field
-    first_list_item = _create_cas_list_item(
-        client, field_name=field_name, seed_prefix=seed_prefix, suffix="list-a"
-    )
-    second_list_item = _create_cas_list_item(
-        client, field_name=field_name, seed_prefix=seed_prefix, suffix="list-b"
-    )
-    cas_number = f"{seed_prefix}-list-upd-50-00-0"
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
+    field_name, list_items = _cas_list_metadata_items(static_custom_fields, static_lists)
+    cas = next(c for c in seeded_cas if "-with-metadata-" in c.number)
+    existing = client.cas_numbers.get_by_id(id=cas.id)
+    original_links = existing.metadata[field_name]
+    other_item = next(item for item in list_items if item.id != original_links[0].id)
     try:
-        created = client.cas_numbers.create(
-            cas=Cas(
-                number=cas_number,
-                metadata={field_name: [EntityLink(id=first_list_item.id)]},
-            )
-        )
-        existing = client.cas_numbers.get_by_id(id=created.id)
         updated = existing.model_copy(
-            update={
-                "metadata": {**existing.metadata, field_name: [EntityLink(id=second_list_item.id)]}
-            }
+            update={"metadata": {**existing.metadata, field_name: [EntityLink(id=other_item.id)]}}
         )
         result = client.cas_numbers.update(updated_object=updated)
-        assert [link.id for link in result.metadata[field_name]] == [second_list_item.id]
-        assert result.metadata[field_name][0].name == second_list_item.name
+        assert [link.id for link in result.metadata[field_name]] == [other_item.id]
+        assert result.metadata[field_name][0].name == other_item.name
 
-        refetched = client.cas_numbers.get_by_id(id=created.id)
-        assert [link.id for link in refetched.metadata[field_name]] == [second_list_item.id]
-        assert refetched.metadata[field_name][0].name == second_list_item.name
+        refetched = client.cas_numbers.get_by_id(id=cas.id)
+        assert [link.id for link in refetched.metadata[field_name]] == [other_item.id]
+        assert refetched.metadata[field_name][0].name == other_item.name
     finally:
-        with suppress(NotFoundError):
-            if "created" in locals():
-                client.cas_numbers.delete(id=created.id)
-        with suppress(NotFoundError):
-            client.lists.delete(id=second_list_item.id)
-        with suppress(NotFoundError):
-            client.lists.delete(id=first_list_item.id)
+        restored = existing.model_copy(
+            update={"metadata": {**existing.metadata, field_name: original_links}}
+        )
+        with suppress(NotFoundError, AlbertHTTPError):
+            client.cas_numbers.update(updated_object=restored)
 
 
 def test_get_by_number(client: Albert):
