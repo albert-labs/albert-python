@@ -131,6 +131,10 @@ nav:
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md
+      - Core Models:
+          - Base Models: core/models.md
+          - Patch Models: core/patch.md
+          - Tagged Resource: core/tagged_base.md
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
