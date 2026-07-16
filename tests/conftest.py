@@ -95,19 +95,10 @@ def client() -> Albert:
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
         base_url_env="ALBERT_BASE_URL",
     )
-    client = Albert(
+    return Albert(
         auth_manager=credentials,
         retries=3,
     )
-    from tests.cas_cleanup import deleted_cas_ids, install_cas_test_cleanup
-
-    install_cas_test_cleanup(client)
-    yield client
-    removed = deleted_cas_ids()
-    if removed:
-        print(
-            f"\nDeleted {len(removed)} corrupted CAS record(s) encountered during tests: {sorted(removed)}"
-        )
 
 
 @pytest_asyncio.fixture(scope="session")
