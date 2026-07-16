@@ -5,10 +5,12 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.lists import ListsCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import CasId
+from albert.core.shared.models.base import EntityLink
 from albert.resources.cas import Cas
 
 
@@ -58,6 +60,23 @@ class CasCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
+
+    # CAS list-type metadata is a special case. The CAS API expects entity-link
+    # objects ({"id", "name"}) and stores bare list IDs literally, unlike inventory
+    # and other services that normalize IDs on write. create() and update() therefore
+    # hydrate omitted names via lists.get_by_id before sending list metadata payloads.
+
+    def _list_metadata_link_payload(self, link: EntityLink) -> dict[str, str]:
+        """Build a list metadata entity-link payload, hydrating name when omitted."""
+        name = link.name or ListsCollection(session=self.session).get_by_id(id=link.id).name
+        return {"id": link.id, "name": name}
+
+    def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
+        """Serialize CAS list metadata for PATCH as entity-link objects."""
+        payloads = [self._list_metadata_link_payload(link) for link in links]
+        if as_list:
+            return payloads
+        return payloads[0] if len(payloads) == 1 else payloads
 
     @validate_call
     def get_all(
@@ -180,6 +199,18 @@ class CasCollection(BaseCollection):
             cas = Cas(number=cas)
 
         payload = cas.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        # See class comment: CAS list metadata requires hydrated entity-link objects.
+        if "metadata" in cas.model_fields_set and cas.metadata:
+            payload["Metadata"] = {
+                key: (
+                    [self._list_metadata_link_payload(link) for link in value]
+                    if isinstance(value, list)
+                    else self._list_metadata_link_payload(value)
+                    if isinstance(value, EntityLink)
+                    else value
+                )
+                for key, value in cas.metadata.items()
+            }
         response = self.session.post(self.base_path, json=payload)
         cas = Cas(**response.json())
         return cas
