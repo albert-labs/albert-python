@@ -41,27 +41,18 @@ class State(str, Enum):
 
 
 class TaskConfig(BaseAlbertModel):
-    """Default task settings applied when tasks are created within a project.
-
-    Attributes
-    ----------
-    datatemplateId : str | None
-        ID of the data template tasks default to.
-    workflowId : str | None
-        ID of the workflow tasks default to.
-    defaultTaskName : str | None
-        Default name applied to new tasks.
-    target : str | None
-        Default target for the configured tasks.
-    hidden : bool | None
-        Whether this configuration is hidden in the UI.
-    """
+    """Default task settings applied when tasks are created within a project."""
 
     datatemplateId: str | None = None
+    """ID of the data template tasks default to."""
     workflowId: str | None = None
+    """ID of the workflow tasks default to."""
     defaultTaskName: str | None = None
+    """Default name applied to new tasks."""
     target: str | None = None
+    """Default target for the configured tasks."""
     hidden: bool | None = False
+    """Whether this configuration is hidden in the UI."""
 
 
 class GridDefault(str, Enum):
@@ -100,66 +91,42 @@ class Project(BaseSessionResource):
         )
         project.id
         # 'PRO123'
-        ```
-
-    Attributes
-    ----------
-    description : str
-        Human-readable project name/description (1-2000 characters). Also serves
-        as the project's display name.
-    locations : list[Location] | None
-        The locations the project is associated with. Optional.
-    project_class : ProjectClass | None
-        Access-control class (private, shared, or confidential). Defaults to
-        private.
-    prefix : str | None
-        Optional prefix used when naming entities within the project.
-    application_engineering_inventory_ids : list[str] | None
-        Inventory IDs to attach to the project as application engineering.
-        Optional.
-    id : ProjectId | None
-        The Albert Project ID (format ``PRO...``). Assigned by Albert and present
-        once the project has been created or retrieved.
-    acl : list[ACL] | None
-        Access-control entries controlling who can access the project. Optional.
-    task_config : list[TaskConfig] | None
-        Default task settings applied to tasks created within the project.
-    grid : GridDefault | None
-        The default grid view (Property Data or Worksheet) shown for the project.
-    metadata : dict[str, MetadataItem] | None
-        Custom field values. Allowed keys and values are defined via the Custom
-        Fields API. Optional.
-    status : str | None
-        Read-only status string returned by Albert.
-    state : State | None
-        The project's lifecycle state. Read only on create; can be changed via
-        [`update`][albert.collections.projects.ProjectCollection.update].
-    old_api_params : dict | None
-        Read-only. Do not use.
-    """
+        ```"""
 
     description: str = Field(min_length=1, max_length=2000)
+    """Human-readable project name/description (1-2000 characters). Also serves as the project's display name."""
     locations: list[SerializeAsEntityLink[Location]] | None = Field(
         default=None, min_length=1, max_length=20, alias="Locations"
     )
+    """The locations the project is associated with. Optional."""
     project_class: ProjectClass | None = Field(default=ProjectClass.PRIVATE, alias="class")
+    """Access-control class (private, shared, or confidential). Defaults to private."""
     prefix: str | None = Field(default=None)
+    """Optional prefix used when naming entities within the project."""
     application_engineering_inventory_ids: list[str] | None = Field(
         default=None,
         alias="appEngg",
         description="Inventory Ids to be added as application engineering",
     )
     id: ProjectId | None = Field(None, alias="albertId")
+    """The Albert Project ID (format ``PRO...``). Assigned by Albert and present once the project has been created or retrieved."""
     acl: list[ACL] | None = Field(default_factory=list, alias="ACL")
+    """Access-control entries controlling who can access the project. Optional."""
     old_api_params: dict | None = None
+    """Read-only. Do not use."""
     task_config: list[TaskConfig] | None = Field(default_factory=list)
+    """Default task settings applied to tasks created within the project."""
     grid: GridDefault | None = None
+    """The default grid view (Property Data or Worksheet) shown for the project."""
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    """Custom field values. Allowed keys and values are defined via the Custom Fields API. Optional."""
     # Read-only fields
     status: str | None = Field(default=None, exclude=True, frozen=True)
+    """Read-only status string returned by Albert."""
 
     # Cannot be sent in a create POST, but can be referenced from a PATCH for update.
     state: State | None = Field(default=None, exclude=True)
+    """The project's lifecycle state. Read only on create; can be changed via [`update`][albert.collections.projects.ProjectCollection.update]."""
     _smart: list[SmartProject] | None = PrivateAttr(default=None)
 
     @field_validator("status", mode="before")
@@ -196,21 +163,14 @@ class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
     this carries only summary fields for fast listing. Use its hydration support
     (or fetch by ``id`` via
     [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]) to obtain
-    the full [`Project`][albert.resources.projects.Project].
-
-    Attributes
-    ----------
-    id : ProjectId | None
-        The Albert Project ID (format ``PRO...``).
-    description : str
-        The project's name/description.
-    status : str | None
-        Read-only status string returned by Albert.
-    """
+    the full [`Project`][albert.resources.projects.Project]."""
 
     id: ProjectId | None = Field(None, alias="albertId")
+    """The Albert Project ID (format ``PRO...``)."""
     description: str = Field(min_length=1, max_length=2000)
+    """The project's name/description."""
     status: str | None = Field(default=None, exclude=True, frozen=True)
+    """Read-only status string returned by Albert."""
 
 
 class DocumentSearchItem(BaseAlbertModel):
@@ -218,39 +178,25 @@ class DocumentSearchItem(BaseAlbertModel):
 
     Returned by
     [`document_search`][albert.collections.projects.ProjectCollection.document_search]. Each
-    item describes an attachment's metadata rather than its file contents.
-
-    Attributes
-    ----------
-    id : AttachmentId | None
-        The Albert Attachment ID (format ``ATT...``).
-    name : str | None
-        The document's file name.
-    mime_type : str | None
-        The document's MIME type (e.g. ``application/pdf``).
-    file_size : int | None
-        The document's size in bytes.
-    project_id : str | None
-        ID of the project the document is linked to.
-    key : str | None
-        Storage key for the document.
-    source : str | None
-        Source system or origin of the document.
-    created_by : str | None
-        ID of the user who uploaded the document.
-    created_by_name : str | None
-        Name of the user who uploaded the document.
-    created_at : str | None
-        Timestamp when the document was created.
-    """
+    item describes an attachment's metadata rather than its file contents."""
 
     id: AttachmentId | None = Field(None, alias="albertId")
+    """The Albert Attachment ID (format ``ATT...``)."""
     name: str | None = None
+    """The document's file name."""
     mime_type: str | None = Field(default=None, alias="mimeType")
+    """The document's MIME type (e.g. ``application/pdf``)."""
     file_size: int | None = Field(default=None, alias="fileSize")
+    """The document's size in bytes."""
     project_id: str | None = Field(default=None, alias="projectId")
+    """ID of the project the document is linked to."""
     key: str | None = None
+    """Storage key for the document."""
     source: str | None = None
+    """Source system or origin of the document."""
     created_by: str | None = Field(default=None, alias="createdBy")
+    """ID of the user who uploaded the document."""
     created_by_name: str | None = Field(default=None, alias="createdByName")
+    """Name of the user who uploaded the document."""
     created_at: str | None = Field(default=None, alias="createdAt")
+    """Timestamp when the document was created."""

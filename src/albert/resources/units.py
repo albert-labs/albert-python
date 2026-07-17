@@ -106,30 +106,19 @@ class Unit(BaseResource):
         ```python
         from albert.resources.units import Unit, UnitCategory
         unit = Unit(name="milliliter", symbol="mL", category=UnitCategory.LIQUID_VOLUME)
-        ```
-
-    Attributes
-    ----------
-    id : str or None
-        The Albert ID of the unit (format ``UNI...``). Set when the unit is
-        retrieved from or created in Albert.
-    name : str
-        The name of the unit (e.g. ``"gram"``).
-    symbol : str or None
-        The display symbol for the unit (e.g. ``"g"``).
-    synonyms : list[str] or None
-        Alternate names or spellings that also refer to this unit.
-    category : UnitCategory or None
-        The physical quantity the unit measures (e.g. ``Mass``, ``Volume``).
-    verified : bool or None
-        Whether the unit has been verified in Albert. Read-only.
-    """
+        ```"""
 
     id: str | None = Field(None, alias="albertId")
+    """The Albert ID of the unit (format ``UNI...``). Set when the unit is retrieved from or created in Albert."""
     name: str
+    """The name of the unit (e.g. ``"gram"``)."""
     symbol: str | None = Field(None)
+    """The display symbol for the unit (e.g. ``"g"``)."""
     synonyms: list[str] | None = Field(default_factory=list, alias="Synonyms")
+    """Alternate names or spellings that also refer to this unit."""
     category: UnitCategory | None = Field(None)
+    """The physical quantity the unit measures (e.g. ``Mass``, ``Volume``)."""
 
     # Read-only fields
     verified: bool | None = Field(default=False, exclude=True, frozen=True)
+    """Whether the unit has been verified in Albert. Read-only."""

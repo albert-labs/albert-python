@@ -46,31 +46,16 @@ class ListItem(BaseResource):
         ```python
         from albert.resources.lists import ListItem, ListItemCategory
         item = ListItem(name="In Progress", category=ListItemCategory.USER_DEFINED)
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The display name of the list item (the option value).
-    id : str or None
-        The Albert ID of the list item. Set when the item is retrieved from or
-        created in Albert.
-    category : ListItemCategory or None
-        The category of the list item. Allowed values are ``businessDefined``,
-        ``userDefined``, ``projects``, ``extensions``, and ``inventory``.
-    list_type : str or None
-        The list this item belongs to. For a list-type custom field this is
-        typically the field's name (see
-        [`CustomField`][albert.resources.custom_fields.CustomField]). For built-in
-        categories the allowed values are ``projectState`` for ``projects``,
-        ``extensions`` for ``extensions``, and ``casCategory`` or
-        ``inventoryFunction`` for ``inventory``.
-    """
+        ```"""
 
     name: str
+    """The display name of the list item (the option value)."""
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the list item. Set when the item is retrieved from or created in Albert."""
     category: ListItemCategory | None = Field(default=None)
+    """The category of the list item. Allowed values are ``businessDefined``, ``userDefined``, ``projects``, ``extensions``, and ``inventory``."""
     list_type: str | None = Field(default=None, alias="listType")
+    """The list this item belongs to. For a list-type custom field this is typically the field's name (see [`CustomField`][albert.resources.custom_fields.CustomField]). For built-in categories the allowed values are ``projectState`` for ``projects``, ``extensions`` for ``extensions``, and ``casCategory`` or ``inventoryFunction`` for ``inventory``."""
 
     @model_validator(mode="after")
     def validate_list_type(self) -> ListItem:

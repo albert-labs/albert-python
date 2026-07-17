@@ -8,25 +8,14 @@ class NoteAttachmentEntityLink(EntityLinkWithName):
 
     Returned as part of a [`Note`][albert.resources.notes.Note] when it has attached files. Not
     constructed directly; files are attached via the
-    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
-
-    Attributes
-    ----------
-    id : str
-        The ID of the linked attachment entity.
-    name : str | None
-        The display name of the attached file.
-    key : str | None
-        The storage key of the underlying file.
-    file_size : int | None
-        The size of the file in bytes.
-    signed_url : str | None
-        A temporary signed URL for downloading the file, when available.
-    """
+    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection]."""
 
     key: str | None = None
+    """The storage key of the underlying file."""
     file_size: int | None = Field(default=None, alias="fileSize")
+    """The size of the file in bytes."""
     signed_url: str | None = Field(default=None, alias="signedURL")
+    """A temporary signed URL for downloading the file, when available."""
 
 
 class Note(BaseResource):
@@ -43,25 +32,15 @@ class Note(BaseResource):
         ```python
         from albert.resources.notes import Note
         note = Note(parent_id="TASA1", note="Reviewed the results.")
-        ```
-
-    Attributes
-    ----------
-    parent_id : str
-        The ID of the entity the note is attached to (e.g. a Task ID). Must
-        include the full entity prefix.
-    note : str
-        The text content of the note.
-    id : str | None
-        The Albert ID of the note. Assigned by Albert when the note is created.
-    attachments : list[NoteAttachmentEntityLink] | None
-        Files attached to the note. Read-only; populated when the note is
-        retrieved.
-    """
+        ```"""
 
     parent_id: str = Field(..., alias="parentId")
+    """The ID of the entity the note is attached to (e.g. a Task ID). Must include the full entity prefix."""
     note: str
+    """The text content of the note."""
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the note. Assigned by Albert when the note is created."""
     attachments: list[NoteAttachmentEntityLink] | None = Field(
         default=None, frozen=True, alias="Attachments"
     )
+    """Files attached to the note. Read-only; populated when the note is retrieved."""

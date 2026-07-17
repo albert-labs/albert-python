@@ -22,28 +22,17 @@ class Location(BaseResource):
             address="1 Main St",
             country="US",
         )
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The human-readable name of the location.
-    id : str | None
-        The Albert ID of the location. Assigned by Albert and populated once the
-        location has been created or retrieved.
-    latitude : float
-        The latitude of the location, in decimal degrees.
-    longitude : float
-        The longitude of the location, in decimal degrees.
-    address : str
-        The street address of the location.
-    country : str | None
-        The two-letter country code of the location (for example, ``"US"``).
-    """
+        ```"""
 
     name: str
+    """The human-readable name of the location."""
     id: str | None = Field(None, alias="albertId")
+    """The Albert ID of the location. Assigned by Albert and populated once the location has been created or retrieved."""
     latitude: float = Field()
+    """The latitude of the location, in decimal degrees."""
     longitude: float = Field()
+    """The longitude of the location, in decimal degrees."""
     address: str
+    """The street address of the location."""
     country: str | None = Field(None, max_length=2, min_length=2)
+    """The two-letter country code of the location (for example, ``"US"``)."""

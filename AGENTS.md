@@ -28,6 +28,22 @@ Single source of truth for coding-agent guidance in this repo.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
 - Public collection methods use `@validate_call` for runtime validation.
 - Resources use `BaseAlbertModel`/`BaseResource` with Pydantic `Field` and aliases.
+- **Field documentation lives on attribute docstrings**, not in class-level ``Attributes`` sections.
+  ``BaseAlbertModel`` sets ``use_attribute_docstrings=True``, so Pydantic emits them as
+  JSON Schema ``description`` values (used by the ReAct worker tool factory and
+  ``expand_schema``). Place the docstring on the line immediately after each field::
+
+    ```python
+    description: str = Field(min_length=1, max_length=2000)
+    """Human-readable project name/description. Also serves as the display name."""
+    ```
+
+  Keep the class docstring for narrative, examples, and cross-refs; document individual
+  fields only via attribute docstrings. Prefer attribute docstrings over
+  ``Field(description=...)`` so docs stay in one place (existing ``Field(description=...)``
+  values are left as-is until migrated). Collection classes (``*Collection``) are not
+  Pydantic models — their ``Attributes`` blocks document ``base_path`` / ``session`` and
+  stay in the class docstring.
 - **Search result models must be named `<Resource>SearchItem`** (e.g. `ActivitySearchItem`, `UserSearchItem`) when the shape returned by the search endpoint differs from the main resource model. Never reuse the main resource model for search results if the fields differ, and never name the search model `<Resource>Item` or anything else.
 - Keep API payloads in wire format (camelCase) via `Field(alias=...)` and `model_dump(by_alias=True, mode="json", exclude_none=True)`.
 - All new public methods and classes must have Numpy-style docstrings:

@@ -103,19 +103,13 @@ class Operator(str, Enum):
 
 
 class EnumValidationValue(BaseAlbertModel):
-    """Represents a value for an enum type validation.
-
-    Attributes
-    ----------
-    text : str
-        The text of the enum value.
-    id : str | None
-        The ID of the enum value. If not provided, the ID will be generated upon creation.
-    """
+    """Represents a value for an enum type validation."""
 
     text: str = Field()
+    """The text of the enum value."""
 
     id: str | None = Field(default=None)
+    """The ID of the enum value. If not provided, the ID will be generated upon creation."""
     # read only field
     original_text: str | None = Field(
         default=None, exclude=True, frozen=True, alias="originalText"
@@ -143,28 +137,18 @@ class ValueValidation(BaseAlbertModel):
             min="0",
             max="100",
         )
-        ```
-
-    Attributes
-    ----------
-    datatype : DataType
-        The data type the value must conform to. Required.
-    value : str or list[EnumValidationValue] or None
-        For ``ENUM`` types, the list of allowed options (see
-        [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise an optional expected value.
-    min : str or None
-        The lower bound for numeric values, used with ``operator``.
-    max : str or None
-        The upper bound for numeric values, used with ``operator``.
-    operator : Operator or None
-        The comparison operator applied against ``min`` and/or ``max``.
-    """
+        ```"""
 
     datatype: DataType = Field(...)
+    """The data type the value must conform to. Required."""
     value: str | list[EnumValidationValue] | None = Field(default=None)
+    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise an optional expected value."""
     min: str | None = Field(default=None)
+    """The lower bound for numeric values, used with ``operator``."""
     max: str | None = Field(default=None)
+    """The upper bound for numeric values, used with ``operator``."""
     operator: Operator | None = Field(default=None)
+    """The comparison operator applied against ``min`` and/or ``max``."""
 
 
 class ParameterValue(BaseAlbertModel):
@@ -184,54 +168,33 @@ class ParameterValue(BaseAlbertModel):
 
         # Reference the parameter by its Albert ID
         value = ParameterValue(id="PRM1", value="500")
-        ```
-
-    Attributes
-    ----------
-    parameter : Parameter or None
-        The Parameter this value is associated with. Provide either ``id`` or
-        ``parameter``. Excluded from serialization.
-    id : str or None
-        The Albert ID of the associated Parameter. Provide either ``id`` or
-        ``parameter``.
-    category : ParameterCategory or None
-        The category of the parameter (``Normal`` or ``Special``). Populated from
-        ``parameter`` when one is provided.
-    short_name : str or None
-        A short name for the parameter value. Serialized as ``shortName``.
-    value : str or InventoryItem or User or None
-        The value of the parameter. Can be a plain string, an
-        [`InventoryItem`][albert.resources.inventory.InventoryItem] (e.g. when the parameter
-        represents an instrument choice), or a
-        [`User`][albert.resources.users.User] (e.g. a user reference such as
-        "Performed By").
-    unit : Unit or None
-        The unit of measure for the value. Serialized as ``Unit``.
-    required : bool or None
-        Whether this parameter is required. Defaults to False.
-    validation : list[ValueValidation] or None
-        Validation rules applied to the value. See [`ValueValidation`][albert.resources.parameter_groups.ValueValidation].
-    name : str or None
-        The name of the parameter. Read-only.
-    sequence : str or None
-        The sequence of the parameter within the group. Read-only.
-    """
+        ```"""
 
     parameter: Parameter | None = Field(default=None, exclude=True)
+    """The Parameter this value is associated with. Provide either ``id`` or ``parameter``. Excluded from serialization."""
     id: str | None = Field(default=None)
+    """The Albert ID of the associated Parameter. Provide either ``id`` or ``parameter``."""
     category: ParameterCategory | None = Field(default=None)
+    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided."""
     short_name: str | None = Field(alias="shortName", default=None)
+    """A short name for the parameter value. Serialized as ``shortName``."""
     value: str | SerializeAsEntityLink[InventoryItem] | SerializeAsEntityLink[User] | None = Field(
         default=None
     )
+    """The value of the parameter. Can be a plain string, an [`InventoryItem`][albert.resources.inventory.InventoryItem] (e.g. when the parameter represents an instrument choice), or a [`User`][albert.resources.users.User] (e.g. a user reference such as "Performed By")."""
     unit: SerializeAsEntityLink[Unit] | None = Field(alias="Unit", default=None)
+    """The unit of measure for the value. Serialized as ``Unit``."""
     added: AuditFields | None = Field(alias="Added", default=None, exclude=True)
     required: bool | None = Field(default=None)
+    """Whether this parameter is required. Defaults to False."""
     validation: list[ValueValidation] | None = Field(default_factory=list)
+    """Validation rules applied to the value. See [`ValueValidation`][albert.resources.parameter_groups.ValueValidation]."""
 
     # Read-only fields
     name: str | None = Field(default=None, exclude=True, frozen=True)
+    """The name of the parameter. Read-only."""
     sequence: str | None = Field(default=None, exclude=True)
+    """The sequence of the parameter within the group. Read-only."""
     original_short_name: str | None = Field(
         default=None, alias="originalShortName", frozen=True, exclude=True
     )
@@ -295,79 +258,41 @@ class ParameterGroup(BaseTaggedResource):
             type=PGType.BATCH,
             parameters=[ParameterValue(id="PRM1", value="500")],
         )
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the parameter group. Required.
-    type : PGType or None
-        The kind of task the group relates to (``general``, ``batch``, or
-        ``property``).
-    id : str or None
-        The Albert Parameter Group ID (format ``PRG...``). Set when the group is
-        retrieved from or created in Albert. Serialized as ``albertId``.
-    description : str or None
-        A free-text description of the group.
-    security_class : SecurityClass
-        The access/security class of the group. Defaults to ``RESTRICTED``.
-        Serialized as ``class``.
-    acl : list[User] or None
-        Access-control entries governing who can act on the group. Serialized as
-        ``ACL``.
-    metadata : dict[str, MetadataItem]
-        Custom metadata fields. Test standards are stored under the ``"Standards"``
-        key. Serialized as ``Metadata``.
-    parameters : list[ParameterValue]
-        The parameters in the group, each with its value, unit, and validation.
-        See [`ParameterValue`][albert.resources.parameter_groups.ParameterValue]. Serialized as ``Parameters``.
-    tags : list[Tag | str] or None
-        Tags on the group. A string is turned into a Tag that is first-or-created.
-        Inherited from [`BaseTaggedResource`][albert.resources.tagged_base.BaseTaggedResource].
-    verified : bool
-        Whether the group has been verified (an approval/governance state).
-        Read-only.
-    documents : list[EntityLink]
-        Documents (e.g. SOPs) associated with the Parameter Group.
-
-    See Also
-    --------
-    albert.collections.parameter_groups.ParameterGroupCollection : Create, search, and manage groups.
-    ParameterValue : A parameter and its value within a group.
-    PGType : The set of allowed group types.
-    albert.resources.workflows.Workflow : Where a group's parameters are fixed to setpoints.
-    """
+        ```"""
 
     name: str
+    """The name of the parameter group. Required."""
     type: PGType | None = Field(default=None)
+    """The kind of task the group relates to (``general``, ``batch``, or ``property``)."""
     id: str | None = Field(None, alias="albertId")
+    """The Albert Parameter Group ID (format ``PRG...``). Set when the group is retrieved from or created in Albert. Serialized as ``albertId``."""
     description: str | None = Field(default=None)
+    """A free-text description of the group."""
     security_class: SecurityClass = Field(default=SecurityClass.RESTRICTED, alias="class")
+    """The access/security class of the group. Defaults to ``RESTRICTED``. Serialized as ``class``."""
     acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="ACL")
+    """Access-control entries governing who can act on the group. Serialized as ``ACL``."""
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
+    """Custom metadata fields. Test standards are stored under the ``"Standards"`` key. Serialized as ``Metadata``."""
     parameters: list[ParameterValue] = Field(default_factory=list, alias="Parameters")
+    """The parameters in the group, each with its value, unit, and validation. See [`ParameterValue`][albert.resources.parameter_groups.ParameterValue]. Serialized as ``Parameters``."""
 
     # Read-only fields
     verified: bool = Field(default=False, exclude=True, frozen=True)
+    """Whether the group has been verified (an approval/governance state). Read-only."""
     documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)
+    """Documents (e.g. SOPs) associated with the Parameter Group. See Also --------"""
 
 
 class ParameterSearchItemParameter(BaseAlbertModel):
-    """A lightweight parameter reference within a parameter group search result.
-
-    Attributes
-    ----------
-    name : str | None
-        The name of the parameter.
-    id : str
-        The Albert ID of the parameter.
-    localized_names : LocalizedNames
-        Localized name variants for the parameter.
-    """
+    """A lightweight parameter reference within a parameter group search result."""
 
     name: str | None = None
+    """The name of the parameter."""
     id: str
+    """The Albert ID of the parameter."""
     localized_names: LocalizedNames = Field(alias="localizedNames")
+    """Localized name variants for the parameter."""
 
 
 class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
@@ -376,49 +301,31 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     Returned by
     [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search].
     Search results omit some detail for speed; call `hydrate()` to fetch the
-    full [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup].
-
-    Attributes
-    ----------
-    name : str
-        The name of the parameter group.
-    type : PGType or None
-        The kind of task the group relates to.
-    id : str or None
-        The Albert Parameter Group ID (format ``PRG...``). Serialized as
-        ``albertId``.
-    description : str or None
-        A free-text description of the group.
-    parameters : list[ParameterSearchItemParameter]
-        Lightweight references to the parameters in the group.
-    owner : list[User] or None
-        The owner(s) of the group.
-    tags : list[Tag] or None
-        Tags on the group.
-    acl : list[User] or None
-        Access-control entries on the group.
-    created_at : str or None
-        When the group was created. Serialized as ``createdAt``.
-    created_by_name : str or None
-        The name of the user who created the group. Serialized as
-        ``createdByName``.
-    metadata : dict[str, MetadataItem] or None
-        Custom metadata fields. Serialized as ``metadata``.
-    team : list[User] or None
-        The team associated with the group.
-    """
+    full [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup]."""
 
     name: str
+    """The name of the parameter group."""
     type: PGType | None = Field(default=None)
+    """The kind of task the group relates to."""
     id: str | None = Field(None, alias="albertId")
+    """The Albert Parameter Group ID (format ``PRG...``). Serialized as ``albertId``."""
     description: str | None = Field(default=None)
+    """A free-text description of the group."""
     parameters: list[ParameterSearchItemParameter] = Field(
         default_factory=list, alias="parameters"
     )
+    """Lightweight references to the parameters in the group."""
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="owner")
+    """The owner(s) of the group."""
     tags: list[SerializeAsEntityLink[Tag]] | None = Field(default=None, alias="tags")
+    """Tags on the group."""
     acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="acl")
+    """Access-control entries on the group."""
     created_at: str | None = Field(default=None, alias="createdAt")
+    """When the group was created. Serialized as ``createdAt``."""
     created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The name of the user who created the group. Serialized as ``createdByName``."""
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="metadata")
+    """Custom metadata fields. Serialized as ``metadata``."""
     team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")
+    """The team associated with the group."""

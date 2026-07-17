@@ -23,21 +23,7 @@ class CasCategory(str, Enum):
 class Hazard(BaseAlbertModel):
     """A single GHS hazard classification associated with a CAS substance.
 
-    Hazards are read from the CAS record; a [`Cas`][albert.resources.cas.Cas] may carry a list of them.
-
-    Attributes
-    ----------
-    sub_category : str, optional
-        Hazard subcategory.
-    h_code : str, optional
-        GHS hazard statement code (e.g. an ``H``-code such as ``"H301"``).
-    category : str or float, optional
-        Hazard category.
-    hazard_class : str, optional
-        Hazard classification.
-    h_code_text : str, optional
-        Human-readable text for the hazard code.
-    """
+    Hazards are read from the CAS record; a [`Cas`][albert.resources.cas.Cas] may carry a list of them."""
 
     sub_category: str | None = Field(None, alias="subCategory", description="Hazard subcategory")
     h_code: str | None = Field(None, alias="hCode", description="Hazard code")
@@ -62,47 +48,7 @@ class Cas(BaseResource):
         from albert.resources.cas import Cas
         # Build a CAS entry to register a new substance
         cas = Cas(number="7727-37-9")
-        ```
-
-    Attributes
-    ----------
-    number : str
-        The CAS Registry Number (e.g. ``"7727-37-9"``). Required.
-    name : str, optional
-        Name of the substance.
-    description : str, optional
-        Free-text description of the CAS. Updatable via
-        [`update`][albert.collections.cas.CasCollection.update].
-    notes : str, optional
-        Free-text notes about the CAS. Updatable.
-    category : CasCategory, optional
-        The source/classification of the entry (e.g. user-created, TSCA listing).
-        See [`CasCategory`][albert.resources.cas.CasCategory].
-    smiles : str, optional
-        SMILES structure notation for the substance. Updatable. Serialized as
-        ``casSmiles``.
-    inchi_key : str, optional
-        InChIKey hash of the chemical structure.
-    iupac_name : str, optional
-        IUPAC systematic name.
-    id : str, optional
-        The Albert CAS ID (format ``CAS...``, e.g. ``"CAS1"``). Assigned by Albert
-        on creation. Serialized as ``albertId``.
-    hazards : list[Hazard], optional
-        GHS hazard classifications for the substance. See [`Hazard`][albert.resources.cas.Hazard].
-    wgk : str, optional
-        German Water Hazard Class (Wassergefährdungsklasse) number.
-    ec_number : str, optional
-        European Community (EC) number. Serialized as ``ecListNo``.
-    type : str, optional
-        Internal classification-type reference for the CAS.
-    classification_type : str, optional
-        Classification type of the CAS.
-    order : str, optional
-        CAS order value.
-    metadata : dict[str, MetadataItem]
-        Custom metadata keyed by field. Updatable.
-    """
+        ```"""
 
     number: str = Field(..., description="The CAS number.")
     name: str | None = Field(None, description="Name of the CAS.")
@@ -124,6 +70,7 @@ class Cas(BaseResource):
     )
     order: str | None = Field(None, description="CAS order.")
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
+    """Custom metadata keyed by field. Updatable."""
 
     @classmethod
     def from_string(cls, *, number: str) -> Cas:

@@ -90,45 +90,26 @@ class PropertyData(BaseAlbertModel):
 
     Returned by the API as part of a [`PropertyValue`][albert.resources.property_data.PropertyValue]. For simple numeric or
     text results only ``value`` is populated; for image and curve data columns the
-    additional fields carry the uploaded file references and processing metadata.
-
-    Attributes
-    ----------
-    id : PropertyDataId | None
-        The Albert ID of this property data record (format ``PTD...``).
-    value : str | None
-        The stored result value. All values are stored as strings in Albert.
-    value_type : str | None
-        The type of the value (e.g. numeric, string, image, curve). Serialized as
-        ``valueType``.
-    storage_key : PropertyDataStorageKey | StorageKeyReference | None
-        Storage references for uploaded media (image previews/thumbnails or curve
-        files). Serialized as ``s3Key``.
-    job : dict[str, Any] | None
-        Processing job metadata, used for curve/image ingestion.
-    csv_mapping : dict[str, str] | None
-        Mapping from CSV headers to curve result identifiers, for curve data.
-        Serialized as ``csvMapping``.
-    curve_remarks : dict[str, Any] | None
-        Remarks associated with curve data. Serialized as ``curveRemarks``.
-    athena : dict[str, Any] | None
-        Backing analytical store metadata for curve data.
-
-    See Also
-    --------
-    PropertyValue : Wraps this record with the human-readable result fields.
-    """
+    additional fields carry the uploaded file references and processing metadata."""
 
     id: PropertyDataId | None = Field(default=None)
+    """The Albert ID of this property data record (format ``PTD...``)."""
     value: str | None = Field(default=None)
+    """The stored result value. All values are stored as strings in Albert."""
     value_type: str | None = Field(default=None, alias="valueType")
+    """The type of the value (e.g. numeric, string, image, curve). Serialized as ``valueType``."""
     storage_key: PropertyDataStorageKey | StorageKeyReference | None = Field(
         default=None, alias="s3Key"
     )
+    """Storage references for uploaded media (image previews/thumbnails or curve files). Serialized as ``s3Key``."""
     job: dict[str, Any] | None = Field(default=None)
+    """Processing job metadata, used for curve/image ingestion."""
     csv_mapping: dict[str, str] | None = Field(default=None, alias="csvMapping")
+    """Mapping from CSV headers to curve result identifiers, for curve data. Serialized as ``csvMapping``."""
     curve_remarks: dict[str, Any] | None = Field(default=None, alias="curveRemarks")
+    """Remarks associated with curve data. Serialized as ``curveRemarks``."""
     athena: dict[str, Any] | None = Field(default=None)
+    """Backing analytical store metadata for curve data. See Also --------"""
 
 
 class PropertyValue(BaseAlbertModel):
@@ -136,55 +117,30 @@ class PropertyValue(BaseAlbertModel):
 
     Appears inside a [`Trial`][albert.resources.property_data.Trial] (as one of its ``data_columns``) and represents
     the value captured for a single data column of a data template. Both a numeric
-    and a string form of the value may be present depending on the column type.
-
-    Attributes
-    ----------
-    id : str | None
-        Identifier of the result within the trial.
-    name : str | None
-        The data column / result name.
-    sequence : str | None
-        Pointer to the specific data (result) column; more unique than a data column
-        ID because a data column can be repeated within a Data Template (analogous to a
-        parameter repeated in a Parameter Group).
-    calculation : str | None
-        Optional calculation expression used in place of a fixed value; may reference
-        other result columns (e.g. ``=((COL3-COL1)/COL2)*100``). The result is computed
-        and shown in the UI.
-    numeric_value : float | None
-        The numeric form of the value. Serialized as ``valueNumeric``.
-    string_value : str | None
-        The string form of the value. Serialized as ``valueString``.
-    value : str | None
-        The stored value.
-    unit : SerializeAsEntityLink[Unit] | dict
-        The unit of measure for the value, as an entity link. Serialized as ``Unit``.
-    property_data : PropertyData | None
-        The backing stored value / media record. Serialized as ``PropertyData``.
-    data_column_unique_id : str | None
-        The unique ID of the data column this result captures. Serialized as
-        ``dataColumnUniqueId``.
-    hidden : bool | None
-        Whether the result is hidden.
-
-    See Also
-    --------
-    Trial : Groups the property values measured in one replicate.
-    PropertyData : The backing stored value record.
-    """
+    and a string form of the value may be present depending on the column type."""
 
     id: str | None = Field(default=None)
+    """Identifier of the result within the trial."""
     name: str | None = Field(default=None)
+    """The data column / result name."""
     sequence: str | None = Field(default=None)
+    """Pointer to the specific data (result) column; more unique than a data column ID because a data column can be repeated within a Data Template (analogous to a parameter repeated in a Parameter Group)."""
     calculation: str | None = Field(default=None)
+    """Optional calculation expression used in place of a fixed value; may reference other result columns (e.g. ``=((COL3-COL1)/COL2)*100``). The result is computed and shown in the UI."""
     numeric_value: float | None = Field(default=None, alias="valueNumeric")
+    """The numeric form of the value. Serialized as ``valueNumeric``."""
     string_value: str | None = Field(default=None, alias="valueString")
+    """The string form of the value. Serialized as ``valueString``."""
     value: str | None = Field(default=None)
+    """The stored value."""
     unit: SerializeAsEntityLink[Unit] | dict = Field(default_factory=dict, alias="Unit")
+    """The unit of measure for the value, as an entity link. Serialized as ``Unit``."""
     property_data: PropertyData | None = Field(default=None, alias="PropertyData")
+    """The backing stored value / media record. Serialized as ``PropertyData``."""
     data_column_unique_id: str | None = Field(default=None, alias="dataColumnUniqueId")
+    """The unique ID of the data column this result captures. Serialized as ``dataColumnUniqueId``."""
     hidden: bool | None = Field(default=False)
+    """Whether the result is hidden. See Also --------"""
 
 
 class Trial(BaseAlbertModel):
@@ -192,32 +148,18 @@ class Trial(BaseAlbertModel):
 
     A trial holds the set of [`PropertyValue`][albert.resources.property_data.PropertyValue] results recorded for one row of
     data under a [`DataInterval`][albert.resources.property_data.DataInterval]. Multiple trials under the same interval are
-    repeat measurements of the same parameter setpoints.
-
-    Attributes
-    ----------
-    trial_number : int
-        The trial (row) number. Serialized as ``trialNo``.
-    visible_trial_number : int
-        The relative row number shown to users. Serialized as ``visibleTrialNo``.
-    void : bool
-        Whether this trial has been voided.
-    back_end_trial_number : str | None
-        Internal trial identifier. Serialized as ``backEndTrialNo``.
-    data_columns : list[PropertyValue]
-        The results measured in this trial, one per data column. Serialized as
-        ``DataColumns``.
-
-    See Also
-    --------
-    DataInterval : Groups the trials recorded for one interval combination.
-    """
+    repeat measurements of the same parameter setpoints."""
 
     trial_number: int = Field(alias="trialNo")
+    """The trial (row) number. Serialized as ``trialNo``."""
     visible_trial_number: int = Field(default=1, alias="visibleTrialNo")
+    """The relative row number shown to users. Serialized as ``visibleTrialNo``."""
     void: bool = Field(default=False)
+    """Whether this trial has been voided."""
     back_end_trial_number: str | None = Field(default=None, alias="backEndTrialNo")
+    """Internal trial identifier. Serialized as ``backEndTrialNo``."""
     data_columns: list[PropertyValue] = Field(default_factory=list, alias="DataColumns")
+    """The results measured in this trial, one per data column. Serialized as ``DataColumns``. See Also --------"""
 
 
 class DataInterval(BaseAlbertModel):
@@ -226,31 +168,16 @@ class DataInterval(BaseAlbertModel):
     An interval combination is one specific set of parameter setpoints, identified
     by an interval ID such as ``ROW1``, ``ROW1XROW2``, or the literal ``"default"``
     when the block has no intervalized parameters. Build the ID with
-    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
-
-    Attributes
-    ----------
-    interval_combination : str
-        The interval ID this data belongs to (e.g. ``"default"``, ``"ROW1"``,
-        ``"ROW1XROW2"``). Serialized as ``intervalCombination``.
-    void : bool
-        Whether this interval's data has been voided.
-    trials : list[Trial]
-        The replicate measurements recorded for this interval. Serialized as
-        ``Trials``.
-    name : str | None
-        An optional display name for the interval.
-
-    See Also
-    --------
-    Trial : One replicate measurement within this interval.
-    TaskData : Groups the intervals measured for a task under one data template.
-    """
+    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]."""
 
     interval_combination: str = Field(alias="intervalCombination")
+    """The interval ID this data belongs to (e.g. ``"default"``, ``"ROW1"``, ``"ROW1XROW2"``). Serialized as ``intervalCombination``."""
     void: bool = Field(default=False)
+    """Whether this interval's data has been voided."""
     trials: list[Trial] = Field(default_factory=list, alias="Trials")
+    """The replicate measurements recorded for this interval. Serialized as ``Trials``."""
     name: str | None = Field(default=None)
+    """An optional display name for the interval. See Also --------"""
 
 
 class TaskData(BaseAlbertModel):
@@ -258,40 +185,22 @@ class TaskData(BaseAlbertModel):
 
     Groups the interval data recorded for one block of a task. Returned as part of
     [`InventoryPropertyData`][albert.resources.property_data.InventoryPropertyData] (under ``task_property_data``), where
-    task-measured results roll up to the associated inventory item.
-
-    Attributes
-    ----------
-    task_id : TaskId
-        The task the data was measured on (format ``TAS...``). Serialized as ``id``.
-    task_name : str
-        The task name. Serialized as ``name``.
-    qc_task : bool | None
-        Whether the task is a QC task. Serialized as ``qcTask``.
-    initial_workflow : SerializeAsEntityLink[Workflow]
-        The workflow at the start of the task. Serialized as ``InitialWorkflow``.
-    finial_workflow : SerializeAsEntityLink[Workflow]
-        The workflow at task completion. Serialized as ``FinalWorkflow``.
-    data_template : SerializeAsEntityLink[DataTemplate]
-        The data template whose columns were measured (format ``DAT...``).
-        Serialized as ``Datatemplate``.
-    data : list[DataInterval]
-        The interval data recorded, one entry per interval combination. Serialized
-        as ``Data``.
-
-    See Also
-    --------
-    InventoryPropertyData : Container returning both task and non-task property data.
-    DataInterval : One interval combination's trials within this data.
-    """
+    task-measured results roll up to the associated inventory item."""
 
     task_id: TaskId = Field(alias="id")
+    """The task the data was measured on (format ``TAS...``). Serialized as ``id``."""
     task_name: str = Field(alias="name")
+    """The task name. Serialized as ``name``."""
     qc_task: bool | None = Field(alias="qcTask", default=None)
+    """Whether the task is a QC task. Serialized as ``qcTask``."""
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
+    """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
     finial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
+    """The workflow at task completion. Serialized as ``FinalWorkflow``."""
     data_template: SerializeAsEntityLink[DataTemplate] = Field(alias="Datatemplate")
+    """The data template whose columns were measured (format ``DAT...``). Serialized as ``Datatemplate``."""
     data: list[DataInterval] = Field(default_factory=list, alias="Data")
+    """The interval data recorded, one entry per interval combination. Serialized as ``Data``. See Also --------"""
 
 
 class CustomInventoryDataColumn(BaseAlbertModel):
@@ -308,22 +217,12 @@ class CustomData(BaseAlbertModel):
 
     Returned inside [`InventoryPropertyData`][albert.resources.property_data.InventoryPropertyData] under ``custom_property_data``.
     Represents a value entered against an inventory item independently of any task
-    measurement (for example a supplier-stated value), optionally tied to a lot.
-
-    Attributes
-    ----------
-    lot : SerializeAsEntityLink[Lot] | None | dict
-        The lot the value applies to, if any. Serialized as ``Lot``.
-    data_column : CustomInventoryDataColumn
-        The data column and its stored value. Serialized as ``DataColumn``.
-
-    See Also
-    --------
-    InventoryPropertyData : Container returning both task and non-task property data.
-    """
+    measurement (for example a supplier-stated value), optionally tied to a lot."""
 
     lot: SerializeAsEntityLink[Lot] | None | dict = Field(alias="Lot", default_factory=dict)
+    """The lot the value applies to, if any. Serialized as ``Lot``."""
     data_column: CustomInventoryDataColumn = Field(alias="DataColumn")
+    """The data column and its stored value. Serialized as ``DataColumn``. See Also --------"""
 
 
 class PropertyDataInventoryInformation(BaseAlbertModel):
@@ -343,31 +242,20 @@ class CheckPropertyData(BaseResource):
     [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data]
     and
     [`check_block_interval_for_data`][albert.collections.property_data.PropertyDataCollection.check_block_interval_for_data]
-    to report whether values have already been recorded for a given location.
-
-    Attributes
-    ----------
-    block_id : str | None
-        The block checked (format ``BLK...``). Serialized as ``blockId``.
-    interval_id : str | None
-        The interval combination checked. Serialized as ``interval``.
-    inventory_id : str | None
-        The inventory item checked (format ``INV...``). Serialized as ``inventoryId``.
-    lot_id : str | None
-        The lot checked, if any. Serialized as ``lotId``.
-    data_exists : bool | None
-        Whether property data exists at the checked location. Serialized as
-        ``dataExist``.
-    message : str | None
-        A human-readable message describing the result.
-    """
+    to report whether values have already been recorded for a given location."""
 
     block_id: str | None = Field(default=None, alias="blockId")
+    """The block checked (format ``BLK...``). Serialized as ``blockId``."""
     interval_id: str | None = Field(default=None, alias="interval")
+    """The interval combination checked. Serialized as ``interval``."""
     inventory_id: str | None = Field(default=None, alias="inventoryId")
+    """The inventory item checked (format ``INV...``). Serialized as ``inventoryId``."""
     lot_id: str | None = Field(default=None, alias="lotId")
+    """The lot checked, if any. Serialized as ``lotId``."""
     data_exists: bool | None = Field(default=None, alias="dataExist")
+    """Whether property data exists at the checked location. Serialized as ``dataExist``."""
     message: str | None = Field(default=None)
+    """A human-readable message describing the result."""
 
 
 class InventoryPropertyData(BaseResource):
@@ -376,30 +264,16 @@ class InventoryPropertyData(BaseResource):
     Returned by
     [`get_properties_on_inventory`][albert.collections.property_data.PropertyDataCollection.get_properties_on_inventory].
     Separates results that rolled up from tasks from custom values entered directly
-    on the item.
-
-    Attributes
-    ----------
-    inventory_id : str
-        The inventory item (format ``INV...``). Serialized as ``inventoryId``.
-    inventory_name : str | None
-        The inventory item name. Serialized as ``inventoryName``.
-    task_property_data : list[TaskData]
-        Results measured on tasks that roll up to this item. Serialized as ``Task``.
-    custom_property_data : list[CustomData]
-        Values entered directly on the item, independent of any task. Serialized as
-        ``NoTask``.
-
-    See Also
-    --------
-    TaskData : Task-measured results that roll up to the item.
-    CustomData : Non-task values stored on the item.
-    """
+    on the item."""
 
     inventory_id: str = Field(alias="inventoryId")
+    """The inventory item (format ``INV...``). Serialized as ``inventoryId``."""
     inventory_name: str | None = Field(default=None, alias="inventoryName")
+    """The inventory item name. Serialized as ``inventoryName``."""
     task_property_data: list[TaskData] = Field(default_factory=list, alias="Task")
+    """Results measured on tasks that roll up to this item. Serialized as ``Task``."""
     custom_property_data: list[CustomData] = Field(default_factory=list, alias="NoTask")
+    """Values entered directly on the item, independent of any task. Serialized as ``NoTask``. See Also --------"""
 
 
 class TaskPropertyData(BaseResource):
@@ -410,56 +284,34 @@ class TaskPropertyData(BaseResource):
     and
     [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties].
     Carries the interval/trial data along with the task's workflows and the
-    inventory item the results apply to.
-
-    Attributes
-    ----------
-    entity : Literal[DataEntity.TASK]
-        Always [`TASK`][albert.resources.property_data.DataEntity.TASK].
-    parent_id : str
-        Governs the ACL model: associates the property data with a controlling parent
-        (e.g. a task or inventory item). Serialized as ``parentId``.
-    task_id : str | None
-        The task (format ``TAS...``). Serialized as ``id``.
-    inventory : PropertyDataInventoryInformation | None
-        The inventory item and lot the data applies to. Serialized as ``Inventory``.
-    category : DataEntity | None
-        The data entity category.
-    initial_workflow : SerializeAsEntityLink[Workflow] | None
-        The workflow at the start of the task. Serialized as ``InitialWorkflow``.
-    finial_workflow : SerializeAsEntityLink[Workflow] | None
-        The workflow at task completion. Serialized as ``FinalWorkflow``.
-    data_template : SerializeAsEntityLink[DataTemplate] | None
-        The data template whose columns were measured (format ``DAT...``).
-        Serialized as ``DataTemplate``.
-    data : list[DataInterval]
-        The interval data recorded, one entry per interval combination. Serialized
-        as ``Data``.
-    block_id : str | None
-        The block the data belongs to (format ``BLK...``). Serialized as ``blockId``.
-
-    See Also
-    --------
-    DataInterval : One interval combination's trials within this data.
-    TaskPropertyCreate : Input model for writing new task property values.
-    """
+    inventory item the results apply to."""
 
     entity: Literal[DataEntity.TASK] = DataEntity.TASK
+    """Always [`TASK`][albert.resources.property_data.DataEntity.TASK]."""
     parent_id: str = Field(..., alias="parentId")
+    """Governs the ACL model: associates the property data with a controlling parent (e.g. a task or inventory item). Serialized as ``parentId``."""
     task_id: str | None = Field(default=None, alias="id")
+    """The task (format ``TAS...``). Serialized as ``id``."""
     inventory: PropertyDataInventoryInformation | None = Field(default=None, alias="Inventory")
+    """The inventory item and lot the data applies to. Serialized as ``Inventory``."""
     category: DataEntity | None = Field(default=None)
+    """The data entity category."""
     initial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
         default=None, alias="InitialWorkflow"
     )
+    """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
     finial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
         default=None, alias="FinalWorkflow"
     )
+    """The workflow at task completion. Serialized as ``FinalWorkflow``."""
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
         default=None, alias="DataTemplate"
     )
+    """The data template whose columns were measured (format ``DAT...``). Serialized as ``DataTemplate``."""
     data: list[DataInterval] = Field(default_factory=list, alias="Data")
+    """The interval data recorded, one entry per interval combination. Serialized as ``Data``."""
     block_id: str | None = Field(alias="blockId", default=None)
+    """The block the data belongs to (format ``BLK...``). Serialized as ``blockId``. See Also --------"""
 
 
 class BulkPropertyDataColumn(BaseAlbertModel):
@@ -467,19 +319,7 @@ class BulkPropertyDataColumn(BaseAlbertModel):
 
     A simple, tabular representation of one column's data used for bulk loading.
     Collected into a [`BulkPropertyData`][albert.resources.property_data.BulkPropertyData] (one entry per column) and consumed by
-    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
-
-    Attributes
-    ----------
-    data_column_name : str
-        The name of the data column (case sensitive).
-    data_series : list[str]
-        The values, in order of row number, for the data column.
-
-    See Also
-    --------
-    BulkPropertyData : Groups the columns of a block for bulk loading.
-    """
+    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties]."""
 
     data_column_name: str = Field(
         default=None, description="The name of the data column (case sensitive)."
@@ -517,17 +357,7 @@ class BulkPropertyData(BaseAlbertModel):
 
         # Or build from a DataFrame (values are coerced to strings)
         bulk = BulkPropertyData.from_dataframe(pd.DataFrame({"Viscosity": [1.1, 1.2]}))
-        ```
-
-    Attributes
-    ----------
-    columns : list[BulkPropertyDataColumn]
-        The columns of data in the block.
-
-    See Also
-    --------
-    BulkPropertyDataColumn : One column's row values.
-    """
+        ```"""
 
     columns: list[BulkPropertyDataColumn] = Field(
         default_factory=list,
@@ -580,20 +410,10 @@ class ImagePropertyValue(BaseAlbertModel):
         from albert.resources.property_data import ImagePropertyValue
 
         image = ImagePropertyValue(file_path="results/sample.png")
-        ```
-
-    Attributes
-    ----------
-    file_path : str | Path
-        Local path to the image file to upload.
-
-    See Also
-    --------
-    TaskPropertyCreate : Uses this as its ``value`` for image data columns.
-    CurvePropertyValue : The equivalent input for curve data columns.
-    """
+        ```"""
 
     file_path: str | Path
+    """Local path to the image file to upload. See Also --------"""
 
 
 class CurvePropertyValue(BaseAlbertModel):
@@ -608,26 +428,14 @@ class CurvePropertyValue(BaseAlbertModel):
         from albert.resources.property_data import CurvePropertyValue
 
         curve = CurvePropertyValue(file_path="results/dsc_curve.csv")
-        ```
-
-    Attributes
-    ----------
-    file_path : str | Path
-        Local path to the CSV file containing curve data.
-    mode : ImportMode
-        Import mode for the curve data. Defaults to ``ImportMode.CSV``.
-    field_mapping : dict[str, str] | None
-        Optional mapping from CSV headers to curve result identifiers.
-
-    See Also
-    --------
-    TaskPropertyCreate : Uses this as its ``value`` for curve data columns.
-    ImagePropertyValue : The equivalent input for image data columns.
-    """
+        ```"""
 
     file_path: str | Path
+    """Local path to the CSV file containing curve data."""
     mode: ImportMode = ImportMode.CSV
+    """Import mode for the curve data. Defaults to ``ImportMode.CSV``."""
     field_mapping: dict[str, str] | None = None
+    """Optional mapping from CSV headers to curve result identifiers. See Also --------"""
 
 
 class ImagePropertyValuePayload(BaseAlbertModel):
@@ -653,22 +461,12 @@ class TaskDataColumn(BaseAlbertModel):
     Identifies which data column a value targets. Used inside
     [`TaskPropertyCreate`][albert.resources.property_data.TaskPropertyCreate] to say which column of a block a value belongs to;
     the identifiers are typically read off an existing block returned by
-    [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties].
-
-    Attributes
-    ----------
-    data_column_id : DataColumnId
-        The data column (format ``DAC...``). Serialized as ``id``.
-    column_sequence : str | None
-        The column's sequence identifier within the block. Serialized as ``columnId``.
-
-    See Also
-    --------
-    TaskPropertyCreate : Uses this to target a value at a specific data column.
-    """
+    [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]."""
 
     data_column_id: DataColumnId = Field(alias="id")
+    """The data column (format ``DAC...``). Serialized as ``id``."""
     column_sequence: str | None = Field(default=None, alias="columnId")
+    """The column's sequence identifier within the block. Serialized as ``columnId``. See Also --------"""
 
 
 class TaskDataColumnValue(TaskDataColumn):
@@ -707,22 +505,12 @@ class InventoryDataColumn(BaseAlbertModel):
         from albert.resources.property_data import InventoryDataColumn
 
         prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
-        ```
-
-    Attributes
-    ----------
-    data_column_id : DataColumnId | None
-        The data column to write to (format ``DAC...``). Serialized as ``id``.
-    value : str | None
-        The value to store.
-
-    See Also
-    --------
-    InventoryPropertyDataCreate : Wraps these columns for the create request.
-    """
+        ```"""
 
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
+    """The data column to write to (format ``DAC...``). Serialized as ``id``."""
     value: str | None = Field(default=None)
+    """The value to store. See Also --------"""
 
 
 ########################## Task Property POST Classes ##########################
@@ -761,32 +549,6 @@ class TaskPropertyCreate(BaseResource):
             data_template=block.data_template,
         )
         ```
-
-    Attributes
-    ----------
-    entity : Literal[DataEntity.TASK]
-        The entity type, always [`TASK`][albert.resources.property_data.DataEntity.TASK].
-    interval_combination : str
-        The interval combination to write to (e.g. ``"default"``, ``"ROW2"``,
-        ``"ROW4XROW2"``), found with
-        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]. Serialized as
-        ``intervalCombination``.
-    data_column : TaskDataColumn
-        The data column to write to. Serialized as ``DataColumns``.
-    value : str | int | float | ImagePropertyValue | CurvePropertyValue | None
-        The value to store. Use [`ImagePropertyValue`][albert.resources.property_data.ImagePropertyValue] for image data columns or
-        [`CurvePropertyValue`][albert.resources.property_data.CurvePropertyValue] for curve data columns; numeric values are coerced
-        to strings.
-    trial_number : int
-        The trial (row) number. Supply an existing trial number to write to it; leave
-        unset to create a new trial. Serialized as ``trialNo``.
-    data_template : SerializeAsEntityLink[DataTemplate]
-        The data template the value belongs to (format ``DAT...``). Required.
-        Serialized as ``DataTemplate``.
-    visible_trial_number : int | None
-        The relative row number, letting you pass multiple rows of data at once.
-        Defaults from ``trial_number`` when unset. Serialized as ``visibleTrialNo``.
-
     Notes
     -----
     - Use ``Workflow.get_interval_id(parameter_values={"name1": "value1", ...})`` to
@@ -880,25 +642,10 @@ class PropertyDataPatchDatum(PatchDatum):
             new_value="1.5",
             old_value="1.2",
         )
-        ```
-
-    Attributes
-    ----------
-    property_column_id : DataColumnId | PropertyDataId
-        The property data record (``PTD...``) or data column (``DAC...``) to patch.
-        Serialized as ``id``.
-    operation : str
-        The patch operation to perform (see
-        [`PatchOperation`][albert.core.shared.models.patch.PatchOperation]).
-    attribute : str
-        The attribute to change (e.g. ``"value"``).
-    new_value : Any | None
-        The new value. Serialized as ``newValue``.
-    old_value : Any | None
-        The previous value. Serialized as ``oldValue``.
-    """
+        ```"""
 
     property_column_id: DataColumnId | PropertyDataId = Field(alias="id")
+    """The property data record (``PTD...``) or data column (``DAC...``) to patch. Serialized as ``id``."""
 
 
 class InventoryPropertyDataCreate(BaseResource):
@@ -908,31 +655,18 @@ class InventoryPropertyDataCreate(BaseResource):
     [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
     (one data column per request) and returned to report the registered value. Most
     users pass [`InventoryDataColumn`][albert.resources.property_data.InventoryDataColumn] objects to that method rather than
-    constructing this directly.
-
-    Attributes
-    ----------
-    entity : Literal[DataEntity.INVENTORY]
-        Always [`INVENTORY`][albert.resources.property_data.DataEntity.INVENTORY].
-    inventory_id : InventoryId
-        The inventory item (format ``INV...``). Serialized as ``parentId``.
-    data_columns : list[InventoryDataColumn]
-        The property to write. At most one column per request. Serialized as
-        ``DataColumn``.
-    status : PropertyDataStatus | None
-        The outcome status reported by the API.
-
-    See Also
-    --------
-    InventoryDataColumn : The data column + value to write.
-    """
+    constructing this directly."""
 
     entity: Literal[DataEntity.INVENTORY] = Field(default=DataEntity.INVENTORY)
+    """Always [`INVENTORY`][albert.resources.property_data.DataEntity.INVENTORY]."""
     inventory_id: InventoryId = Field(alias="parentId")
+    """The inventory item (format ``INV...``). Serialized as ``parentId``."""
     data_columns: list[InventoryDataColumn] = Field(
         default_factory=list, max_length=1, alias="DataColumn"
     )
+    """The property to write. At most one column per request. Serialized as ``DataColumn``."""
     status: PropertyDataStatus | None = Field(default=None)
+    """The outcome status reported by the API. See Also --------"""
 
 
 ####### Property Data Search #######
@@ -968,58 +702,34 @@ class PropertyDataSearchItem(BaseAlbertModel):
     Yielded by
     [`search`][albert.collections.property_data.PropertyDataCollection.search]. Flattens
     a single measured result together with the workflow setpoints, data template, and
-    the task/inventory/project it belongs to.
-
-    Attributes
-    ----------
-    id : PropertyDataId
-        The property data record ID (format ``PTD...``).
-    category : str
-        The data entity category (e.g. task or inventory).
-    workflow : list[WorkflowItem]
-        The parameter setpoints in effect for this result.
-    result : PropertyDataResult
-        The measured result value.
-    data_template_id : DataTemplateId
-        The data template (format ``DAT...``). Serialized as ``dataTemplateId``.
-    workflow_name : str | None
-        The workflow name. Serialized as ``workflowName``.
-    parent_id : TaskId | InventoryId
-        The entity the data was recorded on. Serialized as ``parentId``.
-    data_template_name : str
-        The data template name. Serialized as ``dataTemplateName``.
-    created_by : str
-        The user who created the record. Serialized as ``createdBy``.
-    inventory_id : InventoryId
-        The inventory item the result applies to (format ``INV...``). Serialized as
-        ``inventoryId``.
-    project_id : ProjectId
-        The project the data belongs to (format ``PRO...``). Serialized as
-        ``projectId``.
-    workflow_id : WorkflowId
-        The workflow (format ``WFL...``). Serialized as ``workflowId``.
-    task_id : TaskId | None
-        The task the result was measured on, if any (format ``TAS...``). Serialized as
-        ``taskId``.
-
-    See Also
-    --------
-    PropertyDataResult : The measured result carried by this item.
-    """
+    the task/inventory/project it belongs to."""
 
     id: PropertyDataId
+    """The property data record ID (format ``PTD...``)."""
     category: str
+    """The data entity category (e.g. task or inventory)."""
     workflow: list[WorkflowItem]
+    """The parameter setpoints in effect for this result."""
     result: PropertyDataResult
+    """The measured result value."""
     data_template_id: DataTemplateId = Field(..., alias="dataTemplateId")
+    """The data template (format ``DAT...``). Serialized as ``dataTemplateId``."""
     workflow_name: str | None = Field(default=None, alias="workflowName")
+    """The workflow name. Serialized as ``workflowName``."""
     parent_id: TaskId | InventoryId = Field(..., alias="parentId")
+    """The entity the data was recorded on. Serialized as ``parentId``."""
     data_template_name: str = Field(..., alias="dataTemplateName")
+    """The data template name. Serialized as ``dataTemplateName``."""
     created_by: str = Field(..., alias="createdBy")
+    """The user who created the record. Serialized as ``createdBy``."""
     inventory_id: InventoryId = Field(..., alias="inventoryId")
+    """The inventory item the result applies to (format ``INV...``). Serialized as ``inventoryId``."""
     project_id: ProjectId = Field(..., alias="projectId")
+    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``."""
     workflow_id: WorkflowId = Field(..., alias="workflowId")
+    """The workflow (format ``WFL...``). Serialized as ``workflowId``."""
     task_id: TaskId | None = Field(default=None, alias="taskId")
+    """The task the result was measured on, if any (format ``TAS...``). Serialized as ``taskId``. See Also --------"""
 
 
 ReturnScope = Literal["task", "block", "none"]

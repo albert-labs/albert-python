@@ -128,40 +128,10 @@ class ReportTemplate(BaseResource):
     filters and its default column, chart, and metadata state. Templates are
     retrieved through
     [`ReportTemplateCollection`][albert.collections.report_templates.ReportTemplateCollection] and are
-    grouped by [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory] and [`ReportTemplateSubCategory`][albert.resources.report_templates.ReportTemplateSubCategory].
-
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the report template. Set when the template is retrieved
-        from Albert.
-    name : str
-        The name of the report template (1 to 255 characters).
-    description : str | None
-        A description of the report template (maximum 1000 characters).
-    filter_options : FilterOptions | None
-        The filters available when running the template.
-    filter_state : dict | None
-        The template's default filter state.
-    meta_data_state : dict | None
-        The template's default metadata state.
-    chart_model_state : list | None
-        The template's default chart state.
-    column_state : list | None
-        The template's default column state.
-    sp_name : str
-        The stored-procedure name backing the report.
-    category : ReportTemplateCategory
-        The category of the report template.
-    sub_category : ReportTemplateSubCategory | None
-        The subject-area sub-category of the report template.
-    custom_fields : list[str] | None
-        The names of custom fields associated with the report template.
-    field_mapping : list[FieldMapping] | None
-        The mapping between report fields and their display names.
-    """
+    grouped by [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory] and [`ReportTemplateSubCategory`][albert.resources.report_templates.ReportTemplateSubCategory]."""
 
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the report template. Set when the template is retrieved from Albert."""
     name: str = Field(..., min_length=1, max_length=255, description="Name of the report template")
     description: str | None = Field(
         default=None, max_length=1000, description="Description of the report template"

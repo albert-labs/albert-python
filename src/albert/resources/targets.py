@@ -48,35 +48,21 @@ class ComparisonOperator(str, Enum):
 
 
 class NumericRange(BaseAlbertModel):
-    """An inclusive numeric range, used with the ``between`` operator.
-
-    Attributes
-    ----------
-    min : float
-        The lower bound of the range.
-    max : float
-        The upper bound of the range.
-    """
+    """An inclusive numeric range, used with the ``between`` operator."""
 
     min: float
+    """The lower bound of the range."""
     max: float
+    """The upper bound of the range."""
 
 
 class Criterion(BaseAlbertModel):
-    """A target value constraint: an operator paired with a value to compare against.
-
-    Attributes
-    ----------
-    operator : ComparisonOperator
-        How the measured value is compared against ``value``.
-    value : NumericRange or str or float or list
-        The value being compared against. Use a [`NumericRange`][albert.resources.targets.NumericRange] with the
-        ``between`` operator, a list with the ``in-set`` operator, or a single
-        number/string for the scalar operators.
-    """
+    """A target value constraint: an operator paired with a value to compare against."""
 
     operator: ComparisonOperator
+    """How the measured value is compared against ``value``."""
     value: NumericRange | str | float | list
+    """The value being compared against. Use a [`NumericRange`][albert.resources.targets.NumericRange] with the ``between`` operator, a list with the ``in-set`` operator, or a single number/string for the scalar operators."""
 
 
 class TargetType(str, Enum):
@@ -96,36 +82,20 @@ class TargetParameter(BaseAlbertModel):
 
     Targets can be scoped to specific parameter settings (for example, "at 25 °C").
     Each ``TargetParameter`` names a parameter and, optionally, the value it must
-    take for the target to apply.
-
-    Attributes
-    ----------
-    id : str
-        The parameter ID (format ``PRM...``).
-    parameter_group_id : str or None
-        The parameter group ID (format ``PRG...``) this parameter belongs to.
-    category : ParameterCategory
-        The category of the parameter.
-    unit_id : str or None
-        The unit ID (format ``UNI...``) for this parameter's value.
-    value : Criterion or None
-        The value condition. Accepts an operator/value pair using one of the
-        operators ``eq``, ``gte``, ``lte``, ``between``, ``in-set``.
-        For ``between``, the value must be ``{"min": ..., "max": ...}``.
-        For ``in-set``, the value must be a list.
-        Legacy bare scalars (numeric or string) are coerced on read: a numeric
-        scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes
-        ``{"operator": "in-set", "value": [<s>]}``.
-    sequence : str
-        The ordering position of this parameter.
-    """
+    take for the target to apply."""
 
     id: ParameterId
+    """The parameter ID (format ``PRM...``)."""
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    """The parameter group ID (format ``PRG...``) this parameter belongs to."""
     category: ParameterCategory
+    """The category of the parameter."""
     unit_id: UnitId | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``) for this parameter's value."""
     value: Criterion | None = Field(default=None)
+    """The value condition. Accepts an operator/value pair using one of the operators ``eq``, ``gte``, ``lte``, ``between``, ``in-set``. For ``between``, the value must be ``{"min": ..., "max": ...}``. For ``in-set``, the value must be a list. Legacy bare scalars (numeric or string) are coerced on read: a numeric scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes ``{"operator": "in-set", "value": [<s>]}``."""
     sequence: str
+    """The ordering position of this parameter."""
 
     @field_validator("value", mode="before")
     @classmethod
@@ -169,44 +139,27 @@ class Target(BaseResource):
             target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
             is_required=True,
         )
-        ```
-
-    Attributes
-    ----------
-    id : str or None
-        The Albert ID of the target (format ``TAR...``). Set when the target is
-        retrieved from or created in Albert.
-    name : str
-        The name of the target.
-    type : TargetType
-        The kind of target (e.g. performance).
-    parent_id : str or None
-        The ID of the project (format ``PRO...``) this target belongs to. When
-        set, the target inherits its ACL (access control) policy from that project.
-    data_template_id : str
-        The ID of the data template (format ``DAT...``) whose property is targeted.
-    data_column_id : str
-        The ID of the data column (format ``DAC...``) being targeted.
-    unit_id : str or None
-        The unit ID (format ``UNI...``) for the target value.
-    parameters : list[TargetParameter] or None
-        Parameter conditions under which the target applies.
-    target_value : Criterion
-        The target value constraint (operator plus value).
-    is_required : bool
-        Whether meeting this target is required.
-    validation : list[dict] or None
-        Validation rules applied to the target value.
-    """
+        ```"""
 
     id: str | None = Field(default=None)
+    """The Albert ID of the target (format ``TAR...``). Set when the target is retrieved from or created in Albert."""
     name: str
+    """The name of the target."""
     type: TargetType
+    """The kind of target (e.g. performance)."""
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """The ID of the project (format ``PRO...``) this target belongs to. When set, the target inherits its ACL (access control) policy from that project."""
     data_template_id: DataTemplateId = Field(alias="dataTemplateId")
+    """The ID of the data template (format ``DAT...``) whose property is targeted."""
     data_column_id: DataColumnId = Field(alias="dataColumnId")
+    """The ID of the data column (format ``DAC...``) being targeted."""
     unit_id: UnitId | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``) for the target value."""
     parameters: list[TargetParameter] | None = Field(default=None)
+    """Parameter conditions under which the target applies."""
     target_value: Criterion = Field(alias="targetValue")
+    """The target value constraint (operator plus value)."""
     is_required: bool = Field(alias="isRequired")
+    """Whether meeting this target is required."""
     validation: list[dict] | None = Field(default=None)
+    """Validation rules applied to the target value."""

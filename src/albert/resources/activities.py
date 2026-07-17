@@ -65,64 +65,42 @@ class ActivityType(str, Enum):
 
 
 class ActivitySearchItemUser(BaseAlbertModel):
-    """The user associated with an [`ActivitySearchItem`][albert.resources.activities.ActivitySearchItem].
-
-    Attributes
-    ----------
-    name : str | None
-        The user's display name.
-    id : str | None
-        The user's Albert ID.
-    role : str | None
-        The user's role at the time of the activity.
-    user_class : str | None
-        The user's class value.
-    """
+    """The user associated with an [`ActivitySearchItem`][albert.resources.activities.ActivitySearchItem]."""
 
     name: str | None = Field(default=None)
+    """The user's display name."""
     id: str | None = Field(default=None)
+    """The user's Albert ID."""
     role: str | None = Field(default=None)
+    """The user's role at the time of the activity."""
     user_class: str | None = Field(default=None, alias="class")
+    """The user's class value."""
 
 
 class ActivitySearchItem(BaseAlbertModel):
     """A lightweight activity record returned by
-    [`search`][albert.collections.activities.ActivityCollection.search].
-
-    Attributes
-    ----------
-    action : str | None
-        The operation recorded (e.g. ``"read"`` or ``"write"``).
-    name : str | None
-        Display name of the entity the activity acted on.
-    pk : str | None
-        The internal partition key for the record.
-    object_class : str | None
-        The class of the entity the activity acted on.
-    logged_at : str | None
-        Timestamp when the activity was logged.
-    operation_id : str | None
-        The logged operation identifier.
-    object_id : str | None
-        The Albert ID of the entity the activity acted on.
-    object_type : str | None
-        The type of the entity the activity acted on.
-    activity_id : str | None
-        The unique ID of the activity record.
-    user : ActivitySearchItemUser | None
-        The user who performed the activity.
-    """
+    [`search`][albert.collections.activities.ActivityCollection.search]."""
 
     action: str | None = Field(default=None)
+    """The operation recorded (e.g. ``"read"`` or ``"write"``)."""
     name: str | None = Field(default=None)
+    """Display name of the entity the activity acted on."""
     pk: str | None = Field(default=None, alias="PK")
+    """The internal partition key for the record."""
     object_class: str | None = Field(default=None, alias="class")
+    """The class of the entity the activity acted on."""
     logged_at: str | None = Field(default=None, alias="loggedAt")
+    """Timestamp when the activity was logged."""
     operation_id: str | None = Field(default=None, alias="operationId")
+    """The logged operation identifier."""
     object_id: str | None = Field(default=None, alias="objectId")
+    """The Albert ID of the entity the activity acted on."""
     object_type: str | None = Field(default=None, alias="objectType")
+    """The type of the entity the activity acted on."""
     activity_id: str | None = Field(default=None, alias="activityId")
+    """The unique ID of the activity record."""
     user: ActivitySearchItemUser | None = Field(default=None)
+    """The user who performed the activity."""
 
 
 class Activity(BaseResource):
@@ -131,48 +109,31 @@ class Activity(BaseResource):
     Returned by [`get_all`][albert.collections.activities.ActivityCollection.get_all].
     Each record captures an action performed on an entity, together with metadata
     about where in the platform it occurred. Activities are produced by the
-    platform and are read-only.
-
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the activity record.
-    activity_id : str | None
-        The unique activity identifier.
-    action : str | None
-        The operation recorded (e.g. ``"read"`` or ``"write"``).
-    operation_id : str | None
-        The logged operation identifier.
-    data : dict | None
-        Free-form payload describing the change, when available.
-    env : str | None
-        The environment in which the activity was logged.
-    name : str | None
-        Display name of the entity the activity acted on.
-    module : str | None
-        The platform module the activity belongs to.
-    sub_module : str | None
-        The platform sub-module the activity belongs to.
-    uri : str | None
-        The resource URI associated with the activity.
-    uuid : str | None
-        The activity UUID.
-    expires_at : float | None
-        Expiry timestamp for the record, when applicable.
-    region : str | None
-        The region in which the activity was logged.
-    """
+    platform and are read-only."""
 
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the activity record."""
     activity_id: str | None = Field(default=None, alias="activityId")
+    """The unique activity identifier."""
     action: str | None = Field(default=None)
+    """The operation recorded (e.g. ``"read"`` or ``"write"``)."""
     operation_id: str | None = Field(default=None, alias="operationId")
+    """The logged operation identifier."""
     data: dict | None = Field(default=None)
+    """Free-form payload describing the change, when available."""
     env: str | None = Field(default=None)
+    """The environment in which the activity was logged."""
     name: str | None = Field(default=None)
+    """Display name of the entity the activity acted on."""
     module: str | None = Field(default=None)
+    """The platform module the activity belongs to."""
     sub_module: str | None = Field(default=None, alias="subModule")
+    """The platform sub-module the activity belongs to."""
     uri: str | None = Field(default=None)
+    """The resource URI associated with the activity."""
     uuid: str | None = Field(default=None)
+    """The activity UUID."""
     expires_at: float | None = Field(default=None, alias="expiresAt")
+    """Expiry timestamp for the record, when applicable."""
     region: str | None = Field(default=None)
+    """The region in which the activity was logged."""

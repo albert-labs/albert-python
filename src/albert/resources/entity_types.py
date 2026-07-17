@@ -108,72 +108,48 @@ class EntityCustomField(BaseAlbertModel):
 
     Links a defined [`CustomField`][albert.resources.custom_fields.CustomField] to an
     entity type and describes how it appears on that entity's form (where it
-    sits, whether it is hidden, its default value, and whether it is required).
-
-    Attributes
-    ----------
-    id : CustomFieldId
-        The ID of the linked custom field (format ``CTF...``).
-    name : str or None
-        Read-only name of the custom field.
-    section : FieldSection
-        Where the field is displayed on the form (top or bottom).
-    hidden : bool
-        Whether the field is hidden from the form.
-    default : str or float or EntityLink or None
-        The default value applied to the field, if any.
-    required : bool or None
-        Whether a value for the field is required.
-    """
+    sits, whether it is hidden, its default value, and whether it is required)."""
 
     id: CustomFieldId
+    """The ID of the linked custom field (format ``CTF...``)."""
     name: str | None = None
+    """Read-only name of the custom field."""
     section: FieldSection
+    """Where the field is displayed on the form (top or bottom)."""
     hidden: bool
+    """Whether the field is hidden from the form."""
     default: str | float | EntityLink | None = None
+    """The default value applied to the field, if any."""
     required: bool | None = None
+    """Whether a value for the field is required."""
 
 
 class EntityTypeStandardFieldVisibility(BaseAlbertModel):
     """Visibility settings for the built-in standard fields of an entity type.
 
     Controls whether the platform's standard Notes, Tags, and Due Date fields are
-    shown on the entity's form.
-
-    Attributes
-    ----------
-    notes : bool
-        Whether the Notes field is visible.
-    tags : bool
-        Whether the Tags field is visible.
-    due_date : bool
-        Whether the Due Date field is visible.
-    """
+    shown on the entity's form."""
 
     notes: bool = Field(alias="Notes")
+    """Whether the Notes field is visible."""
     tags: bool = Field(alias="Tags")
+    """Whether the Tags field is visible."""
     due_date: bool = Field(alias="DueDate")
+    """Whether the Due Date field is visible."""
 
 
 class EntityTypeStandardFieldRequired(BaseAlbertModel):
     """Required settings for the built-in standard fields of an entity type.
 
     Controls whether the platform's standard Notes, Tags, and Due Date fields
-    must be filled in on the entity's form.
-
-    Attributes
-    ----------
-    notes : bool
-        Whether the Notes field is required.
-    tags : bool
-        Whether the Tags field is required.
-    due_date : bool
-        Whether the Due Date field is required.
-    """
+    must be filled in on the entity's form."""
 
     notes: bool = Field(alias="Notes")
+    """Whether the Notes field is required."""
     tags: bool = Field(alias="Tags")
+    """Whether the Tags field is required."""
     due_date: bool = Field(alias="DueDate")
+    """Whether the Due Date field is required."""
 
 
 class EntityTypeSearchQueryStrings(BaseAlbertModel):
@@ -193,18 +169,12 @@ class EntityTypeSearchQueryStrings(BaseAlbertModel):
             DAT="customField1={customField1}&customField2={customField2}",
             PRG="customField1={customField1}&customField2={customField2}",
         )
-        ```
-
-    Attributes
-    ----------
-    DAT : str or None
-        Search string for Data Templates.
-    PRG : str or None
-        Search string for Parameter Groups.
-    """
+        ```"""
 
     DAT: str | None = None
+    """Search string for Data Templates."""
     PRG: str | None = None
+    """Search string for Parameter Groups."""
 
 
 class EntityType(BaseResource):
@@ -230,63 +200,42 @@ class EntityType(BaseResource):
             service=EntityServiceType.TASKS,
             category=EntityCategory.PROPERTY,
         )
-        ```
-
-    Attributes
-    ----------
-    id : EntityTypeId or None
-        The unique identifier for the entity type (format ``ETT...``). Assigned by
-        Albert when the entity type is created.
-    category : EntityCategory or None
-        The category the entity type belongs to. Required for ``tasks`` and
-        ``inventories`` services.
-    custom_category : str or None
-        A custom category name for the entity type.
-    label : str
-        The display label shown for the entity type.
-    service : EntityServiceType
-        The Albert service (entity family) this entity type applies to.
-    type : EntityTypeType
-        Whether the entity type is ``custom`` or ``system``. Defaults to
-        ``custom``.
-    prefix : str or None
-        The short prefix used for the IDs of entities of this type.
-    custom_fields : list[EntityCustomField] or None
-        The custom fields configured on this entity type.
-    standard_field_visibility : EntityTypeStandardFieldVisibility or None
-        Which standard fields (Notes, Tags, Due Date) are visible.
-    standard_field_required : EntityTypeStandardFieldRequired or None
-        Which standard fields (Notes, Tags, Due Date) are required.
-    template_based : bool or None
-        Whether this entity type is template-based. If True, users can only
-        instantiate it from a template.
-    locked_template : bool or None
-        Whether the template is locked. If True, users cannot edit the template.
-    search_query_string : EntityTypeSearchQueryStrings or None
-        Query strings used to find related Data Templates and Parameter Groups.
-    """
+        ```"""
 
     id: EntityTypeId | None = Field(alias="albertId", default=None)
+    """The unique identifier for the entity type (format ``ETT...``). Assigned by Albert when the entity type is created."""
     category: EntityCategory | None = None
+    """The category the entity type belongs to. Required for ``tasks`` and ``inventories`` services."""
     custom_category: str | None = Field(
         default=None, max_length=100, min_length=1, alias="customCategory"
     )
+    """A custom category name for the entity type."""
     label: str
+    """The display label shown for the entity type."""
     service: EntityServiceType
+    """The Albert service (entity family) this entity type applies to."""
     type: EntityTypeType = Field(default=EntityTypeType.CUSTOM)
+    """Whether the entity type is ``custom`` or ``system``. Defaults to ``custom``."""
     prefix: str | None = Field(default=None, max_length=3)
+    """The short prefix used for the IDs of entities of this type."""
     custom_fields: list[EntityCustomField] | None = Field(default=None, alias="customFields")
+    """The custom fields configured on this entity type."""
     standard_field_visibility: EntityTypeStandardFieldVisibility | None = Field(
         alias="standardFieldVisibility", default=None
     )
+    """Which standard fields (Notes, Tags, Due Date) are visible."""
     standard_field_required: EntityTypeStandardFieldRequired | None = Field(
         alias="standardFieldRequired", default=None
     )
+    """Which standard fields (Notes, Tags, Due Date) are required."""
     template_based: bool | None = Field(alias="templateBased", default=None)
+    """Whether this entity type is template-based. If True, users can only instantiate it from a template."""
     locked_template: bool | None = Field(alias="lockedTemplate", default=None)
+    """Whether the template is locked. If True, users cannot edit the template."""
     search_query_string: EntityTypeSearchQueryStrings | None = Field(
         alias="searchQueryString", default=None
     )
+    """Query strings used to find related Data Templates and Parameter Groups."""
 
     @model_validator(mode="after")
     def validate_category(self) -> EntityType:
@@ -321,33 +270,21 @@ class EntityLinkOption(EntityLink):
 
     Field options serialize their linked entities differently from a base
     [`EntityLink`][albert.core.shared.models.base.EntityLink]; this class handles that
-    alternate (de)serialization.
-
-    Attributes
-    ----------
-    id : str
-        The linked entity's ID.
-    name : str or None
-        The linked entity's display name.
-    """
+    alternate (de)serialization."""
 
     id: str = Field(alias="albertId")
+    """The linked entity's ID."""
     name: str | None = Field(default=None, exclude=False)
+    """The linked entity's display name."""
 
 
 class EntityTypeFieldOptions(BaseAlbertModel):
-    """The selectable options a rule can apply to a field.
-
-    Attributes
-    ----------
-    option_type : EntityTypeOptionType
-        The kind of option (string, list, or custom list).
-    values : list[str or EntityLinkOption or EntityLink] or None
-        The possible values for the option.
-    """
+    """The selectable options a rule can apply to a field."""
 
     option_type: EntityTypeOptionType = Field(alias="type")
+    """The kind of option (string, list, or custom list)."""
     values: list[str | EntityLinkOption | EntityLink] | None = None
+    """The possible values for the option."""
 
     # on init, if the values are EntityLink, convert them to EntityLinkOption
     def __init__(self, **data: Any):
@@ -360,30 +297,20 @@ class EntityTypeFieldOptions(BaseAlbertModel):
 
 
 class EntityTypeRuleAction(BaseAlbertModel):
-    """A change applied to a target field when a rule case is triggered.
-
-    Attributes
-    ----------
-    target_field_name : str
-        The name of the field this action affects.
-    target_field_id : CustomFieldId or None
-        The ID of the target custom field (format ``CTF...``), if known.
-    hidden : bool or None
-        Whether the target field is hidden.
-    required : bool or None
-        Whether the target field is required.
-    default : str or float or EntityLinkOption or EntityLink or None
-        The default value applied to the target field.
-    options : EntityTypeFieldOptions or None
-        The selectable options applied to the target field.
-    """
+    """A change applied to a target field when a rule case is triggered."""
 
     target_field_name: str = Field(alias="target_field")
+    """The name of the field this action affects."""
     target_field_id: CustomFieldId | None = None
+    """The ID of the target custom field (format ``CTF...``), if known."""
     hidden: bool | None = None
+    """Whether the target field is hidden."""
     required: bool | None = None
+    """Whether the target field is required."""
     default: str | float | EntityLinkOption | EntityLink | None = None
+    """The default value applied to the target field."""
     options: EntityTypeFieldOptions | None = None
+    """The selectable options applied to the target field."""
 
     # if an entity link is provided, convert it to an entity link option
     def __init__(self, **data: Any):
@@ -393,31 +320,19 @@ class EntityTypeRuleAction(BaseAlbertModel):
 
 
 class EntityTypeRuleTriggerCase(BaseAlbertModel):
-    """One trigger value and the actions to apply when it matches.
-
-    Attributes
-    ----------
-    value : str
-        The trigger field value that activates this case.
-    actions : list[EntityTypeRuleAction]
-        The actions to apply to target fields when this case is activated.
-    """
+    """One trigger value and the actions to apply when it matches."""
 
     value: str
+    """The trigger field value that activates this case."""
     actions: list[EntityTypeRuleAction]
+    """The actions to apply to target fields when this case is activated."""
 
 
 class EntityTypeRuleTrigger(BaseAlbertModel):
-    """The set of value cases evaluated for a rule.
-
-    Attributes
-    ----------
-    cases : list[EntityTypeRuleTriggerCase]
-        The cases evaluated against the trigger field's value; the matching case's
-        actions are applied.
-    """
+    """The set of value cases evaluated for a rule."""
 
     cases: list[EntityTypeRuleTriggerCase]
+    """The cases evaluated against the trigger field's value; the matching case's actions are applied."""
 
 
 class EntityTypeRule(BaseResource):
@@ -427,18 +342,11 @@ class EntityTypeRule(BaseResource):
     applies actions to other fields, such as showing, hiding, requiring, or
     setting default options. Rules are read and set via
     [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules] and
-    [`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules].
-
-    Attributes
-    ----------
-    id : RuleId or None
-        The unique identifier for the rule (format ``RUL...``).
-    custom_field_id : CustomFieldId
-        The ID of the trigger custom field the rule watches (format ``CTF...``).
-    trigger : EntityTypeRuleTrigger
-        The value cases that determine which actions are applied.
-    """
+    [`set_rules`][albert.collections.entity_types.EntityTypeCollection.set_rules]."""
 
     id: RuleId | None = Field(default=None)
+    """The unique identifier for the rule (format ``RUL...``)."""
     custom_field_id: CustomFieldId = Field(alias="customFieldId")
+    """The ID of the trigger custom field the rule watches (format ``CTF...``)."""
     trigger: EntityTypeRuleTrigger = Field(alias="trigger")
+    """The value cases that determine which actions are applied."""

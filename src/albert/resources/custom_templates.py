@@ -20,70 +20,41 @@ from albert.resources.users import User, UserClass
 
 
 class CustomTemplateInventoryLot(BaseAlbertModel):
-    """A lot reference within a custom template inventory entry.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the lot.
-    barcode : str | None
-        The barcode of the lot.
-    """
+    """A lot reference within a custom template inventory entry."""
 
     id: str
+    """The Albert ID of the lot."""
     barcode: str | None = None
+    """The barcode of the lot."""
 
 
 class DataTemplateInventory(EntityLink):
-    """An inventory item reference within a custom template, with batch and lot details.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the inventory item.
-    batch_size : float | None
-        The batch size to use for this inventory item.
-    sheet : list[Sheet | EntityLink] | None
-        Sheets associated with this inventory item in the template.
-    category : InventoryCategory | None
-        The inventory category of the item.
-    lots : list[CustomTemplateInventoryLot] | None
-        Lots associated with this inventory item in the template.
-    """
+    """An inventory item reference within a custom template, with batch and lot details."""
 
     batch_size: float | None = Field(default=None, alias="batchSize")
+    """The batch size to use for this inventory item."""
     sheet: list[Sheet | EntityLink] | None = Field(default=None)
+    """Sheets associated with this inventory item in the template."""
     category: InventoryCategory | None = Field(default=None)
+    """The inventory category of the item."""
     lots: list[CustomTemplateInventoryLot] | None = Field(default=None, alias="Lots")
+    """Lots associated with this inventory item in the template."""
 
 
 class DesignLink(EntityLink):
-    """A link to a worksheet design with its type.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the design.
-    type : DesignType
-        The design type (apps, products, results, or process).
-    """
+    """A link to a worksheet design with its type."""
 
     type: DesignType
+    """The design type (apps, products, results, or process)."""
 
 
 class TemplateEntityType(BaseAlbertModel):
-    """The entity type associated with a custom template.
-
-    Attributes
-    ----------
-    id : EntityTypeId | None
-        The Albert ID of the entity type.
-    custom_category : str | None
-        A custom category name for the entity type.
-    """
+    """The entity type associated with a custom template."""
 
     id: EntityTypeId | None = Field(default=None)
+    """The Albert ID of the entity type."""
     custom_category: str | None = Field(default=None, alias="customCategory")
+    """A custom category name for the entity type."""
 
 
 class TemplateCategory(str, Enum):
@@ -167,64 +138,41 @@ class JobStatus(str, Enum):
 
 
 class SamInput(BaseResource):
-    """An input parameter for a SAM (Sample Analysis Module) configuration.
-
-    Attributes
-    ----------
-    value : str | None
-        The value of the input parameter.
-    unit : str | None
-        The unit of the input parameter.
-    name : str
-        The name of the input parameter.
-    """
+    """An input parameter for a SAM (Sample Analysis Module) configuration."""
 
     value: str | None = Field(alias="Value", default=None)
+    """The value of the input parameter."""
     unit: str | None = Field(alias="Unit", default=None)
+    """The unit of the input parameter."""
     name: str = Field(alias="Name")
+    """The name of the input parameter."""
 
 
 class SamConfig(BaseResource):
-    """A SAM (Sample Analysis Module) machine configuration.
-
-    Attributes
-    ----------
-    configuration_name : str
-        The name of the configuration.
-    configurationId : str
-        The identifier of the configuration.
-    machineId : str | None
-        The identifier of the machine.
-    input : list[SamInput] | None
-        The input parameters for this configuration.
-    job_status : JobStatus | None
-        The status of the SAM job.
-    """
+    """A SAM (Sample Analysis Module) machine configuration."""
 
     configuration_name: str = Field(alias="configurationName")
+    """The name of the configuration."""
     configurationId: str
+    """The identifier of the configuration."""
     machineId: str | None = Field(default=None)
+    """The identifier of the machine."""
     input: list[SamInput] | None = Field(default=None)
+    """The input parameters for this configuration."""
     job_status: JobStatus | None = Field(default=None, alias="status")
+    """The status of the SAM job."""
 
 
 class Workflow(BaseResource):
-    """A workflow reference within a custom template.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the workflow.
-    name : str | None
-        The name of the workflow.
-    sam_config : list[SamConfig] | None
-        SAM configurations associated with this workflow, if any.
-    """
+    """A workflow reference within a custom template."""
 
     id: str
+    """The Albert ID of the workflow."""
     name: str | None = Field(default=None)
+    """The name of the workflow."""
     # Some workflows may have SamConfig
     sam_config: list[SamConfig] | None = Field(default=None, alias="SamConfig")
+    """SAM configurations associated with this workflow, if any."""
 
 
 # TODO: once DTs are done allow a list of DTs with the correct field_serializer
@@ -333,18 +281,12 @@ ACLEntry = Annotated[TeamACL | OwnerACL | MemberACL | ViewerACL, Field(discrimin
 
 
 class TemplateACL(BaseResource):
-    """Access control settings for a custom template.
-
-    Attributes
-    ----------
-    fgclist : list[ACLEntry]
-        The list of access control entries (team, owner, member, viewer).
-    acl_class : str | None
-        The default access class for the template.
-    """
+    """Access control settings for a custom template."""
 
     fgclist: list[ACLEntry] = Field(default=None)
+    """The list of access control entries (team, owner, member, viewer)."""
     acl_class: str | None = Field(default=None, alias="class")
+    """The default access class for the template."""
 
 
 class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
@@ -364,43 +306,26 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
             name="Standard Property Task",
             category=TemplateCategory.PROPERTY,
         )
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the template.
-    id : CustomTemplateId or None
-        The Custom Template ID (format ``CTP...``). Set when the template is
-        retrieved from or created in Albert.
-    category : TemplateCategory
-        The kind of entity the template configures. Defaults to
-        ``TemplateCategory.GENERAL``.
-    metadata : dict[str, MetadataItem] or None
-        Metadata values for the template. Allowed metadata keys are those defined
-        as Custom Fields (see
-        [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection]).
-    data : CustomTemplateData or None
-        The category-specific configuration the template applies.
-    entity_type : TemplateEntityType or None
-        The entity type associated with the template.
-    locked : bool or None
-        Whether the template is locked when loaded in the UI.
-    team : list[TeamACL] or None
-        The teams associated with the template.
-    acl : TemplateACL or None
-        The access-control list governing who can use the template.
-    """
+        ```"""
 
     name: str
+    """The name of the template."""
     id: CustomTemplateId | None = Field(default=None, alias="albertId")
+    """The Custom Template ID (format ``CTP...``). Set when the template is retrieved from or created in Albert."""
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
+    """The kind of entity the template configures. Defaults to ``TemplateCategory.GENERAL``."""
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+    """Metadata values for the template. Allowed metadata keys are those defined as Custom Fields (see [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection])."""
     data: CustomTemplateData | None = Field(default=None, alias="Data")
+    """The category-specific configuration the template applies."""
     entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
+    """The entity type associated with the template."""
     locked: bool | None = Field(default=None)
+    """Whether the template is locked when loaded in the UI."""
     team: list[TeamACL] | None = Field(default_factory=list)
+    """The teams associated with the template."""
     acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
+    """The access-control list governing who can use the template."""
 
     @model_validator(mode="before")  # Must happen before construction so the data are captured
     @classmethod
@@ -445,39 +370,25 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
     this is a partially populated view of a template optimized for fast lookups.
     Hydrate it (or call
     [`get_by_id`][albert.collections.custom_templates.CustomTemplatesCollection.get_by_id])
-    to obtain the full [`CustomTemplate`][albert.resources.custom_templates.CustomTemplate].
-
-    Attributes
-    ----------
-    name : str
-        The name of the template.
-    id : CustomTemplateId
-        The Custom Template ID (format ``CTP...``).
-    created_by_name : str
-        The display name of the user who created the template.
-    created_at : str
-        When the template was created.
-    category : str or None
-        The template category.
-    status : Status or None
-        The template's status.
-    resource_class : SecurityClass or None
-        The security classification of the template.
-    data : CustomTemplateSearchItemData or None
-        Partial template data included in search results.
-    acl : list[CustomTemplateSearchItemACL] or None
-        The access-control entries on the template.
-    team : list[CustomTemplateSearchItemTeam] or None
-        The teams associated with the template.
-    """
+    to obtain the full [`CustomTemplate`][albert.resources.custom_templates.CustomTemplate]."""
 
     name: str
+    """The name of the template."""
     id: CustomTemplateId = Field(alias="albertId")
+    """The Custom Template ID (format ``CTP...``)."""
     created_by_name: str = Field(..., alias="createdByName")
+    """The display name of the user who created the template."""
     created_at: str = Field(..., alias="createdAt")
+    """When the template was created."""
     category: str | None = None
+    """The template category."""
     status: Status | None = None
+    """The template's status."""
     resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
+    """The security classification of the template."""
     data: CustomTemplateSearchItemData | None = None
+    """Partial template data included in search results."""
     acl: list[CustomTemplateSearchItemACL] | None = None
+    """The access-control entries on the template."""
     team: list[CustomTemplateSearchItemTeam] | None = None
+    """The teams associated with the template."""

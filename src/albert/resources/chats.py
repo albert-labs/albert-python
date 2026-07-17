@@ -160,64 +160,36 @@ class ChatSession(BaseResource):
         from albert.resources.chats import ChatSession
 
         session = ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
-        ```
-
-    Attributes
-    ----------
-    id : str | None
-        The session identifier assigned by Albert. Set once the session is created
-        or retrieved.
-    name : str
-        The display name of the session. Required.
-    parent_id : str | None
-        The [`ChatFolder`][albert.resources.chats.ChatFolder] this session is filed under, if any. Serialized as
-        ``parentId``.
-    source_session_id : str
-        An external identifier that links this session to a source system.
-        Required. Serialized as ``sourceSessionId``.
-    last_message_at : str | None
-        ISO 8601 timestamp of the most recent message in the session. Read from
-        the server. Serialized as ``lastMessageAt``.
-
-    See Also
-    --------
-    albert.collections.chat_sessions.ChatSessionCollection : Create and manage sessions.
-    ChatMessage : The turns that make up a session.
-    ChatFolder : Folders that organize sessions.
-    """
+        ```"""
 
     id: str | None = Field(default=None)
+    """The session identifier assigned by Albert. Set once the session is created or retrieved."""
     name: str
+    """The display name of the session. Required."""
     parent_id: str | None = Field(default=None, alias="parentId")
+    """The [`ChatFolder`][albert.resources.chats.ChatFolder] this session is filed under, if any. Serialized as ``parentId``."""
     source_session_id: str = Field(alias="sourceSessionId")
+    """An external identifier that links this session to a source system. Required. Serialized as ``sourceSessionId``."""
     last_message_at: str | None = Field(default=None, alias="lastMessageAt")
+    """ISO 8601 timestamp of the most recent message in the session. Read from the server. Serialized as ``lastMessageAt``. See Also --------"""
 
 
 class ChatMessageAttachment(BaseAlbertModel):
     """A compact reference to a file attached to a chat message.
 
     Records which files arrived with a message so the transcript can render them.
-    Carries display metadata only, never file content or signed URLs.
-
-    Attributes
-    ----------
-    file_id : str
-        The attachment (ATT) ID of the file.
-    title : str
-        The file's display name.
-    kind : str
-        The file kind (e.g. ``pdf``, ``image``, ``workbook``, ``csv``).
-    size_bytes : int | None
-        The file size in bytes.
-    parts_summary : str | None
-        A human-readable description of the file's structure (e.g. ``"34 pages"``).
-    """
+    Carries display metadata only, never file content or signed URLs."""
 
     file_id: str = Field(alias="fileId")
+    """The attachment (ATT) ID of the file."""
     title: str
+    """The file's display name."""
     kind: str
+    """The file kind (e.g. ``pdf``, ``image``, ``workbook``, ``csv``)."""
     size_bytes: int | None = Field(default=None, alias="sizeBytes")
+    """The file size in bytes."""
     parts_summary: str | None = Field(default=None, alias="partsSummary")
+    """A human-readable description of the file's structure (e.g. ``"34 pages"``)."""
 
 
 class ChatMessage(BaseResource):
@@ -246,90 +218,46 @@ class ChatMessage(BaseResource):
             role=ChatRole.USER,
             content="What raw materials contain titanium dioxide?",
         )
-        ```
-
-    Attributes
-    ----------
-    id : str | None
-        The message identifier assigned by Albert.
-    source_request_id : str | None
-        Client-generated request trace identifier that groups the components of one
-        turn. Auto-generated on create when not set. Serialized as ``sourceRequestId``.
-    sequence : str | None
-        Zero-padded position of this component within the session (e.g. ``"000"``,
-        ``"001"``).
-    component_type : ChatComponentType
-        The kind of component this message carries (e.g. text, image, reasoning
-        block). Required. Serialized as ``componentType``.
-    user_type : ChatUserType
-        Whether the message originates from a person or from Albert. Required.
-        Serialized as ``userType``.
-    role : ChatRole
-        The LLM conversation role (user or assistant). Required.
-    content : str | dict[str, Any]
-        The component's payload, shaped by ``component_type``: a string for text or
-        a free-form object for richer components. Required. Serialized as ``Content``.
-    parent_id : str | None
-        The [`ChatSession`][albert.resources.chats.ChatSession] this message belongs to. Present in retrieved
-        messages; on create it is taken from the URL path. Serialized as ``parentId``.
-    component_id : str | None
-        The component instance identifier. Serialized as ``componentId``.
-    parent_request_id : str | None
-        The source request ID of the parent turn, for branched conversations.
-        Serialized as ``parentRequestId``.
-    branch_index : int | None
-        The branch index, for branched conversations. Serialized as ``branchIndex``.
-    span_id : str | None
-        A span/trace identifier. Serialized as ``spanId``.
-    is_visible : bool | None
-        Whether the component is shown in the UI. Serialized as ``isVisible``.
-    display_feedback_component : bool | None
-        Whether the feedback UI is shown for this message. Serialized as
-        ``displayFeedbackComponent``.
-    value : list[dict] | None
-        api-chat storage/history metadata for the message rows grouped under one
-        message ID (revision records, e.g. ``{ts: <epoch>}``). This is NOT the
-        component payload; the payload is in ``content``. Do not treat ``value``
-        as a general-purpose extra-data field.
-    page_context : PageContext | None
-        The Albert page the user was viewing when they sent the message. Serialized
-        as ``pageContext``.
-    attachments : list[ChatMessageAttachment] | None
-        Files the user attached to this message, for display in the transcript.
-    plan_action : dict[str, Any] | None
-        Structured record of a plan approval or change request the user submitted
-        with this message (present on user rows that acted on a plan card).
-    permission_action : dict[str, Any] | None
-        Structured record of a permission decision the user submitted with this
-        message (present on user rows that responded to a permission card; an
-        allow_session row is the durable session grant).
-
-    See Also
-    --------
-    albert.collections.chat_messages.ChatMessageCollection : Add and manage messages.
-    ChatSession : The conversation a message belongs to.
-    ChatComponentType : The set of component types.
-    """
+        ```"""
 
     id: str | None = Field(default=None)
+    """The message identifier assigned by Albert."""
     source_request_id: str | None = Field(default=None, alias="sourceRequestId")
+    """Client-generated request trace identifier that groups the components of one turn. Auto-generated on create when not set. Serialized as ``sourceRequestId``."""
     sequence: str | None = Field(default=None)
+    """Zero-padded position of this component within the session (e.g. ``"000"``, ``"001"``)."""
     component_type: ChatComponentType = Field(alias="componentType")
+    """The kind of component this message carries (e.g. text, image, reasoning block). Required. Serialized as ``componentType``."""
     user_type: ChatUserType = Field(alias="userType")
+    """Whether the message originates from a person or from Albert. Required. Serialized as ``userType``."""
     role: ChatRole = Field(alias="role")
+    """The LLM conversation role (user or assistant). Required."""
     content: str | dict[str, Any] = Field(alias="Content")
+    """The component's payload, shaped by ``component_type``: a string for text or a free-form object for richer components. Required. Serialized as ``Content``."""
     parent_id: str | None = Field(default=None, alias="parentId")
+    """The [`ChatSession`][albert.resources.chats.ChatSession] this message belongs to. Present in retrieved messages; on create it is taken from the URL path. Serialized as ``parentId``."""
     component_id: str | None = Field(default=None, alias="componentId")
+    """The component instance identifier. Serialized as ``componentId``."""
     parent_request_id: str | None = Field(default=None, alias="parentRequestId")
+    """The source request ID of the parent turn, for branched conversations. Serialized as ``parentRequestId``."""
     branch_index: int | None = Field(default=None, alias="branchIndex")
+    """The branch index, for branched conversations. Serialized as ``branchIndex``."""
     span_id: str | None = Field(default=None, alias="spanId")
+    """A span/trace identifier. Serialized as ``spanId``."""
     is_visible: bool | None = Field(default=None, alias="isVisible")
+    """Whether the component is shown in the UI. Serialized as ``isVisible``."""
     display_feedback_component: bool | None = Field(default=None, alias="displayFeedbackComponent")
+    """Whether the feedback UI is shown for this message. Serialized as ``displayFeedbackComponent``."""
     value: list[dict] | None = Field(default=None)
+    """api-chat storage/history metadata for the message rows grouped under one message ID (revision records, e.g. ``{ts: <epoch>}``). This is NOT the component payload; the payload is in ``content``. Do not treat ``value`` as a general-purpose extra-data field."""
     page_context: PageContext | None = Field(default=None, alias="pageContext")
+    """The Albert page the user was viewing when they sent the message. Serialized as ``pageContext``."""
     attachments: list[ChatMessageAttachment] | None = Field(default=None)
+    """Files the user attached to this message, for display in the transcript."""
     plan_action: dict[str, Any] | None = Field(default=None, alias="planAction")
+    """Structured record of a plan approval or change request the user submitted with this message (present on user rows that acted on a plan card)."""
     permission_action: dict[str, Any] | None = Field(default=None, alias="permissionAction")
+    """Structured record of a permission decision the user submitted with this message (present on user rows that responded to a permission card; an allow_session row is the durable session grant). See Also --------"""
 
 
 class ChatFolder(BaseResource):
@@ -348,31 +276,16 @@ class ChatFolder(BaseResource):
         from albert.resources.chats import ChatFolder
 
         folder = ChatFolder(name="Formulation questions")
-        ```
-
-    Attributes
-    ----------
-    id : str | None
-        The folder identifier assigned by Albert. Set once the folder is created
-        or retrieved.
-    name : str
-        The display name of the folder. Required.
-    folder_type : ChatFolderType | None
-        Whether this is a top-level (root) or nested (child) folder. Serialized as
-        ``type``.
-    parent_id : str | None
-        The parent folder for a nested folder, if any. Serialized as ``parentId``.
-
-    See Also
-    --------
-    albert.collections.chat_folders.ChatFolderCollection : Create and manage folders.
-    ChatSession : The conversations a folder organizes.
-    """
+        ```"""
 
     id: str | None = Field(default=None)
+    """The folder identifier assigned by Albert. Set once the folder is created or retrieved."""
     name: str
+    """The display name of the folder. Required."""
     folder_type: ChatFolderType | None = Field(default=None, alias="type")
+    """Whether this is a top-level (root) or nested (child) folder. Serialized as ``type``."""
     parent_id: str | None = Field(default=None, alias="parentId")
+    """The parent folder for a nested folder, if any. Serialized as ``parentId``. See Also --------"""
 
 
 class ChatFlagType(str, Enum):
@@ -406,49 +319,28 @@ class ChatFlag(BaseResource):
     [`ChatMessage`][albert.resources.chats.ChatMessage], identified by its session, request, and sequence. Flags
     are returned by Albert; they are added and removed through
     [`ChatFlagCollection`][albert.collections.chat_flags.ChatFlagCollection]
-    (``client.chat_flags``) rather than constructed directly.
-
-    Attributes
-    ----------
-    source_request_id : str | None
-        Request/trace identifier of the flagged message. Serialized as
-        ``sourceRequestId``.
-    id : str | None
-        The flagged message's identifier.
-    parent_id : str | None
-        The [`ChatSession`][albert.resources.chats.ChatSession] the flagged message belongs to. Serialized as
-        ``parentId``.
-    type : ChatFlagType | None
-        The type of flag.
-    component_type : ChatComponentType | None
-        The component type of the flagged message. Serialized as ``componentType``.
-    sequence : str | None
-        Zero-padded sequence of the flagged message within the session.
-    starred : bool | None
-        Whether the message is starred.
-    requested : bool | None
-        Whether the message is marked as requested.
-    downloaded : bool | None
-        Whether the message is marked as downloaded.
-    hallucinated : bool | None
-        Whether the message is flagged as a hallucination.
-
-    See Also
-    --------
-    albert.collections.chat_flags.ChatFlagCollection : Add, remove, and list flags.
-    ChatFlagType : The set of flag types.
-    """
+    (``client.chat_flags``) rather than constructed directly."""
 
     source_request_id: str | None = Field(default=None, alias="sourceRequestId")
+    """Request/trace identifier of the flagged message. Serialized as ``sourceRequestId``."""
     id: str | None = Field(default=None)
+    """The flagged message's identifier."""
     parent_id: str | None = Field(default=None, alias="parentId")
+    """The [`ChatSession`][albert.resources.chats.ChatSession] the flagged message belongs to. Serialized as ``parentId``."""
     type: ChatFlagType | None = Field(default=None)
+    """The type of flag."""
     component_type: ChatComponentType | None = Field(default=None, alias="componentType")
+    """The component type of the flagged message. Serialized as ``componentType``."""
     sequence: str | None = Field(default=None)
+    """Zero-padded sequence of the flagged message within the session."""
     starred: bool | None = Field(default=None)
+    """Whether the message is starred."""
     requested: bool | None = Field(default=None)
+    """Whether the message is marked as requested."""
     downloaded: bool | None = Field(default=None)
+    """Whether the message is marked as downloaded."""
     hallucinated: bool | None = Field(default=None)
+    """Whether the message is flagged as a hallucination. See Also --------"""
 
 
 class ChatFlagsInMessage(BaseAlbertModel):
@@ -456,18 +348,11 @@ class ChatFlagsInMessage(BaseAlbertModel):
 
     Returned by
     [`get_by_message`][albert.collections.chat_flags.ChatFlagCollection.get_by_message] to
-    summarize which [`ChatFlagType`][albert.resources.chats.ChatFlagType] markers are set on a single message.
-
-    Attributes
-    ----------
-    source_request_id : str | None
-        Request/trace identifier of the message. Serialized as ``sourceRequestId``.
-    total : int | None
-        Total number of flags set on the message.
-    flags : list[ChatFlagType] | None
-        The flag types set on the message.
-    """
+    summarize which [`ChatFlagType`][albert.resources.chats.ChatFlagType] markers are set on a single message."""
 
     source_request_id: str | None = Field(default=None, alias="sourceRequestId")
+    """Request/trace identifier of the message. Serialized as ``sourceRequestId``."""
     total: int | None = None
+    """Total number of flags set on the message."""
     flags: list[ChatFlagType] | None = None
+    """The flag types set on the message."""

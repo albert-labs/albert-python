@@ -11,27 +11,18 @@ class BTDatasetReferences(BaseAlbertModel):
     """The Albert entities a Breakthrough dataset was assembled from.
 
     Records which projects, data columns, targets, and worksheets contributed the
-    data in a [`BTDataset`][albert.resources.btdataset.BTDataset], plus any filter applied when the data was pulled.
-
-    Attributes
-    ----------
-    project_ids : list of str
-        Identifiers of the projects the data was drawn from (format ``PRO...``).
-    data_column_ids : list of str or None
-        Identifiers of the data columns included (format ``DAC...``).
-    target_ids : list of str or None
-        Identifiers of the targets included (format ``TAR...``).
-    sheet_ids : list of str or None
-        Identifiers of the worksheets the data was drawn from (format ``WKS...``).
-    filter : dict or None
-        Free-form filter criteria applied when assembling the data.
-    """
+    data in a [`BTDataset`][albert.resources.btdataset.BTDataset], plus any filter applied when the data was pulled."""
 
     project_ids: list[str]
+    """Identifiers of the projects the data was drawn from (format ``PRO...``)."""
     data_column_ids: list[str] | None = Field(default=None)
+    """Identifiers of the data columns included (format ``DAC...``)."""
     target_ids: list[str] | None = Field(default=None)
+    """Identifiers of the targets included (format ``TAR...``)."""
     sheet_ids: list[str] | None = Field(default=None)
+    """Identifiers of the worksheets the data was drawn from (format ``WKS...``)."""
     filter: dict[str, Any] | None = Field(default=None)
+    """Free-form filter criteria applied when assembling the data."""
 
 
 class BTDataset(BaseResource):
@@ -55,31 +46,19 @@ class BTDataset(BaseResource):
         from albert.resources.btdataset import BTDataset
 
         dataset = BTDataset(name="Coatings training set")
-        ```
-
-    Attributes
-    ----------
-    name : str
-        Human-readable name of the dataset.
-    id : BTDatasetId or None
-        Unique identifier of the dataset (format ``DST...``). Assigned by Albert on
-        creation.
-    parent_id : ProjectId or None
-        Identifier of the project the dataset belongs to (format ``PRO...``).
-    key : str or None
-        Storage key for the dataset's underlying data file, if applicable.
-    file_name : str or None
-        Name of the dataset's underlying data file, if applicable.
-    report : EntityLink or None
-        Link to a related report, if any.
-    references : BTDatasetReferences or None
-        The Albert entities the dataset was assembled from.
-    """
+        ```"""
 
     name: str
+    """Human-readable name of the dataset."""
     id: BTDatasetId | None = Field(default=None, alias="albertId")
+    """Unique identifier of the dataset (format ``DST...``). Assigned by Albert on creation."""
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Identifier of the project the dataset belongs to (format ``PRO...``)."""
     key: str | None = Field(default=None)
+    """Storage key for the dataset's underlying data file, if applicable."""
     file_name: str | None = Field(default=None, alias="fileName")
+    """Name of the dataset's underlying data file, if applicable."""
     report: EntityLink | None = Field(default=None, alias="Report")
+    """Link to a related report, if any."""
     references: BTDatasetReferences | None = Field(default=None, alias="References")
+    """The Albert entities the dataset was assembled from."""
