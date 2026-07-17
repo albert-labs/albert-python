@@ -60,14 +60,22 @@ def _fields_with_source_attribute_docstrings(cls: type) -> set[str]:
         if idx + 1 >= len(body):
             continue
         nxt = body[idx + 1]
-        if isinstance(nxt, ast.Expr) and isinstance(nxt.value, ast.Constant):
-            if isinstance(nxt.value.value, str) and nxt.value.value.strip():
-                documented.add(stmt.target.id)
+        if (
+            isinstance(nxt, ast.Expr)
+            and isinstance(nxt.value, ast.Constant)
+            and isinstance(nxt.value.value, str)
+            and nxt.value.value.strip()
+        ):
+            documented.add(stmt.target.id)
     return documented
 
 
 def test_resource_models_have_no_class_level_attributes_sections() -> None:
-    offenders = [cls.__name__ for cls in _resource_model_classes() if _class_docstring_has_attributes_section(cls)]
+    offenders = [
+        cls.__name__
+        for cls in _resource_model_classes()
+        if _class_docstring_has_attributes_section(cls)
+    ]
     assert not offenders, f"Move Attributes docs to attribute docstrings: {offenders}"
 
 
@@ -79,7 +87,9 @@ def test_attribute_docstrings_emit_field_descriptions() -> None:
             field_info = cls.model_fields.get(fname)
             if field_info is None or not field_info.description:
                 offenders.append(f"{cls.__name__}.{fname}")
-    assert not offenders, "Attribute docstrings not wired to Pydantic descriptions: " + ", ".join(offenders)
+    assert not offenders, "Attribute docstrings not wired to Pydantic descriptions: " + ", ".join(
+        offenders
+    )
 
 
 def test_hazard_statement_fields_are_documented() -> None:
