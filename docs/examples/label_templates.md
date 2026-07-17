@@ -129,9 +129,13 @@ Header and footer templates repeat on every page and support special classes tha
 
 Available classes: `pageNumber`, `totalPages`, `date`, `title`. Set `hideHeaderFromFirstPage: true` in the options to keep the first page clean while headers appear on subsequent pages. Size the header/footer with inline styles and leave room for them via the page `margin`.
 
-## Data available to inventory labels
+## Data available to each template type
 
-Each entry in `{{#labels}}` exposes these fields under `info` for `type=inventory`:
+Each entry in `{{#labels}}` exposes its fields under `info` (except `propertytaskreport`, noted below). All types also receive `{{info.currentUser.name}}` and `{{info.currentUser.email}}` (the printing user). Whatever the tables below say, `get_print_payload(type=...)` is always the ground truth for what a given template receives.
+
+### `inventory` (Lot barcode labels)
+
+Print with `inventory_lot_number_id` (one or more Lot IDs).
 
 | Field | Contents |
 | --- | --- |
@@ -148,13 +152,101 @@ Each entry in `{{#labels}}` exposes these fields under `info` for `type=inventor
 | `{{info.locationAddress}}` | Location address. |
 | `{{info.sublocation}}` | Location and storage location names combined. |
 | `{{info.inventoryCategory}}` | Parent category (e.g. RawMaterials). |
+| `{{info.rsnNumber}}`, `{{info.idh}}` | Values from inventory metadata where present. |
 | `{{info.logo}}` | Tenant logo image URL. |
 | `{{#info.Symbols}}` | Loop of hazard pictogram image URLs. |
 | `{{info.AdditionalInfo.InventoryInfo...}}` | The full Inventory object, including `Metadata.<customField>`. |
 | `{{info.AdditionalInfo.LotInfo...}}` | The full Lot object (e.g. `StorageLocation.name`, `manufacturerLotNumber`). |
-| `{{info.AdditionalInfo.RegulatoryInfo...}}` | Regulatory data for the item. |
+| `{{info.AdditionalInfo.RegulatoryInfo...}}` | Regulatory data for the item (hazard statements, precautionary phrases). |
 
-Other template types receive different fields (for example, batch and property task labels expose `info.taskId`, `info.taskName`, and loop pictograms via `{{#info.pictograms}}`). Use `get_print_payload` with the matching `type` to see exactly what a template will receive.
+### `batch` (Product/Formula lot labels)
+
+Print with `albert_id` (the formula Inventory ID) and `task_id` (the batch task). One entry total.
+
+| Field | Contents |
+| --- | --- |
+| `{{info.albertId}}` / `{{info.formulaID}}` | Formula Inventory ID (prefix stripped). |
+| `{{info.formulaName}}` | Formula name. |
+| `{{info.lotId}}` | Batch lot display ID (e.g. `B123-4`). |
+| `{{info.lotNumber}}` | Batch lot number prefix as **text** (no barcode image for this type). |
+| `{{info.taskID}}`, `{{info.taskName}}` | Batch task ID and name. |
+| `{{info.batchWeight}}` | Batch size. |
+| `{{info.batchStartDate}}` | Task start date. |
+| `{{info.batchLocation.name}}` | Task location. |
+| `{{info.taskOwner}}` | Assigned user name. |
+| `{{info.taskTags}}` | Task tags. |
+| `{{info.Project.id}}`, `{{info.Project.name}}`, `{{info.Project.Technology}}` | Parent project details. |
+| `{{#info.hasQcTasks}}` / `{{#info.QCResultsTable}}` | QC task rows, each with `info.taskId`, `info.barcodeId`, `info.property`, `info.target`, `info.qcResult`, `info.qcResultStatus`, `info.ParameterGroups`. |
+| `{{info.Created...}}`, `{{info.Updated...}}` | Template audit info. |
+| `{{info.logo}}`, `{{info.backgroundImageUrl}}` | Tenant logo and background image URLs. |
+
+### `property` (Property task interval labels)
+
+Print with `task_id` and `albert_id`; optionally `lot_id` and `block_id`. One entry per inventory x block x interval, so these templates are usually printed as one small label per page.
+
+| Field | Contents |
+| --- | --- |
+| `{{{info.lotNumber}}}` | **Barcode image URL** encoding task-inventory-block-interval. |
+| `{{{info.lotNumberQrCode}}}` | **QR code image** of the same code, as a `data:` URI. |
+| `{{info.intervalId}}` | Human-readable interval name. |
+| `{{info.blockId}}`, `{{info.intervalRow}}` | Block and interval row IDs. |
+| `{{info.taskID}}`, `{{info.taskName}}` | Property task ID and name. |
+| `{{info.albertId}}`, `{{info.inventoryName}}`, `{{info.alias}}`, `{{info.lotId}}` | The inventory/lot the label is for. |
+| `{{info.propertyName}}` / `{{info.Datatemplate}}` | The data template (property) being measured. |
+| `{{info.startDate}}`, `{{info.dueDate}}`, `{{info.priority}}`, `{{info.state}}`, `{{info.status}}`, `{{info.result}}`, `{{info.target}}` | Task fields. |
+| `{{info.AssignedTo.name}}`, `{{info.Location...}}`, `{{info.Tags}}`, `{{info.Workflow...}}` | Task assignment details. |
+| `{{info.ParameterGroups...}}`, `{{info.Notes}}`, `{{info.Tasks}}`, `{{info.History}}` | Workflow parameter groups, task notes, related lot tasks, task history. |
+| `{{info.Created.date}}` | Task creation date (formatted). |
+| `{{#info.Symbols}}` | Loop of hazard pictogram image URLs. |
+| `{{info.formulaIngredient}}` | Unpacked formula ingredients, for formula inventories. |
+| `{{info.AdditionalInfo...}}` | `InventoryInfo`, `LotInfo`, `projectInfo`, and `TaskMetadata` objects. |
+| `{{info.logo}}` | Tenant logo image URL. |
+
+Data template names honor the `x-alb-language` request header for localization.
+
+### `propertytaskreport` (Property task reports)
+
+Print with `task_id` and `albert_id`. One entry, and uniquely its fields are **top-level** (no `info` wrapper): `{{task...}}` (the full task), `{{taskHistory}}`, `{{propertyDataResult}}` (processed property data by block/interval), `{{wflPGData}}` (workflow parameter groups), `{{projectDetails...}}`, and `{{taskNotes}}`.
+
+### `batchtemplate` (Batch task documents, e.g. CoA)
+
+Print with `task_id`. One entry.
+
+| Field | Contents |
+| --- | --- |
+| `{{info.overview.taskId}}`, `{{info.overview.taskName}}` | Batch task ID and name. |
+| `{{{info.overview.taskIdBarcode}}}` | **Barcode image** of the task ID, as a `data:` URI. |
+| `{{#info.overview.Product}}` | Loop of produced formulas: `id`, `name`, `lotNumber`, `barcodeId`. |
+| `{{info.overview.Created...}}`, `{{info.overview.AssignedTo...}}` | Task audit and assignee. |
+| `{{#info.tableJson}}` | Batch usage tables (raw materials and amounts), grouped per `numberOfProducts` from the metadata block. |
+| `{{info.workflows...}}` | The task's final workflow, including parameter groups. |
+| `{{info.projectDetails...}}` | Parent project, including `Metadata.<customField>`. |
+| `{{info.AdditionalInfo.TaskInfo...}}` | The full task object, including `Metadata.<customField>`. |
+| `{{info.AdditionalInfo.TaskNotes}}` | Task notes. |
+
+This type pairs naturally with `{{manualFields.X}}` placeholders and a metadata `schema` block for operator-entered values (see below).
+
+### `generaltasklabel` (General task labels)
+
+Print with `task_id`. One entry whose `info` is the **full task object**, enriched with:
+
+| Field | Contents |
+| --- | --- |
+| `{{info.displayId}}` | Task ID with the prefix stripped. |
+| `{{info.name}}`, `{{info.status}}`, and all other task fields | The task record itself. |
+| `{{info.ProjectInfo...}}` | The full parent project. |
+| `{{#info.Inventories}}` | Loop of task inventories, each with `displayId`, `inventoryInfo` (full inventory record, `Symbols` resolved to pictogram URLs) and `lotInfo` (full lot record, plus `RecentTransferDate`). |
+
+### `batchlabel` and `formulareport` (direct generation)
+
+These two types skip the print-payload step entirely; the platform assembles the data and renders the PDF in one call, returning a finished URL:
+
+```python
+url = client.label_templates.get_batch_label_url(task_id="TAS1234")
+url = client.label_templates.get_formula_report_url(formula_id="INVA1234-001", template_id="TMP123")
+```
+
+The GHS batch label (`batchlabel`) is rendered by the platform's document generator with computed hazard data (signal word, hazard and precautionary statements, pictograms); its template is not a tenant label template file. The formula report uses a `formulareport` tenant template with internally assembled composition and results data.
 
 ## Mustache patterns that matter
 

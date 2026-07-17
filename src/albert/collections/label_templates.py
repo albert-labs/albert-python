@@ -76,6 +76,10 @@ class LabelTemplateCollection(BaseCollection):
         Assemble the render payload for printing a label.
     generate_label_pdf(...) -> str
         Generate a label PDF for a Lot and return its download URL.
+    get_batch_label_url(task_id, lot_id=None) -> str
+        Generate a hazard batch label PDF for a batch task.
+    get_formula_report_url(formula_id, template_id=None, lot_id=None) -> str
+        Generate a formula report PDF.
     """
 
     _api_version = "v3"
@@ -375,18 +379,23 @@ class LabelTemplateCollection(BaseCollection):
         ----------
         type : LabelTemplateType, optional
             The kind of label to assemble. Defaults to ``inventory`` (Lot
-            barcode labels).
+            barcode labels). Supported types are ``inventory``, ``batch``,
+            ``property``, ``propertytaskreport``, ``batchtemplate``, and
+            ``generaltasklabel``; the ``batchlabel`` and ``formulareport``
+            types render directly via [`get_batch_label_url`][albert.collections.label_templates.LabelTemplateCollection.get_batch_label_url]
+            and [`get_formula_report_url`][albert.collections.label_templates.LabelTemplateCollection.get_formula_report_url] instead.
         inventory_lot_number_id : LotId or list[LotId], optional
             The Lot ID(s) to print (format ``LOT...``). Required when ``type``
             is ``inventory``.
         albert_id : InventoryId, optional
             The Inventory ID (format ``INV...``). Required when ``type`` is
-            ``batch`` or ``property``.
+            ``batch``, ``property``, or ``propertytaskreport``.
         task_id : TaskId, optional
             The Task ID (format ``TAS...``). Required when ``type`` is
-            ``property``, ``batchlabel``, or ``batchtemplate``.
+            ``batch``, ``property``, ``propertytaskreport``,
+            ``batchtemplate``, or ``generaltasklabel``.
         lot_id : str, optional
-            The lot number. Required when ``type`` is ``batch``.
+            Restrict property task labels to a specific lot.
         template_id : LabelTemplateId, optional
             The Label Template ID to render with (format ``TMP...``). When not
             provided, the tenant default template for the type is used.
@@ -463,3 +472,87 @@ class LabelTemplateCollection(BaseCollection):
             options=payload.options,
             albert_id=template_id,
         )
+
+    @validate_call
+    def get_batch_label_url(
+        self,
+        *,
+        task_id: TaskId,
+        lot_id: str | None = None,
+    ) -> str:
+        """Generate a hazard batch label PDF for a batch task.
+
+        Renders the GHS-style batch label (hazard pictograms, signal word,
+        hazard and precautionary statements) for the formulas on a batch task
+        and returns a short-lived URL for the finished PDF. This label type is
+        rendered by the platform's document generator rather than from a
+        tenant label template file.
+
+        !!! example
+            ```python
+            url = client.label_templates.get_batch_label_url(task_id="TAS1234")
+            # 'https://s3.us-west-2.amazonaws.com/...'
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The batch Task ID (format ``TAS...``).
+        lot_id : str, optional
+            A specific lot number to print, when the task produced multiple
+            lots.
+
+        Returns
+        -------
+        str
+            A short-lived URL for downloading the generated batch label PDF.
+        """
+        params = {"taskId": task_id, "lotId": lot_id}
+        response = self.session.get(f"{self.base_path}/sds", params=params)
+        return response.json()["data"]
+
+    @validate_call
+    def get_formula_report_url(
+        self,
+        *,
+        formula_id: InventoryId,
+        template_id: LabelTemplateId | None = None,
+        lot_id: str | None = None,
+    ) -> str:
+        """Generate a formula report PDF.
+
+        Renders a full report for a formula (composition, property task
+        results, and related details) using a ``formulareport`` template and
+        returns a short-lived URL for the finished PDF.
+
+        !!! example
+            ```python
+            url = client.label_templates.get_formula_report_url(
+                formula_id="INVA1234-001",
+                template_id="TMP123",
+            )
+            # 'https://s3.us-west-2.amazonaws.com/...'
+            ```
+
+        Parameters
+        ----------
+        formula_id : InventoryId
+            The formula Inventory ID (format ``INV...``).
+        template_id : LabelTemplateId, optional
+            The ``formulareport`` template to render with (format ``TMP...``).
+            When not provided, the tenant default is used.
+        lot_id : str, optional
+            Restrict the report to a specific lot.
+
+        Returns
+        -------
+        str
+            A short-lived URL for downloading the generated report PDF.
+        """
+        params = {
+            "formulaId": formula_id,
+            "templateId": template_id,
+            "lotId": lot_id,
+        }
+        response = self.session.get(f"{self.base_path}/formulareport", params=params)
+        return response.json()["presignedURL"]
