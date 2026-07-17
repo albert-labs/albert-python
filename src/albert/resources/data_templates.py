@@ -27,22 +27,16 @@ from albert.resources.users import User
 
 
 class CSVMapping(BaseAlbertModel):
-    """A mapping between CSV column headers and data column IDs.
-
-    Attributes
-    ----------
-    map_id : str | None
-        A compact mapping string (e.g. ``"Header1:DAC2900#Header2:DAC4707"``).
-    map_data : dict[str, str] | None
-        A dictionary mapping CSV header names to data column IDs.
-    """
+    """A mapping between CSV column headers and data column IDs."""
 
     map_id: str | None = Field(
         alias="mapId", default=None, examples="Header1:DAC2900#Header2:DAC4707"
     )
+    """A compact mapping string (e.g. ``"Header1:DAC2900#Header2:DAC4707"``)."""
     map_data: dict[str, str] | None = Field(
         alias="mapData", default=None, examples={"Header1": "DAC2900", "Header2": "DAC4707"}
     )
+    """A dictionary mapping CSV header names to data column IDs."""
 
 
 class Axis(str, Enum):
@@ -51,78 +45,49 @@ class Axis(str, Enum):
 
 
 class CurveDBMetadata(BaseAlbertModel):
-    """Database metadata for a curve data column result.
-
-    Attributes
-    ----------
-    table_name : str | None
-        The Athena/database table name storing the curve data.
-    partition_key : str | None
-        The partition key for the curve data table.
-    """
+    """Database metadata for a curve data column result."""
 
     table_name: str | None = Field(default=None, alias="tableName")
+    """The Athena/database table name storing the curve data."""
     partition_key: str | None = Field(default=None, alias="partitionKey")
+    """The partition key for the curve data table."""
 
 
 class StorageKeyReference(BaseAlbertModel):
-    """S3 storage key references for a data column file result.
-
-    Attributes
-    ----------
-    rawfile : str | None
-        The raw file storage key.
-    s3_input : str | None
-        The S3 key for the input file.
-    s3_output : str | None
-        The S3 key for the processed output file.
-    preview : str | None
-        The S3 key for a preview image.
-    thumb : str | None
-        The S3 key for a thumbnail image.
-    original : str | None
-        The S3 key for the original file.
-    """
+    """S3 storage key references for a data column file result."""
 
     rawfile: str | None = None
+    """The raw file storage key."""
     s3_input: str | None = Field(default=None, alias="s3Input")
+    """The S3 key for the input file."""
     s3_output: str | None = Field(default=None, alias="s3Output")
+    """The S3 key for the processed output file."""
     preview: str | None = None
+    """The S3 key for a preview image."""
     thumb: str | None = None
+    """The S3 key for a thumbnail image."""
     original: str | None = None
+    """The S3 key for the original file."""
 
 
 class JobSummary(BaseAlbertModel):
-    """A brief summary of a background processing job.
-
-    Attributes
-    ----------
-    id : str | None
-        The job identifier.
-    state : str | None
-        The current state of the job.
-    """
+    """A brief summary of a background processing job."""
 
     id: str | None = None
+    """The job identifier."""
     state: str | None = None
+    """The current state of the job."""
 
 
 class CurveDataEntityLink(EntityLinkWithName):
-    """A link to a data column that provides one axis of a curve dataset.
-
-    Attributes
-    ----------
-    id : DataColumnId
-        The data column ID.
-    axis : Axis | None
-        Which axis this column represents (X or Y).
-    unit : Unit | None
-        The unit of measure for this axis.
-    """
+    """A link to a data column that provides one axis of a curve dataset."""
 
     id: DataColumnId
+    """The data column ID."""
     axis: Axis | None = Field(default=None)
+    """Which axis this column represents (X or Y)."""
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of measure for this axis."""
 
 
 class DataColumnValue(BaseResource):
@@ -140,58 +105,41 @@ class DataColumnValue(BaseResource):
         from albert.resources.data_templates import DataColumnValue
 
         column = DataColumnValue(data_column_id="DAC1", value="42")
-        ```
-
-    Attributes
-    ----------
-    data_column : DataColumn | None
-        The full DataColumn resource this value binds to. Provide this or
-        ``data_column_id``. Not serialized.
-    data_column_id : DataColumnId | None
-        The ID of the bound DataColumn (format ``DAC...``). Serialized as ``id``.
-        Provide this or ``data_column``.
-    name : str | None
-        The display name of the column.
-    value : str | None
-        The column's example/default value shown on the Data Template details page.
-    hidden : bool
-        Whether the column is hidden. Defaults to False.
-    unit : Unit | None
-        The unit of measure for the column.
-    calculation : str | None
-        A calculation expression for a computed column.
-    sequence : str | None
-        The column's position within the template. Assigned by Albert.
-    validation : list[ValueValidation] | None
-        Validation rules applied to the column value (e.g. enum options, numeric range).
-    curve_data : list[CurveDataEntityLink] | None
-        For curve columns, the linked X/Y curve result columns.
-    original_name : str | None
-        The original column name as stored in Albert. Read-only.
-    """
+        ```"""
 
     data_column: DataColumn | None = Field(exclude=True, default=None)
+    """The full DataColumn resource this value binds to. Provide this or ``data_column_id``. Not serialized."""
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
+    """The ID of the bound DataColumn (format ``DAC...``). Serialized as ``id``. Provide this or ``data_column``."""
     name: str | None = None
+    """The display name of the column."""
     original_name: str | None = Field(
         default=None, alias="originalName", exclude=True, frozen=True
     )
+    """The original column name as stored in Albert. Read-only."""
     value: str | None = None
+    """The column's example/default value shown on the Data Template details page."""
     hidden: bool = False
+    """Whether the column is hidden. Defaults to False."""
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of measure for the column."""
     calculation: str | None = None
+    """A calculation expression for a computed column."""
     sequence: str | None = Field(default=None)
+    """The column's position within the template. Assigned by Albert."""
     script: bool | None = None
     db_metadata: CurveDBMetadata | None = Field(default=None, alias="athena")
     storage_key_reference: StorageKeyReference | None = Field(default=None, alias="s3Key")
     job: JobSummary | None = None
     csv_mapping: dict[str, str] | CSVMapping | None = Field(default=None, alias="csvMapping")
     validation: list[ValueValidation] | None = Field(default_factory=list)
+    """Validation rules applied to the column value (e.g. enum options, numeric range)."""
     curve_data: list[CurveDataEntityLink] | None = Field(
         default=None,
         validation_alias=AliasChoices("CurveData", "curveData"),
         serialization_alias="curveData",
     )
+    """For curve columns, the linked X/Y curve result columns."""
     created: AuditFields | None = Field(
         default=None,
         alias="Created",
@@ -237,60 +185,29 @@ class DataTemplate(BaseTaggedResource):
             name="Tensile Strength Test",
             data_column_values=[DataColumnValue(data_column_id="DAC1")],
         )
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the data template. Required.
-    id : DataTemplateId | None
-        The Albert Data Template ID (format ``DAT...``). Set when the template is
-        retrieved from or created in Albert. Serialized as ``albertId``.
-    description : str | None
-        A free-text description of the template.
-    security_class : SecurityClass | None
-        The access/security class of the template. Serialized as ``class``.
-    verified : bool
-        The approval/governance state of the template. Defaults to False.
-    users_with_access : list[User] | None
-        The access-control list of users who can access the template. Serialized as
-        ``ACL``.
-    data_column_values : list[DataColumnValue] | None
-        The measured results the test captures (its data columns / direct variables).
-        See [`DataColumnValue`][albert.resources.data_templates.DataColumnValue].
-    parameter_values : list[ParameterValue] | None
-        The conditions under which the test is run (its indirect variables). See
-        [`ParameterValue`][albert.resources.parameter_groups.ParameterValue].
-    metadata : dict[str, MetadataItem] | None
-        Custom metadata fields. Allowed keys are defined by the workspace's
-        CustomFields configuration.
-    tags : list[Tag | str] | None
-        Tags on the template. Inherited from
-        [`BaseTaggedResource`][albert.resources.tagged_base.BaseTaggedResource].
-    original_name : str | None
-        The original template name as stored in Albert. Read-only.
-    full_name : str | None
-        The fully qualified template name. Read-only.
-
-    See Also
-    --------
-    albert.collections.data_templates.DataTemplateCollection : Create, search, and manage templates.
-    DataColumnValue : Result data columns used in ``data_column_values``.
-    albert.resources.parameter_groups.ParameterValue : Condition parameters used in ``parameter_values``.
-    """
+        ```"""
 
     name: str
+    """The name of the data template. Required."""
     id: DataTemplateId | None = Field(None, alias="albertId")
+    """The Albert Data Template ID (format ``DAT...``). Set when the template is retrieved from or created in Albert. Serialized as ``albertId``."""
     description: str | None = None
+    """A free-text description of the template."""
     security_class: SecurityClass | None = Field(default=None, alias="class")
+    """The access/security class of the template. Serialized as ``class``."""
     verified: bool = False
+    """The approval/governance state of the template. Defaults to False."""
     users_with_access: list[SerializeAsEntityLink[User]] | None = Field(alias="ACL", default=None)
+    """The access-control list of users who can access the template. Serialized as ``ACL``."""
     data_column_values: list[DataColumnValue] | None = Field(alias="DataColumns", default=None)
+    """The measured results the test captures (its data columns / direct variables). See [`DataColumnValue`][albert.resources.data_templates.DataColumnValue]."""
     parameter_values: list[ParameterValue] | None = Field(alias="Parameters", default=None)
+    """The conditions under which the test is run (its indirect variables). See [`ParameterValue`][albert.resources.parameter_groups.ParameterValue]."""
     deleted_parameters: list[ParameterValue] | None = Field(
         alias="DeletedParameters", default=None, frozen=True, exclude=True
     )
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
+    """Custom metadata fields. Allowed keys are defined by the workspace's CustomFields configuration."""
     documents: list[EntityLink] = Field(
         default_factory=list, alias="Documents", exclude=True, frozen=True
     )
@@ -299,7 +216,9 @@ class DataTemplate(BaseTaggedResource):
     original_name: str | None = Field(
         default=None, alias="originalName", exclude=True, frozen=True
     )
+    """The original template name as stored in Albert. Read-only."""
     full_name: str | None = Field(default=None, alias="fullName", exclude=True, frozen=True)
+    """The fully qualified template name. Read-only. See Also --------"""
 
 
 class ImportMode(str, Enum):
@@ -331,28 +250,17 @@ class CurveExample(BaseAlbertModel):
         from albert.resources.data_templates import CurveExample
 
         example = CurveExample(file_path="viscosity_curve.csv")
-        ```
-
-    Attributes
-    ----------
-    mode : ImportMode
-        ``ImportMode.CSV`` ingests the CSV directly; ``ImportMode.SCRIPT`` runs the attached
-        script first (requires a script attachment on the column). Defaults to CSV.
-    field_mapping : dict[str, str] | None
-        Optional header-to-curve-result mapping, e.g. ``{"visc": "Viscosity"}``. Overrides
-        auto-detected mappings.
-    file_path : str | Path | None
-        Local path to the source CSV file.
-    attachment_id : AttachmentId | None
-        Existing attachment ID of the source CSV file.
-        Provide exactly one source CSV (local path or existing attachment).
-    """
+        ```"""
 
     type: Literal[DataType.CURVE] = DataType.CURVE
     mode: ImportMode = ImportMode.CSV
+    """``ImportMode.CSV`` ingests the CSV directly; ``ImportMode.SCRIPT`` runs the attached script first (requires a script attachment on the column). Defaults to CSV."""
     field_mapping: dict[str, str] | None = None
+    """Optional header-to-curve-result mapping, e.g. ``{"visc": "Viscosity"}``. Overrides auto-detected mappings."""
     file_path: str | Path | None = None
+    """Local path to the source CSV file."""
     attachment_id: AttachmentId | None = None
+    """Existing attachment ID of the source CSV file. Provide exactly one source CSV (local path or existing attachment)."""
 
     @model_validator(mode="after")
     def _require_curve_source(self) -> CurveExample:
@@ -375,75 +283,48 @@ class ImageExample(BaseAlbertModel):
         from albert.resources.data_templates import ImageExample
 
         example = ImageExample(file_path="fracture_surface.png")
-        ```
-
-    Attributes
-    ----------
-    file_path : str | Path
-        Local path to the source image file.
-    """
+        ```"""
 
     type: Literal[DataType.IMAGE] = DataType.IMAGE
     file_path: str | Path
+    """Local path to the source image file."""
 
 
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
-    """A lightweight data column reference within a data template search result.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the data column.
-    name : str | None
-        The name of the data column.
-    localized_names : LocalizedNames
-        Localized name variants for the data column.
-    """
+    """A lightweight data column reference within a data template search result."""
 
     id: str
+    """The Albert ID of the data column."""
     name: str | None = None
+    """The name of the data column."""
     localized_names: LocalizedNames = Field(alias="localizedNames")
+    """Localized name variants for the data column."""
 
 
 class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
-    """Lightweight representation of a DataTemplate returned from search.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the data template.
-    name : str
-        The name of the data template.
-    data_columns : list[DataTemplateSearchItemDataColumn] | None
-        The data column summaries included in the template.
-    owner : list[User] | None
-        The owners of the data template.
-    tags : list[User] | None
-        Tags associated with the data template.
-    acl : list[User] | None
-        Users with explicit access to the data template.
-    created_at : str | None
-        ISO 8601 timestamp of when the template was created.
-    created_by_name : str | None
-        The name of the user who created the template.
-    metadata : dict[str, Any] | None
-        Custom metadata attached to the template.
-    team : list[User] | None
-        Team members associated with the template.
-    standards : list[dict[str, Any]] | None
-        Standards linked to the template.
-    """
+    """Lightweight representation of a DataTemplate returned from search."""
 
     id: str = Field(alias="albertId")
+    """The Albert ID of the data template."""
     name: str
+    """The name of the data template."""
     data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
         alias="dataColumns", default=None
     )
+    """The data column summaries included in the template."""
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="owner")
+    """The owners of the data template."""
     tags: list[SerializeAsEntityLink[Tag]] | None = Field(default=None, alias="tags")
+    """Tags associated with the data template."""
     acl: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="acl")
+    """Users with explicit access to the data template."""
     created_at: str | None = Field(default=None, alias="createdAt")
+    """ISO 8601 timestamp of when the template was created."""
     created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The name of the user who created the template."""
     metadata: dict[str, Any] | None = Field(default=None, alias="metadata")
+    """Custom metadata attached to the template."""
     team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")
+    """Team members associated with the template."""
     standards: list[dict[str, Any]] | None = Field(default=None, alias="standards")
+    """Standards linked to the template."""

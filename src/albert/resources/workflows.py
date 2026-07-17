@@ -27,31 +27,16 @@ class IntervalParameter(BaseAlbertModel):
     This is not a platform entity. It is an internal helper that
     [`Workflow`][albert.resources.workflows.Workflow] builds (one per interval value of each intervalized parameter)
     so that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] can look up the row ID that matches a
-    given parameter name and value. You do not normally construct this yourself.
-
-    Attributes
-    ----------
-    interval_param_name : str | None
-        The name of the intervalized parameter (e.g. ``"Temperature"``).
-    interval_id : IntervalId | None
-        The row ID of this single interval value (e.g. ``"ROW1"``). These are the
-        building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to
-        form a composite interval ID.
-    interval_value : str | None
-        The value of this interval, as a string (e.g. ``"25"``).
-    interval_unit : str | None
-        The unit name for this interval value, if any (e.g. ``"C"``).
-
-    See Also
-    --------
-    Workflow.get_interval_id : Uses these to resolve a composite interval ID.
-    Interval : The source model each of these is derived from.
-    """
+    given parameter name and value. You do not normally construct this yourself."""
 
     interval_param_name: str | None = Field(default=None)
+    """The name of the intervalized parameter (e.g. ``"Temperature"``)."""
     interval_id: IntervalId | None = Field(default=None)
+    """The row ID of this single interval value (e.g. ``"ROW1"``). These are the building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to form a composite interval ID."""
     interval_value: str | None = Field(default=None)
+    """The value of this interval, as a string (e.g. ``"25"``)."""
     interval_unit: str | None = Field(default=None)
+    """The unit name for this interval value, if any (e.g. ``"C"``). See Also --------"""
 
 
 class Interval(BaseAlbertModel):
@@ -70,29 +55,14 @@ class Interval(BaseAlbertModel):
         # A Normal parameter varied across two temperatures.
         low = Interval(value="25", unit={"id": "UNI1"})
         high = Interval(value="60", unit={"id": "UNI1"})
-        ```
-
-    Attributes
-    ----------
-    value : str
-        The value of this interval. For Special parameters (Equipment, Consumables,
-        Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters
-        this is a plain scalar string (e.g. ``"23"``). Required.
-    name : str | None
-        The display name of the interval value. Populated for Special parameters (e.g.
-        ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters.
-    unit : Unit | None
-        The unit of ``value``, where applicable. If given, the unit must have an ``id``.
-
-    See Also
-    --------
-    ParameterSetpoint : Holds a list of intervals when a parameter is intervalized.
-    Workflow.get_interval_id : Resolves interval values to a composite interval ID.
-    """
+        ```"""
 
     value: str | None = Field(default=None)
+    """The value of this interval. For Special parameters (Equipment, Consumables, Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters this is a plain scalar string (e.g. ``"23"``). Required."""
     name: str | None = Field(default=None)
+    """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters."""
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
     @model_validator(mode="after")
@@ -109,22 +79,12 @@ class IntervalDetail(BaseAlbertModel):
 
     This appears inside [`IntervalCombination`][albert.resources.workflows.IntervalCombination] (as its ``interval_details``) to
     break a combination down into the individual parameters that make it up. It is
-    read from the workflow endpoint; you do not construct it directly.
-
-    Attributes
-    ----------
-    name : str
-        The parameter name (e.g. ``"Equipment"``).
-    value : str
-        The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``).
-
-    See Also
-    --------
-    IntervalCombination : The combination this detail belongs to.
-    """
+    read from the workflow endpoint; you do not construct it directly."""
 
     name: str
+    """The parameter name (e.g. ``"Equipment"``)."""
     value: str
+    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``). See Also --------"""
 
 
 class IntervalCombination(BaseAlbertModel):
@@ -134,34 +94,16 @@ class IntervalCombination(BaseAlbertModel):
     been intervalized. A combination is either a single intervalized parameter (interval
     ID ``ROW#``) or the cartesian product of two intervalized parameters (interval ID
     ``ROW#XROW#``). Its ``interval_id`` is what you pass to the property_data endpoints
-    to read or write results for that specific condition.
-
-    Attributes
-    ----------
-    interval_id : IntervalId | None
-        The interval ID this combination is associated with. It has the form ``ROW#``
-        for a single interval or ``ROW#XROW#`` for a product of two intervals. This is
-        the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns.
-    interval_params : str | None
-        The parameters participating in the interval.
-    interval_string : str | None
-        A human-readable representation of the combination, of the form
-        ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter.
-    interval_details : list[IntervalDetail] | None
-        Per-parameter breakdown of the combination. Each entry has ``name``
-        (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``).
-
-    See Also
-    --------
-    Workflow : Carries a list of these on its ``interval_combinations`` field.
-    Workflow.get_interval_id : Builds the ``interval_id`` from parameter values.
-    IntervalDetail : The per-parameter breakdown held in ``interval_details``.
-    """
+    to read or write results for that specific condition."""
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
+    """The interval ID this combination is associated with. It has the form ``ROW#`` for a single interval or ``ROW#XROW#`` for a product of two intervals. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns."""
     interval_params: str | None = Field(default=None, alias="intervalParams")
+    """The parameters participating in the interval."""
     interval_string: str | None = Field(default=None, alias="intervalString")
+    """A human-readable representation of the combination, of the form ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter."""
     interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
+    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``). See Also --------"""
 
 
 class ParameterSetpoint(BaseAlbertModel):
@@ -193,54 +135,28 @@ class ParameterSetpoint(BaseAlbertModel):
                 Interval(value="60", unit={"id": "UNI1"}),
             ],
         )
-        ```
-
-    Attributes
-    ----------
-    parameter : Parameter | None
-        The parameter to set. Provide either ``parameter`` or ``parameter_id``. If both
-        are given they must refer to the same parameter.
-    parameter_id : ParameterId | None
-        The ID of the parameter (e.g. ``"PRM1"``). Provide either ``parameter`` or
-        ``parameter_id``.
-    value : str | dict | EntityLink | None
-        The value of the setpoint. For a Special parameter (an inventory item), provide
-        the item's [`EntityLink`][albert.core.shared.models.base.EntityLink] (or a mapping with
-        an ``id``). Mutually exclusive with ``intervals`` for Normal parameters.
-    unit : Unit | None
-        The unit of ``value``, where applicable.
-    intervals : list[Interval] | None
-        The interval values when the parameter is intervalized. Provide either
-        ``intervals`` or ``value`` (plus ``unit``), not both.
-    category : ParameterCategory | None
-        The category of the parameter: ``SPECIAL`` for an inventory item (Equipment,
-        Consumable, Template), ``NORMAL`` for everything else.
-    short_name : str | None
-        The short / display name of the parameter. Required if ``value`` is a mapping.
-    name : str | None
-        The parameter name. Auto-filled from ``parameter`` when one is provided.
-    row_id : RowId | None
-        Read-only. The row ID of this parameter with respect to its interval row.
-    sequence : str | None
-        Ordering key; needed because a Parameter Group can be repeated within a
-        workflow. Not required when writing (PUT).
-
-    See Also
-    --------
-    ParameterGroupSetpoints : Groups setpoints under one parameter group.
-    Interval : The interval values supplied to ``intervals``.
-    """
+        ```"""
 
     parameter: Parameter | None = Field(exclude=True, default=None)
+    """The parameter to set. Provide either ``parameter`` or ``parameter_id``. If both are given they must refer to the same parameter."""
     value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of the setpoint. For a Special parameter (an inventory item), provide the item's [`EntityLink`][albert.core.shared.models.base.EntityLink] (or a mapping with an ``id``). Mutually exclusive with ``intervals`` for Normal parameters."""
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of ``value``, where applicable."""
     parameter_id: ParameterId | None = Field(alias="id", default=None)
+    """The ID of the parameter (e.g. ``"PRM1"``). Provide either ``parameter`` or ``parameter_id``."""
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")
+    """The interval values when the parameter is intervalized. Provide either ``intervals`` or ``value`` (plus ``unit``), not both."""
     category: ParameterCategory | None = Field(default=None)
+    """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
     short_name: str | None = Field(default=None, alias="shortName")
+    """The short / display name of the parameter. Required if ``value`` is a mapping."""
     name: str | None = Field(default=None, exclude=True)
+    """The parameter name. Auto-filled from ``parameter`` when one is provided."""
     row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    """Read-only. The row ID of this parameter with respect to its interval row."""
     sequence: str | None = Field(default=None, alias="prgPrmRowId")
+    """Ordering key; needed because a Parameter Group can be repeated within a workflow. Not required when writing (PUT). See Also --------"""
 
     @model_validator(mode="after")
     def validate_shape(self) -> ParameterSetpoint:
@@ -316,41 +232,22 @@ class ParameterGroupSetpoints(BaseAlbertModel):
                 ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
             ],
         )
-        ```
-
-    Attributes
-    ----------
-    parameter_group : ParameterGroup | None
-        The parameter group to set setpoints on. Provide either ``parameter_group`` or
-        ``id``. If both are given they must refer to the same group.
-    id : ParameterGroupId | DataTemplateId | None
-        The ID of the parameter group (``PRG...``) or Data Template (``DAT...``). Provide
-        either ``id`` or ``parameter_group``. Auto-filled from ``parameter_group`` when
-        one is provided.
-    parameter_group_name : str
-        Read-only display name of the group (defaults to ``"Pre-linked Parameters"``).
-    parameter_setpoints : list[ParameterSetpoint]
-        The setpoints to apply to this group's parameters.
-    row_id : RowId | None
-        Read-only. The group's interval row ID.
-    sequence : int | None
-        Ordering key; needed because a Parameter Group can be repeated within a
-        workflow. Not required when writing (PUT).
-
-    See Also
-    --------
-    Workflow : Holds one of these per Data Template / Parameter Group.
-    ParameterSetpoint : A single parameter's setpoint within this group.
-    """
+        ```"""
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
+    """The parameter group to set setpoints on. Provide either ``parameter_group`` or ``id``. If both are given they must refer to the same group."""
     id: ParameterGroupId | DataTemplateId | None = Field(default=None, alias="id")
+    """The ID of the parameter group (``PRG...``) or Data Template (``DAT...``). Provide either ``id`` or ``parameter_group``. Auto-filled from ``parameter_group`` when one is provided."""
     parameter_group_name: str = Field(default="Pre-linked Parameters", alias="name", exclude=True)
+    """Read-only display name of the group (defaults to ``"Pre-linked Parameters"``)."""
     parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
+    """The setpoints to apply to this group's parameters."""
 
     # READ ONLY
     row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    """Read-only. The group's interval row ID."""
     sequence: int | None = Field(default=None, alias="prgSequence", frozen=True, exclude=True)
+    """Ordering key; needed because a Parameter Group can be repeated within a workflow. Not required when writing (PUT). See Also --------"""
 
     @model_validator(mode="after")
     def validate_identifiers(self):
@@ -443,47 +340,28 @@ class Workflow(BaseResource):
         created = client.workflows.create(workflows=[workflow])
         created[0].id
         # 'WFL1'
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the workflow.
-    parameter_group_setpoints : list[ParameterGroupSetpoints]
-        The setpoints to apply, organized one entry per Data Template / Parameter Group.
-        The order of these entries is part of the workflow's identity.
-    interval_combinations : list[IntervalCombination] | None
-        The realized conditions when parameters are intervalized. Populated by the platform;
-        present when the workflow is retrieved, not something you set when building one.
-    id : str | None
-        The Albert ID of the workflow (``WFL...``). Set when a workflow is created or
-        retrieved from the platform.
-    block_mapping : str | None
-        Read-only / informational. When a Workflow is returned in the context of a
-        block, this is hydrated for convenience.
-
-    See Also
-    --------
-    ParameterGroupSetpoints : One group's worth of setpoints within the workflow.
-    IntervalCombination : A single realized condition carried by an intervalized workflow.
-    albert.collections.workflows.WorkflowCollection.create : Find-or-create a workflow.
-    """
+        ```"""
 
     name: str
+    """The name of the workflow."""
     # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
     parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
         alias="ParameterGroups", default_factory=list
     )
+    """The setpoints to apply, organized one entry per Data Template / Parameter Group. The order of these entries is part of the workflow's identity."""
     interval_combinations: list[IntervalCombination] | None = Field(
         default=None, alias="IntervalCombinations"
     )
+    """The realized conditions when parameters are intervalized. Populated by the platform; present when the workflow is retrieved, not something you set when building one."""
     id: str | None = Field(
         alias="albertId",
         default=None,
         validation_alias=AliasChoices("albertId", "existingAlbertId"),
         exclude=True,
     )
+    """The Albert ID of the workflow (``WFL...``). Set when a workflow is created or retrieved from the platform."""
     block_mapping: str | None = Field(default=None, alias="blockMapping")
+    """Read-only / informational. When a Workflow is returned in the context of a block, this is hydrated for convenience. See Also --------"""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)

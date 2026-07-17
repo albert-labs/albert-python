@@ -83,21 +83,14 @@ class BTInsightPayloadType(str, Enum):
 
 
 class BTInsightRegistry(BaseAlbertModel):
-    """Result metadata recorded for a Breakthrough insight.
-
-    Attributes
-    ----------
-    build_logs : dict or None
-        Free-form logs captured while the insight was computed.
-    metrics : dict or None
-        Free-form performance metrics recorded for the insight.
-    settings : dict or None
-        Free-form settings used to produce the insight.
-    """
+    """Result metadata recorded for a Breakthrough insight."""
 
     build_logs: dict[str, Any] | None = Field(default=None, alias="BuildLogs")
+    """Free-form logs captured while the insight was computed."""
     metrics: dict[str, Any] | None = Field(default=None, alias="Metrics")
+    """Free-form performance metrics recorded for the insight."""
     settings: dict[str, Any] | None = Field(default=None, alias="Settings")
+    """Free-form settings used to produce the insight."""
 
 
 class BTInsight(BaseResource, protected_namespaces=()):
@@ -119,61 +112,39 @@ class BTInsight(BaseResource, protected_namespaces=()):
             name="Cost optimizer run",
             category=BTInsightCategory.OPTIMIZER,
         )
-        ```
-
-    Attributes
-    ----------
-    name : str
-        Human-readable name of the insight.
-    category : BTInsightCategory
-        The kind of Breakthrough output this insight represents.
-    metadata : dict or None
-        Free-form metadata associated with the insight.
-    state : BTInsightState or None
-        Current progress state of the insight computation.
-    id : BTInsightId or None
-        Unique identifier of the insight (format ``INS...``). Assigned by Albert on
-        creation.
-    parent_id : ProjectId or None
-        Identifier of the project the insight belongs to (format ``PRO...``).
-    dataset_id : BTDatasetId or None
-        Identifier of the dataset the insight is based on (format ``DST...``).
-    model_session_id : BTModelSessionId or None
-        Identifier of the model session the insight came from (format ``MDS...``).
-    model_id : BTModelId or None
-        Identifier of the model the insight came from (format ``MDL...``).
-    output_key : str or None
-        Storage key for the insight's output artifact, if applicable.
-    start_time : str or None
-        When the insight computation started, if recorded.
-    end_time : str or None
-        When the insight computation finished, if recorded.
-    total_time : str or None
-        Total time taken to compute the insight, if recorded.
-    raw_payload : dict or None
-        The raw result payload produced for the insight.
-    payload_type : BTInsightPayloadType or None
-        Which system produced the payload.
-    registry : BTInsightRegistry or None
-        Result metadata (logs, metrics, settings) recorded for the insight.
-    content_edited : bool or None
-        Whether the insight's content has been manually edited.
-    """
+        ```"""
 
     name: str
+    """Human-readable name of the insight."""
     category: BTInsightCategory
+    """The kind of Breakthrough output this insight represents."""
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
+    """Free-form metadata associated with the insight."""
     state: BTInsightState | None = Field(default=None)
+    """Current progress state of the insight computation."""
     id: BTInsightId | None = Field(default=None, alias="albertId")
+    """Unique identifier of the insight (format ``INS...``). Assigned by Albert on creation."""
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """Identifier of the project the insight belongs to (format ``PRO...``)."""
     dataset_id: BTDatasetId | None = Field(default=None, alias="datasetId")
+    """Identifier of the dataset the insight is based on (format ``DST...``)."""
     model_session_id: BTModelSessionId | None = Field(default=None, alias="modelSessionId")
+    """Identifier of the model session the insight came from (format ``MDS...``)."""
     model_id: BTModelId | None = Field(default=None, alias="modelId")
+    """Identifier of the model the insight came from (format ``MDL...``)."""
     output_key: str | None = Field(default=None, alias="outputKey")
+    """Storage key for the insight's output artifact, if applicable."""
     start_time: str | None = Field(default=None, alias="startTime")
+    """When the insight computation started, if recorded."""
     end_time: str | None = Field(default=None, alias="endTime")
+    """When the insight computation finished, if recorded."""
     total_time: str | None = Field(default=None, alias="totalTime")
+    """Total time taken to compute the insight, if recorded."""
     raw_payload: dict[str, Any] | None = Field(default=None, alias="RawPayload")
+    """The raw result payload produced for the insight."""
     payload_type: BTInsightPayloadType | None = Field(default=None, alias="payloadType")
+    """Which system produced the payload."""
     registry: BTInsightRegistry | None = Field(default=None, alias="Registry")
+    """Result metadata (logs, metrics, settings) recorded for the insight."""
     content_edited: bool | None = Field(default=None, alias="contentEdited")
+    """Whether the insight's content has been manually edited."""

@@ -145,57 +145,32 @@ class Cell(BaseResource):
     (via ``column_id``, ``row_id``, and ``design_id``) as well as its value,
     calculation, and formatting. Cells are typically read from a Sheet's grid or
     from [`cells`][albert.resources.sheets.Column.cells] / [`cells`][albert.resources.sheets.Row.cells], and written back with
-    [`update_cells`][albert.resources.sheets.Sheet.update_cells].
-
-    Attributes
-    ----------
-    column_id : str
-        The ID of the Column this cell belongs to.
-    row_id : str
-        The ID of the Row this cell belongs to.
-    value : str | dict | list
-        The value of the cell. For an inventory cell this may be a dict rather
-        than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value.
-    min_value : str | None
-        The minimum allowed value for inventory cells. Optional.
-    max_value : str | None
-        The maximum allowed value for inventory cells. Optional.
-    row_label_name : str, optional
-        The display name of the row this cell is in.
-    type : CellType | str
-        The type of the cell. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType].
-    row_type : CellType, optional
-        The type of the row containing this cell. Usually one of ``INV`` (inventory
-        row), ``TOT`` (total row), ``TAS`` (task row), ``TAG``, ``PRC``, ``PDC``,
-        ``BAT``, or ``BLK``.
-    name : str | None
-        The name of the cell. Optional. Default is None.
-    calculation : str
-        The formula backing the cell, if any (e.g. a total). Default is ``""``.
-    design_id : str
-        The ID of the Design (Sheet section) this cell is in.
-    format : dict
-        The cell formatting. Default is ``{}``. Keys are ``bgColor`` and
-        ``fontColor``, with RGB string values such as ``"RGB(255, 255, 255)"``.
-    raw_value : str
-        The underlying value of the cell. For an inventory cell this is the
-        inventory item's value. Read-only.
-    color : str | None
-        The background color of the cell. Read-only.
-    """
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]."""
 
     column_id: str = Field(alias="colId")
+    """The ID of the Column this cell belongs to."""
     row_id: str = Field(alias="rowId")
+    """The ID of the Row this cell belongs to."""
     row_label_name: str | None = Field(default=None, alias="lableName")
+    """The display name of the row this cell is in."""
     value: str | dict | list = ""
+    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value."""
     min_value: str | None = Field(default=None, alias="minValue")
+    """The minimum allowed value for inventory cells. Optional."""
     max_value: str | None = Field(default=None, alias="maxValue")
+    """The maximum allowed value for inventory cells. Optional."""
     type: CellType | str
+    """The type of the cell. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
     row_type: CellType | str | None = Field(default=None)
+    """The type of the row containing this cell. Usually one of ``INV`` (inventory row), ``TOT`` (total row), ``TAS`` (task row), ``TAG``, ``PRC``, ``PDC``, ``BAT``, or ``BLK``."""
     name: str | None = Field(default=None)
+    """The name of the cell. Optional. Default is None."""
     calculation: str = ""
+    """The formula backing the cell, if any (e.g. a total). Default is ``""``."""
     design_id: str
+    """The ID of the Design (Sheet section) this cell is in."""
     format: dict = Field(default_factory=dict, alias="cellFormat")
+    """The cell formatting. Default is ``{}``. Keys are ``bgColor`` and ``fontColor``, with RGB string values such as ``"RGB(255, 255, 255)"``."""
     inventory_id: str | None = Field(default=None)
 
     @property
@@ -225,31 +200,18 @@ class Component(BaseResource):
         ```python
         from albert.resources.sheets import Component
         component = Component(inventory_id="INV1", amount=42.0)
-        ```
-
-    Attributes
-    ----------
-    inventory_item : InventoryItem | None
-        The inventory item in the component. Optional when ``inventory_id`` is provided.
-    inventory_id : InventoryId | None
-        The inventory ID backing the component (format ``INV...``). Automatically
-        populated from ``inventory_item`` when present; required when
-        ``inventory_item`` is omitted.
-    amount : float
-        The amount of the inventory item in the formulation.
-    min_value : float | None
-        The minimum allowed amount for the component. Optional.
-    max_value : float | None
-        The maximum allowed amount for the component. Optional.
-    cell : Cell
-        The cell the component was placed into. Read-only; set on registration.
-    """
+        ```"""
 
     inventory_item: InventoryItem | None = Field(default=None)
+    """The inventory item in the component. Optional when ``inventory_id`` is provided."""
     inventory_id: InventoryId | None = Field(default=None)
+    """The inventory ID backing the component (format ``INV...``). Automatically populated from ``inventory_item`` when present; required when ``inventory_item`` is omitted."""
     amount: float
+    """The amount of the inventory item in the formulation."""
     min_value: float | None = Field(default=None)
+    """The minimum allowed amount for the component. Optional."""
     max_value: float | None = Field(default=None)
+    """The maximum allowed amount for the component. Optional."""
     _cell: Cell = None  # read only property set on registrstion
 
     @model_validator(mode="after")
@@ -277,15 +239,10 @@ class Component(BaseResource):
 
 
 class DesignState(BaseResource):
-    """The display state of a Design section within a Sheet.
-
-    Attributes
-    ----------
-    collapsed : bool | None
-        Whether the Design section is collapsed in the Sheet view. Default is False.
-    """
+    """The display state of a Design section within a Sheet."""
 
     collapsed: bool | None = False
+    """Whether the Design section is collapsed in the Sheet view. Default is False."""
 
 
 class RowConfig(BaseAlbertModel):
@@ -313,23 +270,6 @@ class Design(BaseSessionResource):
     [`result_design`][albert.resources.sheets.Sheet.result_design], [`app_design`][albert.resources.sheets.Sheet.app_design], and
     [`process_design`][albert.resources.sheets.Sheet.process_design]. A Design is a live grid element that carries the
     session and lazily loads its rows, columns, and grid on first access.
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the design.
-    design_type : DesignType
-        The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType].
-    state : DesignState | None
-        The display state of the design. Optional. Default is None.
-    grid : pd.DataFrame | None
-        The grid of the design, as a DataFrame of Cells. Loaded on first access.
-        Read-only.
-    rows : list[Row]
-        The rows of the design. Loaded on first access. Read-only.
-    columns : list[Column]
-        The columns of the design. Loaded on first access. Read-only.
-
     Methods
     -------
     group_rows(name, child_row_ids, ...) -> RowGroup
@@ -339,8 +279,11 @@ class Design(BaseSessionResource):
     """
 
     state: DesignState | None = Field({})
+    """The display state of the design. Optional. Default is None."""
     id: str = Field(alias="albertId")
+    """The Albert ID of the design."""
     design_type: DesignType = Field(alias="designType")
+    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]."""
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
     _rows: list[Row] | None = PrivateAttr(default=None)
     _columns: list[Column] | None = PrivateAttr(default=None)
@@ -707,35 +650,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         sheet = worksheet.sheets[0]
         print(sheet.grid)
         ```
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the sheet.
-    name : str
-        The name of the sheet.
-    formulations : list[SheetFormulationRef]
-        References to the formulations present on the sheet.
-    hidden : bool
-        Whether the sheet is hidden.
-    is_column_right : bool | None
-        When True, copied columns are placed to the right of the source column;
-        when False, to the left.
-    col_size_mode : str | None
-        Column width sizing mode. Allowed values are ``"minimum"`` and
-        ``"fitToColumn"``. ``None`` resets to the default grid width.
-    designs : list[Design]
-        The Designs (sections) of the sheet.
-    project_id : str
-        The ID of the Project the sheet belongs to (format ``PRO...``).
-    grid : pd.DataFrame | None
-        The full sheet grid, as a DataFrame of Cells. Loaded on first access.
-        Read-only.
-    columns : list[Column]
-        The Product Design columns of the sheet. Read-only.
-    rows : list[Row]
-        The rows of the sheet, across all Designs. Read-only.
-
     Methods
     -------
     rename(new_name) -> Sheet
@@ -785,17 +699,25 @@ class Sheet(BaseSessionResource):  # noqa:F811
     """
 
     id: str = Field(alias="albertId")
+    """The Albert ID of the sheet."""
     name: str
+    """The name of the sheet."""
     formulations: list[SheetFormulationRef] = Field(default_factory=list, alias="Formulas")
+    """References to the formulations present on the sheet."""
     hidden: bool
+    """Whether the sheet is hidden."""
     is_column_right: bool | None = Field(default=None, alias="isColumnRight")
+    """When True, copied columns are placed to the right of the source column; when False, to the left."""
     col_size_mode: str | None = Field(default=None, alias="colSizeMode")
+    """Column width sizing mode. Allowed values are ``"minimum"`` and ``"fitToColumn"``. ``None`` resets to the default grid width."""
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
     _process_design: Design = PrivateAttr(default=None)
     designs: list[Design] = Field(alias="Designs")
+    """The Designs (sections) of the sheet."""
     project_id: str = Field(alias="projectId")
+    """The ID of the Project the sheet belongs to (format ``PRO...``)."""
     _grid: pd.DataFrame = PrivateAttr(default=None)
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
@@ -2447,33 +2369,6 @@ class Column(BaseSessionResource):  # noqa:F811
     an inventory attribute, an ingredient name, or another type given by
     [`CellType`][albert.resources.sheets.CellType]. Its cells are read through [`cells`][albert.resources.sheets.Column.cells] and written back
     with [`update_cells`][albert.resources.sheets.Sheet.update_cells].
-
-    Attributes
-    ----------
-    column_id : str
-        The ID of the column.
-    name : str | None
-        The header name of the column. Optional. Default is None.
-    type : CellType | str
-        The type of the column. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType].
-    sheet : Sheet
-        The sheet the column belongs to.
-    inventory_id : str | None
-        For a formulation column, the underlying inventory ID (format ``INV...``).
-        Optional. Default is None.
-    locked : bool
-        Whether the column is locked against edits. Default is False.
-    hidden : bool | None
-        Whether the column is hidden. Optional. Default is None.
-    pinned : str | None
-        The edge the column is pinned to (``"left"`` or ``"right"``), or None.
-    column_width : str | None
-        The display width of the column (e.g. ``"142px"``), or None.
-    cells : list[Cell]
-        The cells in the column. Read-only.
-    df_name : str
-        The column's label in the sheet grid DataFrame. Read-only.
-
     Methods
     -------
     rename(new_name) -> Column
@@ -2483,15 +2378,24 @@ class Column(BaseSessionResource):  # noqa:F811
     """
 
     column_id: str = Field(alias="colId")
+    """The ID of the column."""
     name: str | None = Field(default=None)
+    """The header name of the column. Optional. Default is None."""
     type: CellType | str
+    """The type of the column. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
     sheet: Sheet
+    """The sheet the column belongs to."""
     inventory_id: str | None = Field(default=None, exclude=True)
+    """For a formulation column, the underlying inventory ID (format ``INV...``). Optional. Default is None."""
     _cells: list[Cell] | None = PrivateAttr(default=None)
     locked: bool = Field(default=False)
+    """Whether the column is locked against edits. Default is False."""
     hidden: bool | None = Field(default=None)
+    """Whether the column is hidden. Optional. Default is None."""
     pinned: str | None = Field(default=None)
+    """The edge the column is pinned to (``"left"`` or ``"right"``), or None."""
     column_width: str | None = Field(default=None)
+    """The display width of the column (e.g. ``"142px"``), or None."""
 
     @field_validator("locked", mode="before")
     @classmethod
@@ -2585,37 +2489,6 @@ class Row(BaseSessionResource):  # noqa:F811
     be a total, lookup, app, or blank row per its [`type`][albert.resources.sheets.Row.type]. Each row belongs
     to a specific [`Design`][albert.resources.sheets.Design] section of the [`sheet`][albert.resources.sheets.Row.sheet]. Its cells are read
     through [`cells`][albert.resources.sheets.Row.cells] and written back with [`update_cells`][albert.resources.sheets.Sheet.update_cells].
-
-    Attributes
-    ----------
-    row_id : str
-        The ID of the row.
-    type : CellType | str
-        The type of the row. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType].
-    design : Design
-        The Design (section) the row belongs to.
-    sheet : Sheet
-        The sheet the row belongs to.
-    name : str | None
-        The display name of the row. Optional. Default is None.
-    inventory_id : str | None
-        For an ingredient row, the inventory ID of the item (format ``INV...``).
-        Optional. Default is None.
-    manufacturer : str | None
-        The manufacturer of the row's inventory item. Optional. Default is None.
-    config : RowConfig | None
-        Configuration for APP or location-scoped rows. Optional. Default is None.
-    parent_row_id : str | None
-        The row ID of the group header this row belongs to. None if not grouped.
-    child_row_ids : list[str]
-        Row IDs of rows grouped under this row. Non-empty only on group header rows.
-    is_group_header : bool
-        True when this row is the header of a row group. Read-only.
-    row_unique_id : str
-        The unique ID of the row, combining its Design ID and row ID. Read-only.
-    cells : list[Cell]
-        The cells in the row. Read-only.
-
     Methods
     -------
     recolor_cells(color) -> tuple[list[Cell], list[Cell]]
@@ -2623,15 +2496,25 @@ class Row(BaseSessionResource):  # noqa:F811
     """
 
     row_id: str = Field(alias="rowId")
+    """The ID of the row."""
     type: CellType | str
+    """The type of the row. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
     design: Design
+    """The Design (section) the row belongs to."""
     sheet: Sheet
+    """The sheet the row belongs to."""
     name: str | None = Field(default=None)
+    """The display name of the row. Optional. Default is None."""
     inventory_id: str | None = Field(default=None, alias="id")
+    """For an ingredient row, the inventory ID of the item (format ``INV...``). Optional. Default is None."""
     manufacturer: str | None = Field(default=None)
+    """The manufacturer of the row's inventory item. Optional. Default is None."""
     config: RowConfig | None = Field(default=None)
+    """Configuration for APP or location-scoped rows. Optional. Default is None."""
     parent_row_id: str | None = Field(default=None)
+    """The row ID of the group header this row belongs to. None if not grouped."""
     child_row_ids: list[str] = Field(default_factory=list)
+    """Row IDs of rows grouped under this row. Non-empty only on group header rows."""
 
     @field_validator("config", mode="before")
     @classmethod

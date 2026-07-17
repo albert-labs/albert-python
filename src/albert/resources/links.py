@@ -34,27 +34,16 @@ class Link(BaseResource):
             child=EntityLink(id="INVA2"),
             category=LinkCategory.LINKED_INVENTORY,
         )
-        ```
-
-    Attributes
-    ----------
-    parent : EntityLink
-        The parent (source) entity of the link.
-    child : EntityLink
-        The child (target) entity of the link.
-    category : LinkCategory
-        The category of the link (e.g. ``mention``, ``linkedTask``,
-        ``synthesis``, ``linkedInventory``).
-    counter : int | None
-        An optional counter associated with the link.
-    id : str | None
-        The Albert ID of the link (format ``LNK...``). Assigned by Albert when
-        the link is created.
-    """
+        ```"""
 
     parent: EntityLink = Field(..., alias="Parent")
+    """The parent (source) entity of the link."""
     child: EntityLink = Field(..., alias="Child")
+    """The child (target) entity of the link."""
     category: LinkCategory = Field(...)
+    """The category of the link (e.g. ``mention``, ``linkedTask``, ``synthesis``, ``linkedInventory``)."""
     counter: int | None = Field(default=None)
+    """An optional counter associated with the link."""
 
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the link (format ``LNK...``). Assigned by Albert when the link is created."""

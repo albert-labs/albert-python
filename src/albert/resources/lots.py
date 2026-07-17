@@ -82,115 +82,78 @@ class Lot(BaseResource):
             initial_quantity=10.0,
         )
         created = client.lots.create(lots=[lot])
-        ```
-
-    Attributes
-    ----------
-    id : LotId | None
-        The lot's Albert ID (format ``LOT...``). Assigned by Albert; present on
-        lots retrieved from the platform.
-    inventory_id : InventoryId
-        The Albert ID of the parent Inventory Item this lot is a batch of.
-    task_id : str | None
-        The Albert ID of the Task that produced this lot, if it came from one.
-    notes : str | None
-        Free-text notes on the lot.
-    expiration_date : str | None
-        The date the lot expires, in ``YYYY-MM-DD`` format.
-    manufacturer_lot_number : str | None
-        The manufacturer's own lot number for this batch.
-    storage_location : StorageLocation | None
-        The specific place within a location where the lot is stored (e.g. a bin,
-        cabinet, or hood).
-    pack_size : str | None
-        The pack size of the lot, used to calculate cost per unit.
-    initial_quantity : NonNegativeFloat | None
-        The quantity the lot started with, in the parent item's units.
-    cost : NonNegativeFloat | None
-        The cost of the lot.
-    inventory_on_hand : NonNegativeFloat
-        The quantity currently in stock, in the parent item's units. Change it
-        with [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by
-        editing directly.
-    owner : list[User] | None
-        The user(s) who own the lot. A lot may have at most one owner.
-    lot_number : str | None
-        The lot's number within Albert.
-    external_barcode_id : str | None
-        An external barcode ID for the lot.
-    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
-        Custom field values for the lot. Allowed keys and values are defined by
-        the Custom Fields configuration.
-    action : str | None
-        Internal marker for the operation that produced the lot (e.g. a split).
-        Not typically set by callers.
-    status : LotStatus | None
-        The lot's lifecycle status. Read-only.
-    location : Location | None
-        The site/campus the lot is at (may contain multiple buildings, each with many
-        storage locations).
-    has_notes : bool | None
-        Whether the lot has notes. Read-only.
-    has_attachments : bool | None
-        Whether the lot has attachments. Read-only.
-    parent_name : str | None
-        The name of the parent Inventory Item. Read-only.
-    parent_unit : str | None
-        The unit of measure of the parent Inventory Item. Read-only.
-    parent_category : InventoryCategory | None
-        The category of the parent Inventory Item (e.g. ``RawMaterials``).
-        Read-only.
-    barcode_id : str | None
-        The barcode ID assigned by Albert. Read-only.
-    task_completion_date : str | None
-        The completion date of the Task that produced the lot. Read-only.
-    """
+        ```"""
 
     action: str | None = Field(default=None)
+    """Internal marker for the operation that produced the lot (e.g. a split). Not typically set by callers."""
     id: LotId | None = Field(None, alias="albertId")
+    """The lot's Albert ID (format ``LOT...``). Assigned by Albert; present on lots retrieved from the platform."""
     inventory_id: InventoryId = Field(alias="parentId")
+    """The Albert ID of the parent Inventory Item this lot is a batch of."""
     task_id: str | None = Field(default=None, alias="taskId")
+    """The Albert ID of the Task that produced this lot, if it came from one."""
     expiration_date: str | None = Field(None, alias="expirationDate")
+    """The date the lot expires, in ``YYYY-MM-DD`` format."""
     manufacturer_lot_number: str | None = Field(None, alias="manufacturerLotNumber")
+    """The manufacturer's own lot number for this batch."""
     storage_location: SerializeAsEntityLink[StorageLocation] | None = Field(
         alias="StorageLocation", default=None
     )
+    """The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood)."""
     pack_size: str | None = Field(None, alias="packSize")
+    """The pack size of the lot, used to calculate cost per unit."""
     initial_quantity: float | None = Field(default=None, alias="initialQuantity")
+    """The quantity the lot started with, in the parent item's units."""
     cost: NonNegativeFloat | None = Field(default=None)
+    """The cost of the lot."""
     inventory_on_hand: float = Field(alias="inventoryOnHand")
+    """The quantity currently in stock, in the parent item's units. Change it with [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by editing directly."""
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="Owner")
+    """The user(s) who own the lot. A lot may have at most one owner."""
     lot_number: str | None = Field(None, alias="lotNumber")
+    """The lot's number within Albert."""
     external_barcode_id: str | None = Field(None, alias="externalBarcodeId")
+    """An external barcode ID for the lot."""
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    """Custom field values for the lot. Allowed keys and values are defined by the Custom Fields configuration."""
     notes: str | None = Field(default=None)
+    """Free-text notes on the lot."""
     # because quarantined is an allowed Lot status, we need to extend the normal status
 
     # API-returned fields (read-only)
     status: LotStatus | None = Field(default=None, exclude=True, frozen=True)
+    """The lot's lifecycle status. Read-only."""
     location: SerializeAsEntityLink[Location] | None = Field(
         default=None,
         alias="Location",
     )
+    """The site/campus the lot is at (may contain multiple buildings, each with many storage locations)."""
     has_notes: bool | None = Field(default=None, alias="hasNotes", exclude=True, frozen=True)
+    """Whether the lot has notes. Read-only."""
     has_attachments: bool | None = Field(
         default=None,
         alias="hasAttachments",
         exclude=True,
         frozen=True,
     )
+    """Whether the lot has attachments. Read-only."""
     parent_name: str | None = Field(default=None, alias="parentName", exclude=True, frozen=True)
+    """The name of the parent Inventory Item. Read-only."""
     parent_unit: str | None = Field(default=None, alias="parentUnit", exclude=True, frozen=True)
+    """The unit of measure of the parent Inventory Item. Read-only."""
     parent_category: InventoryCategory | None = Field(
         default=None,
         alias="parentCategory",
         exclude=True,
         frozen=True,
     )
+    """The category of the parent Inventory Item (e.g. ``RawMaterials``). Read-only."""
     barcode_id: str | None = Field(default=None, alias="barcodeId", exclude=True, frozen=True)
+    """The barcode ID assigned by Albert. Read-only."""
     task_completion_date: str | None = Field(
         default=None, alias="taskCompletionDate", exclude=True, frozen=True
     )
+    """The completion date of the Task that produced the lot. Read-only."""
 
     @field_validator("has_notes", mode="before")
     def validate_has_notes(cls, value: Any) -> Any:
@@ -233,39 +196,25 @@ class LotSearchItem(BaseAlbertModel, HydrationMixin[Lot]):
 
     Returned by [`search`][albert.collections.lots.LotCollection.search]. It carries
     only the most commonly needed fields for fast lookups; call
-    `hydrate()` to fetch the full [`Lot`][albert.resources.lots.Lot] when you need every field.
-
-    Attributes
-    ----------
-    id : LotId
-        The lot's Albert ID (format ``LOT...``).
-    inventory_id : InventoryId | None
-        The Albert ID of the parent Inventory Item.
-    parent_name : str | None
-        The name of the parent Inventory Item.
-    parent_unit : str | None
-        The unit of measure of the parent Inventory Item.
-    parent_category : InventoryCategory | None
-        The category of the parent Inventory Item (e.g. ``RawMaterials``).
-    task_id : str | None
-        The Albert ID of the Task that produced this lot, if any.
-    barcode_id : str | None
-        The barcode ID assigned by Albert.
-    expiration_date : str | None
-        The date the lot expires, in ``YYYY-MM-DD`` format.
-    manufacturer_lot_number : str | None
-        The manufacturer's own lot number for this batch.
-    lot_number : str | None
-        The lot's number within Albert.
-    """
+    `hydrate()` to fetch the full [`Lot`][albert.resources.lots.Lot] when you need every field."""
 
     id: LotId = Field(alias="albertId")
+    """The lot's Albert ID (format ``LOT...``)."""
     inventory_id: InventoryId | None = Field(default=None, alias="parentId")
+    """The Albert ID of the parent Inventory Item."""
     parent_name: str | None = Field(default=None, alias="parentName")
+    """The name of the parent Inventory Item."""
     parent_unit: str | None = Field(default=None, alias="parentUnit")
+    """The unit of measure of the parent Inventory Item."""
     parent_category: InventoryCategory | None = Field(default=None, alias="parentIdCategory")
+    """The category of the parent Inventory Item (e.g. ``RawMaterials``)."""
     task_id: str | None = Field(default=None, alias="taskId")
+    """The Albert ID of the Task that produced this lot, if any."""
     barcode_id: str | None = Field(default=None, alias="barcodeId")
+    """The barcode ID assigned by Albert."""
     expiration_date: str | None = Field(default=None, alias="expirationDate")
+    """The date the lot expires, in ``YYYY-MM-DD`` format."""
     manufacturer_lot_number: str | None = Field(default=None, alias="manufacturerLotNumber")
+    """The manufacturer's own lot number for this batch."""
     lot_number: str | None = Field(default=None, alias="number")
+    """The lot's number within Albert."""

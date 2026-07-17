@@ -17,15 +17,10 @@ _PROJECTS_BASE_PATH = "/api/v3/projects"
 
 
 class SmartProjectScope(BaseAlbertModel):
-    """Scope of a smart project, defining which targets drive its smart dataset.
-
-    Attributes
-    ----------
-    targets : list[TargetId]
-        The target IDs that are part of this smart project scope.
-    """
+    """Scope of a smart project, defining which targets drive its smart dataset."""
 
     targets: list[TargetId] = Field(default_factory=list, alias="targetIds")
+    """The target IDs that are part of this smart project scope."""
 
 
 class SmartProjectPatchAttribute(str, Enum):
@@ -38,20 +33,6 @@ class SmartProjectPatchAttribute(str, Enum):
 
 class SmartProject(BaseSessionResource):
     """Smart project interface for a project.
-
-    Attributes
-    ----------
-    project_id : ProjectId
-        The ID of the project this smart project belongs to.
-    scope : SmartProjectScope
-        The target scope of the smart project.
-    dataset_id : SmartDatasetId | None
-        The ID of the smart dataset attached to the project, if any.
-    logs : dict[str, Any] | None
-        Build logs for the smart dataset.
-    last_refresh_at : datetime | None
-        When the smart dataset was last refreshed.
-
     Methods
     -------
     add_target(target) -> SmartProject
@@ -63,10 +44,15 @@ class SmartProject(BaseSessionResource):
     """
 
     project_id: ProjectId
+    """The ID of the project this smart project belongs to."""
     scope: SmartProjectScope
+    """The target scope of the smart project."""
     dataset_id: SmartDatasetId | None = Field(default=None, alias="datasetId")
+    """The ID of the smart dataset attached to the project, if any."""
     logs: dict[str, Any] | None = None
+    """Build logs for the smart dataset."""
     last_refresh_at: datetime | None = Field(default=None, alias="lastRefreshAt")
+    """When the smart dataset was last refreshed. Methods ------- add_target(target) -> SmartProject Add a target to this smart project's scope. remove_target(target, delete) -> SmartProject Remove a target from this smart project's scope. update_dataset(dataset) -> SmartProject Update the smart dataset attached to this smart project."""
 
     def _refresh(self) -> SmartProject:
         """Re-fetch the smart project and update this instance in place."""

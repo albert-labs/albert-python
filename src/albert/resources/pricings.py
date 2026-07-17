@@ -49,56 +49,36 @@ class Pricing(BaseResource):
             location=Location(name="Pittsburgh"),
             price=12.50,
         )
-        ```
-
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the pricing. Set when the pricing is retrieved from Albert.
-    inventory_id : str | None
-        The Inventory ID of the item this pricing is for (format ``INV...``).
-    company : Company
-        The company the price is quoted from.
-    location : Location
-        The location the price applies to.
-    description : str | None
-        Free-text description of the pricing.
-    pack_size : str | None
-        The pack size the price is quoted for. Used to derive cost per unit.
-    price : float
-        The price, expressed per kilogram or per liter (currency/kg or
-        currency/L) depending on the item's unit of measure. Convert to that
-        basis before setting.
-    currency : str
-        The currency code for ``price``. Defaults to ``"USD"``.
-    fob : str | None
-        The FOB (free-on-board) shipping term for the pricing.
-    lead_time : int | None
-        The lead time value, in the unit given by ``lead_time_unit``.
-    lead_time_unit : LeadTimeUnit | None
-        The unit of measure for ``lead_time``.
-    expiration_date : str | None
-        The date the pricing expires, in ``YYYY-MM-DD`` format.
-    default : int | None
-        Whether the default price is being used rather than an overridden price (a
-        flag).
-    """
+        ```"""
 
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the pricing. Set when the pricing is retrieved from Albert."""
     inventory_id: str | None = Field(default=None, alias="parentId")
+    """The Inventory ID of the item this pricing is for (format ``INV...``)."""
     company: SerializeAsEntityLink[Company] = Field(alias="Company")
+    """The company the price is quoted from."""
     location: SerializeAsEntityLink[Location] = Field(alias="Location")
+    """The location the price applies to."""
     description: str | None = Field(default=None)
+    """Free-text description of the pricing."""
     pack_size: str | None = Field(default=None, alias="packSize")
+    """The pack size the price is quoted for. Used to derive cost per unit."""
     price: float = Field(ge=0, le=9999999999)
+    """The price, expressed per kilogram or per liter (currency/kg or currency/L) depending on the item's unit of measure. Convert to that basis before setting."""
     currency: str = Field(default="USD", alias="currency")
+    """The currency code for ``price``. Defaults to ``"USD"``."""
     fob: str | None = Field(default=None)
+    """The FOB (free-on-board) shipping term for the pricing."""
     lead_time: int | None = Field(default=None, alias="leadTime")
+    """The lead time value, in the unit given by ``lead_time_unit``."""
     lead_time_unit: LeadTimeUnit | None = Field(default=None, alias="leadTimeUnit")
+    """The unit of measure for ``lead_time``."""
     expiration_date: str | None = Field(default=None, alias="expirationDate")
+    """The date the pricing expires, in ``YYYY-MM-DD`` format."""
 
     # Read-only fields
     default: int | None = Field(default=None, exclude=True, frozen=True)
+    """Whether the default price is being used rather than an overridden price (a flag)."""
 
 
 class InventoryPricings(BaseAlbertModel):
@@ -106,18 +86,12 @@ class InventoryPricings(BaseAlbertModel):
 
     Returned by
     [`get_by_inventory_ids`][albert.collections.pricings.PricingCollection.get_by_inventory_ids]
-    to group each item's pricings under its inventory ID.
-
-    Attributes
-    ----------
-    inventory_id : str
-        The Inventory ID the pricings belong to (format ``INV...``).
-    pricings : list[Pricing]
-        The pricings for that item.
-    """
+    to group each item's pricings under its inventory ID."""
 
     inventory_id: InventoryId = Field(..., alias="id")
+    """The Inventory ID the pricings belong to (format ``INV...``)."""
     pricings: list[Pricing]
+    """The pricings for that item."""
 
 
 class PricingBy(str, Enum):

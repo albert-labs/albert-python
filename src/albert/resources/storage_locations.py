@@ -21,20 +21,11 @@ class StorageLocation(BaseResource):
         client = Albert()
         parent = client.locations.get_by_id(id="...")
         storage_location = StorageLocation(name="Freezer A", location=parent)
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The human-readable name of the storage location (2 to 255 characters).
-    id : str | None
-        The Albert ID of the storage location (format ``STL...``). Assigned by
-        Albert and populated once the storage location has been created or
-        retrieved.
-    location : Location
-        The parent Location this storage location belongs to.
-    """
+        ```"""
 
     name: str = Field(alias="name", min_length=2, max_length=255)
+    """The human-readable name of the storage location (2 to 255 characters)."""
     id: str | None = Field(alias="albertId", default=None)
+    """The Albert ID of the storage location (format ``STL...``). Assigned by Albert and populated once the storage location has been created or retrieved."""
     location: SerializeAsEntityLink[Location] = Field(alias="Location")
+    """The parent Location this storage location belongs to."""

@@ -52,31 +52,19 @@ class Parameter(BaseResource):
         param = client.parameters.create(parameter=Parameter(name="Temperature"))
         param.id
         # 'PRM1'
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the parameter. Names must be unique.
-    id : str | None
-        The Albert ID of the parameter (format ``PRM...``). Set when the parameter
-        is retrieved from or created in Albert.
-    metadata : dict[str, MetadataItem] | None
-        Optional user-defined metadata keyed by field name.
-    category : ParameterCategory | None
-        Whether the parameter is ``Normal`` (scalar value) or ``Special`` (entity
-        reference). Set by the platform and read-only.
-    rank : int | None
-        The rank of the returned parameter. Read-only.
-    required : bool | None
-        Whether this parameter must be filled in within a Parameter Group.
-    """
+        ```"""
 
     name: str
+    """The name of the parameter. Names must be unique."""
     id: str | None = Field(alias="albertId", default=None)
+    """The Albert ID of the parameter (format ``PRM...``). Set when the parameter is retrieved from or created in Albert."""
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    """Optional user-defined metadata keyed by field name."""
 
     # Read-only fields
     category: ParameterCategory | None = Field(default=None, exclude=True, frozen=True)
+    """Whether the parameter is ``Normal`` (scalar value) or ``Special`` (entity reference). Set by the platform and read-only."""
     rank: int | None = Field(default=None, exclude=True, frozen=True)
+    """The rank of the returned parameter. Read-only."""
     required: bool | None = Field(default=None, exclude=True)
+    """Whether this parameter must be filled in within a Parameter Group."""

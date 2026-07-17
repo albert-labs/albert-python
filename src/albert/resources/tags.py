@@ -35,15 +35,6 @@ class Tag(BaseResource):
         from albert.resources.tags import Tag
         tag = Tag(tag="high-priority")
         ```
-
-    Attributes
-    ----------
-    tag : str
-        The name of the tag (its text label).
-    id : str or None
-        The Albert ID of the tag (format ``TAG...``). Set when the tag is
-        retrieved from or created in Albert.
-
     Methods
     -------
     from_string(tag) -> Tag
@@ -56,11 +47,13 @@ class Tag(BaseResource):
         alias=AliasChoices("name", "tagName"),
         serialization_alias="name",
     )
+    """The name of the tag (its text label)."""
     id: str | None = Field(
         None,
         alias=AliasChoices("albertId", "tagId"),
         serialization_alias="albertId",
     )
+    """The Albert ID of the tag (format ``TAG...``). Set when the tag is retrieved from or created in Albert. Methods ------- from_string(tag) -> Tag Build a Tag from its name string."""
 
     @classmethod
     def from_string(cls, tag: str) -> Tag:

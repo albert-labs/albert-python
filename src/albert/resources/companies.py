@@ -24,26 +24,13 @@ class Company(BaseResource):
 
         # Build a company to create or attach to an inventory item
         company = Company(name="Acme Chemicals")
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The company's name. This is the primary identifier used when searching
-        for or creating a company.
-    id : str | None
-        The Albert Company ID (format ``COM...``). ``None`` until the company is
-        created in or retrieved from Albert.
-    distance : float | None
-        Search-relevance score returned when the company comes back as a search
-        result. Read-only; not set on companies you build yourself.
-    status : Status | None
-        Lifecycle status of the company (inherited from
-        [`BaseResource`][albert.core.shared.models.base.BaseResource]).
-    """
+        ```"""
 
     name: str
+    """The company's name. This is the primary identifier used when searching for or creating a company."""
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert Company ID (format ``COM...``). ``None`` until the company is created in or retrieved from Albert."""
 
     # Read-only fields
     distance: float | None = Field(default=None, exclude=True, frozen=True)
+    """Search-relevance score returned when the company comes back as a search result. Read-only; not set on companies you build yourself."""

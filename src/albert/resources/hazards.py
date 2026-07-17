@@ -27,37 +27,21 @@ class HazardSymbol(EntityLinkWithName):
     """A GHS hazard pictogram symbol from the platform reference list.
 
     Returned by
-    [`get_symbols`][albert.collections.hazards.HazardsCollection.get_symbols].
-
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the hazard symbol.
-    name : str | None
-        The display name of the hazard symbol.
-    category : str | None
-        The category of the hazard symbol, when set.
-    status : HazardSymbolStatus | None
-        Whether the symbol is active, inactive, or was added manually.
-    """
+    [`get_symbols`][albert.collections.hazards.HazardsCollection.get_symbols]."""
 
     status: HazardSymbolStatus | None = Field(default=None)
+    """Whether the symbol is active, inactive, or was added manually."""
 
 
 class HazardStatement(EntityLinkWithName):
     """A GHS hazard statement from the platform reference list.
 
     Returned by
-    [`get_statements`][albert.collections.hazards.HazardsCollection.get_statements].
+    [`get_statements`][albert.collections.hazards.HazardsCollection.get_statements]."""
 
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the hazard statement.
-    name : str | None
-        The text of the hazard statement.
-    category : str | None
-        The category of the hazard statement, when set.
-    """
-
-    pass
+    id: str
+    """The Albert ID of the hazard statement."""
+    name: str | None = Field(default=None, exclude=False)
+    """The text of the hazard statement."""
+    category: str | None = Field(default=None, exclude=True)
+    """The category of the hazard statement, when set."""

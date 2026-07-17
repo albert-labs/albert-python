@@ -28,24 +28,13 @@ class DataColumn(BaseResource):
         created = client.data_columns.create(data_column=column)
         created.id
         # 'DAC1'
-        ```
-
-    Attributes
-    ----------
-    name : str
-        The name of the data column (e.g. ``"Viscosity"``).
-    metadata : dict[str, MetadataItem], optional
-        Custom metadata keyed by field name. Values may be strings, numbers, or
-        entity links.
-    id : str
-        The Data Column ID assigned by Albert (format ``DAC...``). Populated by the
-        server on creation; leave unset when building a column to create.
-    status : Status or None
-        The lifecycle status of the data column.
-    """
+        ```"""
 
     name: str
+    """The name of the data column (e.g. ``"Viscosity"``)."""
     defalt: bool = False
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    """Custom metadata keyed by field name. Values may be strings, numbers, or entity links."""
 
     id: str = Field(default=None, alias="albertId")
+    """The Data Column ID assigned by Albert (format ``DAC...``). Populated by the server on creation; leave unset when building a column to create."""

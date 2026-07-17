@@ -26,24 +26,16 @@ class Worksheet(BaseSessionResource):
         worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
         for sheet in worksheet.sheets:
             print(sheet.id, sheet.name)
-        ```
-
-    Attributes
-    ----------
-    sheets : list[Sheet]
-        The Sheets contained in this Worksheet.
-    project_name : str | None
-        The name of the paired Project.
-    sheets_enabled : bool
-        Whether Sheets are enabled for this Worksheet.
-    project_id : str
-        The ID of the paired Project (format ``PRO...``).
-    """
+        ```"""
 
     sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")
+    """The Sheets contained in this Worksheet."""
     project_name: str | None = Field(default=None, alias="projectName")
+    """The name of the paired Project."""
     sheets_enabled: bool = Field(default=True, alias="sheetEnabled")
+    """Whether Sheets are enabled for this Worksheet."""
     project_id: str = Field(alias="projectId")
+    """The ID of the paired Project (format ``PRO...``)."""
 
     @model_validator(mode="after")
     def add_session_to_sheets(self):

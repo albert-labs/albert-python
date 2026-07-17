@@ -36,42 +36,27 @@ class SignURLPOSTFile(BaseAlbertModel):
     """Request entry describing a single file to be signed for upload.
 
     Used internally to build the payload for
-    [`get_signed_upload_url`][albert.collections.files.FileCollection.get_signed_upload_url].
-
-    Attributes
-    ----------
-    name : str
-        The name (storage key) to store the file under.
-    namespace : FileNamespace
-        The namespace to store the file in.
-    content_type : str
-        The MIME type of the file.
-    metadata : list[dict[str, str]] | None
-        Optional key/value metadata to store with the file.
-    category : FileCategory | None
-        The category of the file (e.g. SDS, Other).
-    url : str | None
-        The signed URL returned by the API for this file.
-    """
+    [`get_signed_upload_url`][albert.collections.files.FileCollection.get_signed_upload_url]."""
 
     name: str
+    """The name (storage key) to store the file under."""
     namespace: FileNamespace
+    """The namespace to store the file in."""
     content_type: str = Field(..., alias="contentType")
+    """The MIME type of the file."""
     metadata: list[dict[str, str]] | None = Field(default=None)
+    """Optional key/value metadata to store with the file."""
     category: FileCategory | None = Field(default=None)
+    """The category of the file (e.g. SDS, Other)."""
     url: str | None = Field(default=None)
+    """The signed URL returned by the API for this file."""
 
 
 class SignURLPOST(BaseAlbertModel):
-    """Request body wrapping the list of files to sign for upload.
-
-    Attributes
-    ----------
-    files : list[SignURLPOSTFile]
-        The files to request signed upload URLs for.
-    """
+    """Request body wrapping the list of files to sign for upload."""
 
     files: list[SignURLPOSTFile]
+    """The files to request signed upload URLs for."""
 
 
 class FileInfo(BaseAlbertModel):
@@ -80,30 +65,19 @@ class FileInfo(BaseAlbertModel):
     Returned by
     [`get_by_name`][albert.collections.files.FileCollection.get_by_name]. Its ``name``
     can be used as the ``key`` of an
-    [`Attachment`][albert.resources.attachments.Attachment].
-
-    Attributes
-    ----------
-    name : str
-        The name (storage key) of the file.
-    size : int
-        The size of the file in bytes.
-    etag : str
-        The storage entity tag (checksum) for the file.
-    namespace : FileNamespace | str | None
-        The namespace the file is stored in.
-    content_type : str
-        The MIME type of the file.
-    last_modified : datetime
-        When the file was last modified.
-    metadata : list[dict[str, str]]
-        Key/value metadata stored with the file.
-    """
+    [`Attachment`][albert.resources.attachments.Attachment]."""
 
     name: str
+    """The name (storage key) of the file."""
     size: int
+    """The size of the file in bytes."""
     etag: str
+    """The storage entity tag (checksum) for the file."""
     namespace: FileNamespace | str | None = Field(default=None)
+    """The namespace the file is stored in."""
     content_type: str = Field(..., alias="contentType")
+    """The MIME type of the file."""
     last_modified: datetime = Field(..., alias="lastModified")
+    """When the file was last modified."""
     metadata: list[dict[str, str]] = Field(..., default_factory=list)
+    """Key/value metadata stored with the file."""
