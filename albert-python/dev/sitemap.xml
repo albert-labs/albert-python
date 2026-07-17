@@ -177,6 +177,10 @@
          <lastmod>2026-07-17</lastmod>
     </url>
     <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/report_templates/</loc>
+         <lastmod>2026-07-17</lastmod>
+    </url>
+    <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/reports/</loc>
          <lastmod>2026-07-17</lastmod>
     </url>
@@ -238,6 +242,18 @@
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/collections/worksheets/</loc>
+         <lastmod>2026-07-17</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/core/models/</loc>
+         <lastmod>2026-07-17</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/core/patch/</loc>
+         <lastmod>2026-07-17</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/core/tagged_base/</loc>
          <lastmod>2026-07-17</lastmod>
     </url>
     <url>
@@ -398,6 +414,10 @@
     </url>
     <url>
          <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/property_data/</loc>
+         <lastmod>2026-07-17</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.developer.albertinvent.com/albert-python/latest/resources/report_templates/</loc>
          <lastmod>2026-07-17</lastmod>
     </url>
     <url>
