@@ -159,6 +159,7 @@ nav:
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
+          - Label Templates: collections/label_templates.md
           - Links: collections/links.md
           - Lists: collections/lists.md
           - Locations: collections/locations.md
@@ -167,6 +168,7 @@ nav:
           - Notes: collections/notes.md
           - Parameter Groups: collections/parameter_groups.md
           - Parameters: collections/parameters.md
+          - PDF Generator: collections/pdf_generator.md
           - Pricings: collections/pricings.md
           - Product Design: collections/product_design.md
           - Projects: collections/projects.md
@@ -210,6 +212,7 @@ nav:
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Label Templates: resources/label_templates.md
           - Links: resources/links.md
           - Lists: resources/lists.md
           - Locations: resources/locations.md
@@ -218,6 +221,7 @@ nav:
           - Notes: resources/notes.md
           - Parameter Groups: resources/parameter_groups.md
           - Parameters: resources/parameters.md
+          - PDF Generator: resources/pdf_generator.md
           - Pricings: resources/pricings.md
           - Product Design: resources/product_design.md
           - Projects: resources/projects.md
@@ -244,6 +248,7 @@ nav:
   - Examples:
       - Data Templates: examples/data_templates.md
       - Inventory: examples/inventory.md
+      - Label Templates: examples/label_templates.md
       - Notebooks: examples/notebook.md
       - Parameter Groups: examples/parameter_groups.md
       - Property Data: examples/property_data.md
