@@ -39,6 +39,15 @@ This page covers the end-to-end SDK workflow and, most importantly, the rules fo
     # url is a short-lived link to the rendered PDF
     ```
 
+### Where the HTML file lives
+
+You never upload to S3 yourself. `create(template_html=...)` sends the HTML through the template API, which stores it for your tenant under the `template_file` name; that name is the file's identity. There is no URL at create time: when a label is printed, the platform resolves the template record's `template_file` into the stored file's URL (returned as `payload.template.body`) and the renderer fetches it server-side.
+
+Two consequences of the name-is-identity model:
+
+- Uploading a file with the same `template_file` name replaces the stored file for the whole tenant, so pick distinct names unless replacement is what you want.
+- `update()` can repoint a template record to a different `template_file` name, but the only way to upload file content is `create()`. To revise a template's HTML, create a new template with the corrected file (or re-upload under the same file name and delete the extra record).
+
 To inspect what data a template will receive (or to render manually), use `get_print_payload`:
 
 !!! example "Inspect the render payload"
