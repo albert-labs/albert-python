@@ -169,6 +169,8 @@ class TaskCollection(BaseCollection):
         if not isinstance(task, PropertyTask | BatchTask):
             logger.error(f"Task {task_id} is not a PropertyTask or BatchTask")
             raise TypeError(f"Task {task_id} is not a PropertyTask or BatchTask")
+        existing_workflow_id: str | None = None
+        initial_workflow_id: str | None = None
         for b in task.blocks:
             if b.id != block_id:
                 continue
@@ -176,7 +178,17 @@ class TaskCollection(BaseCollection):
                 if w.name == "No Parameter Group" and len(b.workflow) > 1:
                     # hardcoded default workflow
                     continue
-                existing_workflow_id = w.id
+                if w.category == "INITIAL":
+                    if initial_workflow_id is None:
+                        initial_workflow_id = w.id
+                else:
+                    existing_workflow_id = w.id
+            if existing_workflow_id is None:
+                existing_workflow_id = initial_workflow_id
+            break
+        if existing_workflow_id is None:
+            logger.error(f"No workflow found for block {block_id} on task {task_id}")
+            raise ValueError(f"No workflow found for block {block_id} on task {task_id}")
         if existing_workflow_id == workflow_id:
             logger.info(f"Block {block_id} already has workflow {workflow_id}")
             return None
