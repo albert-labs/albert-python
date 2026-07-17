@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.35.0](https://github.com/albert-labs/albert-python/compare/v1.34.1...v1.35.0) (2026-07-17)
+
+
+### Features
+
+* add label template and PDF generator collections ([#625](https://github.com/albert-labs/albert-python/issues/625)) ([0bc3e1b](https://github.com/albert-labs/albert-python/commit/0bc3e1bac7103b03b665994b481da4cbf50f4898))
+
 ## [1.34.1](https://github.com/albert-labs/albert-python/compare/v1.34.0...v1.34.1) (2026-07-17)
 
 
