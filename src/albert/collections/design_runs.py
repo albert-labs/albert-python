@@ -9,11 +9,23 @@ from albert.resources.targets import Criterion
 
 
 class DesignRunCollection(BaseCollection):
-    """DesignRunCollection is a collection for triggering inverse-design runs (🧪Beta).
+    """Trigger inverse-design runs for Smart Datasets (🧪Beta).
+
+    This collection is accessed as ``client.design_runs``.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for design-run requests.
 
     Methods
     -------
