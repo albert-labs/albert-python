@@ -65,7 +65,7 @@ class DesignRunCollection(BaseCollection):
         method : DesignMethod, default DesignMethod.GENERATE
             The design method to use.
         settings : DesignRunSettings, optional
-            Design run settings. See :class:`~albert.resources.design.DesignRunSettings`
+            Design run settings. See [`DesignRunSettings`][albert.resources.design.DesignRunSettings]
             for what each field controls and its allowed range.
 
         Returns
