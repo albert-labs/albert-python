@@ -114,10 +114,19 @@ class LabelTemplateCollection(BaseCollection):
         template's ``metadata``. Without HTML content, the template record is
         created pointing at an already-stored ``template_file``.
 
-        The HTML file is a complete Mustache HTML document whose body is
-        wrapped in a ``{{#labels}} ... {{/labels}}`` section. See the Label
-        Templates page in the docs Examples section for the authoring rules
-        and available fields.
+        The HTML file is a complete, ordinary HTML document whose body is
+        wrapped in a ``{{#labels}} ... {{/labels}}`` section, with Mustache
+        placeholders that are filled from the print payload for the
+        template's ``type``. Inventory label templates, for example, can use
+        ``{{info.inventoryName}}``, ``{{info.vendorLotNumber}}``,
+        ``{{info.expirationDate}}``, ``{{{info.lotNumber}}}`` (barcode
+        image), ``{{{info.lotNumberQrCode}}}`` (QR image),
+        ``{{#info.Symbols}}`` (hazard pictograms), and the full records under
+        ``{{info.AdditionalInfo...}}``, plus ``{{manualFields.<Name>}}`` for
+        user-entered values. The complete per-type field reference is on the
+        Label Templates page in the docs Examples section; to see exactly
+        what a template will receive, call [`get_print_payload`][albert.collections.label_templates.LabelTemplateCollection.get_print_payload]
+        and inspect ``payload.data["labels"]``.
 
         !!! example
             ```python

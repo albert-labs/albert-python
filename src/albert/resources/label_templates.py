@@ -43,10 +43,14 @@ class LabelTemplateType(str, Enum):
 class LabelTemplate(BaseResource):
     """A label template in the Albert platform.
 
-    A label template pairs a tenant-scoped Mustache HTML file with page
-    rendering options. Templates drive the printable outputs in Albert, such
-    as inventory lot barcode labels, batch task labels, and formula reports.
-    Label Template IDs use the ``TMP`` prefix.
+    A label template pairs a tenant-scoped HTML file with page rendering
+    options. The HTML file is an ordinary HTML document containing Mustache
+    placeholders (e.g. ``{{info.inventoryName}}``) that are filled at render
+    time from the print payload for the template's ``type``: the payload's
+    ``data["labels"]`` list holds one entry per printed entity, and each
+    entry's fields are read under ``info``. Templates drive the printable
+    outputs in Albert, such as inventory lot barcode labels, batch task
+    labels, and formula reports. Label Template IDs use the ``TMP`` prefix.
 
     See [`LabelTemplateCollection`][albert.collections.label_templates.LabelTemplateCollection]
     for creating, retrieving, and rendering label templates.

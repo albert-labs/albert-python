@@ -53,7 +53,11 @@ To inspect what data a template will receive (or to render manually), use `get_p
 
 ## Anatomy of a template file
 
-A template file is a complete HTML document. It is rendered with [Mustache](https://mustache.github.io/mustache.5.html) and printed to PDF by headless Chrome. The general shape is:
+A template file is a complete, ordinary HTML document with placeholders where the label's data goes. The placeholder syntax is [Mustache](https://mustache.github.io/mustache.5.html): `{{info.inventoryName}}` inserts a value, `{{#info.Symbols}}...{{/info.Symbols}}` repeats a block for each item in a list, and `{{{info.lotNumber}}}` (triple braces) inserts a value without HTML escaping. That is all the syntax there is; if you can write HTML and CSS, you can write a label template. At print time the placeholders are filled in and the page is printed to PDF by headless Chrome.
+
+The placeholder names are not arbitrary: they are the fields of the print payload assembled for your template's `type`. The full list per type is in [Data available to each template type](#data-available-to-each-template-type) below, and `get_print_payload(type=...)` returns the exact data (`payload.data["labels"]`) your template will be rendered with.
+
+The general shape is:
 
 ```html
 <html>

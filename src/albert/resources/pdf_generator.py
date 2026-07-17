@@ -8,6 +8,15 @@ from albert.core.base import BaseAlbertModel
 class PDFTemplate(BaseAlbertModel):
     """The HTML template sources used to render a PDF.
 
+    Each source is an HTML file with Mustache placeholders: ``{{field}}``
+    inserts a value, ``{{#list}}...{{/list}}`` repeats a block per item, and
+    ``{{{field}}}`` inserts without HTML escaping (needed for image URLs).
+    The valid placeholder names are exactly the keys of the ``data`` object
+    supplied at render time, using dotted paths for nested values. Label
+    payloads pass ``data={"labels": [...]}``, so those templates wrap their
+    body in ``{{#labels}}...{{/labels}}`` and read each entity's fields under
+    ``{{info.<field>}}``.
+
     When ``header`` or ``footer`` is set, the pages render with that header or
     footer template. Header and footer templates can show page numbers and
     document metadata via elements with the classes ``pageNumber``,
