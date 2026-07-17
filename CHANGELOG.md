@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.36.0](https://github.com/albert-labs/albert-python/compare/v1.35.0...v1.36.0) (2026-07-17)
+
+
+### Features
+
+* SDK support for api-designruns ([#626](https://github.com/albert-labs/albert-python/issues/626)) ([b38e03a](https://github.com/albert-labs/albert-python/commit/b38e03adaa3afa97263d82b9f963a23e55a1b0b2))
+
 ## [1.35.0](https://github.com/albert-labs/albert-python/compare/v1.34.1...v1.35.0) (2026-07-17)
 
 
