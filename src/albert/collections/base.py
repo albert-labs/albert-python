@@ -1,5 +1,7 @@
+from typing import Any
+
 from albert.core.session import AlbertSession
-from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
 
@@ -19,6 +21,17 @@ class BaseCollection:
 
     def __init__(self, *, session: AlbertSession):
         self.session = session
+
+    def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
+        """Serialize list metadata for PATCH. Override in subclasses when needed.
+
+        Default behavior sends bare list IDs. CasCollection overrides this to send
+        entity-link objects because the CAS API does not normalize list metadata IDs.
+        """
+        all_ids = [link.id for link in links]
+        if as_list:
+            return all_ids
+        return all_ids[0] if len(all_ids) == 1 else all_ids
 
     def _generate_metadata_diff(
         self,
@@ -50,7 +63,7 @@ class BaseCollection:
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.DELETE,
-                            old_value=all_ids[0] if len(all_ids) == 1 else all_ids,
+                            old_value=self._metadata_list_patch_value(value),
                         )
                     )
                 else:
@@ -72,8 +85,10 @@ class BaseCollection:
                         )
                     )
                 elif isinstance(updated_metadata[key], list):
-                    existing_ids = [v.id for v in value] if isinstance(value, list) else [value.id]
-                    updated_ids = [v.id for v in updated_metadata[key]]
+                    existing_links = value if isinstance(value, list) else [value]
+                    updated_links = updated_metadata[key]
+                    existing_ids = [v.id for v in existing_links]
+                    updated_ids = [v.id for v in updated_links]
                     if set(existing_ids) == set(updated_ids):  # no membership change, skip
                         continue
 
@@ -83,7 +98,9 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=existing_ids,
+                                old_value=self._metadata_list_patch_value(
+                                    existing_links, as_list=True
+                                ),
                             )
                         )
                     else:
@@ -94,8 +111,12 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.UPDATE,
-                                old_value=existing_ids,
-                                new_value=updated_ids,
+                                old_value=self._metadata_list_patch_value(
+                                    existing_links, as_list=True
+                                ),
+                                new_value=self._metadata_list_patch_value(
+                                    updated_links, as_list=True
+                                ),
                             )
                         )
                 else:
@@ -126,7 +147,7 @@ class BaseCollection:
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.ADD,
-                            new_value=all_ids[0] if len(all_ids) == 1 else all_ids,
+                            new_value=self._metadata_list_patch_value(value),
                         )
                     )
                 else:
