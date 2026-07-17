@@ -10,6 +10,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import (
+    BlockId,
     InventoryId,
     LabelTemplateId,
     LotId,
@@ -360,6 +361,7 @@ class LabelTemplateCollection(BaseCollection):
         albert_id: InventoryId | None = None,
         task_id: TaskId | None = None,
         lot_id: str | None = None,
+        block_id: BlockId | None = None,
         template_id: LabelTemplateId | None = None,
         jurisdiction: str | None = None,
     ) -> LabelPrintPayload:
@@ -405,6 +407,9 @@ class LabelTemplateCollection(BaseCollection):
             ``batchtemplate``, or ``generaltasklabel``.
         lot_id : str, optional
             Restrict property task labels to a specific lot.
+        block_id : BlockId, optional
+            Restrict property task labels to a specific block (format
+            ``BLK...``).
         template_id : LabelTemplateId, optional
             The Label Template ID to render with (format ``TMP...``). When not
             provided, the tenant default template for the type is used.
@@ -422,6 +427,7 @@ class LabelTemplateCollection(BaseCollection):
             "albertId": albert_id,
             "taskId": task_id,
             "lotId": lot_id,
+            "blockId": block_id,
             "templateId": template_id,
             "jurisdiction": jurisdiction,
         }

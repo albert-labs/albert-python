@@ -106,7 +106,7 @@ Key rules:
 
 The metadata block carries two kinds of keys: PDF page options consumed by the renderer, and label-assembly settings consumed while gathering the data. The same keys can also be set on the template record's `metadata` when creating via the SDK; the file block wins where both define a key.
 
-**Page options** (the renderer reads exactly these; anything else is ignored — see `PDFOptions`):
+**Page options** (the renderer reads exactly these and ignores anything else; see `PDFOptions`):
 
 | Key | Purpose |
 | --- | --- |
