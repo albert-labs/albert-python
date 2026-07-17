@@ -30,10 +30,13 @@ class Worksheet(BaseSessionResource):
 
     sheets: list[Sheet] = Field(default_factory=list, alias="Sheets")
     """The Sheets contained in this Worksheet."""
+
     project_name: str | None = Field(default=None, alias="projectName")
     """The name of the paired Project."""
+
     sheets_enabled: bool = Field(default=True, alias="sheetEnabled")
     """Whether Sheets are enabled for this Worksheet."""
+
     project_id: str = Field(alias="projectId")
     """The ID of the paired Project (format ``PRO...``)."""
 

@@ -15,12 +15,16 @@ class BTDatasetReferences(BaseAlbertModel):
 
     project_ids: list[str]
     """Identifiers of the projects the data was drawn from (format ``PRO...``)."""
+
     data_column_ids: list[str] | None = Field(default=None)
     """Identifiers of the data columns included (format ``DAC...``)."""
+
     target_ids: list[str] | None = Field(default=None)
     """Identifiers of the targets included (format ``TAR...``)."""
+
     sheet_ids: list[str] | None = Field(default=None)
     """Identifiers of the worksheets the data was drawn from (format ``WKS...``)."""
+
     filter: dict[str, Any] | None = Field(default=None)
     """Free-form filter criteria applied when assembling the data."""
 
@@ -50,15 +54,21 @@ class BTDataset(BaseResource):
 
     name: str
     """Human-readable name of the dataset."""
+
     id: BTDatasetId | None = Field(default=None, alias="albertId")
     """Unique identifier of the dataset (format ``DST...``). Assigned by Albert on creation."""
+
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
     """Identifier of the project the dataset belongs to (format ``PRO...``)."""
+
     key: str | None = Field(default=None)
     """Storage key for the dataset's underlying data file, if applicable."""
+
     file_name: str | None = Field(default=None, alias="fileName")
     """Name of the dataset's underlying data file, if applicable."""
+
     report: EntityLink | None = Field(default=None, alias="Report")
     """Link to a related report, if any."""
+
     references: BTDatasetReferences | None = Field(default=None, alias="References")
     """The Albert entities the dataset was assembled from."""

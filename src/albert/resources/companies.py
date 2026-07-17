@@ -28,6 +28,7 @@ class Company(BaseResource):
 
     name: str
     """The company's name. This is the primary identifier used when searching for or creating a company."""
+
     id: str | None = Field(default=None, alias="albertId")
     """The Albert Company ID (format ``COM...``). ``None`` until the company is created in or retrieved from Albert."""
 

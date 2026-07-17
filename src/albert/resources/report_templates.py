@@ -132,6 +132,7 @@ class ReportTemplate(BaseResource):
 
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the report template. Set when the template is retrieved from Albert."""
+
     name: str = Field(..., min_length=1, max_length=255, description="Name of the report template")
     description: str | None = Field(
         default=None, max_length=1000, description="Description of the report template"

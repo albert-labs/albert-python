@@ -32,6 +32,7 @@ class DataColumn(BaseResource):
 
     name: str
     """The name of the data column (e.g. ``"Viscosity"``)."""
+
     defalt: bool = False
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     """Custom metadata keyed by field name. Values may be strings, numbers, or entity links."""

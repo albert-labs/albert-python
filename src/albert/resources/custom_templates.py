@@ -24,6 +24,7 @@ class CustomTemplateInventoryLot(BaseAlbertModel):
 
     id: str
     """The Albert ID of the lot."""
+
     barcode: str | None = None
     """The barcode of the lot."""
 
@@ -33,10 +34,13 @@ class DataTemplateInventory(EntityLink):
 
     batch_size: float | None = Field(default=None, alias="batchSize")
     """The batch size to use for this inventory item."""
+
     sheet: list[Sheet | EntityLink] | None = Field(default=None)
     """Sheets associated with this inventory item in the template."""
+
     category: InventoryCategory | None = Field(default=None)
     """The inventory category of the item."""
+
     lots: list[CustomTemplateInventoryLot] | None = Field(default=None, alias="Lots")
     """Lots associated with this inventory item in the template."""
 
@@ -53,6 +57,7 @@ class TemplateEntityType(BaseAlbertModel):
 
     id: EntityTypeId | None = Field(default=None)
     """The Albert ID of the entity type."""
+
     custom_category: str | None = Field(default=None, alias="customCategory")
     """A custom category name for the entity type."""
 
@@ -142,8 +147,10 @@ class SamInput(BaseResource):
 
     value: str | None = Field(alias="Value", default=None)
     """The value of the input parameter."""
+
     unit: str | None = Field(alias="Unit", default=None)
     """The unit of the input parameter."""
+
     name: str = Field(alias="Name")
     """The name of the input parameter."""
 
@@ -153,12 +160,16 @@ class SamConfig(BaseResource):
 
     configuration_name: str = Field(alias="configurationName")
     """The name of the configuration."""
+
     configurationId: str
     """The identifier of the configuration."""
+
     machineId: str | None = Field(default=None)
     """The identifier of the machine."""
+
     input: list[SamInput] | None = Field(default=None)
     """The input parameters for this configuration."""
+
     job_status: JobStatus | None = Field(default=None, alias="status")
     """The status of the SAM job."""
 
@@ -168,6 +179,7 @@ class Workflow(BaseResource):
 
     id: str
     """The Albert ID of the workflow."""
+
     name: str | None = Field(default=None)
     """The name of the workflow."""
     # Some workflows may have SamConfig
@@ -285,6 +297,7 @@ class TemplateACL(BaseResource):
 
     fgclist: list[ACLEntry] = Field(default=None)
     """The list of access control entries (team, owner, member, viewer)."""
+
     acl_class: str | None = Field(default=None, alias="class")
     """The default access class for the template."""
 
@@ -310,20 +323,28 @@ class CustomTemplate(BaseTaggedResource, HydrationMixin["CustomTemplate"]):
 
     name: str
     """The name of the template."""
+
     id: CustomTemplateId | None = Field(default=None, alias="albertId")
     """The Custom Template ID (format ``CTP...``). Set when the template is retrieved from or created in Albert."""
+
     category: TemplateCategory = Field(default=TemplateCategory.GENERAL)
     """The kind of entity the template configures. Defaults to ``TemplateCategory.GENERAL``."""
+
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="Metadata")
     """Metadata values for the template. Allowed metadata keys are those defined as Custom Fields (see [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection])."""
+
     data: CustomTemplateData | None = Field(default=None, alias="Data")
     """The category-specific configuration the template applies."""
+
     entity_type: TemplateEntityType | None = Field(default=None, alias="EntityType")
     """The entity type associated with the template."""
+
     locked: bool | None = Field(default=None)
     """Whether the template is locked when loaded in the UI."""
+
     team: list[TeamACL] | None = Field(default_factory=list)
     """The teams associated with the template."""
+
     acl: TemplateACL | None = Field(default_factory=list, alias="ACL")
     """The access-control list governing who can use the template."""
 
@@ -374,21 +395,30 @@ class CustomTemplateSearchItem(BaseAlbertModel, HydrationMixin[CustomTemplate]):
 
     name: str
     """The name of the template."""
+
     id: CustomTemplateId = Field(alias="albertId")
     """The Custom Template ID (format ``CTP...``)."""
+
     created_by_name: str = Field(..., alias="createdByName")
     """The display name of the user who created the template."""
+
     created_at: str = Field(..., alias="createdAt")
     """When the template was created."""
+
     category: str | None = None
     """The template category."""
+
     status: Status | None = None
     """The template's status."""
+
     resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
     """The security classification of the template."""
+
     data: CustomTemplateSearchItemData | None = None
     """Partial template data included in search results."""
+
     acl: list[CustomTemplateSearchItemACL] | None = None
     """The access-control entries on the template."""
+
     team: list[CustomTemplateSearchItemTeam] | None = None
     """The teams associated with the template."""

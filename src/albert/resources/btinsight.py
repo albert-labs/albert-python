@@ -87,8 +87,10 @@ class BTInsightRegistry(BaseAlbertModel):
 
     build_logs: dict[str, Any] | None = Field(default=None, alias="BuildLogs")
     """Free-form logs captured while the insight was computed."""
+
     metrics: dict[str, Any] | None = Field(default=None, alias="Metrics")
     """Free-form performance metrics recorded for the insight."""
+
     settings: dict[str, Any] | None = Field(default=None, alias="Settings")
     """Free-form settings used to produce the insight."""
 
@@ -116,35 +118,51 @@ class BTInsight(BaseResource, protected_namespaces=()):
 
     name: str
     """Human-readable name of the insight."""
+
     category: BTInsightCategory
     """The kind of Breakthrough output this insight represents."""
+
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
     """Free-form metadata associated with the insight."""
+
     state: BTInsightState | None = Field(default=None)
     """Current progress state of the insight computation."""
+
     id: BTInsightId | None = Field(default=None, alias="albertId")
     """Unique identifier of the insight (format ``INS...``). Assigned by Albert on creation."""
+
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
     """Identifier of the project the insight belongs to (format ``PRO...``)."""
+
     dataset_id: BTDatasetId | None = Field(default=None, alias="datasetId")
     """Identifier of the dataset the insight is based on (format ``DST...``)."""
+
     model_session_id: BTModelSessionId | None = Field(default=None, alias="modelSessionId")
     """Identifier of the model session the insight came from (format ``MDS...``)."""
+
     model_id: BTModelId | None = Field(default=None, alias="modelId")
     """Identifier of the model the insight came from (format ``MDL...``)."""
+
     output_key: str | None = Field(default=None, alias="outputKey")
     """Storage key for the insight's output artifact, if applicable."""
+
     start_time: str | None = Field(default=None, alias="startTime")
     """When the insight computation started, if recorded."""
+
     end_time: str | None = Field(default=None, alias="endTime")
     """When the insight computation finished, if recorded."""
+
     total_time: str | None = Field(default=None, alias="totalTime")
     """Total time taken to compute the insight, if recorded."""
+
     raw_payload: dict[str, Any] | None = Field(default=None, alias="RawPayload")
     """The raw result payload produced for the insight."""
+
     payload_type: BTInsightPayloadType | None = Field(default=None, alias="payloadType")
     """Which system produced the payload."""
+
     registry: BTInsightRegistry | None = Field(default=None, alias="Registry")
     """Result metadata (logs, metrics, settings) recorded for the insight."""
+
     content_edited: bool | None = Field(default=None, alias="contentEdited")
     """Whether the insight's content has been manually edited."""

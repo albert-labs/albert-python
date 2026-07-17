@@ -28,6 +28,7 @@ class BTModelRegistry(BaseAlbertModel):
 
     build_logs: dict[str, Any] | None = Field(None, alias="BuildLogs")
     """Free-form logs captured while the session's models were built."""
+
     metrics: dict[str, Any] | None = Field(None, alias="Metrics")
     """Free-form performance metrics recorded for the session's models."""
 
@@ -55,24 +56,34 @@ class BTModelSession(BaseResource, protected_namespaces=()):
 
     name: str
     """Human-readable name of the session."""
+
     category: BTModelSessionCategory
     """Whether the session was built by a user or by Albert."""
+
     id: BTModelSessionId | None = Field(default=None)
     """Unique identifier of the session (format ``MDS...``). Assigned by Albert on creation."""
+
     dataset_id: BTDatasetId = Field(..., alias="datasetId")
     """Identifier of the dataset the session's models are built from (format ``DST...``)."""
+
     default_model: str | None = Field(default=None, alias="defaultModel")
     """Name of the session's default model, if one is designated."""
+
     total_time: str | None = Field(default=None, alias="totalTime")
     """Total time taken to build the session, if recorded."""
+
     model_count: int | None = Field(default=None, alias="modelCount")
     """Number of models contained in the session, if reported."""
+
     target: list[str] | None = Field(default=None)
     """The target variable(s) the session's models predict."""
+
     registry: BTModelRegistry | None = Field(default=None, alias="Registry")
     """Build logs and metrics recorded for the session."""
+
     albert_model_details: dict[str, Any] | None = Field(default=None, alias="albertModelDetails")
     """Details specific to an Albert-built session, when applicable."""
+
     flag: bool = Field(default=False)
     """Boolean marker on the session. Defaults to False."""
 
@@ -133,27 +144,39 @@ class BTModel(BaseResource, protected_namespaces=()):
 
     name: str
     """Human-readable name of the model."""
+
     id: BTModelId | None = Field(default=None)
     """Unique identifier of the model (format ``MDL...``). Assigned by Albert on creation."""
+
     dataset_id: BTDatasetId | None = Field(default=None, alias="datasetId")
     """Identifier of the dataset the model is built from (format ``DST...``)."""
+
     parent_id: BTModelSessionId | None = Field(default=None, alias="parentId")
     """Identifier of the parent session (format ``MDS...``), or None if the model is detached."""
+
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
     """Free-form metadata associated with the model."""
+
     type: BTModelType | None = Field(default=None)
     """Whether the model belongs to a session or is detached."""
+
     state: BTModelState | None = Field(default=None)
     """Current progress state of the model build."""
+
     target: list[str] | None = Field(default=None)
     """The target variable(s) the model predicts."""
+
     start_time: str | None = Field(default=None, alias="startTime")
     """When the model build started, if recorded."""
+
     end_time: str | None = Field(default=None, alias="endTime")
     """When the model build finished, if recorded."""
+
     total_time: str | None = Field(default=None, alias="totalTime")
     """Total time taken to build the model, if recorded."""
+
     model_binary_key: str | None = Field(default=None, alias="modelBinaryKey")
     """Storage key for the trained model artifact, if applicable."""
+
     flag: bool = Field(default=False)
     """Boolean marker on the model. Defaults to False."""

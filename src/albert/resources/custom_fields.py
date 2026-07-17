@@ -157,8 +157,10 @@ class CustomFieldAPI(BaseAlbertModel):
 
     endpoint: str | None = Field(default=None)
     """The URL the field's values are fetched from."""
+
     method: CustomFieldApiMethod | None = Field(default=None)
     """The HTTP method used to fetch values."""
+
     query_params_field: list[str] | None = Field(default=None, alias="queryParamsField")
     """Names of other fields whose values are passed as query parameters."""
 
@@ -168,6 +170,7 @@ class ListDefaultValue(BaseAlbertModel):
 
     id: str = Field(alias="albertId")
     """The ID of the list item."""
+
     name: str
     """The display name of the list item."""
 
@@ -177,6 +180,7 @@ class StringDefault(BaseAlbertModel):
 
     type: Literal[FieldType.STRING] = FieldType.STRING
     """Always ``FieldType.STRING``."""
+
     value: str
     """The default string value."""
 
@@ -186,6 +190,7 @@ class NumberDefault(BaseAlbertModel):
 
     type: Literal[FieldType.NUMBER] = FieldType.NUMBER
     """Always ``FieldType.NUMBER``."""
+
     value: int | float
     """The default numeric value."""
 
@@ -199,6 +204,7 @@ class ListDefault(BaseAlbertModel):
 
     type: Literal[FieldType.LIST] = FieldType.LIST
     """Always ``FieldType.LIST``."""
+
     value: ListDefaultValue | list[ListDefaultValue]
     """The default list item(s). Notes ----- For multi-select custom fields, ``value`` must be a ``list[ListDefaultValue]``."""
 
@@ -246,44 +252,64 @@ class CustomField(BaseResource):
 
     name: str
     """The field name (used as the metadata key). Cannot contain spaces."""
+
     id: str | None = Field(default=None, alias="albertId")
     """The Custom Field ID (format ``CTF...``). Assigned by Albert on creation."""
+
     field_type: FieldType = Field(alias="type")
     """The value type of the field (e.g. ``list``, ``string``, ``number``). ``string`` and ``list`` fields can be searchable; ``number`` fields cannot."""
+
     display_name: str = Field(alias="labelName", max_length=40)
     """The human-readable label for the field. Can contain spaces. Limited to 40 characters."""
+
     searchable: bool | None = Field(default=None, alias="search")
     """Whether the field is searchable. Defaults to False. Supported for ``list`` and ``string`` fields only."""
+
     service: ServiceType
     """The Albert entity the field is attached to."""
+
     hidden: bool | None = Field(default=None)
     """Whether the field is hidden. Defaults to False."""
+
     lookup_column: bool | None = Field(default=None, alias="lkpColumn")
     """Whether the field is a lookup column. Defaults to False. Only allowed for inventories."""
+
     lookup_row: bool | None = Field(default=None, alias="lkpRow")
     """Whether the field is a lookup row. Defaults to False. Only allowed for formulas in inventories."""
+
     category: FieldCategory | None = Field(default=None)
     """Who may add new items to a list field. Required for ``list`` fields."""
+
     min: int | float | None = Field(default=None)
     """The minimum count allowed for the field: the fewest items selectable in a multiselect list, or the fewest characters allowed in a string."""
+
     max: int | float | None = Field(default=None)
     """The maximum count allowed for the field: the most items selectable in a multiselect list, or the most characters allowed in a string."""
+
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
     """The entity categories the field applies to. Required for lookup row fields."""
+
     custom_entity_categories: list[str] | None = Field(default=None, alias="customEntityCategory")
     """Custom entity categories that define where the field is valid."""
+
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
     """Where the field is surfaced in the UI (``create`` and/or ``details``)."""
+
     required: bool | None = Field(default=None)
     """Whether a value for the field is required."""
+
     multiselect: bool | None = Field(default=None)
     """For list fields, whether multiple values may be selected."""
+
     editable: bool | None = Field(default=None)
     """Whether the field can be edited in the UI."""
+
     pattern: str | None = Field(default=None)
     """A validation pattern the field's value must match."""
+
     default: Default | None = Field(default=None)
     """The default value applied to the field."""
+
     api: CustomFieldAPI | None = Field(default=None)
     """Configuration for fields whose values are backed by a remote API."""
 
@@ -331,11 +357,15 @@ class SearchableCustomField(BaseAlbertModel):
 
     label: str
     """The field's display label."""
+
     type: str
     """The field's value type."""
+
     is_sortable: bool | None = Field(default=None, alias="isSortable")
     """Whether search results can be sorted by this field."""
+
     sort_by_param: str | None = Field(default=None, alias="sortByParam")
     """The parameter name to use when sorting by this field."""
+
     is_custom: bool = Field(alias="isCustom")
     """Whether the field is a custom field (as opposed to a standard field)."""

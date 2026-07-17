@@ -69,10 +69,13 @@ class ActivitySearchItemUser(BaseAlbertModel):
 
     name: str | None = Field(default=None)
     """The user's display name."""
+
     id: str | None = Field(default=None)
     """The user's Albert ID."""
+
     role: str | None = Field(default=None)
     """The user's role at the time of the activity."""
+
     user_class: str | None = Field(default=None, alias="class")
     """The user's class value."""
 
@@ -83,22 +86,31 @@ class ActivitySearchItem(BaseAlbertModel):
 
     action: str | None = Field(default=None)
     """The operation recorded (e.g. ``"read"`` or ``"write"``)."""
+
     name: str | None = Field(default=None)
     """Display name of the entity the activity acted on."""
+
     pk: str | None = Field(default=None, alias="PK")
     """The internal partition key for the record."""
+
     object_class: str | None = Field(default=None, alias="class")
     """The class of the entity the activity acted on."""
+
     logged_at: str | None = Field(default=None, alias="loggedAt")
     """Timestamp when the activity was logged."""
+
     operation_id: str | None = Field(default=None, alias="operationId")
     """The logged operation identifier."""
+
     object_id: str | None = Field(default=None, alias="objectId")
     """The Albert ID of the entity the activity acted on."""
+
     object_type: str | None = Field(default=None, alias="objectType")
     """The type of the entity the activity acted on."""
+
     activity_id: str | None = Field(default=None, alias="activityId")
     """The unique ID of the activity record."""
+
     user: ActivitySearchItemUser | None = Field(default=None)
     """The user who performed the activity."""
 
@@ -113,27 +125,39 @@ class Activity(BaseResource):
 
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the activity record."""
+
     activity_id: str | None = Field(default=None, alias="activityId")
     """The unique activity identifier."""
+
     action: str | None = Field(default=None)
     """The operation recorded (e.g. ``"read"`` or ``"write"``)."""
+
     operation_id: str | None = Field(default=None, alias="operationId")
     """The logged operation identifier."""
+
     data: dict | None = Field(default=None)
     """Free-form payload describing the change, when available."""
+
     env: str | None = Field(default=None)
     """The environment in which the activity was logged."""
+
     name: str | None = Field(default=None)
     """Display name of the entity the activity acted on."""
+
     module: str | None = Field(default=None)
     """The platform module the activity belongs to."""
+
     sub_module: str | None = Field(default=None, alias="subModule")
     """The platform sub-module the activity belongs to."""
+
     uri: str | None = Field(default=None)
     """The resource URI associated with the activity."""
+
     uuid: str | None = Field(default=None)
     """The activity UUID."""
+
     expires_at: float | None = Field(default=None, alias="expiresAt")
     """Expiry timestamp for the record, when applicable."""
+
     region: str | None = Field(default=None)
     """The region in which the activity was logged."""

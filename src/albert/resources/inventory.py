@@ -155,36 +155,47 @@ class CasAmount(BaseAlbertModel):
 
     min: float
     """The minimum amount (concentration) of the CAS in the item."""
+
     max: float
     """The maximum amount (concentration) of the CAS in the item."""
+
     target: float | None = Field(default=None, alias="inventoryValue")
     """The target amount of the CAS in the item. Serialized as ``inventoryValue``."""
+
     id: str | None = Field(default=None)
     """The Albert ID of the CAS resource this amount represents. Provide either a ``cas`` object or an ``id``; when ``cas`` is given, this is set from it."""
+
     cas_category: str | None = Field(default=None, alias="casCategory")
     """Whether the CAS is a trade secret."""
+
     inventory_function: list[SerializeAsEntityLink[ListItem] | str] | None = Field(
         default=None, alias="inventoryFunction"
     )
     """Business-controlled functions associated with the CAS in this inventory context (e.g. what role the substance plays). Values come from a managed list."""
+
     type: str | None = Field(default=None)
     """The CAS type. Can be retrieved from the CAS collection before construction."""
+
     classification_type: str | None = Field(default=None, alias="classificationType")
     """The EU classification source for the CAS: harmonized, notified, or REACH."""
 
     # Read-only fields
     cas: Cas | None = Field(default=None, exclude=True)
     """The full CAS object associated with this amount. Read-only after init; excluded from serialization. Provide either a ``cas`` or an ``id``."""
+
     cas_smiles: str | None = Field(default=None, alias="casSmiles", exclude=True, frozen=True)
     """The SMILES string of the CAS resource. Read-only; set from the ``cas`` object."""
+
     number: str | None = Field(default=None, exclude=True, frozen=True)
     """The CAS number (e.g. ``"7440-32-6"``). Read-only; set from the ``cas`` object."""
+
     created: AuditFields | None = Field(
         default=None,
         alias="Created",
         frozen=True,
     )
     """Audit metadata for creation. Read-only."""
+
     updated: CasAuditFieldsWithEmail | None = Field(
         default=None,
         alias="Updated",
@@ -221,8 +232,10 @@ class InventoryMinimum(BaseAlbertModel):
 
     id: str | None = Field(default=None)
     """The Albert ID of the Location this minimum applies to. Provide either a ``location`` or an ``id``; when ``location`` is given, this is set from it."""
+
     location: Location | None = Field(exclude=True, default=None)
     """The Location object this minimum applies to. Excluded from serialization. Provide either a ``location`` or an ``id``."""
+
     minimum: float = Field(ge=0, le=1000000000000000)
     """The minimum amount of the item that must be kept in stock at the Location. Must be between 0 and 1e15. See Also --------"""
 
@@ -276,46 +289,64 @@ class InventoryItem(BaseTaggedResource):
 
     name: str | None = None
     """The name of the item."""
+
     id: str | None = Field(None, alias="albertId")
     """The Albert Inventory ID (format ``INV...``). Set when the item is retrieved from or created in Albert. Serialized as ``albertId``."""
+
     description: str | None = None
     """A free-text description of the item."""
+
     category: InventoryCategory
     """The kind of material this item represents. Required. One of ``RawMaterials``, ``Consumables``, ``Equipment``, or ``Formulas``."""
+
     unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
     """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
+
     security_class: SecurityClass | None = Field(default=None, alias="class")
     """The access/security class of the item (e.g. confidential, shared, restricted)."""
+
     company: SerializeAsEntityLink[Company] | None = Field(default=None, alias="Company")
     """The manufacturing Company associated with the item (links to the Company collection). Accepts a [`Company`][albert.resources.companies.Company] or a name string; a string is turned into a Company that is first-or-created on save."""
+
     minimum: list[InventoryMinimum] | None = Field(default=None)  # To do
     """Per-Location reorder thresholds for the item. See [`InventoryMinimum`][albert.resources.inventory.InventoryMinimum]."""
+
     alias: str | None = Field(default=None)
     """An alternate name for the item."""
+
     cas: list[CasAmount] | None = Field(default=None, alias="Cas")
     """The item's compositional breakdown as CAS amounts. See [`CasAmount`][albert.resources.inventory.CasAmount]."""
+
     is_formula_override: bool | None = Field(default=None, alias="isFormulaOverride")
     """Whether the substance/CAS-level breakdown for this formula has been overridden from the auto-calculated value; commonly set to indicate the formula is not a non-reactive homogeneous mixture."""
+
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     """Custom metadata fields. Allowed keys are defined by the workspace's CustomFields configuration."""
+
     project_id: str | None = Field(default=None, alias="parentId")
     """The parent Project ID. Required for Formulas. Serialized as ``parentId``."""
+
     acls: list[ACL] = Field(default_factory=list, alias="ACL")
     """Access-control entries governing who can act on the item."""
 
     # Read-only fields
     inventory_on_hand: float = Field(default=0.0, alias="onHand", exclude=True, frozen=True)
     """Total amount currently on hand across all lots. Read-only."""
+
     task_config: list[dict] | None = Field(
         default=None, alias="TaskConfig", exclude=True, frozen=True
     )
     """Task configuration associated with the item. Read-only."""
+
     formula_id: str | None = Field(default=None, alias="formulaId", exclude=True, frozen=True)
     """The formula ID for a formula item. Read-only."""
+
     symbols: list[dict] | None = Field(default=None, alias="Symbols", exclude=True, frozen=True)
     """Hazard/pictogram symbols associated with the item. Read-only."""
+
     un_number: str | None = Field(default=None, alias="unNumber", exclude=True, frozen=True)
     """The UN hazardous-material number, when applicable. Read-only."""
+
     recent_atachment_id: str | None = Field(
         default=None, alias="recentAttachmentId", exclude=True, frozen=True
     )
@@ -363,10 +394,13 @@ class InventorySpecValue(BaseAlbertModel):
 
     min: str | None = Field(default=None)
     """The lower bound of the acceptable range."""
+
     max: str | None = Field(default=None)
     """The upper bound of the acceptable range."""
+
     reference: str | None = Field(default=None)
     """A reference or target value for the property."""
+
     comparison_operator: str | None = Field(default=None, alias="comparisonOperator")
     """The operator used to compare a measured value against this spec (e.g. ``">"``, ``"<="``). Serialized as ``comparisonOperator``."""
 
@@ -402,26 +436,37 @@ class InventorySpec(BaseAlbertModel):
 
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the spec. Serialized as ``albertId``."""
+
     name: str
     """The name of the spec. Required."""
+
     data_column_id: str = Field(..., alias="datacolumnId")
     """The ID of the data column this spec applies to (format ``DAC...``). Required. Serialized as ``datacolumnId``."""
+
     data_column_name: str | None = Field(default=None, alias="datacolumnName")
     """The display name of the data column. Serialized as ``datacolumnName``."""
+
     data_template_id: str | None = Field(default=None, alias="datatemplateId")
     """The ID of the associated data template. Serialized as ``datatemplateId``."""
+
     data_template_name: str | None = Field(default=None, alias="datatemplateName")
     """The display name of the data template. Serialized as ``datatemplateName``."""
+
     unit_id: str | None = Field(default=None, alias="unitId")
     """The ID of the unit for the spec value. Serialized as ``unitId``."""
+
     unit_name: str | None = Field(default=None, alias="unitName")
     """The display name of the unit. Serialized as ``unitName``."""
+
     workflow_id: str | None = Field(default=None, alias="workflowId")
     """The ID of the associated workflow. Serialized as ``workflowId``."""
+
     workflow_name: str | None = Field(default=None, alias="workflowName")
     """The display name of the workflow. Serialized as ``workflowName``."""
+
     spec_config: str | None = Field(default=None, alias="specConfig")
     """Additional spec configuration. Serialized as ``specConfig``."""
+
     value: InventorySpecValue | None = Field(default=None, alias="Value")
     """The expected value or range for the property. Serialized as ``Value``. See Also --------"""
 
@@ -436,6 +481,7 @@ class InventorySpecList(BaseAlbertModel):
 
     parent_id: str = Field(..., alias="parentId")
     """The Inventory ID of the item the specs belong to. Serialized as ``parentId``."""
+
     specs: list[InventorySpec] = Field(..., alias="Specs")
     """The specs attached to the item. Serialized as ``Specs``. See Also --------"""
 
@@ -476,23 +522,31 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 
     id: str = Field(alias="albertId")
     """The Albert Inventory ID (format ``INV...``). Serialized as ``albertId``."""
+
     name: str = Field(default="")
     """The name of the item."""
+
     description: str = Field(default="")
     """The description of the item."""
+
     category: InventoryCategory
     """The kind of material this item represents."""
+
     unit: InventoryUnitCategory
     """The dimension the item is measured in."""
+
     lots: list[dict[str, Any]] = Field(default_factory=list)
     """Lot records associated with the item."""
+
     tags: list[Tag] = Field(default_factory=list)
     """Tags on the item."""
+
     pictogram: list[InventorySearchPictogramItem] = Field(default_factory=list)
     """Hazard pictograms associated with the item."""
     # missing element implies none on hand
     inventory_on_hand: float = Field(default=0.0, alias="inventoryOnHand")
     """Total amount currently on hand. Defaults to 0 when absent (none on hand). Serialized as ``inventoryOnHand``."""
+
     sds: InventorySearchSDSItem | None = Field(default=None, alias="SDS")
     """Safety Data Sheet summary fields. Serialized as ``SDS``. See Also --------"""
 
@@ -517,7 +571,9 @@ class MergeInventory(BaseAlbertModel):
 
     parent_id: InventoryId = Field(alias="parentId")
     """The Inventory ID of the item that will survive the merge. Serialized as ``parentId``."""
+
     child_inventories: list[dict[str, InventoryId]] = Field(alias="ChildInventories")
     """The child item(s) to merge into the parent, each given as a mapping such as ``{"id": "INVB1"}``. Serialized as ``ChildInventories``."""
+
     modules: list[InventoryMergeModule] | None = Field(default=None)
     """The data modules to carry over from the children. When ``None``, all modules are merged. See Also --------"""

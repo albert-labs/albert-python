@@ -14,6 +14,7 @@ class FacetValue(BaseAlbertModel):
 
     name: str
     """The facet value label."""
+
     count: int
     """The number of results that have this facet value."""
 
@@ -23,9 +24,12 @@ class FacetItem(BaseAlbertModel):
 
     name: str
     """The display name of the facet."""
+
     parameter: str
     """The query parameter name used to filter by this facet."""
+
     type: FacetType
     """The data type of the facet values."""
+
     value: list[FacetValue] = Field(default_factory=list, alias="Value")
     """The individual values within this facet and their counts."""

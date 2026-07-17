@@ -14,13 +14,18 @@ class UnNumber(BaseResource):
 
     un_number: str = Field(alias="unNumber")
     """The UN Number itself (e.g. ``"UN1090"``)."""
+
     id: str = Field(alias="albertId")
     """The Albert ID of the UN Number. Set when the UN Number is retrieved from Albert."""
+
     storage_class_name: str = Field(alias="storageClassName")
     """The name of the associated storage class."""
+
     shipping_description: str = Field(alias="shippingDescription")
     """The proper shipping description for the material."""
+
     storage_class_number: str = Field(alias="storageClassNumber")
     """The number of the associated storage class."""
+
     un_classification: str = Field(alias="unClassification")
     """The UN hazard classification."""

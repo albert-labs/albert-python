@@ -71,20 +71,27 @@ class User(BaseResource):
 
     name: str
     """The display name of the user."""
+
     id: UserId | None = Field(None, alias="albertId")
     """The Albert User ID (format ``USR...``). Set once the user is registered in or retrieved from Albert."""
+
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
     """The user's home location."""
+
     email: EmailStr = Field(default=None, alias="email")
     """The user's email address."""
+
     roles: list[SerializeAsEntityLink[Role]] = Field(
         max_length=1, default_factory=list, alias="Roles"
     )
     """The roles the user holds, which determine their permissions."""
+
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
     """The ACL class level of the user (broad permission tier)."""
+
     witnesser: bool | None = Field(default=None, alias="witnesser")
     """Whether the user can act as a witness on tasks (only relevant when witnessing is enabled for the tenant)."""
+
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     """Custom metadata attached to the user."""
 
@@ -104,6 +111,7 @@ class UserSearchRoleItem(BaseAlbertModel):
 
     roleId: str
     """The Albert ID of the role."""
+
     roleName: str
     """The display name of the role."""
 
@@ -117,19 +125,27 @@ class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
 
     name: str
     """The display name of the user."""
+
     id: UserId | None = Field(None, alias="albertId")
     """The Albert User ID (format ``USR...``)."""
+
     email: EmailStr | None = Field(default=None, alias="email")
     """The user's email address."""
+
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
     """The ACL class level of the user (broad permission tier)."""
+
     last_login_time: datetime | None = Field(None, alias="lastLoginTime")
     """When the user most recently signed in."""
+
     location: str | None = None
     """The name of the user's home location."""
+
     location_id: str | None = Field(None, alias="locationId")
     """The ID of the user's home location."""
+
     roles: list[UserSearchRoleItem] = Field(max_length=1, default_factory=list, alias="role")
     """The roles the user holds."""
+
     subscription: str | None = None
     """The user's subscription type."""

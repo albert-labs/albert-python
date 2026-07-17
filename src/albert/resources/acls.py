@@ -36,5 +36,6 @@ class ACLContainer(BaseResource):
 
     acl_class: str | None = Field(default=None, alias="class")
     """The default access class (for example, "restricted" or "confidential")."""
+
     fgclist: list[ACL] | None = Field(default=None, alias="fgclist")
     """Specific access rules for users or teams."""

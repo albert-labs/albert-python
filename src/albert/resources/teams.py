@@ -20,8 +20,10 @@ class TeamMember(BaseAlbertModel):
 
     id: UserId
     """The Albert User ID (format ``USR...``) of the member."""
+
     name: str | None = None
     """The display name of the user."""
+
     role: TeamRole | None = Field(default=None, alias="fgc")
     """The member's role within the team: ``"TeamOwner"`` (can manage the team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"`` when unset."""
 
@@ -45,8 +47,10 @@ class Team(BaseResource):
 
     id: TeamId | None = Field(default=None, alias="albertId")
     """The Albert Team ID (format ``TEM...``). Set once the team is registered in or retrieved from Albert."""
+
     name: str = Field(min_length=1)
     """The display name of the team."""
+
     members: list[TeamMember] | None = Field(default=None, alias="Users")
     """The members of the team, each with their name and team role."""
 

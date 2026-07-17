@@ -56,10 +56,13 @@ class SmartDatasetScope(BaseAlbertModel):
 
     project_ids: list[ProjectId] = Field(default_factory=list, alias="projectIds")
     """The projects whose experiments feed the dataset."""
+
     target_ids: list[TargetId] = Field(default_factory=list, alias="targetIds")
     """Specific targets to include."""
+
     sheet_ids: list[WorksheetId] | None = Field(default=None, alias="sheetIds")
     """The worksheets to restrict to. If None, all worksheets in the selected projects are used."""
+
     target_parent_ids: dict[TargetId, ProjectId] | None = Field(
         default_factory=dict, alias="targetParentIds"
     )
@@ -93,14 +96,19 @@ class SmartDataset(BaseResource):
     type: Literal["smart"] = "smart"
     id: SmartDatasetId | None = Field(default=None)
     """The unique identifier of the smart dataset (format ``SDT...``)."""
+
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
     """The ID of the parent project this smart dataset belongs to. When set, the smart dataset inherits its ACL policy from the referenced project."""
+
     build_state: SmartDatasetBuildState | None = Field(default=None, alias="buildState")
     """Where the dataset is in its build lifecycle. Data is available once this is ``ready``."""
+
     scope: SmartDatasetScope | None = Field(default=None)
     """The scope defining which projects, targets, and worksheets the dataset draws its experiment data from."""
+
     schema_: dict | None = Field(default=None, alias="schema")
     """Serialized dataset schema (from the dataset's ``get_schema()``): variable metadata for the experiments/mixtures/inventory tables."""
+
     storage_key: str | None = Field(default=None, alias="storageKey")
     """S3 key for the built dataset JSON."""
 
@@ -178,16 +186,22 @@ class SmartDatasetRecordIdentifier(BaseAlbertModel):
 
     type: str
     """The identifier type (e.g., ``albert_inventory``, ``albert_material``)."""
+
     inventory_id: str
     """The inventory ID of the record."""
+
     key: str | None = Field(default=None)
     """The unique key of the identifier."""
+
     lot_id: str | None = Field(default=None)
     """The lot ID, if applicable."""
+
     workflow_interval: str | None = Field(default=None)
     """The workflow interval, if applicable."""
+
     task_id: str | None = Field(default=None)
     """The task ID, if applicable."""
+
     property_data_id: str | None = Field(default=None)
     """The property data ID, if applicable."""
 
@@ -202,6 +216,7 @@ class MaterialAmountVariable(_BaseVariable):
 
     type: Literal["material_amount"] = "material_amount"
     """The variable type discriminator; always ``material_amount``."""
+
     data_type: Literal[SmartDatasetVariableDataType.NUMERIC] = SmartDatasetVariableDataType.NUMERIC
     """The value type; always ``NUMERIC`` for material amounts."""
 
@@ -211,8 +226,10 @@ class ParameterVariable(_BaseVariable):
 
     type: Literal["parameter"] = "parameter"
     """The variable type discriminator; always ``parameter``."""
+
     data_type: SmartDatasetVariableDataType
     """The value type of the parameter."""
+
     sources: list[Literal["property", "batch", "process_design"]] = Field(default_factory=list)
     """Which RET48 origins contributed the parameter values: ``"property"``, ``"batch"``, or ``"process_design"`` (overlaps resolved by the ETL, with batch taking precedence over process-design)."""
 
@@ -222,6 +239,7 @@ class MoleculeVariable(_BaseVariable):
 
     type: Literal["molecule"] = "molecule"
     """The variable type discriminator; always ``molecule``."""
+
     data_type: Literal[SmartDatasetVariableDataType.MOLECULAR] = (
         SmartDatasetVariableDataType.MOLECULAR
     )
@@ -233,6 +251,7 @@ class PropertyVariable(_BaseVariable):
 
     type: Literal["property"] = "property"
     """The variable type discriminator; always ``property``."""
+
     data_type: SmartDatasetVariableDataType
     """The value type of the measured property."""
 
@@ -253,13 +272,18 @@ class SmartDatasetData(BaseAlbertModel):
 
     aggregate_by: SmartDatasetAggregateBy
     """The aggregation level of the returned rows."""
+
     identifiers: list[SmartDatasetRecordIdentifier] = Field(default_factory=list)
     """The identifier metadata for each row, aligned with the rows of ``data``."""
+
     variables: list[SmartDatasetVariable] = Field(default_factory=list)
     """The variable metadata for each column, aligned with the columns of ``data``."""
+
     data: OrientTightDataFrame
     """The experiment data values as a record-by-variable matrix."""
+
     uncertainty: OrientTightDataFrame | None = Field(default=None)
     """The associated uncertainty values, if available."""
+
     counts: OrientTightDataFrame | None = Field(default=None)
     """The associated observation counts, if available."""

@@ -15,11 +15,15 @@ class Role(BaseResource):
 
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the role. Role IDs may contain ``#`` characters. Set once the role is retrieved from Albert."""
+
     name: str
     """The display name of the role."""
+
     policies: list[Any] | None = Field(default=None, alias="Policies")
     """The policies (permission rules) associated with the role."""
+
     tenant: str
     """The ID of the tenant the role belongs to."""
+
     visibility: bool | None = Field(default=None)
     """Whether the role is visible in the platform's role listings."""

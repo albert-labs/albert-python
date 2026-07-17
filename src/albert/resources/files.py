@@ -40,14 +40,19 @@ class SignURLPOSTFile(BaseAlbertModel):
 
     name: str
     """The name (storage key) to store the file under."""
+
     namespace: FileNamespace
     """The namespace to store the file in."""
+
     content_type: str = Field(..., alias="contentType")
     """The MIME type of the file."""
+
     metadata: list[dict[str, str]] | None = Field(default=None)
     """Optional key/value metadata to store with the file."""
+
     category: FileCategory | None = Field(default=None)
     """The category of the file (e.g. SDS, Other)."""
+
     url: str | None = Field(default=None)
     """The signed URL returned by the API for this file."""
 
@@ -69,15 +74,21 @@ class FileInfo(BaseAlbertModel):
 
     name: str
     """The name (storage key) of the file."""
+
     size: int
     """The size of the file in bytes."""
+
     etag: str
     """The storage entity tag (checksum) for the file."""
+
     namespace: FileNamespace | str | None = Field(default=None)
     """The namespace the file is stored in."""
+
     content_type: str = Field(..., alias="contentType")
     """The MIME type of the file."""
+
     last_modified: datetime = Field(..., alias="lastModified")
     """When the file was last modified."""
+
     metadata: list[dict[str, str]] = Field(..., default_factory=list)
     """Key/value metadata stored with the file."""

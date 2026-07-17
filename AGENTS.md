@@ -31,11 +31,16 @@ Single source of truth for coding-agent guidance in this repo.
 - **Field documentation lives on attribute docstrings**, not in class-level ``Attributes`` sections.
   ``BaseAlbertModel`` sets ``use_attribute_docstrings=True``, so Pydantic emits them as
   JSON Schema ``description`` values (used by the ReAct worker tool factory and
-  ``expand_schema``). Place the docstring on the line immediately after each field::
+  ``expand_schema``). Place the docstring on the line immediately after each field, and
+  add a blank line after each field+docstring pair so adjacent fields are visually
+  separated in the IDE::
 
     ```python
     description: str = Field(min_length=1, max_length=2000)
     """Human-readable project name/description. Also serves as the display name."""
+
+    status: str | None = Field(default=None)
+    """Lifecycle status of the project."""
     ```
 
   Keep the class docstring for narrative, examples, and cross-refs; document individual

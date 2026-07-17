@@ -30,12 +30,16 @@ class BatchValuePatchDatum(BaseAlbertModel):
 
     attribute: str = Field(default="lotId")
     """The field being changed. Defaults to ``"lotId"``."""
+
     lot_id: str | None = Field(default=None, alias="lotId")
     """The lot identifier being assigned, when applicable."""
+
     new_value: str | None = Field(default=None, alias="newValue")
     """The new value to set for the attribute."""
+
     old_value: str | None = Field(default=None, alias="oldValue")
     """The previous value being replaced, when performing an update."""
+
     operation: str
     """The kind of change to apply (e.g. ``"add"``, ``"update"``, ``"delete"``)."""
 
@@ -55,6 +59,7 @@ class BatchValueId(BaseAlbertModel):
 
     col_id: str | None = Field(default=None, alias="colId")
     """The identifier of the product column the value belongs to."""
+
     row_id: str = Field(alias="rowId")
     """The identifier of the row the value belongs to. Required."""
 
@@ -82,8 +87,10 @@ class BatchValuePatchPayload(BaseAlbertModel):
 
     id: BatchValueId = Field(alias="Id")
     """Locates the cell to change (its row and optional column)."""
+
     data: list[BatchValuePatchDatum] = Field(default_factory=list)
     """The individual changes to apply to that cell."""
+
     lot_id: str | None = Field(default=None, alias="lotId")
     """The lot identifier associated with the change, when applicable."""
 
@@ -108,18 +115,25 @@ class BatchDataValue(BaseAlbertModel):
 
     id: str | None = Field(default=None)
     """The identifier of the value."""
+
     col_id: str | None = Field(default=None, alias="colId")
     """The identifier of the product column this value belongs to."""
+
     type: str | None = Field(default=None)
     """The type of the value."""
+
     name: str | None = Field(default=None)
     """The display name associated with the value."""
+
     value: str | None = Field(default=None)
     """The recorded amount."""
+
     is_editable: bool | None = Field(default=None, alias="isEditable")
     """Whether the value can be edited."""
+
     unit_category: str | None = Field(default=None, alias="unitCategory")
     """The category of unit the value is expressed in."""
+
     reference_value: str | None = Field(default=None, alias="referenceValue")
     """The reference amount the value is compared against."""
 
@@ -133,24 +147,34 @@ class BatchDataRow(BaseAlbertModel):
 
     id: str | None = Field(default=None)
     """The identifier of the row."""
+
     row_id: str | None = Field(default=None, alias="rowId")
     """The row identifier used to locate values (see [`BatchValueId`][albert.resources.batch_data.BatchValueId])."""
+
     type: str | None = Field(default=None)
     """The type of the row."""
+
     name: str | None = Field(default=None)
     """The name of the component the row represents."""
+
     manufacturer: str | None = Field(default=None)
     """The manufacturer of the component, when known."""
+
     unit_category: str | None = Field(default=None, alias="unitCategory")
     """The category of unit the row's amounts are expressed in."""
+
     category: str | None = Field(default=None)
     """The category of the component."""
+
     is_formula: bool | None = Field(default=None, alias="isFormula")
     """Whether the row represents a formula (as opposed to a raw material)."""
+
     is_lot_parent: bool | None = Field(default=None, alias="isLotParent")
     """Whether the row groups lots as a parent row."""
+
     values: list[BatchDataValue] = Field(default_factory=list, alias="Values")
     """The recorded amounts for this row, one per product column."""
+
     child_rows: list[BatchDataRow] = Field(default_factory=list, alias="ChildRows")
     """Nested rows, e.g. the components of a sub-formula."""
 
@@ -164,22 +188,31 @@ class BatchDataColumn(BaseAlbertModel):
     # TODO: Once SignatureOverrideMeta removed, use BaseAlbertModel instead of BaseModel
     id: str | None = Field(default=None)
     """The identifier of the column."""
+
     name: str | None = Field(default=None)
     """The name of the product/batch."""
+
     col_id: str | None = Field(default=None, alias="colId")
     """The column identifier used to locate values (see [`BatchValueId`][albert.resources.batch_data.BatchValueId])."""
+
     batch_total: str | None = Field(default=None, alias="batchTotal")
     """The total amount recorded for the batch."""
+
     reference_total: str | None = Field(default=None, alias="referenceTotal")
     """The reference total the batch is compared against."""
+
     status: Status | None = Field(default=None)
     """The status of the column."""
+
     product_total: float | None = Field(default=None, alias="productTotal")
     """The total amount of product produced."""
+
     parent_id: str | None = Field(default=None, alias="parentId")
     """The identifier of the parent column, when this column is a lot."""
+
     design_col_id: str | None = Field(default=None, alias="designColId")
     """The identifier of the corresponding design column."""
+
     lots: list[BatchDataColumn] = Field(default_factory=list, alias="Lots")
     """The individual lot columns that make up this product column."""
 
@@ -196,11 +229,15 @@ class BatchData(BaseResource):
 
     id: TaskId | None = Field(default=None, alias="albertId")
     """The Task ID of the owning batch task (format ``TAS...``)."""
+
     size: int | None = Field(default=None)
     """The number of row entries in the batch data."""
+
     last_key: str | None = Field(default=None, alias="lastKey")
     """Pagination cursor for fetching the next page of rows; pass it back as ``start_key`` to [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id]."""
+
     product: list[BatchDataColumn] | None = Field(default=None, alias="Product")
     """The product columns, one per batch/product being manufactured."""
+
     rows: list[BatchDataRow] | None = Field(default=None, alias="Rows")
     """The formulation component rows."""

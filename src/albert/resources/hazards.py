@@ -41,7 +41,9 @@ class HazardStatement(EntityLinkWithName):
 
     id: str
     """The Albert ID of the hazard statement."""
+
     name: str | None = Field(default=None, exclude=False)
     """The text of the hazard statement."""
+
     category: str | None = Field(default=None, exclude=True)
     """The category of the hazard statement, when set."""

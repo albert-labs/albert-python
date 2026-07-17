@@ -52,6 +52,7 @@ class NumericRange(BaseAlbertModel):
 
     min: float
     """The lower bound of the range."""
+
     max: float
     """The upper bound of the range."""
 
@@ -61,6 +62,7 @@ class Criterion(BaseAlbertModel):
 
     operator: ComparisonOperator
     """How the measured value is compared against ``value``."""
+
     value: NumericRange | str | float | list
     """The value being compared against. Use a [`NumericRange`][albert.resources.targets.NumericRange] with the ``between`` operator, a list with the ``in-set`` operator, or a single number/string for the scalar operators."""
 
@@ -86,14 +88,19 @@ class TargetParameter(BaseAlbertModel):
 
     id: ParameterId
     """The parameter ID (format ``PRM...``)."""
+
     parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
     """The parameter group ID (format ``PRG...``) this parameter belongs to."""
+
     category: ParameterCategory
     """The category of the parameter."""
+
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     """The unit ID (format ``UNI...``) for this parameter's value."""
+
     value: Criterion | None = Field(default=None)
     """The value condition. Accepts an operator/value pair using one of the operators ``eq``, ``gte``, ``lte``, ``between``, ``in-set``. For ``between``, the value must be ``{"min": ..., "max": ...}``. For ``in-set``, the value must be a list. Legacy bare scalars (numeric or string) are coerced on read: a numeric scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes ``{"operator": "in-set", "value": [<s>]}``."""
+
     sequence: str
     """The ordering position of this parameter."""
 
@@ -143,23 +150,33 @@ class Target(BaseResource):
 
     id: str | None = Field(default=None)
     """The Albert ID of the target (format ``TAR...``). Set when the target is retrieved from or created in Albert."""
+
     name: str
     """The name of the target."""
+
     type: TargetType
     """The kind of target (e.g. performance)."""
+
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
     """The ID of the project (format ``PRO...``) this target belongs to. When set, the target inherits its ACL (access control) policy from that project."""
+
     data_template_id: DataTemplateId = Field(alias="dataTemplateId")
     """The ID of the data template (format ``DAT...``) whose property is targeted."""
+
     data_column_id: DataColumnId = Field(alias="dataColumnId")
     """The ID of the data column (format ``DAC...``) being targeted."""
+
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     """The unit ID (format ``UNI...``) for the target value."""
+
     parameters: list[TargetParameter] | None = Field(default=None)
     """Parameter conditions under which the target applies."""
+
     target_value: Criterion = Field(alias="targetValue")
     """The target value constraint (operator plus value)."""
+
     is_required: bool = Field(alias="isRequired")
     """Whether meeting this target is required."""
+
     validation: list[dict] | None = Field(default=None)
     """Validation rules applied to the target value."""

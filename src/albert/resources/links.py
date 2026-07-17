@@ -38,10 +38,13 @@ class Link(BaseResource):
 
     parent: EntityLink = Field(..., alias="Parent")
     """The parent (source) entity of the link."""
+
     child: EntityLink = Field(..., alias="Child")
     """The child (target) entity of the link."""
+
     category: LinkCategory = Field(...)
     """The category of the link (e.g. ``mention``, ``linkedTask``, ``synthesis``, ``linkedInventory``)."""
+
     counter: int | None = Field(default=None)
     """An optional counter associated with the link."""
 

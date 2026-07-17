@@ -12,8 +12,10 @@ class NoteAttachmentEntityLink(EntityLinkWithName):
 
     key: str | None = None
     """The storage key of the underlying file."""
+
     file_size: int | None = Field(default=None, alias="fileSize")
     """The size of the file in bytes."""
+
     signed_url: str | None = Field(default=None, alias="signedURL")
     """A temporary signed URL for downloading the file, when available."""
 
@@ -36,10 +38,13 @@ class Note(BaseResource):
 
     parent_id: str = Field(..., alias="parentId")
     """The ID of the entity the note is attached to (e.g. a Task ID). Must include the full entity prefix."""
+
     note: str
     """The text content of the note."""
+
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the note. Assigned by Albert when the note is created."""
+
     attachments: list[NoteAttachmentEntityLink] | None = Field(
         default=None, frozen=True, alias="Attachments"
     )

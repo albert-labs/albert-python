@@ -17,10 +17,13 @@ class ReportInfo(BaseAlbertModel):
 
     report_type_id: str = Field(..., alias="reportTypeId")
     """The report type ID that was run (e.g. ``"RET51"``)."""
+
     report_type: str = Field(..., alias="reportType")
     """The human-readable name of the report type."""
+
     category: str
     """The report category (e.g. ``"analytics"`` or ``"datascience"``)."""
+
     items: list[ReportItem] = Field(..., alias="Items")
     """The computed report result rows. Each item is a dict (or list of dicts) whose shape depends on the report type."""
 
@@ -30,14 +33,19 @@ class ColumnState(BaseAlbertModel):
 
     col_id: str = Field(..., alias="colId")
     """The identifier of the column."""
+
     row_group_index: int | None = Field(default=None, alias="rowGroupIndex")
     """The column's position among the row-grouping columns, if grouped."""
+
     agg_func: str | None = Field(default=None, alias="aggFunc")
     """The aggregation function applied to the column (e.g. ``"sum"``)."""
+
     pivot: bool = Field(default=False)
     """Whether the column is used as a pivot column."""
+
     pivot_index: int | None = Field(default=None, alias="pivotIndex")
     """The column's position among the pivot columns, if pivoted."""
+
     row_group: bool = Field(default=False, alias="rowGroup")
     """Whether the column is used to group rows."""
 
@@ -47,6 +55,7 @@ class FilterModel(BaseAlbertModel):
 
     filter_type: str = Field(..., alias="filterType")
     """The kind of filter (e.g. ``"set"`` or ``"text"``)."""
+
     values: list[Any] | None = Field(default=None)
     """The values the filter matches against."""
 
@@ -86,6 +95,7 @@ class ChartModelState(BaseAlbertModel):
 
     chart_template: ChartTemplate | None = Field(default=None, alias="chartTemplate")
     """The chart's base template."""
+
     chart_configuration: ChartConfiguration | None = Field(
         default=None, alias="chartConfiguration"
     )
@@ -134,40 +144,55 @@ class FullAnalyticalReport(BaseResource):
     # Required fields
     report_type_id: str = Field(..., alias="reportTypeId")
     """The report type ID identifying which report to run. Required."""
+
     name: str = Field(..., min_length=1, max_length=500)
     """The report's name (1 to 500 characters). Required."""
 
     # Optional fields
     report_type: str | None = Field(default=None, alias="reportType")
     """The human-readable name of the report type."""
+
     description: str | None = Field(default=None, max_length=1000)
     """A description of the report (maximum 1000 characters)."""
+
     project_id: ProjectId | None = Field(default=None, alias="projectId")
     """The Project the report is scoped to, if any (format ``PRO...``)."""
+
     project_name: str | None = Field(default=None, alias="projectName")
     """The name of the scoped project."""
+
     parent_id: str | None = Field(default=None, alias="parentId")
     """The parent entity the report belongs to, if any."""
+
     report_v2: bool | None = Field(default=None, alias="reportV2")
     """Whether this is a v2 report."""
+
     input_data: dict[str, Any] | None = Field(default=None, alias="inputData")
     """Input describing what the report is run over, keyed by field name."""
+
     report_state: str | None = Field(default=None, alias="reportState")
     """A string capturing the overall report state."""
+
     column_state: list[ColumnState] | None = Field(default_factory=list, alias="columnState")
     """The saved display and grouping state of each column."""
+
     filter_state: FilterState | None = Field(default=None, alias="filterState")
     """The saved filters applied to the report."""
+
     meta_data_state: MetadataState | None = Field(default=None, alias="metaDataState")
     """The saved metadata state (e.g. grouped rows)."""
+
     chart_model_state: list[ChartModelState] | None = Field(
         default_factory=list, alias="chartModelState"
     )
     """The saved state of each chart on the report."""
+
     field_mapping: list[ColumnMapping] | None = Field(default_factory=list, alias="FieldMapping")
     """The mapping of report fields to columns."""
+
     source_report_id: ReportId | None = Field(default=None, alias="sourceReportId")
     """A report to copy state from when creating this report (format ``REP...``)."""
+
     created_by: str | None = Field(default=None, alias="createdBy")
     """The ID of the user who created the report. Read-only."""
 
