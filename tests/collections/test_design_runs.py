@@ -1,3 +1,5 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
 from albert.resources.design import DesignRunSettings
@@ -8,7 +10,13 @@ from albert.resources.targets import (
     NumericRange,
 )
 
+ignore_in_ten0 = pytest.mark.xfail(
+    reason="No DWH available in TEN0 test environment.",
+    strict=False,
+)
 
+
+@ignore_in_ten0
 def test_design_run_create(client: Albert, seeded_smart_dataset: SmartDataset):
     """Test triggering a design run returns a Generate BTInsight."""
     insight = client.design_runs.create(smart_dataset_id=seeded_smart_dataset.id)
@@ -18,6 +26,7 @@ def test_design_run_create(client: Albert, seeded_smart_dataset: SmartDataset):
     assert insight.state in {BTInsightState.QUEUED, BTInsightState.BUILDING_MODELS}
 
 
+@ignore_in_ten0
 def test_design_run_create_with_objectives(
     client: Albert,
     seeded_smart_dataset: SmartDataset,
@@ -38,6 +47,7 @@ def test_design_run_create_with_objectives(
     assert insight.category == BTInsightCategory.GENERATE
 
 
+@ignore_in_ten0
 def test_design_run_create_with_settings(
     client: Albert,
     seeded_smart_dataset: SmartDataset,
