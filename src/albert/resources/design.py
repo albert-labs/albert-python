@@ -1,8 +1,16 @@
-from enum import StrEnum
+import sys
 
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+
+if sys.version_info >= (3, 11):  # pragma: no cover (py311+)
+    from enum import StrEnum
+else:  # pragma: no cover (py311+)
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        pass
 
 
 class DesignMethod(StrEnum):
