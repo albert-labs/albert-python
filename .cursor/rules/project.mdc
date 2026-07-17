@@ -1,0 +1,20 @@
+---
+description: Project-level tool preferences, safety guardrails, and commit style
+alwaysApply: true
+---
+
+## Tool Preference
+
+- Use `gh` CLI for all GitHub operations.
+- Use `uv` as the Python package manager.
+
+## Safety & Guardrails
+
+- Never force-push without asking
+- Never delete branches without asking
+- Never commit .env or credentials
+- Never run destructive commands (rm -rf, DROP TABLE) without confirmation
+
+## Commit style
+
+- Use Conventional Commits: type(scope): summary

@@ -13,31 +13,91 @@ from albert.resources.users import User, UserFilterType, UserSearchItem
 
 
 class UserCollection(BaseCollection):
-    """UserCollection is a collection class for managing User entities in the Albert platform."""
+    """Manage Users in the Albert platform.
+
+    A User is an Albert user account: a person who can log in and act in the
+    platform. Each user has a name and email, a set of
+    [`Role`][albert.resources.roles.Role] objects that govern what they can do,
+    an optional home [`Location`][albert.resources.locations.Location], and an ACL
+    class level ([`UserClass`][albert.resources.users.UserClass]) that sets a broad
+    permission tier.
+
+    Users are grouped into teams (see
+    [`TeamCollection`][albert.collections.teams.TeamCollection]), and are referenced
+    throughout the platform: Tasks can be assigned to a user, and entities carry
+    ACLs that reference users and their roles. A user is identified by its User
+    ID (format ``USR...``, e.g. ``"USR12"``).
+
+    This collection is accessed as ``client.users``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        # Look up the signed-in user, then find others at the same location
+        me = client.users.get_current_user()
+        colleagues = client.users.get_all(max_items=25)
+        for user in colleagues:
+            print(user.id, user.name, user.email)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for user requests.
+
+    Methods
+    -------
+    get_current_user() -> User
+        Get the user account for the currently authenticated session.
+    get_by_id(id) -> User
+        Get a single fully populated user by its ID.
+    search(...) -> Iterator[UserSearchItem]
+        Fast, lightweight search returning partial users (best for lookups).
+    get_all(...) -> Iterator[User]
+        Same idea as search, but returns fully populated users (slower).
+    create(user) -> User
+        Create a new user account.
+    update(user) -> User
+        Update an existing user.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "email", "metadata"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the UserCollection with the provided session.
+        """Initialize a UserCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{UserCollection._api_version}/users"
 
     def get_current_user(self) -> User:
-        """
-        Retrieves the current authenticated user.
+        """Get the user account for the currently authenticated session.
+
+        Use this to find out who the active credentials belong to, for example
+        to set yourself as the assignee of a Task or to check your own roles.
+
+        !!! example
+            ```python
+            me = client.users.get_current_user()
+            me.name
+            # 'Ada Lovelace'
+            ```
 
         Returns
         -------
         User
-            The current User object.
+            The fully populated user for the authenticated session.
         """
         response = self.session.get(
             "/api/v3/login/validatejwt",
@@ -51,18 +111,27 @@ class UserCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: UserId) -> User:
-        """
-        Retrieves a User by its ID.
+        """Get a single, fully populated user by its ID.
+
+        To find users without knowing their IDs, use [`search`][albert.collections.users.UserCollection.search] or
+        [`get_all`][albert.collections.users.UserCollection.get_all].
+
+        !!! example
+            ```python
+            user = client.users.get_by_id(id="USR12")
+            user.email
+            # 'ada@example.com'
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the user to retrieve.
+        id : UserId
+            The User ID (format ``USR...``, e.g. ``"USR12"``).
 
         Returns
         -------
         User
-            The User object.
+            The fully populated user.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -90,53 +159,61 @@ class UserCollection(BaseCollection):
         offset: int = 0,
         max_items: int | None = None,
     ) -> Iterator[UserSearchItem]:
-        """
-        Searches for users matching the provided filters.
+        """Search for users matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) search results for performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        This returns lightweight, partial results ([`UserSearchItem`][albert.resources.users.UserSearchItem]) and
+        is the fastest way to look users up by name, role, team, or location.
+        For fully populated [`User`][albert.resources.users.User] entities, use [`get_all`][albert.collections.users.UserCollection.get_all], or call
+        `hydrate()` on a search item.
+
+        !!! example
+            ```python
+            # Find users whose name or email mentions "ada"
+            for user in client.users.search(text="ada", max_items=10):
+                print(user.id, user.name)
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Free text search across multiple user fields.
+            Free-text search across multiple user fields (e.g. name, email).
         sort_by : str, optional
             Field to sort results by.
         order_by : OrderBy, optional
-            Sort order, ascending or descending.
+            Sort direction, ascending or descending. Defaults to descending.
         roles : list[str], optional
-            Filter by assigned roles.
+            Restrict to users holding any of these role names.
         teams : list[str], optional
-            Filter by teams.
+            Restrict to members of any of these teams.
         locations : list[str], optional
-            Filter by associated location IDs.
+            Restrict to users at any of these location IDs.
         status : list[Status], optional
-            Filter by user status.
-        user_id : list[str], optional
-            Filter by specific user IDs.
+            Restrict to users with any of these statuses (e.g. active, inactive).
+        user_id : list[UserId], optional
+            Restrict to these specific User IDs.
         subscription : list[str], optional
-            Filter by subscription type.
+            Restrict to users with any of these subscription types.
         search_fields : list[str], optional
-            Fields to apply text search across.
+            The fields that ``text`` is matched against.
         facet_text : str, optional
-            Text to search within facets.
+            Text to match within a facet, used together with ``facet_field``.
         facet_field : str, optional
-            Facet field to apply facet_text on.
+            The facet field that ``facet_text`` is applied to.
         contains_field : list[str], optional
-            Field names for "contains" filter logic.
+            Field names to apply "contains" filtering on, paired positionally
+            with ``contains_text``.
         contains_text : list[str], optional
-            Text snippets to search in "contains" fields.
+            Substrings to match within the corresponding ``contains_field``.
         mentions : bool, optional
-            Filter by users who are mentioned.
-        offset : int, optional
-            Number of results to skip for pagination. Default is 0.
+            When True, restrict to users who are mentioned.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum total number of users to return. If None, returns all
+            matches.
 
         Returns
         -------
         Iterator[UserSearchItem]
-            An iterator of partial user results matching the criteria.
+            An iterator of partial users matching the filters.
         """
         params = {
             "text": text,
@@ -178,29 +255,40 @@ class UserCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[User]:
-        """
-        Retrieve fully hydrated User entities with optional filters.
+        """Get fully populated users, with optional filters.
 
-        This method uses `get_by_id` to hydrate the results for convenience.
-        Use :meth:`search` for better performance.
+        Each result is fetched individually via [`get_by_id`][albert.collections.users.UserCollection.get_by_id], so this is
+        convenient but slower than [`search`][albert.collections.users.UserCollection.search]. Prefer [`search`][albert.collections.users.UserCollection.search] when
+        you only need lightweight, partial results.
+
+        !!! example
+            ```python
+            from albert.core.shared.enums import Status
+            active_users = client.users.get_all(status=Status.ACTIVE, max_items=50)
+            for user in active_users:
+                print(user.name)
+            ```
 
         Parameters
         ----------
         status : Status, optional
-            Filter by user status.
+            Restrict to users with this status (e.g. active, inactive).
         type : UserFilterType, optional
-            Attribute name to filter by (e.g., 'role').
-        id : list[str], optional
-            Values of the attribute to filter on.
+            The attribute that ``id`` filters on. Currently only ``role`` is
+            supported.
+        id : list[UserId], optional
+            The values to filter on for the chosen ``type`` (e.g. role IDs when
+            ``type`` is ``role``).
         start_key : str, optional
-            The starting point for the next set of results.
+            Pagination cursor marking where the next page of results begins.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum total number of users to return. If None, returns all
+            matches.
 
         Returns
         -------
         Iterator[User]
-            User entities.
+            An iterator of fully populated users.
         """
         params = {
             "status": status,
@@ -228,17 +316,31 @@ class UserCollection(BaseCollection):
         )
 
     def create(self, *, user: User) -> User:  # pragma: no cover
-        """Create a new User
+        """Create a new user account.
+
+        !!! example
+            ```python
+            from albert.resources.users import User, UserClass
+            new_user = User(
+                name="Ada Lovelace",
+                email="ada@example.com",
+                user_class=UserClass.STANDARD,
+            )
+            created = client.users.create(user=new_user)
+            created.id
+            # 'USR12'
+            ```
 
         Parameters
         ----------
         user : User
-            The user to create
+            The user to create. ``name`` is required; set ``email``, ``roles``,
+            ``location``, and ``user_class`` as needed.
 
         Returns
         -------
         User
-            The created User
+            The newly created user, populated with its assigned User ID.
         """
 
         response = self.session.post(
@@ -248,21 +350,35 @@ class UserCollection(BaseCollection):
         return User(**response.json())
 
     def update(self, *, user: User) -> User:
-        """Update a User entity.
+        """Update an existing user.
+
+        Fetch the user (e.g. via [`get_by_id`][albert.collections.users.UserCollection.get_by_id]), modify the updatable
+        fields, then pass it here. Only the fields listed in Notes are applied;
+        changes to other fields are ignored.
+
+        !!! example
+            ```python
+            user = client.users.get_by_id(id="USR12")
+            user.name = "Ada King"
+            updated = client.users.update(user=user)
+            updated.name
+            # 'Ada King'
+            ```
 
         Parameters
         ----------
         user : User
-            The updated User entity.
+            The user with desired changes applied. Must carry a valid ``id``.
 
         Returns
         -------
         User
-            The updated User entity as returned by the server.
+            The updated user.
 
         Notes
         -----
-        The following fields can be updated: ``email``, ``metadata``, ``name``, ``status``.
+        The following fields can be updated: ``email``, ``metadata``, ``name``,
+        ``status``.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=user.id)

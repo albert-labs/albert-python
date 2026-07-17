@@ -10,15 +10,10 @@ from albert.resources.tags import Tag
 
 class BaseTaggedResource(BaseResource):
     """
-    BaseTaggedResource is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
-
-    Attributes
-    ----------
-    tags : List[Tag | str] | None
-        A list of Tag objects or strings representing tags.
-    """
+    BaseTaggedResource is a Pydantic model that includes functionality for handling tags as either Tag objects or strings."""
 
     tags: list[SerializeAsEntityLink[Tag]] | None = Field(None, alias="Tags")
+    """A list of Tag objects or strings representing tags."""
 
     @model_validator(mode="before")  # must happen before to keep type validation
     @classmethod

@@ -6,30 +6,60 @@ from albert.resources.substance import SubstanceInfo, SubstanceResponse
 
 
 class SubstanceCollection(BaseCollection):
-    """
-    SubstanceCollection is a collection class for managing Substance entities in the Albert platform.
+    """Look up regulatory and hazard information for chemical substances.
+
+    A Substance is the regulatory/compliance profile of a chemical, keyed by its
+    CAS number. Each [`SubstanceInfo`][albert.resources.substance.SubstanceInfo] bundles
+    the data Albert holds for that chemical, including GHS hazard
+    classifications, toxicity and ecotoxicity data, exposure limits, physical
+    properties, and membership on regulatory lists across many jurisdictions.
+    Results can be scoped to a region, since regulatory status varies by country.
+
+    Substances are read-only reference data: this collection only retrieves
+    information and does not create or modify it. They are addressed by CAS
+    number (e.g. ``"64-17-5"``) rather than by an Albert ID, and relate to
+    [`Cas`][albert.resources.cas.Cas] records used elsewhere in the platform.
+
+    This collection is accessed as ``client.substances``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        substance = client.substances.get_by_id(cas_id="64-17-5")
+        substance.cas_id
+        # '64-17-5'
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        An instance of the Albert session used for API interactions.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for making API requests related to substances.
+        The base API route for substance requests.
 
     Methods
     -------
-    get_by_ids(cas_ids: list[str], region: str = "US") -> list[SubstanceInfo]
-        Retrieves a list of substances by their CAS IDs and optional region.
-    get_by_id(cas_id: str, region: str = "US") -> SubstanceInfo | None
-        Retrieves a single substance by its CAS ID and optional region, or None if not found.
+    get_by_ids(cas_ids, region="US", catch_errors=None) -> list[SubstanceInfo]
+        Get regulatory information for several CAS numbers at once.
+    get_by_id(cas_id, region="US", catch_errors=None) -> SubstanceInfo | None
+        Get regulatory information for a single CAS number.
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
+        """Initialize a SubstanceCollection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{SubstanceCollection._api_version}/substances"
 
@@ -40,24 +70,36 @@ class SubstanceCollection(BaseCollection):
         region: str = "US",
         catch_errors: bool | None = None,
     ) -> list[SubstanceInfo]:
-        """Get substances by their CAS IDs.
+        """Get regulatory information for several CAS numbers at once.
 
-        If `catch_errors` is set to False, the number of substances returned
-        may be less than the number of CAS IDs provided if any of the CAS IDs result in an error.
+        For a single CAS number, use [`get_by_id`][albert.collections.substance.SubstanceCollection.get_by_id].
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            substances = client.substances.get_by_ids(cas_ids=["64-17-5", "67-64-1"])
+            [s.cas_id for s in substances]
+            # ['64-17-5', '67-64-1']
+            ```
 
         Parameters
         ----------
         cas_ids : list[str]
-            A list of CAS IDs to retrieve substances for.
+            The CAS numbers to retrieve substances for (e.g. ``["64-17-5"]``).
         region : str, optional
-            The region to filter the subastance by, by default "US"
+            The region to scope regulatory status to. Defaults to ``"US"``.
         catch_errors : bool, optional
-            Whether to catch errors for unknown CAS, by default True.
+            How to handle CAS numbers that cannot be resolved. When True, such
+            errors are absorbed and those substances are simply omitted from the
+            result, so fewer substances may be returned than CAS numbers
+            requested. When None (default), the server default applies.
 
         Returns
         -------
         list[SubstanceInfo]
-            A list of substances with the given CAS IDs.
+            The substances found for the given CAS numbers.
         """
         params = {
             "casIDs": ",".join(cas_ids),
@@ -75,21 +117,35 @@ class SubstanceCollection(BaseCollection):
         region: str = "US",
         catch_errors: bool | None = None,
     ) -> SubstanceInfo | None:
-        """Get a substance by its CAS ID.
+        """Get regulatory information for a single CAS number.
+
+        To look up several CAS numbers in one call, use [`get_by_ids`][albert.collections.substance.SubstanceCollection.get_by_ids].
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            substance = client.substances.get_by_id(cas_id="64-17-5")
+            substance.is_known
+            # True
+            ```
 
         Parameters
         ----------
         cas_id : str
-            The CAS ID of the substance to retrieve.
+            The CAS number of the substance to retrieve (e.g. ``"64-17-5"``).
         region : str, optional
-            The region to filter the substance by, by default "US".
+            The region to scope regulatory status to. Defaults to ``"US"``.
         catch_errors : bool, optional
-            Whether to suppress errors for unknown CAS IDs, by default None.
+            How to handle a CAS number that cannot be resolved. When True, the
+            error is absorbed and None is returned instead. When None (default),
+            the server default applies.
 
         Returns
         -------
-        SubstanceInfo | None
-            The retrieved substance, or None if the CAS ID is not found.
+        SubstanceInfo or None
+            The fully populated substance, or None if it is not found.
         """
         results = self.get_by_ids(cas_ids=[cas_id], region=region, catch_errors=catch_errors)
         return results[0] if results else None

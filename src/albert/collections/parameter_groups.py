@@ -34,36 +34,102 @@ DEFAULT_ADDITIONAL_FIELDS = [
 
 
 class ParameterGroupCollection(BaseCollection):
-    """ParameterGroupCollection is a collection class for managing ParameterGroup entities in the Albert platform."""
+    """Manage Parameter Groups in the Albert platform.
+
+    A Parameter Group (PRG, IDs formatted ``PRG...``) is a reusable set of
+    [`Parameter`][albert.resources.parameters.Parameter] entities together with their
+    values, units, and validation rules. Whereas a Data Template's parameters
+    always relate to a given measurement, a Parameter Group is about *making* the
+    sample and/or *prepping* it for measurement (e.g. a mixing step, a cure
+    schedule). Some Parameter Groups drive Batch Tasks
+    ([`BatchTask`][albert.resources.tasks.BatchTask]); others are stacked within a task.
+
+    The group's [`PGType`][albert.resources.parameter_groups.PGType] records which kind of task the group relates to.
+    A Parameter Group's parameters, together with a Data Template's parameters,
+    are fixed to setpoints inside a [`Workflow`][albert.resources.workflows.Workflow].
+    Test standards (e.g. ASTM or ISO) are stored under the ``"Standards"`` key of
+    a group's ``metadata``.
+
+    This collection is accessed as ``client.parameter_groups``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        pg = client.parameter_groups.get_by_id(id="PRG1")
+        print(pg.name, pg.type)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for parameter group requests.
+
+    Methods
+    -------
+    create(parameter_group) -> ParameterGroup
+        Create a new parameter group.
+    get_by_id(id) -> ParameterGroup
+        Get a single fully populated group by its ID.
+    get_by_ids(ids) -> list[ParameterGroup]
+        Get many groups by their IDs in batches.
+    get_by_name(name) -> ParameterGroup | None
+        Get a single group by exact (case-insensitive) name.
+    search(...) -> Iterator[ParameterGroupSearchItem]
+        Fast, lightweight search returning partial groups (best for lookups/counts).
+    get_all(...) -> Iterator[ParameterGroup]
+        Same filters as search, but returns fully populated groups (slower).
+    update(parameter_group) -> ParameterGroup
+        Update an existing group.
+    delete(id) -> None
+        Delete a group by its ID.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "description", "metadata"}
     # To do: Add the rest of the allowed attributes
 
     def __init__(self, *, session: AlbertSession):
-        """A collection for interacting with Albert parameter groups.
+        """Initialize a ParameterGroupCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session to use for making requests.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ParameterGroupCollection._api_version}/parametergroups"
 
     @validate_call
     def get_by_id(self, *, id: ParameterGroupId) -> ParameterGroup:
-        """Get a parameter group by its ID.
+        """Get a single, fully populated parameter group by its ID.
+
+        For retrieving many groups at once, use [`get_by_ids`][albert.collections.parameter_groups.ParameterGroupCollection.get_by_ids]. To find groups
+        without knowing their IDs, use [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search], [`get_all`][albert.collections.parameter_groups.ParameterGroupCollection.get_all], or
+        [`get_by_name`][albert.collections.parameter_groups.ParameterGroupCollection.get_by_name].
+
+        !!! example
+            ```python
+            pg = client.parameter_groups.get_by_id(id="PRG1")
+            pg.name
+            # 'Mixing Step'
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the parameter group to retrieve.
+        id : ParameterGroupId
+            The Parameter Group ID (format ``PRG...``, e.g. ``"PRG1"``).
 
         Returns
         -------
         ParameterGroup
-            The parameter group with the given ID.
+            The fully populated parameter group.
         """
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
@@ -71,17 +137,28 @@ class ParameterGroupCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[ParameterGroupId]) -> list[ParameterGroup]:
-        """Get parameter groups by IDs.
+        """Get multiple fully populated parameter groups by their IDs.
+
+        Requests are automatically split into batches, so arbitrarily long ID
+        lists are supported. Groups not found are omitted from the result.
+
+        !!! example
+            ```python
+            groups = client.parameter_groups.get_by_ids(ids=["PRG1", "PRG2"])
+            [g.name for g in groups]
+            # ['Mixing Step', 'Cure Schedule']
+            ```
 
         Parameters
         ----------
         ids : list[ParameterGroupId]
-            Parameter group IDs to retrieve.
+            The Parameter Group IDs to retrieve (format ``PRG...``).
 
         Returns
         -------
         list[ParameterGroup]
-            Parameter groups matching the provided IDs.
+            The matching parameter groups. Order is not guaranteed to match the
+            input.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
@@ -104,35 +181,57 @@ class ParameterGroupCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[ParameterGroupSearchItem]:
-        """
-        Search for Parameter Groups matching the given criteria.
+        """Search for parameter groups matching the given filters.
+
+        Returns lightweight, partially populated results and is the fastest way to
+        look groups up (best for name lookups, counts, or feeding IDs into another
+        call). When you need complete groups, use [`get_all`][albert.collections.parameter_groups.ParameterGroupCollection.get_all] with the same
+        filters, or pass the resulting IDs to [`get_by_ids`][albert.collections.parameter_groups.ParameterGroupCollection.get_by_ids]. Results are
+        returned as a lazily paginated iterator, so iterating fetches additional
+        pages on demand.
+
+        !!! example
+            ```python
+            from albert.resources.parameter_groups import PGType
+
+            hits = client.parameter_groups.search(
+                text="mixing",
+                types=PGType.BATCH,
+                max_items=10,
+            )
+            first = next(iter(hits))
+            first.name
+            # 'Mixing Step'
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Text to search for.
-        types : PGType or list of PGType, optional
-            Filter by Parameter Group types.
+            Free-text query matched against group name and related fields.
+        types : PGType or list[PGType], optional
+            Filter by parameter group type (``general``, ``batch``, or
+            ``property``).
         owner : str or list[str], optional
-            Filter by owner names.
+            Filter by owner name(s).
         tags : str or list[str], optional
-            Filter by tag names.
+            Filter by tag name(s).
         parameters : str or list[str], optional
-            Filter by parameter names.
+            Filter by parameter name(s).
         additional_field : str or list[str], optional
-            Additional fields to include in response items. If omitted, a default set of fields
-            is requested from search.
+            Additional fields to include on each returned search item. If omitted,
+            a default set (ACL, creation info, metadata, owner, tags, and team) is
+            requested.
         order_by : OrderBy, optional
-            Order of results. Default is DESCENDING.
-        offset : int, optional
-            Offset to begin results from.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Yields
         ------
-        Iterator[ParameterGroupSearchItem]
-            Iterator of ParameterGroupSearchItem entities, which are partial representations of Parameter Groups.
+        ParameterGroupSearchItem
+            Partially populated search results. Call ``.hydrate()`` on an item to
+            fetch its full [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup].
         """
         payload = {
             "offset": offset,
@@ -170,26 +269,37 @@ class ParameterGroupCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[ParameterGroup]:
-        """
-        Search and hydrate all Parameter Groups matching the given criteria.
+        """Get fully populated parameter groups matching the given filters.
+
+        Accepts the same filters as [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search] but returns complete
+        [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup] entities rather than lightweight search results.
+        This is slower because it fetches full detail for every match, so prefer
+        [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search] when you only need names, IDs, or counts. Results are
+        returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            for pg in client.parameter_groups.get_all(text="mixing", max_items=25):
+                print(pg.id, pg.name)
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Text to search for.
-        types : PGType or list of PGType, optional
-            Filter by Parameter Group types.
+            Free-text query matched against group name and related fields.
+        types : PGType or list[PGType], optional
+            Filter by parameter group type (``general``, ``batch``, or
+            ``property``).
         order_by : OrderBy, optional
-            Order of results. Default is DESCENDING.
-        offset : int, optional
-            Offset to begin results from.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Yields
         ------
-        Iterator[ParameterGroup]
-            Iterator over Parameter Group entities.
+        ParameterGroup
+            Fully populated parameter groups.
         """
         for item in self.search(
             text=text,
@@ -207,10 +317,17 @@ class ParameterGroupCollection(BaseCollection):
     def delete(self, *, id: ParameterGroupId) -> None:
         """Delete a parameter group by its ID.
 
+        This permanently removes the parameter group.
+
+        !!! example
+            ```python
+            client.parameter_groups.delete(id="PRG1")
+            ```
+
         Parameters
         ----------
-        id : str
-            The ID of the parameter group to delete
+        id : ParameterGroupId
+            The Parameter Group ID to delete (format ``PRG...``).
 
         Returns
         -------
@@ -222,6 +339,29 @@ class ParameterGroupCollection(BaseCollection):
     def create(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
         """Create a new parameter group.
 
+        Build a [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup] with a ``name``, a [`PGType`][albert.resources.parameter_groups.PGType], and a
+        list of [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] entries, then pass it here. Each
+        [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] must reference an existing
+        [`Parameter`][albert.resources.parameters.Parameter] (by ``id`` or ``parameter``).
+
+        !!! example
+            ```python
+            from albert.resources.parameter_groups import (
+                ParameterGroup,
+                ParameterValue,
+                PGType,
+            )
+
+            pg = ParameterGroup(
+                name="Mixing Step",
+                type=PGType.BATCH,
+                parameters=[ParameterValue(id="PRM1", value="500")],
+            )
+            created = client.parameter_groups.create(parameter_group=pg)
+            created.id
+            # 'PRG1'
+            ```
+
         Parameters
         ----------
         parameter_group : ParameterGroup
@@ -230,7 +370,7 @@ class ParameterGroupCollection(BaseCollection):
         Returns
         -------
         ParameterGroup
-            The created parameter group.
+            The newly created group, populated with its assigned Parameter Group ID.
         """
 
         response = self.session.post(
@@ -240,7 +380,17 @@ class ParameterGroupCollection(BaseCollection):
         return ParameterGroup(**response.json())
 
     def get_by_name(self, *, name: str) -> ParameterGroup | None:
-        """Get a parameter group by its name.
+        """Get a single, fully populated parameter group by its exact name.
+
+        Searches for the name and returns the first group whose name matches
+        exactly (case-insensitive). Returns None when no exact match is found.
+
+        !!! example
+            ```python
+            pg = client.parameter_groups.get_by_name(name="Mixing Step")
+            pg.id if pg else "no match"
+            # 'PRG1'
+            ```
 
         Parameters
         ----------
@@ -249,8 +399,8 @@ class ParameterGroupCollection(BaseCollection):
 
         Returns
         -------
-        ParameterGroup | None
-            The parameter group with the given name, or None if not found.
+        ParameterGroup or None
+            The matching parameter group, or None if no exact match is found.
         """
         matches = self.search(text=name)
         for m in matches:
@@ -259,21 +409,38 @@ class ParameterGroupCollection(BaseCollection):
         return None
 
     def update(self, *, parameter_group: ParameterGroup) -> ParameterGroup:
-        """Update a parameter group.
+        """Update an existing parameter group.
+
+        Fetch the group (e.g. with [`get_by_id`][albert.collections.parameter_groups.ParameterGroupCollection.get_by_id]), modify the updatable fields
+        on the returned object, then pass it here. Adding new
+        [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] entries to ``parameters`` also creates those
+        parameters on the group. Only the fields listed in Notes are applied;
+        changes to other fields are ignored.
+
+        !!! example
+            ```python
+            pg = client.parameter_groups.get_by_id(id="PRG1")
+            pg.description = "Updated description"
+            updated = client.parameter_groups.update(parameter_group=pg)
+            updated.description
+            # 'Updated description'
+            ```
 
         Parameters
         ----------
         parameter_group : ParameterGroup
-            The updated ParameterGroup. The ParameterGroup must have an ID.
+            The group to update. Must have a valid ``id``.
 
         Returns
         -------
         ParameterGroup
-            The updated ParameterGroup as returned by the server.
+            The updated parameter group.
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``metadata``, ``name``, and per-parameter ``value``, ``unit``, ``required``, ``validation``.
+        The following fields can be updated: ``description``, ``metadata``,
+        ``name``, and, per parameter, ``value``, ``unit``, ``required``, and
+        ``validation``.
         """
         existing = self.get_by_id(id=parameter_group.id)
         path = f"{self.base_path}/{existing.id}"
@@ -298,7 +465,7 @@ class ParameterGroupCollection(BaseCollection):
             )
 
         # new_parameter_values have sequence=None before being sent, so this
-        # guard never matches in practice — enum updates on new params are
+        # guard never matches in practice, enum updates on new params are
         # handled above by create_parameters_with_enums.
         new_param_sequences = [x.sequence for x in new_parameter_values]
         # handle enum updates for existing parameters

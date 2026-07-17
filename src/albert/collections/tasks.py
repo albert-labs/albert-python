@@ -57,7 +57,76 @@ from albert.utils.tasks import (
 
 
 class TaskCollection(BaseCollection):
-    """TaskCollection is a collection class for managing Task entities in the Albert platform."""
+    """Manage Tasks in the Albert platform.
+
+    A Task is a unit of lab work. There are three kinds, and choosing the right
+    one matters:
+
+    - **PropertyTask**: test and document the properties of products/formulas or
+      raw materials. This is the task type that captures measured Property Data.
+      A PropertyTask holds one or more *Blocks*, each pairing a Data Template
+      (the results to capture) with a Workflow (the conditions to run under).
+    - **BatchTask**: manufacture a batch within Albert after creating a new
+      formulation.
+    - **GeneralTask**: anything else happening in the lab that is not a batch or
+      property task (e.g. equipment calibration). Has no blocks.
+
+    Typical PropertyTask flow: create the task, attach a Block with
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block] (a Data Template + a Workflow), then record results through
+    the Property Data collection
+    ([`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]). Measured
+    results roll up to the associated inventory item's properties.
+
+    This collection is accessed as ``client.tasks``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.tasks import PropertyTask
+        client = Albert()
+        task = client.tasks.create(
+            task=PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        )
+        client.tasks.add_block(
+            task_id=task.id, data_template_id="DAT1", workflow_id="WFL1"
+        )
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for task requests.
+
+    Methods
+    -------
+    create(task) -> BaseTask
+        Create a PropertyTask, BatchTask, or GeneralTask.
+    get_by_id(id) -> BaseTask
+        Get a single fully populated task by its ID.
+    search(...) -> Iterator[TaskSearchItem]
+        Fast, lightweight search returning partial tasks.
+    get_all(...) -> Iterator[BaseTask]
+        Same filters as search, but returns fully populated tasks.
+    update(task) -> BaseTask
+        Update an existing task.
+    delete(id) -> None
+        Delete a task by its ID.
+    add_block(task_id, data_template_id, workflow_id) -> None
+        Add a Block (Data Template + Workflow) to a Property or Batch task.
+    remove_block(task_id, block_id) -> None
+        Remove a Block from a Property or Batch task.
+    update_block_workflow(task_id, block_id, workflow_id) -> None
+        Swap the Workflow assigned to a Block.
+    import_results(...) -> BaseTask
+        Import measured results into a Property task from a file or attachment.
+    get_history(id, ...) -> TaskHistory
+        Get a task's audit history.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -69,28 +138,47 @@ class TaskCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the TaskCollection.
+        """Initialize a TaskCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert Session information
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TaskCollection._api_version}/tasks"
 
     def create(self, *, task: PropertyTask | GeneralTask | BatchTask) -> BaseTask:
-        """Create a new task. Tasks can be of different types, such as PropertyTask, and are created using the provided task object.
+        """Create a new task.
+
+        Pass the concrete task type you want to create. Its ``category`` is set
+        automatically by the type, so the platform routes it correctly:
+
+        - [`PropertyTask`][albert.resources.tasks.PropertyTask]: test/document properties.
+        - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch.
+        - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work.
+
+        For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
+        added separately with [`add_block`][albert.collections.tasks.TaskCollection.add_block] after creation.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import GeneralTask
+            task = client.tasks.create(task=GeneralTask(name="Calibrate balance"))
+            task.id
+            # 'TASGEN1'
+            ```
 
         Parameters
         ----------
-        task : PropertyTask | GeneralTask | BatchTask
-            The task object to create.
+        task : PropertyTask or GeneralTask or BatchTask
+            The task to create. ``name`` is required.
 
         Returns
         -------
         BaseTask
-            The registered task object.
+            The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
+            populated with its assigned Task ID.
         """
         payload = [task.model_dump(mode="json", by_alias=True, exclude_none=True)]
         url = f"{self.base_path}/multi?category={task.category.value}"
@@ -104,22 +192,39 @@ class TaskCollection(BaseCollection):
     def add_block(
         self, *, task_id: TaskId, data_template_id: DataTemplateId, workflow_id: WorkflowId
     ) -> None:
-        """Add a block to a Property or Batch task.
+        """Add a Block to a Property or Batch task.
+
+        A Block pairs a Data Template (the results/data columns to capture) with a
+        Workflow (the parameter conditions to run under). A task can hold multiple
+        blocks, e.g. one per test. Once a block exists, results are written against
+        it through the Property Data collection.
+
+        !!! example
+            ```python
+            client.tasks.add_block(
+                task_id="TASFOR1", data_template_id="DAT1", workflow_id="WFL1"
+            )
+            ```
 
         Parameters
         ----------
         task_id : TaskId
-            The ID of the task to add the block to.
+            The task to add the block to (format ``TAS...``).
         data_template_id : DataTemplateId
-            The ID of the data template to use for the block.
+            The Data Template supplying the block's results/data columns
+            (format ``DAT...``).
         workflow_id : WorkflowId
-            The ID of the workflow to assign to the block.
+            The Workflow supplying the block's parameter conditions
+            (format ``WFL...``).
 
         Returns
         -------
         None
-            This method does not return any value.
 
+        See Also
+        --------
+        remove_block : Remove a block from a task.
+        update_block_workflow : Change the workflow on an existing block.
         """
         url = f"{self.base_path}/{task_id}"
         payload = [
@@ -140,35 +245,49 @@ class TaskCollection(BaseCollection):
     def update_block_workflow(
         self, *, task_id: TaskId, block_id: BlockId, workflow_id: WorkflowId
     ) -> None:
-        """
-        Update the workflow of a specific block within a task.
+        """Swap the Workflow assigned to a Block within a task.
 
-        This method updates the workflow of a specified block within a task.
+        Use this to change the conditions a block runs under without removing and
+        re-adding the block. The task must be a Property or Batch task.
+
+        !!! example
+            ```python
+            client.tasks.update_block_workflow(
+                task_id="TASFOR1", block_id="BLK1", workflow_id="WFL2"
+            )
+            ```
+
         Parameters
         ----------
-        task_id : str
-            The ID of the task.
-        block_id : str
-            The ID of the block within the task.
-        workflow_id : str
-            The ID of the new workflow to be assigned to the block.
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block to update (format ``BLK...``).
+        workflow_id : WorkflowId
+            The new Workflow to assign to the block (format ``WFL...``).
 
         Returns
         -------
         None
-            This method does not return any value.
+
+        Raises
+        ------
+        TypeError
+            If the task is not a PropertyTask or BatchTask.
 
         Notes
         -----
-        - The method requires the task to be a PropertyTask or BatchTask.
-        - If the block's current workflow matches the new workflow ID, no update is performed.
-        - The method handles the case where the block has a default workflow named "No Parameter Group".
+        If the block already uses ``workflow_id``, no change is made. A block's
+        default placeholder workflow ("No Parameter Group") is skipped when it is
+        not the block's only workflow.
         """
         url = f"{self.base_path}/{task_id}"
         task = self.get_by_id(id=task_id)
         if not isinstance(task, PropertyTask | BatchTask):
             logger.error(f"Task {task_id} is not a PropertyTask or BatchTask")
             raise TypeError(f"Task {task_id} is not a PropertyTask or BatchTask")
+        existing_workflow_id: str | None = None
+        initial_workflow_id: str | None = None
         for b in task.blocks:
             if b.id != block_id:
                 continue
@@ -176,7 +295,17 @@ class TaskCollection(BaseCollection):
                 if w.name == "No Parameter Group" and len(b.workflow) > 1:
                     # hardcoded default workflow
                     continue
-                existing_workflow_id = w.id
+                if w.category == "INITIAL":
+                    if initial_workflow_id is None:
+                        initial_workflow_id = w.id
+                else:
+                    existing_workflow_id = w.id
+            if existing_workflow_id is None:
+                existing_workflow_id = initial_workflow_id
+            break
+        if existing_workflow_id is None:
+            logger.error(f"No workflow found for block {block_id} on task {task_id}")
+            raise ValueError(f"No workflow found for block {block_id} on task {task_id}")
         if existing_workflow_id == workflow_id:
             logger.info(f"Block {block_id} already has workflow {workflow_id}")
             return None
@@ -198,14 +327,22 @@ class TaskCollection(BaseCollection):
 
     @validate_call
     def remove_block(self, *, task_id: TaskId, block_id: BlockId) -> None:
-        """Remove a block from a Property or Batch task.
+        """Remove a Block from a Property or Batch task.
+
+        Removing a block also removes the results captured against it. To keep the
+        block but change its conditions, use [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
+
+        !!! example
+            ```python
+            client.tasks.remove_block(task_id="TASFOR1234", block_id="BLK1")
+            ```
 
         Parameters
         ----------
-        task_id : str
-            ID of the Task to remove the block from (e.g., TASFOR1234)
-        block_id : str
-            ID of the Block to remove (e.g., BLK1)
+        task_id : TaskId
+            The task to remove the block from (e.g. ``"TASFOR1234"``).
+        block_id : BlockId
+            The block to remove (e.g. ``"BLK1"``).
 
         Returns
         -------
@@ -247,6 +384,19 @@ class TaskCollection(BaseCollection):
         new one, optionally provide header-to-column mappings, and target the desired block, lot,
         and interval. Returns the task after the import.
 
+        !!! example
+            ```python
+            from albert.resources.data_templates import ImportMode
+            task = client.tasks.import_results(
+                task_id="TAS123",
+                inventory_id="INVA123",
+                data_template_id="DAT123",
+                file_path="path/to/results.csv",
+                field_mapping={"comm": "Comments"},
+                mode=ImportMode.CSV,
+            )
+            ```
+
         Parameters
         ----------
         task_id : TaskId
@@ -269,7 +419,11 @@ class TaskCollection(BaseCollection):
         lot_id : LotId | None, optional
             Lot context when deleting/writing property data.
         interval : str, optional
-            Interval combination to target. Defaults to "default".
+            Interval combination to write to, as an interval ID (``"ROW1"`` for a
+            single intervalized parameter, ``"ROW1XROW2"`` for two). Defaults to
+            ``"default"`` when the block has no intervalized parameters. Build the
+            ID from parameter values with
+            [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
         field_mapping : dict[str, str] | None, optional
             Optional mapping from CSV header labels to data column names. Keys should match the
             header text from the CSV (case-insensitive comparison is applied), and values should
@@ -283,20 +437,6 @@ class TaskCollection(BaseCollection):
         -------
         BaseTask
             The task with the newly imported results.
-
-        Examples
-        --------
-        !!! example "Import results from a CSV file"
-            ```python
-            task = client.tasks.import_results(
-                task_id="TAS123",
-                inventory_id="MO123",
-                data_template_id="DT123",
-                file_path="path/to/results.csv",
-                field_mapping={"comm": "Comments"},
-                mode=ImportMode.CSV,
-            )
-            ```
         """
         logger.info("Importing results for task %s using %s mode", task_id, mode)
 
@@ -465,12 +605,19 @@ class TaskCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: TaskId) -> None:
-        """Delete a task.
+        """Delete a task by its ID.
+
+        Deleting a task also removes any results recorded against its blocks.
+
+        !!! example
+            ```python
+            client.tasks.delete(id="TASFOR1")
+            ```
 
         Parameters
         ----------
         id : TaskId
-            The ID of the task to delete.
+            The task to delete (format ``TAS...``).
 
         Returns
         -------
@@ -481,17 +628,28 @@ class TaskCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: TaskId) -> BaseTask:
-        """Retrieve a task by its ID.
+        """Get a single, fully populated task by its ID.
+
+        The returned object is the concrete type matching the task's category:
+        ``PropertyTask``, ``BatchTask``, or ``GeneralTask``. For a PropertyTask
+        this includes its blocks.
+
+        !!! example
+            ```python
+            task = client.tasks.get_by_id(id="TASFOR1")
+            task.name
+            # 'Viscosity screen'
+            ```
 
         Parameters
         ----------
         id : TaskId
-            The ID of the task to retrieve.
+            The task to retrieve (format ``TAS...``).
 
         Returns
         -------
         BaseTask
-            The task object with the provided ID.
+            The fully populated task.
         """
         url = f"{self.base_path}/multi/{id}"
         response = self.session.get(url)
@@ -520,11 +678,22 @@ class TaskCollection(BaseCollection):
         max_items: int | None = None,
         offset: int = 0,
     ) -> Iterator[TaskSearchItem]:
-        """
-        Search for Task matching the provided criteria.
+        """Search for tasks matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        Returns lightweight, partially populated results and is the fastest way to
+        look tasks up. When you need complete tasks (e.g. a PropertyTask's blocks),
+        use [`get_all`][albert.collections.tasks.TaskCollection.get_all] with the same filters, or pass the resulting IDs to
+        [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id]. Results are returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskCategory
+            hits = client.tasks.search(
+                category=TaskCategory.PROPERTY, status=["Open"], max_items=20
+            )
+            for t in hits:
+                print(t.id, t.name)
+            ```
 
         Parameters
         ----------
@@ -537,9 +706,10 @@ class TaskCollection(BaseCollection):
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
-            Task category filter (e.g., Experiment, Analysis).
+            Filter by task category: ``Property``, ``Batch``, or ``General``.
         albert_id : list[str], optional
-            Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``["A46", "A50"]``).
+            Filter by Albert IDs of entities linked to the tasks (e.g. inventory
+            IDs like ``["INVA46", "INVA50"]``).
         data_template : list[str], optional
             Data template names associated with tasks.
         assigned_to : list[str], optional
@@ -561,14 +731,13 @@ class TaskCollection(BaseCollection):
         sort_by : str, optional
             Attribute to sort tasks by (e.g., createdAt, name).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Number of results to skip for pagination, default 0.
+            Maximum number of tasks to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[TaskSearchItem]
-            An iterator of matching, lightweight TaskSearchItem entities.
+            A lazily paginated iterator of partially populated search results.
         """
         if project_id is not None:
             project_id = remove_id_prefix(project_id, "ProjectId")
@@ -629,11 +798,22 @@ class TaskCollection(BaseCollection):
         max_items: int | None = None,
         offset: int = 0,
     ) -> Iterator[BaseTask]:
-        """
-        Retrieve fully hydrated Task entities with optional filters.
+        """Get fully populated tasks matching the given filters.
 
-        This method returns complete entity data using `get_by_id`.
-        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Accepts the same filters as [`search`][albert.collections.tasks.TaskCollection.search] but returns complete task
+        entities (``PropertyTask``, ``BatchTask``, or ``GeneralTask``) rather than
+        lightweight search results. This is slower because it fetches full detail
+        for every match, so prefer [`search`][albert.collections.tasks.TaskCollection.search] when you only need names, IDs, or
+        status. Results are returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskCategory
+            for task in client.tasks.get_all(
+                category=TaskCategory.PROPERTY, max_items=50
+            ):
+                print(task.id, task.name)
+            ```
 
         Parameters
         ----------
@@ -642,13 +822,14 @@ class TaskCollection(BaseCollection):
         tags : list[str], optional
             Filter by tags associated with tasks.
         task_id : list[str], optional
-            Filter by task IDs (e.g., ``["TAS123", "TAS456"]``).
+            Filter by task IDs (e.g. ``["TAS123", "TAS456"]``).
         linked_task : list[str], optional
             Task IDs linked to the ones being searched.
         category : TaskCategory, optional
-            Task category filter (e.g., Experiment, Analysis).
+            Filter by task category: ``Property``, ``Batch``, or ``General``.
         albert_id : list[str], optional
-            Filter by Albert IDs of entities linked to the tasks (e.g., inventory IDs like ``["A46", "A50"]``).
+            Filter by Albert IDs of entities linked to the tasks (e.g. inventory
+            IDs like ``["INVA46", "INVA50"]``).
         data_template : list[str], optional
             Data template names associated with tasks.
         assigned_to : list[str], optional
@@ -658,7 +839,7 @@ class TaskCollection(BaseCollection):
         priority : list[str], optional
             Priority levels for filtering tasks.
         status : list[str], optional
-            Task status values (e.g., Open, Done).
+            Task status values (e.g. ``"Open"``, ``"Done"``).
         parameter_group : list[str], optional
             Parameter Group names associated with tasks.
         created_by : list[str], optional
@@ -666,18 +847,18 @@ class TaskCollection(BaseCollection):
         project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
         order_by : OrderBy, optional
-            The order in which to return results (asc or desc), default DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
-            Attribute to sort tasks by (e.g., createdAt, name).
+            Attribute to sort tasks by (e.g. ``createdAt``, ``name``).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Number of results to skip for pagination, default 0.
+            Maximum number of tasks to return in total. If None, iterates over all
+            matches.
 
         Yields
         ------
-        Iterator[BaseTask]
-            A stream of fully hydrated Task entities (PropertyTask, BatchTask, or GeneralTask).
+        BaseTask
+            Each fully populated task (``PropertyTask``, ``BatchTask``, or
+            ``GeneralTask``).
         """
         for task in self.search(
             text=text,
@@ -709,21 +890,35 @@ class TaskCollection(BaseCollection):
                 logger.warning(f"Error fetching task '{task_id}': {e}")
 
     def update(self, *, task: BaseTask) -> BaseTask:
-        """Update a task.
+        """Update an existing task.
+
+        Fetch the task (e.g. with [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id]), modify the updatable fields,
+        then pass it here. Only the fields listed in Notes are applied. To change a
+        task's blocks, use [`add_block`][albert.collections.tasks.TaskCollection.add_block], [`remove_block`][albert.collections.tasks.TaskCollection.remove_block], or
+        [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow] instead.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import TaskPriority
+            task = client.tasks.get_by_id(id="TASFOR1")
+            task.priority = TaskPriority.HIGH
+            updated = client.tasks.update(task=task)
+            ```
 
         Parameters
         ----------
         task : BaseTask
-            The updated Task object.
+            The task to update. Must have a valid ``id``.
 
         Returns
         -------
         BaseTask
-            The updated Task object as it exists in the Albert platform.
+            The updated task.
 
         Notes
         -----
-        The following fields can be updated: ``due_date``, ``metadata``, ``name``, ``priority``, ``project``, ``state``.
+        The following fields can be updated: ``due_date``, ``metadata``, ``name``,
+        ``priority``, ``project``, ``state``.
         """
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(
@@ -757,27 +952,37 @@ class TaskCollection(BaseCollection):
         blockId: str | None = None,
         startKey: str | None = None,
     ) -> TaskHistory:
-        """Fetch the audit history for the specified task.
+        """Get the audit history for a task.
+
+        Returns the chronological record of changes made to the task (and,
+        optionally, a specific block).
+
+        !!! example
+            ```python
+            history = client.tasks.get_history(id="TASFOR1")
+            len(history.items)
+            # 12
+            ```
 
         Parameters
         ----------
         id : TaskId
-            The ID of the task to inspect.
+            The task to inspect (format ``TAS...``).
         order : OrderBy, optional
-            Sort order for history entries. Default is DESCENDING.
+            Sort direction for history entries. Default ``OrderBy.DESCENDING``.
         limit : int, optional
             Maximum number of history entries to return.
-        entity : HistoryEntity | None, optional
-            Optional entity scope filter for history entries.
-        blockId : str | None, optional
-            Optional block ID filter for history entries.
-        startKey : str | None, optional
+        entity : HistoryEntity, optional
+            Restrict history to a specific entity scope (e.g. ``workflow``).
+        blockId : str, optional
+            Restrict history to a specific block.
+        startKey : str, optional
             Pagination key used to continue a previous history query.
 
         Returns
         -------
         TaskHistory
-            Task history response containing entries and pagination metadata.
+            The task's history entries plus pagination metadata.
         """
         params = {
             "limit": limit,

@@ -13,21 +13,73 @@ from albert.resources.synthesis import ReactantValues, RowSequence, Synthesis
 
 
 class SynthesisCollection(BaseCollection):
-    """
-    Collection for interacting with synthesis records used by notebook Ketcher blocks.
+    """Manage synthesis (reaction) records on the Albert platform.
+
+    A synthesis record documents a chemical reaction on a drawing canvas: the
+    reactants and products of the reaction, drawn as chemical structures (via the
+    Ketcher structure editor) and laid out in a reaction worksheet table. Each row
+    of that table is a reaction participant (a reactant or a product), and its
+    quantities (mass, moles, equivalents, concentration) can be filled in.
+
+    A synthesis always belongs to a block inside a Notebook (see
+    [`NotebookCollection`][albert.collections.notebooks.NotebookCollection]); the parent notebook
+    is supplied when the record is created. Synthesis records are referenced by
+    their Synthesis ID (format ``SYN...``, e.g. ``"SYNA1"``).
+
+    A typical flow is: [`create`][albert.collections.synthesis.SynthesisCollection.create] the record, draw the reaction and push the
+    canvas with [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data], initialize the reactant/product table
+    with [`create_reactant_productant_table`][albert.collections.synthesis.SynthesisCollection.create_reactant_productant_table], then set per-row quantities with
+    [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values].
+
+    This collection is accessed as ``client.synthesis``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        synthesis = client.synthesis.create(
+            parent_id="NTBA1",
+            name="Amide coupling",
+        )
+        print(synthesis.id)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for synthesis requests.
+
+    Methods
+    -------
+    create(parent_id, name, block_id=None, smiles=None) -> Synthesis
+        Create a synthesis record for a notebook Ketcher block.
+    get_by_id(id, include_recommendations=False, include_predictions=False, version=None) -> Synthesis
+        Get a single synthesis record by its ID.
+    update(synthesis) -> Synthesis
+        Update an existing synthesis record.
+    update_canvas_data(synthesis_id, smiles, data, png) -> Synthesis
+        Replace the drawn reaction (SMILES, canvas data, and preview image).
+    update_reactant_row_values(synthesis_id, row_id, values) -> Synthesis
+        Set the quantities (mass, moles, eq, concentration) for one reactant row.
+    create_reactant_productant_table(synthesis_id) -> Synthesis
+        Initialize the reactant/product table and reveal the reaction worksheet.
     """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "status", "hide_reaction_worksheet"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize the SynthesisCollection.
+        """Initialize a SynthesisCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session information.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{SynthesisCollection._api_version}/synthesis"
@@ -41,25 +93,40 @@ class SynthesisCollection(BaseCollection):
         block_id: str | None = None,
         smiles: str | None = None,
     ) -> Synthesis:
-        """
-        Create a synthesis record for a notebook Ketcher block.
+        """Create a synthesis record for a notebook Ketcher block.
+
+        Use this to start documenting a reaction inside a notebook. The new record
+        is empty; draw the reaction and push it with [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data], and
+        build out the reactant/product table with
+        [`create_reactant_productant_table`][albert.collections.synthesis.SynthesisCollection.create_reactant_productant_table].
+
+        !!! example
+            ```python
+            synthesis = client.synthesis.create(
+                parent_id="NTBA1",
+                name="Amide coupling",
+                smiles="CC(=O)O.CN>>CC(=O)NC",
+            )
+            synthesis.id
+            # 'SYNA1'
+            ```
 
         Parameters
         ----------
-        parent_id : NotebookId | str
-            The notebook ID that owns the synthesis record.
+        parent_id : NotebookId or str
+            The Notebook ID that owns the synthesis record (format ``NTB...``).
         name : str
-            The synthesis name.
-        block_id : str | None, optional
+            A human-readable name for the synthesis.
+        block_id : str, optional
             The Ketcher block ID to associate with the synthesis. A new ID is
             generated when not provided.
-        smiles : str | None, optional
-            The initial SMILES string for the synthesis.
+        smiles : str, optional
+            An initial reaction SMILES string to seed the canvas.
 
         Returns
         -------
         Synthesis
-            The created synthesis record.
+            The created synthesis record, populated with its assigned Synthesis ID.
         """
         payload: dict[str, Any] = {"name": name, "blockId": block_id or str(uuid.uuid4())}
         if smiles is not None:
@@ -80,24 +147,31 @@ class SynthesisCollection(BaseCollection):
         include_predictions: bool = False,
         version: str | None = None,
     ) -> Synthesis:
-        """
-        Retrieve a synthesis record by ID.
+        """Get a synthesis record by its ID.
+
+        !!! example
+            ```python
+            synthesis = client.synthesis.get_by_id(id="SYNA1")
+            print(synthesis.name)
+            ```
 
         Parameters
         ----------
         id : SynthesisId
-            The synthesis ID.
+            The Synthesis ID to retrieve (format ``SYN...``, e.g. ``"SYNA1"``).
         include_recommendations : bool, optional
-            Whether to include recommendations in the response.
+            When True, include reaction recommendations in the response.
+            Defaults to False.
         include_predictions : bool, optional
-            Whether to include predictions in the response.
-        version : str | None, optional
-            The specific version to retrieve.
+            When True, include reaction predictions in the response.
+            Defaults to False.
+        version : str, optional
+            A specific version of the record to retrieve. Defaults to the latest.
 
         Returns
         -------
         Synthesis
-            The requested synthesis record.
+            The fully populated synthesis record.
         """
         params: dict[str, Any] = {
             "recommendations": include_recommendations,
@@ -115,19 +189,32 @@ class SynthesisCollection(BaseCollection):
     def update_canvas_data(
         self, *, synthesis_id: SynthesisId, smiles: str, data: str, png: str
     ) -> Synthesis:
-        """
-        Update the Ketcher canvas data for a synthesis record.
+        """Update the Ketcher canvas data for a synthesis record.
+
+        Use this to save the drawn reaction after editing it in the structure
+        editor. It replaces the reaction SMILES, the serialized canvas, and the
+        rendered preview image together.
+
+        !!! example
+            ```python
+            synthesis = client.synthesis.update_canvas_data(
+                synthesis_id="SYNA1",
+                smiles="CC(=O)O.CN>>CC(=O)NC",
+                data=serialized_canvas,
+                png=base64_png,
+            )
+            ```
 
         Parameters
         ----------
         synthesis_id : SynthesisId
-            The synthesis ID.
+            The Synthesis ID to update (format ``SYN...``).
         smiles : str
-            The updated SMILES string.
+            The updated reaction SMILES string.
         data : str
-            The serialized canvas data.
+            The serialized canvas data from the structure editor.
         png : str
-            The base64-encoded PNG for the canvas.
+            The base64-encoded PNG preview of the canvas.
 
         Returns
         -------
@@ -146,27 +233,39 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def update(self, *, synthesis: Synthesis) -> Synthesis:
-        """
-        Update a synthesis record.
+        """Update an existing synthesis record.
+
+        Fetch the record with [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id], modify the updatable fields on the
+        returned object, then pass it here. Only the fields listed in Notes are
+        sent; other differences are ignored. If nothing changed, the existing
+        record is returned unmodified.
+
+        !!! example
+            ```python
+            synthesis = client.synthesis.get_by_id(id="SYNA1")
+            synthesis.name = "Amide coupling (revised)"
+            updated = client.synthesis.update(synthesis=synthesis)
+            ```
 
         Parameters
         ----------
         synthesis : Synthesis
-            The synthesis record containing updated fields.
+            The synthesis record containing updated fields. Its ``id`` must be set.
 
         Returns
         -------
         Synthesis
-            The refreshed synthesis record.
-
-        Notes
-        -----
-        The following fields can be updated: ``hide_reaction_worksheet``, ``name``, ``status``.
+            The updated synthesis record.
 
         Raises
         ------
         AlbertException
             If the synthesis record is missing an ID.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``status``,
+        ``hide_reaction_worksheet``.
         """
         if synthesis.id is None:
             msg = "Synthesis id is required to update the record."
@@ -189,17 +288,34 @@ class SynthesisCollection(BaseCollection):
         row_id: str,
         values: ReactantValues,
     ) -> Synthesis:
-        """
-        Update the values for a reactant row.
+        """Update the quantities for a single reactant row.
+
+        Sets the mass, moles, equivalents, and concentration for one row of the
+        reaction worksheet table. The row is identified by its row ID, which can be
+        read from ``Synthesis.reactants`` (each
+        [`ReactionParticipant`][albert.resources.synthesis.ReactionParticipant] has a ``row_id``)
+        or from ``Synthesis.row_sequence.reactants``.
+
+        !!! example
+            ```python
+            from albert.resources.synthesis import ReactantValues
+            synthesis = client.synthesis.get_by_id(id="SYNA1")
+            row_id = synthesis.reactants[0].row_id
+            updated = client.synthesis.update_reactant_row_values(
+                synthesis_id="SYNA1",
+                row_id=row_id,
+                values=ReactantValues(mass=10.0, eq=1.0),
+            )
+            ```
 
         Parameters
         ----------
         synthesis_id : SynthesisId
-            The synthesis ID.
+            The Synthesis ID to update (format ``SYN...``).
         row_id : str
             The reactant row ID to update.
         values : ReactantValues
-            The values to apply to the reactant row.
+            The quantities to apply to the reactant row.
 
         Returns
         -------
@@ -224,18 +340,34 @@ class SynthesisCollection(BaseCollection):
 
     @validate_call
     def create_reactant_productant_table(self, *, synthesis_id: SynthesisId) -> Synthesis:
-        """
-        Initialize the reactant/product table for a synthesis.
+        """Initialize the reactant/product table for a synthesis.
+
+        Sets up the reaction worksheet so quantities can be entered: it seeds the
+        first reactant row (concentration 100), reveals the reaction worksheet, and
+        attaches the backing inventory. If the table has already been initialized
+        (the record already has an inventory ID) or there are no reactant rows to
+        seed, the record is returned unchanged.
+
+        Call this after the reaction has been drawn (see
+        [`update_canvas_data`][albert.collections.synthesis.SynthesisCollection.update_canvas_data]) and before setting per-row quantities with
+        [`update_reactant_row_values`][albert.collections.synthesis.SynthesisCollection.update_reactant_row_values].
+
+        !!! example
+            ```python
+            synthesis = client.synthesis.create_reactant_productant_table(
+                synthesis_id="SYNA1",
+            )
+            ```
 
         Parameters
         ----------
         synthesis_id : SynthesisId
-            The synthesis ID.
+            The Synthesis ID to initialize (format ``SYN...``).
 
         Returns
         -------
         Synthesis
-            The synthesis record.
+            The synthesis record with its reactant/product table initialized.
         """
         synthesis = self.get_by_id(id=synthesis_id)
         if synthesis.inventory_id is not None:

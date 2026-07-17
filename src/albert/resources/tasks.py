@@ -26,6 +26,27 @@ from albert.resources.workflows import Workflow
 
 
 class TaskCategory(str, Enum):
+    """The kind of lab work a task represents.
+
+    The category determines which concrete task class is used and is set
+    automatically by that subclass; you normally do not set it by hand.
+
+    Attributes
+    ----------
+    PROPERTY : str
+        Testing and documenting the properties of products, formulas, or raw
+        materials. Corresponds to [`PropertyTask`][albert.resources.tasks.PropertyTask].
+    BATCH : str
+        Manufacturing a batch of a formulation inside Albert. Corresponds to
+        [`BatchTask`][albert.resources.tasks.BatchTask].
+    GENERAL : str
+        Any lab work that is not a batch or property task (for example
+        equipment calibration). Corresponds to [`GeneralTask`][albert.resources.tasks.GeneralTask].
+    BATCH_WITH_QC : str
+        A batch task that also carries quality-control data. A variant of
+        [`BatchTask`][albert.resources.tasks.BatchTask].
+    """
+
     PROPERTY = "Property"
     BATCH = "Batch"
     GENERAL = "General"
@@ -33,28 +54,80 @@ class TaskCategory(str, Enum):
 
 
 class BatchSizeUnit(str, Enum):
+    """Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].
+
+    Attributes
+    ----------
+    GRAMS : str
+        Grams (``"g"``).
+    KILOGRAMS : str
+        Kilograms (``"Kg"``).
+    POUNDS : str
+        Pounds (``"lbs"``).
+    """
+
     GRAMS = "g"
     KILOGRAMS = "Kg"
     POUNDS = "lbs"
 
 
 class TaskSourceType(str, Enum):
+    """What kind of thing a task was created from.
+
+    Attributes
+    ----------
+    TASK : str
+        The task was created from another existing task (``"task"``).
+    TEMPLATE : str
+        The task was created from a task template (``"template"``).
+    """
+
     TASK = "task"
     TEMPLATE = "template"
 
 
 class TaskSource(BaseAlbertModel):
+    """A reference to the task or template a task was created from.
+
+    Recorded in [`sources`][albert.resources.tasks.BaseTask.sources] to trace where a task originated."""
+
     id: str
+    """The ID of the originating task or template."""
+
     type: TaskSourceType
+    """Whether ``id`` points to a task or a template."""
 
 
 class TaskPriority(str, Enum):
+    """How urgent a task is, used for triage and sorting work queues.
+
+    Attributes
+    ----------
+    HIGH : str
+        Highest urgency (``"High"``).
+    MEDIUM : str
+        Normal urgency (``"Medium"``).
+    LOW : str
+        Lowest urgency (``"Low"``).
+    """
+
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
 
 
 class HistoryEntity(str, Enum):
+    """The kind of entity a task-history query is scoped to.
+
+    Used when requesting the change history of a task (see
+    [`get_history`][albert.collections.tasks.TaskCollection.get_history]).
+
+    Attributes
+    ----------
+    WORKFLOW : str
+        Limit history to workflow-related changes (``"workflow"``).
+    """
+
     WORKFLOW = "workflow"
 
 
@@ -115,6 +188,27 @@ class BlockDataTemplateInfo(BaseAlbertModel):
 
 
 class TaskState(str, Enum):
+    """Where a task is in its lifecycle, from creation through completion.
+
+    The state generally advances as work progresses: an unclaimed task is
+    picked up, started, finished, and eventually closed (or cancelled).
+
+    Attributes
+    ----------
+    UNCLAIMED : str
+        Created but not yet assigned to or claimed by anyone.
+    NOT_STARTED : str
+        Claimed or assigned, but work has not begun.
+    IN_PROGRESS : str
+        Work is actively underway.
+    COMPLETED : str
+        The work has been finished.
+    CLOSED : str
+        Finalized and no longer active.
+    CANCELLED : str
+        Abandoned before completion.
+    """
+
     UNCLAIMED = "Unclaimed"
     NOT_STARTED = "Not Started"
     IN_PROGRESS = "In Progress"
@@ -124,45 +218,80 @@ class TaskState(str, Enum):
 
 
 class TaskInventoryInformation(BaseAlbertModel):
-    """Represents the Inventory information needed for a task. For a Batch task, inventory_id and batch_size are required.
-    For Property and general tasks, inventory_id and lot_id is recomended is required.
+    """Which inventory item (and optionally which lot) a task acts on.
 
-    Attributes
-    ----------
-    inventory_id : str
-        The inventory id of the item to be used in the task.
-    lot_id : str, optional
-        The lot id of the item to be used in the task. Reccomended for Property and General tasks.
-    lot_number : str, optional
-        The lot number of the item to be used in the task. Optional.
-    batch_size : float, Required for Batch tasks, otherwise optional.
-        The batch size to make of the related InventoryItem. Required for Batch tasks.
-    selected_lot : bool, read only
-        Whether the lot is selected for the task. Default is None.
-    """
+    Every task references one or more inventory items through this model, stored
+    on [`inventory_information`][albert.resources.tasks.BaseTask.inventory_information]. What is required depends on the
+    task type:
+
+    - [`BatchTask`][albert.resources.tasks.BatchTask]: ``inventory_id`` and ``batch_size`` are required
+      (you are making a quantity of that item).
+    - [`PropertyTask`][albert.resources.tasks.PropertyTask] and [`GeneralTask`][albert.resources.tasks.GeneralTask]: ``inventory_id`` is
+      required and ``lot_id`` is recommended (the specific physical lot tested)."""
 
     inventory_id: InventoryId = Field(alias="id")
+    """The ID of the inventory item used in the task (serialized as ``id``)."""
+
     lot_id: LotId | None = Field(alias="lotId", default=None)
+    """The ID of the specific lot used. Recommended for property and general tasks so results attach to the right physical material."""
+
     lot_number: str | None = Field(default=None, alias="lotNumber")
+    """The human-readable lot number of the item."""
+
     inv_lot_unique_id: str | None = Field(alias="invLotUniqueId", default=None)
+    """A combined inventory-and-lot identifier used internally."""
+
     batch_size: float | None = Field(alias="batchSize", default=None)
+    """The quantity to make of the related inventory item. Required for [`BatchTask`][albert.resources.tasks.BatchTask]; the unit is given by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit]."""
+
     selected_lot: bool | None = Field(alias="selectedLot", exclude=True, frozen=True, default=None)
+    """Read-only. Whether this lot is the one selected for the task."""
+
     barcode_id: str | None = Field(alias="barcodeId", default=None)
+    """The barcode identifier of the physical item, if scanned."""
+
     quantity_used: float | None = Field(alias="quantityUsed", default=None)
+    """The amount of the item consumed by the task."""
+
     selected_lot: bool | None = Field(alias="selectedLot", default=None, exclude=True)
+    """Read-only. Whether this lot is the one selected for the task."""
 
 
 class Block(BaseAlbertModel):
+    """A single unit of testing within a property or batch task.
+
+    A block pairs a [`DataTemplate`][albert.resources.data_templates.DataTemplate]
+    (the results/data columns to capture) with a
+    [`Workflow`][albert.resources.workflows.Workflow] (the parameter conditions
+    under which the data is collected). A [`PropertyTask`][albert.resources.tasks.PropertyTask] or
+    [`BatchTask`][albert.resources.tasks.BatchTask] can hold multiple blocks. Block IDs look like
+    ``"BLK..."``.
+
+    Blocks are normally created and modified through the task collection rather
+    than constructed directly; see
+    [`add_block`][albert.collections.tasks.TaskCollection.add_block],
+    [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow], and
+    [`remove_block`][albert.collections.tasks.TaskCollection.remove_block]. Measured
+    results for a block are recorded through
+    [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]."""
+
     id: str | None = Field(default=None)
+    """The block's ID (``"BLK..."``). Assigned by Albert; ``None`` before the block is created."""
+
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
+    """The workflow(s) defining the parameter conditions for the block. At least one is required."""
+
     data_template: (
         list[BlockDataTemplateInfo]
         | DataTemplateAndTargets
         | list[SerializeAsEntityLink[DataTemplate]]
     ) = Field(alias="Datatemplate", min_length=1, max_length=1)
+    """The single data template describing the data columns to capture, and any associated targets."""
+
     parameter_quantity_used: dict | None = Field(
         alias="parameterQuantityUsed", default=None, exclude=True
     )
+    """Read-only internal mapping of parameter quantities consumed by the block."""
 
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.
@@ -195,172 +324,219 @@ class TaskEntityType(BaseAlbertModel):
 
 
 class BaseTask(BaseTaggedResource):
-    """Base class for all task types. Use PropertyTask, BatchTask, or GeneralTask for specific task types."""
+    """Shared fields and behavior for every kind of task.
+
+    A task is a unit of lab work. This base class is not used directly; instead
+    pick the concrete type that matches the work:
+
+    - [`PropertyTask`][albert.resources.tasks.PropertyTask]: test and document properties of products,
+      formulas, or raw materials. Holds [`Block`][albert.resources.tasks.Block] objects and captures
+      measured property data.
+    - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch of a formulation inside Albert.
+    - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work (for example equipment
+      calibration) that is neither a batch nor a property task.
+
+    Tasks are managed through
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``). The
+    [`category`][albert.resources.tasks.BaseTask.category] field distinguishes the subclasses and is set
+    automatically by each one. Task IDs look like ``"TAS..."``."""
 
     id: str | None = Field(alias="albertId", default=None)
+    """The task's ID (``"TAS..."``, serialized as ``albertId``). Assigned by Albert; ``None`` before the task is created."""
+
     name: str
+    """Human-readable name of the task. Required."""
+
     category: TaskCategory
+    """The task type. Set automatically by the concrete subclass."""
+
     parent_id: str | None = Field(alias="parentId", default=None)
+    """The ID of the parent project this task belongs to."""
+
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
+    """Custom metadata fields keyed by name."""
+
     sources: list[TaskSource] | None = Field(default_factory=list, alias="Sources")
+    """The task(s) or template(s) this task was created from."""
+
     inventory_information: list[TaskInventoryInformation] = Field(
         alias="Inventories", default=None
     )
+    """The inventory item(s) (and optionally lot(s)) the task acts on."""
+
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
+    """Where the task is performed."""
+
     priority: TaskPriority | None = Field(default=None)
+    """The task's urgency."""
+
     security_class: SecurityClass | None = Field(alias="class", default=None)
+    """Access-control classification (serialized as ``class``)."""
+
     pass_fail: bool | None = Field(alias="passOrFail", default=None)
+    """Whether the task is evaluated as pass/fail."""
+
     notes: str | None = Field(default=None)
+    """Free-text notes."""
+
     start_date: str | None = Field(alias="startDate", default=None)
+    """Read-only. Date work started (``YYYY-MM-DD``)."""
+
     due_date: str | None = Field(alias="dueDate", default=None)
+    """Target completion date (``YYYY-MM-DD``)."""
+
     claimed_date: str | None = Field(alias="claimedDate", default=None)
+    """Read-only. Date the task was claimed."""
+
     completed_date: str | None = Field(alias="completedDate", default=None)
+    """Read-only. Date the task was completed."""
+
     closed_date: str | None = Field(alias="closedDate", default=None)
+    """Read-only. Date the task was closed."""
+
     result: str | None = Field(default=None)
+    """Overall result summary for the task."""
+
     state: TaskState | None = Field(default=None)
+    """Current lifecycle state of the task."""
+
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
     )
+    """The project(s) the task is associated with."""
+
     assigned_to: (
         SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
     ) = Field(default=None, alias="AssignedTo")
+    """The user or team responsible for the task."""
+
     page_state: PageState | None = Field(
         alias="PageState",
         default=None,
     )
+    """Internal UI layout state for the task page."""
+
     entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
+    """Internal entity-type classification. See Also --------"""
 
 
 class PropertyTask(BaseTask):
-    """
-    Represents a property task.
+    """A task that tests and documents the properties of a material.
 
-    This class is used to create and manage property tasks. It includes the base task attributes
-    and additional attributes specific to property tasks (e.g., blocks tied to workflows/data templates).
+    Use a property task to measure and record properties of products, formulas,
+    or raw materials. A property task holds one or more [`Block`][albert.resources.tasks.Block] objects,
+    each pairing a data template (what to capture) with a workflow (the
+    conditions). Measured results are recorded per block, interval, and trial
+    through [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
+    (``client.property_data``) and roll up to the associated inventory item's
+    properties.
 
-    Attributes
-    ----------
-    name : str
-        The name of the property task.
-    inventory_information : list[TaskInventoryInformation]
-        Information about the inventory associated with the property task.
-    location : SerializeAsEntityLink[Location]
-        The location where the property task is performed.
-    parent_id : str
-        The ID of the parent project.
-    blocks : list[Block]
-        A list of blocks associated with the property task.
-    id : str, optional
-        The ID of the property task, by default None.
+    Inherits all shared fields from [`BaseTask`][albert.resources.tasks.BaseTask]. Its [`category`][albert.resources.tasks.PropertyTask.category] is
+    always [`PROPERTY`][albert.resources.tasks.TaskCategory.PROPERTY]. Create and manage property tasks with
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``); add
+    blocks with [`add_block`][albert.collections.tasks.TaskCollection.add_block].
 
-    metadata : dict[str, MetadataItem], optional
-        Metadata associated with the property task, by default an empty dictionary.
-    due_date : str, optional
-        The due date of the property task. YYYY-MM-DD format, by default None.
-    notes : str, optional
-        Notes associated with the property task, by default None.
-    priority : TaskPriority, optional
-        The priority of the property task, by default None.
-    assigned_to : SerializeAsEntityLink[User], optional
-        The user assigned to the property task, by default None.
+    !!! example
+        ```python
+        from albert.resources.tasks import PropertyTask
 
-    state : TaskState, optional
-        The state of the property task, by default None.
-    sources : list[TaskSource], optional
-        A list of sources associated with the property task, by default an empty list.
-    security_class : SecurityClass, optional
-        The security class of the property task, by default None.
-    start_date : str, read only
-        The start date of the property task, by default None.
-    claimed_date : str, read only
-        The claimed date of the property task, by default None.
-    completed_date : str, read only
-        The completed date of the property task, by default None.
-    closed_date : str, read only
-        The closed date of the property task, by default None.
+        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        ```
+    Notes
+    -----
+    All other fields (``location``, ``priority``, ``due_date``, ``state``,
+    ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
     """
 
     category: Literal[TaskCategory.PROPERTY] = TaskCategory.PROPERTY
     blocks: list[Block] | None = Field(alias="Blocks", default=None)
+    """The blocks (data template + workflow pairs) that define what data the task captures."""
+
     qc_task: bool | None = Field(alias="qcTask", default=None)
+    """Whether this property task is a quality-control task."""
+
     batch_task_id: str | None = Field(alias="batchTaskId", default=None)
+    """The ID of a related batch task, if this task tests material made by one."""
+
     target: str | None = Field(default=None)
+    """A target value or specification associated with the task. Notes ----- All other fields (``location``, ``priority``, ``due_date``, ``state``, ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask]."""
 
 
 class BatchTask(BaseTask):
-    """
-    Represents a batch task.
+    """A task that manufactures a batch of a formulation inside Albert.
 
-    This class is used to create and manage batch tasks. It includes the base task attributes
-    and additional attributes specific to batch tasks.
+    Use a batch task after creating a new formulation to make a physical
+    quantity of it. The item to make and the amount are given through
+    [`inventory_information`][albert.resources.tasks.BatchTask.inventory_information] (``inventory_id`` and ``batch_size`` are
+    required for batch tasks), with the unit set by [`batch_size_unit`][albert.resources.tasks.BatchTask.batch_size_unit].
 
-    Attributes
-    ----------
-    name : str
-        The name of the batch task.
-    inventory_information : list[TaskInventoryInformation]
-        Information about the inventory associated with the batch task.
-    location : SerializeAsEntityLink[Location]
-        The location where the batch task is performed.
-    parent_id : str
-        The ID of the parent project.
-    id : str, optional
-        The ID of the batch task, by default None.
+    Inherits all shared fields from [`BaseTask`][albert.resources.tasks.BaseTask]. Its [`category`][albert.resources.tasks.BatchTask.category] is
+    [`BATCH`][albert.resources.tasks.TaskCategory.BATCH] (or [`BATCH_WITH_QC`][albert.resources.tasks.TaskCategory.BATCH_WITH_QC] when
+    quality-control data is attached). Create and manage batch tasks with
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
 
-    batch_size_unit : str, optional
-        The unit of measurement for the batch size, by default None.
-    metadata : dict[str, MetadataItem], optional
-        Metadata associated with the batch task, by default an empty dictionary.
-    workflows : list[SerializeAsEntityLink[Workflow]], optional
-        A list of workflows associated with the batch task, by default None.
-    due_date : str, optional
-        The due date of the batch task. YYY-MM-DD format, by default None.
-    notes : str, optional
-        Notes associated with the batch task, by default None.
-    priority : TaskPriority, optional
-        The priority of the batch task, by default None.
-    project : SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]], optional
-        The project(s) associated with the batch task, by default None.
-    assigned_to : SerializeAsEntityLink[User], optional
-        The user assigned to the batch task, by default None.
+    !!! example
+        ```python
+        from albert.resources.tasks import BatchTask
+        from albert.resources.tasks import TaskInventoryInformation
 
-    state : TaskState, optional
-        The state of the batch task, by default None.
-    sources : list[TaskSource], optional
-        A list of sources associated with the batch task, by default an empty list.
-    security_class : SecurityClass, optional
-        The security class of the batch task, by default None.
-    pass_fail : bool, optional
-        Whether the batch task is pass/fail, by default None.
-    start_date : str, read only
-        The start date of the batch task, by default None.
-    claimed_date : str, read only
-        The claimed date of the batch task, by default None.
-    completed_date : str, read only
-        The completed date of the batch task, by default None.
-    closed_date : str, read only
-        The closed date of the batch task, by default None.
-    qc_task : bool, optional
-        Whether the batch task is a QC task, by default None.
-    batch_task_id : str, optional
-        The ID of the batch task, by default None.
-    target : str, optional
-        The target of the batch task, by default None.
-    qc_task_data : list[QCTaskData], optional
-        A list of QC task data associated with the batch task, by default None.
+        task = BatchTask(
+            name="Make 500 g of Formula A",
+            parent_id="PRO1",
+            inventory_information=[
+                TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
+            ],
+        )
+        ```
+    Notes
+    -----
+    All other fields (``location``, ``priority``, ``due_date``, ``state``,
+    ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask].
     """
 
     category: Literal[TaskCategory.BATCH, TaskCategory.BATCH_WITH_QC] = TaskCategory.BATCH
     batch_size_unit: BatchSizeUnit | None = Field(alias="batchSizeUnit", default=None)
+    """The unit of measure for the batch size (grams, kilograms, or pounds)."""
+
     qc_task: bool | None = Field(alias="qcTask", default=None)
+    """Whether this is a quality-control batch task."""
+
     batch_task_id: str | None = Field(alias="batchTaskId", default=None)
+    """The ID of a related batch task."""
+
     target: str | None = Field(default=None)
+    """A target value or specification associated with the task."""
+
     qc_task_data: list[QCTaskData] | None = Field(alias="QCTaskData", default=None)
+    """Quality-control data associated with the batch task. Notes ----- All other fields (``location``, ``priority``, ``due_date``, ``state``, ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask]."""
+
     workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(alias="Workflow", default=None)
+    """Workflow(s) associated with the batch task."""
+
     blocks: list[Block] | None = Field(alias="Blocks", default=None)
+    """Blocks associated with the batch task, when it captures data."""
 
 
 class GeneralTask(BaseTask):
+    """A task for lab work that is neither a batch nor a property task.
+
+    Use a general task for anything that does not fit the other two types, such
+    as equipment calibration or maintenance. General tasks do not hold blocks
+    and capture no property data.
+
+    Inherits all fields from [`BaseTask`][albert.resources.tasks.BaseTask]; its [`category`][albert.resources.tasks.GeneralTask.category] is always
+    [`GENERAL`][albert.resources.tasks.TaskCategory.GENERAL]. Only [`name`][albert.resources.tasks.BaseTask.name] is required.
+    Create and manage general tasks with
+    [`TaskCollection`][albert.collections.tasks.TaskCollection] (``client.tasks``).
+
+    !!! example
+        ```python
+        from albert.resources.tasks import GeneralTask
+
+        task = GeneralTask(name="Calibrate rheometer")
+        ```
+    """
+
     category: Literal[TaskCategory.GENERAL] = TaskCategory.GENERAL
 
 
@@ -378,19 +554,21 @@ class TaskHistoryEvent(BaseAlbertModel):
 
 
 class TaskHistory(BaseAlbertModel):
+    """The chronological record of changes made to a task.
+
+    Returned by [`get_history`][albert.collections.tasks.TaskCollection.get_history],
+    this wraps the individual change events (state changes, field edits, and so
+    on) recorded for a task."""
+
     items: list[TaskHistoryEvent] = Field(alias="Items")
+    """The history events, each describing one change (its action, timestamp, acting user, and old/new values)."""
 
 
 class TaskPatchPayload(PatchPayload):
-    """A payload for a PATCH request to update a Task.
-
-    Attributes
-    ----------
-    id:  str
-        The id of the Task to be updated.
-    """
+    """A payload for a PATCH request to update a Task."""
 
     id: str
+    """The id of the Task to be updated."""
 
 
 class TaskSearchInventory(BaseAlbertModel):
