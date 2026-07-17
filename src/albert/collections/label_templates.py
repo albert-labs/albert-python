@@ -311,7 +311,7 @@ class LabelTemplateCollection(BaseCollection):
         Returns
         -------
         LabelTemplate
-            The updated LabelTemplate, re-fetched from Albert.
+            The updated LabelTemplate.
 
         Notes
         -----

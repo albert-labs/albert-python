@@ -119,4 +119,4 @@ class PDFGenerationRequest(BaseAlbertModel):
     for the recognized settings."""
 
     albert_id: str | None = Field(default=None, alias="albertId")
-    """An identifier echoed back in the response, optional."""
+    """An identifier to associate with the generated PDF, optional."""

@@ -107,7 +107,7 @@ class PDFGeneratorCollection(BaseCollection):
             Page rendering options. See [`PDFOptions`][albert.resources.pdf_generator.PDFOptions]
             for the recognized settings; unrecognized keys are ignored.
         albert_id : str, optional
-            An identifier echoed back in the response.
+            An optional identifier to associate with the generated PDF.
 
         Returns
         -------
