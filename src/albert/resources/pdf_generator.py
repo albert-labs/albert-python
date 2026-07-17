@@ -6,7 +6,14 @@ from albert.core.base import BaseAlbertModel
 
 
 class PDFTemplate(BaseAlbertModel):
-    """The HTML template sources used to render a PDF."""
+    """The HTML template sources used to render a PDF.
+
+    When ``header`` or ``footer`` is set, the pages render with that header or
+    footer template. Header and footer templates can show page numbers and
+    document metadata via elements with the classes ``pageNumber``,
+    ``totalPages``, ``date``, and ``title`` (e.g.
+    ``<span class="pageNumber"></span>``).
+    """
 
     body: str
     """URL or S3 path of the Mustache HTML template for the document body."""
@@ -16,6 +23,54 @@ class PDFTemplate(BaseAlbertModel):
 
     footer: str | None = Field(default=None)
     """URL or S3 path of the Mustache HTML template for the page footer, optional."""
+
+
+class PDFMargin(BaseAlbertModel):
+    """Page margins for a rendered PDF, as CSS lengths (e.g. ``"0mm"``, ``"0.5in"``)."""
+
+    top: str | None = Field(default=None)
+    """Top margin."""
+
+    bottom: str | None = Field(default=None)
+    """Bottom margin."""
+
+    left: str | None = Field(default=None)
+    """Left margin."""
+
+    right: str | None = Field(default=None)
+    """Right margin."""
+
+
+class PDFOptions(BaseAlbertModel):
+    """Page rendering options for a generated PDF.
+
+    These are the only rendering settings the PDF generator reads; any other
+    keys are ignored. Set either ``format`` or an explicit ``width`` and
+    ``height`` pair (both must be set for the pair to apply).
+    """
+
+    width: str | None = Field(default=None)
+    """Page width as a CSS length (e.g. ``"3in"``). Applied together with ``height``."""
+
+    height: str | None = Field(default=None)
+    """Page height as a CSS length (e.g. ``"1in"``). Applied together with ``width``."""
+
+    format: str | None = Field(default=None)
+    """Named paper format (e.g. ``"A4"``, ``"Letter"``). Alternative to
+    ``width``/``height``."""
+
+    margin: PDFMargin | None = Field(default=None)
+    """Page margins, optional."""
+
+    landscape: bool | None = Field(default=None)
+    """When True, render in landscape orientation."""
+
+    render_background_image: bool | None = Field(default=None, alias="renderBackgroundImage")
+    """When True, print CSS background colors and images."""
+
+    hide_header_from_first_page: bool | None = Field(default=None, alias="hideHeaderFromFirstPage")
+    """When True and a header template is set, the first page renders without
+    the header."""
 
 
 class PDFS3Storage(BaseAlbertModel):
@@ -50,9 +105,9 @@ class PDFGenerationRequest(BaseAlbertModel):
     s3_storage: PDFS3Storage = Field(alias="s3Storage")
     """Where the generated PDF is stored."""
 
-    options: dict[str, Any] | None = Field(default=None)
-    """Page rendering options such as ``width``, ``height``, ``format``,
-    ``margin``, and ``landscape``, optional."""
+    options: PDFOptions | dict[str, Any] | None = Field(default=None)
+    """Page rendering options, optional. See [`PDFOptions`][albert.resources.pdf_generator.PDFOptions]
+    for the recognized settings."""
 
     albert_id: str | None = Field(default=None, alias="albertId")
     """An identifier echoed back in the response, optional."""

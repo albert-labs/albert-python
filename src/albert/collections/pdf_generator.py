@@ -4,7 +4,7 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
-from albert.resources.pdf_generator import PDFS3Storage, PDFTemplate
+from albert.resources.pdf_generator import PDFOptions, PDFS3Storage, PDFTemplate
 
 
 class PDFGeneratorCollection(BaseCollection):
@@ -68,7 +68,7 @@ class PDFGeneratorCollection(BaseCollection):
         template: PDFTemplate,
         data: dict[str, Any],
         s3_storage: PDFS3Storage,
-        options: dict[str, Any] | None = None,
+        options: PDFOptions | dict[str, Any] | None = None,
         albert_id: str | None = None,
     ) -> str:
         """Render a PDF from an HTML template and data.
@@ -103,9 +103,9 @@ class PDFGeneratorCollection(BaseCollection):
             The values substituted into the template's Mustache placeholders.
         s3_storage : PDFS3Storage
             Where the generated PDF is stored.
-        options : dict[str, Any], optional
-            Page rendering options such as ``width``, ``height``, ``format``,
-            ``margin``, and ``landscape``.
+        options : PDFOptions or dict[str, Any], optional
+            Page rendering options. See [`PDFOptions`][albert.resources.pdf_generator.PDFOptions]
+            for the recognized settings; unrecognized keys are ignored.
         albert_id : str, optional
             An identifier echoed back in the response.
 
@@ -119,6 +119,8 @@ class PDFGeneratorCollection(BaseCollection):
             "data": data,
             "s3Storage": s3_storage.model_dump(by_alias=True, mode="json", exclude_none=True),
         }
+        if isinstance(options, PDFOptions):
+            options = options.model_dump(by_alias=True, mode="json", exclude_none=True)
         if options is not None:
             payload["options"] = options
         if albert_id is not None:

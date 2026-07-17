@@ -91,20 +91,43 @@ Key rules:
 
 ## The metadata block
 
-Recognized keys observed across production templates:
+The metadata block carries two kinds of keys: PDF page options consumed by the renderer, and label-assembly settings consumed while gathering the data. The same keys can also be set on the template record's `metadata` when creating via the SDK; the file block wins where both define a key.
+
+**Page options** (the renderer reads exactly these; anything else is ignored — see `PDFOptions`):
 
 | Key | Purpose |
 | --- | --- |
-| `width`, `height` | Page size (e.g. `"3in"`, `"1in"`). |
+| `width`, `height` | Page size as CSS lengths (e.g. `"3in"`, `"1in"`). Both must be set to apply. |
+| `format` | Named paper size (e.g. `"A4"`, `"Letter"`) as an alternative to `width`/`height`. |
 | `margin` | Object with `top`/`bottom`/`left`/`right`. |
-| `renderBackgroundImage` | Print CSS backgrounds when `true`. |
+| `landscape` | Render in landscape orientation when `true`. |
+| `renderBackgroundImage` | Print CSS background colors and images when `true`. |
+| `hideHeaderFromFirstPage` | Skip the header on page 1 (title-page pattern) when `true`. |
+
+**Label-assembly settings**:
+
+| Key | Purpose |
+| --- | --- |
 | `hasBlackPictos` | Use the black (no-line) pictogram set. |
 | `useGhsOfficialPictos` | Use official GHS pictogram images. |
 | `numberOfPictos` | Cap how many hazard pictograms are passed to the template. |
 | `header`, `footer` | File names of separate header/footer HTML files. |
+| `languageCode` | Language for regulatory precautionary phrases (default `EN`). |
 | `templateId` | Informational name for the file. |
 
-The same keys can also be set on the template record's `metadata` when creating via the SDK; the file block wins where both define a key.
+## Headers, footers, and page numbers
+
+For multi-page outputs (reports, certificates), a template can have separate header and footer HTML files. Reference them in the metadata block (`"header"`, `"footer"`) or upload them via `create(header_html=..., footer_html=...)`, with their file names in the template record's `metadata`.
+
+Header and footer templates repeat on every page and support special classes that the renderer fills in:
+
+```html
+<div style="font-size: 8px; width: 100%; text-align: right; padding-right: 1cm;">
+  Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+</div>
+```
+
+Available classes: `pageNumber`, `totalPages`, `date`, `title`. Set `hideHeaderFromFirstPage: true` in the options to keep the first page clean while headers appear on subsequent pages. Size the header/footer with inline styles and leave room for them via the page `margin`.
 
 ## Data available to inventory labels
 
@@ -141,6 +164,8 @@ Other template types receive different fields (for example, batch and property t
 <img src="{{{info.lotNumber}}}" width="100" height="40">
 <img src="{{{info.lotNumberQrCode}}}" width="90" height="90">
 ```
+
+The barcode image itself is a fixed-format Code 128 PNG with the human-readable text always included; style it by sizing, rotating, or cropping the `<img>` in CSS (only the text size is tunable server-side, via the `generate_barcode` endpoint's `text_size`).
 
 **Loop arrays with sections.** Inside a loop, `{{.}}` is the current item:
 
