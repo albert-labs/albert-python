@@ -25,6 +25,7 @@ from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
 from albert.collections.inventory import InventoryCollection
+from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
@@ -33,6 +34,7 @@ from albert.collections.notebooks import NotebookCollection
 from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
+from albert.collections.pdf_generator import PDFGeneratorCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -198,6 +200,10 @@ class Albert:
         return AttachmentCollection(session=self.session)
 
     @property
+    def design_runs(self) -> DesignRunCollection:
+        return DesignRunCollection(session=self.session)
+
+    @property
     def tags(self) -> TagCollection:
         return TagCollection(session=self.session)
 
@@ -298,8 +304,12 @@ class Albert:
         return CustomTemplatesCollection(session=self.session)
 
     @property
-    def design_runs(self) -> DesignRunCollection:
-        return DesignRunCollection(session=self.session)
+    def label_templates(self) -> LabelTemplateCollection:
+        return LabelTemplateCollection(session=self.session)
+
+    @property
+    def pdf_generator(self) -> PDFGeneratorCollection:
+        return PDFGeneratorCollection(session=self.session)
 
     @property
     def parameter_groups(self) -> ParameterGroupCollection:

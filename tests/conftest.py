@@ -32,6 +32,7 @@ from albert.resources.data_templates import DataTemplate
 from albert.resources.entity_types import EntityType
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
 from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.label_templates import LabelTemplate, LabelTemplateType
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import Lot
@@ -417,6 +418,47 @@ def seeded_custom_templates(
     for template in seeded:
         with suppress(NotFoundError):
             client.custom_templates.delete(id=template.id)
+
+
+@pytest.fixture(scope="session")
+def seeded_label_templates(
+    client: Albert,
+    seed_prefix: str,
+) -> Iterator[list[LabelTemplate]]:
+    template = LabelTemplate(
+        name=f"{seed_prefix}-inventory-label",
+        type=LabelTemplateType.INVENTORY,
+        template_file=f"{seed_prefix}-inventory-label.html",
+        description="SDK test inventory label template",
+        metadata={"width": "4in", "height": "2in"},
+    )
+    template_html = (
+        "<html><head>"
+        '<meta charset="UTF-8">'
+        '<!--metadata:{"width": "4in", "height": "2in",'
+        ' "margin": {"top": "0mm", "bottom": "0mm", "left": "0mm", "right": "0mm"}}-->'
+        "<style>body { font-family: Arial, sans-serif; overflow: hidden; }</style>"
+        "</head><body>"
+        "{{#labels}}"
+        "<div><h3>{{info.inventoryName}}</h3>"
+        "<p>{{info.albertId}} | {{info.expirationDate}}</p>"
+        '<img src="{{{info.lotNumber}}}" width="100" height="40" />'
+        '<img src="{{{info.lotNumberQrCode}}}" width="80" height="80" />'
+        "</div>"
+        "{{/labels}}"
+        "</body></html>"
+    )
+    created = client.label_templates.create(
+        label_template=template,
+        template_html=template_html,
+    )
+    seeded = [created]
+
+    yield seeded
+
+    for label_template in seeded:
+        with suppress(NotFoundError):
+            client.label_templates.delete(id=label_template.id)
 
 
 @pytest.fixture(scope="session")
