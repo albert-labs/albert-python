@@ -12,18 +12,54 @@ from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightSt
 
 
 class BTInsightCollection(BaseCollection):
-    """
-    BTInsightCollection is a collection class for managing Breakthrough insight entities.
+    """Manage Breakthrough insights in the Albert platform.
+
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. An **insight**
+    ([`BTInsight`][albert.resources.btinsight.BTInsight]) is an output produced by
+    Breakthrough, such as an optimizer result, impact chart, or generated
+    candidate. An insight is categorized by its
+    [`BTInsightCategory`][albert.resources.btinsight.BTInsightCategory] and can trace back to the
+    dataset, model session, and model it came from (``dataset_id``,
+    ``model_session_id``, ``model_id``), which link to
+    [`BTDatasetCollection`][albert.collections.btdataset.BTDatasetCollection] and
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
+
+    Insights are identified by an insight ID (format ``INS...``, e.g. ``"INS7"``).
+
+    This collection is accessed as ``client.btinsights``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        insight = client.btinsights.get_by_id(id="INS7")
+        insight.name
+        # 'Cost optimizer run'
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base path for BTInsight API requests.
+        The base API route for insight requests.
+
+    Methods
+    -------
+    create(insight) -> BTInsight
+        Create a new insight.
+    get_by_id(id) -> BTInsight
+        Get a single insight by its ID.
+    search(...) -> Iterator[BTInsight]
+        Search for insights by text, name, state, or category.
+    update(insight) -> BTInsight
+        Update an existing insight.
+    delete(id) -> None
+        Delete an insight by its ID.
     """
 
     _api_version = "v3"
@@ -42,31 +78,44 @@ class BTInsightCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize the BTInsightCollection with the provided session.
+        """Initialize a BTInsightCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{BTInsightCollection._api_version}/btinsight"
 
     @validate_call
     def create(self, *, insight: BTInsight) -> BTInsight:
-        """
-        Create a new BTInsight.
+        """Create a new insight.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.btinsight import BTInsight, BTInsightCategory
+
+            client = Albert()
+            insight = BTInsight(
+                name="Cost optimizer run",
+                category=BTInsightCategory.OPTIMIZER,
+            )
+            created = client.btinsights.create(insight=insight)
+            created.id
+            # 'INS7'
+            ```
 
         Parameters
         ----------
         insight : BTInsight
-            The BTInsight record to create.
+            The insight to create. ``name`` and ``category`` are required.
 
         Returns
         -------
         BTInsight
-            The created BTInsight.
+            The newly created insight, populated with its assigned ID.
         """
         response = self.session.post(
             self.base_path,
@@ -76,18 +125,24 @@ class BTInsightCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTInsightId) -> BTInsight:
-        """
-        Get a BTInsight by ID.
+        """Get a single insight by its ID.
+
+        !!! example
+            ```python
+            insight = client.btinsights.get_by_id(id="INS7")
+            insight.name
+            # 'Cost optimizer run'
+            ```
 
         Parameters
         ----------
         id : BTInsightId
-            The Albert ID of the insight.
+            The insight ID (format ``INS...``, e.g. ``"INS7"``).
 
         Returns
         -------
         BTInsight
-            The retrived BTInsight.
+            The fully populated insight.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTInsight(**response.json())
@@ -105,31 +160,45 @@ class BTInsightCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[BTInsight]:
-        """Search for items in the BTInsight collection.
+        """Search for insights matching the given filters.
+
+        Results are returned as a lazily paginated iterator, so iterating fetches
+        additional pages on demand.
+
+        !!! example
+            ```python
+            from albert.resources.btinsight import BTInsightCategory
+
+            hits = client.btinsights.search(
+                category=BTInsightCategory.OPTIMIZER,
+                max_items=10,
+            )
+            for insight in hits:
+                print(insight.id, insight.name)
+            ```
 
         Parameters
         ----------
-        order_by : OrderBy | None, optional
-            Asc/desc ordering, default None
-        sort_by : str | None
-            Sort field, default None
-        text : str | None
-            Text field in search query, default None
-        name : str | list[str] | None
-            BTInsight name search filter, default None
-        state : BTInsightState | list[BTInsightState] | None
-            BTInsight state search filter, default None
-        category : BTInsightCategory | list[BTInsightCategory] | None
-            BTInsight category search filter, default None
-        offset : int | None, optional
-            Item offset to begin search at, default None
+        order_by : OrderBy, optional
+            Sort direction (ascending or descending). Default None (server order).
+        sort_by : str, optional
+            Field to sort by. Default None.
+        text : str, optional
+            Free-text query matched against insight name and related fields.
+        name : str or list[str], optional
+            Filter by exact insight name(s).
+        state : BTInsightState or list[BTInsightState], optional
+            Filter by progress state (e.g. ``Complete``, ``Error``).
+        category : BTInsightCategory or list[BTInsightCategory], optional
+            Filter by category (e.g. ``Optimizer``, ``Impact Chart``).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[BTInsight]
-            An iterator of elements returned by the BTInsight search query.
+            A lazily paginated iterator of matching insights.
         """
         params = {
             "offset": offset,
@@ -156,21 +225,36 @@ class BTInsightCollection(BaseCollection):
 
     @validate_call
     def update(self, *, insight: BTInsight) -> BTInsight:
-        """Update a BTInsight.
+        """Update an existing insight.
+
+        Fetch the insight (e.g. with [`get_by_id`][albert.collections.btinsight.BTInsightCollection.get_by_id]), modify the updatable
+        fields on the returned object, then pass it here. Only the fields listed in
+        Notes are applied; changes to other fields are ignored.
+
+        !!! example
+            ```python
+            insight = client.btinsights.get_by_id(id="INS7")
+            insight.name = "Cost optimizer run (final)"
+            updated = client.btinsights.update(insight=insight)
+            updated.name
+            # 'Cost optimizer run (final)'
+            ```
 
         Parameters
         ----------
         insight : BTInsight
-            The BTInsight to update.
+            The insight to update. Must have a valid ``id``.
 
         Returns
         -------
         BTInsight
-            The updated BTInsight.
+            The updated insight.
 
         Notes
         -----
-        The following fields can be updated: ``content_edited``, ``end_time``, ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``, ``registry``, ``start_time``, ``state``, ``total_time``.
+        The following fields can be updated: ``content_edited``, ``end_time``,
+        ``metadata``, ``name``, ``output_key``, ``payload_type``, ``raw_payload``,
+        ``registry``, ``start_time``, ``state``, ``total_time``.
         """
         path = f"{self.base_path}/{insight.id}"
         payload = self._generate_patch_payload(
@@ -183,12 +267,17 @@ class BTInsightCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: BTInsightId) -> None:
-        """Delete a BTInsight by ID.
+        """Delete an insight by its ID.
+
+        !!! example
+            ```python
+            client.btinsights.delete(id="INS7")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the BTInsight to delete.
+        id : BTInsightId
+            The insight ID to delete (format ``INS...``).
 
         Returns
         -------

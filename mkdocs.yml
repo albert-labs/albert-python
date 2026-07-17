@@ -74,6 +74,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - autorefs
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -105,7 +106,6 @@ plugins:
           inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
-            - url: https://typing-extensions.readthedocs.io/en/latest/objects.inv
           rendering:
             show_docstring_attributes: true
   - mike:
@@ -131,6 +131,10 @@ nav:
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md
+      - Core Models:
+          - Base Models: core/models.md
+          - Patch Models: core/patch.md
+          - Tagged Resource: core/tagged_base.md
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
@@ -167,6 +171,7 @@ nav:
           - Product Design: collections/product_design.md
           - Projects: collections/projects.md
           - Property Data: collections/property_data.md
+          - Report Templates: collections/report_templates.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
           - Smart Datasets (🧪Beta): collections/smart_datasets.md
@@ -217,6 +222,7 @@ nav:
           - Product Design: resources/product_design.md
           - Projects: resources/projects.md
           - Property Data: resources/property_data.md
+          - Report Templates: resources/report_templates.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
           - Smart Datasets (🧪Beta): resources/smart_datasets.md

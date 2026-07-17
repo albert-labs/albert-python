@@ -44,19 +44,69 @@ class CasPaginator(AlbertPaginator):
 
 
 class CasCollection(BaseCollection):
-    "CasCollection is a collection class for managing Cas entities on the Albert Platform."
+    """Manage CAS entries in the Albert platform.
+
+    A CAS entry ([`Cas`][albert.resources.cas.Cas]) records a chemical substance
+    identified by its CAS Registry Number (e.g. ``"7727-37-9"`` for nitrogen). CAS
+    entries are the shared chemical dictionary that raw-material Inventory Items
+    point to: a raw material lists the CAS numbers of its constituents, each paired
+    with an amount (see [`CasAmount`][albert.resources.inventory.CasAmount]).
+
+    CAS entries are referenced by their CAS ID (format ``CAS...``, e.g. ``"CAS1"``).
+    Most workflows either look a substance up by its registry number
+    ([`get_by_number`][albert.collections.cas.CasCollection.get_by_number]) or ensure one exists before linking it
+    ([`get_or_create`][albert.collections.cas.CasCollection.get_or_create]).
+
+    This collection is accessed as ``client.cas``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        cas = client.cas.get_or_create(cas="7727-37-9")
+        print(cas.id, cas.number)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for CAS requests.
+
+    Methods
+    -------
+    create(cas) -> Cas
+        Create a new CAS entry from a registry number or Cas object.
+    get_or_create(cas) -> Cas
+        Return the existing entry for a registry number, or create it.
+    get_by_id(id) -> Cas
+        Get a single CAS entry by its ID.
+    get_by_number(number, exact_match=True) -> Cas | None
+        Get a CAS entry by its registry number.
+    get_all(...) -> Iterator[Cas]
+        Iterate over CAS entries, optionally filtered by number(s) or ID.
+    exists(number, exact_match=True) -> bool
+        Check whether a CAS entry with the given number exists.
+    update(updated_object) -> Cas
+        Update an existing CAS entry.
+    delete(id) -> None
+        Delete a CAS entry by its ID.
+    """
 
     _updatable_attributes = {"notes", "description", "smiles", "metadata"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CasCollection with the provided session.
+        """Initialize a CasCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{CasCollection._api_version}/cas"
@@ -89,30 +139,47 @@ class CasCollection(BaseCollection):
         start_key: str | int | None = None,
         max_items: int | None = None,
     ) -> Iterator[Cas]:
-        """
-        Get all CAS entities with optional filters.
+        """Iterate over CAS entries, optionally filtered.
+
+        Use this to list CAS entries or to search by one or more registry numbers.
+        Results are streamed page by page, so you can iterate large result sets
+        without loading everything at once. To fetch a single entry when you
+        already know its registry number or CAS ID, prefer [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]
+        or [`get_by_id`][albert.collections.cas.CasCollection.get_by_id].
+
+        !!! example
+            ```python
+            # List the most recent CAS entries
+            for cas in client.cas.get_all(max_items=10):
+                print(cas.id, cas.number)
+
+            # Look up specific registry numbers
+            matches = list(client.cas.get_all(cas=["7727-37-9", "64-17-5"]))
+            ```
 
         Parameters
         ----------
         number : str, optional
-            Filter CAS entities by CAS number.
-        cas : list[str] | None, optional
-            Filter CAS entities by a list of CAS numbers.
-        id : str, optional
-            Filter CAS entities by Albert CAS ID.
+            Filter by a single CAS registry number (substring/partial match).
+        cas : list[str], optional
+            Filter by an exact list of CAS registry numbers.
+        id : CasId, optional
+            Return only the entry with this CAS ID (format ``CAS...``). When set,
+            other filters are ignored and at most one entry is yielded.
         order_by : OrderBy, optional
-            Sort direction (ascending or descending). Default is DESCENDING.
-        start_key : str | int, optional
+            Sort direction. Defaults to ``OrderBy.DESCENDING``.
+        start_key : str or int, optional
             Pagination resume key. For unfiltered listing, pass the string key
-            returned by a previous page. For filtered search (``number`` or ``cas``),
-            pass an integer offset.
+            returned by a previous page. For filtered search (``number`` or
+            ``cas``), pass an integer offset.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of entries to yield in total. If None, iterates over
+            all matching entries.
 
-        Returns
-        -------
-        Iterator[Cas]
-            An iterator over Cas entities.
+        Yields
+        ------
+        Cas
+            Matching CAS entries.
         """
 
         params: dict[str, Any] = {"orderBy": order_by}
@@ -123,7 +190,7 @@ class CasCollection(BaseCollection):
         if number is not None or cas:
             # Filtered search path: self-managed integer offset pagination.
             # The backend has a bug where it overwrites the numeric lastKey with a
-            # string key — we must ignore lastKey and use integer offsets. (TAS-564)
+            # string key, we must ignore lastKey and use integer offsets. (TAS-564)
             start_offset = 0
             if start_key is not None:
                 try:
@@ -158,23 +225,33 @@ class CasCollection(BaseCollection):
 
     @validate_call
     def exists(self, *, number: str, exact_match: bool = True, max_items: int | None = 50) -> bool:
-        """
-        Checks if a CAS exists by its number.
+        """Check whether a CAS entry exists for the given registry number.
+
+        Useful before creating an entry to avoid duplicates. To retrieve the
+        matching entry itself (rather than a boolean), use [`get_by_number`][albert.collections.cas.CasCollection.get_by_number];
+        to fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
+
+        !!! example
+            ```python
+            client.cas.exists(number="7727-37-9")
+            # True
+            ```
 
         Parameters
         ----------
         number : str
-            The number of the CAS to check.
+            The CAS registry number to check.
         exact_match : bool, optional
-            Whether to match the number exactly, by default True.
-        max_items : int | None, optional
-            Maximum number of results to search through when ``exact_match`` is False.
-            Defaults to 50 (one page). Pass ``None`` for unbounded search.
+            When True (default), require an exact registry-number match. When
+            False, treat ``number`` as a partial match.
+        max_items : int, optional
+            Maximum number of results to search through when ``exact_match`` is
+            False. Defaults to 50 (one page). Pass ``None`` for unbounded search.
 
         Returns
         -------
         bool
-            True if the CAS exists, False otherwise.
+            True if a matching CAS entry exists, False otherwise.
         """
         return (
             self.get_by_number(number=number, exact_match=exact_match, max_items=max_items)
@@ -182,18 +259,30 @@ class CasCollection(BaseCollection):
         )
 
     def create(self, *, cas: str | Cas) -> Cas:
-        """
-        Creates a new CAS entity.
+        """Create a new CAS entry.
+
+        Use this to add a substance to Albert's CAS dictionary. If you are not
+        sure whether the substance already exists, prefer [`get_or_create`][albert.collections.cas.CasCollection.get_or_create],
+        which avoids creating a duplicate.
+
+        !!! example
+            ```python
+            cas = client.cas.create(cas="7727-37-9")
+            cas.id
+            # 'CAS1'
+            ```
 
         Parameters
         ----------
-        cas : Union[str, Cas]
-            The CAS number or Cas object to create.
+        cas : str or Cas
+            The CAS registry number, or a fully built
+            [`Cas`][albert.resources.cas.Cas] object. A bare string is treated as
+            the registry number.
 
         Returns
         -------
         Cas
-            The created Cas object.
+            The newly created entry, populated with its assigned CAS ID.
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
@@ -216,18 +305,30 @@ class CasCollection(BaseCollection):
         return cas
 
     def get_or_create(self, *, cas: str | Cas) -> Cas:
-        """
-        Retrieves a CAS by its number or creates it if it does not exist.
+        """Return the CAS entry for a registry number, creating it if needed.
+
+        This is the safest way to obtain a CAS entry to link to a raw material:
+        it looks up the registry number with an exact match and returns the
+        existing entry if found, otherwise creates a new one via [`create`][albert.collections.cas.CasCollection.create].
+
+        !!! example
+            ```python
+            cas = client.cas.get_or_create(cas="7727-37-9")
+            cas.id
+            # 'CAS1'
+            ```
 
         Parameters
         ----------
-        cas : Union[str, Cas]
-            The CAS number or Cas object to retrieve or create.
+        cas : str or Cas
+            The CAS registry number, or a fully built
+            [`Cas`][albert.resources.cas.Cas] object. A bare string is treated as
+            the registry number.
 
         Returns
         -------
         Cas
-            The Cas object if found or created.
+            The existing or newly created entry.
         """
         if isinstance(cas, str):
             cas = Cas(number=cas)
@@ -239,18 +340,27 @@ class CasCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: CasId) -> Cas:
-        """
-        Retrieves a CAS by its ID.
+        """Get a single CAS entry by its ID.
+
+        To look a substance up by its registry number instead, use
+        [`get_by_number`][albert.collections.cas.CasCollection.get_by_number].
+
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.number
+            # '7727-37-9'
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the CAS to retrieve.
+        id : CasId
+            The CAS ID to retrieve (format ``CAS...``, e.g. ``"CAS1"``).
 
         Returns
         -------
         Cas
-            The Cas object if found, None otherwise.
+            The fully populated CAS entry.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -280,23 +390,35 @@ class CasCollection(BaseCollection):
     def get_by_number(
         self, *, number: str, exact_match: bool = True, max_items: int | None = 50
     ) -> Cas | None:
-        """
-        Retrieves a CAS by its number.
+        """Get a CAS entry by its registry number.
+
+        The number is normalized before matching (extra spaces around the dashes
+        are removed), mirroring how the Albert backend compares CAS numbers. To
+        fetch-or-create in one step, use [`get_or_create`][albert.collections.cas.CasCollection.get_or_create].
+
+        !!! example
+            ```python
+            cas = client.cas.get_by_number(number="7727-37-9")
+            cas.id if cas else "not found"
+            # 'CAS1'
+            ```
 
         Parameters
         ----------
         number : str
-            The number of the CAS to retrieve.
+            The CAS registry number to retrieve.
         exact_match : bool, optional
-            Whether to match the number exactly, by default True.
-        max_items : int | None, optional
-            Maximum number of results to search through when ``exact_match`` is False.
-            Defaults to 50 (one page). Pass ``None`` for unbounded search.
+            When True (default), return the entry whose registry number matches
+            exactly. When False, return the first entry whose number contains
+            ``number`` as a substring.
+        max_items : int, optional
+            Maximum number of results to search through when ``exact_match`` is
+            False. Defaults to 50 (one page). Pass ``None`` for unbounded search.
 
         Returns
         -------
-        Optional[Cas]
-            The Cas object if found, None otherwise.
+        Cas or None
+            The matching CAS entry, or None if no match is found.
         """
         cleaned_number = self._clean_cas_number(number)
 
@@ -313,13 +435,17 @@ class CasCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: CasId) -> None:
-        """
-        Deletes a CAS by its ID.
+        """Delete a CAS entry by its CAS ID.
+
+        !!! example
+            ```python
+            client.cas.delete(id="CAS1")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the CAS to delete.
+        id : CasId
+            The CAS ID to delete (format ``CAS...``).
 
         Returns
         -------
@@ -329,21 +455,33 @@ class CasCollection(BaseCollection):
         self.session.delete(url)
 
     def update(self, *, updated_object: Cas) -> Cas:
-        """Updates a CAS entity. The updated object must have the same ID as the object you want to update.
+        """Update an existing CAS entry.
+
+        Fetch the entry (e.g. with [`get_by_id`][albert.collections.cas.CasCollection.get_by_id] or [`get_by_number`][albert.collections.cas.CasCollection.get_by_number]),
+        modify the updatable fields on the returned object, then pass it here. The
+        entry is matched by its ``id``, so that field must be set.
+
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.notes = "Confirmed against supplier COA."
+            updated = client.cas.update(updated_object=cas)
+            ```
 
         Parameters
         ----------
         updated_object : Cas
-            The Updated Cas object.
+            The modified CAS entry. Must carry the ``id`` of the entry to update.
 
         Returns
         -------
         Cas
-            The updated Cas object as it appears in Albert
+            The updated entry as it appears in Albert after the change.
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``metadata``, ``notes``, ``smiles``.
+        Only the following fields are updatable: ``description``, ``metadata``,
+        ``notes``, ``smiles``. Changes to other fields are ignored.
         """
         # Fetch the current object state from the server or database
         existing_cas = self.get_by_id(id=updated_object.id)

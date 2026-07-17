@@ -9,7 +9,52 @@ from albert.resources.pricings import InventoryPricings, Pricing, PricingBy
 
 
 class PricingCollection(BaseCollection):
-    """PricingCollection is a collection class for managing Pricing entities in the Albert platform."""
+    """Manage Pricing entries for Inventory Items in the Albert platform.
+
+    A Pricing is a price entry for an Inventory Item
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]): a cost for a given
+    amount of the material, recorded for a specific company and location. An item
+    can have many pricings (for example, different suppliers, sites, or pack
+    sizes), so pricings are usually retrieved by the inventory item they belong to
+    rather than one at a time.
+
+    This collection is accessed as ``client.pricings``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+        for pricing in pricings:
+            print(pricing.price, pricing.currency)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for pricing requests.
+
+    Methods
+    -------
+    create(pricing) -> Pricing
+        Create a new pricing entry for an inventory item.
+    get_by_id(id) -> Pricing
+        Get a single pricing by its ID.
+    get_by_inventory_id(inventory_id, ...) -> list[Pricing]
+        Get the pricings for one inventory item, optionally grouped/filtered.
+    get_by_inventory_ids(inventory_ids) -> list[InventoryPricings]
+        Get pricings for several inventory items at once.
+    update(pricing) -> Pricing
+        Update an existing pricing.
+    delete(id) -> None
+        Delete a pricing by its ID.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -25,28 +70,46 @@ class PricingCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """Initializes the PricingCollection with the provided session.
+        """Initialize a PricingCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{PricingCollection._api_version}/pricings"
 
     def create(self, *, pricing: Pricing) -> Pricing:
-        """Creates a new Pricing entity.
+        """Create a new pricing entry for an inventory item.
+
+        !!! example
+            ```python
+            from albert.resources.pricings import Pricing
+            from albert.resources.companies import Company
+            from albert.resources.locations import Location
+
+            pricing = Pricing(
+                inventory_id="INVA1",
+                company=Company(name="Acme Chemicals"),
+                location=Location(name="Pittsburgh"),
+                price=12.50,
+            )
+            created = client.pricings.create(pricing=pricing)
+            created.id
+            ```
 
         Parameters
         ----------
         pricing : Pricing
-            The Pricing entity to create.
+            The pricing to create. ``inventory_id``, ``company``, ``location``, and
+            ``price`` identify the item, source, site, and cost; see
+            [`Pricing`][albert.resources.pricings.Pricing].
 
         Returns
         -------
         Pricing
-            The created Pricing entity.
+            The newly created pricing, populated with its assigned ID.
         """
         payload = pricing.model_dump(by_alias=True, exclude_none=True, mode="json")
         response = self.session.post(self.base_path, json=payload)
@@ -54,17 +117,23 @@ class PricingCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: str) -> Pricing:
-        """Retrieves a Pricing entity by its ID.
+        """Get a single pricing by its ID.
+
+        !!! example
+            ```python
+            pricing = client.pricings.get_by_id(id="...")
+            pricing.price
+            ```
 
         Parameters
         ----------
         id : str
-            The ID of the Pricing entity to retrieve.
+            The ID of the pricing to retrieve.
 
         Returns
         -------
         Pricing
-            The Pricing entity if found, None otherwise.
+            The fully populated pricing.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -80,25 +149,37 @@ class PricingCollection(BaseCollection):
         filter_id: str | None = None,
         order_by: OrderBy | None = None,
     ) -> list[Pricing]:
-        """Returns a list of Pricing entities for the given inventory ID as per the provided parameters.
+        """Get the pricings for a single inventory item.
+
+        Returns every pricing entry attached to the given inventory item, with
+        optional grouping, filtering, and sorting. To pull pricings for many items
+        at once, use [`get_by_inventory_ids`][albert.collections.pricings.PricingCollection.get_by_inventory_ids].
+
+        !!! example
+            ```python
+            pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+            [p.price for p in pricings]
+            ```
 
         Parameters
         ----------
         inventory_id : str
-            The ID of the inventory to retrieve pricings for.
-        group_by : PricingBy | None, optional
-            Grouping by PricingBy, by default None
-        filter_by : PricingBy | None, optional
-            Filter by PricingBy, by default None
-        filter_id : str | None, optional
-            The string to use as the filter, by default None
-        order_by : OrderBy | None, optional
-            The order to sort the results by, by default None
+            The Inventory ID to retrieve pricings for (format ``INV...``).
+        group_by : PricingBy, optional
+            Group the results by company or location. See
+            [`PricingBy`][albert.resources.pricings.PricingBy].
+        filter_by : PricingBy, optional
+            The dimension (company or location) to filter on. Pair with
+            ``filter_id``.
+        filter_id : str, optional
+            The ID to match on the ``filter_by`` dimension.
+        order_by : OrderBy, optional
+            Sort direction for the results.
 
         Returns
         -------
         list[Pricing]
-            A list of Pricing entities matching the provided parameters.
+            The pricings for the item matching the provided parameters.
         """
         params = {
             "parentId": inventory_id,
@@ -114,17 +195,28 @@ class PricingCollection(BaseCollection):
 
     @validate_call
     def get_by_inventory_ids(self, *, inventory_ids: list[InventoryId]) -> list[InventoryPricings]:
-        """Returns a list of Pricing resources for each parent inventory ID.
+        """Get pricings for several inventory items at once.
+
+        Each returned [`InventoryPricings`][albert.resources.pricings.InventoryPricings] groups
+        one item's pricings under its inventory ID.
+
+        !!! example
+            ```python
+            grouped = client.pricings.get_by_inventory_ids(
+                inventory_ids=["INVA1", "INVA2"]
+            )
+            grouped[0].pricings
+            ```
 
         Parameters
         ----------
         inventory_ids : list[str]
-            The list of inventory IDs to retrieve pricings for.
+            The Inventory IDs to retrieve pricings for (format ``INV...``).
 
         Returns
         -------
-        list[InventoryPricing]
-            A list of InventoryPricing entities matching the provided inventory.
+        list[InventoryPricings]
+            One entry per item, each holding that item's pricings.
         """
         params = {"id": inventory_ids}
         response = self.session.get(f"{self.base_path}/ids", params=params)
@@ -132,12 +224,17 @@ class PricingCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: str) -> None:
-        """Deletes a Pricing entity by its ID.
+        """Delete a pricing by its ID.
+
+        !!! example
+            ```python
+            client.pricings.delete(id="...")
+            ```
 
         Parameters
         ----------
         id : str
-            The ID of the Pricing entity to delete.
+            The ID of the pricing to delete.
 
         Returns
         -------
@@ -164,21 +261,36 @@ class PricingCollection(BaseCollection):
         return patch_payload
 
     def update(self, *, pricing: Pricing) -> Pricing:
-        """Updates a Pricing entity.
+        """Update an existing pricing.
+
+        Fetch the pricing (e.g. with [`get_by_id`][albert.collections.pricings.PricingCollection.get_by_id]), modify the updatable
+        fields on the returned object, then pass it here. The ``company`` and
+        ``location`` links can also be reassigned.
+
+        !!! example
+            ```python
+            pricing = client.pricings.get_by_id(id="...")
+            pricing.price = 15.00
+            updated = client.pricings.update(pricing=pricing)
+            updated.price
+            # 15.0
+            ```
 
         Parameters
         ----------
         pricing : Pricing
-            The updated Pricing entity.
+            The pricing to update. Must have a valid ``id``.
 
         Returns
         -------
         Pricing
-            The updated Pricing entity as it appears in Albert.
+            The updated pricing as it appears in Albert.
 
         Notes
         -----
-        The following fields can be updated: ``currency``, ``description``, ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
+        The following fields can be updated: ``currency``, ``description``,
+        ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
+        ``lead_time_unit``, ``pack_size``, ``price``.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)

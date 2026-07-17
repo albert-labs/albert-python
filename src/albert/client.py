@@ -105,9 +105,9 @@ class Albert:
 
     Helpers
     -------------------
-    - `from_token` — Create a client using a static token.
-    - `from_sso` — Create a client using interactive browser-based SSO login.
-    - `from_client_credentials` — Create a client using OAuth2 client credentials.
+    - `from_token`: Create a client using a static token.
+    - `from_sso`: Create a client using interactive browser-based SSO login.
+    - `from_client_credentials`: Create a client using OAuth2 client credentials.
     """
 
     def __init__(
@@ -371,14 +371,14 @@ class Albert:
 
 class AsyncAlbert:
     """
-    Async client for interacting with the Albert chat API (🧪Beta).
+    Async client for interacting with the Albert chat API (🧪 Beta).
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Uses ``httpx.AsyncClient`` under the hood and must be closed when no longer
-    needed — either by calling ``await client.aclose()`` or by using the client
+    needed, either by calling ``await client.aclose()`` or by using the client
     as an async context manager (``async with AsyncAlbert(...) as client``).
 
     Parameters

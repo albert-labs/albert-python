@@ -6,18 +6,28 @@ from albert.resources.locations import Location
 
 
 class StorageLocation(BaseResource):
-    """A storage location entity. For example, a specific flammables cabinet or a storage room.
+    """A specific place where an Inventory Item is physically stored.
 
-    Attributes
-    ----------
-    name : str
-        The name of the storage location.
-    id : str | None
-        The Albert ID of the storage location. Set when the storage location is retrieved from Albert.
-    location : Location
-        The location entity link of the storage location.
-    """
+    Examples include a flammables cabinet, a freezer, or a storeroom shelf. Every
+    storage location belongs to a parent Location
+    ([`Location`][albert.resources.locations.Location]), and Inventory search filters
+    can narrow results to items held in a given storage location. Managed through
+    [`StorageLocationsCollection`][albert.collections.storage_locations.StorageLocationsCollection].
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.storage_locations import StorageLocation
+        client = Albert()
+        parent = client.locations.get_by_id(id="...")
+        storage_location = StorageLocation(name="Freezer A", location=parent)
+        ```"""
 
     name: str = Field(alias="name", min_length=2, max_length=255)
+    """The human-readable name of the storage location (2 to 255 characters)."""
+
     id: str | None = Field(alias="albertId", default=None)
+    """The Albert ID of the storage location (format ``STL...``). Assigned by Albert and populated once the storage location has been created or retrieved."""
+
     location: SerializeAsEntityLink[Location] = Field(alias="Location")
+    """The parent Location this storage location belongs to."""
