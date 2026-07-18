@@ -227,7 +227,7 @@ class CustomFieldCollection(BaseCollection):
         type : FieldType, optional
             Filter by field type (e.g. ``string``, ``number``, ``list``).
         service : ServiceType, optional
-            Filter by the service the field belongs to.
+            Filter by the service the field belongs to. If none, none will be returned. So, for best expected results, pass a service.
         lookup_column : bool, optional
             Filter to fields that are (or are not) lookup columns.
         lookup_row : bool, optional
