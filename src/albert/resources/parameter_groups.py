@@ -60,8 +60,11 @@ class DataType(str, Enum):
         An image value.
     CURVE : str
         A curve (series) value.
+    DATE : str
+        A calendar date value stored as ``YYYY-MM-DD``.
     TIMESTAMP : str
-        A timestamp value.
+        A date-and-time value in ISO 8601 format with a UTC offset
+        (e.g. ``2026-05-21T14:32:00+02:00``).
     """
 
     NUMBER = "number"
@@ -69,6 +72,7 @@ class DataType(str, Enum):
     ENUM = "enum"
     IMAGE = "image"
     CURVE = "curve"
+    DATE = "date"
     TIMESTAMP = "timestamp"
 
 
@@ -123,6 +127,9 @@ class ValueValidation(BaseAlbertModel):
     the bounds or allowed options it must satisfy. Attach one or more of these to a
     [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] via its ``validation`` field.
 
+    When ``datatype`` is ``date`` or ``timestamp``, ``value``, ``min``, and ``max`` are
+    strings in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType].
+
     !!! example
         ```python
         from albert.resources.parameter_groups import (
@@ -143,13 +150,13 @@ class ValueValidation(BaseAlbertModel):
     """The data type the value must conform to. Required."""
 
     value: str | list[EnumValidationValue] | None = Field(default=None)
-    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise an optional expected value."""
+    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise an optional expected value. For ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     min: str | None = Field(default=None)
-    """The lower bound for numeric values, used with ``operator``."""
+    """The lower bound, used with ``operator``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     max: str | None = Field(default=None)
-    """The upper bound for numeric values, used with ``operator``."""
+    """The upper bound, used with ``operator``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     operator: Operator | None = Field(default=None)
     """The comparison operator applied against ``min`` and/or ``max``."""

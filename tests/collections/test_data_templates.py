@@ -224,6 +224,46 @@ def test_update_validations(client: Albert, seeded_data_templates: list[DataTemp
     assert updated_column.value == "Updated Value"
 
 
+def test_date_validation_datatype_on_data_template(
+    client: Albert, seeded_data_templates: list[DataTemplate]
+):
+    """Test that data templates with date validation datatype deserialize correctly."""
+    dt = seeded_data_templates[2]
+    column = dt.data_column_values[0]
+    original_validation = column.validation
+    original_value = column.value
+
+    column.validation = [
+        ValueValidation(
+            datatype=DataType.DATE,
+            min="2026-01-01",
+            max="2026-12-31",
+            operator=Operator.BETWEEN,
+        )
+    ]
+    column.value = "2026-05-21"
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert updated_column.validation[0].datatype == DataType.DATE
+    assert updated_column.validation[0].min == "2026-01-01"
+    assert updated_column.validation[0].max == "2026-12-31"
+    assert updated_column.value == "2026-05-21"
+
+    fetched_dt = client.data_templates.get_by_id(id=dt.id)
+    fetched_column = next(
+        x for x in fetched_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert fetched_column.validation[0].datatype == DataType.DATE
+
+    column.validation = original_validation
+    column.value = original_value
+    client.data_templates.update(data_template=dt)
+
+
 def test_enum_validation_creation(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test that enum validation can be created and contains expected values."""
     dt = seeded_data_templates[5]  # "Data Template 1"

@@ -24,9 +24,10 @@ class FieldType(str, Enum):
     NUMBER : str
         A numeric value.
     DATE : str
-        A calendar date value.
+        A calendar date value stored as ``YYYY-MM-DD``.
     TIMESTAMP : str
-        A date-and-time value.
+        A date-and-time value in ISO 8601 format with a UTC offset
+        (e.g. ``2026-05-21T14:32:00+02:00``).
     """
 
     LIST = "list"
@@ -195,6 +196,26 @@ class NumberDefault(BaseAlbertModel):
     """The default numeric value."""
 
 
+class DateDefault(BaseAlbertModel):
+    """The default value for a date custom field."""
+
+    type: Literal[FieldType.DATE] = FieldType.DATE
+    """Always ``FieldType.DATE``."""
+
+    value: str
+    """The default date in ``YYYY-MM-DD`` format."""
+
+
+class TimestampDefault(BaseAlbertModel):
+    """The default value for a timestamp custom field."""
+
+    type: Literal[FieldType.TIMESTAMP] = FieldType.TIMESTAMP
+    """Always ``FieldType.TIMESTAMP``."""
+
+    value: str
+    """The default timestamp in ISO 8601 format with a UTC offset (e.g. ``2026-05-21T14:32:00+02:00``)."""
+
+
 class ListDefault(BaseAlbertModel):
     """The default value for a list custom field.
     Notes
@@ -210,7 +231,7 @@ class ListDefault(BaseAlbertModel):
 
 
 Default = Annotated[
-    StringDefault | NumberDefault | ListDefault,
+    StringDefault | NumberDefault | ListDefault | DateDefault | TimestampDefault,
     Field(discriminator="type"),
 ]
 
@@ -230,6 +251,9 @@ class CustomField(BaseResource):
     selectable options are [`ListItem`][albert.resources.lists.ListItem] records with
     a matching ``list_type``, managed through
     [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
+
+    For ``date`` and ``timestamp`` fields, stored values and defaults use the
+    wire formats documented on [`FieldType`][albert.resources.custom_fields.FieldType].
 
     !!! example
         ```python
@@ -257,7 +281,7 @@ class CustomField(BaseResource):
     """The Custom Field ID (format ``CTF...``). Assigned by Albert on creation."""
 
     field_type: FieldType = Field(alias="type")
-    """The value type of the field (e.g. ``list``, ``string``, ``number``). ``string`` and ``list`` fields can be searchable; ``number`` fields cannot."""
+    """The value type of the field (e.g. ``list``, ``string``, ``number``, ``date``, ``timestamp``). ``string`` and ``list`` fields can be searchable; ``number``, ``date``, and ``timestamp`` fields cannot."""
 
     display_name: str = Field(alias="labelName", max_length=40)
     """The human-readable label for the field. Can contain spaces. Limited to 40 characters."""
@@ -308,7 +332,7 @@ class CustomField(BaseResource):
     """A validation pattern the field's value must match."""
 
     default: Default | None = Field(default=None)
-    """The default value applied to the field."""
+    """The default value applied to the field. For ``date`` and ``timestamp`` fields, use [`DateDefault`][albert.resources.custom_fields.DateDefault] or [`TimestampDefault`][albert.resources.custom_fields.TimestampDefault] with the wire format documented on [`FieldType`][albert.resources.custom_fields.FieldType]."""
 
     api: CustomFieldAPI | None = Field(default=None)
     """Configuration for fields whose values are backed by a remote API."""
