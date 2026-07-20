@@ -1,6 +1,7 @@
 import time
 import uuid
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator, Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from pathlib import Path
 
@@ -10,7 +11,12 @@ import pytest_asyncio
 from albert import Albert, AlbertClientCredentials, AsyncAlbert
 from albert.collections.worksheets import WorksheetCollection
 from albert.core.shared.enums import Status
-from albert.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from albert.exceptions import (
+    AlbertServerError,
+    BadRequestError,
+    ForbiddenError,
+    NotFoundError,
+)
 from albert.resources.attachments import Attachment
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
@@ -87,6 +93,65 @@ from tests.seeding import (
     generate_workflow_seeds,
 )
 from tests.utils.fake_session import FakeAlbertSession
+
+
+def _pmap(fn: Callable, items) -> list:
+    """Run independent seeding API calls concurrently, preserving input order.
+
+    Retries once on 5xx: the session's urllib3 retry only covers idempotent methods,
+    so seeding POSTs otherwise fail on a single transient gateway error.
+    """
+
+    def _one(item):
+        try:
+            return fn(item)
+        except AlbertServerError:
+            time.sleep(2.0)
+            return fn(item)
+
+    items = list(items)
+    with ThreadPoolExecutor(max_workers=min(8, max(1, len(items)))) as ex:
+        return list(ex.map(_one, items))
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_fixture_setup(fixturedef, request):
+    """Report slow fixture setups so seeding regressions stay visible."""
+    start = time.monotonic()
+    yield
+    elapsed = time.monotonic() - start
+    if elapsed > 5:
+        print(f"[slow fixture] {fixturedef.argname}: {elapsed:.1f}s", flush=True)
+
+
+def _get_or_register(create_fn: Callable, get_fn: Callable, *, timeout: float = 10.0):
+    """Create a shared (non-prefixed) entity, falling back to fetching it.
+
+    Concurrent xdist workers register the same static entities; the backend may answer
+    the loser with a 400 (already exists) or buckle with a 5xx. Either way the entity
+    usually exists, so poll the getter before giving up.
+    """
+    try:
+        return create_fn()
+    except (BadRequestError, AlbertServerError) as e:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with suppress(Exception):
+                found = get_fn()
+                if found is not None:
+                    return found
+            time.sleep(0.5)
+        raise e
+
+
+def _delete_all(delete_fn: Callable, items, *suppressed: type[Exception]) -> None:
+    """Delete seeded entities concurrently, suppressing the given exceptions."""
+
+    def _one(item):
+        with suppress(*suppressed):
+            delete_fn(item)
+
+    _pmap(_one, items)
 
 
 @pytest.fixture(scope="session")
@@ -187,35 +252,23 @@ def static_consumeable_parameter(client: Albert) -> Parameter:
             return c
 
 
+def _register_custom_field(client: Albert, cf: CustomField) -> CustomField:
+    return _get_or_register(
+        lambda: client.custom_fields.create(custom_field=cf),
+        lambda: client.custom_fields.get_by_name(name=cf.name, service=cf.service),
+    )
+
+
 @pytest.fixture(scope="session")
 def static_custom_fields(client: Albert) -> list[CustomField]:
-    seeded = []
-    for cf in generate_custom_fields():
-        try:
-            registered_cf = client.custom_fields.create(custom_field=cf)
-        except BadRequestError as e:
-            # If it's already registered, this will raise a BadRequestError
-            registered_cf = client.custom_fields.get_by_name(name=cf.name, service=cf.service)
-            if registered_cf is None:  # If it was something else, raise the error
-                raise e
-        seeded.append(registered_cf)
-    return seeded
+    # Sequential on purpose: shared names race across xdist workers
+    return [_register_custom_field(client, cf) for cf in generate_custom_fields()]
 
 
 @pytest.fixture(scope="session")
 def static_entity_custom_fields(client: Albert) -> list[CustomField]:
     """Custom fields associated with an entity type."""
-    seeded = []
-    for cf in generate_entity_custom_fields():
-        try:
-            registered_cf = client.custom_fields.create(custom_field=cf)
-        except BadRequestError as e:
-            # If it's already registered, this will raise a BadRequestError
-            registered_cf = client.custom_fields.get_by_name(name=cf.name, service=cf.service)
-            if registered_cf is None:  # If it was something else, raise the error
-                raise e
-        seeded.append(registered_cf)
-    return seeded
+    return [_register_custom_field(client, cf) for cf in generate_entity_custom_fields()]
 
 
 @pytest.fixture(scope="session")
@@ -223,19 +276,16 @@ def static_lists(
     client: Albert,
     static_custom_fields: list[CustomField],
 ) -> list[ListItem]:
-    seeded = []
-    for list_item in generate_list_item_seeds(seeded_custom_fields=static_custom_fields):
-        try:
-            created_list = client.lists.create(list_item=list_item)
-        except BadRequestError as e:
-            # If it's already registered, this will raise a BadRequestError
-            created_list = client.lists.get_matching_item(
-                name=list_item.name, list_type=list_item.list_type
-            )
-            if created_list is None:
-                raise e
-        seeded.append(created_list)
-    return seeded
+    # Sequential on purpose: shared names race across xdist workers
+    return [
+        _get_or_register(
+            lambda li=list_item: client.lists.create(list_item=li),
+            lambda li=list_item: client.lists.get_matching_item(
+                name=li.name, list_type=li.list_type
+            ),
+        )
+        for list_item in generate_list_item_seeds(seeded_custom_fields=static_custom_fields)
+    ]
 
 
 ### TEAM FIXTURES
@@ -273,34 +323,33 @@ def seeded_cas(
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[Cas]]:
-    seeded = []
-    for cas in generate_cas_seeds(seed_prefix, static_custom_fields, static_lists):
+    def _seed(cas: Cas) -> Cas | None:
         with suppress(BadRequestError):
-            created_cas = client.cas_numbers.get_or_create(cas=cas)
-            seeded.append(created_cas)
+            return client.cas_numbers.get_or_create(cas=cas)
+
+    results = _pmap(_seed, generate_cas_seeds(seed_prefix, static_custom_fields, static_lists))
+    seeded = [cas for cas in results if cas is not None]
 
     # Avoid race condition while it populated through DBs
     time.sleep(3)
 
     yield seeded
 
-    for cas in seeded:
-        with suppress(BadRequestError | NotFoundError):
-            client.cas_numbers.delete(id=cas.id)
+    _delete_all(
+        lambda cas: client.cas_numbers.delete(id=cas.id), seeded, BadRequestError, NotFoundError
+    )
 
 
 @pytest.fixture(scope="session")
 def seeded_locations(client: Albert, seed_prefix: str) -> Iterator[list[Location]]:
-    seeded = []
-    for location in generate_location_seeds(seed_prefix):
-        created_location = client.locations.get_or_create(location=location)
-        seeded.append(created_location)
+    seeded = _pmap(
+        lambda location: client.locations.get_or_create(location=location),
+        generate_location_seeds(seed_prefix),
+    )
 
     yield seeded
 
-    for location in seeded:
-        with suppress(NotFoundError):
-            client.locations.delete(id=location.id)
+    _delete_all(lambda location: client.locations.delete(id=location.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -311,21 +360,19 @@ def seeded_projects(
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[Project]]:
-    seeded = []
-    for project in generate_project_seeds(
-        seed_prefix=seed_prefix,
-        seeded_locations=seeded_locations,
-        static_custom_fields=static_custom_fields,
-        static_lists=static_lists,
-    ):
-        created_project = client.projects.create(project=project)
-        seeded.append(created_project)
+    seeded = _pmap(
+        lambda project: client.projects.create(project=project),
+        generate_project_seeds(
+            seed_prefix=seed_prefix,
+            seeded_locations=seeded_locations,
+            static_custom_fields=static_custom_fields,
+            static_lists=static_lists,
+        ),
+    )
 
     yield seeded
 
-    for project in seeded:
-        with suppress(NotFoundError):
-            client.projects.delete(id=project.id)
+    _delete_all(lambda project: client.projects.delete(id=project.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -348,17 +395,21 @@ def seeded_project_document(
 
 @pytest.fixture(scope="session")
 def seeded_companies(client: Albert, seed_prefix: str) -> Iterator[list[Company]]:
-    seeded = []
-    for company in generate_company_seeds(seed_prefix):
-        created_company = client.companies.get_or_create(company=company)
-        seeded.append(created_company)
+    seeded = _pmap(
+        lambda company: client.companies.get_or_create(company=company),
+        generate_company_seeds(seed_prefix),
+    )
 
     yield seeded
 
     # ForbiddenError is raised when trying to delete a company that has InventoryItems associated with it (may be a bug. Teams discussion ongoing)
-    for company in seeded:
-        with suppress(NotFoundError, ForbiddenError, BadRequestError):
-            client.companies.delete(id=company.id)
+    _delete_all(
+        lambda company: client.companies.delete(id=company.id),
+        seeded,
+        NotFoundError,
+        ForbiddenError,
+        BadRequestError,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -366,32 +417,32 @@ def seeded_storage_locations(
     client: Albert,
     seeded_locations: list[Location],
 ) -> Iterator[list[StorageLocation]]:
-    seeded: list[StorageLocation] = []
-    for storage_location in generate_storage_location_seeds(seeded_locations=seeded_locations):
-        created_location = client.storage_locations.get_or_create(
+    seeded = _pmap(
+        lambda storage_location: client.storage_locations.get_or_create(
             storage_location=storage_location
-        )
-        seeded.append(created_location)
+        ),
+        generate_storage_location_seeds(seeded_locations=seeded_locations),
+    )
 
     yield seeded
 
-    for storage_location in seeded:
-        with suppress(NotFoundError):
-            client.storage_locations.delete(id=storage_location.id)
+    _delete_all(
+        lambda storage_location: client.storage_locations.delete(id=storage_location.id),
+        seeded,
+        NotFoundError,
+    )
 
 
 @pytest.fixture(scope="session")
 def seeded_tags(client: Albert, seed_prefix: str) -> Iterator[list[Tag]]:
-    seeded = []
-    for tag in generate_tag_seeds(seed_prefix):
-        created_tag = client.tags.get_or_create(tag=tag)
-        seeded.append(created_tag)
+    seeded = _pmap(
+        lambda tag: client.tags.get_or_create(tag=tag),
+        generate_tag_seeds(seed_prefix),
+    )
 
     yield seeded
 
-    for tag in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.tags.delete(id=tag.id)
+    _delete_all(lambda tag: client.tags.delete(id=tag.id), seeded, NotFoundError, BadRequestError)
 
 
 @pytest.fixture(scope="session")
@@ -463,19 +514,19 @@ def seeded_label_templates(
 
 @pytest.fixture(scope="session")
 def seeded_units(client: Albert, seed_prefix: str) -> Iterator[list[Unit]]:
-    seeded = []
-    for unit in generate_unit_seeds(seed_prefix):
-        created_unit = client.units.get_or_create(unit=unit)
-        seeded.append(created_unit)
+    seeded = _pmap(
+        lambda unit: client.units.get_or_create(unit=unit),
+        generate_unit_seeds(seed_prefix),
+    )
 
     # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
 
     yield seeded
 
-    for unit in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.units.delete(id=unit.id)
+    _delete_all(
+        lambda unit: client.units.delete(id=unit.id), seeded, NotFoundError, BadRequestError
+    )
 
 
 @pytest.fixture(scope="session")
@@ -484,24 +535,23 @@ def seeded_data_columns(
     seed_prefix: str,
     seeded_units: list[Unit],
 ) -> Iterator[list[DataColumn]]:
-    seeded = []
-    for data_column in generate_data_column_seeds(
-        seed_prefix=seed_prefix,
-        seeded_units=seeded_units,
-    ):
-        created_data_column = client.data_columns.create(data_column=data_column)
-        seeded.append(created_data_column)
+    seeded = _pmap(
+        lambda data_column: client.data_columns.create(data_column=data_column),
+        generate_data_column_seeds(seed_prefix=seed_prefix, seeded_units=seeded_units),
+    )
 
     # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
 
     yield seeded
 
-    for data_column in seeded:
-        with suppress(
-            NotFoundError, BadRequestError
-        ):  # used on deleted InventoryItem properties are blocking. Instead of making static to accomidate the unexpected behavior, doing this instead
-            client.data_columns.delete(id=data_column.id)
+    # used on deleted InventoryItem properties are blocking. Instead of making static to accomidate the unexpected behavior, doing this instead
+    _delete_all(
+        lambda data_column: client.data_columns.delete(id=data_column.id),
+        seeded,
+        NotFoundError,
+        BadRequestError,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -516,28 +566,30 @@ def seeded_data_templates(
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[DataTemplate]]:
-    seeded = []
-    for data_template in generate_data_template_seeds(
-        user=static_user,
-        seed_prefix=seed_prefix,
-        seeded_data_columns=seeded_data_columns,
-        seeded_units=seeded_units,
-        seeded_tags=seeded_tags,
-        seeded_parameters=seeded_parameters,
-        static_custom_fields=static_custom_fields,
-        static_lists=static_lists,
-    ):
-        dt = client.data_templates.create(data_template=data_template)
-        seeded.append(dt)
+    seeded = _pmap(
+        lambda data_template: client.data_templates.create(data_template=data_template),
+        generate_data_template_seeds(
+            user=static_user,
+            seed_prefix=seed_prefix,
+            seeded_data_columns=seeded_data_columns,
+            seeded_units=seeded_units,
+            seeded_tags=seeded_tags,
+            seeded_parameters=seeded_parameters,
+            static_custom_fields=static_custom_fields,
+            static_lists=static_lists,
+        ),
+    )
 
     # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
 
     yield seeded
 
-    for data_template in seeded:
-        with suppress(NotFoundError):
-            client.data_templates.delete(id=data_template.id)
+    _delete_all(
+        lambda data_template: client.data_templates.delete(id=data_template.id),
+        seeded,
+        NotFoundError,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -573,36 +625,46 @@ def seeded_inventory(
     seeded_companies,
     seeded_locations,
 ) -> Iterator[list[InventoryItem]]:
-    seeded = []
-    for inventory in generate_inventory_seeds(
-        seed_prefix=seed_prefix,
-        seeded_cas=seeded_cas,
-        seeded_tags=seeded_tags,
-        seeded_companies=seeded_companies,
-        seeded_locations=seeded_locations,
-    ):
-        created_inventory = client.inventory.create(inventory_item=inventory)
-        seeded.append(created_inventory)
+    seeded = _pmap(
+        lambda inventory: client.inventory.create(inventory_item=inventory),
+        generate_inventory_seeds(
+            seed_prefix=seed_prefix,
+            seeded_cas=seeded_cas,
+            seeded_tags=seeded_tags,
+            seeded_companies=seeded_companies,
+            seeded_locations=seeded_locations,
+        ),
+    )
+
+    # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
+
     yield seeded
-    for inventory in seeded:
-        # If the inv has been used in a formulation, it cannot be deleted and will give a BadRequestError
-        with suppress(NotFoundError, BadRequestError):
-            client.inventory.delete(id=inventory.id)
+
+    # If the inv has been used in a formulation, it cannot be deleted and will give a BadRequestError
+    _delete_all(
+        lambda inventory: client.inventory.delete(id=inventory.id),
+        seeded,
+        NotFoundError,
+        BadRequestError,
+    )
 
 
 @pytest.fixture(scope="session")
 def seeded_parameters(client: Albert, seed_prefix: str) -> Iterator[list[Parameter]]:
-    seeded = []
-    for parameter in generate_parameter_seeds(seed_prefix):
+    def _seed(parameter: Parameter) -> Parameter:
         created_parameter = client.parameters.get_or_create(parameter=parameter)
         # Extra get_by_id is required to populate the category field on parameter
-        seeded.append(client.parameters.get_by_id(id=created_parameter.id))
+        return client.parameters.get_by_id(id=created_parameter.id)
+
+    seeded = _pmap(_seed, generate_parameter_seeds(seed_prefix))
+
+    # Avoid race condition while it populated through search DBs
     time.sleep(1.5)
+
     yield seeded
-    for parameter in seeded:
-        with suppress(NotFoundError):
-            client.parameters.delete(id=parameter.id)
+
+    _delete_all(lambda parameter: client.parameters.delete(id=parameter.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -616,27 +678,29 @@ def seeded_parameter_groups(
     static_custom_fields: list[CustomField],
     static_lists: list[ListItem],
 ) -> Iterator[list[ParameterGroup]]:
-    seeded = []
-    for parameter_group in generate_parameter_group_seeds(
-        seed_prefix=seed_prefix,
-        seeded_parameters=seeded_parameters,
-        seeded_tags=seeded_tags,
-        seeded_units=seeded_units,
-        static_consumeable_parameter=static_consumeable_parameter,
-        static_custom_fields=static_custom_fields,
-        static_lists=static_lists,
-    ):
-        created_parameter_group = client.parameter_groups.create(parameter_group=parameter_group)
-        seeded.append(created_parameter_group)
+    seeded = _pmap(
+        lambda parameter_group: client.parameter_groups.create(parameter_group=parameter_group),
+        generate_parameter_group_seeds(
+            seed_prefix=seed_prefix,
+            seeded_parameters=seeded_parameters,
+            seeded_tags=seeded_tags,
+            seeded_units=seeded_units,
+            static_consumeable_parameter=static_consumeable_parameter,
+            static_custom_fields=static_custom_fields,
+            static_lists=static_lists,
+        ),
+    )
 
     # Avoid race condition while it populates through DBs
     time.sleep(1.5)
 
     yield seeded
 
-    for parameter_group in seeded:
-        with suppress(NotFoundError):
-            client.parameter_groups.delete(id=parameter_group.id)
+    _delete_all(
+        lambda parameter_group: client.parameter_groups.delete(id=parameter_group.id),
+        seeded,
+        NotFoundError,
+    )
 
 
 # PUT on lots is currently bugged. Teams discussion ongoing
@@ -666,29 +730,26 @@ def seeded_notebooks(
     seed_prefix: str,
     seeded_projects,
 ):
-    seeded = []
-    all_notebooks = generate_notebook_seeds(
-        seed_prefix=seed_prefix, seeded_projects=seeded_projects
-    )
-    for nb in all_notebooks:
+    def _seed(nb):
         seed = client.notebooks.create(notebook=nb)
         seed.blocks = generate_notebook_block_seeds()  # generate each iteration for new block ids
-        seeded.append(client.notebooks.update_block_content(notebook=seed))
+        return client.notebooks.update_block_content(notebook=seed)
+
+    seeded = _pmap(
+        _seed, generate_notebook_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects)
+    )
     yield seeded
-    for notebook in seeded:
-        with suppress(NotFoundError):
-            client.notebooks.delete(id=notebook.id)
+    _delete_all(lambda notebook: client.notebooks.delete(id=notebook.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
 def seeded_pricings(client: Albert, seed_prefix: str, seeded_inventory, seeded_locations):
-    seeded = []
-    for p in generate_pricing_seeds(seed_prefix, seeded_inventory, seeded_locations):
-        seeded.append(client.pricings.create(pricing=p))
+    seeded = _pmap(
+        lambda p: client.pricings.create(pricing=p),
+        generate_pricing_seeds(seed_prefix, seeded_inventory, seeded_locations),
+    )
     yield seeded
-    for p in seeded:
-        with suppress(NotFoundError):
-            client.pricings.delete(id=p.id)
+    _delete_all(lambda p: client.pricings.delete(id=p.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -757,7 +818,6 @@ def seeded_tasks(
     static_lists: list[ListItem],
     static_custom_fields: list[CustomField],
 ):
-    seeded = []
     all_tasks = generate_task_seeds(
         seed_prefix=seed_prefix,
         user=static_user,
@@ -771,12 +831,9 @@ def seeded_tasks(
         static_lists=static_lists,
         static_custom_fields=static_custom_fields,
     )
-    for t in all_tasks:
-        seeded.append(client.tasks.create(task=t))
+    seeded = _pmap(lambda t: client.tasks.create(task=t), all_tasks)
     yield seeded
-    for t in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.tasks.delete(id=t.id)
+    _delete_all(lambda t: client.tasks.delete(id=t.id), seeded, NotFoundError, BadRequestError)
 
 
 @pytest.fixture(scope="session")
@@ -785,17 +842,18 @@ def seeded_entity_types(
     seed_prefix: str,
     static_entity_custom_fields: list[CustomField],
 ) -> Iterator[list[EntityType]]:
-    seeded: list[EntityType] = []
-    entity_type_seeds = generate_entity_type_seeds(
-        seed_prefix=seed_prefix,
-        static_entity_custom_fields=static_entity_custom_fields,
-    )
-    for entity_type in entity_type_seeds:
-        seeded.append(client.entity_types.create(entity_type=entity_type))
+    # Sequential on purpose: the entitytypes endpoint 500s under concurrent creates
+    seeded = [
+        client.entity_types.create(entity_type=entity_type)
+        for entity_type in generate_entity_type_seeds(
+            seed_prefix=seed_prefix,
+            static_entity_custom_fields=static_entity_custom_fields,
+        )
+    ]
     yield seeded
-    for entity_type in seeded:
-        with suppress(NotFoundError):
-            client.entity_types.delete(id=entity_type.id)
+    _delete_all(
+        lambda entity_type: client.entity_types.delete(id=entity_type.id), seeded, NotFoundError
+    )
 
 
 @pytest.fixture(scope="session")
@@ -805,15 +863,14 @@ def seeded_notes(
     seeded_inventory: list[InventoryItem],
     seed_prefix: str,
 ):
-    seeded = []
-    for note in generate_note_seeds(
-        seeded_tasks=seeded_tasks, seeded_inventory=seeded_inventory, seed_prefix=seed_prefix
-    ):
-        seeded.append(client.notes.create(note=note))
+    seeded = _pmap(
+        lambda note: client.notes.create(note=note),
+        generate_note_seeds(
+            seeded_tasks=seeded_tasks, seeded_inventory=seeded_inventory, seed_prefix=seed_prefix
+        ),
+    )
     yield seeded
-    for note in seeded:
-        with suppress(NotFoundError):
-            client.notes.delete(id=note.id)
+    _delete_all(lambda note: client.notes.delete(id=note.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -895,16 +952,14 @@ def seeded_reports(
     seeded_projects: list[Project],
 ) -> Iterator[list[FullAnalyticalReport]]:
     """Create seeded reports for testing."""
-    seeded = []
-    for report in generate_report_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects):
-        created_report = client.reports.create_report(report=report)
-        seeded.append(created_report)
+    seeded = _pmap(
+        lambda report: client.reports.create_report(report=report),
+        generate_report_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects),
+    )
 
     yield seeded
 
-    for report in seeded:
-        with suppress(NotFoundError):
-            client.reports.delete(id=report.id)
+    _delete_all(lambda report: client.reports.delete(id=report.id), seeded, NotFoundError)
 
 
 @pytest.fixture(scope="session")
@@ -913,17 +968,17 @@ def seeded_targets(
     seed_prefix: str,
     seeded_data_templates: list[DataTemplate],
 ) -> Iterator[list[Target]]:
-    seeded = []
-    for target in generate_target_seeds(
-        seed_prefix=seed_prefix,
-        seeded_data_templates=seeded_data_templates,
-    ):
-        created_target = client.targets.create(target=target)
-        seeded.append(created_target)
+    seeded = _pmap(
+        lambda target: client.targets.create(target=target),
+        generate_target_seeds(
+            seed_prefix=seed_prefix,
+            seeded_data_templates=seeded_data_templates,
+        ),
+    )
     yield seeded
-    for target in seeded:
-        with suppress(NotFoundError, BadRequestError):
-            client.targets.delete(id=target.id)
+    _delete_all(
+        lambda target: client.targets.delete(id=target.id), seeded, NotFoundError, BadRequestError
+    )
 
 
 @pytest.fixture(scope="session")
