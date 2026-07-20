@@ -1,4 +1,8 @@
+import pytest
+
 from albert.resources.lots import Lot
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_private_attrs(seeded_lots: list[Lot]):

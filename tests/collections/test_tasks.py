@@ -1,3 +1,5 @@
+import pytest
+
 from albert import Albert
 from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
@@ -10,6 +12,8 @@ from albert.resources.tasks import (
 )
 from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
+
+pytestmark = pytest.mark.xdist_group("tasks")
 
 
 def _final_workflow_id(block) -> str:

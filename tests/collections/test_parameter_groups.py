@@ -14,6 +14,8 @@ from albert.resources.parameter_groups import (
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 
+pytestmark = pytest.mark.xdist_group("datatemplates")
+
 
 def assert_valid_parameter_groups(
     items: list[ParameterGroupSearchItem | ParameterGroup],

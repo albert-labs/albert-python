@@ -19,6 +19,8 @@ from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
+pytestmark = pytest.mark.xdist_group("inventory")
+
 
 def assert_valid_inventory_items(returned_list: list[InventoryItem]):
     """Assert basic InventoryItem structure and types."""

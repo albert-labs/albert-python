@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.btmodel import BTModel, BTModelRegistry, BTModelSession
+
+pytestmark = pytest.mark.xdist_group("bt")
 
 
 def test_get_model_session_by_id(client: Albert, seeded_btmodelsession: BTModelSession):

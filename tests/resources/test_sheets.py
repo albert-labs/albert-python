@@ -13,6 +13,8 @@ from albert.resources.sheets import (
     Sheet,
 )
 
+pytestmark = pytest.mark.xdist_group("sheets")
+
 
 def test_get_current_cell_exact_row_match():
     sheet = Sheet(

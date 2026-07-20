@@ -10,6 +10,8 @@ from albert.resources.cas import Cas
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 from albert.resources.lists import ListItem
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 def _cas_list_metadata_items(
     static_custom_fields: list[CustomField],

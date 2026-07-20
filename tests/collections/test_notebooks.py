@@ -16,6 +16,8 @@ from albert.resources.notebooks import (
 from albert.resources.projects import Project
 from tests.seeding import generate_notebook_block_seeds, generate_notebook_seeds
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 @pytest.fixture(scope="function")
 def seeded_notebook(

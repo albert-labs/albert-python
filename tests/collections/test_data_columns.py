@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.data_columns import DataColumn
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_data_column_items(returned_list: list[DataColumn], limit=100):

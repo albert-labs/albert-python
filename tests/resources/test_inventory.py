@@ -9,6 +9,8 @@ from albert.resources.inventory import (
     InventoryMinimum,
 )
 
+pytestmark = pytest.mark.xdist_group("inventory")
+
 
 def test_cas_amount_attributes():
     cas = Cas(number="test", smiles="CCC", id="dogs")

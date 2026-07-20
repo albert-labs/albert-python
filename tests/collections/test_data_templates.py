@@ -23,6 +23,8 @@ from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
 
+pytestmark = pytest.mark.xdist_group("datatemplates")
+
 
 def assert_valid_data_template_items(
     items: list[DataTemplate | DataTemplateSearchItem], expected_type: type

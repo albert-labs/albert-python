@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightRegistry
+
+pytestmark = pytest.mark.xdist_group("bt")
 
 
 def test_get_by_id(client: Albert, seeded_btinsight: BTInsight):
