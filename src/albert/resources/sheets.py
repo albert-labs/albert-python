@@ -816,7 +816,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def leftmost_pinned_column(self):
         """The leftmost pinned column in the sheet"""
         if self._leftmost_pinned_column is None:
-            self._leftmost_pinned_column = self.app_design._leftmost_pinned_column
+            # Loading the product design grid populates its _leftmost_pinned_column
+            # as a side effect. Pinned columns are sheet-wide, so the product design
+            # (where formulation columns live) is the natural source.
+            _ = self.product_design.grid
+            self._leftmost_pinned_column = self.product_design._leftmost_pinned_column
 
         return self._leftmost_pinned_column
 
@@ -1251,25 +1255,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The names of the formulation columns to add, used as column headers.
         starting_position : dict, optional
             Where to insert the new columns, as a dict with ``reference_id`` (a
-            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). Defaults
-            to just right of the leftmost pinned column.
+            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
+            omitted, the platform chooses the default placement.
 
         Returns
         -------
         list[Column]
             The created formulation columns, in the order requested.
         """
-        if starting_position is None:
-            # Ensure pinned-column state is resolved before computing the reference position.
-            if self.app_design is not None:
-                _ = self.app_design.grid
-            starting_position = {
-                "reference_id": self.leftmost_pinned_column,
-                "position": "rightOf",
-            }
-        sheet_id = self.id
-
-        endpoint = f"/api/v3/worksheet/sheet/{sheet_id}/columns"
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
 
         # In case a user supplied a single formulation name instead of a list
         formulation_names = (
@@ -1277,18 +1271,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
         payload = []
-        for formulation_name in (
-            formulation_names
-        ):  # IS there a limit to the number I can add at once? Need to check this.
-            # define payload for this item
-            payload.append(
-                {
-                    "type": "INV",
-                    "name": formulation_name,
-                    "referenceId": starting_position["reference_id"],  # initially defined column
-                    "position": starting_position["position"],
-                }
-            )
+        for formulation_name in formulation_names:
+            entry = {"type": "INV", "name": formulation_name}
+            # When no position is given, omit referenceId/position so the platform
+            # applies its default placement. Sending a null (or stale) referenceId
+            # leaves the new column out of the sheet sequence, hiding it on refresh.
+            if starting_position is not None:
+                entry["referenceId"] = starting_position["reference_id"]
+                entry["position"] = starting_position["position"]
+            payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
         self.grid = None
