@@ -6,6 +6,8 @@ from albert.exceptions import NotFoundError
 from albert.resources.attachments import Attachment
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 def assert_valid_project_items(returned_list: list, entity_type: type = Project):
     """Assert that project items are valid and correctly typed."""
@@ -97,10 +99,18 @@ def test_create_project(client: Albert, seeded_locations):
     client.projects.delete(id=created_project.id)
 
 
-def test_update_project(seeded_projects, client: Albert):
-    seeded_projects[1].grid = "PD"
-    updated = client.projects.update(project=seeded_projects[1])
-    assert updated.id == seeded_projects[1].id
+def test_update_project(seeded_locations, client: Albert):
+    # Update a private project so shared seeded projects stay intact
+    project = client.projects.create(
+        project=Project(
+            description="Project to Update",
+            locations=[EntityLink(id=seeded_locations[1].id)],
+        )
+    )
+    project.grid = "PD"
+    updated = client.projects.update(project=project)
+    assert updated.id == project.id
+    client.projects.delete(id=project.id)
 
 
 def test_delete_project(client: Albert, seeded_locations):

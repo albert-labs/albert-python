@@ -67,8 +67,9 @@ def test_tag_exists(client: Albert, seeded_tags: list[Tag]):
     )
 
 
-def test_tag_update(client: Albert, seeded_tags: list[Tag]):
-    test_tag = seeded_tags[3]
+def test_tag_update(client: Albert):
+    # Rename a private tag so shared seeded tags stay intact
+    test_tag = client.tags.create(tag=Tag(tag=f"TEST - rename me {uuid.uuid4()}"))
     new_name = f"TEST - {uuid.uuid4()}"
 
     assert test_tag.id is not None
@@ -82,6 +83,8 @@ def test_tag_update(client: Albert, seeded_tags: list[Tag]):
         client.tags.rename(
             old_name="y74r79ub4v9f874ebf982bTEST NONESENSEg89befbnr", new_name="Foo Bar!"
         )
+
+    client.tags.delete(id=test_tag.id)
 
 
 def test_get_or_create_tags(caplog, client: Albert, seeded_tags: list[Tag]):
