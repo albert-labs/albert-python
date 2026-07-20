@@ -9,68 +9,116 @@ from albert.core.shared.models.base import BaseResource
 
 
 class BTModelSessionCategory(str, Enum):
-    """Enumeration for BTModelSession categories."""
+    """Who built a Breakthrough model session.
+
+    Attributes
+    ----------
+    USER_MODEL : str
+        A session built by a user.
+    ALBERT_MODEL : str
+        A session built automatically by Albert.
+    """
 
     USER_MODEL = "userModel"
     ALBERT_MODEL = "albertModel"
 
 
 class BTModelRegistry(BaseAlbertModel):
-    """Registry for BTModelSession."""
+    """Build logs and metrics recorded for a model session."""
 
     build_logs: dict[str, Any] | None = Field(None, alias="BuildLogs")
+    """Free-form logs captured while the session's models were built."""
+
     metrics: dict[str, Any] | None = Field(None, alias="Metrics")
+    """Free-form performance metrics recorded for the session's models."""
 
 
 class BTModelSession(BaseResource, protected_namespaces=()):
-    """Parent session for a set of BTModels.
+    """A parent session grouping a related set of Breakthrough models.
 
-    Attributes
-    ----------
-    name : str
-        The name of the model session.
-    category : BTModelSessionCategory
-        The category of the model session (e.g., userModel, albertModel).
-    id : BTModelSessionId | None
-        The unique identifier for the model session.
-    dataset_id : BTDatasetId
-        The identifier for the dataset associated with the model session.
-    default_model : str | None
-        The default model name for the session, if applicable.
-    total_time : str | None
-        The total time taken for the session, if applicable.
-    model_count : int | None
-        The number of models in the session, if applicable.
-    target : list[str] | None
-        The target variables for the models in the session, if applicable.
-    registry : BTModelRegistry | None
-        The registry containing build logs and metrics for the session, if applicable.
-    albert_model_details : dict[str, Any] | None
-        Details specific to the Albert model, if applicable.
-    """
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model session ties
+    together the models produced from a single dataset
+    ([`BTDataset`][albert.resources.btdataset.BTDataset]) in one modeling run. The
+    individual models are represented by [`BTModel`][albert.resources.btmodel.BTModel] and managed through
+    [`BTModelSessionCollection`][albert.collections.btmodel.BTModelSessionCollection] and
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
+
+    !!! example
+        ```python
+        from albert.resources.btmodel import BTModelSession, BTModelSessionCategory
+
+        session = BTModelSession(
+            name="Tensile strength study",
+            category=BTModelSessionCategory.USER_MODEL,
+            dataset_id="DST1",
+        )
+        ```"""
 
     name: str
+    """Human-readable name of the session."""
+
     category: BTModelSessionCategory
+    """Whether the session was built by a user or by Albert."""
+
     id: BTModelSessionId | None = Field(default=None)
+    """Unique identifier of the session (format ``MDS...``). Assigned by Albert on creation."""
+
     dataset_id: BTDatasetId = Field(..., alias="datasetId")
+    """Identifier of the dataset the session's models are built from (format ``DST...``)."""
+
     default_model: str | None = Field(default=None, alias="defaultModel")
+    """Name of the session's default model, if one is designated."""
+
     total_time: str | None = Field(default=None, alias="totalTime")
+    """Total time taken to build the session, if recorded."""
+
     model_count: int | None = Field(default=None, alias="modelCount")
+    """Number of models contained in the session, if reported."""
+
     target: list[str] | None = Field(default=None)
+    """The target variable(s) the session's models predict."""
+
     registry: BTModelRegistry | None = Field(default=None, alias="Registry")
+    """Build logs and metrics recorded for the session."""
+
     albert_model_details: dict[str, Any] | None = Field(default=None, alias="albertModelDetails")
+    """Details specific to an Albert-built session, when applicable."""
+
     flag: bool = Field(default=False)
+    """Boolean marker on the session. Defaults to False."""
 
 
 class BTModelType(str, Enum):
-    """Enumeration for BTModel types."""
+    """Whether a model belongs to a session or stands alone.
+
+    Attributes
+    ----------
+    SESSION : str
+        A model that belongs to a parent model session.
+    DETACHED : str
+        A standalone model with no parent session.
+    """
 
     SESSION = "Session"
     DETACHED = "Detached"
 
 
 class BTModelState(str, Enum):
-    """Enumeration for BTModel states."""
+    """Progress state of a Breakthrough model build.
+
+    Attributes
+    ----------
+    QUEUED : str
+        The build has been queued but has not started.
+    BUILDING_MODELS : str
+        Models are being trained.
+    GENERATING_CANDIDATES : str
+        Candidate solutions are being generated.
+    COMPLETE : str
+        The build has finished successfully.
+    ERROR : str
+        The build failed.
+    """
 
     QUEUED = "Queued"
     BUILDING_MODELS = "Building Models"
@@ -80,48 +128,55 @@ class BTModelState(str, Enum):
 
 
 class BTModel(BaseResource, protected_namespaces=()):
-    """A single Breakthrough model.
+    """A single trained Breakthrough model.
 
-    A BTModel may have a `parent_id` or be a detached, standalone model.
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A model can belong to a
+    parent session ([`BTModelSession`][albert.resources.btmodel.BTModelSession]), in which case ``parent_id`` is set to
+    the session ID, or be a detached, standalone model. Models are managed through
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection].
 
-    Attributes
-    ----------
-    name : str
-        The name of the model.
-    id : BTModelId | None
-        The unique identifier for the model.
-    dataset_id : BTDatasetId | None
-        The identifier for the dataset associated with the model.
-    parent_id : BTModelSessionId | None
-        The identifier for the parent model session, if applicable.
-    metadata : dict[str, Any] | None
-        Metadata associated with the model, if applicable.
-    type : BTModelType | None
-        The type of the model (e.g., Session, Detached).
-    state : BTModelState | None
-        The current state of the model (e.g., Queued, Building Models, Complete).
-    target : list[str] | None
-        The target variables for the model, if applicable.
-    start_time : str | None
-        The start time of the model creation, if applicable.
-    end_time : str | None
-        The end time of the model creation, if applicable.
-    total_time : str | None
-        The total time taken for the model creation, if applicable.
-    model_binary_key : str | None
-        The storage key for the model data, if applicable.
-    """
+    !!! example
+        ```python
+        from albert.resources.btmodel import BTModel
+
+        model = BTModel(name="Random forest v1")
+        ```"""
 
     name: str
+    """Human-readable name of the model."""
+
     id: BTModelId | None = Field(default=None)
+    """Unique identifier of the model (format ``MDL...``). Assigned by Albert on creation."""
+
     dataset_id: BTDatasetId | None = Field(default=None, alias="datasetId")
+    """Identifier of the dataset the model is built from (format ``DST...``)."""
+
     parent_id: BTModelSessionId | None = Field(default=None, alias="parentId")
+    """Identifier of the parent session (format ``MDS...``), or None if the model is detached."""
+
     metadata: dict[str, Any] | None = Field(default=None, alias="Metadata")
+    """Free-form metadata associated with the model."""
+
     type: BTModelType | None = Field(default=None)
+    """Whether the model belongs to a session or is detached."""
+
     state: BTModelState | None = Field(default=None)
+    """Current progress state of the model build."""
+
     target: list[str] | None = Field(default=None)
+    """The target variable(s) the model predicts."""
+
     start_time: str | None = Field(default=None, alias="startTime")
+    """When the model build started, if recorded."""
+
     end_time: str | None = Field(default=None, alias="endTime")
+    """When the model build finished, if recorded."""
+
     total_time: str | None = Field(default=None, alias="totalTime")
+    """Total time taken to build the model, if recorded."""
+
     model_binary_key: str | None = Field(default=None, alias="modelBinaryKey")
+    """Storage key for the trained model artifact, if applicable."""
+
     flag: bool = Field(default=False)
+    """Boolean marker on the model. Defaults to False."""

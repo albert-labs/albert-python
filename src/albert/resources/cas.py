@@ -21,7 +21,9 @@ class CasCategory(str, Enum):
 
 
 class Hazard(BaseAlbertModel):
-    """Represents a chemical hazard."""
+    """A single GHS hazard classification associated with a CAS substance.
+
+    Hazards are read from the CAS record; a [`Cas`][albert.resources.cas.Cas] may carry a list of them."""
 
     sub_category: str | None = Field(None, alias="subCategory", description="Hazard subcategory")
     h_code: str | None = Field(None, alias="hCode", description="Hazard code")
@@ -31,7 +33,22 @@ class Hazard(BaseAlbertModel):
 
 
 class Cas(BaseResource):
-    """Represents a CAS entity."""
+    """A CAS entry: a chemical substance identified by its CAS Registry Number.
+
+    A ``Cas`` is Albert's dictionary record for a substance. Raw-material Inventory
+    Items reference these entries to declare what they are made of, pairing each
+    ``Cas`` with an amount (see [`CasAmount`][albert.resources.inventory.CasAmount]).
+    Manage entries through
+    [`CasCollection`][albert.collections.cas.CasCollection] (``client.cas``): most fields
+    are populated by Albert, so you typically only build a ``Cas`` from a registry
+    ``number`` when creating a new entry.
+
+    !!! example
+        ```python
+        from albert.resources.cas import Cas
+        # Build a CAS entry to register a new substance
+        cas = Cas(number="7727-37-9")
+        ```"""
 
     number: str = Field(..., description="The CAS number.")
     name: str | None = Field(None, description="Name of the CAS.")
@@ -53,20 +70,30 @@ class Cas(BaseResource):
     )
     order: str | None = Field(None, description="CAS order.")
     metadata: dict[str, MetadataItem] = Field(alias="Metadata", default_factory=dict)
+    """Custom metadata keyed by field. Updatable."""
 
     @classmethod
     def from_string(cls, *, number: str) -> Cas:
-        """
-        Creates a Cas object from a string.
+        """Build a [`Cas`][albert.resources.cas.Cas] from a bare registry number.
+
+        Convenience constructor equivalent to ``Cas(number=number)``, for when you
+        only have the registry number and want a ``Cas`` object to pass to
+        [`CasCollection`][albert.collections.cas.CasCollection].
+
+        !!! example
+            ```python
+            from albert.resources.cas import Cas
+            cas = Cas.from_string(number="7727-37-9")
+            ```
 
         Parameters
         ----------
         number : str
-            The CAS number.
+            The CAS Registry Number (e.g. ``"7727-37-9"``).
 
         Returns
         -------
         Cas
-            The Cas object created from the string.
+            A ``Cas`` with only ``number`` set.
         """
         return cls(number=number)

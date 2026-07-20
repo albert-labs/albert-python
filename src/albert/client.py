@@ -20,10 +20,12 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.design_runs import DesignRunCollection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
 from albert.collections.inventory import InventoryCollection
+from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
@@ -32,6 +34,7 @@ from albert.collections.notebooks import NotebookCollection
 from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
+from albert.collections.pdf_generator import PDFGeneratorCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -105,9 +108,9 @@ class Albert:
 
     Helpers
     -------------------
-    - `from_token` — Create a client using a static token.
-    - `from_sso` — Create a client using interactive browser-based SSO login.
-    - `from_client_credentials` — Create a client using OAuth2 client credentials.
+    - `from_token`: Create a client using a static token.
+    - `from_sso`: Create a client using interactive browser-based SSO login.
+    - `from_client_credentials`: Create a client using OAuth2 client credentials.
     """
 
     def __init__(
@@ -195,6 +198,10 @@ class Albert:
     @property
     def attachments(self) -> AttachmentCollection:
         return AttachmentCollection(session=self.session)
+
+    @property
+    def design_runs(self) -> DesignRunCollection:
+        return DesignRunCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
@@ -297,6 +304,14 @@ class Albert:
         return CustomTemplatesCollection(session=self.session)
 
     @property
+    def label_templates(self) -> LabelTemplateCollection:
+        return LabelTemplateCollection(session=self.session)
+
+    @property
+    def pdf_generator(self) -> PDFGeneratorCollection:
+        return PDFGeneratorCollection(session=self.session)
+
+    @property
     def parameter_groups(self) -> ParameterGroupCollection:
         return ParameterGroupCollection(session=self.session)
 
@@ -371,14 +386,14 @@ class Albert:
 
 class AsyncAlbert:
     """
-    Async client for interacting with the Albert chat API (🧪Beta).
+    Async client for interacting with the Albert chat API (🧪 Beta).
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Uses ``httpx.AsyncClient`` under the hood and must be closed when no longer
-    needed — either by calling ``await client.aclose()`` or by using the client
+    needed, either by calling ``await client.aclose()`` or by using the client
     as an async context manager (``async with AsyncAlbert(...) as client``).
 
     Parameters

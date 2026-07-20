@@ -8,7 +8,15 @@ from albert.resources.tasks import (
     TaskCategory,
     TaskSearchItem,
 )
+from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
+
+
+def _final_workflow_id(block) -> str:
+    for workflow in block.workflow:
+        if workflow.category != "INITIAL":
+            return workflow.id
+    return block.workflow[0].id
 
 
 def test_task_search_with_pagination(client: Albert, seeded_tasks):
@@ -128,21 +136,26 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
 
 
 def test_update_block_workflow(
-    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+    client: Albert,
+    seeded_tasks,
+    seeded_workflows: list[Workflow],
 ):
-    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task: PropertyTask = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     # in case it mutated
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    new_workflow = [x for x in seeded_workflows if x.id != task.blocks[0].workflow][0]
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
-    updated_task = client.tasks.get_by_id(id=task.id)
+    updated_task: PropertyTask = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = [x for x in updated_task.blocks if x.id == block_id][0]
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_add_block_to_batch_task(
@@ -169,15 +182,17 @@ def test_update_block_workflow_on_batch_task(
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    current_workflow_id = task.blocks[0].workflow[0].id
-    new_workflow = next(x for x in seeded_workflows if x.id != current_workflow_id)
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
     updated_task = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = next(x for x in updated_task.blocks if x.id == block_id)
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):

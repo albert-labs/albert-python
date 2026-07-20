@@ -11,49 +11,95 @@ from albert.resources.btdataset import BTDataset
 
 
 class BTDatasetCollection(BaseCollection):
-    """
-    BTDatasetCollection is a collection class for managing Breakthrough dataset entities.
+    """Manage Breakthrough datasets in the Albert platform.
+
+    Albert Breakthrough is Albert's inverse-design / ML optimization capability. A **dataset**
+    ([`BTDataset`][albert.resources.btdataset.BTDataset]) is the tabular data used to
+    build and train Breakthrough models. A dataset can reference the Albert entities
+    it was assembled from (projects, data columns, targets, and worksheets) via its
+    ``references``. Datasets feed into model sessions and models
+    ([`BTModelSessionCollection`][albert.collections.btmodel.BTModelSessionCollection],
+    [`BTModelCollection`][albert.collections.btmodel.BTModelCollection]), whose ``dataset_id``
+    points back here.
+
+    Datasets are identified by a dataset ID (format ``DST...``, e.g. ``"DST1"``).
+
+    This collection is accessed as ``client.btdatasets``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        dataset = client.btdatasets.get_by_id(id="DST1")
+        dataset.name
+        # 'Coatings training set'
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base path for btdataset API requests.
+        The base API route for dataset requests.
+
+    Methods
+    -------
+    create(dataset) -> BTDataset
+        Create a new dataset.
+    get_by_id(id) -> BTDataset
+        Get a single dataset by its ID.
+    get_all(...) -> Iterator[BTDataset]
+        Iterate over datasets, optionally filtered by name or creator.
+    update(dataset) -> BTDataset
+        Update an existing dataset.
+    delete(id) -> None
+        Delete a dataset by its ID.
     """
 
     _api_version = "v3"
     _updatable_attributes = {"name", "key", "file_name", "references"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize the BTDatasetCollection with the provided session.
+        """Initialize a BTDatasetCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{BTDatasetCollection._api_version}/btdataset"
 
     @validate_call
     def create(self, *, dataset: BTDataset) -> BTDataset:
-        """
-        Create a new BTDataset.
+        """Create a new dataset.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.btdataset import BTDataset
+
+            client = Albert()
+            dataset = BTDataset(name="Coatings training set")
+            created = client.btdatasets.create(dataset=dataset)
+            created.id
+            # 'DST1'
+            ```
 
         Parameters
         ----------
         dataset : BTDataset
-            The BTDataset record to create.
+            The dataset to create. ``name`` is required. Set ``references`` to
+            record which Albert entities the dataset was assembled from.
 
         Returns
         -------
         BTDataset
-            The created BTDataset.
+            The newly created dataset, populated with its assigned ID.
         """
         response = self.session.post(
             self.base_path,
@@ -63,42 +109,59 @@ class BTDatasetCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: BTDatasetId) -> BTDataset:
-        """
-        Get a BTDataset by ID.
+        """Get a single dataset by its ID.
+
+        !!! example
+            ```python
+            dataset = client.btdatasets.get_by_id(id="DST1")
+            dataset.name
+            # 'Coatings training set'
+            ```
 
         Parameters
         ----------
         id : BTDatasetId
-            The Albert ID of the BTDataset.
+            The dataset ID (format ``DST...``, e.g. ``"DST1"``).
 
         Returns
         -------
         BTDataset
-            The retrived BTDataset.
+            The fully populated dataset.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return BTDataset(**response.json())
 
     @validate_call
     def update(self, *, dataset: BTDataset) -> BTDataset:
-        """
-        Update a BTDataset.
+        """Update an existing dataset.
 
-        The provided dataset must be registered with an Albert ID.
+        Fetch the dataset (e.g. with [`get_by_id`][albert.collections.btdataset.BTDatasetCollection.get_by_id]), modify the updatable
+        fields on the returned object, then pass it here. Only the fields listed in
+        Notes are applied; changes to other fields are ignored.
+
+        !!! example
+            ```python
+            dataset = client.btdatasets.get_by_id(id="DST1")
+            dataset.name = "Coatings training set (v2)"
+            updated = client.btdatasets.update(dataset=dataset)
+            updated.name
+            # 'Coatings training set (v2)'
+            ```
 
         Parameters
         ----------
         dataset : BTDataset
-            The BTDataset with updated fields.
+            The dataset to update. Must have a valid ``id``.
 
         Returns
         -------
         BTDataset
-            The updated BTDataset object.
+            The updated dataset.
 
         Notes
         -----
-        The following fields can be updated: ``file_name``, ``key``, ``name``, ``references``.
+        The following fields can be updated: ``file_name``, ``key``, ``name``,
+        ``references``.
         """
         path = f"{self.base_path}/{dataset.id}"
         payload = self._generate_patch_payload(
@@ -110,12 +173,17 @@ class BTDatasetCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: BTDatasetId) -> None:
-        """Delete a BTDataset by ID.
+        """Delete a dataset by its ID.
+
+        !!! example
+            ```python
+            client.btdatasets.delete(id="DST1")
+            ```
 
         Parameters
         ----------
         id : BTDatasetId
-            The ID of the BTDataset to delete.
+            The dataset ID to delete (format ``DST...``).
 
         Returns
         -------
@@ -132,8 +200,16 @@ class BTDatasetCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[BTDataset]:
-        """
-        Get all items from the BTDataset collection.
+        """Iterate over datasets, optionally filtered by name or creator.
+
+        Results are returned as a lazily paginated iterator, so iterating fetches
+        additional pages on demand.
+
+        !!! example
+            ```python
+            for dataset in client.btdatasets.get_all(max_items=25):
+                print(dataset.id, dataset.name)
+            ```
 
         Parameters
         ----------
@@ -142,14 +218,15 @@ class BTDatasetCollection(BaseCollection):
         created_by : str, optional
             Filter datasets by the user who created them.
         start_key : str, optional
-            Start key for paginated results.
+            Resume pagination from this key (from a previous partial iteration).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[BTDataset]
-            An iterator over BTDataset items.
+            A lazily paginated iterator over datasets.
         """
         params = {
             "startKey": start_key,

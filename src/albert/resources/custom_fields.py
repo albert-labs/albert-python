@@ -10,10 +10,24 @@ from albert.core.shared.models.base import BaseResource
 
 
 class FieldType(str, Enum):
-    """The type of the custom field.
+    """The value type stored by a custom field.
 
-    ``date`` values use ``YYYY-MM-DD`` format. ``timestamp`` values use ISO 8601
-    with a UTC offset (e.g. ``2026-05-21T14:32:00+02:00``).
+    Attributes
+    ----------
+    LIST : str
+        A value (or values) chosen from a predefined list. A ``list`` field
+        defines its own list; the selectable options are
+        [`ListItem`][albert.resources.lists.ListItem] records (see
+        [`ListsCollection`][albert.collections.lists.ListsCollection]).
+    STRING : str
+        A free-text string value.
+    NUMBER : str
+        A numeric value.
+    DATE : str
+        A calendar date value stored as ``YYYY-MM-DD``.
+    TIMESTAMP : str
+        A date-and-time value in ISO 8601 format with a UTC offset
+        (e.g. ``2026-05-21T14:32:00+02:00``).
     """
 
     LIST = "list"
@@ -24,7 +38,33 @@ class FieldType(str, Enum):
 
 
 class ServiceType(str, Enum):
-    """The service type the custom field is associated with"""
+    """The Albert entity a custom field is attached to.
+
+    Attributes
+    ----------
+    INVENTORIES : str
+        Field applies to Inventory Items.
+    LOTS : str
+        Field applies to Lots.
+    PROJECTS : str
+        Field applies to Projects.
+    TASKS : str
+        Field applies to Tasks.
+    USERS : str
+        Field applies to Users.
+    PARAMETERS : str
+        Field applies to Parameters.
+    DATA_COLUMNS : str
+        Field applies to Data Columns.
+    DATA_TEMPLATES : str
+        Field applies to Data Templates.
+    PARAMETER_GROUPS : str
+        Field applies to Parameter Groups.
+    CAS : str
+        Field applies to CAS records.
+    SUBSTANCES : str
+        Field applies to Substances.
+    """
 
     INVENTORIES = "inventories"
     LOTS = "lots"
@@ -40,14 +80,42 @@ class ServiceType(str, Enum):
 
 
 class FieldCategory(str, Enum):
-    """The ACL level of the custom field"""
+    """Who is allowed to add new items to a list custom field.
+
+    Attributes
+    ----------
+    BUSINESS_DEFINED : str
+        Only admins can add new allowed items to the list.
+    USER_DEFINED : str
+        General users can add new allowed items to the list.
+    """
 
     BUSINESS_DEFINED = "businessDefined"
     USER_DEFINED = "userDefined"
 
 
 class EntityCategory(str, Enum):
-    """The entity category of the custom field. Only some categories are allowed for certain services"""
+    """An entity category a custom field can apply to.
+
+    Only some categories are valid for a given service.
+
+    Attributes
+    ----------
+    FORMULAS : str
+        Formulas inventory category.
+    RAW_MATERIALS : str
+        Raw materials inventory category.
+    CONSUMABLES : str
+        Consumables inventory category.
+    EQUIPMENT : str
+        Equipment inventory category.
+    PROPERTY : str
+        Property (measurement) category.
+    BATCH : str
+        Batch (formulation) category.
+    GENERAL : str
+        General category.
+    """
 
     FORMULAS = "Formulas"
     RAW_MATERIALS = "RawMaterials"
@@ -59,80 +127,107 @@ class EntityCategory(str, Enum):
 
 
 class UIComponent(str, Enum):
-    """The UI component available to the custom field"""
+    """Where in the UI a custom field is surfaced.
+
+    Attributes
+    ----------
+    CREATE : str
+        Shown on the entity's creation form.
+    DETAILS : str
+        Shown on the entity's details view.
+    """
 
     CREATE = "create"
     DETAILS = "details"
 
 
 class CustomFieldApiMethod(str, Enum):
-    """HTTP methods supported by API-driven custom fields."""
+    """HTTP method used to fetch values for an API-backed custom field.
+
+    Attributes
+    ----------
+    GET : str
+        Values are fetched with an HTTP GET request.
+    """
 
     GET = "GET"
 
 
 class CustomFieldAPI(BaseAlbertModel):
-    """Configuration for API-backed custom fields."""
+    """Configuration for a custom field whose values come from a remote API."""
 
     endpoint: str | None = Field(default=None)
+    """The URL the field's values are fetched from."""
+
     method: CustomFieldApiMethod | None = Field(default=None)
+    """The HTTP method used to fetch values."""
+
     query_params_field: list[str] | None = Field(default=None, alias="queryParamsField")
+    """Names of other fields whose values are passed as query parameters."""
 
 
 class ListDefaultValue(BaseAlbertModel):
+    """A single allowed item used as a default for a list custom field."""
+
     id: str = Field(alias="albertId")
+    """The ID of the list item."""
+
     name: str
+    """The display name of the list item."""
 
 
 class StringDefault(BaseAlbertModel):
+    """The default value for a string custom field."""
+
     type: Literal[FieldType.STRING] = FieldType.STRING
+    """Always ``FieldType.STRING``."""
+
     value: str
+    """The default string value."""
 
 
 class NumberDefault(BaseAlbertModel):
+    """The default value for a number custom field."""
+
     type: Literal[FieldType.NUMBER] = FieldType.NUMBER
+    """Always ``FieldType.NUMBER``."""
+
     value: int | float
+    """The default numeric value."""
 
 
 class DateDefault(BaseAlbertModel):
-    """Default value for a date custom field.
-
-    Attributes
-    ----------
-    type : Literal[FieldType.DATE]
-        The field type discriminator.
-    value : str
-        The default date in ``YYYY-MM-DD`` format.
-    """
+    """The default value for a date custom field."""
 
     type: Literal[FieldType.DATE] = FieldType.DATE
+    """Always ``FieldType.DATE``."""
+
     value: str
+    """The default date in ``YYYY-MM-DD`` format."""
 
 
 class TimestampDefault(BaseAlbertModel):
-    """Default value for a timestamp custom field.
-
-    Attributes
-    ----------
-    type : Literal[FieldType.TIMESTAMP]
-        The field type discriminator.
-    value : str
-        The default timestamp in ISO 8601 format with a UTC offset
-        (e.g. ``2026-05-21T14:32:00+02:00``).
-    """
+    """The default value for a timestamp custom field."""
 
     type: Literal[FieldType.TIMESTAMP] = FieldType.TIMESTAMP
+    """Always ``FieldType.TIMESTAMP``."""
+
     value: str
+    """The default timestamp in ISO 8601 format with a UTC offset (e.g. ``2026-05-21T14:32:00+02:00``)."""
 
 
 class ListDefault(BaseAlbertModel):
-    """
-    !!! note
-        For multi-select custom fields, `value` must be `list[ListDefaultValue]`.
+    """The default value for a list custom field.
+    Notes
+    -----
+    For multi-select custom fields, ``value`` must be a ``list[ListDefaultValue]``.
     """
 
     type: Literal[FieldType.LIST] = FieldType.LIST
+    """Always ``FieldType.LIST``."""
+
     value: ListDefaultValue | list[ListDefaultValue]
+    """The default list item(s). Notes ----- For multi-select custom fields, ``value`` must be a ``list[ListDefaultValue]``."""
 
 
 Default = Annotated[
@@ -142,80 +237,105 @@ Default = Annotated[
 
 
 class CustomField(BaseResource):
-    """A custom field for an entity in Albert.
+    """A custom field definition in Albert.
 
-    Returns
-    -------
-    CustomField
-        A CustomField that can be used to attach Metadata to an entity in Albert.
-    Attributes
-    ------
-    name : str
-        The name of the custom field. Cannot contain spaces.
-    id : str | None
-        The Albert ID of the custom field.
-    field_type : FieldType
-        The type of the custom field. Allowed values are `list`, `string`, `number`,
-        `date`, and `timestamp`. `string` and `list` fields are searchable; `number`,
-        `date`, and `timestamp` fields are not searchable. `date` values use
-        ``YYYY-MM-DD`` format; `timestamp` values use ISO 8601 with a UTC offset
-        (e.g. ``2026-05-21T14:32:00+02:00``).
-    display_name : str
-        The display name of the custom field. Can contain spaces.
-    searchable : bool | None
-        Whether the custom field is searchable, optional. Defaults to False. This is supported
-        for `list` and `string` fields; `number` fields can not be searchable.
-    service : ServiceType
-        The service type the custom field is associated with.
-    hidden : bool | None
-        Whether the custom field is hidden, optional. Defaults to False.
-    lookup_column : bool | None
-        Whether the custom field is a lookup column, optional. Defaults to False. Only allowed for inventories.
-    lookup_row : bool | None
-        Whether the custom field is a lookup row, optional. Defaults to False. Only allowed for formulas in inventories.
-    category : FieldCategory | None
-        The category of the custom field, optional. Defaults to None. Required for list fields. Allowed values are `businessDefined` and `userDefined`.
-    min : int | float | None
-        The minimum value of the custom field, optional. Defaults to None.
-    max : int | float | None
-        The maximum value of the custom field, optional. Defaults to None.
-    entity_categories : list[EntityCategory] | None
-        The entity categories of the custom field, optional. Defaults to None. Required for lookup row fields. Allowed values are `Formulas`, `RawMaterials`, `Consumables`, `Equipment`, `Property`, `Batch`, and `General`.
-    custom_entity_categories : list[str] | None
-        Custom entity categories that define where the field is valid.
-    ui_components : list[UIComponent] | None
-        The UI components available to the custom field, optional. Defaults to None. Allowed values are `create` and `details`.
-    default: Default | None
-        The default value of the custom field, optional. Defaults to None.
-        For ``date`` and ``timestamp`` fields, the default ``value`` uses the same
-        string format as documented for :class:`FieldType`.
-    editable: bool | None
-        Decides whether the field should be editable on UI or not.
-    api: CustomFieldAPI | None
-        API configuration for fields backed by remote data sources.
-    """
+    A custom field defines an allowed metadata field on an Albert entity. Once
+    defined, its ``name`` may be used as a key in the ``metadata`` dict of the
+    matching entity (Project, Inventory Item, User, Task, Lot, etc.), and its
+    type and validation rules constrain the stored value. Create and manage
+    custom fields through
+    [`CustomFieldCollection`][albert.collections.custom_fields.CustomFieldCollection].
+
+    When ``field_type`` is [`LIST`][albert.resources.custom_fields.FieldType.LIST], the field defines a new list
+    (identified by a ``list_type``, typically the field's ``name``). The
+    selectable options are [`ListItem`][albert.resources.lists.ListItem] records with
+    a matching ``list_type``, managed through
+    [`ListsCollection`][albert.collections.lists.ListsCollection] (``client.lists``).
+
+    For ``date`` and ``timestamp`` fields, stored values and defaults use the
+    wire formats documented on [`FieldType`][albert.resources.custom_fields.FieldType].
+
+    !!! example
+        ```python
+        from albert.resources.custom_fields import (
+            CustomField,
+            FieldCategory,
+            FieldType,
+            ServiceType,
+        )
+        stage_gate_field = CustomField(
+            name="stage_gate_status",
+            display_name="Stage Gate",
+            field_type=FieldType.LIST,
+            service=ServiceType.PROJECTS,
+            min=1,
+            max=1,
+            category=FieldCategory.BUSINESS_DEFINED,
+        )
+        ```"""
 
     name: str
+    """The field name (used as the metadata key). Cannot contain spaces."""
+
     id: str | None = Field(default=None, alias="albertId")
+    """The Custom Field ID (format ``CTF...``). Assigned by Albert on creation."""
+
     field_type: FieldType = Field(alias="type")
+    """The value type of the field (e.g. ``list``, ``string``, ``number``, ``date``, ``timestamp``). ``string`` and ``list`` fields can be searchable; ``number``, ``date``, and ``timestamp`` fields cannot."""
+
     display_name: str = Field(alias="labelName", max_length=40)
+    """The human-readable label for the field. Can contain spaces. Limited to 40 characters."""
+
     searchable: bool | None = Field(default=None, alias="search")
+    """Whether the field is searchable. Defaults to False. Supported for ``list`` and ``string`` fields only."""
+
     service: ServiceType
+    """The Albert entity the field is attached to."""
+
     hidden: bool | None = Field(default=None)
+    """Whether the field is hidden. Defaults to False."""
+
     lookup_column: bool | None = Field(default=None, alias="lkpColumn")
+    """Whether the field is a lookup column. Defaults to False. Only allowed for inventories."""
+
     lookup_row: bool | None = Field(default=None, alias="lkpRow")
+    """Whether the field is a lookup row. Defaults to False. Only allowed for formulas in inventories."""
+
     category: FieldCategory | None = Field(default=None)
+    """Who may add new items to a list field. Required for ``list`` fields."""
+
     min: int | float | None = Field(default=None)
+    """The minimum count allowed for the field: the fewest items selectable in a multiselect list, or the fewest characters allowed in a string."""
+
     max: int | float | None = Field(default=None)
+    """The maximum count allowed for the field: the most items selectable in a multiselect list, or the most characters allowed in a string."""
+
     entity_categories: list[EntityCategory] | None = Field(default=None, alias="entityCategory")
+    """The entity categories the field applies to. Required for lookup row fields."""
+
     custom_entity_categories: list[str] | None = Field(default=None, alias="customEntityCategory")
+    """Custom entity categories that define where the field is valid."""
+
     ui_components: list[UIComponent] | None = Field(default=None, alias="ui_components")
+    """Where the field is surfaced in the UI (``create`` and/or ``details``)."""
+
     required: bool | None = Field(default=None)
+    """Whether a value for the field is required."""
+
     multiselect: bool | None = Field(default=None)
+    """For list fields, whether multiple values may be selected."""
+
     editable: bool | None = Field(default=None)
+    """Whether the field can be edited in the UI."""
+
     pattern: str | None = Field(default=None)
+    """A validation pattern the field's value must match."""
+
     default: Default | None = Field(default=None)
+    """The default value applied to the field. For ``date`` and ``timestamp`` fields, use [`DateDefault`][albert.resources.custom_fields.DateDefault] or [`TimestampDefault`][albert.resources.custom_fields.TimestampDefault] with the wire format documented on [`FieldType`][albert.resources.custom_fields.FieldType]."""
+
     api: CustomFieldAPI | None = Field(default=None)
+    """Configuration for fields whose values are backed by a remote API."""
 
     @model_validator(mode="after")
     def confirm_field_compatability(self) -> CustomField:
@@ -253,10 +373,23 @@ class CustomField(BaseResource):
 
 
 class SearchableCustomField(BaseAlbertModel):
-    """Metadata describing custom fields exposed to search."""
+    """A descriptor for a custom field that is exposed to search.
+
+    Returned by
+    [`get_searchable_fields`][albert.collections.custom_fields.CustomFieldCollection.get_searchable_fields]
+    to describe how a field can be queried and sorted in search."""
 
     label: str
+    """The field's display label."""
+
     type: str
+    """The field's value type."""
+
     is_sortable: bool | None = Field(default=None, alias="isSortable")
+    """Whether search results can be sorted by this field."""
+
     sort_by_param: str | None = Field(default=None, alias="sortByParam")
+    """The parameter name to use when sorting by this field."""
+
     is_custom: bool = Field(alias="isCustom")
+    """Whether the field is a custom field (as opposed to a standard field)."""

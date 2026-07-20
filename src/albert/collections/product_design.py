@@ -9,19 +9,71 @@ from albert.resources.product_design import UnpackedProductDesign
 
 
 class ProductDesignCollection(BaseCollection):
-    """ProductDesignCollection is a collection class for managing Product Design entities in the Albert platform."""
+    """Unpack formulated products into their full substance-level composition.
+
+    "Product design" here refers to unpacking (flattening) a formulation inventory
+    item into its full substance-level composition. An unpacked product resolves a
+    formulation's complete substance composition by recursively traversing its
+    ingredient tree: each sub-formulation is expanded into its own ingredients, with
+    fractional contributions multiplied down through each level and summed at the
+    CAS-number level. It produces two outputs: a row-level inventory list (the direct
+    worksheet ingredients, some of which may themselves be sub-formulations) and a
+    flat CAS-level substance list (fully resolved raw materials with combined weight
+    fractions).
+
+    The calculation assumes a non-reactive, homogeneous mixture: no chemical
+    transformations occur and concentrations are additive. When a formulation has
+    overrides, the recursive traversal short-circuits; Albert accepts the declared
+    composition at face value rather than deriving it, and CAS amounts are expressed
+    as ranges to signal supplied (not bottom-up calculated) values.
+
+    Use this when you need the resolved composition of a formula rather than just
+    its immediate ingredient list, for example to compute regulatory or safety
+    rollups. The formulas being unpacked are Inventory Items in the ``Formulas``
+    category (see [`InventoryCollection`][albert.collections.inventory.InventoryCollection]), and
+    the substances resolve to CAS entries (see
+    [`CasCollection`][albert.collections.cas.CasCollection]).
+
+    This collection is accessed as ``client.product_design``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        unpacked = client.product_design.get_unpacked_products(
+            inventory_ids=["INVA1", "INVA2"],
+        )
+        for product in unpacked:
+            for ingredient in product.inventories or []:
+                print(ingredient.name, ingredient.value)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for product design requests.
+
+    Methods
+    -------
+    get_unpacked_products(inventory_ids, unpack_id="PREDICTION") -> list[UnpackedProductDesign]
+        Unpack one or more formulas into their full CAS-level substance composition.
+    """
 
     _updatable_attributes = {}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CasCollection with the provided session.
+        """Initialize a ProductDesignCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ProductDesignCollection._api_version}/productdesign"
@@ -33,20 +85,36 @@ class ProductDesignCollection(BaseCollection):
         inventory_ids: list[InventoryId],
         unpack_id: Literal["DESIGN", "PREDICTION"] = "PREDICTION",
     ) -> list[UnpackedProductDesign]:
-        """
-        Get unpacked products by inventory IDs.
+        """Unpack formulas into their full CAS-level substance composition.
+
+        Each supplied formula is flattened into its constituent substances, with
+        their amounts, CAS information, and SDS / regulatory details. One
+        [`UnpackedProductDesign`][albert.resources.product_design.UnpackedProductDesign] is returned
+        per input formula. Requests are automatically split into batches of 50
+        inventory IDs, so large lists can be passed in a single call.
+
+        !!! example
+            ```python
+            unpacked = client.product_design.get_unpacked_products(
+                inventory_ids=["INVA1"],
+                unpack_id="DESIGN",
+            )
+            substances = unpacked[0].cas_level_substances or []
+            for substance in substances:
+                print(substance.cas_id, substance.amount)
+            ```
 
         Parameters
         ----------
         inventory_ids : list[InventoryId]
-            The inventory ids to get unpacked formulas for.
-        unpack_id: Literal["DESIGN", "PREDICTION"]
-            The ID for the unpack operation.
+            The formula Inventory IDs to unpack (format ``INV...``, e.g. ``"INVA1"``).
+        unpack_id : {"DESIGN", "PREDICTION"}, optional
+            Which unpacking mode the server should use. Defaults to ``"PREDICTION"``.
 
         Returns
         -------
         list[UnpackedProductDesign]
-            The unpacked products/formulas.
+            The unpacked composition, one entry per input formula.
         """
         url = f"{self.base_path}/{unpack_id}/unpack"
         batches = [inventory_ids[i : i + 50] for i in range(0, len(inventory_ids), 50)]

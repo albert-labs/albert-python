@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.36.0](https://github.com/albert-labs/albert-python/compare/v1.35.0...v1.36.0) (2026-07-17)
+
+
+### Features
+
+* SDK support for api-designruns ([#626](https://github.com/albert-labs/albert-python/issues/626)) ([b38e03a](https://github.com/albert-labs/albert-python/commit/b38e03adaa3afa97263d82b9f963a23e55a1b0b2))
+
+## [1.35.0](https://github.com/albert-labs/albert-python/compare/v1.34.1...v1.35.0) (2026-07-17)
+
+
+### Features
+
+* add label template and PDF generator collections ([#625](https://github.com/albert-labs/albert-python/issues/625)) ([0bc3e1b](https://github.com/albert-labs/albert-python/commit/0bc3e1bac7103b03b665994b481da4cbf50f4898))
+
+## [1.34.1](https://github.com/albert-labs/albert-python/compare/v1.34.0...v1.34.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **cas:** hydrate list metadata names and send entity links on PATCH ([#621](https://github.com/albert-labs/albert-python/issues/621)) ([ca97f8e](https://github.com/albert-labs/albert-python/commit/ca97f8ed27a4c88a31667aebf9ffd8684e1ce769))
+* **inventory:** dedup when company is an entity link ([#584](https://github.com/albert-labs/albert-python/issues/584)) ([6b40de7](https://github.com/albert-labs/albert-python/commit/6b40de79fd692f519ddcd8d3ad8125eb48cc6b90))
+* **property-data:** handle empty response on get_properties_on_inventory ([#613](https://github.com/albert-labs/albert-python/issues/613)) ([69f4c23](https://github.com/albert-labs/albert-python/commit/69f4c238f42f361a8251485de7a1bf705ed1435e))
+* **tasks:** use FINAL workflow id when updating block workflow ([#622](https://github.com/albert-labs/albert-python/issues/622)) ([58d5ca4](https://github.com/albert-labs/albert-python/commit/58d5ca4bb4a7989d9bf79157f8a6849353c7a74f))
+* **units:** match unit names case-insensitively in get_or_create ([#614](https://github.com/albert-labs/albert-python/issues/614)) ([3268c35](https://github.com/albert-labs/albert-python/commit/3268c35dab78031b9b25017672f75000c569d2b0))
+
+
+### Documentation
+
+* upgrade docstrings across collections and resources ([#619](https://github.com/albert-labs/albert-python/issues/619)) ([921e3a0](https://github.com/albert-labs/albert-python/commit/921e3a023b8caf2563b7a3b947d939765612d923))
+
 ## [1.34.0](https://github.com/albert-labs/albert-python/compare/v1.33.0...v1.34.0) (2026-07-10)
 
 
