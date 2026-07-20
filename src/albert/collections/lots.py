@@ -130,6 +130,9 @@ class LotCollection(BaseCollection):
                 inventory_id="INVA1",
                 storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
                 initial_quantity=10.0,
+                inventory_on_hand=10.0,
+                cost=50.0,
+                manufacturer_lot_number="MLN-001",
             )
             created = client.lots.create(lots=[new_lot])
             created[0].id
@@ -140,9 +143,13 @@ class LotCollection(BaseCollection):
         ----------
         lots : list[Lot]
             The lots to create. Each lot requires ``inventory_id`` (the parent
-            Inventory ID). For a regular lot (no ``task_id``), ``storage_location``
-            and ``initial_quantity`` are also required. For a Task lot (with a
-            ``task_id``), ``location`` is required instead.
+            Inventory ID). For a regular lot (no ``task_id``), ``storage_location``,
+            ``initial_quantity``, and ``inventory_on_hand`` are required
+            (``inventory_on_hand`` is usually the same as ``initial_quantity``).
+            When the parent Inventory Item is ``RawMaterials``, ``cost`` and
+            ``manufacturer_lot_number`` are also required. For a task lot (with a
+            ``task_id``, batch / ``Formulas`` path), ``location`` is required
+            instead of ``storage_location``.
 
         Returns
         -------
@@ -153,10 +160,16 @@ class LotCollection(BaseCollection):
         ------
         ValueError
             If a regular lot is missing ``storage_location`` or
-            ``initial_quantity``, or a Task lot is missing ``location``.
+            ``initial_quantity``, or a task lot is missing ``location``.
 
         Notes
         -----
+        The SDK validates ``storage_location``, ``initial_quantity``, and
+        ``location`` (task lots) before POST. ``cost`` and
+        ``manufacturer_lot_number`` are enforced by the API for ``RawMaterials``
+        parents but are not yet checked in the SDK. See field docstrings on
+        [`Lot`][albert.resources.lots.Lot] for the full create matrix.
+
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
         """
