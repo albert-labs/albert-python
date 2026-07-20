@@ -816,7 +816,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def leftmost_pinned_column(self):
         """The leftmost pinned column in the sheet"""
         if self._leftmost_pinned_column is None:
-            self._leftmost_pinned_column = self.app_design._leftmost_pinned_column
+            # Loading the product design grid populates its _leftmost_pinned_column
+            # as a side effect. Pinned columns are sheet-wide, so the product design
+            # (where formulation columns live) is the natural source.
+            _ = self.product_design.grid
+            self._leftmost_pinned_column = self.product_design._leftmost_pinned_column
 
         return self._leftmost_pinned_column
 
@@ -1260,9 +1264,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The created formulation columns, in the order requested.
         """
         if starting_position is None:
-            # Ensure pinned-column state is resolved before computing the reference position.
-            if self.app_design is not None:
-                _ = self.app_design.grid
             starting_position = {
                 "reference_id": self.leftmost_pinned_column,
                 "position": "rightOf",
