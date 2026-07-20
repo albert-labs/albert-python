@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.36.1](https://github.com/albert-labs/albert-python/compare/v1.36.0...v1.36.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **resources:** support date and timestamp field formats ([#623](https://github.com/albert-labs/albert-python/issues/623)) ([fb382bc](https://github.com/albert-labs/albert-python/commit/fb382bc54f5634c214c8e4d2375665436416e779))
+
 ## [1.36.0](https://github.com/albert-labs/albert-python/compare/v1.35.0...v1.36.0) (2026-07-17)
 
 
