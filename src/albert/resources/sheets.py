@@ -1255,22 +1255,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The names of the formulation columns to add, used as column headers.
         starting_position : dict, optional
             Where to insert the new columns, as a dict with ``reference_id`` (a
-            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). Defaults
-            to just right of the leftmost pinned column.
+            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
+            omitted, the platform chooses the default placement.
 
         Returns
         -------
         list[Column]
             The created formulation columns, in the order requested.
         """
-        if starting_position is None:
-            starting_position = {
-                "reference_id": self.leftmost_pinned_column,
-                "position": "rightOf",
-            }
-        sheet_id = self.id
-
-        endpoint = f"/api/v3/worksheet/sheet/{sheet_id}/columns"
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
 
         # In case a user supplied a single formulation name instead of a list
         formulation_names = (
@@ -1278,18 +1271,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
         payload = []
-        for formulation_name in (
-            formulation_names
-        ):  # IS there a limit to the number I can add at once? Need to check this.
-            # define payload for this item
-            payload.append(
-                {
-                    "type": "INV",
-                    "name": formulation_name,
-                    "referenceId": starting_position["reference_id"],  # initially defined column
-                    "position": starting_position["position"],
-                }
-            )
+        for formulation_name in formulation_names:
+            entry = {"type": "INV", "name": formulation_name}
+            # When no position is given, omit referenceId/position so the platform
+            # applies its default placement. Sending a null (or stale) referenceId
+            # leaves the new column out of the sheet sequence, hiding it on refresh.
+            if starting_position is not None:
+                entry["referenceId"] = starting_position["reference_id"]
+                entry["position"] = starting_position["position"]
+            payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
         self.grid = None
