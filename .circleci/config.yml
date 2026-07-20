@@ -37,7 +37,7 @@ jobs:
       - run:
           name: Run pytest
           command: |
-            uv run pytest
+            uv run pytest -n 4 --dist loadgroup
 
   validate_version_bump:
     executor:
