@@ -7,6 +7,7 @@ from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
 from albert.resources.attachments import Attachment
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -45,8 +46,16 @@ def test_project_search_filtered(client: Albert):
 
 
 def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
-    # Scope the search to this worker's seeds: other xdist workers may delete theirs mid-run
-    projects = list(client.projects.search(text=seed_prefix, max_items=5))
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated projects the client has no ACL access to hydrate
+    seeded_ids = {p.id for p in seeded_projects}
+    projects = poll_until(
+        lambda: [
+            p
+            for p in client.projects.search(text=seed_prefix, max_items=100)
+            if p.id in seeded_ids
+        ]
+    )
     assert projects, "Expected at least one project in search results"
 
     for project in projects:

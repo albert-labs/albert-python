@@ -12,6 +12,7 @@ from albert.resources.tasks import (
 )
 from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 
@@ -51,11 +52,13 @@ def test_hydrated_task(client: Albert, seed_prefix: str, seeded_tasks):
     # Scope the search to this worker's live seeds: unscoped results race other
     # workers' teardown, and the search index can still hold already-deleted tasks
     seeded_ids = {t.id for t in seeded_tasks}
-    tasks = [
-        t
-        for t in client.tasks.search(text=seed_prefix, category=TaskCategory.GENERAL)
-        if t.id in seeded_ids
-    ]
+    tasks = poll_until(
+        lambda: [
+            t
+            for t in client.tasks.search(text=seed_prefix, category=TaskCategory.GENERAL)
+            if t.id in seeded_ids
+        ]
+    )
     assert tasks, "Expected at least one task in search results"
 
     for t in tasks:
