@@ -182,7 +182,7 @@ class ChatMessageCollection:
         return ChatMessage(**response.json())
 
     @validate_call
-    async def get_all(
+    def get_all(
         self,
         *,
         session_id: str,
@@ -191,6 +191,7 @@ class ChatMessageCollection:
         """Iterate over the messages in a session, oldest first.
 
         Transparently pages through results, yielding one message at a time.
+        Returns the paginator directly so ``has_more`` remains available.
 
         !!! example
             ```python
@@ -210,19 +211,18 @@ class ChatMessageCollection:
             Maximum number of messages to yield in total. If ``None``, yields every
             message in the session.
 
-        Yields
-        ------
-        ChatMessage
+        Returns
+        -------
+        AsyncIterator[ChatMessage]
             Messages in the session, oldest first.
         """
         url = f"{self._sessions_base}/{session_id}/messages"
-        async for message in AsyncAlbertPaginator(
+        return AsyncAlbertPaginator(
             session=self._session,
             path=url,
             deserialize=lambda item: ChatMessage(**item),
             max_items=max_items,
-        ):
-            yield message
+        )
 
     @validate_call
     async def update(

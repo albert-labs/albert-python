@@ -176,16 +176,15 @@ class CasCollection(BaseCollection):
             Maximum number of entries to yield in total. If None, iterates over
             all matching entries.
 
-        Yields
-        ------
-        Cas
-            Matching CAS entries.
+        Returns
+        -------
+        Iterator[Cas]
+            Matching CAS entries. Returns the underlying paginator (not a wrapping
+            generator) so ``has_more`` / ``total`` remain available to callers.
         """
-
         params: dict[str, Any] = {"orderBy": order_by}
         if id is not None:
-            yield self.get_by_id(id=id)
-            return
+            return iter((self.get_by_id(id=id),))
 
         if number is not None or cas:
             # Filtered search path: self-managed integer offset pagination.
@@ -204,24 +203,24 @@ class CasCollection(BaseCollection):
                 params["number"] = number
             if cas:
                 params["cas"] = cas
-            yield from CasPaginator(
+            return CasPaginator(
                 path=self.base_path,
                 session=self.session,
                 params=params,
                 max_items=max_items,
             )
-        else:
-            # Unfiltered listing path: string key pagination via lastKey in response.
-            if start_key is not None:
-                params["startKey"] = start_key
-            yield from AlbertPaginator(
-                mode=PaginationMode.KEY,
-                path=self.base_path,
-                session=self.session,
-                params=params,
-                max_items=max_items,
-                deserialize=lambda items: [Cas(**item) for item in items],
-            )
+
+        # Unfiltered listing path: string key pagination via lastKey in response.
+        if start_key is not None:
+            params["startKey"] = start_key
+        return AlbertPaginator(
+            mode=PaginationMode.KEY,
+            path=self.base_path,
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [Cas(**item) for item in items],
+        )
 
     @validate_call
     def exists(self, *, number: str, exact_match: bool = True, max_items: int | None = 50) -> bool:

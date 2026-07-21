@@ -11,7 +11,7 @@ from albert.collections.base import BaseCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.property_data import PropertyDataCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import (
@@ -854,40 +854,46 @@ class TaskCollection(BaseCollection):
             Maximum number of tasks to return in total. If None, iterates over all
             matches.
 
-        Yields
-        ------
-        BaseTask
-            Each fully populated task (``PropertyTask``, ``BatchTask``, or
-            ``GeneralTask``).
+        Returns
+        -------
+        Iterator[BaseTask]
+            Fully populated tasks. Preserves ``has_more`` / ``total`` from the
+            underlying search paginator.
         """
-        for task in self.search(
-            text=text,
-            tags=tags,
-            task_id=task_id,
-            linked_task=linked_task,
-            category=category,
-            albert_id=albert_id,
-            data_template=data_template,
-            assigned_to=assigned_to,
-            location=location,
-            priority=priority,
-            status=status,
-            parameter_group=parameter_group,
-            created_by=created_by,
-            project_id=project_id,
-            order_by=order_by,
-            sort_by=sort_by,
-            max_items=max_items,
-            offset=offset,
-        ):
-            task_id = getattr(task, "id", None)
-            if not task_id:
-                continue
 
+        def _hydrate(task: TaskSearchItem) -> BaseTask | None:
+            hydrate_id = getattr(task, "id", None)
+            if not hydrate_id:
+                return None
             try:
-                yield self.get_by_id(id=task_id)
+                return self.get_by_id(id=hydrate_id)
             except (AlbertHTTPError, RetryError) as e:
-                logger.warning(f"Error fetching task '{task_id}': {e}")
+                logger.warning(f"Error fetching task '{hydrate_id}': {e}")
+                return None
+
+        return MappedPaginator(
+            self.search(
+                text=text,
+                tags=tags,
+                task_id=task_id,
+                linked_task=linked_task,
+                category=category,
+                albert_id=albert_id,
+                data_template=data_template,
+                assigned_to=assigned_to,
+                location=location,
+                priority=priority,
+                status=status,
+                parameter_group=parameter_group,
+                created_by=created_by,
+                project_id=project_id,
+                order_by=order_by,
+                sort_by=sort_by,
+                max_items=max_items,
+                offset=offset,
+            ),
+            _hydrate,
+        )
 
     def update(self, *, task: BaseTask) -> BaseTask:
         """Update an existing task.
