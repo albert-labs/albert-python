@@ -74,6 +74,28 @@ def test_pages_past_a_full_first_page() -> None:
     assert session.get.call_count == 3
 
 
+def test_has_more_false_when_max_items_equals_known_total() -> None:
+    """Full final page with known total — complete, not truncated."""
+    session = MagicMock()
+    session.get.side_effect = [
+        _page(list(range(1000)), offset=0, total=1000),
+    ]
+
+    pag = AlbertPaginator(
+        mode=PaginationMode.OFFSET,
+        path="/api/v3/projects/search",
+        session=session,
+        deserialize=lambda items: items,
+        params={"order": "desc", "limit": 1000},
+        max_items=1000,
+    )
+    items = list(pag)
+
+    assert len(items) == 1000
+    assert pag.has_more is False
+    assert pag.total == 1000
+
+
 def test_has_more_when_max_items_hits_short_page_without_offset_echo() -> None:
     session = MagicMock()
     session.get.side_effect = [

@@ -166,10 +166,13 @@ class AlbertPaginator(Iterator[ItemType]):
                 yielded += 1
 
             if self.max_items is not None and yielded >= self.max_items:
-                # Hit the cap exactly at a page boundary; check whether another page exists.
-                self._has_more = self._response_has_continuation(
-                    data=data, count=item_count, current_key=current_key
-                ) or self._total_implies_more(yielded)
+                # Server-reported total is authoritative over a full-page heuristic.
+                if self._total is not None:
+                    self._has_more = self._total_implies_more(yielded)
+                else:
+                    self._has_more = self._response_has_continuation(
+                        data=data, count=item_count, current_key=current_key
+                    )
                 return
 
             if self.mode == PaginationMode.KEY and current_key is None:
