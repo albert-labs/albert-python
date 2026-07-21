@@ -1,5 +1,5 @@
 ---
-description: Project-level tool preferences, safety guardrails, and commit style
+description: Tool preferences, safety guardrails, commit style, and PR template
 alwaysApply: true
 ---
 
@@ -18,3 +18,40 @@ alwaysApply: true
 ## Commit style
 
 - Use Conventional Commits: type(scope): summary
+
+## Pull requests
+
+When opening a PR in this repo, always use the GitHub PR template at
+`.github/pull_request_template.md`. Read the file if present; otherwise use the
+structure below. Never use a generic `## Summary` / `## Test plan` layout.
+
+Fill every section from the diff and commit history. Delete optional sections
+(`How`, `SDK Changes`) when not applicable. Check the Testing boxes that were run.
+
+```markdown
+## What
+
+<!-- What can callers do now that they couldn't before? 1–2 sentences. Not a file list. -->
+
+## Why
+
+<!-- What user-facing problem does this solve? -->
+
+## How
+
+<!-- Non-obvious SDK design choices only. Skip backend/API internals. Delete if self-evident. -->
+
+## Testing
+
+- [ ] `uv run ruff format .`
+- [ ] `uv run ruff check . --fix`
+- [ ] `uv run pytest <relevant_test_file>.py -v`
+
+## SDK Changes
+
+<!-- User-facing release-notes blurb. Delete if not applicable. -->
+```
+
+Create PRs with `gh pr create`, targeting `main` unless told otherwise. PR title:
+Conventional Commit (`type(scope): summary`). Never include an "AI-assisted code"
+disclaimer in the body.
