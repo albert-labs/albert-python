@@ -82,16 +82,25 @@ Expose a `max_items` parameter on public list/search methods where appropriate t
 
 ## Testing
 
+- **Read `tests/TESTING.md` before writing or changing any test.** The suite runs in parallel
+  with pytest-xdist and that document is the authority on the required patterns.
+- The non-negotiables it covers:
+  - Every test file that consumes a session-scoped `seeded_*`/`static_*` fixture carries a
+    module-level `pytestmark = pytest.mark.xdist_group("...")`; pick the group that already
+    owns the fixtures (table in TESTING.md).
+  - Shared `seeded_*` fixtures are read-only; update/delete tests create private entities and
+    clean up in `try/finally`.
+  - Search assertions must be scoped to `seed_prefix`, filtered to the fixture's ids, and
+    wrapped in `poll_until` (`tests/utils/wait.py`); `text`/`name` params are fuzzy full-text
+    queries, and other workers delete their seeds mid-run.
+  - No exact-count asserts on unscoped queries.
 - Tests use pytest (see tests/).
-- Integration-style tests require environment variables:
-  - ALBERT_CLIENT_ID_SDK
-  - ALBERT_CLIENT_SECRET_SDK
-  - ALBERT_BASE_URL
 - Only add integration-style tests. Do not add unit tests that use `FakeAlbertSession`.
-- Seed helpers live in `tests/seeding.py` and are reused across fixtures.
+- Seed helpers live in `tests/seeding.py` and are reused across fixtures; new seed entities
+  are appended (tests index into seeded lists).
 - Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
 - Required env vars: `ALBERT_CLIENT_ID_SDK`, `ALBERT_CLIENT_SECRET_SDK`, `ALBERT_BASE_URL`.
-- Verify changes work by running the related tests — don't assume.
+- Verify changes work by running the related tests with `-n 4` — don't assume.
 
 ## Documentation
 
