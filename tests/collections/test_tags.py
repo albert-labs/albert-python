@@ -1,11 +1,14 @@
 import uuid
+from contextlib import suppress
 
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.enums import OrderBy
-from albert.exceptions import AlbertException
+from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.tags import Tag
+
+pytestmark = pytest.mark.xdist_group("tags")
 
 
 def assert_valid_tag_items(returned_list: list[Tag], limit=100):
@@ -70,21 +73,23 @@ def test_tag_exists(client: Albert, seeded_tags: list[Tag]):
 def test_tag_update(client: Albert):
     # Rename a private tag so shared seeded tags stay intact
     test_tag = client.tags.create(tag=Tag(tag=f"TEST - rename me {uuid.uuid4()}"))
-    new_name = f"TEST - {uuid.uuid4()}"
+    try:
+        new_name = f"TEST - {uuid.uuid4()}"
 
-    assert test_tag.id is not None
+        assert test_tag.id is not None
 
-    updated_tag = client.tags.rename(old_name=test_tag.tag, new_name=new_name)
-    assert isinstance(updated_tag, Tag)
-    assert test_tag.id == updated_tag.id
-    assert updated_tag.tag == new_name
+        updated_tag = client.tags.rename(old_name=test_tag.tag, new_name=new_name)
+        assert isinstance(updated_tag, Tag)
+        assert test_tag.id == updated_tag.id
+        assert updated_tag.tag == new_name
 
-    with pytest.raises(AlbertException):
-        client.tags.rename(
-            old_name="y74r79ub4v9f874ebf982bTEST NONESENSEg89befbnr", new_name="Foo Bar!"
-        )
-
-    client.tags.delete(id=test_tag.id)
+        with pytest.raises(AlbertException):
+            client.tags.rename(
+                old_name="y74r79ub4v9f874ebf982bTEST NONESENSEg89befbnr", new_name="Foo Bar!"
+            )
+    finally:
+        with suppress(NotFoundError):
+            client.tags.delete(id=test_tag.id)
 
 
 def test_get_or_create_tags(caplog, client: Albert, seeded_tags: list[Tag]):

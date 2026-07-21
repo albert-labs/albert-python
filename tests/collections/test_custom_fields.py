@@ -15,6 +15,8 @@ from albert.resources.custom_fields import (
 )
 from albert.resources.lists import ListItem
 
+pytestmark = pytest.mark.xdist_group("customfields")
+
 
 def get_or_create_custom_field(
     client: Albert, name: str, field_type: FieldType, service: ServiceType, **kwargs

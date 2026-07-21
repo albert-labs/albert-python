@@ -80,6 +80,8 @@ select = [
 known-first-party = ["albert", "tests"]
 
 [tool.pytest.ini_options]
+# Inert without -n; guarantees xdist_group semantics for any parallel invocation
+addopts = "--dist loadgroup"
 env_files = [".env"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

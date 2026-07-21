@@ -60,9 +60,10 @@ def test_inventory_get_all_with_filters(
         assert test_item.name.lower() in item.name.lower()
 
 
-def test_inventory_hydration_from_search(client: Albert):
+def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
     """Test that inventory search results can be hydrated to full InventoryItem."""
-    search_results = client.inventory.search(max_items=5)
+    # Scope the search to this worker's seeds: other xdist workers may delete theirs mid-run
+    search_results = client.inventory.search(text=seed_prefix, max_items=5)
     assert search_results, "Expected at least one inventory item in search results"
 
     for partial in search_results:
@@ -115,13 +116,11 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert seeded_inventory[0].id == get_by_id.id
 
 
-def test_get_by_ids(client: Albert):
-    # Gather 51 unique inventory IDs
-    inventory_ids = []
-    for x in client.inventory.search():
-        inventory_ids.append(x.id)
-        if len(inventory_ids) == 51:
-            break
+def test_get_by_ids(client: Albert, seed_prefix: str, seeded_inventory):
+    # Gather this worker's seeded inventory IDs; unscoped search would race other
+    # workers' teardown deletes and break the exact-count assertion
+    inventory_ids = [x.id for x in client.inventory.search(text=seed_prefix)]
+    assert inventory_ids, "Expected seeded inventory in search results"
 
     # Assert same length obtained
     items = client.inventory.get_by_ids(ids=inventory_ids)

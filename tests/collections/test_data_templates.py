@@ -518,9 +518,10 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert updated_param.value == "ParamOption3"
 
 
-def test_hydrate_data_template(client: Albert):
+def test_hydrate_data_template(client: Albert, seed_prefix: str, seeded_data_templates):
     """Test that data templates can be hydrated correctly."""
-    data_templates = client.data_templates.search(max_items=3)
+    # Scope the search to this worker's seeds: other xdist workers may delete theirs mid-run
+    data_templates = client.data_templates.search(name=seed_prefix, max_items=3)
     assert data_templates, "Expected at least one data_template in search results"
 
     for data_template in data_templates:

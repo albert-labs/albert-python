@@ -1,8 +1,10 @@
 import uuid
+from contextlib import suppress
 
 import pytest
 
 from albert.client import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.locations import Location
 
 pytestmark = pytest.mark.xdist_group("projects")
@@ -119,8 +121,12 @@ def test_delete_location(client: Albert):
         )
     )
 
-    client.locations.delete(id=location.id)
+    try:
+        client.locations.delete(id=location.id)
 
-    # Ensure it no longer exists
-    does_exist = client.locations.exists(location=location)
-    assert does_exist is None
+        # Ensure it no longer exists
+        does_exist = client.locations.exists(location=location)
+        assert does_exist is None
+    finally:
+        with suppress(NotFoundError):
+            client.locations.delete(id=location.id)

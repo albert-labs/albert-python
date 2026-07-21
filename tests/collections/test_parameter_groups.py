@@ -107,8 +107,9 @@ def test_parameter_group_search(client: Albert):
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
-def test_hydrate_pg(client: Albert):
-    pgs = list(client.parameter_groups.search(max_items=5))
+def test_hydrate_pg(client: Albert, seed_prefix: str, seeded_parameter_groups):
+    # Scope the search to this worker's seeds: other xdist workers may delete theirs mid-run
+    pgs = list(client.parameter_groups.search(text=seed_prefix, max_items=5))
     assert pgs, "Expected at least one pg in search results"
 
     for pg in pgs:

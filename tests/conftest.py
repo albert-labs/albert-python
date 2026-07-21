@@ -105,43 +105,39 @@ def _pmap(fn: Callable, items) -> list:
     def _one(item):
         try:
             return fn(item)
-        except AlbertServerError:
+        except AlbertServerError as err:
             time.sleep(2.0)
-            return fn(item)
+            try:
+                return fn(item)
+            except BadRequestError as retry_err:
+                # The first attempt likely committed despite the 5xx; surface the
+                # real cause instead of a misleading "already exists"
+                raise err from retry_err
 
     items = list(items)
     with ThreadPoolExecutor(max_workers=min(8, max(1, len(items)))) as ex:
         return list(ex.map(_one, items))
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_fixture_setup(fixturedef, request):
-    """Report slow fixture setups so seeding regressions stay visible."""
-    start = time.monotonic()
-    yield
-    elapsed = time.monotonic() - start
-    if elapsed > 5:
-        print(f"[slow fixture] {fixturedef.argname}: {elapsed:.1f}s", flush=True)
-
-
-def _get_or_register(create_fn: Callable, get_fn: Callable, *, timeout: float = 10.0):
+def _get_or_register(create_fn: Callable, get_fn: Callable, *, timeout: float = 5.0):
     """Create a shared (non-prefixed) entity, falling back to fetching it.
 
     Concurrent xdist workers register the same static entities; the backend may answer
     the loser with a 400 (already exists) or buckle with a 5xx. Either way the entity
-    usually exists, so poll the getter before giving up.
+    usually exists, so try the getter (briefly polling) before giving up.
     """
     try:
         return create_fn()
     except (BadRequestError, AlbertServerError) as e:
         deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
+        while True:
             with suppress(Exception):
                 found = get_fn()
                 if found is not None:
                     return found
+            if time.monotonic() >= deadline:
+                raise e
             time.sleep(0.5)
-        raise e
 
 
 def _delete_all(delete_fn: Callable, items, *suppressed: type[Exception]) -> None:
@@ -851,9 +847,11 @@ def seeded_entity_types(
         )
     ]
     yield seeded
-    _delete_all(
-        lambda entity_type: client.entity_types.delete(id=entity_type.id), seeded, NotFoundError
-    )
+    # Sequential teardown for the same reason; tolerate 5xx so cleanup errors
+    # don't fail the session
+    for entity_type in seeded:
+        with suppress(NotFoundError, AlbertServerError):
+            client.entity_types.delete(id=entity_type.id)
 
 
 @pytest.fixture(scope="session")

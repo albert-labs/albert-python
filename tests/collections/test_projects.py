@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
@@ -42,8 +44,9 @@ def test_project_search_filtered(client: Albert):
     assert_valid_project_items(advanced_list, ProjectSearchItem)
 
 
-def test_hydrate_project(client: Albert):
-    projects = list(client.projects.search(created_by=["Sdk"], max_items=5))
+def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
+    # Scope the search to this worker's seeds: other xdist workers may delete theirs mid-run
+    projects = list(client.projects.search(text=seed_prefix, max_items=5))
     assert projects, "Expected at least one project in search results"
 
     for project in projects:
@@ -99,18 +102,21 @@ def test_create_project(client: Albert, seeded_locations):
     client.projects.delete(id=created_project.id)
 
 
-def test_update_project(seeded_locations, client: Albert):
+def test_update_project(seeded_locations, client: Albert, seed_prefix: str):
     # Update a private project so shared seeded projects stay intact
     project = client.projects.create(
         project=Project(
-            description="Project to Update",
+            description=f"{seed_prefix} - Project to Update",
             locations=[EntityLink(id=seeded_locations[1].id)],
         )
     )
-    project.grid = "PD"
-    updated = client.projects.update(project=project)
-    assert updated.id == project.id
-    client.projects.delete(id=project.id)
+    try:
+        project.grid = "PD"
+        updated = client.projects.update(project=project)
+        assert updated.id == project.id
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
 
 
 def test_delete_project(client: Albert, seeded_locations):
