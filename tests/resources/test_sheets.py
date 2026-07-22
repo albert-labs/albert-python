@@ -326,6 +326,44 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         )
 
 
+def test_add_parameter_group_row_requires_process_design():
+    """Test that adding a PRG row fails when the sheet has no Process Design."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+    with pytest.raises(AlbertException, match="Process Design"):
+        sheet.add_parameter_group_row(parameter_group_id="PRG1")
+
+
+def test_add_parameter_group_row(
+    seeded_sheet: Sheet,
+    seeded_parameter_groups: list,
+):
+    """Test adding a parameter group row to Process Design when the sheet has one."""
+    if seeded_sheet.process_design is None:
+        pytest.skip("Seeded sheet has no Process Design section")
+
+    pg = seeded_parameter_groups[0]
+    row = seeded_sheet.add_parameter_group_row(parameter_group_id=pg.id)
+    assert isinstance(row, Row)
+    assert row.type == CellType.PRG
+    assert row.row_id.startswith("ROW")
+    # Process Design row deletes use the design-engine path.
+    seeded_sheet.session.delete(
+        f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
+        json=[{"rowId": row.row_id}],
+    )
+
+
 ########################## CELLS ##########################
 
 
