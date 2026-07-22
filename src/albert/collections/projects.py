@@ -281,8 +281,8 @@ class ProjectCollection(BaseCollection):
             Only include projects created on or before this date, formatted as
             ``YYYY-MM-DD``.
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the project. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
         from_updated_at : str, optional
             Only include projects updated on or after this date (ISO 8601).
         to_updated_at : str, optional
@@ -503,8 +503,8 @@ class ProjectCollection(BaseCollection):
             Only include projects created on or before this date, formatted as
             ``YYYY-MM-DD``.
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the project. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
         from_updated_at : str, optional
             Only include projects updated on or after this date (ISO 8601).
         to_updated_at : str, optional

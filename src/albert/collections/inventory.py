@@ -871,9 +871,10 @@ class InventoryCollection(BaseCollection):
             Only include items created on or before this date, formatted as
             ``YYYY-MM-DD``.
         updated_by : User or list[User], optional
-            Filter by user(s) who last updated the item. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names. Pass a
+            [`User`][albert.resources.users.User] with ``id`` set, or set ``name``
+            to the UserId.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
@@ -1035,9 +1036,10 @@ class InventoryCollection(BaseCollection):
             Only include items created on or before this date, formatted as
             ``YYYY-MM-DD``.
         updated_by : User or list[User], optional
-            Filter by user(s) who last updated the item. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names. Pass a
+            [`User`][albert.resources.users.User] with ``id`` set, or set ``name``
+            to the UserId.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional

@@ -199,8 +199,8 @@ class BTInsightCollection(BaseCollection):
             Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
             ``"USR4227"`` or ``"Jane Doe"``).
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the insight. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the insight. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
         from_updated_at : str, optional
             Only include insights updated on or after this date (ISO 8601).
         to_updated_at : str, optional

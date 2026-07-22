@@ -1440,8 +1440,8 @@ class PropertyDataCollection(BaseCollection):
         task_created_by : UserId or list[UserId], optional
             Filter by user IDs who created the task.
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the data. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the data. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
         from_created_at : str, optional
             Only include records created on or after this date (ISO 8601).
         to_created_at : str, optional

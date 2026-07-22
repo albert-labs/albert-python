@@ -739,8 +739,8 @@ class TaskCollection(BaseCollection):
         to_created_at : str, optional
             Only include items created on or before this date (ISO 8601).
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the tasks. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the tasks. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
@@ -902,8 +902,8 @@ class TaskCollection(BaseCollection):
         to_created_at : str, optional
             Only include items created on or before this date (ISO 8601).
         updated_by : str or list[str], optional
-            Filter by user(s) who last updated the tasks. Accepts user display
-            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+            Filter by user(s) who last updated the tasks. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
