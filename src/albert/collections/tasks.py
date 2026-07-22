@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from pydantic import validate_call
 from requests.exceptions import RetryError
@@ -673,6 +674,12 @@ class TaskCollection(BaseCollection):
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -723,9 +730,24 @@ class TaskCollection(BaseCollection):
         parameter_group : list[str], optional
             Parameter Group names associated with tasks.
         created_by : list[str], optional
-            User names who created the tasks.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
+        from_created_at : str, optional
+            Only include items created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include items created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the tasks. Accepts user display
+            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filters for custom field values, sent in the ``metadataFilters`` request
+            body field. When set, the search uses POST instead of GET.
         order_by : OrderBy, optional
             The order in which to return results (asc or desc), default DESCENDING.
         sort_by : str, optional
@@ -759,10 +781,34 @@ class TaskCollection(BaseCollection):
             "parameterGroup": parameter_group,
             "createdBy": created_by,
             "projectId": project_id,
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
         }
 
         category_values = ensure_list(category)
         params["category"] = category_values if category_values else None
+
+        deserialize = lambda items: [
+            TaskSearchItem(**item)._bind_collection(self) for item in items
+        ]
+
+        if metadata_filters is not None:
+            payload: dict[str, Any] = {
+                **params,
+                "metadataFilters": {"metadata": metadata_filters},
+            }
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -770,9 +816,7 @@ class TaskCollection(BaseCollection):
             session=self.session,
             params=params,
             max_items=max_items,
-            deserialize=lambda items: [
-                TaskSearchItem(**item)._bind_collection(self) for item in items
-            ],
+            deserialize=deserialize,
         )
 
     @validate_call
@@ -793,6 +837,12 @@ class TaskCollection(BaseCollection):
         parameter_group: list[str] | None = None,
         created_by: list[str] | None = None,
         project_id: ProjectId | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         max_items: int | None = None,
@@ -843,9 +893,24 @@ class TaskCollection(BaseCollection):
         parameter_group : list[str], optional
             Parameter Group names associated with tasks.
         created_by : list[str], optional
-            User names who created the tasks.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         project_id : ProjectId, optional
             ID of the parent project for filtering tasks.
+        from_created_at : str, optional
+            Only include items created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include items created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the tasks. Accepts user display
+            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filters for custom field values, sent in the ``metadataFilters`` request
+            body field. When set, the search uses POST instead of GET.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
@@ -875,6 +940,12 @@ class TaskCollection(BaseCollection):
             parameter_group=parameter_group,
             created_by=created_by,
             project_id=project_id,
+            from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
+            metadata_filters=metadata_filters,
             order_by=order_by,
             sort_by=sort_by,
             max_items=max_items,
