@@ -155,12 +155,13 @@ class InventoryCollection(BaseCollection):
         wire: list[str] = []
         for item in items:
             if isinstance(item, str):
-                wire.append(item)
+                if item:
+                    wire.append(item)
                 continue
             resolved = (item.id or item.name) if user_id_only else (item.name or item.id)
             if resolved:
                 wire.append(resolved)
-        return wire
+        return wire or None
 
     @validate_call
     def merge(

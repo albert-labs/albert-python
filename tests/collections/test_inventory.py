@@ -17,6 +17,7 @@ from albert.resources.inventory import (
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from albert.resources.users import User
 from albert.resources.workflows import Workflow
 
 
@@ -37,9 +38,12 @@ def test_inventory_get_all_with_pagination(client: Albert):
 
 
 def test_inventory_get_all_with_filters(
-    client: Albert, seeded_inventory: list[InventoryItem], seeded_cas: list[Cas]
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_cas: list[Cas],
+    static_user: User,
 ):
-    """Test inventory get_all with filters (text, category, cas, company)."""
+    """Test inventory get_all and search with filters (text, category, cas, company, user)."""
     test_item = seeded_inventory[1]
     matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
 
@@ -56,6 +60,25 @@ def test_inventory_get_all_with_filters(
     assert_valid_inventory_items(results)
     for item in results[:10]:
         assert test_item.name.lower() in item.name.lower()
+
+    user = User(id=static_user.id, name=static_user.name)
+    created_by_ids = {
+        item.id for item in client.inventory.search(created_by=static_user.id, max_items=5)
+    }
+    assert created_by_ids == {
+        item.id for item in client.inventory.search(created_by=static_user.name, max_items=5)
+    }
+    assert created_by_ids == {
+        item.id for item in client.inventory.search(created_by=user, max_items=5)
+    }
+    updated_by_ids = {
+        item.id for item in client.inventory.search(updated_by=static_user.id, max_items=5)
+    }
+    assert updated_by_ids == {
+        item.id for item in client.inventory.search(updated_by=user, max_items=5)
+    }
+    assert list(client.inventory.get_all(created_by=static_user.id, max_items=3))
+    assert client.inventory.get_all_facets(created_by=static_user.id)
 
 
 def test_inventory_hydration_from_search(client: Albert):
