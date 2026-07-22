@@ -1374,6 +1374,11 @@ class PropertyDataCollection(BaseCollection):
         # User filters
         created_by: list[UserId] | UserId | None = None,
         task_created_by: list[UserId] | UserId | None = None,
+        updated_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         # Response customization
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
@@ -1430,9 +1435,21 @@ class PropertyDataCollection(BaseCollection):
         unit : str or list[str], optional
             Filter by unit names.
         created_by : UserId or list[UserId], optional
-            Filter by user IDs who created the data.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         task_created_by : UserId or list[UserId], optional
             Filter by user IDs who created the task.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the data. Accepts user display
+            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include records created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include records created on or before this date (ISO 8601).
+        from_updated_at : str, optional
+            Only include records updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include records updated on or before this date (ISO 8601).
         return_fields : str or list[str], optional
             Specific fields to return.
         return_facets : str or list[str], optional
@@ -1470,6 +1487,11 @@ class PropertyDataCollection(BaseCollection):
             "unit": ensure_list(unit),
             "createdBy": ensure_list(created_by),
             "taskCreatedBy": ensure_list(task_created_by),
+            "updatedBy": ensure_list(updated_by),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "returnFields": ensure_list(return_fields),
             "returnFacets": ensure_list(return_facets),
         }
