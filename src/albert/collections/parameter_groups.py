@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -177,6 +178,13 @@ class ParameterGroupCollection(BaseCollection):
         tags: str | list[str] | None = None,
         parameters: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        created_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -221,6 +229,23 @@ class ParameterGroupCollection(BaseCollection):
             Additional fields to include on each returned search item. If omitted,
             a default set (ACL, creation info, metadata, owner, tags, and team) is
             requested.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include groups created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include groups created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the group. Accepts user display
+            name(s) or UserId(s) (e.g. ``"USR4227"`` or ``"Jane Doe"``).
+        from_updated_at : str, optional
+            Only include groups updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include groups updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filters for custom field values, sent in the ``metadataFilters`` request
+            body field.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
@@ -241,12 +266,20 @@ class ParameterGroupCollection(BaseCollection):
             "owner": ensure_list(owner),
             "tags": ensure_list(tags),
             "parameters": ensure_list(parameters),
+            "createdBy": ensure_list(created_by),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "additionalField": (
                 ensure_list(additional_field)
                 if additional_field is not None
                 else list(DEFAULT_ADDITIONAL_FIELDS)
             ),
         }
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
