@@ -179,12 +179,17 @@ class CasCollection(BaseCollection):
         Returns
         -------
         Iterator[Cas]
-            Matching CAS entries. Returns the underlying paginator (not a wrapping
-            generator) so ``has_more`` / ``total`` remain available to callers.
+            Matching CAS entries. On the filtered and unfiltered paths, ``has_more`` /
+            ``total`` remain available on the returned iterator.
         """
         params: dict[str, Any] = {"orderBy": order_by}
         if id is not None:
-            return iter((self.get_by_id(id=id),))
+            # Lazy single-item iterator: defer the lookup (and any NotFound) to first
+            # iteration, matching the previous generator behaviour.
+            def _single() -> Iterator[Cas]:
+                yield self.get_by_id(id=id)
+
+            return _single()
 
         if number is not None or cas:
             # Filtered search path: self-managed integer offset pagination.

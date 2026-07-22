@@ -190,43 +190,26 @@ class AlbertPaginator(Iterator[ItemType]):
         current = self._pagination_params.get("offset", 0)
         return int(current or 0) + count
 
-    def _probe_offset_has_more(self, *, data: dict[str, Any], count: int) -> bool:
-        """Return whether another offset page exists (one-item probe)."""
-        if count == 0:
-            return False
-        next_offset = self._next_request_offset(data=data, count=count)
-        if self.method == "GET":
-            probe_params = {**self.params, "offset": next_offset, "limit": 1}
-            response = self.session.get(self.path, params=probe_params)
-        else:
-            probe_payload = {
-                **self.json,
-                "offset": next_offset,
-                "limit": 1,
-            }
-            response = self.session.request(
-                self.method,
-                self.path,
-                params=self.params,
-                json=self._serialize_payload(probe_payload),
-            )
-        return bool(response.json().get("Items"))
-
     def _response_has_continuation(
         self, *, data: dict[str, Any], count: int, current_key: str | None
     ) -> bool:
-        """Return whether the current response indicates another page of results."""
+        """Return whether the current response indicates another page of results.
+
+        Best-effort from data already in hand: never issues an extra request, so a
+        caller's iteration makes exactly the pages it would have without ``has_more``.
+        A full page (``count >= limit``) is taken as "more likely exist"; a short page
+        is a natural end. When the backend ignores ``limit`` and under-returns while
+        more exist, only ``total`` (handled by the caller) can detect it.
+        """
         match self.mode:
             case PaginationMode.OFFSET:
                 if count == 0:
                     return False
                 limit = int(self._pagination_params.get("limit", DEFAULT_LIMIT))
-                if count >= limit:
-                    return True
-                # Short page at max_items cap — backend may page below requested limit.
-                return self._probe_offset_has_more(data=data, count=count)
+                return count >= limit
             case PaginationMode.KEY:
-                return current_key is not None
+                # Match _update_params: an empty-string lastKey is a terminal signal.
+                return bool(current_key)
             case mode:
                 raise AlbertException(f"Unknown pagination mode {mode}.")
 
@@ -288,6 +271,14 @@ class MetadataPreservingIterator(Iterator[OutType]):
 
     Use whenever a ``get_all`` wraps a search paginator in custom iteration (batch
     hydration, etc.). A plain generator would drop those completeness signals.
+
+    Parameters
+    ----------
+    source : Any
+        The underlying paginator (or any object exposing ``has_more`` / ``total``);
+        those attributes are read lazily so they reflect state after iteration.
+    items : Iterator[OutType]
+        The iterator actually yielded to the caller.
     """
 
     def __init__(self, source: Any, items: Iterator[OutType]):
@@ -315,6 +306,14 @@ class MappedPaginator(MetadataPreservingIterator[OutType]):
     """Map items from a source iterator while preserving ``has_more`` / ``total``.
 
     Use for ``get_all`` methods that hydrate each ``search`` hit via ``get_by_id``.
+
+    Parameters
+    ----------
+    source : Iterator[Any]
+        The underlying search paginator whose items are mapped.
+    map_fn : Callable[[Any], OutType | None]
+        Applied to each source item; returning ``None`` drops that item (e.g. a hit
+        that could not be hydrated), without affecting ``has_more`` / ``total``.
     """
 
     def __init__(
@@ -385,7 +384,9 @@ class AsyncAlbertPaginator(AsyncIterator[ItemType]):
                 yielded += 1
             key = data.get("lastKey")
             if self._max_items is not None and yielded >= self._max_items:
-                self._has_more = key is not None and bool(items)
+                # Match the terminal check below (``not key``): an empty-string lastKey
+                # is not a real continuation cursor.
+                self._has_more = bool(key) and bool(items)
                 return
             if not key or not items:
                 break
