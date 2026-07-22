@@ -34,6 +34,8 @@ from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
 
+UserSearchFilter = User | str | list[User | str]
+
 
 class InventoryCollection(BaseCollection):
     """Manage Inventory Items in the Albert platform.
@@ -134,6 +136,33 @@ class InventoryCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
+
+    def _user_search_filter_values(
+        self,
+        value: UserSearchFilter | None,
+        *,
+        user_id_only: bool = False,
+    ) -> list[str] | None:
+        """Serialize user search filters for inventory query params.
+
+        ``created_by`` accepts display names or UserIds (and legacy
+        [`User`][albert.resources.users.User] objects). ``updated_by`` accepts
+        UserIds only on the backend; pass a UserId string or a ``User`` with
+        ``id`` set.
+        """
+        items = ensure_list(value)
+        if not items:
+            return None
+
+        wire: list[str] = []
+        for item in items:
+            if isinstance(item, str):
+                wire.append(item)
+                continue
+            resolved = (item.id or item.name) if user_id_only else (item.name or item.id)
+            if resolved:
+                wire.append(resolved)
+        return wire
 
     @validate_call
     def merge(
@@ -537,13 +566,13 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: SearchProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: UserSearchFilter | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         offset: int | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
-        updated_by: list[User] | User | None = None,
+        updated_by: UserSearchFilter | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
     ):
@@ -555,10 +584,6 @@ class InventoryCollection(BaseCollection):
             company = [company]
         if isinstance(lot_owner, User):
             lot_owner = [lot_owner]
-        if isinstance(created_by, User):
-            created_by = [created_by]
-        if isinstance(updated_by, User):
-            updated_by = [updated_by]
         if isinstance(location, Location):
             location = [location]
         if isinstance(storage_location, StorageLocation):
@@ -577,13 +602,13 @@ class InventoryCollection(BaseCollection):
                 [c.name for c in storage_location] if storage_location is not None else None
             ),
             "lotOwner": [c.name for c in lot_owner] if lot_owner is not None else None,
-            "createdBy": [c.name for c in created_by] if created_by is not None else None,
+            "createdBy": self._user_search_filter_values(created_by),
             "sheetId": sheet_id,
             "projectId": project_id,
             "offset": offset,
             "fromCreatedAt": from_created_at if from_created_at is not None else None,
             "toCreatedAt": to_created_at if to_created_at is not None else None,
-            "updatedBy": [c.name for c in updated_by] if updated_by is not None else None,
+            "updatedBy": self._user_search_filter_values(updated_by, user_id_only=True),
             "fromUpdatedAt": from_updated_at if from_updated_at is not None else None,
             "toUpdatedAt": to_updated_at if to_updated_at is not None else None,
         }
@@ -602,7 +627,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: UserSearchFilter | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -641,10 +666,10 @@ class InventoryCollection(BaseCollection):
             Filter by project.
         sheet_id : WorksheetId, optional
             Filter by worksheet.
-        created_by : User or list[User], optional
+        created_by : str, User, or list[str | User], optional
             Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
-            ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner.
         tags : list[str], optional
@@ -695,7 +720,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: UserSearchFilter | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -734,10 +759,10 @@ class InventoryCollection(BaseCollection):
             Filter by project.
         sheet_id : WorksheetId | None, optional
             Filter by worksheet.
-        created_by : list[User] | User | None, optional
+        created_by : str, User, or list[str | User], optional
             Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
-            ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : list[User] | User | None, optional
             Filter by lot owner.
         tags : list[str] | None, optional
@@ -786,7 +811,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: UserSearchFilter | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -796,7 +821,7 @@ class InventoryCollection(BaseCollection):
         offset: int | None = 0,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
-        updated_by: list[User] | User | None = None,
+        updated_by: UserSearchFilter | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
@@ -847,10 +872,10 @@ class InventoryCollection(BaseCollection):
             Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
+        created_by : str, User, or list[str | User], optional
             Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
-            ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
@@ -870,11 +895,10 @@ class InventoryCollection(BaseCollection):
         to_created_at : str, optional
             Only include items created on or before this date, formatted as
             ``YYYY-MM-DD``.
-        updated_by : User or list[User], optional
+        updated_by : str, User, or list[str | User], optional
             Filter by user(s) who last updated the item. Accepts UserId(s) only
-            (e.g. ``"USR4227"``), not display names. Pass a
-            [`User`][albert.resources.users.User] with ``id`` set, or set ``name``
-            to the UserId.
+            (e.g. ``"USR4227"``), not display names. Pass a UserId string, or a
+            [`User`][albert.resources.users.User] with ``id`` set.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
@@ -956,7 +980,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: UserSearchFilter | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -966,7 +990,7 @@ class InventoryCollection(BaseCollection):
         offset: int | None = 0,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
-        updated_by: list[User] | User | None = None,
+        updated_by: UserSearchFilter | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
@@ -1012,10 +1036,10 @@ class InventoryCollection(BaseCollection):
             Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
+        created_by : str, User, or list[str | User], optional
             Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
-            ``"USR4227"`` or ``"Jane Doe"``). Pass
-            [`User`][albert.resources.users.User] object(s).
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
@@ -1035,11 +1059,10 @@ class InventoryCollection(BaseCollection):
         to_created_at : str, optional
             Only include items created on or before this date, formatted as
             ``YYYY-MM-DD``.
-        updated_by : User or list[User], optional
+        updated_by : str, User, or list[str | User], optional
             Filter by user(s) who last updated the item. Accepts UserId(s) only
-            (e.g. ``"USR4227"``), not display names. Pass a
-            [`User`][albert.resources.users.User] with ``id`` set, or set ``name``
-            to the UserId.
+            (e.g. ``"USR4227"``), not display names. Pass a UserId string, or a
+            [`User`][albert.resources.users.User] with ``id`` set.
         from_updated_at : str, optional
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
