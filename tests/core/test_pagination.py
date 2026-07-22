@@ -1,6 +1,12 @@
-"""Unit tests for AlbertPaginator offset continuation."""
+"""Paginator completeness tests (``has_more`` / ``total``).
 
-from unittest.mock import AsyncMock, MagicMock
+These exercise the pagination state machine with scripted responses so edge cases
+(broken offset backends, KEY-mode lastKey, mid-page caps) stay deterministic.
+"""
+
+from __future__ import annotations
+
+from typing import Any
 
 from albert.collections.cas import CasPaginator
 from albert.core.pagination import (
@@ -12,42 +18,92 @@ from albert.core.pagination import (
 from albert.core.shared.enums import PaginationMode
 
 
+class _JsonResponse:
+    def __init__(self, data: dict[str, Any]) -> None:
+        self._data = data
+
+    def json(self) -> dict[str, Any]:
+        return self._data
+
+
+class _ScriptedSession:
+    """Minimal session that returns a fixed sequence of JSON page payloads."""
+
+    def __init__(self, pages: list[dict[str, Any]]) -> None:
+        self._pages = list(pages)
+        self.requests: list[dict[str, Any]] = []
+
+    @property
+    def call_count(self) -> int:
+        return len(self.requests)
+
+    def get(self, path: str, params: dict[str, Any] | None = None, **kwargs: Any) -> _JsonResponse:
+        self.requests.append({"method": "GET", "path": path, "params": params})
+        return _JsonResponse(self._pages.pop(0))
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> _JsonResponse:
+        self.requests.append({"method": method, "path": path, "params": params, "json": json})
+        return _JsonResponse(self._pages.pop(0))
+
+
+class _AsyncScriptedSession:
+    """Async counterpart of ``_ScriptedSession`` for ``AsyncAlbertPaginator``."""
+
+    def __init__(self, pages: list[dict[str, Any]]) -> None:
+        self._pages = list(pages)
+        self.requests: list[dict[str, Any]] = []
+
+    @property
+    def call_count(self) -> int:
+        return len(self.requests)
+
+    async def get(
+        self, path: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> _JsonResponse:
+        self.requests.append({"method": "GET", "path": path, "params": params})
+        return _JsonResponse(self._pages.pop(0))
+
+
 def _page(
     items: list[int],
     *,
     offset: int | None = None,
     total: int | str | None = None,
     last_key: str | None = None,
-) -> MagicMock:
-    data: dict = {"Items": [{"id": i} for i in items]}
+) -> dict[str, Any]:
+    data: dict[str, Any] = {"Items": [{"id": i} for i in items]}
     if offset is not None:
         data["offset"] = offset
     if total is not None:
         data["total"] = total
     if last_key is not None:
         data["lastKey"] = last_key
-    resp = MagicMock()
-    resp.json.return_value = data
-    return resp
+    return data
 
 
-def _cas_page(count: int) -> MagicMock:
+def _cas_page(count: int) -> dict[str, Any]:
     """A CAS listing page whose items deserialize into ``Cas`` (needs ``number``)."""
-    resp = MagicMock()
-    resp.json.return_value = {
-        "Items": [{"id": f"CAS{i}", "number": f"{i}-00-0"} for i in range(count)]
+    return {
+        "Items": [{"id": f"CAS{i}", "number": f"{i}-00-0"} for i in range(count)],
     }
-    return resp
 
 
 def test_offset_pagination_when_response_omits_offset() -> None:
     """Projects search often returns Items without echoing offset — still paginate."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(25))),
-        _page(list(range(25, 35))),
-        _page([]),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(25))),
+            _page(list(range(25, 35))),
+            _page([]),
+        ]
+    )
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -60,19 +116,20 @@ def test_offset_pagination_when_response_omits_offset() -> None:
 
     assert len(items) == 35
     assert pag.has_more is False
-    assert session.get.call_count == 3
+    assert session.call_count == 3
     # Params dict is mutated in place; final offset reflects two full pages consumed.
     assert pag.params["offset"] == 35
 
 
 def test_pages_past_a_full_first_page() -> None:
     """A full first page is not the end; keep paging until an empty page."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(1000))),
-        _page(list(range(1000, 2000))),
-        _page([]),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(1000))),
+            _page(list(range(1000, 2000))),
+            _page([]),
+        ]
+    )
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -85,15 +142,12 @@ def test_pages_past_a_full_first_page() -> None:
 
     assert len(items) == 2000
     assert pag.has_more is False
-    assert session.get.call_count == 3
+    assert session.call_count == 3
 
 
 def test_has_more_false_when_max_items_equals_known_total() -> None:
     """Full final page with known total — complete, not truncated."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(1000)), offset=0, total=1000),
-    ]
+    session = _ScriptedSession([_page(list(range(1000)), offset=0, total=1000)])
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -112,8 +166,7 @@ def test_has_more_false_when_max_items_equals_known_total() -> None:
 
 def test_has_more_true_when_max_items_hits_full_page_boundary() -> None:
     """A full page (count == limit) at the cap signals more likely exist, no extra request."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(25)))]
+    session = _ScriptedSession([_page(list(range(25)))])
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -128,13 +181,12 @@ def test_has_more_true_when_max_items_hits_full_page_boundary() -> None:
     assert len(items) == 25
     assert pag.has_more is True
     # No probe request: the caller sees exactly the pages it asked for.
-    assert session.get.call_count == 1
+    assert session.call_count == 1
 
 
 def test_has_more_false_when_max_items_hits_short_page_without_total() -> None:
     """A short page at the cap with no total is a natural end, not a truncation."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(25)))]
+    session = _ScriptedSession([_page(list(range(25)))])
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -148,13 +200,12 @@ def test_has_more_false_when_max_items_hits_short_page_without_total() -> None:
 
     assert len(items) == 25
     assert pag.has_more is False
-    assert session.get.call_count == 1
+    assert session.call_count == 1
 
 
 def test_has_more_true_when_max_items_cuts_off_mid_page() -> None:
     """Stopping mid-page leaves an unyielded item, a definitive signal more exist."""
-    session = MagicMock()
-    session.get.side_effect = [_cas_page(50)]
+    session = _ScriptedSession([_cas_page(50)])
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -172,8 +223,7 @@ def test_has_more_true_when_max_items_cuts_off_mid_page() -> None:
 
 def test_has_more_false_before_iteration() -> None:
     """has_more is a post-iteration signal; a fresh paginator reports False."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(5)))]
+    session = _ScriptedSession([_page(list(range(5)))])
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -189,11 +239,12 @@ def test_has_more_false_before_iteration() -> None:
 
 def test_has_more_when_offset_broken_but_total_exceeds_page() -> None:
     """Backend ignores limit (25/page) and returns empty for offset>0 — still not complete."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(25)), offset=0, total="15184"),
-        _page([], offset=25, total="15184"),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(25)), offset=0, total="15184"),
+            _page([], offset=25, total="15184"),
+        ]
+    )
 
     pag = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -211,11 +262,12 @@ def test_has_more_when_offset_broken_but_total_exceeds_page() -> None:
 
 def test_mapped_paginator_preserves_has_more_and_total() -> None:
     """get_all hydration wrappers must not drop the search paginator's completeness."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(25)), offset=0, total="15184"),
-        _page([], offset=25, total="15184"),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(25)), offset=0, total="15184"),
+            _page([], offset=25, total="15184"),
+        ]
+    )
 
     source = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -234,11 +286,12 @@ def test_mapped_paginator_preserves_has_more_and_total() -> None:
 
 def test_metadata_preserving_iterator_for_batch_hydration() -> None:
     """Batch-hydrating get_all (e.g. data_templates) must keep source has_more/total."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(25)), offset=0, total="5964"),
-        _page([], offset=25, total="5964"),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(25)), offset=0, total="5964"),
+            _page([], offset=25, total="5964"),
+        ]
+    )
 
     source = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -262,11 +315,12 @@ def test_metadata_preserving_iterator_for_batch_hydration() -> None:
 
 def test_mapped_paginator_drops_none_without_affecting_completeness() -> None:
     """map_fn returning None (e.g. a hit that failed to hydrate) drops the item only."""
-    session = MagicMock()
-    session.get.side_effect = [
-        _page(list(range(10)), offset=0, total=10),
-        _page([], offset=10, total=10),
-    ]
+    session = _ScriptedSession(
+        [
+            _page(list(range(10)), offset=0, total=10),
+            _page([], offset=10, total=10),
+        ]
+    )
 
     source = AlbertPaginator(
         mode=PaginationMode.OFFSET,
@@ -286,8 +340,7 @@ def test_mapped_paginator_drops_none_without_affecting_completeness() -> None:
 
 def test_key_mode_has_more_true_when_max_items_hits_full_page_with_last_key() -> None:
     """KEY mode: a full page plus a continuation key at the cap means more exist."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(10)), last_key="KEY1")]
+    session = _ScriptedSession([_page(list(range(10)), last_key="KEY1")])
 
     pag = AlbertPaginator(
         mode=PaginationMode.KEY,
@@ -300,13 +353,12 @@ def test_key_mode_has_more_true_when_max_items_hits_full_page_with_last_key() ->
 
     assert len(items) == 10
     assert pag.has_more is True
-    assert session.get.call_count == 1
+    assert session.call_count == 1
 
 
 def test_key_mode_has_more_false_on_empty_last_key_at_cap() -> None:
     """KEY mode: an empty-string lastKey is terminal, matching page advancement."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(10)), last_key="")]
+    session = _ScriptedSession([_page(list(range(10)), last_key="")])
 
     pag = AlbertPaginator(
         mode=PaginationMode.KEY,
@@ -323,8 +375,7 @@ def test_key_mode_has_more_false_on_empty_last_key_at_cap() -> None:
 
 def test_key_mode_has_more_false_on_natural_end() -> None:
     """KEY mode: no lastKey ends iteration with has_more False."""
-    session = MagicMock()
-    session.get.side_effect = [_page(list(range(5)))]
+    session = _ScriptedSession([_page(list(range(5)))])
 
     pag = AlbertPaginator(
         mode=PaginationMode.KEY,
@@ -344,9 +395,7 @@ def test_cas_paginator_short_final_page_at_cap_is_complete() -> None:
     Regression: the removed offset-probe re-served the current page for startKey
     pagination and reported has_more True on every capped CAS search.
     """
-    session = MagicMock()
-    # 30 matches total (< the 50 page size): one short page, then the cap lands on it.
-    session.get.side_effect = [_cas_page(30)]
+    session = _ScriptedSession([_cas_page(30)])
 
     pag = CasPaginator(
         path="/api/v3/cas",
@@ -359,13 +408,12 @@ def test_cas_paginator_short_final_page_at_cap_is_complete() -> None:
     assert len(items) == 30
     assert pag.has_more is False
     # No hidden probe request.
-    assert session.get.call_count == 1
+    assert session.call_count == 1
 
 
 def test_cas_paginator_full_page_at_cap_signals_more() -> None:
     """CasPaginator: a full 50-item page at the cap signals more likely exist."""
-    session = MagicMock()
-    session.get.side_effect = [_cas_page(50)]
+    session = _ScriptedSession([_cas_page(50)])
 
     pag = CasPaginator(
         path="/api/v3/cas",
@@ -377,13 +425,12 @@ def test_cas_paginator_full_page_at_cap_signals_more() -> None:
 
     assert len(items) == 50
     assert pag.has_more is True
-    assert session.get.call_count == 1
+    assert session.call_count == 1
 
 
 async def test_async_paginator_has_more_true_at_cap_with_last_key() -> None:
     """Async KEY paginator sets has_more when the cap coincides with a continuation key."""
-    session = MagicMock()
-    session.get = AsyncMock(side_effect=[_page(list(range(10)), last_key="KEY1")])
+    session = _AsyncScriptedSession([_page(list(range(10)), last_key="KEY1")])
 
     pag = AsyncAlbertPaginator(
         session=session,
@@ -399,8 +446,7 @@ async def test_async_paginator_has_more_true_at_cap_with_last_key() -> None:
 
 async def test_async_paginator_empty_last_key_is_terminal() -> None:
     """Async KEY paginator: an empty-string lastKey at the cap is not a continuation."""
-    session = MagicMock()
-    session.get = AsyncMock(side_effect=[_page(list(range(10)), last_key="")])
+    session = _AsyncScriptedSession([_page(list(range(10)), last_key="")])
 
     pag = AsyncAlbertPaginator(
         session=session,

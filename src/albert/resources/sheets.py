@@ -1560,8 +1560,6 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """Add a parameter group (PRG) row to this sheet's Process Design.
 
         The platform expands the PRG into one PRM row per parameter in the group.
-        Process Design uses the design-engine rows API
-        (``/api/v3/designs/{id}/rows``), not the worksheet design rows endpoint.
 
         !!! example
             ```python
@@ -1586,7 +1584,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Raises
         ------
         AlbertException
-            If the sheet has no Process Design section.
+            If the sheet has no Process Design section, or the response has no rows.
         """
         design_obj = self.process_design
         if design_obj is None:
@@ -1607,6 +1605,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         rows = response.json()
         if not isinstance(rows, list):
             rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding parameter group '{parameter_group_id}' "
+                f"to Process Design '{design_obj.id}'"
+            )
         data = next((row for row in rows if row.get("type") == CellType.PRG.value), rows[0])
         return Row(
             rowId=data["rowId"],

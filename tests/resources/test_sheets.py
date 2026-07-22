@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import pytest
 
@@ -12,6 +14,7 @@ from albert.resources.sheets import (
     Row,
     Sheet,
 )
+from tests.utils.fake_session import FakeAlbertSession
 
 
 def test_get_current_cell_exact_row_match():
@@ -341,6 +344,32 @@ def test_add_parameter_group_row_requires_process_design():
         projectId="PRJ1",
     )
     with pytest.raises(AlbertException, match="Process Design"):
+        sheet.add_parameter_group_row(parameter_group_id="PRG1")
+
+
+def test_add_parameter_group_row_empty_response_raises():
+    """Test that an empty create response raises a clear AlbertException."""
+    session = FakeAlbertSession()
+    session.configure_response(
+        "POST",
+        "/api/v3/designs/DES4/rows",
+        json.dumps([]).encode(),
+    )
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+    with pytest.raises(AlbertException, match="No rows returned"):
         sheet.add_parameter_group_row(parameter_group_id="PRG1")
 
 
