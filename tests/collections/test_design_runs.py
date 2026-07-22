@@ -66,9 +66,9 @@ def test_design_run_create_with_settings(
 
 
 @ignore_in_ten0
-def test_design_run_validate(client: Albert, seeded_smart_dataset: SmartDataset):
+def test_design_run_validate(client: Albert, seeded_built_smart_dataset: SmartDataset):
     """Test validating a READY smart dataset returns valid=True."""
-    result = client.design_runs.validate(smart_dataset_id=seeded_smart_dataset.id)
+    result = client.design_runs.validate(smart_dataset_id=seeded_built_smart_dataset.id)
     assert isinstance(result, DesignRunValidationResponse)
     assert result.valid is True
     assert result.violations == []
@@ -77,12 +77,12 @@ def test_design_run_validate(client: Albert, seeded_smart_dataset: SmartDataset)
 @ignore_in_ten0
 def test_design_run_validate_with_objectives(
     client: Albert,
-    seeded_smart_dataset: SmartDataset,
+    seeded_built_smart_dataset: SmartDataset,
 ):
     """Test validating with explicit objectives returns valid=True."""
-    target_id = seeded_smart_dataset.scope.target_ids[0]
+    target_id = seeded_built_smart_dataset.scope.target_ids[0]
     result = client.design_runs.validate(
-        smart_dataset_id=seeded_smart_dataset.id,
+        smart_dataset_id=seeded_built_smart_dataset.id,
         objectives={
             target_id: Criterion(
                 operator=ComparisonOperator.BETWEEN,

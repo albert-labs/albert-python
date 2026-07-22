@@ -3,6 +3,7 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId, TargetId
+from albert.exceptions import AlbertClientError
 from albert.resources.btinsight import BTInsight
 from albert.resources.design import (
     DesignMethod,
@@ -120,8 +121,18 @@ class DesignRunCollection(BaseCollection):
         """Validate a design run configuration without starting a job.
 
         Uses the same request shape as [`create`][albert.collections.design_runs.DesignRunCollection.create].
-        A response with ``valid=False`` is a normal outcome, not an HTTP error; inspect
-        ``violations`` for actionable detail.
+
+        The platform uses two outcomes:
+
+        - **HTTP 200** — pre-checks passed and engine validation ran. Returns
+          [`DesignRunValidationResponse`][albert.resources.design.DesignRunValidationResponse].
+          ``valid=False`` with populated ``violations`` is a normal result (engine preflight
+          failed); it is **not** raised as an exception.
+        - **HTTP 422** — input/pre-check errors (dataset not ``READY``, objective out of scope,
+          invalid settings, etc.). Raised as [`AlbertClientError`][albert.exceptions.AlbertClientError]
+          with the platform error envelope in the exception message — same class of failure as
+          calling [`create`][albert.collections.design_runs.DesignRunCollection.create] with a
+          bad configuration.
 
         Parameters
         ----------
@@ -138,7 +149,15 @@ class DesignRunCollection(BaseCollection):
         Returns
         -------
         DesignRunValidationResponse
-            Preflight result with ``valid`` and optional ``violations``.
+            Preflight result with ``valid`` and ``violations`` when HTTP status is 200.
+
+        Raises
+        ------
+        AlbertClientError
+            Pre-check failures (typically HTTP 422).
+        AlbertHTTPError
+            Other non-success HTTP responses (400, 401, 403, 5xx). See
+            [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
         """
         body = _build_design_run_request(
             smart_dataset_id=smart_dataset_id,

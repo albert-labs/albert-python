@@ -953,10 +953,15 @@ def seeded_built_smart_dataset(
         seeded_targets=seeded_targets,
     )
     created = client.smart_datasets.create(scope=scope, build=True)
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 180
     while created.build_state != SmartDatasetBuildState.READY and time.monotonic() < deadline:
         time.sleep(2)
         created = client.smart_datasets.get_by_id(id=created.id)
+    if created.build_state != SmartDatasetBuildState.READY:
+        pytest.fail(
+            f"Smart dataset {created.id} did not reach READY within 180s "
+            f"(build_state={created.build_state})"
+        )
     yield created
     with suppress(NotFoundError, BadRequestError):
         client.smart_datasets.delete(id=created.id)
