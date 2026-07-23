@@ -56,7 +56,7 @@ class SmartProject(BaseSessionResource):
     """Build logs for the smart dataset."""
 
     last_refresh_at: datetime | None = Field(default=None, alias="lastRefreshAt")
-    """When the smart dataset was last refreshed. Methods ------- add_target(target) -> SmartProject Add a target to this smart project's scope. remove_target(target, delete) -> SmartProject Remove a target from this smart project's scope. update_dataset(dataset) -> SmartProject Update the smart dataset attached to this smart project."""
+    """When the smart dataset was last refreshed."""
 
     def _refresh(self) -> SmartProject:
         """Re-fetch the smart project and update this instance in place."""
