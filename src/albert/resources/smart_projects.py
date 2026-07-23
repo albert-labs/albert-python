@@ -32,7 +32,56 @@ class SmartProjectPatchAttribute(str, Enum):
 
 
 class SmartProject(BaseSessionResource):
-    """Smart project interface for a project.
+    """Project-bound interface for Smart Projects workflows.
+
+    [`SmartProject`][albert.resources.smart_projects.SmartProject] is the SDK
+    entry point for anything that mirrors the Smart Projects product experience:
+    targets and smart datasets scoped to a specific project. Access it via
+    [`Project.smart`][albert.resources.projects.Project.smart] after fetching or
+    creating a project.
+
+    For resources that exist independently of a project, use the standalone
+    collections instead:
+    [`TargetCollection`][albert.collections.targets.TargetCollection]
+    (``client.targets``) and
+    [`SmartDatasetCollection`][albert.collections.smart_datasets.SmartDatasetCollection]
+    (``client.smart_datasets``). Those collections create entities on their own;
+    associating them with a project requires separate steps.
+
+    Methods on this resource that accept new entity payloads (without an existing
+    ID) perform create-and-assign in a single call. No prior call to
+    ``client.targets.create`` or ``client.smart_datasets.create`` is required
+    for the project-bound Smart Projects flow.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.targets import (
+            Target,
+            TargetType,
+            Criterion,
+            ComparisonOperator,
+        )
+
+        client = Albert()
+        project = client.projects.get_by_id(id="PRO123")
+        smart = project.smart
+
+        # Create a target and add it to the project in one step
+        smart.add_target(
+            target=Target(
+                name="Viscosity spec",
+                type=TargetType.PERFORMANCE,
+                data_template_id="DAT1",
+                data_column_id="DAC1",
+                target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+            )
+        )
+
+        # Build and attach a smart dataset from the current target scope
+        smart.update_dataset()
+        ```
+
     Methods
     -------
     add_target(target) -> SmartProject
@@ -93,17 +142,37 @@ class SmartProject(BaseSessionResource):
     def add_target(self, *, target: Target | TargetId) -> SmartProject:
         """Add a target to this smart project's scope.
 
+        When adding a target as part of a Smart Projects workflow, pass a new
+        [`Target`][albert.resources.targets.Target] without an ``id``. That
+        creates the target and associates it with this project in one call; no
+        separate ``client.targets.create`` is needed.
+
         Parameters
         ----------
         target : Target | TargetId
-            The target to add. An existing target, a ``TargetId`` or a ``Target``
-            with an ``id``, is registered to the scope. A new ``Target`` (without
-            an ``id``) is created and registered.
+            The target to add. See Notes for how the argument is interpreted.
 
         Returns
         -------
         SmartProject
             This smart project, updated.
+
+        Notes
+        -----
+        ``target`` is interpreted in three ways:
+
+        * A [`Target`][albert.resources.targets.Target] **without** an ``id``:
+          create the target and associate it with this project. This is the
+          Smart Projects UX path.
+        * A [`Target`][albert.resources.targets.Target] **with** an ``id``:
+          associate that existing target with this project (does not create a
+          new target).
+        * A [`TargetId`][albert.core.shared.identifiers.TargetId]: associate
+          that existing target with this project.
+
+        Only the first path (new ``Target`` without ``id``) is supported by the
+        current Smart Projects product UI. The other paths are available
+        programmatically.
         """
 
         # If the target is a new target, create it and add it to the scope.
@@ -156,17 +225,36 @@ class SmartProject(BaseSessionResource):
     ) -> SmartProject:
         """Update the smart dataset attached to this smart project.
 
+        When building a dataset as part of a Smart Projects workflow, pass a
+        [`SmartDatasetScope`][albert.resources.smart_datasets.SmartDatasetScope]
+        or omit ``dataset`` entirely. Either choice builds a new smart dataset
+        from the scope and attaches it to this project in one call; no separate
+        ``client.smart_datasets.create`` is needed.
+
         Parameters
         ----------
         dataset : SmartDatasetId | SmartDatasetScope | None, optional
-            If a SmartDatasetId, that existing smart dataset is attached to the smart project.
-            If a SmartDatasetScope, a new smart dataset is built from the scope and attached to the smart project.
-            If None, the current smart project scope is used to build a new smart dataset.
+            If a [`SmartDatasetId`][albert.core.shared.identifiers.SmartDatasetId],
+            attach that existing smart dataset to this project. If a
+            [`SmartDatasetScope`][albert.resources.smart_datasets.SmartDatasetScope],
+            build a new smart dataset from the scope and attach it. If ``None``,
+            build from this smart project's current target scope.
 
         Returns
         -------
         SmartProject
             This smart project, updated.
+
+        Notes
+        -----
+        When ``dataset`` is a
+        [`SmartDatasetScope`][albert.resources.smart_datasets.SmartDatasetScope]
+        or ``None``, this method performs create-and-assign in one step for the
+        project-bound Smart Projects flow. When ``dataset`` is a
+        [`SmartDatasetId`][albert.core.shared.identifiers.SmartDatasetId], an
+        existing smart dataset built via
+        [`SmartDatasetCollection`][albert.collections.smart_datasets.SmartDatasetCollection]
+        is attached instead.
         """
 
         # Existing dataset ID (SmartDatasetId is an Annotated[str, ...] alias, so check str)
