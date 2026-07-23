@@ -70,6 +70,18 @@ class Lot(BaseResource):
     A lot's own ID has the format ``LOT...``; its parent ``inventory_id`` has the
     format ``INV...``.
 
+    Notes
+    -----
+    Fields required when creating a lot via
+    [`create`][albert.collections.lots.LotCollection.create] depend on the path:
+
+    - **Regular lot** (no ``task_id``): ``inventory_id``, ``storage_location``,
+      ``initial_quantity``, and ``inventory_on_hand`` (usually the same value as
+      ``initial_quantity``). When the parent Inventory Item is ``RawMaterials``,
+      ``cost`` and ``manufacturer_lot_number`` are also required.
+    - **Task lot** (``task_id`` set, batch / ``Formulas`` path): ``inventory_id``
+      and ``location`` (not ``storage_location``).
+
     !!! example
         ```python
         from albert import Albert
@@ -80,6 +92,9 @@ class Lot(BaseResource):
             inventory_id="INVA1",
             storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
             initial_quantity=10.0,
+            inventory_on_hand=10.0,
+            cost=50.0,
+            manufacturer_lot_number="MLN-001",
         )
         created = client.lots.create(lots=[lot])
         ```"""
@@ -91,33 +106,61 @@ class Lot(BaseResource):
     """The lot's Albert ID (format ``LOT...``). Assigned by Albert; present on lots retrieved from the platform."""
 
     inventory_id: InventoryId = Field(alias="parentId")
-    """The Albert ID of the parent Inventory Item this lot is a batch of."""
+    """The Albert ID of the parent Inventory Item this lot is a batch of.
+
+    Required when creating a lot.
+    """
 
     task_id: str | None = Field(default=None, alias="taskId")
-    """The Albert ID of the Task that produced this lot, if it came from one."""
+    """The Albert ID of the Task that produced this lot, if it came from one.
+
+    When set, creation follows the task / batch (``Formulas``) path: provide
+    ``location`` instead of ``storage_location``.
+    """
 
     expiration_date: str | None = Field(None, alias="expirationDate")
     """The date the lot expires, in ``YYYY-MM-DD`` format."""
 
     manufacturer_lot_number: str | None = Field(None, alias="manufacturerLotNumber")
-    """The manufacturer's own lot number for this batch."""
+    """The manufacturer's own lot number for this batch.
+
+    Required when creating a lot whose parent Inventory Item is ``RawMaterials``
+    (and ``task_id`` is not set). Optional on read and update.
+    """
 
     storage_location: SerializeAsEntityLink[StorageLocation] | None = Field(
         alias="StorageLocation", default=None
     )
-    """The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood)."""
+    """The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood).
+
+    Required when creating a non-task lot (no ``task_id``). Not used on the task /
+    batch (``Formulas``) create path.
+    """
 
     pack_size: str | None = Field(None, alias="packSize")
     """The pack size of the lot, used to calculate cost per unit."""
 
     initial_quantity: float | None = Field(default=None, alias="initialQuantity")
-    """The quantity the lot started with, in the parent item's units."""
+    """The quantity the lot started with, in the parent item's units.
+
+    Required when creating a non-task lot (no ``task_id``).
+    """
 
     cost: NonNegativeFloat | None = Field(default=None)
-    """The cost of the lot."""
+    """The cost of the lot.
+
+    Required when creating a lot whose parent Inventory Item is ``RawMaterials``
+    (and ``task_id`` is not set). Optional on read and update.
+    """
 
     inventory_on_hand: float = Field(alias="inventoryOnHand")
-    """The quantity currently in stock, in the parent item's units. Change it with [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by editing directly."""
+    """The quantity currently in stock, in the parent item's units.
+
+    Required when creating a non-task lot; set to the starting stock (usually the
+    same value as ``initial_quantity``). After creation, change it with
+    [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by
+    editing directly.
+    """
 
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="Owner")
     """The user(s) who own the lot. A lot may have at most one owner."""
@@ -143,7 +186,11 @@ class Lot(BaseResource):
         default=None,
         alias="Location",
     )
-    """The site/campus the lot is at (may contain multiple buildings, each with many storage locations)."""
+    """The site/campus the lot is at (may contain multiple buildings, each with many storage locations).
+
+    Required when creating a task lot (``task_id`` set). Read-only on lots returned
+    from GET; use ``storage_location`` for regular (non-task) lot creation.
+    """
 
     has_notes: bool | None = Field(default=None, alias="hasNotes", exclude=True, frozen=True)
     """Whether the lot has notes. Read-only."""
