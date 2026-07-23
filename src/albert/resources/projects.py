@@ -152,12 +152,20 @@ class Project(BaseSessionResource):
 
     @property
     def smart(self) -> SmartProject | None:
-        """Return the smart project resource for this project.
+        """Return the project-bound Smart Projects interface for this project.
+
+        Use this property for Smart Projects workflows: adding targets and
+        building smart datasets scoped to the project. For standalone target or
+        smart dataset creation, use
+        [`TargetCollection`][albert.collections.targets.TargetCollection] or
+        [`SmartDatasetCollection`][albert.collections.smart_datasets.SmartDatasetCollection]
+        instead.
 
         Returns
         -------
         SmartProject or None
-            The smart project associated with this project, or None if no smart project exists.
+            The [`SmartProject`][albert.resources.smart_projects.SmartProject]
+            for this project, or ``None`` if no smart project record exists yet.
         """
         if self._smart is None:
             response = self.session.get(f"{_PROJECTS_BASE_PATH}/{self.id}/getSmartProject")
