@@ -38,10 +38,7 @@ Get all projects:
 from albert import Albert
 
 # Initialize with a static JWT token
-client = Albert.from_token(
-    base_url="https://app.albertinvent.com",
-    token="YOUR_JWT_TOKEN"
-)
+client = Albert.from_token(base_url="https://app.albertinvent.com", token="YOUR_JWT_TOKEN")
 
 for project in client.projects.get_all(max_items=10):
     print(project.name)

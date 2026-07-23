@@ -24,16 +24,14 @@ For developers, please see the [contributing guide](CONTRIBUTING.md), which incl
 ## Quick Start
 
 ```python
-
 from albert import Albert
 
 client = Albert.from_client_credentials(
     base_url="https://app.albertinvent.com",
     client_id=YOUR_CLIENT_ID,
-    client_secret=YOUR_CLIENT_SECRET
+    client_secret=YOUR_CLIENT_SECRET,
 )
 projects = client.projects.get_all()
-
 ```
 
 ## Documentation
