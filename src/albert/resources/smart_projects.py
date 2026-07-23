@@ -75,6 +75,7 @@ class SmartProject(BaseSessionResource):
                 data_template_id="DAT1",
                 data_column_id="DAC1",
                 target_value=Criterion(operator=ComparisonOperator.GTE, value=90),
+                is_required=True,
             )
         )
 
