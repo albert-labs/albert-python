@@ -121,17 +121,14 @@ class DesignRunCollection(BaseCollection):
 
         Uses the same request shape as [`create`][albert.collections.design_runs.DesignRunCollection.create].
 
-        The platform uses two outcomes:
+        Returns a preflight result with ``valid`` and ``violations``. ``valid=False`` with
+        populated ``violations`` is a normal result and is not raised as an exception.
 
-        - **HTTP 200** — pre-checks passed and engine validation ran. Returns
-          [`DesignRunValidationResponse`][albert.resources.design.DesignRunValidationResponse].
-          ``valid=False`` with populated ``violations`` is a normal result (engine preflight
-          failed); it is **not** raised as an exception.
-        - **HTTP 422** — input/pre-check errors (dataset not ``READY``, objective out of scope,
-          invalid settings, etc.). Raised as [`AlbertClientError`][albert.exceptions.AlbertClientError]
-          with the platform error envelope in the exception message — same class of failure as
-          calling [`create`][albert.collections.design_runs.DesignRunCollection.create] with a
-          bad configuration.
+        Pre-check failures (e.g. dataset not ``READY``, objective out of scope, invalid
+        settings) are raised as [`AlbertClientError`][albert.exceptions.AlbertClientError],
+        the same class of failure as calling
+        [`create`][albert.collections.design_runs.DesignRunCollection.create] with a bad
+        configuration.
 
         Parameters
         ----------
@@ -148,15 +145,14 @@ class DesignRunCollection(BaseCollection):
         Returns
         -------
         DesignRunValidationResponse
-            Preflight result with ``valid`` and ``violations`` when HTTP status is 200.
+            Preflight result with ``valid`` and ``violations``.
 
         Raises
         ------
         AlbertClientError
-            Pre-check failures (typically HTTP 422).
+            Pre-check failures (invalid configuration before validation can run).
         AlbertHTTPError
-            Other non-success HTTP responses (400, 401, 403, 5xx). See
-            [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
+            Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
         """
         body = _build_design_run_request(
             smart_dataset_id=smart_dataset_id,

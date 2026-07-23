@@ -953,8 +953,8 @@ def seeded_built_smart_dataset(
         seeded_targets=seeded_targets,
     )
     created = client.smart_datasets.create(scope=scope, build=True)
-    timeout_s = 1
-    poll_interval_s = 0.1
+    timeout_s = 5
+    poll_interval_s = 0.5
     deadline = time.monotonic() + timeout_s
     while created.build_state != SmartDatasetBuildState.READY and time.monotonic() < deadline:
         time.sleep(poll_interval_s)
