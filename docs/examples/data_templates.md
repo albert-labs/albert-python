@@ -56,7 +56,9 @@ Data Templates in Albert Invent define how results are captured and structured. 
 
     # 3) Update template with a range constraint (must be between 0 and 100)
     target = next(x for x in (dt.data_column_values or []) if x.data_column_id == created_column.id)
-    target.validation = [ValueValidation(datatype=DataType.NUMBER, operator=Operator.BETWEEN, min="0", max="100")]
+    target.validation = [
+        ValueValidation(datatype=DataType.NUMBER, operator=Operator.BETWEEN, min="0", max="100")
+    ]
 
     updated_dt = client.data_templates.update(data_template=dt)
     print(updated_dt.id)
@@ -101,7 +103,9 @@ Data Templates in Albert Invent define how results are captured and structured. 
     )
 
     # 3) Update appearance column with dropdown (enum) validation
-    appearance = next(x for x in (dt.data_column_values or []) if x.data_column_id == appearance_column.id)
+    appearance = next(
+        x for x in (dt.data_column_values or []) if x.data_column_id == appearance_column.id
+    )
 
     appearance.validation = [
         ValueValidation(
