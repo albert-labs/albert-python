@@ -19,6 +19,44 @@ class DesignMethod(StrEnum):
     GENERATE = "generate"
 
 
+class DesignRunViolationCode(StrEnum):
+    """Structured preflight failure codes returned by design-run validation."""
+
+    INVALID_SETTINGS = "invalid_settings"
+    DATASET_NOT_READY = "dataset_not_ready"
+    OBJECTIVE_OUT_OF_SCOPE = "objective_out_of_scope"
+    NO_PERFORMANCE_TARGETS = "no_performance_targets"
+    INVALID_OBJECTIVE = "invalid_objective"
+    INSUFFICIENT_TRAINING_DATA = "insufficient_training_data"
+    INFEASIBLE_DESIGN_SPACE = "infeasible_design_space"
+    MODEL_TRAINING_ERROR = "model_training_error"
+    OPTIMIZATION_SYSTEM_MISMATCH = "optimization_system_mismatch"
+    INTERNAL = "internal"
+
+
+class DesignRunViolation(BaseAlbertModel):
+    """A single validation failure for a design-run configuration."""
+
+    code: DesignRunViolationCode
+    """Machine-readable violation category."""
+
+    message: str
+    """Human-readable explanation of the failure."""
+
+    target_id: str | None = Field(default=None, alias="targetId")
+    """Target id when the violation is scoped to one performance target."""
+
+
+class DesignRunValidationResponse(BaseAlbertModel):
+    """Preflight result for a design-run configuration."""
+
+    valid: bool
+    """Whether the configuration passed validation."""
+
+    violations: list[DesignRunViolation] = Field(default_factory=list)
+    """Structured failures when ``valid`` is ``False``."""
+
+
 class DesignRunSettings(BaseAlbertModel):
     """Optional run sizing for an inverse-design generate run.
 

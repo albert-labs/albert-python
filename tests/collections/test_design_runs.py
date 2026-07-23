@@ -2,7 +2,7 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
-from albert.resources.design import DesignRunSettings
+from albert.resources.design import DesignRunSettings, DesignRunValidationResponse
 from albert.resources.smart_datasets import SmartDataset
 from albert.resources.targets import (
     ComparisonOperator,
@@ -63,3 +63,32 @@ def test_design_run_create_with_settings(
     assert isinstance(insight, BTInsight)
     assert insight.id is not None
     assert insight.category == BTInsightCategory.GENERATE
+
+
+@ignore_in_ten0
+def test_design_run_validate(client: Albert, seeded_built_smart_dataset: SmartDataset):
+    """Test validating a READY smart dataset returns valid=True."""
+    result = client.design_runs.validate(smart_dataset_id=seeded_built_smart_dataset.id)
+    assert isinstance(result, DesignRunValidationResponse)
+    assert result.valid is True
+    assert result.violations == []
+
+
+@ignore_in_ten0
+def test_design_run_validate_with_objectives(
+    client: Albert,
+    seeded_built_smart_dataset: SmartDataset,
+):
+    """Test validating with explicit objectives returns valid=True."""
+    target_id = seeded_built_smart_dataset.scope.target_ids[0]
+    result = client.design_runs.validate(
+        smart_dataset_id=seeded_built_smart_dataset.id,
+        objectives={
+            target_id: Criterion(
+                operator=ComparisonOperator.BETWEEN,
+                value=NumericRange(min=0, max=100),
+            )
+        },
+    )
+    assert isinstance(result, DesignRunValidationResponse)
+    assert result.valid is True
