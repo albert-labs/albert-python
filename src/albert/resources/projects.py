@@ -6,7 +6,7 @@ from pydantic import Field, PrivateAttr, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import AttachmentId, ProjectId
-from albert.core.shared.models.base import BaseSessionResource
+from albert.core.shared.models.base import BaseSessionResource, EntityLinkWithName
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
@@ -187,6 +187,12 @@ class ProjectSearchItem(BaseAlbertModel, HydrationMixin[Project]):
 
     status: str | None = Field(default=None, exclude=True, frozen=True)
     """Read-only status string returned by Albert."""
+
+    application: list[EntityLinkWithName] | None = None
+    """Application tags associated with the project."""
+
+    technology: list[EntityLinkWithName] | None = None
+    """Technology tags associated with the project."""
 
 
 class DocumentSearchItem(BaseAlbertModel):

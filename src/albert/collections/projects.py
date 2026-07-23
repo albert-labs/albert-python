@@ -9,6 +9,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
@@ -219,6 +220,9 @@ class ProjectCollection(BaseCollection):
         technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
         contains_field: list[str] | None = None,
@@ -262,7 +266,8 @@ class ProjectCollection(BaseCollection):
         technology : list[str], optional
             Filter by technology tags.
         created_by : list[str], optional
-            Filter by user names who created the project.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         location : list[str], optional
             Filter by location(s).
         program : list[str], optional
@@ -270,9 +275,18 @@ class ProjectCollection(BaseCollection):
         technical_lead : list[str], optional
             Filter by technical lead (custom field).
         from_created_at : str, optional
-            Earliest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or after this date, formatted as
+            ``YYYY-MM-DD``.
         to_created_at : str, optional
-            Latest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include projects updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include projects updated on or before this date (ISO 8601).
         facet_field : str, optional
             Facet field to filter on.
         facet_text : str, optional
@@ -319,6 +333,9 @@ class ProjectCollection(BaseCollection):
             "technicalLead": technical_lead,
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "facetField": facet_field,
             "facetText": facet_text,
             "containsField": contains_field,
@@ -430,6 +447,9 @@ class ProjectCollection(BaseCollection):
         technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
         contains_field: list[str] | None = None,
@@ -468,7 +488,8 @@ class ProjectCollection(BaseCollection):
         technology : list[str], optional
             Filter by technology tags.
         created_by : list[str], optional
-            Filter by user names who created the project.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         location : list[str], optional
             Filter by location(s).
         program : list[str], optional
@@ -476,9 +497,18 @@ class ProjectCollection(BaseCollection):
         technical_lead : list[str], optional
             Filter by technical lead (custom field).
         from_created_at : str, optional
-            Earliest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or after this date, formatted as
+            ``YYYY-MM-DD``.
         to_created_at : str, optional
-            Latest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include projects updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include projects updated on or before this date (ISO 8601).
         facet_field : str, optional
             Facet field to filter on.
         facet_text : str, optional
@@ -517,6 +547,9 @@ class ProjectCollection(BaseCollection):
             technical_lead=technical_lead,
             from_created_at=from_created_at,
             to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
             facet_field=facet_field,
             facet_text=facet_text,
             contains_field=contains_field,
