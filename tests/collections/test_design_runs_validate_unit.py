@@ -22,7 +22,9 @@ def _json_response(*, status: int, body: dict, url: str) -> requests.Response:
 
 @pytest.fixture
 def client() -> Albert:
-    session = AlbertSession(base_url="https://test.albertinvent.com", token="fake-token", retries=0)
+    session = AlbertSession(
+        base_url="https://test.albertinvent.com", token="fake-token", retries=0
+    )
     return Albert(session=session)
 
 
@@ -73,9 +75,8 @@ def test_validate_raises_on_422_precheck(client: Albert):
     with patch(
         "requests.Session.request",
         return_value=_json_response(status=422, body=body, url=url),
-    ):
-        with pytest.raises(AlbertClientError, match="422"):
-            client.design_runs.validate(smart_dataset_id="SDT000001")
+    ), pytest.raises(AlbertClientError, match="422"):
+        client.design_runs.validate(smart_dataset_id="SDT000001")
 
 
 def test_validate_posts_to_validate_subpath(client: Albert):

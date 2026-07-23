@@ -953,10 +953,11 @@ def seeded_built_smart_dataset(
         seeded_targets=seeded_targets,
     )
     created = client.smart_datasets.create(scope=scope, build=True)
-    timeout_s = 10
+    timeout_s = 1
+    poll_interval_s = 0.1
     deadline = time.monotonic() + timeout_s
     while created.build_state != SmartDatasetBuildState.READY and time.monotonic() < deadline:
-        time.sleep(2)
+        time.sleep(poll_interval_s)
         created = client.smart_datasets.get_by_id(id=created.id)
     if created.build_state != SmartDatasetBuildState.READY:
         pytest.fail(

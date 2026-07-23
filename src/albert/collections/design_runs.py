@@ -3,7 +3,6 @@ from pydantic import validate_call
 from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId, TargetId
-from albert.exceptions import AlbertClientError
 from albert.resources.btinsight import BTInsight
 from albert.resources.design import (
     DesignMethod,
