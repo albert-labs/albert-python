@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.37.0](https://github.com/albert-labs/albert-python/compare/v1.36.1...v1.37.0) (2026-07-23)
+
+
+### Features
+
+* **design-runs:** add validate preflight method ([#638](https://github.com/albert-labs/albert-python/issues/638)) ([20b77f7](https://github.com/albert-labs/albert-python/commit/20b77f735b8f48c113ca88467dbb5482c9284caa))
+
 ## [1.36.1](https://github.com/albert-labs/albert-python/compare/v1.36.0...v1.36.1) (2026-07-20)
 
 
