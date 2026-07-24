@@ -7752,7 +7752,13 @@ only from the client's perspective.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Return the smart project resource for this project.</p>
+        <p>Return the project-bound Smart Projects interface for this project.</p>
+<p>Use this property for Smart Projects workflows: adding targets and
+building smart datasets scoped to the project. For standalone target or
+smart dataset creation, use
+<a class="autorefs autorefs-internal" href="../../collections/targets/#albert.collections.targets.TargetCollection"><code>TargetCollection</code></a> or
+<a class="autorefs autorefs-internal" href="../../collections/smart_datasets/#albert.collections.smart_datasets.SmartDatasetCollection"><code>SmartDatasetCollection</code></a>
+instead.</p>
 
 
     <p><span class="doc-section-title">Returns:</span></p>
@@ -7770,7 +7776,8 @@ only from the client's perspective.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The smart project associated with this project, or None if no smart project exists.</p>
+                <p>The [<code>SmartProject</code>][albert.resources.smart_projects.SmartProject]
+for this project, or <code>None</code> if no smart project record exists yet.</p>
               </div>
             </td>
           </tr>
