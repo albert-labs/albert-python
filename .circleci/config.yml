@@ -37,7 +37,7 @@ jobs:
       - run:
           name: Run pytest
           command: |
-            uv run pytest
+            uv run pytest -n 4 -v --tb=long -r fEsxX --showlocals --durations=15
 
   validate_version_bump:
     executor:

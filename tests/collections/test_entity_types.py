@@ -1,7 +1,11 @@
 from uuid import uuid4
 
+import pytest
+
 from albert import Albert
 from albert.resources.entity_types import EntityType, EntityTypeSearchQueryStrings
+
+pytestmark = pytest.mark.xdist_group("entitytypes")
 
 
 def test_entity_type_get_by_id(client: Albert, seeded_entity_types: list[EntityType]):

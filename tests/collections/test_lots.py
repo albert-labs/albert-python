@@ -9,6 +9,8 @@ from albert.resources.lots import Lot, LotAdjustmentAction
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
 
+pytestmark = pytest.mark.xdist_group("inventory")
+
 
 @pytest.fixture(scope="function")
 def seeded_lot(

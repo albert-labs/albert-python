@@ -1,6 +1,10 @@
+import pytest
+
 from albert import Albert
 from albert.resources.custom_fields import CustomField, FieldType
 from albert.resources.lists import ListItem
+
+pytestmark = pytest.mark.xdist_group("lists")
 
 
 def assert_valid_list_items(list_items: list[ListItem]):

@@ -44,6 +44,7 @@ dev = [
     "pre-commit>=4.2.0",
     "rich>=14.3.2",
     "pytest-asyncio>=1.3.0",
+    "pytest-xdist>=3.8.0",
 ]
 
 [project.urls]
@@ -79,6 +80,8 @@ select = [
 known-first-party = ["albert", "tests"]
 
 [tool.pytest.ini_options]
+# Inert without -n; guarantees xdist_group semantics for any parallel invocation
+addopts = "--dist loadgroup"
 env_files = [".env"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

@@ -1,6 +1,10 @@
+import pytest
+
 from albert.client import Albert
 from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_unit_items(returned_list: list[Unit]):

@@ -13,6 +13,9 @@ from albert.resources.parameter_groups import (
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_parameter_groups(
@@ -105,8 +108,17 @@ def test_parameter_group_search(client: Albert):
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
-def test_hydrate_pg(client: Albert):
-    pgs = list(client.parameter_groups.search(max_items=5))
+def test_hydrate_pg(client: Albert, seed_prefix: str, seeded_parameter_groups):
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated or deleted parameter groups
+    seeded_ids = {pg.id for pg in seeded_parameter_groups}
+    pgs = poll_until(
+        lambda: [
+            pg
+            for pg in client.parameter_groups.search(text=seed_prefix, max_items=100)
+            if pg.id in seeded_ids
+        ]
+    )
     assert pgs, "Expected at least one pg in search results"
 
     for pg in pgs:
