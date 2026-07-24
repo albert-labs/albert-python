@@ -25,6 +25,8 @@ from albert.resources.tasks import (
     TaskInventoryInformation,
 )
 
+pytestmark = pytest.mark.xdist_group("tasks")
+
 
 def _get_latest_row(task_properties: TaskPropertyData) -> int:
     first_blk_interval = task_properties.data[0]

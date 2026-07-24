@@ -14,6 +14,8 @@ from albert.resources.notebooks import (
     TableContent,
 )
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 def test_put_datum_content_matches_type():
     with pytest.raises(AlbertException, match="The content type and block type do not match."):

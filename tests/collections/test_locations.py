@@ -1,7 +1,13 @@
 import uuid
+from contextlib import suppress
+
+import pytest
 
 from albert.client import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.locations import Location
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 
 def assert_valid_location_items(returned_list: list[Location]):
@@ -103,11 +109,24 @@ def test_location_exists(client: Albert, seeded_locations):
     assert exists.name == seeded_location.name
 
 
-def test_delete_location(client: Albert, seeded_locations: list[Location]):
-    # Create a new location to delete
+def test_delete_location(client: Albert):
+    # Create a new location to delete so shared seeded locations stay intact
+    location = client.locations.create(
+        location=Location(
+            name=f"TEST - delete me {uuid.uuid4()}",
+            latitude=40.7,
+            longitude=-74.0,
+            address="123 Test St",
+            country="US",
+        )
+    )
 
-    client.locations.delete(id=seeded_locations[2].id)
+    try:
+        client.locations.delete(id=location.id)
 
-    # Ensure it no longer exists
-    does_exist = client.locations.exists(location=seeded_locations[2])
-    assert does_exist is None
+        # Ensure it no longer exists
+        does_exist = client.locations.exists(location=location)
+        assert does_exist is None
+    finally:
+        with suppress(NotFoundError):
+            client.locations.delete(id=location.id)

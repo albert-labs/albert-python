@@ -1,3 +1,4 @@
+import threading
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 
@@ -23,6 +24,8 @@ class AuthManager(ABC):
 
     _token_info: OAuthTokenInfo | None = None
     _refresh_time: datetime | None = None
+    # Class-level lock: serializes token refresh across threads sharing a manager
+    _refresh_lock: threading.Lock = threading.Lock()
 
     def _requires_refresh(self) -> bool:
         return (

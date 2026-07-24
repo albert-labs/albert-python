@@ -1,8 +1,12 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.data_templates import DataTemplate
 from albert.resources.projects import Project
 from albert.resources.smart_projects import SmartProject
 from albert.resources.targets import ComparisonOperator, Criterion, Target, TargetType
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def _scope_target_ids(smart: SmartProject) -> set[str]:

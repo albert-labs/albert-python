@@ -1,3 +1,5 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.custom_templates import (
@@ -7,6 +9,8 @@ from albert.resources.custom_templates import (
     _CustomTemplateDataUnion,
 )
 from albert.resources.users import User
+
+pytestmark = pytest.mark.xdist_group("customtemplates")
 
 
 def assert_template_items(

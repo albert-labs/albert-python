@@ -1,3 +1,5 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.label_templates import (
     LabelPrintPayload,
@@ -5,6 +7,8 @@ from albert.resources.label_templates import (
     LabelTemplateType,
 )
 from albert.resources.lots import Lot
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_label_template_get_by_id(client: Albert, seeded_label_templates: list[LabelTemplate]):

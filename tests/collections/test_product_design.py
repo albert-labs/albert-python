@@ -1,6 +1,10 @@
+import pytest
+
 from albert import Albert
 from albert.resources.inventory import InventoryItem
 from albert.resources.product_design import UnpackedProductDesign
+
+pytestmark = pytest.mark.xdist_group("sheets")
 
 
 def test_get_unpacked(client: Albert, seeded_products: list[InventoryItem]):

@@ -1,5 +1,11 @@
+import time
+
+import pytest
+
 from albert import Albert
 from albert.resources.data_columns import DataColumn
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_data_column_items(returned_list: list[DataColumn], limit=100):
@@ -25,7 +31,13 @@ def test_data_column_get_all_with_filters(client: Albert, seeded_data_columns: l
     """Test get_all filters by name with and without exact match."""
     name = seeded_data_columns[0].name
 
-    results = list(client.data_columns.get_all(name=name, exact_match=False, max_items=10))
+    # Poll briefly: the search index can lag behind seeding under parallel load
+    deadline = time.monotonic() + 15
+    while True:
+        results = list(client.data_columns.get_all(name=name, exact_match=False, max_items=10))
+        if any(name.lower() in dc.name.lower() for dc in results) or time.monotonic() > deadline:
+            break
+        time.sleep(1)
     assert any(name.lower() in dc.name.lower() for dc in results)
     assert_valid_data_column_items(results)
 

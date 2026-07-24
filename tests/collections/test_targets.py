@@ -14,6 +14,8 @@ from albert.resources.targets import (
     TargetType,
 )
 
+pytestmark = pytest.mark.xdist_group("datatemplates")
+
 
 def test_target_create(
     client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
