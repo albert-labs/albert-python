@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.37.1](https://github.com/albert-labs/albert-python/compare/v1.37.0...v1.37.1) (2026-07-24)
+
+
+### Performance Improvements
+
+* **tests:** parallelize integration test suite with pytest-xdist ([#633](https://github.com/albert-labs/albert-python/issues/633)) ([58e3df0](https://github.com/albert-labs/albert-python/commit/58e3df0595b8ef4b3ea3cd85a3ff0e0b0d4f2ba2))
+
+
+### Documentation
+
+* **smart-projects:** clarify project-bound create-and-assign flow ([#641](https://github.com/albert-labs/albert-python/issues/641)) ([80dee12](https://github.com/albert-labs/albert-python/commit/80dee12a0c9720689d795a27fc93c2464f4dfa01))
+
 ## [1.37.0](https://github.com/albert-labs/albert-python/compare/v1.36.1...v1.37.0) (2026-07-23)
 
 
