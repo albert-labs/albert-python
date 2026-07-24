@@ -18,6 +18,9 @@ from albert.resources.inventory import (
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def assert_valid_inventory_items(returned_list: list[InventoryItem]):
@@ -43,13 +46,15 @@ def test_inventory_get_all_with_filters(
     test_item = seeded_inventory[1]
     matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
 
-    results = list(
-        client.inventory.get_all(
-            text=test_item.name,
-            category=InventoryCategory.CONSUMABLES,
-            cas=matching_cas,
-            company=test_item.company,
-            max_items=10,
+    results = poll_until(
+        lambda: list(
+            client.inventory.get_all(
+                text=test_item.name,
+                category=InventoryCategory.CONSUMABLES,
+                cas=matching_cas,
+                company=test_item.company,
+                max_items=10,
+            )
         )
     )
 
@@ -58,9 +63,18 @@ def test_inventory_get_all_with_filters(
         assert test_item.name.lower() in item.name.lower()
 
 
-def test_inventory_hydration_from_search(client: Albert):
+def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
     """Test that inventory search results can be hydrated to full InventoryItem."""
-    search_results = client.inventory.search(max_items=5)
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated or deleted items (search item ids lack the INV prefix)
+    seeded_ids = {i.id for i in seeded_inventory}
+    search_results = poll_until(
+        lambda: [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100)
+            if f"INV{p.id}" in seeded_ids
+        ]
+    )
     assert search_results, "Expected at least one inventory item in search results"
 
     for partial in search_results:
@@ -113,13 +127,10 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert seeded_inventory[0].id == get_by_id.id
 
 
-def test_get_by_ids(client: Albert):
-    # Gather 51 unique inventory IDs
-    inventory_ids = []
-    for x in client.inventory.search():
-        inventory_ids.append(x.id)
-        if len(inventory_ids) == 51:
-            break
+def test_get_by_ids(client: Albert, seeded_inventory):
+    # Use this worker's seeded IDs directly; a search round-trip would race other
+    # workers' teardown deletes and fuzzy text matching
+    inventory_ids = [x.id for x in seeded_inventory]
 
     # Assert same length obtained
     items = client.inventory.get_by_ids(ids=inventory_ids)

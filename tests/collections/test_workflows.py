@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.workflows import Workflow
+
+pytestmark = pytest.mark.xdist_group("tasks")
 
 
 def test_workflow_get_all_with_pagination(client: Albert, seeded_workflows: list[Workflow]):

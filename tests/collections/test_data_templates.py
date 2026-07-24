@@ -22,6 +22,9 @@ from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_data_template_items(
@@ -556,9 +559,18 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert updated_param.value == "ParamOption3"
 
 
-def test_hydrate_data_template(client: Albert):
+def test_hydrate_data_template(client: Albert, seed_prefix: str, seeded_data_templates):
     """Test that data templates can be hydrated correctly."""
-    data_templates = client.data_templates.search(max_items=3)
+    # Filter to this worker's seeds: name search is fuzzy (tokenized) and can rank
+    # unrelated or deleted templates
+    seeded_ids = {dt.id for dt in seeded_data_templates}
+    data_templates = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(name=seed_prefix, max_items=100)
+            if dt.id in seeded_ids
+        ]
+    )
     assert data_templates, "Expected at least one data_template in search results"
 
     for data_template in data_templates:
