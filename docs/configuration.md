@@ -63,9 +63,7 @@ Used for OAuth2 Client Credentials login.
 ```python
 from albert import AlbertClientCredentials
 
-client = Albert(
-    client_credentials=AlbertClientCredentials.from_env()
-)
+client = Albert(client_credentials=AlbertClientCredentials.from_env())
 ```
 
 These variables are only needed if you're authenticating using client credentials, not a token or SSO.

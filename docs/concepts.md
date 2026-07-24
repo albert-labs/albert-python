@@ -16,9 +16,7 @@ Each model supports validation, serialization, and automatic handling of nested 
 from albert.resources.inventory import InventoryItem, InventoryCategory
 
 item = InventoryItem(
-    name="Goggles",
-    description="Safety Equipment",
-    category=InventoryCategory.EQUIPMENT
+    name="Goggles", description="Safety Equipment", category=InventoryCategory.EQUIPMENT
 )
 ```
 
@@ -61,16 +59,13 @@ from albert.resources.project import Project
 from albert.resources.base import EntityLink
 
 # Directly use EntityLink
-project = Project(
-    description="Example",
-    locations=[EntityLink(id="loc123")]
-)
+project = Project(description="Example", locations=[EntityLink(id="loc123")])
 
 # Or pass full object and let SDK convert
 location = client.locations.get_by_id(id="loc123")
 project = Project(
     description="Example",
-    locations=[location]  # Automatically converted
+    locations=[location],  # Automatically converted
 )
 ```
 
@@ -107,7 +102,7 @@ stage_gate_field = CustomField(
     service=ServiceType.PROJECTS,
     min=1,
     max=1,
-    category=FieldCategory.BUSINESS_DEFINED
+    category=FieldCategory.BUSINESS_DEFINED,
 )
 
 justification_field = CustomField(
@@ -146,9 +141,13 @@ p = Project(
     description="Example project",
     locations=[next(client.locations.get_all(name="My Location"))],
     metadata={
-        stage_gate_field.name: [client.lists.get_matching_item(list_type=stage_gate_field.name, name=stages[0]).to_entity_link()],
-        justification_field.name: "To show an example of using custom fields."
-    }
+        stage_gate_field.name: [
+            client.lists.get_matching_item(
+                list_type=stage_gate_field.name, name=stages[0]
+            ).to_entity_link()
+        ],
+        justification_field.name: "To show an example of using custom fields.",
+    },
     # Note: the values of list metadata fields are list[EntityLink]
 )
 ```
@@ -184,10 +183,7 @@ Use `search()` + `max_items` when working with large datasets.
 Some resources like InventoryItems and Projects support tags. Tags are strings and can be freely defined by users.
 
 ```python
-item = InventoryItem(
-    name="Gloves",
-    tags=["safety", "lab"]
-)
+item = InventoryItem(name="Gloves", tags=["safety", "lab"])
 ```
 
 Tags are searchable and help categorize content.

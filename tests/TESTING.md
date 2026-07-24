@@ -91,6 +91,7 @@ For any search-based assertion:
 ```python
 from tests.utils.wait import poll_until
 
+
 def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
     seeded_ids = {p.id for p in seeded_projects}
     projects = poll_until(

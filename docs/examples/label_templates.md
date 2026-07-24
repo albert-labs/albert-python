@@ -256,7 +256,9 @@ These two types skip the print-payload step entirely; the platform assembles the
 
 ```python
 url = client.label_templates.get_batch_label_url(task_id="TAS1234")
-url = client.label_templates.get_formula_report_url(formula_id="INVA1234-001", template_id="TMP123")
+url = client.label_templates.get_formula_report_url(
+    formula_id="INVA1234-001", template_id="TMP123"
+)
 ```
 
 The GHS batch label (`batchlabel`) is rendered by the platform's document generator with computed hazard data (signal word, hazard and precautionary statements, pictograms); its template is not a tenant label template file. The formula report uses a `formulareport` tenant template with internally assembled composition and results data.

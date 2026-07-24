@@ -89,9 +89,7 @@ Notebooks in Albert Invent are a tool for organizing your laboratory work in a c
     client = Albert.from_client_credentials()
 
     notebook = client.notebooks.get_by_id(id="NTB123")
-    notebook.blocks.append(
-        KetcherBlock(content=KetcherContent(smiles="CCO"))
-    )
+    notebook.blocks.append(KetcherBlock(content=KetcherContent(smiles="CCO")))
     notebook = client.notebooks.update_block_content(notebook=notebook)
     ```
 
@@ -114,9 +112,7 @@ Notebooks in Albert Invent are a tool for organizing your laboratory work in a c
     notebook.blocks = [b for b in notebook.blocks if b.type != "ketcher"]
 
     # Add a new Ketcher block.
-    notebook.blocks.append(
-        KetcherBlock(content=KetcherContent(smiles="C1=CC=CC=C1"))
-    )
+    notebook.blocks.append(KetcherBlock(content=KetcherContent(smiles="C1=CC=CC=C1")))
 
     notebook = client.notebooks.update_block_content(notebook=notebook)
     ```
