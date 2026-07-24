@@ -279,7 +279,7 @@ class Block(BaseAlbertModel):
     """The block's ID (``"BLK..."``). Assigned by Albert; ``None`` before the block is created."""
 
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
-    """The workflow(s) defining the parameter conditions for the block. At least one is required."""
+    """The workflow(s) defining the parameter conditions for the block. At least one is required. Workflows must be independently created and Workflows with a returned ID must be used."""
 
     data_template: (
         list[BlockDataTemplateInfo]
@@ -511,7 +511,7 @@ class BatchTask(BaseTask):
     """Quality-control data associated with the batch task. Notes ----- All other fields (``location``, ``priority``, ``due_date``, ``state``, ``assigned_to``, dates, and so on) are inherited from [`BaseTask`][albert.resources.tasks.BaseTask]."""
 
     workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(alias="Workflow", default=None)
-    """Workflow(s) associated with the batch task."""
+    """Workflow(s) associated with the batch task. These must be independently created and Workflows with a returned ID must be used."""
 
     blocks: list[Block] | None = Field(alias="Blocks", default=None)
     """Blocks associated with the batch task, when it captures data."""
