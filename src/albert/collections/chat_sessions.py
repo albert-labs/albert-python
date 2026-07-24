@@ -182,7 +182,7 @@ class ChatSessionCollection:
         return ChatSession(**response.json())
 
     @validate_call
-    async def get_all(
+    def get_all(
         self,
         *,
         name: list[str] | None = None,
@@ -193,6 +193,7 @@ class ChatSessionCollection:
         """Iterate over chat sessions, with optional filters.
 
         Transparently pages through results, yielding one session at a time.
+        Returns the paginator directly so ``has_more`` remains available.
 
         !!! example
             ```python
@@ -217,9 +218,9 @@ class ChatSessionCollection:
             Maximum number of sessions to yield in total. If ``None``, yields all
             matching sessions.
 
-        Yields
-        ------
-        ChatSession
+        Returns
+        -------
+        AsyncIterator[ChatSession]
             Sessions matching the given filters.
         """
         params: dict[str, str | list[str]] = {}
@@ -230,14 +231,13 @@ class ChatSessionCollection:
         if parent_id is not None:
             params["parentId"] = parent_id
 
-        async for session in AsyncAlbertPaginator(
+        return AsyncAlbertPaginator(
             session=self._session,
             path=self.base_path,
             deserialize=lambda item: ChatSession(**item),
             params=params,
             max_items=max_items,
-        ):
-            yield session
+        )
 
     @validate_call
     async def update(

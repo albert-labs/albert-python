@@ -5,7 +5,7 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
@@ -304,7 +304,9 @@ class ProjectCollection(BaseCollection):
         Iterator[ProjectSearchItem]
             An iterator of matching partial (unhydrated) project results.
         """
-        query_params = {
+        # Always POST — same path as the Albert UI (searchProjectsWithPost). GET search
+        # sometimes ignores ``limit`` (defaults to 25) and returns empty for offset>0.
+        payload: dict[str, Any] = {
             "order": order_by,
             "offset": offset,
             "text": text,
@@ -327,33 +329,19 @@ class ProjectCollection(BaseCollection):
             "myProject": my_project,
             "myRole": my_role,
         }
-
         if metadata_filters is not None:
-            payload: dict[str, Any] = {
-                **query_params,
-                "metadataFilters": {"metadata": metadata_filters},
-            }
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=lambda items: [
-                    ProjectSearchItem(**item)._bind_collection(self) for item in items
-                ],
-                method="POST",
-                json=payload,
-            )
+            payload["metadataFilters"] = {"metadata": metadata_filters}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=query_params,
             max_items=max_items,
             deserialize=lambda items: [
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
             ],
+            method="POST",
+            json=payload,
         )
 
     @validate_call
@@ -503,39 +491,45 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Iterator[Project]
-            An iterator of fully populated Project entities.
+            An iterator of fully populated Project entities. Preserves ``has_more`` /
+            ``total`` from the underlying search paginator.
         """
-        for project in self.search(
-            text=text,
-            status=status,
-            market_segment=market_segment,
-            application=application,
-            technology=technology,
-            created_by=created_by,
-            location=location,
-            program=program,
-            technical_lead=technical_lead,
-            from_created_at=from_created_at,
-            to_created_at=to_created_at,
-            facet_field=facet_field,
-            facet_text=facet_text,
-            contains_field=contains_field,
-            contains_text=contains_text,
-            linked_to=linked_to,
-            my_project=my_project,
-            my_role=my_role,
-            order_by=order_by,
-            sort_by=sort_by,
-            offset=offset,
-            max_items=max_items,
-        ):
+
+        def _hydrate(project: ProjectSearchItem) -> Project | None:
             project_id = getattr(project, "albertId", None) or getattr(project, "id", None)
             if not project_id:
-                continue
-
-            id = project_id if project_id.startswith("PRO") else f"PRO{project_id}"
-
+                return None
+            id = project_id if str(project_id).startswith("PRO") else f"PRO{project_id}"
             try:
-                yield self.get_by_id(id=id)
+                return self.get_by_id(id=id)
             except AlbertHTTPError as e:
                 logger.warning(f"Error fetching project details {id}: {e}")
+                return None
+
+        return MappedPaginator(
+            self.search(
+                text=text,
+                status=status,
+                market_segment=market_segment,
+                application=application,
+                technology=technology,
+                created_by=created_by,
+                location=location,
+                program=program,
+                technical_lead=technical_lead,
+                from_created_at=from_created_at,
+                to_created_at=to_created_at,
+                facet_field=facet_field,
+                facet_text=facet_text,
+                contains_field=contains_field,
+                contains_text=contains_text,
+                linked_to=linked_to,
+                my_project=my_project,
+                my_role=my_role,
+                order_by=order_by,
+                sort_by=sort_by,
+                offset=offset,
+                max_items=max_items,
+            ),
+            _hydrate,
+        )

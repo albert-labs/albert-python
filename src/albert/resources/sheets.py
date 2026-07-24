@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import DataColumnId, InventoryId
+from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException, AlbertHTTPError
@@ -688,6 +688,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add a lookup row.
     add_app_row(app_id, name, ...) -> Row
         Add an application row.
+    add_parameter_group_row(parameter_group_id, ...) -> Row
+        Add a parameter group (PRG) row to Process Design.
     add_blank_column(name, ...) -> Column
         Add a blank column.
     add_lookup_column(name, ...) -> Column
@@ -1545,6 +1547,78 @@ class Sheet(BaseSessionResource):  # noqa:F811
             inventory_id=data.get("id"),
             manufacturer=data.get("manufacturer"),
             config=data.get("config"),
+        )
+
+    @validate_call
+    def add_parameter_group_row(
+        self,
+        *,
+        parameter_group_id: ParameterGroupId,
+        reference_id: str = "ROW1",
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Add a parameter group (PRG) row to this sheet's Process Design.
+
+        The platform expands the PRG into one PRM row per parameter in the group.
+
+        !!! example
+            ```python
+            row = sheet.add_parameter_group_row(parameter_group_id="PRG1")
+            ```
+
+        Parameters
+        ----------
+        parameter_group_id : ParameterGroupId
+            The Parameter Group ID to add (format ``PRG...``).
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to ``"ROW1"``.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``.
+
+        Returns
+        -------
+        Row
+            The created PRG row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Process Design section, or the response has no rows.
+        """
+        design_obj = self.process_design
+        if design_obj is None:
+            raise AlbertException(
+                "Sheet has no Process Design section; cannot add a parameter group row"
+            )
+
+        payload = [
+            {
+                "type": CellType.PRG.value,
+                "id": parameter_group_id,
+                "referenceId": reference_id,
+                "position": position.value,
+            }
+        ]
+        response = self.session.post(f"/api/v3/designs/{design_obj.id}/rows", json=payload)
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding parameter group '{parameter_group_id}' "
+                f"to Process Design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.PRG.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("labelName") or data.get("name"),
+            inventory_id=data.get("id"),
         )
 
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):

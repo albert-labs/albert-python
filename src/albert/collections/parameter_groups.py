@@ -6,7 +6,7 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ParameterGroupId
@@ -296,22 +296,30 @@ class ParameterGroupCollection(BaseCollection):
             Maximum number of items to return in total. If None, iterates over all
             matches.
 
-        Yields
-        ------
-        ParameterGroup
-            Fully populated parameter groups.
+        Returns
+        -------
+        Iterator[ParameterGroup]
+            Fully populated parameter groups. Preserves ``has_more`` / ``total`` from
+            the underlying search paginator.
         """
-        for item in self.search(
-            text=text,
-            types=types,
-            order_by=order_by,
-            offset=offset,
-            max_items=max_items,
-        ):
+
+        def _hydrate(item: ParameterGroupSearchItem) -> ParameterGroup | None:
             try:
-                yield self.get_by_id(id=item.id)
+                return self.get_by_id(id=item.id)
             except AlbertHTTPError as e:  # pragma: no cover
                 logger.warning(f"Error fetching parameter group {item.id}: {e}")
+                return None
+
+        return MappedPaginator(
+            self.search(
+                text=text,
+                types=types,
+                order_by=order_by,
+                offset=offset,
+                max_items=max_items,
+            ),
+            _hydrate,
+        )
 
     @validate_call
     def delete(self, *, id: ParameterGroupId) -> None:

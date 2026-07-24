@@ -134,7 +134,7 @@ class ChatFolderCollection:
         return ChatFolder(**response.json())
 
     @validate_call
-    async def get_all(
+    def get_all(
         self,
         *,
         name: list[str] | None = None,
@@ -144,6 +144,7 @@ class ChatFolderCollection:
         """Iterate over chat folders, with optional filters.
 
         Transparently pages through results, yielding one folder at a time.
+        Returns the paginator directly so ``has_more`` remains available.
 
         !!! example
             ```python
@@ -165,9 +166,9 @@ class ChatFolderCollection:
             Maximum number of folders to yield in total. If ``None``, yields all
             matching folders.
 
-        Yields
-        ------
-        ChatFolder
+        Returns
+        -------
+        AsyncIterator[ChatFolder]
             Folders matching the given filters.
         """
         params: dict[str, str | list[str]] = {}
@@ -176,14 +177,13 @@ class ChatFolderCollection:
         if exact_match:
             params["exactMatch"] = "true"
 
-        async for folder in AsyncAlbertPaginator(
+        return AsyncAlbertPaginator(
             session=self._session,
             path=self.base_path,
             deserialize=lambda item: ChatFolder(**item),
             params=params,
             max_items=max_items,
-        ):
-            yield folder
+        )
 
     @validate_call
     async def update(

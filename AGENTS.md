@@ -78,6 +78,10 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
+After iteration, `AlbertPaginator.has_more` is True when `max_items` stopped the iterator and more items are known to exist (unyielded items on the current page, or a continuation key/offset), or when response `total` exceeds items yielded. It is False after a natural end of results. Prefer this flag over comparing yielded count to `max_items` (backends can under-return a page).
+
+Offset search endpoints (projects, tasks, lots, inventories, datatemplates, parametergroups, propertydata) return a string/int `total` field — `_record_total` reads that key. Never wrap a returned paginator in `yield from` / `async for … yield` inside `get_all`; return the paginator (or `MappedPaginator` / `MetadataPreservingIterator`) so callers keep `has_more` / `total`.
+
 **`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 ## Testing

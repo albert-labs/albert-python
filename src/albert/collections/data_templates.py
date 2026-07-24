@@ -5,7 +5,7 @@ from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MetadataPreservingIterator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import DataColumnId, DataTemplateId, UserId
@@ -701,32 +701,26 @@ class DataTemplateCollection(BaseCollection):
         Returns
         -------
         Iterator[DataTemplate]
-            A lazy iterator over fully populated templates.
+            A lazy iterator over fully populated templates. Preserves ``has_more`` /
+            ``total`` from the underlying search paginator.
         """
-
-        def batched(iterable, size: int):
-            """Yield lists of up to `size` IDs from an iterable of entities with an `id` attribute."""
-            it = (item.id for item in iterable)
-            while batch := list(islice(it, size)):
-                yield batch
-
-        id_batches = batched(
-            self.search(
-                name=name,
-                user_id=user_id,
-                order_by=order_by,
-                max_items=max_items,
-                offset=offset,
-            ),
-            100,
+        source = self.search(
+            name=name,
+            user_id=user_id,
+            order_by=order_by,
+            max_items=max_items,
+            offset=offset,
         )
 
-        for batch in id_batches:
-            try:
-                hydrated_templates = self.get_by_ids(ids=batch)
-                yield from hydrated_templates
-            except AlbertHTTPError as e:
-                logger.warning(f"Error hydrating batch {batch}: {e}")
+        def _hydrated() -> Iterator[DataTemplate]:
+            it = (item.id for item in source)
+            while batch := list(islice(it, 100)):
+                try:
+                    yield from self.get_by_ids(ids=batch)
+                except AlbertHTTPError as e:
+                    logger.warning(f"Error hydrating batch {batch}: {e}")
+
+        return MetadataPreservingIterator(source, _hydrated())
 
     @validate_call
     def set_curve_example(
