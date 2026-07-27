@@ -39,8 +39,7 @@ Alternatively, you can use the helper constructor:
 
 ```python
 client = Albert.from_sso(
-    base_url="https://app.albertinvent.com",
-    email="your-name@albertinvent.com"
+    base_url="https://app.albertinvent.com", email="your-name@albertinvent.com"
 )
 ```
 
@@ -71,7 +70,7 @@ from albert import Albert, AlbertClientCredentials
 client = Albert.from_client_credentials(
     client_id="your-client-id",
     client_secret="your-client-secret",
-    base_url="https://app.albertinvent.com"
+    base_url="https://app.albertinvent.com",
 )
 ```
 
@@ -95,20 +94,13 @@ Environment variables:
 You can also use a static token (e.g., copied from browser dev tools or passed via env) for one-off access:
 
 ```python
-client = Albert(
-    base_url="https://app.albertinvent.com",
-    token="your.jwt.token"
-)
+client = Albert(base_url="https://app.albertinvent.com", token="your.jwt.token")
 ```
 
 Or using the helper
 
 ```python
-
-client = Albert.from_token(
-    base_url="https://app.albertinvent.com",
-    token="your.jwt.token"
-)
+client = Albert.from_token(base_url="https://app.albertinvent.com", token="your.jwt.token")
 ```
 
 !!! warning

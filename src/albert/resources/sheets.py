@@ -1597,8 +1597,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             existing_rows = design_obj.rows
             if not existing_rows:
                 raise AlbertException(
-                    "Process Design has no rows; pass reference_id to insert a "
-                    "parameter group row"
+                    "Process Design has no rows; pass reference_id to insert a parameter group row"
                 )
             reference_id = existing_rows[0].row_id
 
