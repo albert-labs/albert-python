@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.38.0](https://github.com/albert-labs/albert-python/compare/v1.37.1...v1.38.0) (2026-07-27)
+
+
+### Features
+
+* add has_more to AlbertPaginator + Sheet.add_parameter_group_row (AI-1086, AI-1087, AI-1071) ([#635](https://github.com/albert-labs/albert-python/issues/635)) ([7929e46](https://github.com/albert-labs/albert-python/commit/7929e46f32622d71a88e1a8f2c4ace3f9b59cf79))
+
 ## [1.37.1](https://github.com/albert-labs/albert-python/compare/v1.37.0...v1.37.1) (2026-07-24)
 
 
