@@ -1330,10 +1330,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Raises
         ------
         AlbertException
-            If ``design`` is ``DesignType.RESULTS``.
+            If ``design`` is ``DesignType.RESULTS`` or ``DesignType.PROCESS``.
+            Process Design only accepts parameter-group (PRG) rows — use
+            [`add_parameter_group_row`][albert.resources.sheets.Sheet.add_parameter_group_row].
         """
         if design == DesignType.RESULTS:
             raise AlbertException("You cannot add rows to the results design")
+        if design == DesignType.PROCESS or design == DesignType.PROCESS.value:
+            raise AlbertException(
+                "Blank rows cannot be added to Process Design; "
+                "use add_parameter_group_row to attach a parameter group"
+            )
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
@@ -1572,10 +1579,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
             The Parameter Group ID to add (format ``PRG...``).
         reference_id : str, optional
             The row ID to insert relative to. Defaults to the first Process Design
-            row (safer than assuming ``"ROW1"`` exists).
+            row when one exists. Omit (or leave ``None``) when Process Design is
+            empty — the first PRG does not need a reference row.
         position : RowPosition, optional
             Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
-            Default is ``ABOVE``.
+            Default is ``ABOVE``. Ignored when Process Design has no rows and
+            ``reference_id`` is omitted.
 
         Returns
         -------
@@ -1585,30 +1594,27 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Raises
         ------
         AlbertException
-            If the sheet has no Process Design section, Process Design has no rows
-            to reference, or the response has no rows.
+            If the sheet has no Process Design section, or the response has no rows.
         """
         design_obj = self.process_design
         if design_obj is None:
             raise AlbertException(
                 "Sheet has no Process Design section; cannot add a parameter group row"
             )
+        payload_item: dict[str, str] = {
+            "type": CellType.PRG.value,
+            "id": parameter_group_id,
+        }
         if reference_id is None:
             existing_rows = design_obj.rows
-            if not existing_rows:
-                raise AlbertException(
-                    "Process Design has no rows; pass reference_id to insert a parameter group row"
-                )
-            reference_id = existing_rows[0].row_id
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            # Empty Process Design accepts a PRG with no referenceId/position.
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
 
-        payload = [
-            {
-                "type": CellType.PRG.value,
-                "id": parameter_group_id,
-                "referenceId": reference_id,
-                "position": position.value,
-            }
-        ]
+        payload = [payload_item]
         response = self.session.post(f"/api/v3/designs/{design_obj.id}/rows", json=payload)
         self.grid = None
         rows = response.json()
