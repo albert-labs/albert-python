@@ -86,8 +86,8 @@ Offset search endpoints (projects, tasks, lots, inventories, datatemplates, para
 
 | Return | When |
 | --- | --- |
-| `AlbertPaginator` | The endpoint page is already the caller-facing type (or hydration fits cleanly in `deserialize`). Prefer this for direct list/search and for KEY-mode listings that hydrate each hit inside `deserialize` (e.g. users, storage_locations) — metadata is preserved automatically. |
-| `MappedPaginator` | `get_all` builds on a separate `search` paginator and maps each hit (usually `get_by_id`). Use when hydration is per-item after search and some hits may be dropped (`map_fn` returns `None`). |
+| `AlbertPaginator` | The endpoint page is already the caller-facing type (or a trivial `deserialize`). Prefer this for direct list/search with no per-item hydration. |
+| `MappedPaginator` | `get_all` maps each list/search hit (usually `get_by_id`), including KEY-mode listings that hydrate after the page (e.g. users, storage_locations). Use when hydration is per-item and some hits may be dropped (`map_fn` returns `None`). |
 | `MetadataPreservingIterator` | Custom iteration over a source paginator that is not a simple 1:1 map (batch hydration, multi-step transforms). Pass the source paginator plus the items iterator you actually yield. |
 
 Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `MappedPaginator` / `MetadataPreservingIterator` only when a plain generator would strip `has_more` / `total`.

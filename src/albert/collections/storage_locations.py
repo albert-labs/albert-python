@@ -3,7 +3,7 @@ from collections.abc import Iterator
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
@@ -137,18 +137,11 @@ class StorageLocationsCollection(BaseCollection):
         Returns
         -------
         Iterator[StorageLocation]
-            Storage locations matching the given filters.
+            Storage locations matching the given filters. Preserves ``has_more`` /
+            ``total`` from the underlying list paginator.
         """
 
         # Remove explicit hydration when SUP-410 is fixed
-        def deserialize(items: list[dict]) -> Iterator[StorageLocation]:
-            for x in items:
-                id = x["albertId"]
-                try:
-                    yield self.get_by_id(id=id)
-                except AlbertHTTPError as e:
-                    logger.warning(f"Error fetching storage location {id}: {e}")
-
         params = {
             "locationId": location.id
             if isinstance(location, (Location | EntityLink))
@@ -159,13 +152,26 @@ class StorageLocationsCollection(BaseCollection):
         params["name"] = ensure_list(name)
         params["exactMatch"] = exact_match
 
-        return AlbertPaginator(
-            mode=PaginationMode.KEY,
-            path=self.base_path,
-            session=self.session,
-            params=params,
-            max_items=max_items,
-            deserialize=deserialize,
+        def _hydrate(item: dict) -> StorageLocation | None:
+            id = item.get("albertId")
+            if not id:
+                return None
+            try:
+                return self.get_by_id(id=id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error fetching storage location {id}: {e}")
+                return None
+
+        return MappedPaginator(
+            AlbertPaginator(
+                mode=PaginationMode.KEY,
+                path=self.base_path,
+                session=self.session,
+                params=params,
+                max_items=max_items,
+                deserialize=lambda items: items,
+            ),
+            _hydrate,
         )
 
     def create(self, *, storage_location: StorageLocation) -> StorageLocation:
