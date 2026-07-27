@@ -21,6 +21,7 @@ Single source of truth for coding-agent guidance in this repo.
 
 ## Coding Standards
 
+- See `OPINIONS.md` for non-obvious rules (e.g. PATCH/`update()` unset-vs-empty semantics). Read it before touching update methods or patch-payload generators.
 - **Keep it simple.** Minimum code that solves the problem. No speculative abstractions, no configurability that wasn't asked for.
 - **Follow existing patterns.** Check similar code before writing new code. Match style and structure.
 - **Touch only what's needed.** Don't refactor adjacent code, improve unrelated formatting, or remove pre-existing dead code unless asked. Remove only imports/symbols that *your* changes made unused.
