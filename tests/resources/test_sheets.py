@@ -375,6 +375,75 @@ def test_add_parameter_group_row_empty_response_raises():
         sheet.add_parameter_group_row(parameter_group_id="PRG1", reference_id="ROW1")
 
 
+def test_add_parameter_group_row_empty_process_design_omits_reference():
+    """First PRG on an empty Process Design must not send referenceId/position."""
+    session = FakeAlbertSession()
+    session.configure_response(
+        "POST",
+        "/api/v3/designs/DES4/rows",
+        json.dumps(
+            [{"rowId": "ROW5", "id": "PRG1", "type": "PRG", "name": "Mix", "labelName": "Mix"}]
+        ).encode(),
+    )
+    # Empty grid → process_design.rows is empty.
+    session.configure_response(
+        "GET",
+        "/api/v3/designs/DES4/grid",
+        json.dumps(
+            {
+                "total": 0,
+                "designId": "DES4",
+                "Items": [],
+                "Formulas": [],
+                "RowSequence": [],
+            }
+        ).encode(),
+    )
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+    # FakeAlbertSession is not always copied onto nested Designs by validators.
+    for design in sheet.designs:
+        design._session = session
+
+    row = sheet.add_parameter_group_row(parameter_group_id="PRG1")
+
+    assert row.row_id == "ROW5"
+    assert row.type == CellType.PRG
+    posted = [r for r in session.requests if r["method"] == "POST" and r["url"].endswith("/rows")]
+    assert len(posted) == 1
+    assert posted[0]["json"] == [{"type": "PRG", "id": "PRG1"}]
+
+
+def test_add_blank_row_rejects_process_design():
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+    with pytest.raises(AlbertException, match="add_parameter_group_row"):
+        sheet.add_blank_row(row_name="Blank", design=DesignType.PROCESS)
+
+
 def test_add_parameter_group_row(
     seeded_sheet: Sheet,
     seeded_parameter_groups: list,
