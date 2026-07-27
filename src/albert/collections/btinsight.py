@@ -157,6 +157,10 @@ class BTInsightCollection(BaseCollection):
         name: str | list[str] | None = None,
         state: BTInsightState | list[BTInsightState] | None = None,
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
+        created_by: str | list[str] | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[BTInsight]:
@@ -191,6 +195,16 @@ class BTInsightCollection(BaseCollection):
             Filter by progress state (e.g. ``Complete``, ``Error``).
         category : BTInsightCategory or list[BTInsightCategory], optional
             Filter by category (e.g. ``Optimizer``, ``Impact Chart``).
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the insight. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include insights updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include insights updated on or before this date (ISO 8601).
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -213,6 +227,10 @@ class BTInsightCollection(BaseCollection):
 
         category_values = ensure_list(category)
         params["category"] = category_values if category_values else None
+        params["createdBy"] = ensure_list(created_by)
+        params["updatedBy"] = ensure_list(updated_by)
+        params["fromUpdatedAt"] = from_updated_at
+        params["toUpdatedAt"] = to_updated_at
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

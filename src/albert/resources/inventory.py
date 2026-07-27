@@ -511,6 +511,25 @@ class InventorySearchSDSItem(BaseAlbertModel):
     un_classification: str | None = Field(default=None, alias="unClassification")
 
 
+class InventorySearchCompositeMatch(BaseAlbertModel):
+    """Composite match details returned on an [`InventorySearchItem`][albert.resources.inventory.InventorySearchItem]."""
+
+    composite_dac_id: str | None = Field(default=None, alias="compositeDacId")
+    """The composite DAC ID used for the match."""
+
+    algorithm: str | None = None
+    """The matching algorithm used."""
+
+    sub_values: list[dict[str, Any]] | None = Field(default=None, alias="subValues")
+    """Sub-values contributing to the composite match score."""
+
+    calculated_score: float | None = Field(default=None, alias="calculatedScore")
+    """The calculated composite match score."""
+
+    similarity_score: float | None = Field(default=None, alias="similarityScore")
+    """The similarity score for the match."""
+
+
 class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
     """A lightweight [`InventoryItem`][albert.resources.inventory.InventoryItem] result returned by the search endpoint.
 
@@ -525,6 +544,12 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 
     name: str = Field(default="")
     """The name of the item."""
+
+    alias: str | None = None
+    """The alias of the item."""
+
+    manufacturer: str | None = None
+    """The manufacturer name of the item."""
 
     description: str = Field(default="")
     """The description of the item."""
@@ -549,6 +574,14 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
 
     sds: InventorySearchSDSItem | None = Field(default=None, alias="SDS")
     """Safety Data Sheet summary fields. Serialized as ``SDS``. See Also --------"""
+
+    distance: float | None = None
+    """Search relevance distance when returned by semantic search."""
+
+    composite_match: InventorySearchCompositeMatch | None = Field(
+        default=None, alias="compositeMatch"
+    )
+    """Composite match details when returned by composite search."""
 
 
 class MergeInventory(BaseAlbertModel):
