@@ -1331,7 +1331,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ------
         AlbertException
             If ``design`` is ``DesignType.RESULTS`` or ``DesignType.PROCESS``.
-            Process Design only accepts parameter-group (PRG) rows — use
+            Process Design only accepts parameter-group (PRG) rows: use
             [`add_parameter_group_row`][albert.resources.sheets.Sheet.add_parameter_group_row].
         """
         if design == DesignType.RESULTS:
@@ -1580,7 +1580,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         reference_id : str, optional
             The row ID to insert relative to. Defaults to the first Process Design
             row when one exists. Omit (or leave ``None``) when Process Design is
-            empty — the first PRG does not need a reference row.
+            empty (the first PRG does not need a reference row).
         position : RowPosition, optional
             Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
             Default is ``ABOVE``. Ignored when Process Design has no rows and
