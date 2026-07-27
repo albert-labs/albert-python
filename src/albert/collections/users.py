@@ -4,7 +4,7 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import UserId
@@ -288,7 +288,8 @@ class UserCollection(BaseCollection):
         Returns
         -------
         Iterator[User]
-            An iterator of fully populated users.
+            An iterator of fully populated users. Preserves ``has_more`` / ``total``
+            from the underlying list paginator.
         """
         params = {
             "status": status,
@@ -297,22 +298,26 @@ class UserCollection(BaseCollection):
             "startKey": start_key,
         }
 
-        def deserialize(items: list[dict]) -> Iterator[User]:
-            for item in items:
-                user_id = item.get("albertId")
-                if user_id:
-                    try:
-                        yield self.get_by_id(id=user_id)
-                    except AlbertHTTPError as e:
-                        logger.warning(f"Error fetching user '{user_id}': {e}")
+        def _hydrate(item: dict) -> User | None:
+            user_id = item.get("albertId")
+            if not user_id:
+                return None
+            try:
+                return self.get_by_id(id=user_id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error fetching user '{user_id}': {e}")
+                return None
 
-        return AlbertPaginator(
-            mode=PaginationMode.KEY,
-            path=self.base_path,
-            session=self.session,
-            params=params,
-            max_items=max_items,
-            deserialize=deserialize,
+        return MappedPaginator(
+            AlbertPaginator(
+                mode=PaginationMode.KEY,
+                path=self.base_path,
+                session=self.session,
+                params=params,
+                max_items=max_items,
+                deserialize=lambda items: items,
+            ),
+            _hydrate,
         )
 
     def create(self, *, user: User) -> User:  # pragma: no cover

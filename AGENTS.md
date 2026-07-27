@@ -78,6 +78,20 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
+After iteration, `AlbertPaginator.has_more` is True when `max_items` stopped the iterator and more items are known to exist (unyielded items on the current page, or a continuation key/offset), or when response `total` exceeds items yielded. It is False after a natural end of results. Prefer this flag over comparing yielded count to `max_items` (backends can under-return a page).
+
+Offset search endpoints (projects, tasks, lots, inventories, datatemplates, parametergroups, propertydata) return a string/int `total` field — `_record_total` reads that key. Never wrap a returned paginator in `yield from` / `async for … yield` inside `get_all`; return the paginator (or `MappedPaginator` / `MetadataPreservingIterator`) so callers keep `has_more` / `total`.
+
+### Which iterator wrapper to return
+
+| Return | When |
+| --- | --- |
+| `AlbertPaginator` | The endpoint page is already the caller-facing type (or a trivial `deserialize`). Prefer this for direct list/search with no per-item hydration. |
+| `MappedPaginator` | `get_all` maps each list/search hit (usually `get_by_id`), including KEY-mode listings that hydrate after the page (e.g. users, storage_locations). Use when hydration is per-item and some hits may be dropped (`map_fn` returns `None`). |
+| `MetadataPreservingIterator` | Custom iteration over a source paginator that is not a simple 1:1 map (batch hydration, multi-step transforms). Pass the source paginator plus the items iterator you actually yield. |
+
+Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `MappedPaginator` / `MetadataPreservingIterator` only when a plain generator would strip `has_more` / `total`.
+
 **`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 ## Testing
