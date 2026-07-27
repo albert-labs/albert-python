@@ -245,8 +245,13 @@ class ProjectCollection(BaseCollection):
 
         !!! example
             ```python
-            for hit in client.projects.search(text="coatings", max_items=25):
+            # Keep the paginator reference — do not wrap in list() if you need
+            # completeness signals after iteration.
+            hits = client.projects.search(text="coatings", max_items=25)
+            for hit in hits:
                 print(hit.id, hit.description)
+            if hits.has_more:
+                print(f"Stopped early; ~{hits.total} total matches")
             ```
 
         Parameters
@@ -439,8 +444,12 @@ class ProjectCollection(BaseCollection):
 
         !!! example
             ```python
-            for project in client.projects.get_all(text="coatings", max_items=10):
+            projects = client.projects.get_all(text="coatings", max_items=10)
+            for project in projects:
                 print(project.id, project.description)
+            # has_more / total are preserved through hydration.
+            if projects.has_more:
+                print(f"Sample only; ~{projects.total} total matches")
             ```
 
         Parameters

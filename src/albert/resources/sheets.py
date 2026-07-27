@@ -1554,7 +1554,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         parameter_group_id: ParameterGroupId,
-        reference_id: str = "ROW1",
+        reference_id: str | None = None,
         position: RowPosition = RowPosition.ABOVE,
     ) -> Row:
         """Add a parameter group (PRG) row to this sheet's Process Design.
@@ -1571,7 +1571,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         parameter_group_id : ParameterGroupId
             The Parameter Group ID to add (format ``PRG...``).
         reference_id : str, optional
-            The row ID to insert relative to. Defaults to ``"ROW1"``.
+            The row ID to insert relative to. Defaults to the first Process Design
+            row (safer than assuming ``"ROW1"`` exists).
         position : RowPosition, optional
             Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
             Default is ``ABOVE``.
@@ -1584,13 +1585,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Raises
         ------
         AlbertException
-            If the sheet has no Process Design section, or the response has no rows.
+            If the sheet has no Process Design section, Process Design has no rows
+            to reference, or the response has no rows.
         """
         design_obj = self.process_design
         if design_obj is None:
             raise AlbertException(
                 "Sheet has no Process Design section; cannot add a parameter group row"
             )
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if not existing_rows:
+                raise AlbertException(
+                    "Process Design has no rows; pass reference_id to insert a "
+                    "parameter group row"
+                )
+            reference_id = existing_rows[0].row_id
 
         payload = [
             {

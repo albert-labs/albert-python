@@ -370,7 +370,7 @@ def test_add_parameter_group_row_empty_response_raises():
         session=session,
     )
     with pytest.raises(AlbertException, match="No rows returned"):
-        sheet.add_parameter_group_row(parameter_group_id="PRG1")
+        sheet.add_parameter_group_row(parameter_group_id="PRG1", reference_id="ROW1")
 
 
 def test_add_parameter_group_row(
@@ -381,8 +381,17 @@ def test_add_parameter_group_row(
     if seeded_sheet.process_design is None:
         pytest.skip("Seeded sheet has no Process Design section")
 
+    pd_rows = seeded_sheet.process_design.rows
+    if not pd_rows:
+        pytest.skip("Seeded Process Design has no rows to reference")
+
     pg = seeded_parameter_groups[0]
-    row = seeded_sheet.add_parameter_group_row(parameter_group_id=pg.id)
+    # Default reference_id resolves to the first Process Design row; pass it
+    # explicitly so the assertion documents the contract.
+    row = seeded_sheet.add_parameter_group_row(
+        parameter_group_id=pg.id,
+        reference_id=pd_rows[0].row_id,
+    )
     assert isinstance(row, Row)
     assert row.type == CellType.PRG
     assert row.row_id.startswith("ROW")

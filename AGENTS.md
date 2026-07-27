@@ -82,6 +82,16 @@ After iteration, `AlbertPaginator.has_more` is True when `max_items` stopped the
 
 Offset search endpoints (projects, tasks, lots, inventories, datatemplates, parametergroups, propertydata) return a string/int `total` field — `_record_total` reads that key. Never wrap a returned paginator in `yield from` / `async for … yield` inside `get_all`; return the paginator (or `MappedPaginator` / `MetadataPreservingIterator`) so callers keep `has_more` / `total`.
 
+### Which iterator wrapper to return
+
+| Return | When |
+| --- | --- |
+| `AlbertPaginator` | The endpoint page is already the caller-facing type (or hydration fits cleanly in `deserialize`). Prefer this for direct list/search and for KEY-mode listings that hydrate each hit inside `deserialize` (e.g. users, storage_locations) — metadata is preserved automatically. |
+| `MappedPaginator` | `get_all` builds on a separate `search` paginator and maps each hit (usually `get_by_id`). Use when hydration is per-item after search and some hits may be dropped (`map_fn` returns `None`). |
+| `MetadataPreservingIterator` | Custom iteration over a source paginator that is not a simple 1:1 map (batch hydration, multi-step transforms). Pass the source paginator plus the items iterator you actually yield. |
+
+Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `MappedPaginator` / `MetadataPreservingIterator` only when a plain generator would strip `has_more` / `total`.
+
 **`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 ## Testing
