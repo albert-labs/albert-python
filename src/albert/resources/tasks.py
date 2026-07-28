@@ -281,9 +281,12 @@ class Block(BaseAlbertModel):
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
     """The workflow(s) defining the parameter conditions for the block.
 
-    At least one is required. Each workflow link must reference an existing workflow
-    registered via [`create`][albert.collections.workflows.WorkflowCollection.create]
-    (it must have an ID).
+    At least one is required. When no parameter groups apply, use ``WFL1``, the
+    platform default workflow with no parameter groups ("No Parameter Group").
+    It is pre-provisioned and does not need to be created via
+    [`create`][albert.collections.workflows.WorkflowCollection.create].
+    For custom setpoints, register a workflow via
+    [`create`][albert.collections.workflows.WorkflowCollection.create] and link by ID.
     """
 
     data_template: (
@@ -518,8 +521,13 @@ class BatchTask(BaseTask):
     workflows: list[SerializeAsEntityLink[Workflow]] | None = Field(alias="Workflow", default=None)
     """Workflow(s) associated with the batch task.
 
-    Workflows must be registered via [`create`][albert.collections.workflows.WorkflowCollection.create]
-    before use; only workflows with a returned ID may be linked.
+    When the task does not involve parameter groups, use ``WFL1``, the platform
+    default workflow with no parameter groups ("No Parameter Group"). It is
+    pre-provisioned and does not need to be created via
+    [`create`][albert.collections.workflows.WorkflowCollection.create].
+    For workflows with parameter setpoints, register via
+    [`create`][albert.collections.workflows.WorkflowCollection.create] and link by
+    the returned ID.
     """
 
     blocks: list[Block] | None = Field(alias="Blocks", default=None)
