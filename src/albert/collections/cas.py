@@ -11,6 +11,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import CasId
 from albert.core.shared.models.base import EntityLink
+from albert.core.shared.models.patch import PatchDatum, PatchPayload
 from albert.resources.cas import Cas
 
 
@@ -99,6 +100,7 @@ class CasCollection(BaseCollection):
 
     _updatable_attributes = {"notes", "description", "smiles", "metadata"}
     _api_version = "v3"
+    _max_patch_items = 9
 
     def __init__(self, *, session: AlbertSession):
         """Initialize a CasCollection.
@@ -454,6 +456,15 @@ class CasCollection(BaseCollection):
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
 
+    def _batch_patch(self, *, url: str, data: list[PatchDatum]) -> None:
+        """Send patch data in batches of at most ``_max_patch_items`` per request."""
+        for start in range(0, len(data), self._max_patch_items):
+            batch = data[start : start + self._max_patch_items]
+            self.session.patch(
+                url,
+                json=PatchPayload(data=batch).model_dump(mode="json", by_alias=True),
+            )
+
     def update(self, *, updated_object: Cas) -> Cas:
         """Update an existing CAS entry.
 
@@ -490,8 +501,5 @@ class CasCollection(BaseCollection):
         patch_payload = self._generate_patch_payload(existing=existing_cas, updated=updated_object)
         if not patch_payload.data:
             return existing_cas
-        url = f"{self.base_path}/{updated_object.id}"
-        self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
-
-        updated_cas = self.get_by_id(id=updated_object.id)
-        return updated_cas
+        self._batch_patch(url=f"{self.base_path}/{updated_object.id}", data=patch_payload.data)
+        return self.get_by_id(id=updated_object.id)

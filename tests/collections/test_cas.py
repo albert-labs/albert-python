@@ -106,6 +106,46 @@ def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[
             client.custom_fields.delete(id=custom_field.id)
 
 
+def test_update_cas_metadata_batching(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
+    """Test that updating more than 9 metadata fields in one update() call succeeds."""
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
+    field_count = 10
+    prefix = seed_prefix.replace("-", "_")[:12].lower()
+    custom_fields: list[CustomField] = []
+    try:
+        for index in range(field_count):
+            field_name = f"test_cas_batch_{prefix}_{index}"
+            custom_fields.append(
+                client.custom_fields.create(
+                    custom_field=CustomField(
+                        name=field_name,
+                        display_name=f"TEST CAS Batch {prefix} {index}",
+                        field_type=FieldType.STRING,
+                        service=ServiceType.CAS,
+                    )
+                )
+            )
+
+        cas_to_update = seeded_cas[0]
+        new_metadata = {
+            **cas_to_update.metadata,
+            **{
+                field.name: f"{seed_prefix} - batch value {index}"
+                for index, field in enumerate(custom_fields)
+            },
+        }
+        cas_to_update.metadata = new_metadata
+        updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
+
+        for index, field in enumerate(custom_fields):
+            assert updated_cas.metadata.get(field.name) == f"{seed_prefix} - batch value {index}"
+    finally:
+        for field in custom_fields:
+            with suppress(NotFoundError):
+                client.custom_fields.delete(id=field.id)
+
+
 def test_create_cas_with_list_metadata(
     client: Albert,
     seed_prefix: str,
