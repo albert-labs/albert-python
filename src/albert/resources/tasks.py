@@ -279,10 +279,11 @@ class Block(BaseAlbertModel):
     """The block's ID (``"BLK..."``). Assigned by Albert; ``None`` before the block is created."""
 
     workflow: list[SerializeAsEntityLink[Workflow]] = Field(alias="Workflow", min_length=1)
-    """The workflow(s) defining the parameter conditions for the block. At least one is required.
+    """The workflow(s) defining the parameter conditions for the block.
 
-    Each workflow link must reference an existing workflow registered via
-    [`create`][albert.collections.workflows.WorkflowCollection.create] (it must have an ID).
+    At least one is required. Each workflow link must reference an existing workflow
+    registered via [`create`][albert.collections.workflows.WorkflowCollection.create]
+    (it must have an ID).
     """
 
     data_template: (
