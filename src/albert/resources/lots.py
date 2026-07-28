@@ -70,18 +70,6 @@ class Lot(BaseResource):
     A lot's own ID has the format ``LOT...``; its parent ``inventory_id`` has the
     format ``INV...``.
 
-    Notes
-    -----
-    Fields required when creating a lot via
-    [`create`][albert.collections.lots.LotCollection.create] depend on the path:
-
-    - **Regular lot** (no ``task_id``): ``inventory_id``, ``storage_location``,
-      ``initial_quantity``, and ``inventory_on_hand`` (usually the same value as
-      ``initial_quantity``). When the parent Inventory Item is ``RawMaterials``,
-      ``cost`` and ``manufacturer_lot_number`` are also required.
-    - **Task lot** (``task_id`` set, batch / ``Formulas`` path): ``inventory_id``
-      and ``location`` (not ``storage_location``).
-
     !!! example
         ```python
         from albert import Albert
@@ -97,7 +85,20 @@ class Lot(BaseResource):
             manufacturer_lot_number="MLN-001",
         )
         created = client.lots.create(lots=[lot])
-        ```"""
+        ```
+
+    Notes
+    -----
+    Fields required when creating a lot via
+    [`create`][albert.collections.lots.LotCollection.create] depend on the path:
+
+    - **Regular lot** (no ``task_id``): ``inventory_id``, ``storage_location``,
+      ``initial_quantity``, and ``inventory_on_hand`` (usually the same value as
+      ``initial_quantity``). When the parent Inventory Item is ``RawMaterials``,
+      ``cost`` and ``manufacturer_lot_number`` are also required.
+    - **Task lot** (``task_id`` set, batch / ``Formulas`` path): ``inventory_id``
+      and ``location`` (not ``storage_location``).
+    """
 
     action: str | None = Field(default=None)
     """Internal marker for the operation that produced the lot (e.g. a split). Not typically set by callers."""
