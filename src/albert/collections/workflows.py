@@ -41,6 +41,11 @@ class WorkflowCollection(BaseCollection):
     workflow ID, build the Workflow object you want and let [`create`][albert.collections.workflows.WorkflowCollection.create] return
     the existing match or make a new one.
 
+    Every tenant also includes a built-in workflow ``WFL1`` ("No Parameter Group") with no
+    parameter groups. Use it for tasks and blocks that do not involve parameter groups; it
+    does not need to be created via
+    [`create`][albert.collections.workflows.WorkflowCollection.create].
+
     **Intervals.** When one or two parameters are "intervalized" (varied across
     several values), the workflow acts as a *parent* that carries the resulting
     *interval combinations*. Each combination has an interval ID of the form

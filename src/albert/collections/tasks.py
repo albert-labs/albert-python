@@ -215,7 +215,8 @@ class TaskCollection(BaseCollection):
             (format ``DAT...``).
         workflow_id : WorkflowId
             The Workflow supplying the block's parameter conditions
-            (format ``WFL...``).
+            (format ``WFL...``). When no parameter groups apply, use ``WFL1``, the
+            platform default ("No Parameter Group").
 
         Returns
         -------
@@ -264,7 +265,8 @@ class TaskCollection(BaseCollection):
         block_id : BlockId
             The block to update (format ``BLK...``).
         workflow_id : WorkflowId
-            The new Workflow to assign to the block (format ``WFL...``).
+            The new Workflow to assign to the block (format ``WFL...``). When no
+            parameter groups apply, use ``WFL1``, the platform default ("No Parameter Group").
 
         Returns
         -------

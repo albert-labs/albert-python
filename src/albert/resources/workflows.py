@@ -315,6 +315,11 @@ class Workflow(BaseResource):
     [`create`][albert.collections.workflows.WorkflowCollection.create], which returns the
     existing match or makes a new one. IDs look like ``WFL...``.
 
+    Every tenant includes a built-in workflow ``WFL1`` ("No Parameter Group") with no
+    parameter groups or setpoints. Use it when a task or block does not involve parameter
+    groups; it does not need to be created via
+    [`create`][albert.collections.workflows.WorkflowCollection.create].
+
     When one or two parameters are intervalized, the workflow acts as a *parent* that carries
     the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries. Each combination has an interval ID of
     the form ``ROW1`` (one intervalized parameter) or ``ROW1XROW2`` (product of two). Use
