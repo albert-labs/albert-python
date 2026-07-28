@@ -27,6 +27,8 @@ structure below. Never use a generic `## Summary` / `## Test plan` layout.
 
 Fill every section from the diff and commit history. Delete optional sections
 (`How`, `SDK Changes`) when not applicable. Check the Testing boxes that were run.
+Do not name customers, tenants, or environments in PR descriptions; reference
+Linear/support tickets by ID only.
 
 ```markdown
 ## What
@@ -35,7 +37,8 @@ Fill every section from the diff and commit history. Delete optional sections
 
 ## Why
 
-<!-- What user-facing problem does this solve? -->
+<!-- What user-facing problem does this solve? Do not name customers, tenants, or
+     environments. Reference Linear/support tickets by ID only. -->
 
 ## How
 

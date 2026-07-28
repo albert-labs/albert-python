@@ -4,7 +4,8 @@
 
 ## Why
 
-<!-- What user-facing problem does this solve? -->
+<!-- What user-facing problem does this solve? Do not name customers, tenants, or
+     environments. Reference Linear/support tickets by ID only. -->
 
 ## How
 
