@@ -254,7 +254,12 @@ class LocationCollection(BaseCollection):
         Location
             The newly created location, populated with its assigned ``id``.
         """
-        payload = location.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        payload = location.model_dump(
+            by_alias=True,
+            exclude_none=True,
+            mode="json",
+            exclude={"id", "status", "created", "updated"},
+        )
         response = self.session.post(self.base_path, json=payload)
 
         return Location(**response.json())
