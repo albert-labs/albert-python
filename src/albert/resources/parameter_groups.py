@@ -18,6 +18,28 @@ from albert.resources.units import Unit
 from albert.resources.users import User
 
 
+def _sanitize_metadata(value: Any) -> Any:
+    """Drop entity-link metadata entries the API returns as bare/empty dicts.
+
+    Some tenants have parameter-group metadata whose entity-link fields were cleared
+    server-side to `[{}]` (list) or `{}` (scalar) instead of `[]`/`null`. These dicts
+    lack the required `id`, so `MetadataItem` can't parse them.
+    """
+    if not isinstance(value, dict):
+        return value
+    sanitized: dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(item, dict) and "id" not in item:
+            continue  # drop; MetadataItem has no None option to fall back to
+        if isinstance(item, list):
+            sanitized[key] = [
+                entry for entry in item if not (isinstance(entry, dict) and "id" not in entry)
+            ]
+        else:
+            sanitized[key] = item
+    return sanitized
+
+
 class PGType(str, Enum):
     """The type of a parameter group"""
 
@@ -162,6 +184,11 @@ class ParameterGroup(BaseTaggedResource):
     verified: bool = Field(default=False, exclude=True, frozen=True)
     documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)
 
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def sanitize_metadata(cls, value: Any) -> Any:
+        return _sanitize_metadata(value)
+
 
 class ParameterSearchItemParameter(BaseAlbertModel):
     name: str | None = None
@@ -186,3 +213,8 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     created_by_name: str | None = Field(default=None, alias="createdByName")
     metadata: dict[str, MetadataItem] | None = Field(default=None, alias="metadata")
     team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def sanitize_metadata(cls, value: Any) -> Any:
+        return _sanitize_metadata(value)
