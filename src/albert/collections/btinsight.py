@@ -159,6 +159,8 @@ class BTInsightCollection(BaseCollection):
         category: BTInsightCategory | list[BTInsightCategory] | None = None,
         created_by: str | list[str] | None = None,
         updated_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         offset: int | None = None,
@@ -201,6 +203,10 @@ class BTInsightCollection(BaseCollection):
         updated_by : str or list[str], optional
             Filter by user(s) who last updated the insight. Accepts UserId(s)
             only (e.g. ``"USR4227"``), not display names.
+        from_created_at : str, optional
+            Only include insights created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include insights created on or before this date (ISO 8601).
         from_updated_at : str, optional
             Only include insights updated on or after this date (ISO 8601).
         to_updated_at : str, optional
@@ -229,6 +235,8 @@ class BTInsightCollection(BaseCollection):
         params["category"] = category_values if category_values else None
         params["createdBy"] = ensure_list(created_by)
         params["updatedBy"] = ensure_list(updated_by)
+        params["fromCreatedAt"] = from_created_at
+        params["toCreatedAt"] = to_created_at
         params["fromUpdatedAt"] = from_updated_at
         params["toUpdatedAt"] = to_updated_at
 
