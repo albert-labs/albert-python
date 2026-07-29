@@ -926,18 +926,16 @@ class InventoryCollection(BaseCollection):
             to_updated_at=to_updated_at,
         )
 
-        path = (
-            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
-        )
-
         if metadata_filters is not None:
+            if match_all_conditions:
+                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
             payload: dict[str, Any] = {
                 **query_params,
                 "metadataFilters": {"metadata": metadata_filters},
             }
             return AlbertPaginator(
                 mode=PaginationMode.OFFSET,
-                path=path,
+                path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
                 deserialize=deserialize,
@@ -945,6 +943,9 @@ class InventoryCollection(BaseCollection):
                 json=payload,
             )
 
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=path,
@@ -1089,18 +1090,16 @@ class InventoryCollection(BaseCollection):
             to_updated_at=to_updated_at,
         )
 
-        path = (
-            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
-        )
-
         if metadata_filters is not None:
+            if match_all_conditions:
+                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
             payload: dict[str, Any] = {
                 **query_params,
                 "metadataFilters": {"metadata": metadata_filters},
             }
             return AlbertPaginator(
                 mode=PaginationMode.OFFSET,
-                path=path,
+                path=f"{self.base_path}/search",
                 session=self.session,
                 max_items=max_items,
                 deserialize=deserialize,
@@ -1108,6 +1107,9 @@ class InventoryCollection(BaseCollection):
                 json=payload,
             )
 
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=path,
