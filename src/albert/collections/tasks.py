@@ -181,11 +181,13 @@ class TaskCollection(BaseCollection):
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
         """
-        payload = [task.model_dump(mode="json", by_alias=True, exclude_none=True)]
+        payload = task.model_dump(mode="json", by_alias=True, exclude_none=True)
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
-        response = self.session.post(url=url, json=payload)
+        if task.parent_id is not None:
+            payload["Project"] = {"id": task.parent_id}
+        response = self.session.post(url=url, json=[payload])
         task_data = response.json()[0]
         return TaskAdapter.validate_python(task_data)
 
