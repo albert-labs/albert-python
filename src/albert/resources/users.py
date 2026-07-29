@@ -13,7 +13,21 @@ from albert.resources.roles import Role
 
 
 class UserClass(str, Enum):
-    """The ACL class level of the user"""
+    """The ACL class level of a user, setting a broad permission tier.
+
+    Attributes
+    ----------
+    GUEST : str
+        Most limited access; typically external or temporary users.
+    STANDARD : str
+        Default access level for regular users.
+    TRUSTED : str
+        Elevated access above standard users.
+    PRIVILEGED : str
+        High access level below full administrators.
+    ADMIN : str
+        Full administrative access to the tenant.
+    """
 
     GUEST = "guest"
     STANDARD = "standard"
@@ -23,41 +37,63 @@ class UserClass(str, Enum):
 
 
 class UserFilterType(str, Enum):
+    """The attribute a user query filters on.
+
+    Attributes
+    ----------
+    ROLE : str
+        Filter users by the roles they hold.
+    """
+
     ROLE = "role"
 
 
 class User(BaseResource):
-    """Represents a User on the Albert Platform
+    """An Albert user account: a person who can log in and act in the platform.
 
-    Attributes
-    ----------
-    name : str
-        The name of the user.
-    id : str | None
-        The Albert ID of the user. Set when the user is retrieved from Albert.
-    location : Location | None
-        The location of the user.
-    email : EmailStr | None
-        The email of the user.
-    roles : list[Role]
-        The roles of the user.
-    user_class : UserClass
-        The ACL class level of the user.
-    witnesser : bool | None
-        Whether the user is a witnesser.
-    metadata : dict[str, str | list[EntityLink] | EntityLink] | None
-    """
+    A user has a name and email, an optional home
+    [`Location`][albert.resources.locations.Location], and a set of
+    [`Role`][albert.resources.roles.Role] objects that govern what they can do.
+    The ``user_class`` sets a broad permission tier
+    ([`UserClass`][albert.resources.users.UserClass]). Users are grouped into teams
+    ([`Team`][albert.resources.teams.Team]), and are referenced across the
+    platform, for example as the assignee of a Task or in an entity's ACL.
+
+    !!! example
+        ```python
+        from albert.resources.users import User, UserClass
+        user = User(
+            name="Ada Lovelace",
+            email="ada@example.com",
+            user_class=UserClass.STANDARD,
+        )
+        ```"""
 
     name: str
+    """The display name of the user."""
+
     id: UserId | None = Field(None, alias="albertId")
+    """The Albert User ID (format ``USR...``). Set once the user is registered in or retrieved from Albert."""
+
     location: SerializeAsEntityLink[Location] | None = Field(default=None, alias="Location")
+    """The user's home location."""
+
     email: EmailStr = Field(default=None, alias="email")
+    """The user's email address."""
+
     roles: list[SerializeAsEntityLink[Role]] = Field(
         max_length=1, default_factory=list, alias="Roles"
     )
+    """The roles the user holds, which determine their permissions."""
+
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
+    """The ACL class level of the user (broad permission tier)."""
+
     witnesser: bool | None = Field(default=None, alias="witnesser")
+    """Whether the user can act as a witness on tasks (only relevant when witnessing is enabled for the tenant)."""
+
     metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
+    """Custom metadata attached to the user."""
 
     def to_note_mention(self) -> str:
         """Convert the user to a note mention string.
@@ -71,19 +107,45 @@ class User(BaseResource):
 
 
 class UserSearchRoleItem(BaseAlbertModel):
+    """A role reference as returned within a user search result."""
+
     roleId: str
+    """The Albert ID of the role."""
+
     roleName: str
+    """The display name of the role."""
 
 
 class UserSearchItem(BaseAlbertModel, HydrationMixin[User]):
-    """Partial user entity as returned by the search."""
+    """A partial user as returned by [`search`][albert.collections.users.UserCollection.search].
+
+    Search returns these lightweight items for speed. Call
+    `hydrate()` to fetch the full
+    [`User`][albert.resources.users.User]."""
 
     name: str
+    """The display name of the user."""
+
     id: UserId | None = Field(None, alias="albertId")
+    """The Albert User ID (format ``USR...``)."""
+
     email: EmailStr | None = Field(default=None, alias="email")
+    """The user's email address."""
+
     user_class: UserClass = Field(default=UserClass.STANDARD, alias="userClass")
+    """The ACL class level of the user (broad permission tier)."""
+
     last_login_time: datetime | None = Field(None, alias="lastLoginTime")
+    """When the user most recently signed in."""
+
     location: str | None = None
+    """The name of the user's home location."""
+
     location_id: str | None = Field(None, alias="locationId")
+    """The ID of the user's home location."""
+
     roles: list[UserSearchRoleItem] = Field(max_length=1, default_factory=list, alias="role")
+    """The roles the user holds."""
+
     subscription: str | None = None
+    """The user's subscription type."""

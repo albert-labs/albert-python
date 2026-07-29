@@ -1,3 +1,5 @@
+import pytest
+
 from albert import Albert
 from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
@@ -8,7 +10,18 @@ from albert.resources.tasks import (
     TaskCategory,
     TaskSearchItem,
 )
+from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("tasks")
+
+
+def _final_workflow_id(block) -> str:
+    for workflow in block.workflow:
+        if workflow.category != "INITIAL":
+            return workflow.id
+    return block.workflow[0].id
 
 
 def test_task_search_with_pagination(client: Albert, seeded_tasks):
@@ -35,8 +48,17 @@ def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
         assert isinstance(task.category, str) and task.category
 
 
-def test_hydrated_task(client: Albert):
-    tasks = list(client.tasks.search(category=TaskCategory.GENERAL, max_items=5))
+def test_hydrated_task(client: Albert, seed_prefix: str, seeded_tasks):
+    # Scope the search to this worker's live seeds: unscoped results race other
+    # workers' teardown, and the search index can still hold already-deleted tasks
+    seeded_ids = {t.id for t in seeded_tasks}
+    tasks = poll_until(
+        lambda: [
+            t
+            for t in client.tasks.search(text=seed_prefix, category=TaskCategory.GENERAL)
+            if t.id in seeded_ids
+        ]
+    )
     assert tasks, "Expected at least one task in search results"
 
     for t in tasks:
@@ -94,6 +116,27 @@ def test_update(
     make_metadata_update_assertions(new_metadata=new_metadata, updated_object=updated_task)
 
 
+def test_update_partial_leaves_omitted_special_attrs_untouched(
+    client: Albert, seeded_tasks, seeded_tags: list[Tag]
+):
+    """Test that updating a task without setting tags leaves existing tags untouched."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask))
+    existing_tag_ids = {t.id for t in (task.tags or []) if t.id}
+    tag = next(t for t in seeded_tags if t.id not in existing_tag_ids)
+    task.tags = (task.tags or []) + [tag]
+    client.tasks.update(task=task)
+
+    # Update object that changes only the name and omits tags entirely.
+    new_name = f"{task.name}-renamed"
+    partial = PropertyTask(id=task.id, name=new_name)
+    assert "tags" not in partial.model_fields_set
+    client.tasks.update(task=partial)
+
+    refetched = client.tasks.get_by_id(id=task.id)
+    assert refetched.name == new_name
+    assert tag.id in {t.id for t in (refetched.tags or [])}
+
+
 def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
     task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     starting_blocks = len(task.blocks)
@@ -107,21 +150,26 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
 
 
 def test_update_block_workflow(
-    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+    client: Albert,
+    seeded_tasks,
+    seeded_workflows: list[Workflow],
 ):
-    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task: PropertyTask = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     # in case it mutated
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    new_workflow = [x for x in seeded_workflows if x.id != task.blocks[0].workflow][0]
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
-    updated_task = client.tasks.get_by_id(id=task.id)
+    updated_task: PropertyTask = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = [x for x in updated_task.blocks if x.id == block_id][0]
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_add_block_to_batch_task(
@@ -148,15 +196,17 @@ def test_update_block_workflow_on_batch_task(
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    current_workflow_id = task.blocks[0].workflow[0].id
-    new_workflow = next(x for x in seeded_workflows if x.id != current_workflow_id)
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
     updated_task = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = next(x for x in updated_task.blocks if x.id == block_id)
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):

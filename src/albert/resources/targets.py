@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
@@ -17,35 +17,25 @@ from albert.core.shared.models.base import BaseResource
 from albert.resources.parameter_groups import ParameterCategory
 
 
-class TargetType(str, Enum):
-    """
-    Enumeration of target types.
-
-    Attributes
-    ----------
-    PERFORMANCE : str
-        A performance target.
-    """
-
-    PERFORMANCE = "performance"
-
-
-class TargetOperator(str, Enum):
-    """
-    Enumeration of target value comparison operators.
+class ComparisonOperator(str, Enum):
+    """How a measured value is compared against a target value.
 
     Attributes
     ----------
     EQ : str
-        Equal to.
+        Equal to the target value.
+    GT : str
+        Strictly greater than the target value.
     GTE : str
-        Greater than or equal to.
+        Greater than or equal to the target value.
+    LT : str
+        Strictly less than the target value.
     LTE : str
-        Less than or equal to.
+        Less than or equal to the target value.
     BETWEEN : str
-        Between a range.
+        Within an inclusive range; pairs with a [`NumericRange`][albert.resources.targets.NumericRange] value.
     IN_SET : str
-        In a set of values.
+        Among a set of allowed values; pairs with a list value.
     """
 
     EQ = "eq"
@@ -57,107 +47,136 @@ class TargetOperator(str, Enum):
     IN_SET = "in-set"
 
 
-class TargetParameter(BaseAlbertModel):
-    """
-    Represents a parameter value at which a target is measured.
-
-    Attributes
-    ----------
-    id : str
-        The parameter ID.
-    parameter_group_id : str | None
-        The parameter group ID.
-    category : ParameterCategory
-        The parameter category.
-    unit_id : str | None
-        The unit ID for this parameter.
-    value : str | float | None
-        The parameter value.
-    sequence : str
-        The parameter sequence.
-    """
-
-    id: ParameterId
-    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
-    category: ParameterCategory
-    unit_id: UnitId | None = Field(default=None, alias="unitId")
-    value: str | float | None = Field(default=None)
-    sequence: str
-
-
-class TargetRangeValue(BaseAlbertModel):
-    """
-    Represents a range value for a target (used with the 'between' operator).
-
-    Attributes
-    ----------
-    min : float
-        The minimum value.
-    max : float
-        The maximum value.
-    """
+class NumericRange(BaseAlbertModel):
+    """An inclusive numeric range, used with the ``between`` operator."""
 
     min: float
+    """The lower bound of the range."""
+
     max: float
+    """The upper bound of the range."""
 
 
-class TargetValue(BaseAlbertModel):
-    """
-    Represents the target value constraint.
+class Criterion(BaseAlbertModel):
+    """A target value constraint: an operator paired with a value to compare against."""
+
+    operator: ComparisonOperator
+    """How the measured value is compared against ``value``."""
+
+    value: NumericRange | str | float | list
+    """The value being compared against. Use a [`NumericRange`][albert.resources.targets.NumericRange] with the ``between`` operator, a list with the ``in-set`` operator, or a single number/string for the scalar operators."""
+
+
+class TargetType(str, Enum):
+    """The kind of target.
 
     Attributes
     ----------
-    operator : TargetOperator
-        The comparison operator.
-    value : TargetRangeValue | str | float | list
-        The target value. Can be a range, single value, or list of values.
+    PERFORMANCE : str
+        A performance target: a desired value or range for a measured property.
     """
 
-    operator: TargetOperator
-    value: TargetRangeValue | str | float | list
+    PERFORMANCE = "performance"
+
+
+class TargetParameter(BaseAlbertModel):
+    """A parameter condition under which a target is measured.
+
+    Targets can be scoped to specific parameter settings (for example, "at 25 °C").
+    Each ``TargetParameter`` names a parameter and, optionally, the value it must
+    take for the target to apply."""
+
+    id: ParameterId
+    """The parameter ID (format ``PRM...``)."""
+
+    parameter_group_id: ParameterGroupId | None = Field(default=None, alias="parameterGroupId")
+    """The parameter group ID (format ``PRG...``) this parameter belongs to."""
+
+    category: ParameterCategory
+    """The category of the parameter."""
+
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``) for this parameter's value."""
+
+    value: Criterion | None = Field(default=None)
+    """The value condition. Accepts an operator/value pair using one of the operators ``eq``, ``gte``, ``lte``, ``between``, ``in-set``. For ``between``, the value must be ``{"min": ..., "max": ...}``. For ``in-set``, the value must be a list. Legacy bare scalars (numeric or string) are coerced on read: a numeric scalar becomes ``{"operator": "eq", "value": <n>}`` and a string becomes ``{"operator": "in-set", "value": [<s>]}``."""
+
+    sequence: str
+    """The ordering position of this parameter."""
+
+    @field_validator("value", mode="before")
+    @classmethod
+    def _coerce_legacy_value(cls, v: object) -> object:
+        # Tolerant reader: legacy parameter values stored a bare scalar before the
+        # operator/value-pair migration (lazy backfill may not have run yet).
+        if v is None:
+            return v
+        if isinstance(v, dict | Criterion):
+            return v
+        if isinstance(v, bool):  # guard: bool is a subclass of int
+            return {"operator": "in-set", "value": [v]}
+        if isinstance(v, int | float):
+            return {"operator": "eq", "value": v}
+        if isinstance(v, str):
+            return {"operator": "in-set", "value": [v]}
+        return v
 
 
 class Target(BaseResource):
-    """
-    Represents a target entity.
+    """A desired value or acceptable range for a measured property (🧪 Beta).
 
-    Attributes
-    ----------
-    id : str | None
-        The unique identifier of the target. Set when retrieved from Albert.
-    name : str
-        The name of the target.
-    type : TargetType
-        The type of target.
-    parent_id : str | None
-        The ID of the project this target belongs to. When set, the target
-        inherits its ACL policy from the referenced project.
-    data_template_id : str
-        The ID of the associated data template.
-    data_column_id : str
-        The ID of the associated data column.
-    unit_id : str | None
-        The unit ID for this target.
-    parameters : list[TargetParameter] | None
-        Parameter mappings for the target.
-    validation : list[dict] | None
-        Validation rules for the target value.
-    target_value : TargetValue
-        The target value constraint.
-    is_required : bool
-        Whether this target is required.
-    validation : list[dict] | None
-        Validation rules for the target.
-    """
+    A target links a data template and data column (the property being measured)
+    to a target value constraint, optionally scoped to a project and to specific
+    parameter conditions. Managed through
+    [`TargetCollection`][albert.collections.targets.TargetCollection] (``client.targets``).
+
+    !!! example
+        ```python
+        from albert.resources.targets import (
+            Target,
+            TargetType,
+            Criterion,
+            ComparisonOperator,
+        )
+        target = Target(
+            name="Viscosity spec",
+            type=TargetType.PERFORMANCE,
+            data_template_id="DAT1",
+            data_column_id="DAC1",
+            target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
+            is_required=True,
+        )
+        ```"""
 
     id: str | None = Field(default=None)
+    """The Albert ID of the target (format ``TAR...``). Set when the target is retrieved from or created in Albert."""
+
     name: str
+    """The name of the target."""
+
     type: TargetType
+    """The kind of target (e.g. performance)."""
+
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
+    """The ID of the project (format ``PRO...``) this target belongs to. When set, the target inherits its ACL (access control) policy from that project."""
+
     data_template_id: DataTemplateId = Field(alias="dataTemplateId")
+    """The ID of the data template (format ``DAT...``) whose property is targeted."""
+
     data_column_id: DataColumnId = Field(alias="dataColumnId")
+    """The ID of the data column (format ``DAC...``) being targeted."""
+
     unit_id: UnitId | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``) for the target value."""
+
     parameters: list[TargetParameter] | None = Field(default=None)
-    target_value: TargetValue = Field(alias="targetValue")
+    """Parameter conditions under which the target applies."""
+
+    target_value: Criterion = Field(alias="targetValue")
+    """The target value constraint (operator plus value)."""
+
     is_required: bool = Field(alias="isRequired")
+    """Whether meeting this target is required."""
+
     validation: list[dict] | None = Field(default=None)
+    """Validation rules applied to the target value."""

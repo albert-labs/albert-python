@@ -2,6 +2,8 @@ from contextlib import suppress
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from albert import Albert
 from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileInfo
@@ -9,6 +11,8 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 from albert.resources.projects import Project
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_attach_file_to_note(

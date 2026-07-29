@@ -1,6 +1,10 @@
+import pytest
+
 from albert.client import Albert
 from albert.core.shared.enums import OrderBy
 from albert.resources.units import Unit, UnitCategory
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_unit_items(returned_list: list[Unit]):
@@ -84,6 +88,11 @@ def test_unit_crud(client: Albert, seed_prefix: str):
     assert isinstance(updated_unit, Unit)
     assert updated_unit.id == created_unit.id
     assert updated_unit.symbol == "y"
+
+    # Synonyms are patched as item-level add/delete operations.
+    updated_unit.synonyms = ["kfnehiuow", "newsynonym"]
+    synonyms_updated = client.units.update(unit=updated_unit)
+    assert set(synonyms_updated.synonyms) == {"kfnehiuow", "newsynonym"}
 
     client.units.delete(id=updated_unit.id)
     assert not client.units.exists(name=updated_unit.name)

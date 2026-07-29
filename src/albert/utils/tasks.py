@@ -281,6 +281,10 @@ def generate_adv_patch_payload(
     )
 
     for attribute in _updatable_attributes_special:
+        # Leave special-case fields untouched when the caller never set them,
+        # so an omitted field is not coerced to [] and read as a deletion.
+        if attribute not in updated.model_fields_set:
+            continue
         if attribute == "assigned_to":
             old_value = getattr(existing, attribute)
             new_value = getattr(updated, attribute)

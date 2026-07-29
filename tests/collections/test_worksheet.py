@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.worksheets import Worksheet
+
+pytestmark = pytest.mark.xdist_group("sheets")
 
 
 def test_get_worksheet(seeded_worksheet: Worksheet):

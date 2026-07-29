@@ -9,6 +9,8 @@ from albert.resources.lots import Lot, LotAdjustmentAction
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
 
+pytestmark = pytest.mark.xdist_group("inventory")
+
 
 @pytest.fixture(scope="function")
 def seeded_lot(
@@ -83,6 +85,26 @@ def test_update(
     assert updated_lot.storage_location.id == new_storage_location.id
     assert updated_lot.owner is not None
     assert any(o.id == second_user.id for o in updated_lot.owner)
+
+
+def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
+    """Test that updating a lot without setting a field leaves that field untouched."""
+    seeded_lot.manufacturer_lot_number = "PRESERVE-ME"
+    client.lots.update(lot=seeded_lot)
+
+    # Update object that sets only pack_size and omits manufacturer_lot_number.
+    partial = Lot(
+        id=seeded_lot.id,
+        inventory_id=seeded_lot.inventory_id,
+        inventory_on_hand=seeded_lot.inventory_on_hand,
+        pack_size="NEW-PACK",
+    )
+    assert "manufacturer_lot_number" not in partial.model_fields_set
+    client.lots.update(lot=partial)
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.pack_size == "NEW-PACK"
+    assert refetched.manufacturer_lot_number == "PRESERVE-ME"
 
 
 def test_adjust_add(client: Albert, seeded_lot: Lot):

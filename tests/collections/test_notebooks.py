@@ -16,6 +16,8 @@ from albert.resources.notebooks import (
 from albert.resources.projects import Project
 from tests.seeding import generate_notebook_block_seeds, generate_notebook_seeds
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 @pytest.fixture(scope="function")
 def seeded_notebook(
@@ -61,6 +63,18 @@ def test_update_block_content_with_reorder(client: Albert, seeded_notebook: Note
     for updated, existing in zip(updated_notebook.blocks, seeded_notebook.blocks, strict=True):
         assert updated.id == existing.id
         assert updated.content == existing.content
+
+
+def test_append_blocks(client: Albert, seeded_notebook: Notebook):
+    """Test appending blocks preserves existing blocks."""
+    existing_ids = [b.id for b in seeded_notebook.blocks]
+    new_block = ParagraphBlock(content=ParagraphContent(text="Appended block."))
+
+    updated_notebook = client.notebooks.append_blocks(id=seeded_notebook.id, blocks=[new_block])
+
+    updated_ids = [b.id for b in updated_notebook.blocks]
+    assert updated_ids[: len(existing_ids)] == existing_ids
+    assert updated_notebook.blocks[-1].content.text == "Appended block."
 
 
 def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: Notebook):

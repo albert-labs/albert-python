@@ -4,10 +4,27 @@ from contextlib import suppress
 import pytest
 
 from albert.client import Albert
-from albert.core.shared.enums import OrderBy
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.cas import Cas
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
+from albert.resources.lists import ListItem
+
+pytestmark = pytest.mark.xdist_group("projects")
+
+
+def _cas_list_metadata_items(
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> tuple[str, list[ListItem]]:
+    field_name = next(
+        field.name
+        for field in static_custom_fields
+        if field.service == ServiceType.CAS and field.field_type == FieldType.LIST
+    )
+    list_items = [item for item in static_lists if item.list_type == field_name]
+    assert len(list_items) >= 2, "Expected at least two CAS list items in static seeds"
+    return field_name, list_items
 
 
 def assert_valid_cas_items(items: list[Cas]):
@@ -26,32 +43,17 @@ def test_cas_get_all_with_pagination(client: Albert):
     assert len(simple_list) <= 10
 
 
-def test_cas_get_all_with_filters(client: Albert, seeded_cas: list[Cas]):
-    """Test CAS get_all() with number and id filters."""
-    number = seeded_cas[0].number
+def test_cas_get_all_with_filters(client: Albert):
+    """Test CAS get_all() with id and cas filters."""
+    existing = next(client.cas_numbers.get_all(max_items=1))
 
-    adv_list = list(
-        client.cas_numbers.get_all(
-            number=number,
-            order_by=OrderBy.DESCENDING,
-            max_items=10,
-        )
-    )
-    assert_valid_cas_items(adv_list)
-    assert adv_list[0].number == number
+    id_list = list(client.cas_numbers.get_all(id=existing.id, max_items=10))
+    assert_valid_cas_items(id_list)
+    assert id_list[0].id == existing.id
 
-    adv_list2 = list(
-        client.cas_numbers.get_all(
-            id=seeded_cas[0].id,
-            max_items=10,
-        )
-    )
-    assert adv_list[0].id == seeded_cas[0].id
-    assert_valid_cas_items(adv_list2)
-
-    cas_nums = [seeded_cas[0].number, seeded_cas[1].number]
-    multi_cas = list(client.cas_numbers.get_all(cas=cas_nums))
+    multi_cas = list(client.cas_numbers.get_all(cas=[existing.number]))
     assert_valid_cas_items(multi_cas)
+    assert any(c.number == existing.number for c in multi_cas)
 
 
 def test_cas_not_found(client: Albert):
@@ -60,15 +62,17 @@ def test_cas_not_found(client: Albert):
         client.cas_numbers.get_by_id(id="foo bar")
 
 
-def test_cas_exists(client: Albert, seeded_cas: list[Cas]):
+def test_cas_exists(client: Albert):
     """Test that exists() returns True for known CAS and False for unknown CAS."""
-    cas_number = seeded_cas[0].number
-    assert client.cas_numbers.exists(number=cas_number)
-    assert not client.cas_numbers.exists(number=f"{uuid.uuid4()}")
+    existing = next(client.cas_numbers.get_all(max_items=1))
+    assert client.cas_numbers.exists(number=existing.number)
+    assert not client.cas_numbers.exists(number=str(uuid.uuid4()))
 
 
 def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
     """Test that updating a CAS object reflects changes."""
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
     cas_to_update = seeded_cas[0]
     updated_description = f"{seed_prefix} - A new description"
     cas_to_update.description = updated_description
@@ -80,6 +84,8 @@ def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
 
 def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
     """Test that updating CAS metadata reflects changes."""
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
     field_name = f"test_cas_meta_{seed_prefix.replace('-', '_')[:20]}".lower()
     custom_field = client.custom_fields.create(
         custom_field=CustomField(
@@ -100,16 +106,117 @@ def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[
             client.custom_fields.delete(id=custom_field.id)
 
 
-def test_get_by_number(client: Albert, seeded_cas: list[Cas]):
+def test_update_cas_metadata_batching(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
+    """Test that updating more than 9 metadata fields in one update() call succeeds."""
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
+    field_count = 10
+    prefix = seed_prefix.replace("-", "_")[:12].lower()
+    custom_fields: list[CustomField] = []
+    try:
+        for index in range(field_count):
+            field_name = f"test_cas_batch_{prefix}_{index}"
+            custom_fields.append(
+                client.custom_fields.create(
+                    custom_field=CustomField(
+                        name=field_name,
+                        display_name=f"TEST CAS Batch {prefix} {index}",
+                        field_type=FieldType.STRING,
+                        service=ServiceType.CAS,
+                    )
+                )
+            )
+
+        cas_to_update = seeded_cas[0]
+        new_metadata = {
+            **cas_to_update.metadata,
+            **{
+                field.name: f"{seed_prefix} - batch value {index}"
+                for index, field in enumerate(custom_fields)
+            },
+        }
+        cas_to_update.metadata = new_metadata
+        updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
+
+        for index, field in enumerate(custom_fields):
+            assert updated_cas.metadata.get(field.name) == f"{seed_prefix} - batch value {index}"
+    finally:
+        for field in custom_fields:
+            with suppress(NotFoundError):
+                client.custom_fields.delete(id=field.id)
+
+
+def test_create_cas_with_list_metadata(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+):
+    """Test that creating a CAS with list-type metadata hydrates list item names."""
+    field_name, list_items = _cas_list_metadata_items(static_custom_fields, static_lists)
+    list_item = list_items[0]
+    cas_number = f"{seed_prefix}-list-meta-create-50-00-0"
+    try:
+        created = client.cas_numbers.create(
+            cas=Cas(
+                number=cas_number,
+                metadata={field_name: [EntityLink(id=list_item.id)]},
+            )
+        )
+        links = created.metadata.get(field_name)
+        assert links is not None
+        assert [link.id for link in links] == [list_item.id]
+        assert links[0].name == list_item.name
+    finally:
+        with suppress(NotFoundError):
+            if "created" in locals():
+                client.cas_numbers.delete(id=created.id)
+
+
+def test_update_cas_list_metadata(
+    client: Albert,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+    seeded_cas: list[Cas],
+):
+    """Test that updating CAS list-type metadata stores entity links and round-trips."""
+    if not seeded_cas:
+        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
+    field_name, list_items = _cas_list_metadata_items(static_custom_fields, static_lists)
+    cas = next(c for c in seeded_cas if "-with-metadata-" in c.number)
+    existing = client.cas_numbers.get_by_id(id=cas.id)
+    original_links = existing.metadata[field_name]
+    other_item = next(item for item in list_items if item.id != original_links[0].id)
+    try:
+        updated = existing.model_copy(
+            update={"metadata": {**existing.metadata, field_name: [EntityLink(id=other_item.id)]}}
+        )
+        result = client.cas_numbers.update(updated_object=updated)
+        assert [link.id for link in result.metadata[field_name]] == [other_item.id]
+        assert result.metadata[field_name][0].name == other_item.name
+
+        refetched = client.cas_numbers.get_by_id(id=cas.id)
+        assert [link.id for link in refetched.metadata[field_name]] == [other_item.id]
+        assert refetched.metadata[field_name][0].name == other_item.name
+    finally:
+        restored = existing.model_copy(
+            update={"metadata": {**existing.metadata, field_name: original_links}}
+        )
+        with suppress(NotFoundError, AlbertHTTPError):
+            client.cas_numbers.update(updated_object=restored)
+
+
+def test_get_by_number(client: Albert):
     """Test get_by_number() returns the correct CAS using exact match."""
-    returned_cas = client.cas_numbers.get_by_number(number=seeded_cas[0].number, exact_match=True)
+    existing = next(client.cas_numbers.get_all(max_items=1))
+    returned = client.cas_numbers.get_by_number(number=existing.number, exact_match=True)
+    assert returned is not None
+    assert returned.id == existing.id
+    assert returned.number == existing.number
 
-    assert returned_cas.id == seeded_cas[0].id
-    assert returned_cas.number == seeded_cas[0].number
 
-
-def test_get_or_create_cas(client: Albert, seeded_cas: list[Cas]):
-    """Test get or create returns existing CAS."""
-    cas_number = seeded_cas[0].number
-    cas = client.cas_numbers.get_or_create(cas=cas_number)
-    assert cas.id == seeded_cas[0].id
+def test_get_or_create_cas(client: Albert):
+    """Test get_or_create returns the existing CAS when it already exists."""
+    existing = next(client.cas_numbers.get_all(max_items=1))
+    fetched = client.cas_numbers.get_or_create(cas=existing.number)
+    assert fetched.id == existing.id

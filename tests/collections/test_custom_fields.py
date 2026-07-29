@@ -5,6 +5,7 @@ import pytest
 from albert.client import Albert
 from albert.resources.custom_fields import (
     CustomField,
+    DateDefault,
     FieldCategory,
     FieldType,
     ListDefault,
@@ -12,8 +13,11 @@ from albert.resources.custom_fields import (
     NumberDefault,
     ServiceType,
     StringDefault,
+    TimestampDefault,
 )
 from albert.resources.lists import ListItem
+
+pytestmark = pytest.mark.xdist_group("customfields")
 
 
 def get_or_create_custom_field(
@@ -295,6 +299,58 @@ def test_update_custom_field_type_list(client: Albert):
     finally:
         if custom_field.id is not None:
             client.custom_fields.delete(id=custom_field.id)
+
+
+def test_update_searchable_on_unset_field(client: Albert):
+    """Test enabling searchable on a field where it was never set."""
+    custom_field = CustomField(
+        name=f"test_searchable_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="Searchable Unset Field",
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert not created.searchable
+        created.searchable = True
+        updated = client.custom_fields.update(custom_field=created)
+        assert updated.searchable is True
+    finally:
+        client.custom_fields.delete(id=created.id)
+
+
+@pytest.mark.parametrize(
+    "field_type, default_class, default_value",
+    [
+        (FieldType.DATE, DateDefault, "2026-05-21"),
+        (FieldType.TIMESTAMP, TimestampDefault, "2026-05-21T14:32:00+02:00"),
+    ],
+)
+def test_custom_field_date_and_timestamp_defaults(
+    client: Albert,
+    field_type: FieldType,
+    default_class: type[DateDefault | TimestampDefault],
+    default_value: str,
+):
+    """Test date and timestamp custom fields with default values round-trip."""
+    field_name = f"test_{field_type.value}_{uuid4().hex[:8]}"
+    custom_field = CustomField(
+        name=field_name,
+        field_type=field_type,
+        service=ServiceType.PROJECTS,
+        display_name=f"Test {field_type.value.title()} Field",
+        default=default_class(value=default_value),
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert isinstance(created.default, default_class)
+        assert created.default.value == default_value
+
+        fetched = client.custom_fields.get_by_id(id=created.id)
+        assert isinstance(fetched.default, default_class)
+        assert fetched.default.value == default_value
+    finally:
+        client.custom_fields.delete(id=created.id)
 
 
 def test_delete_custom_field(client: Albert):
