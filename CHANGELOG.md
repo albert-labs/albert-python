@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.38.2](https://github.com/albert-labs/albert-python/compare/v1.38.1...v1.38.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* **cas:** batch PATCH updates to respect 9-item API limit ([#646](https://github.com/albert-labs/albert-python/issues/646)) ([5d70ff8](https://github.com/albert-labs/albert-python/commit/5d70ff88e9ab7a48dc4f6290c0527f290b836123))
+* **locations:** exclude read-only fields from create payload ([#649](https://github.com/albert-labs/albert-python/issues/649)) ([e623176](https://github.com/albert-labs/albert-python/commit/e62317637e481dffe55273c7b758cd745238bebf))
+
+
+### Documentation
+
+* clarify workflow registration and WFL1 default ([#637](https://github.com/albert-labs/albert-python/issues/637)) ([919fd7f](https://github.com/albert-labs/albert-python/commit/919fd7f75ae9a3f27c947e0e6ad482a6a8fc984b))
+* **lots:** document create-required fields on Lot and create() ([#632](https://github.com/albert-labs/albert-python/issues/632)) ([68ecc51](https://github.com/albert-labs/albert-python/commit/68ecc51bf52a0c8cf11893098bde3a35e929d20e))
+
 ## [1.38.1](https://github.com/albert-labs/albert-python/compare/v1.38.0...v1.38.1) (2026-07-27)
 
 
