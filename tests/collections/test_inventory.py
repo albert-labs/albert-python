@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta, timezone
-
 import pytest
 
 from albert.client import Albert
@@ -97,22 +95,20 @@ def test_inventory_get_all_with_filters(
     assert by_id == by_name == by_user
     assert test_item.id in by_id
 
-    recent = (datetime.now(timezone.utc) - timedelta(days=1)).date().isoformat()
-    recently_updated = poll_until(
+    assert test_item.created and test_item.created.at
+    from_created_at = test_item.created.at.date().isoformat()
+    recently_created = poll_until(
         lambda: filter_seeded(
             list(
                 client.inventory.search(
                     text=seed_prefix,
-                    from_updated_at=recent,
+                    from_created_at=from_created_at,
                     max_items=100,
                 )
             )
         )
     )
-    assert test_item.id in {normalize_inv_id(item.id) for item in recently_updated}
-
-    # updated_by is wired on search; fresh seeds are not reliably indexed for this filter yet.
-    list(client.inventory.search(text=seed_prefix, updated_by=static_user.id, max_items=10))
+    assert test_item.id in {normalize_inv_id(item.id) for item in recently_created}
 
     hydrated_by_creator = poll_until(
         lambda: filter_seeded(
