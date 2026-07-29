@@ -890,8 +890,7 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, sent in the ``metadataFilters`` request
-            body field. When set, the search uses POST instead of GET.
+            Filter by custom field (metadata) values.
 
         Returns
         -------
@@ -1054,8 +1053,7 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, sent in the ``metadataFilters`` request
-            body field. When set, the search uses POST instead of GET.
+            Filter by custom field (metadata) values.
 
         Returns
         -------
