@@ -307,7 +307,7 @@ class ProjectCollection(BaseCollection):
         my_role : list[str], optional
             User roles to filter by.
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, sent in the `metadataFilters` request body field.
+            Filter by custom field (metadata) values.
             !!! warning
                 Do not use this for application, technology, program, technical lead, or
                 market segment. Use their corresponding query parameters instead.
