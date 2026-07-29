@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.39.0](https://github.com/albert-labs/albert-python/compare/v1.38.2...v1.39.0) (2026-07-29)
+
+
+### Features
+
+* **search:** add filters, metadata_filters, and SearchItem fields ([#636](https://github.com/albert-labs/albert-python/issues/636)) ([4557a03](https://github.com/albert-labs/albert-python/commit/4557a03765150ff26f9a93258b78f4503a98d751))
+
 ## [1.38.2](https://github.com/albert-labs/albert-python/compare/v1.38.1...v1.38.2) (2026-07-29)
 
 
