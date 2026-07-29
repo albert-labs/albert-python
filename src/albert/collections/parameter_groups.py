@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -168,6 +169,7 @@ class ParameterGroupCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
+    @validate_call
     def search(
         self,
         *,
@@ -177,6 +179,13 @@ class ParameterGroupCollection(BaseCollection):
         tags: str | list[str] | None = None,
         parameters: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        created_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -221,6 +230,22 @@ class ParameterGroupCollection(BaseCollection):
             Additional fields to include on each returned search item. If omitted,
             a default set (ACL, creation info, metadata, owner, tags, and team) is
             requested.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include groups created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include groups created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the group. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include groups updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include groups updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
@@ -241,12 +266,20 @@ class ParameterGroupCollection(BaseCollection):
             "owner": ensure_list(owner),
             "tags": ensure_list(tags),
             "parameters": ensure_list(parameters),
+            "createdBy": ensure_list(created_by),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "additionalField": (
                 ensure_list(additional_field)
                 if additional_field is not None
                 else list(DEFAULT_ADDITIONAL_FIELDS)
             ),
         }
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -260,11 +293,23 @@ class ParameterGroupCollection(BaseCollection):
             ],
         )
 
+    @validate_call
     def get_all(
         self,
         *,
         text: str | None = None,
         types: PGType | list[PGType] | None = None,
+        owner: str | list[str] | None = None,
+        tags: str | list[str] | None = None,
+        parameters: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        created_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -290,6 +335,32 @@ class ParameterGroupCollection(BaseCollection):
         types : PGType or list[PGType], optional
             Filter by parameter group type (``general``, ``batch``, or
             ``property``).
+        owner : str or list[str], optional
+            Filter by owner name(s).
+        tags : str or list[str], optional
+            Filter by tag name(s).
+        parameters : str or list[str], optional
+            Filter by parameter name(s).
+        additional_field : str or list[str], optional
+            Additional fields to include on each returned search item. If omitted,
+            a default set (ACL, creation info, metadata, owner, tags, and team) is
+            requested.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include groups created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include groups created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the group. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include groups updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include groups updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
@@ -314,6 +385,17 @@ class ParameterGroupCollection(BaseCollection):
             self.search(
                 text=text,
                 types=types,
+                owner=owner,
+                tags=tags,
+                parameters=parameters,
+                additional_field=additional_field,
+                created_by=created_by,
+                from_created_at=from_created_at,
+                to_created_at=to_created_at,
+                updated_by=updated_by,
+                from_updated_at=from_updated_at,
+                to_updated_at=to_updated_at,
+                metadata_filters=metadata_filters,
                 order_by=order_by,
                 offset=offset,
                 max_items=max_items,

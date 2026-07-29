@@ -346,6 +346,9 @@ class DataTemplateSearchItem(BaseAlbertModel, HydrationMixin[DataTemplate]):
     name: str
     """The name of the data template."""
 
+    description: str | None = None
+    """The description of the data template."""
+
     data_columns: list[DataTemplateSearchItemDataColumn] | None = Field(
         alias="dataColumns", default=None
     )
