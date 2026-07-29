@@ -6442,11 +6442,28 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">storage_location</span><span class="o">=</span><span class="n">StorageLocation</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Main Warehouse&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s2">&quot;STLA1&quot;</span><span class="p">),</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">initial_quantity</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">created</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">lots</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">lots</span><span class="o">=</span><span class="p">[</span><span class="n">lot</span><span class="p">])</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">inventory_on_hand</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">cost</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">manufacturer_lot_number</span><span class="o">=</span><span class="s2">&quot;MLN-001&quot;</span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="n">created</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">lots</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">lots</span><span class="o">=</span><span class="p">[</span><span class="n">lot</span><span class="p">])</span>
 </span></code></pre></div>
 </div>
 
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Fields required when creating a lot via
+<a class="autorefs autorefs-internal" href="../../collections/lots/#albert.collections.lots.LotCollection.create"><code>create</code></a> depend on the path:</p>
+<ul>
+<li><strong>Regular lot</strong> (no <code>task_id</code>): <code>inventory_id</code>, <code>storage_location</code>,
+  <code>initial_quantity</code>, and <code>inventory_on_hand</code> (usually the same value as
+  <code>initial_quantity</code>). When the parent Inventory Item is <code>RawMaterials</code>,
+  <code>cost</code> and <code>manufacturer_lot_number</code> are also required.</li>
+<li><strong>Task lot</strong> (<code>task_id</code> set, batch / <code>Formulas</code> path): <code>inventory_id</code>
+  and <code>location</code> (not <code>storage_location</code>).</li>
+</ul>
+</details>
       <details><summary>Show JSON schema:</summary>
         <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;$defs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -6996,7 +7013,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-546"><a id="__codelineno-0-546" name="__codelineno-0-546" href="#__codelineno-0-546"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
 </span><span id="__span-0-547"><a id="__codelineno-0-547" name="__codelineno-0-547" href="#__codelineno-0-547"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-548"><a id="__codelineno-0-548" name="__codelineno-0-548" href="#__codelineno-0-548"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-549"><a id="__codelineno-0-549" name="__codelineno-0-549" href="#__codelineno-0-549"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A specific physical batch or quantity of an Inventory Item.\n\nA Lot represents one received shipment or produced amount of a parent\nInventory Item (identified by ``inventory_id``), tracking batch-specific\ndetails such as how much is currently on hand, where it is stored, its cost,\nand who owns it. Lots are managed through the Lot collection\n([`LotCollection`][albert.collections.lots.LotCollection], accessed as\n``client.lots``); their parent items live in the Inventory collection\n([`InventoryCollection`][albert.collections.inventory.InventoryCollection]). A ``lot_id``\nis used throughout property data to scope results to a single batch.\n\nA lot&#39;s own ID has the format ``LOT...``; its parent ``inventory_id`` has the\nformat ``INV...``.\n\n!!! example\n    ```python\n    from albert import Albert\n    from albert.resources.lots import Lot\n    from albert.resources.storage_locations import StorageLocation\n    client = Albert()\n    lot = Lot(\n        inventory_id=\&quot;INVA1\&quot;,\n        storage_location=StorageLocation(name=\&quot;Main Warehouse\&quot;, id=\&quot;STLA1\&quot;),\n        initial_quantity=10.0,\n    )\n    created = client.lots.create(lots=[lot])\n    ```&quot;</span><span class="p">,</span>
+</span><span id="__span-0-549"><a id="__codelineno-0-549" name="__codelineno-0-549" href="#__codelineno-0-549"></a><span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A specific physical batch or quantity of an Inventory Item.\n\nA Lot represents one received shipment or produced amount of a parent\nInventory Item (identified by ``inventory_id``), tracking batch-specific\ndetails such as how much is currently on hand, where it is stored, its cost,\nand who owns it. Lots are managed through the Lot collection\n([`LotCollection`][albert.collections.lots.LotCollection], accessed as\n``client.lots``); their parent items live in the Inventory collection\n([`InventoryCollection`][albert.collections.inventory.InventoryCollection]). A ``lot_id``\nis used throughout property data to scope results to a single batch.\n\nA lot&#39;s own ID has the format ``LOT...``; its parent ``inventory_id`` has the\nformat ``INV...``.\n\n!!! example\n    ```python\n    from albert import Albert\n    from albert.resources.lots import Lot\n    from albert.resources.storage_locations import StorageLocation\n    client = Albert()\n    lot = Lot(\n        inventory_id=\&quot;INVA1\&quot;,\n        storage_location=StorageLocation(name=\&quot;Main Warehouse\&quot;, id=\&quot;STLA1\&quot;),\n        initial_quantity=10.0,\n        inventory_on_hand=10.0,\n        cost=50.0,\n        manufacturer_lot_number=\&quot;MLN-001\&quot;,\n    )\n    created = client.lots.create(lots=[lot])\n    ```\n\nNotes\n-----\nFields required when creating a lot via\n[`create`][albert.collections.lots.LotCollection.create] depend on the path:\n\n- **Regular lot** (no ``task_id``): ``inventory_id``, ``storage_location``,\n  ``initial_quantity``, and ``inventory_on_hand`` (usually the same value as\n  ``initial_quantity``). When the parent Inventory Item is ``RawMaterials``,\n  ``cost`` and ``manufacturer_lot_number`` are also required.\n- **Task lot** (``task_id`` set, batch / ``Formulas`` path): ``inventory_id``\n  and ``location`` (not ``storage_location``).&quot;</span><span class="p">,</span>
 </span><span id="__span-0-550"><a id="__codelineno-0-550" name="__codelineno-0-550" href="#__codelineno-0-550"></a><span class="w">  </span><span class="nt">&quot;properties&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-551"><a id="__codelineno-0-551" name="__codelineno-0-551" href="#__codelineno-0-551"></a><span class="w">    </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-552"><a id="__codelineno-0-552" name="__codelineno-0-552" href="#__codelineno-0-552"></a><span class="w">      </span><span class="nt">&quot;anyOf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -7061,7 +7078,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-611"><a id="__codelineno-0-611" name="__codelineno-0-611" href="#__codelineno-0-611"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Albertid&quot;</span>
 </span><span id="__span-0-612"><a id="__codelineno-0-612" name="__codelineno-0-612" href="#__codelineno-0-612"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-613"><a id="__codelineno-0-613" name="__codelineno-0-613" href="#__codelineno-0-613"></a><span class="w">    </span><span class="nt">&quot;parentId&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614" href="#__codelineno-0-614"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The Albert ID of the parent Inventory Item this lot is a batch of.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-614"><a id="__codelineno-0-614" name="__codelineno-0-614" href="#__codelineno-0-614"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The Albert ID of the parent Inventory Item this lot is a batch of.\n\nRequired when creating a lot.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-615"><a id="__codelineno-0-615" name="__codelineno-0-615" href="#__codelineno-0-615"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Parentid&quot;</span><span class="p">,</span>
 </span><span id="__span-0-616"><a id="__codelineno-0-616" name="__codelineno-0-616" href="#__codelineno-0-616"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;string&quot;</span>
 </span><span id="__span-0-617"><a id="__codelineno-0-617" name="__codelineno-0-617" href="#__codelineno-0-617"></a><span class="w">    </span><span class="p">},</span>
@@ -7075,7 +7092,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-625"><a id="__codelineno-0-625" name="__codelineno-0-625" href="#__codelineno-0-625"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626" href="#__codelineno-0-626"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627" href="#__codelineno-0-627"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628" href="#__codelineno-0-628"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The Albert ID of the Task that produced this lot, if it came from one.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628" href="#__codelineno-0-628"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The Albert ID of the Task that produced this lot, if it came from one.\n\nWhen set, creation follows the task / batch (``Formulas``) path: provide\n``location`` instead of ``storage_location``.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629" href="#__codelineno-0-629"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Taskid&quot;</span>
 </span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630" href="#__codelineno-0-630"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631" href="#__codelineno-0-631"></a><span class="w">    </span><span class="nt">&quot;expirationDate&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -7101,7 +7118,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-651"><a id="__codelineno-0-651" name="__codelineno-0-651" href="#__codelineno-0-651"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-652"><a id="__codelineno-0-652" name="__codelineno-0-652" href="#__codelineno-0-652"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-653"><a id="__codelineno-0-653" name="__codelineno-0-653" href="#__codelineno-0-653"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-654"><a id="__codelineno-0-654" name="__codelineno-0-654" href="#__codelineno-0-654"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The manufacturer&#39;s own lot number for this batch.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-654"><a id="__codelineno-0-654" name="__codelineno-0-654" href="#__codelineno-0-654"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The manufacturer&#39;s own lot number for this batch.\n\nRequired when creating a lot whose parent Inventory Item is ``RawMaterials``\n(and ``task_id`` is not set). Optional on read and update.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-655"><a id="__codelineno-0-655" name="__codelineno-0-655" href="#__codelineno-0-655"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Manufacturerlotnumber&quot;</span>
 </span><span id="__span-0-656"><a id="__codelineno-0-656" name="__codelineno-0-656" href="#__codelineno-0-656"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-657"><a id="__codelineno-0-657" name="__codelineno-0-657" href="#__codelineno-0-657"></a><span class="w">    </span><span class="nt">&quot;StorageLocation&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -7117,7 +7134,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-667"><a id="__codelineno-0-667" name="__codelineno-0-667" href="#__codelineno-0-667"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-668"><a id="__codelineno-0-668" name="__codelineno-0-668" href="#__codelineno-0-668"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-669"><a id="__codelineno-0-669" name="__codelineno-0-669" href="#__codelineno-0-669"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-670"><a id="__codelineno-0-670" name="__codelineno-0-670" href="#__codelineno-0-670"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood).&quot;</span><span class="p">,</span>
+</span><span id="__span-0-670"><a id="__codelineno-0-670" name="__codelineno-0-670" href="#__codelineno-0-670"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood).\n\nRequired when creating a non-task lot (no ``task_id``). Not used on the task /\nbatch (``Formulas``) create path.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-671"><a id="__codelineno-0-671" name="__codelineno-0-671" href="#__codelineno-0-671"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Storagelocation&quot;</span>
 </span><span id="__span-0-672"><a id="__codelineno-0-672" name="__codelineno-0-672" href="#__codelineno-0-672"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-673"><a id="__codelineno-0-673" name="__codelineno-0-673" href="#__codelineno-0-673"></a><span class="w">    </span><span class="nt">&quot;packSize&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -7143,7 +7160,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-693"><a id="__codelineno-0-693" name="__codelineno-0-693" href="#__codelineno-0-693"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-694"><a id="__codelineno-0-694" name="__codelineno-0-694" href="#__codelineno-0-694"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-695"><a id="__codelineno-0-695" name="__codelineno-0-695" href="#__codelineno-0-695"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-696"><a id="__codelineno-0-696" name="__codelineno-0-696" href="#__codelineno-0-696"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The quantity the lot started with, in the parent item&#39;s units.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-696"><a id="__codelineno-0-696" name="__codelineno-0-696" href="#__codelineno-0-696"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The quantity the lot started with, in the parent item&#39;s units.\n\nRequired when creating a non-task lot (no ``task_id``).&quot;</span><span class="p">,</span>
 </span><span id="__span-0-697"><a id="__codelineno-0-697" name="__codelineno-0-697" href="#__codelineno-0-697"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Initialquantity&quot;</span>
 </span><span id="__span-0-698"><a id="__codelineno-0-698" name="__codelineno-0-698" href="#__codelineno-0-698"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-699"><a id="__codelineno-0-699" name="__codelineno-0-699" href="#__codelineno-0-699"></a><span class="w">    </span><span class="nt">&quot;cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -7157,11 +7174,11 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-707"><a id="__codelineno-0-707" name="__codelineno-0-707" href="#__codelineno-0-707"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-708"><a id="__codelineno-0-708" name="__codelineno-0-708" href="#__codelineno-0-708"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-709"><a id="__codelineno-0-709" name="__codelineno-0-709" href="#__codelineno-0-709"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-710"><a id="__codelineno-0-710" name="__codelineno-0-710" href="#__codelineno-0-710"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The cost of the lot.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-710"><a id="__codelineno-0-710" name="__codelineno-0-710" href="#__codelineno-0-710"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The cost of the lot.\n\nRequired when creating a lot whose parent Inventory Item is ``RawMaterials``\n(and ``task_id`` is not set). Optional on read and update.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-711"><a id="__codelineno-0-711" name="__codelineno-0-711" href="#__codelineno-0-711"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Cost&quot;</span>
 </span><span id="__span-0-712"><a id="__codelineno-0-712" name="__codelineno-0-712" href="#__codelineno-0-712"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-713"><a id="__codelineno-0-713" name="__codelineno-0-713" href="#__codelineno-0-713"></a><span class="w">    </span><span class="nt">&quot;inventoryOnHand&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-714"><a id="__codelineno-0-714" name="__codelineno-0-714" href="#__codelineno-0-714"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The quantity currently in stock, in the parent item&#39;s units. Change it with [`adjust`][albert.collections.lots.LotCollection.adjust] rather than by editing directly.&quot;</span><span class="p">,</span>
+</span><span id="__span-0-714"><a id="__codelineno-0-714" name="__codelineno-0-714" href="#__codelineno-0-714"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The quantity currently in stock, in the parent item&#39;s units.\n\nRequired when creating a non-task lot; set to the starting stock (usually the\nsame value as ``initial_quantity``). After creation, change it with\n[`adjust`][albert.collections.lots.LotCollection.adjust] rather than by\nediting directly.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-715"><a id="__codelineno-0-715" name="__codelineno-0-715" href="#__codelineno-0-715"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Inventoryonhand&quot;</span><span class="p">,</span>
 </span><span id="__span-0-716"><a id="__codelineno-0-716" name="__codelineno-0-716" href="#__codelineno-0-716"></a><span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;number&quot;</span>
 </span><span id="__span-0-717"><a id="__codelineno-0-717" name="__codelineno-0-717" href="#__codelineno-0-717"></a><span class="w">    </span><span class="p">},</span>
@@ -7275,7 +7292,7 @@ format <code>INV...</code>.</p>
 </span><span id="__span-0-825"><a id="__codelineno-0-825" name="__codelineno-0-825" href="#__codelineno-0-825"></a><span class="w">        </span><span class="p">}</span>
 </span><span id="__span-0-826"><a id="__codelineno-0-826" name="__codelineno-0-826" href="#__codelineno-0-826"></a><span class="w">      </span><span class="p">],</span>
 </span><span id="__span-0-827"><a id="__codelineno-0-827" name="__codelineno-0-827" href="#__codelineno-0-827"></a><span class="w">      </span><span class="nt">&quot;default&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-</span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828" href="#__codelineno-0-828"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The site/campus the lot is at (may contain multiple buildings, each with many storage locations).&quot;</span><span class="p">,</span>
+</span><span id="__span-0-828"><a id="__codelineno-0-828" name="__codelineno-0-828" href="#__codelineno-0-828"></a><span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;The site/campus the lot is at (may contain multiple buildings, each with many storage locations).\n\nRequired when creating a task lot (``task_id`` set). Read-only on lots returned\nfrom GET; use ``storage_location`` for regular (non-task) lot creation.&quot;</span><span class="p">,</span>
 </span><span id="__span-0-829"><a id="__codelineno-0-829" name="__codelineno-0-829" href="#__codelineno-0-829"></a><span class="w">      </span><span class="nt">&quot;title&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Location&quot;</span>
 </span><span id="__span-0-830"><a id="__codelineno-0-830" name="__codelineno-0-830" href="#__codelineno-0-830"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-831"><a id="__codelineno-0-831" name="__codelineno-0-831" href="#__codelineno-0-831"></a><span class="w">    </span><span class="nt">&quot;hasNotes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -7569,6 +7586,7 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The Albert ID of the parent Inventory Item this lot is a batch of.</p>
+<p>Required when creating a lot.</p>
 
     </div>
 
@@ -7589,6 +7607,8 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The Albert ID of the Task that produced this lot, if it came from one.</p>
+<p>When set, creation follows the task / batch (<code>Formulas</code>) path: provide
+<code>location</code> instead of <code>storage_location</code>.</p>
 
     </div>
 
@@ -7629,6 +7649,8 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The manufacturer's own lot number for this batch.</p>
+<p>Required when creating a lot whose parent Inventory Item is <code>RawMaterials</code>
+(and <code>task_id</code> is not set). Optional on read and update.</p>
 
     </div>
 
@@ -7651,6 +7673,8 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood).</p>
+<p>Required when creating a non-task lot (no <code>task_id</code>). Not used on the task /
+batch (<code>Formulas</code>) create path.</p>
 
     </div>
 
@@ -7691,6 +7715,7 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The quantity the lot started with, in the parent item's units.</p>
+<p>Required when creating a non-task lot (no <code>task_id</code>).</p>
 
     </div>
 
@@ -7711,6 +7736,8 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The cost of the lot.</p>
+<p>Required when creating a lot whose parent Inventory Item is <code>RawMaterials</code>
+(and <code>task_id</code> is not set). Optional on read and update.</p>
 
     </div>
 
@@ -7730,7 +7757,11 @@ format <code>INV...</code>.</p>
 
     <div class="doc doc-contents ">
 
-        <p>The quantity currently in stock, in the parent item's units. Change it with <a class="autorefs autorefs-internal" href="../../collections/lots/#albert.collections.lots.LotCollection.adjust"><code>adjust</code></a> rather than by editing directly.</p>
+        <p>The quantity currently in stock, in the parent item's units.</p>
+<p>Required when creating a non-task lot; set to the starting stock (usually the
+same value as <code>initial_quantity</code>). After creation, change it with
+<a class="autorefs autorefs-internal" href="../../collections/lots/#albert.collections.lots.LotCollection.adjust"><code>adjust</code></a> rather than by
+editing directly.</p>
 
     </div>
 
@@ -7871,6 +7902,8 @@ format <code>INV...</code>.</p>
     <div class="doc doc-contents ">
 
         <p>The site/campus the lot is at (may contain multiple buildings, each with many storage locations).</p>
+<p>Required when creating a task lot (<code>task_id</code> set). Read-only on lots returned
+from GET; use <code>storage_location</code> for regular (non-task) lot creation.</p>
 
     </div>
 
@@ -8035,19 +8068,19 @@ format <code>INV...</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/lots.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-181">181</a></span>
-<span class="normal"><a href="#__codelineno-0-182">182</a></span>
-<span class="normal"><a href="#__codelineno-0-183">183</a></span>
-<span class="normal"><a href="#__codelineno-0-184">184</a></span>
-<span class="normal"><a href="#__codelineno-0-185">185</a></span>
-<span class="normal"><a href="#__codelineno-0-186">186</a></span>
-<span class="normal"><a href="#__codelineno-0-187">187</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;has_notes&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
-</span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_has_notes</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
-</span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184"></a>        <span class="k">return</span> <span class="kc">True</span>
-</span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185"></a>    <span class="k">elif</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
-</span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186"></a>        <span class="k">return</span> <span class="kc">False</span>
-</span><span id="__span-0-187"><a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="k">return</span> <span class="n">value</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-229">229</a></span>
+<span class="normal"><a href="#__codelineno-0-230">230</a></span>
+<span class="normal"><a href="#__codelineno-0-231">231</a></span>
+<span class="normal"><a href="#__codelineno-0-232">232</a></span>
+<span class="normal"><a href="#__codelineno-0-233">233</a></span>
+<span class="normal"><a href="#__codelineno-0-234">234</a></span>
+<span class="normal"><a href="#__codelineno-0-235">235</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-229"><a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;has_notes&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+</span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_has_notes</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-231"><a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+</span><span id="__span-0-232"><a id="__codelineno-0-232" name="__codelineno-0-232"></a>        <span class="k">return</span> <span class="kc">True</span>
+</span><span id="__span-0-233"><a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="k">elif</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+</span><span id="__span-0-234"><a id="__codelineno-0-234" name="__codelineno-0-234"></a>        <span class="k">return</span> <span class="kc">False</span>
+</span><span id="__span-0-235"><a id="__codelineno-0-235" name="__codelineno-0-235"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8070,19 +8103,19 @@ format <code>INV...</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/lots.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-189">189</a></span>
-<span class="normal"><a href="#__codelineno-0-190">190</a></span>
-<span class="normal"><a href="#__codelineno-0-191">191</a></span>
-<span class="normal"><a href="#__codelineno-0-192">192</a></span>
-<span class="normal"><a href="#__codelineno-0-193">193</a></span>
-<span class="normal"><a href="#__codelineno-0-194">194</a></span>
-<span class="normal"><a href="#__codelineno-0-195">195</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-189"><a id="__codelineno-0-189" name="__codelineno-0-189"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;has_attachments&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
-</span><span id="__span-0-190"><a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_has_attachments</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-</span><span id="__span-0-191"><a id="__codelineno-0-191" name="__codelineno-0-191"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
-</span><span id="__span-0-192"><a id="__codelineno-0-192" name="__codelineno-0-192"></a>        <span class="k">return</span> <span class="kc">True</span>
-</span><span id="__span-0-193"><a id="__codelineno-0-193" name="__codelineno-0-193"></a>    <span class="k">elif</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
-</span><span id="__span-0-194"><a id="__codelineno-0-194" name="__codelineno-0-194"></a>        <span class="k">return</span> <span class="kc">False</span>
-</span><span id="__span-0-195"><a id="__codelineno-0-195" name="__codelineno-0-195"></a>    <span class="k">return</span> <span class="n">value</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-237">237</a></span>
+<span class="normal"><a href="#__codelineno-0-238">238</a></span>
+<span class="normal"><a href="#__codelineno-0-239">239</a></span>
+<span class="normal"><a href="#__codelineno-0-240">240</a></span>
+<span class="normal"><a href="#__codelineno-0-241">241</a></span>
+<span class="normal"><a href="#__codelineno-0-242">242</a></span>
+<span class="normal"><a href="#__codelineno-0-243">243</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-237"><a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;has_attachments&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+</span><span id="__span-0-238"><a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="k">def</span><span class="w"> </span><span class="nf">validate_has_attachments</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+</span><span id="__span-0-239"><a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
+</span><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240"></a>        <span class="k">return</span> <span class="kc">True</span>
+</span><span id="__span-0-241"><a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="k">elif</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;0&quot;</span><span class="p">:</span>
+</span><span id="__span-0-242"><a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="k">return</span> <span class="kc">False</span>
+</span><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="k">return</span> <span class="n">value</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8107,11 +8140,11 @@ format <code>INV...</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/lots.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-204">204</a></span>
-<span class="normal"><a href="#__codelineno-0-205">205</a></span>
-<span class="normal"><a href="#__codelineno-0-206">206</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-204"><a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;initial_quantity&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-205"><a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_initial_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_quantity</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
-</span><span id="__span-0-206"><a id="__codelineno-0-206" name="__codelineno-0-206"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">initial_quantity</span><span class="p">)</span> <span class="k">if</span> <span class="n">initial_quantity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-252">252</a></span>
+<span class="normal"><a href="#__codelineno-0-253">253</a></span>
+<span class="normal"><a href="#__codelineno-0-254">254</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-252"><a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;initial_quantity&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-253"><a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_initial_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">initial_quantity</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
+</span><span id="__span-0-254"><a id="__codelineno-0-254" name="__codelineno-0-254"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">initial_quantity</span><span class="p">)</span> <span class="k">if</span> <span class="n">initial_quantity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8134,11 +8167,11 @@ format <code>INV...</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/lots.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-208">208</a></span>
-<span class="normal"><a href="#__codelineno-0-209">209</a></span>
-<span class="normal"><a href="#__codelineno-0-210">210</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-208"><a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="__span-0-209"><a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cost</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
-</span><span id="__span-0-210"><a id="__codelineno-0-210" name="__codelineno-0-210"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span> <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-256">256</a></span>
+<span class="normal"><a href="#__codelineno-0-257">257</a></span>
+<span class="normal"><a href="#__codelineno-0-258">258</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-256"><a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="__span-0-257"><a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_cost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cost</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
+</span><span id="__span-0-258"><a id="__codelineno-0-258" name="__codelineno-0-258"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span> <span class="k">if</span> <span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8163,11 +8196,11 @@ format <code>INV...</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/resources/lots.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-212">212</a></span>
-<span class="normal"><a href="#__codelineno-0-213">213</a></span>
-<span class="normal"><a href="#__codelineno-0-214">214</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-212"><a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;inventory_on_hand&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
-</span><span id="__span-0-213"><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_inventory_on_hand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inventory_on_hand</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
-</span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">inventory_on_hand</span><span class="p">)</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-260">260</a></span>
+<span class="normal"><a href="#__codelineno-0-261">261</a></span>
+<span class="normal"><a href="#__codelineno-0-262">262</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-260"><a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="nd">@field_serializer</span><span class="p">(</span><span class="s2">&quot;inventory_on_hand&quot;</span><span class="p">,</span> <span class="n">return_type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+</span><span id="__span-0-261"><a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="k">def</span><span class="w"> </span><span class="nf">serialize_inventory_on_hand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inventory_on_hand</span><span class="p">:</span> <span class="n">NonNegativeFloat</span><span class="p">):</span>
+</span><span id="__span-0-262"><a id="__codelineno-0-262" name="__codelineno-0-262"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_decimal</span><span class="p">(</span><span class="n">inventory_on_hand</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
