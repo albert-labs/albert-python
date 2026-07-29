@@ -42,6 +42,7 @@ def test_inventory_get_all_with_pagination(client: Albert):
 
 def test_inventory_get_all_with_filters(
     client: Albert,
+    seed_prefix: str,
     seeded_inventory: list[InventoryItem],
     seeded_cas: list[Cas],
     static_user: User,
@@ -49,6 +50,27 @@ def test_inventory_get_all_with_filters(
     """Test inventory get_all and search with filters (text, category, cas, company, user)."""
     test_item = seeded_inventory[1]
     matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
+    seeded_ids = {item.id for item in seeded_inventory}
+
+    def normalize_inv_id(item_id: str) -> str:
+        return item_id if item_id.upper().startswith("INV") else f"INV{item_id}"
+
+    def filter_seeded(items):
+        return [item for item in items if normalize_inv_id(item.id) in seeded_ids]
+
+    def scoped_search(*, created_by=None, updated_by=None):
+        return poll_until(
+            lambda: filter_seeded(
+                list(
+                    client.inventory.search(
+                        text=seed_prefix,
+                        created_by=created_by,
+                        updated_by=updated_by,
+                        max_items=100,
+                    )
+                )
+            )
+        )
 
     results = poll_until(
         lambda: list(
@@ -67,21 +89,40 @@ def test_inventory_get_all_with_filters(
         assert test_item.name.lower() in item.name.lower()
 
     user = User(id=static_user.id, name=static_user.name)
-    created_by_ids = {
-        item.id for item in client.inventory.search(created_by=static_user.id, max_items=5)
-    }
-    assert created_by_ids == {
-        item.id for item in client.inventory.search(created_by=static_user.name, max_items=5)
-    }
-    assert created_by_ids == {
-        item.id for item in client.inventory.search(created_by=user, max_items=5)
-    }
-    updated_by_ids = {
-        item.id for item in client.inventory.search(updated_by=static_user.id, max_items=5)
-    }
-    assert updated_by_ids
-    assert list(client.inventory.get_all(created_by=static_user.id, max_items=3))
-    assert client.inventory.get_all_facets(created_by=static_user.id)
+    by_id = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.id)}
+    by_name = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.name)}
+    by_user = {normalize_inv_id(item.id) for item in scoped_search(created_by=user)}
+    assert by_id == by_name == by_user
+    assert test_item.id in by_id
+
+    updated_hits = scoped_search(updated_by=static_user.id)
+    assert {normalize_inv_id(item.id) for item in updated_hits} & seeded_ids
+
+    hydrated_by_creator = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.get_all(
+                    text=seed_prefix,
+                    created_by=static_user.id,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert hydrated_by_creator
+
+    facets = client.inventory.get_all_facets(text=seed_prefix, created_by=static_user.id)
+    assert facets
+
+    search_hits = poll_until(
+        lambda: filter_seeded(list(client.inventory.search(text=test_item.name, max_items=10)))
+    )
+    hit = next(item for item in search_hits if normalize_inv_id(item.id) == test_item.id)
+    assert hit.manufacturer is not None
+    company_name = (
+        test_item.company.name if isinstance(test_item.company, Company) else test_item.company
+    )
+    assert hit.manufacturer == company_name
 
 
 def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
