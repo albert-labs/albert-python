@@ -437,8 +437,7 @@ class DataTemplateCollection(BaseCollection):
         to_updated_at : str, optional
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, sent in the ``metadataFilters`` request
-            body field.
+            Filter by custom field (metadata) values.
         order_by : OrderBy, optional
             The order in which to sort results. Default is ``DESCENDING``.
         max_items : int, optional

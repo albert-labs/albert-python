@@ -169,6 +169,7 @@ class ParameterGroupCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
         ]
 
+    @validate_call
     def search(
         self,
         *,
@@ -292,6 +293,7 @@ class ParameterGroupCollection(BaseCollection):
             ],
         )
 
+    @validate_call
     def get_all(
         self,
         *,
