@@ -10,7 +10,18 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 
 
 class AttachmentCategory(str, Enum):
-    """The kind of file an attachment represents."""
+    """The kind of file an attachment represents.
+
+    ``OTHER``, ``SDS``, ``LABEL``, and ``SCRIPT`` are the original, fully supported
+    categories. All other categories are currently in beta and are only intended
+    for use with
+    [`upload_and_attach_document_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_document_to_inventory_item].
+
+    !!! warning "Beta Feature!"
+        Categories other than ``OTHER``, ``SDS``, ``LABEL``, and ``SCRIPT`` are in beta.
+        Please do not use them in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+    """
 
     OTHER = "Other"
     """A general-purpose file with no specialized handling."""
