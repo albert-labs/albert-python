@@ -13,6 +13,8 @@ from albert.resources.reports import (
 )
 from albert.resources.tasks import BaseTask
 
+pytestmark = pytest.mark.xdist_group("tasks")
+
 
 @pytest.mark.skip(reason="Report Queries not loaded into testing environment yet")
 def test_get_raw_dataframe(

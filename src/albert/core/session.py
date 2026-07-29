@@ -83,7 +83,11 @@ class AlbertSession(requests.Session):
         return self._provided_token
 
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
-        self.headers["Authorization"] = f"Bearer {self._access_token}"
+        # Send auth via per-request headers: mutating self.headers is not safe when
+        # the session is shared across threads.
+        headers = {"Authorization": f"Bearer {self._access_token}"}
+        headers.update(kwargs.pop("headers", None) or {})
+        kwargs["headers"] = headers
         kwargs.setdefault("timeout", self._timeout)
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
         params = self._encode_query_params(kwargs.pop("params", None) or {})

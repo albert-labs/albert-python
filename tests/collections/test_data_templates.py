@@ -22,6 +22,9 @@ from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_data_template_items(
@@ -222,6 +225,46 @@ def test_update_validations(client: Albert, seeded_data_templates: list[DataTemp
     updated_column = updated_dt.data_column_values[0]
     assert updated_column.validation[0].datatype == DataType.STRING
     assert updated_column.value == "Updated Value"
+
+
+def test_date_validation_datatype_on_data_template(
+    client: Albert, seeded_data_templates: list[DataTemplate]
+):
+    """Test that data templates with date validation datatype deserialize correctly."""
+    dt = seeded_data_templates[2]
+    column = dt.data_column_values[0]
+    original_validation = column.validation
+    original_value = column.value
+
+    column.validation = [
+        ValueValidation(
+            datatype=DataType.DATE,
+            min="2026-01-01",
+            max="2026-12-31",
+            operator=Operator.BETWEEN,
+        )
+    ]
+    column.value = "2026-05-21"
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert updated_column.validation[0].datatype == DataType.DATE
+    assert updated_column.validation[0].min == "2026-01-01"
+    assert updated_column.validation[0].max == "2026-12-31"
+    assert updated_column.value == "2026-05-21"
+
+    fetched_dt = client.data_templates.get_by_id(id=dt.id)
+    fetched_column = next(
+        x for x in fetched_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert fetched_column.validation[0].datatype == DataType.DATE
+
+    column.validation = original_validation
+    column.value = original_value
+    client.data_templates.update(data_template=dt)
 
 
 def test_enum_validation_creation(client: Albert, seeded_data_templates: list[DataTemplate]):
@@ -516,9 +559,18 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert updated_param.value == "ParamOption3"
 
 
-def test_hydrate_data_template(client: Albert):
+def test_hydrate_data_template(client: Albert, seed_prefix: str, seeded_data_templates):
     """Test that data templates can be hydrated correctly."""
-    data_templates = client.data_templates.search(max_items=3)
+    # Filter to this worker's seeds: name search is fuzzy (tokenized) and can rank
+    # unrelated or deleted templates
+    seeded_ids = {dt.id for dt in seeded_data_templates}
+    data_templates = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(name=seed_prefix, max_items=100)
+            if dt.id in seeded_ids
+        ]
+    )
     assert data_templates, "Expected at least one data_template in search results"
 
     for data_template in data_templates:

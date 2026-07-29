@@ -10,39 +10,49 @@ TeamRole = Literal["TeamOwner", "TeamViewer"]
 
 
 class TeamMember(BaseAlbertModel):
-    """A user belonging to a team.
+    """A user's membership in a team, pairing a user with their team role.
 
-    Attributes
-    ----------
-    id : str
-        The Albert user ID.
-    name : str | None
-        The display name of the user.
-    role : TeamRole | None
-        The team role. Must be ``"TeamOwner"`` or ``"TeamViewer"``.
-    """
+    !!! example
+        ```python
+        from albert.resources.teams import TeamMember
+        member = TeamMember(id="USR12", role="TeamOwner")
+        ```"""
 
     id: UserId
+    """The Albert User ID (format ``USR...``) of the member."""
+
     name: str | None = None
+    """The display name of the user."""
+
     role: TeamRole | None = Field(default=None, alias="fgc")
+    """The member's role within the team: ``"TeamOwner"`` (can manage the team) or ``"TeamViewer"`` (read access). Defaults to ``"TeamViewer"`` when unset."""
 
 
 class Team(BaseResource):
-    """Represents a Team on the Albert Platform.
+    """A named group of users on the Albert platform.
 
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the team. Set when the team is retrieved from Albert.
-    name : str
-        The name of the team.
-    members : list[TeamMember] | None
-        The members of the team with their names and roles.
-    """
+    Teams share access: entity ACLs and Task assignments can reference a whole
+    team rather than individual users. Each member is a
+    [`TeamMember`][albert.resources.teams.TeamMember] pairing a
+    [`User`][albert.resources.users.User] with a team role.
+
+    !!! example
+        ```python
+        from albert.resources.teams import Team, TeamMember
+        team = Team(
+            name="Coatings R&D",
+            members=[TeamMember(id="USR12", role="TeamOwner")],
+        )
+        ```"""
 
     id: TeamId | None = Field(default=None, alias="albertId")
+    """The Albert Team ID (format ``TEM...``). Set once the team is registered in or retrieved from Albert."""
+
     name: str = Field(min_length=1)
+    """The display name of the team."""
+
     members: list[TeamMember] | None = Field(default=None, alias="Users")
+    """The members of the team, each with their name and team role."""
 
     @model_validator(mode="before")
     @classmethod

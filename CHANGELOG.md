@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.38.1](https://github.com/albert-labs/albert-python/compare/v1.38.0...v1.38.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **sheets:** allow first PRG on empty Process Design ([#644](https://github.com/albert-labs/albert-python/issues/644)) ([b2e2acd](https://github.com/albert-labs/albert-python/commit/b2e2acdb1ea4ea9d7fb7a96e1be03b88b1abb5ae))
+
+## [1.38.0](https://github.com/albert-labs/albert-python/compare/v1.37.1...v1.38.0) (2026-07-27)
+
+
+### Features
+
+* add has_more to AlbertPaginator + Sheet.add_parameter_group_row (AI-1086, AI-1087, AI-1071) ([#635](https://github.com/albert-labs/albert-python/issues/635)) ([7929e46](https://github.com/albert-labs/albert-python/commit/7929e46f32622d71a88e1a8f2c4ace3f9b59cf79))
+
+## [1.37.1](https://github.com/albert-labs/albert-python/compare/v1.37.0...v1.37.1) (2026-07-24)
+
+
+### Performance Improvements
+
+* **tests:** parallelize integration test suite with pytest-xdist ([#633](https://github.com/albert-labs/albert-python/issues/633)) ([58e3df0](https://github.com/albert-labs/albert-python/commit/58e3df0595b8ef4b3ea3cd85a3ff0e0b0d4f2ba2))
+
+
+### Documentation
+
+* **smart-projects:** clarify project-bound create-and-assign flow ([#641](https://github.com/albert-labs/albert-python/issues/641)) ([80dee12](https://github.com/albert-labs/albert-python/commit/80dee12a0c9720689d795a27fc93c2464f4dfa01))
+
+## [1.37.0](https://github.com/albert-labs/albert-python/compare/v1.36.1...v1.37.0) (2026-07-23)
+
+
+### Features
+
+* **design-runs:** add validate preflight method ([#638](https://github.com/albert-labs/albert-python/issues/638)) ([20b77f7](https://github.com/albert-labs/albert-python/commit/20b77f735b8f48c113ca88467dbb5482c9284caa))
+
+## [1.36.1](https://github.com/albert-labs/albert-python/compare/v1.36.0...v1.36.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **resources:** support date and timestamp field formats ([#623](https://github.com/albert-labs/albert-python/issues/623)) ([fb382bc](https://github.com/albert-labs/albert-python/commit/fb382bc54f5634c214c8e4d2375665436416e779))
+
+## [1.36.0](https://github.com/albert-labs/albert-python/compare/v1.35.0...v1.36.0) (2026-07-17)
+
+
+### Features
+
+* SDK support for api-designruns ([#626](https://github.com/albert-labs/albert-python/issues/626)) ([b38e03a](https://github.com/albert-labs/albert-python/commit/b38e03adaa3afa97263d82b9f963a23e55a1b0b2))
+
+## [1.35.0](https://github.com/albert-labs/albert-python/compare/v1.34.1...v1.35.0) (2026-07-17)
+
+
+### Features
+
+* add label template and PDF generator collections ([#625](https://github.com/albert-labs/albert-python/issues/625)) ([0bc3e1b](https://github.com/albert-labs/albert-python/commit/0bc3e1bac7103b03b665994b481da4cbf50f4898))
+
+## [1.34.1](https://github.com/albert-labs/albert-python/compare/v1.34.0...v1.34.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **cas:** hydrate list metadata names and send entity links on PATCH ([#621](https://github.com/albert-labs/albert-python/issues/621)) ([ca97f8e](https://github.com/albert-labs/albert-python/commit/ca97f8ed27a4c88a31667aebf9ffd8684e1ce769))
+* **inventory:** dedup when company is an entity link ([#584](https://github.com/albert-labs/albert-python/issues/584)) ([6b40de7](https://github.com/albert-labs/albert-python/commit/6b40de79fd692f519ddcd8d3ad8125eb48cc6b90))
+* **property-data:** handle empty response on get_properties_on_inventory ([#613](https://github.com/albert-labs/albert-python/issues/613)) ([69f4c23](https://github.com/albert-labs/albert-python/commit/69f4c238f42f361a8251485de7a1bf705ed1435e))
+* **tasks:** use FINAL workflow id when updating block workflow ([#622](https://github.com/albert-labs/albert-python/issues/622)) ([58d5ca4](https://github.com/albert-labs/albert-python/commit/58d5ca4bb4a7989d9bf79157f8a6849353c7a74f))
+* **units:** match unit names case-insensitively in get_or_create ([#614](https://github.com/albert-labs/albert-python/issues/614)) ([3268c35](https://github.com/albert-labs/albert-python/commit/3268c35dab78031b9b25017672f75000c569d2b0))
+
+
+### Documentation
+
+* upgrade docstrings across collections and resources ([#619](https://github.com/albert-labs/albert-python/issues/619)) ([921e3a0](https://github.com/albert-labs/albert-python/commit/921e3a023b8caf2563b7a3b947d939765612d923))
+
 ## [1.34.0](https://github.com/albert-labs/albert-python/compare/v1.33.0...v1.34.0) (2026-07-10)
 
 

@@ -1,6 +1,10 @@
+import pytest
+
 from albert import Albert
 from albert.resources.links import Link
 from albert.resources.tasks import BaseTask
+
+pytestmark = pytest.mark.xdist_group("tasks")
 
 
 def test_link_get_all_basic(

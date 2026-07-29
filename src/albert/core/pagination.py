@@ -7,6 +7,7 @@ from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
 
 ItemType = TypeVar("ItemType")
+OutType = TypeVar("OutType")
 DEFAULT_LIMIT = 1000
 
 
@@ -26,6 +27,12 @@ class AlbertPaginator(Iterator[ItemType]):
     A custom `deserialize` function is provided when additional logic is required to load
     the raw items returned by the search listing, e.g., making additional Albert API calls.
     The `max_items` argument can be used to stop iteration early, regardless of mode.
+
+    After iteration, [`has_more`][albert.core.pagination.AlbertPaginator.has_more] is True
+    when the iterator stopped because ``max_items`` was reached and at least one further
+    item is known to exist (remaining items on the current page, or a continuation key /
+    offset for another page). When iteration runs to natural completion, ``has_more`` is
+    False.
     """
 
     def __init__(
@@ -76,6 +83,8 @@ class AlbertPaginator(Iterator[ItemType]):
             self._pagination_params.setdefault("limit", DEFAULT_LIMIT)
 
         self._last_key: str | None = None
+        self._has_more = False
+        self._total: int | None = None
 
         self._iterator = self._create_iterator()
 
@@ -88,6 +97,35 @@ class AlbertPaginator(Iterator[ItemType]):
         Returns None if no key has been received yet."""
         return self._last_key
 
+    @property
+    def has_more(self) -> bool:
+        """True when iteration stopped early and more matching items are known to exist.
+
+        Set when ``max_items`` cut off the iterator while unyielded items remained on the
+        current page, or while the response indicated another page (``lastKey`` / offset
+        continuation), or when the response ``total`` exceeds items yielded (backends that
+        ignore ``limit`` and return empty for ``offset>0``). False after a natural end of
+        results.
+        """
+        return self._has_more
+
+    @property
+    def total(self) -> int | None:
+        """Server-reported match count from the latest response, when present."""
+        return self._total
+
+    def _record_total(self, data: dict[str, Any]) -> None:
+        raw = data.get("total")
+        if raw is None:
+            return
+        try:
+            self._total = int(raw)
+        except (TypeError, ValueError):
+            return
+
+    def _total_implies_more(self, yielded: int) -> bool:
+        return self._total is not None and yielded < self._total
+
     def _create_iterator(self) -> Iterator[ItemType]:
         """Create an iterator that yields paginated items."""
         yielded = 0
@@ -96,10 +134,15 @@ class AlbertPaginator(Iterator[ItemType]):
         while True:
             response = self._request()
             data = response.json()
+            self._record_total(data)
             items = data.get("Items", [])
             item_count = len(items)
 
             if not items and self.mode == PaginationMode.OFFSET:
+                # Backend returned empty for offset>0 while ``total`` still exceeds what
+                # we have (common when ``limit`` is ignored and offset is broken).
+                if self._total_implies_more(yielded):
+                    self._has_more = True
                 return
 
             # Detect repeated keys before yielding to avoid duplicates.
@@ -115,24 +158,72 @@ class AlbertPaginator(Iterator[ItemType]):
             deserialized = list(self.deserialize(items))
 
             for item in deserialized:
+                if self.max_items is not None and yielded >= self.max_items:
+                    # Unyielded item on this page — definitive signal more exist.
+                    self._has_more = True
+                    return
                 yield item
                 yielded += 1
-                if self.max_items is not None and yielded >= self.max_items:
-                    return
+
+            if self.max_items is not None and yielded >= self.max_items:
+                # Server-reported total is authoritative over a full-page heuristic.
+                if self._total is not None:
+                    self._has_more = self._total_implies_more(yielded)
+                else:
+                    self._has_more = self._response_has_continuation(
+                        data=data, count=item_count, current_key=current_key
+                    )
+                return
 
             if self.mode == PaginationMode.KEY and current_key is None:
                 return
             if not self._update_params(data=data, count=item_count):
+                if self._total_implies_more(yielded):
+                    self._has_more = True
                 return
+
+    def _next_request_offset(self, *, data: dict[str, Any], count: int) -> int:
+        """Compute the offset for the next page request."""
+        offset = data.get("offset")
+        if offset is not None:
+            return int(offset) + count
+        current = self._pagination_params.get("offset", 0)
+        return int(current or 0) + count
+
+    def _response_has_continuation(
+        self, *, data: dict[str, Any], count: int, current_key: str | None
+    ) -> bool:
+        """Return whether the current response indicates another page of results.
+
+        Best-effort from data already in hand: never issues an extra request, so a
+        caller's iteration makes exactly the pages it would have without ``has_more``.
+        A full page (``count >= limit``) is taken as "more likely exist"; a short page
+        is a natural end. When the backend ignores ``limit`` and under-returns while
+        more exist, only ``total`` (handled by the caller) can detect it.
+        """
+        match self.mode:
+            case PaginationMode.OFFSET:
+                if count == 0:
+                    return False
+                limit = int(self._pagination_params.get("limit", DEFAULT_LIMIT))
+                return count >= limit
+            case PaginationMode.KEY:
+                # Match _update_params: an empty-string lastKey is a terminal signal.
+                return bool(current_key)
+            case mode:
+                raise AlbertException(f"Unknown pagination mode {mode}.")
 
     def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
         """Update pagination state from a response payload."""
         match self.mode:
             case PaginationMode.OFFSET:
-                offset = data.get("offset")
-                if not offset:
+                if count == 0:
                     return False
-                self._pagination_params["offset"] = int(offset) + count
+                # Some search endpoints (e.g. /projects/search) omit offset in the response;
+                # advance from the request offset we sent instead.
+                self._pagination_params["offset"] = self._next_request_offset(
+                    data=data, count=count
+                )
             case PaginationMode.KEY:
                 last_key = data.get("lastKey")
                 self._last_key = last_key
@@ -175,6 +266,70 @@ class AlbertPaginator(Iterator[ItemType]):
         return {k: convert(v) for k, v in payload.items() if v is not None}
 
 
+class MetadataPreservingIterator(Iterator[OutType]):
+    """Yield from ``items`` while exposing ``has_more`` / ``total`` from ``source``.
+
+    Use whenever a ``get_all`` wraps a search paginator in custom iteration (batch
+    hydration, etc.). A plain generator would drop those completeness signals.
+
+    Parameters
+    ----------
+    source : Any
+        The underlying paginator (or any object exposing ``has_more`` / ``total``);
+        those attributes are read lazily so they reflect state after iteration.
+    items : Iterator[OutType]
+        The iterator actually yielded to the caller.
+    """
+
+    def __init__(self, source: Any, items: Iterator[OutType]):
+        self._source = source
+        self._iterator = iter(items)
+
+    @property
+    def has_more(self) -> bool:
+        """Delegate to the source paginator when present."""
+        return bool(getattr(self._source, "has_more", False))
+
+    @property
+    def total(self) -> int | None:
+        """Delegate to the source paginator when present."""
+        return getattr(self._source, "total", None)
+
+    def __iter__(self) -> Iterator[OutType]:
+        return self
+
+    def __next__(self) -> OutType:
+        return next(self._iterator)
+
+
+class MappedPaginator(MetadataPreservingIterator[OutType]):
+    """Map items from a source iterator while preserving ``has_more`` / ``total``.
+
+    Use for ``get_all`` methods that hydrate each ``search`` hit via ``get_by_id``.
+
+    Parameters
+    ----------
+    source : Iterator[Any]
+        The underlying search paginator whose items are mapped.
+    map_fn : Callable[[Any], OutType | None]
+        Applied to each source item; returning ``None`` drops that item (e.g. a hit
+        that could not be hydrated), without affecting ``has_more`` / ``total``.
+    """
+
+    def __init__(
+        self,
+        source: Iterator[Any],
+        map_fn: Callable[[Any], OutType | None],
+    ):
+        def _mapped() -> Iterator[OutType]:
+            for item in source:
+                mapped = map_fn(item)
+                if mapped is not None:
+                    yield mapped
+
+        super().__init__(source, _mapped())
+
+
 class AsyncAlbertPaginator(AsyncIterator[ItemType]):
     """
     Async iterator for key-based paginated Albert endpoints.
@@ -207,7 +362,13 @@ class AsyncAlbertPaginator(AsyncIterator[ItemType]):
         self._deserialize = deserialize
         self._params = dict(params or {})
         self._max_items = max_items
+        self._has_more = False
         self._iterator = self._create_iterator()
+
+    @property
+    def has_more(self) -> bool:
+        """True when iteration stopped early and more matching items are known to exist."""
+        return self._has_more
 
     async def _create_iterator(self) -> AsyncIterator[ItemType]:
         yielded = 0
@@ -217,10 +378,16 @@ class AsyncAlbertPaginator(AsyncIterator[ItemType]):
             items = data.get("Items", [])
             for item in items:
                 if self._max_items is not None and yielded >= self._max_items:
+                    self._has_more = True
                     return
                 yield self._deserialize(item)
                 yielded += 1
             key = data.get("lastKey")
+            if self._max_items is not None and yielded >= self._max_items:
+                # Match the terminal check below (``not key``): an empty-string lastKey
+                # is not a real continuation cursor.
+                self._has_more = bool(key) and bool(items)
+                return
             if not key or not items:
                 break
             self._params["startKey"] = key

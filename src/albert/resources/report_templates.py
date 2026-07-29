@@ -7,7 +7,17 @@ from albert.core.shared.models.base import BaseAlbertModel, BaseResource
 
 
 class ReportTemplateCategory(str, Enum):
-    """The category of a report template."""
+    """The category of a report template.
+
+    Attributes
+    ----------
+    ANALYTICS : str
+        Analytics reports.
+    DATASCIENCE : str
+        Data science reports.
+    REPORTS : str
+        General reports.
+    """
 
     ANALYTICS = "analytics"
     DATASCIENCE = "datascience"
@@ -15,7 +25,29 @@ class ReportTemplateCategory(str, Enum):
 
 
 class ReportTemplateSubCategory(str, Enum):
-    """The sub-category of a report template."""
+    """The sub-category of a report template, describing its subject area.
+
+    Attributes
+    ----------
+    PROJECT : str
+        A single project.
+    INVENTORY : str
+        Inventory items.
+    TASKS : str
+        Tasks.
+    PRODUCTS : str
+        Products.
+    PROJECTS : str
+        Projects.
+    INVENTORY_LOTS_AND_HAZARDS : str
+        Inventory lots and their hazards.
+    PRODUCTS_FORMULAS : str
+        Products and formulas.
+    RESULT_AND_TASK_DATA : str
+        Result and task data.
+    BATCH_TASKS_AND_INVENTORY_USAGE : str
+        Batch tasks and inventory usage.
+    """
 
     PROJECT = "Project"
     INVENTORY = "Inventory"
@@ -29,7 +61,19 @@ class ReportTemplateSubCategory(str, Enum):
 
 
 class FilterType(str, Enum):
-    """The type of filter for report templates."""
+    """The input type of a report template filter.
+
+    Attributes
+    ----------
+    DROPDOWN : str
+        A dropdown selection populated from a data source.
+    ENUM : str
+        A fixed set of enumerated values.
+    BOOLEAN : str
+        A true/false toggle.
+    NUMBER : str
+        A numeric value.
+    """
 
     DROPDOWN = "dropDown"
     ENUM = "enum"
@@ -78,39 +122,17 @@ class FieldMapping(BaseAlbertModel):
 
 
 class ReportTemplate(BaseResource):
-    """A report template in Albert.
+    """A reusable report configuration in Albert.
 
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the report template. Set when the report template is retrieved from Albert.
-    name : str
-        The name of the report template. Must be between 1 and 255 characters.
-    description : str | None
-        Description of the report template. Maximum length 1000 characters.
-    filter_options : FilterOptions | None
-        Filter options configuration for the report template.
-    filter_state : dict | None
-        Current state of filters for the report template.
-    meta_data_state : dict | None
-        Current state of metadata for the report template.
-    chart_model_state : list | None
-        Current state of chart models for the report template.
-    column_state : list | None
-        Current state of columns for the report template.
-    sp_name : str
-        Stored procedure name for the report template.
-    category : ReportTemplateCategory
-        Category of the report template.
-    sub_category : ReportTemplateSubCategory | None
-        Sub-category of the report template.
-    custom_fields : list[str] | None
-        List of custom field names associated with the report template.
-    field_mapping : list[FieldMapping] | None
-        Field mapping configuration for the report template.
-    """
+    A report template defines a report type that can be run: its available
+    filters and its default column, chart, and metadata state. Templates are
+    retrieved through
+    [`ReportTemplateCollection`][albert.collections.report_templates.ReportTemplateCollection] and are
+    grouped by [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory] and [`ReportTemplateSubCategory`][albert.resources.report_templates.ReportTemplateSubCategory]."""
 
     id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the report template. Set when the template is retrieved from Albert."""
+
     name: str = Field(..., min_length=1, max_length=255, description="Name of the report template")
     description: str | None = Field(
         default=None, max_length=1000, description="Description of the report template"

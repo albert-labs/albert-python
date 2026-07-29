@@ -8,6 +8,8 @@ from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.teams import Team, TeamMember
 from albert.resources.users import User
 
+pytestmark = pytest.mark.xdist_group("teams")
+
 
 def _assert_member_absent(client: Albert, team_id: str, user_id: str) -> Team:
     """Fetch team and assert user is not a member. Retries for eventual consistency."""

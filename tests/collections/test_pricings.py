@@ -1,9 +1,13 @@
 import uuid
 
+import pytest
+
 from albert import Albert
 from albert.resources.inventory import InventoryItem
 from albert.resources.locations import Location
 from albert.resources.pricings import Pricing
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_get_by_inventory_id(
