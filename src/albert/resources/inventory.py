@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
@@ -111,7 +111,11 @@ class InventoryUnitCategory(str, Enum):
     MASS : str
         Measured by mass (e.g. grams, kilograms).
     VOLUME : str
-        Measured by volume (e.g. milliliters, liters).
+        Measured by volume (e.g. milliliters, liters). Select this to designate a
+        raw material as volume-based: quantities are entered and tracked in mL/L
+        rather than by mass. Requires ``density`` (g/mL) at creation; that value
+        is locked and used to convert between mass and volume downstream (lots,
+        on-hand display, worksheets, batch tasks).
     LENGTH : str
         Measured by length (e.g. meters).
     PRESSURE : str
@@ -261,6 +265,36 @@ class InventoryMinimum(BaseAlbertModel):
         return self
 
 
+class InventoryDensity(BaseAlbertModel):
+    """The system-owned density record on a volume-based raw material.
+
+    Density is the conversion factor between mass and volume for solvents and
+    other liquids tracked by volume. Albert stores it as a locked reference
+    attribute (g/mL) when an item is created with
+    ``unitCategory: "volume"``. The platform uses this value to derive litre
+    equivalents from kg on-hand, normalize lot quantities, and flow volume
+    through worksheets and batch tasks.
+
+    Returned on GET as a structured object. When creating an item you may pass
+    either a float or an existing ``InventoryDensity`` (e.g. copied from another
+    item); only ``value`` (g/mL) is sent to the API."""
+
+    atr_id: str = Field(alias="atrId")
+    """The tenant reference-attribute ID for density (platform-managed)."""
+
+    value: float
+    """The density in g/mL (e.g. ``0.789`` for ethanol)."""
+
+    unit_id: str = Field(alias="unitId")
+    """The unit ID for the density measure (typically g/mL)."""
+
+    unit_name: str = Field(alias="unitName")
+    """The display name of the density unit (typically ``"g/mL"``)."""
+
+    locked_at_creation: bool = Field(alias="lockedAtCreation")
+    """Always ``True`` for density. The value cannot be edited or deleted after creation."""
+
+
 class InventoryItem(BaseTaggedResource):
     """A catalog entry for a material tracked in Albert.
 
@@ -302,6 +336,18 @@ class InventoryItem(BaseTaggedResource):
     unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
     """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
 
+    density: float | InventoryDensity | None = None
+    """Density in g/mL for volume-based items.
+
+    Required when ``unit_category`` is ``volume``. Solvent and liquid raw materials
+    are often measured in mL/L in the lab; density bridges that volume basis to
+    the kg amounts Albert stores internally for lots and on-hand.
+
+    Pass a float (e.g. ``0.789``) or an [`InventoryDensity`][albert.resources.inventory.InventoryDensity]
+    copied from an existing item; the g/mL ``value`` is used on create. After
+    creation the field is populated as a read-only ``InventoryDensity`` object and
+    cannot be changed. ``unit_category`` ``volume`` is also fixed at creation."""
+
     security_class: SecurityClass | None = Field(default=None, alias="class")
     """The access/security class of the item (e.g. confidential, shared, restricted)."""
 
@@ -331,7 +377,29 @@ class InventoryItem(BaseTaggedResource):
 
     # Read-only fields
     inventory_on_hand: float = Field(default=0.0, alias="onHand", exclude=True, frozen=True)
-    """Total amount currently on hand across all lots. Read-only."""
+    """Total on-hand across all lots, stored in kg.
+
+    For volume-based items Albert still persists on-hand in kg; use ``on_hand_l``
+    for the litre equivalent. Read-only."""
+
+    on_hand_l: float | None = Field(default=None, alias="onHandL", exclude=True, frozen=True)
+    """Total on-hand in litres for volume-based items.
+
+    Derived from kg on-hand divided by the item's locked density. Only present
+    when ``unit_category`` is ``volume``; absent for mass- or units-based items.
+    Read-only."""
+
+    in_use: float | None = Field(default=None, alias="inUse", exclude=True, frozen=True)
+    """Quantity currently allocated on in-progress tasks. Read-only."""
+
+    validated: bool | None = Field(default=None, exclude=True, frozen=True)
+    """Whether the item is validated (maps to the platform ``isApproved`` flag). Read-only."""
+
+    hidden: bool | None = Field(default=None, exclude=True, frozen=True)
+    """Whether the item is hidden in sheets. Read-only."""
+
+    state: str | None = Field(default=None, exclude=True, frozen=True)
+    """Formula lock state (``lock`` or ``unlock``). Read-only."""
 
     task_config: list[dict] | None = Field(
         default=None, alias="TaskConfig", exclude=True, frozen=True
@@ -351,6 +419,21 @@ class InventoryItem(BaseTaggedResource):
         default=None, alias="recentAttachmentId", exclude=True, frozen=True
     )
     """The ID of the most recent attachment on the item. Read-only. See Also --------"""
+
+    @field_validator("density", mode="before")
+    @classmethod
+    def coerce_density_input(cls, value: Any) -> Any:
+        """Use the g/mL value when density is supplied as an InventoryDensity object."""
+        if isinstance(value, InventoryDensity):
+            return value.value
+        return value
+
+    @field_serializer("density", when_used="json")
+    def serialize_density(self, value: float | InventoryDensity | None) -> float | None:
+        """Serialize density as a float for create requests."""
+        if isinstance(value, InventoryDensity):
+            return value.value
+        return value
 
     @field_validator("company", mode="before")
     @classmethod

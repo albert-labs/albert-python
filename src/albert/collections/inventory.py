@@ -280,12 +280,19 @@ class InventoryCollection(BaseCollection):
         catalog. Formula items are not supported here; build those through the
         Worksheet collection.
 
+        **Volume-based raw materials:** set ``unit_category`` to ``volume`` and
+        supply ``density`` in g/mL (e.g. ``0.789`` for ethanol). This designates
+        the item for volume entry in worksheets and batch tasks. Density and
+        ``unit_category`` are locked at creation and cannot be changed later.
+
         Any tags or company on the item that do not yet exist in Albert are
         created automatically before the item is registered (see
         [`CompanyCollection`][albert.collections.companies.CompanyCollection] and
         [`TagCollection`][albert.collections.tags.TagCollection]).
 
         !!! example
+            Mass-based raw material:
+
             ```python
             from albert.resources.inventory import InventoryItem, InventoryCategory
             from albert.resources.companies import Company
@@ -299,12 +306,43 @@ class InventoryCollection(BaseCollection):
             # 'INVA1'
             ```
 
+            Volume-based raw material:
+
+            ```python
+            from albert.resources.inventory import (
+                InventoryItem,
+                InventoryCategory,
+                InventoryUnitCategory,
+            )
+            item = InventoryItem(
+                name="Ethanol",
+                category=InventoryCategory.RAW_MATERIALS,
+                unit_category=InventoryUnitCategory.VOLUME,
+                density=0.789,
+            )
+            created = client.inventory.create(inventory_item=item)
+            created.density.value
+            # 0.789
+            ```
+
+            Clone from an existing volume-based item:
+
+            ```python
+            source = client.inventory.get_by_id(id="INVA1")
+            clone = source.model_copy(update={"id": None, "name": "Ethanol (copy)"})
+            created = client.inventory.create(inventory_item=clone)
+            created.density.value
+            # 0.789
+            ```
+
         Parameters
         ----------
         inventory_item : InventoryItem
             The item to create. ``name`` and ``category`` are required. For raw
             materials, set ``company`` to the manufacturing Company and ``cas`` to
-            the relevant CAS numbers.
+            the relevant CAS numbers. When ``unit_category`` is ``volume``, ``density``
+            (g/mL) is required; pass a float or an existing
+            [`InventoryDensity`][albert.resources.inventory.InventoryDensity].
         avoid_duplicates : bool, optional
             When True (default), if an item with the same name and company already
             exists, that existing item is returned instead of creating a duplicate.
@@ -1205,6 +1243,11 @@ class InventoryCollection(BaseCollection):
         The following fields can be updated: ``alias``, ``description``,
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
+
+        ``unit_category`` ``volume`` is fixed at creation: the API rejects PATCH
+        changes **to or from** ``volume``. To designate an item as volume-based,
+        set ``unit_category`` and ``density`` in [`create`][albert.collections.inventory.InventoryCollection.create]
+        instead. ``density`` cannot be changed after creation either.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

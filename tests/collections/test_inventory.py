@@ -13,7 +13,6 @@ from albert.resources.inventory import (
     InventoryItem,
     InventorySpec,
     InventorySpecValue,
-    InventoryUnitCategory,
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
@@ -224,43 +223,34 @@ def test_add_property_to_inv_spec(
 def test_update_inventory_item_standard_attributes(
     client: Albert, seeded_inventory: list[InventoryItem]
 ):
+    """Test updating standard updatable attributes on an InventoryItem.
+
+    ``unit_category`` is not switched to ``volume`` here: volume-based tracking is
+    fixed at creation and the API rejects PATCH changes to or from ``volume``.
     """
-    Test updating each updatable attribute for an InventoryItem.
+    item = seeded_inventory[0]
+    original_unit_category = item.unit_category
 
-    Parameters
-    ----------
-    client : Albert
-        The Albert client instance.
-    seeded_inventory : List[InventoryItem]
-        A list of seeded inventory items.
-    """
-
-    # Assume we have at least one seeded inventory item
-
-    updated_inventory_item = seeded_inventory[0].model_copy(
+    updated_inventory_item = item.model_copy(
         update={
             "name": "Updated Inventory Name",
             "description": "Updated Description",
-            "unit_category": InventoryUnitCategory.VOLUME.value,
             "security_class": "confidential",
             "alias": "Updated Alias",
         }
     )
-    # Perform the update
     updated_item = client.inventory.update(inventory_item=updated_inventory_item)
 
-    # Verify that all updatable attributes have been updated
     assert updated_item.name == "Updated Inventory Name"
     assert updated_item.description == "Updated Description"
-    assert updated_item.unit_category == InventoryUnitCategory.VOLUME.value
+    assert updated_item.unit_category == original_unit_category
     assert updated_item.security_class == "confidential"
     assert updated_item.alias == "Updated Alias"
 
-    # Optionally, re-fetch the item and verify the updates are persisted
     fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.name == "Updated Inventory Name"
     assert fetched_item.description == "Updated Description"
-    assert fetched_item.unit_category == InventoryUnitCategory.VOLUME.value
+    assert fetched_item.unit_category == original_unit_category
     assert fetched_item.security_class == "confidential"
     assert fetched_item.alias == "Updated Alias"
 

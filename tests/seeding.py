@@ -1276,6 +1276,7 @@ def generate_inventory_seeds(
             description="A volatile, flammable liquid used in chemical synthesis.",
             category=InventoryCategory.CONSUMABLES.value,
             unit_category=InventoryUnitCategory.VOLUME.value,
+            density=0.789,
             tags=seeded_tags[0:1],
             cas=[CasAmount(id=seeded_cas[1].id, min=0.98, max=1, cas_smiles=seeded_cas[1].smiles)],
             security_class=SecurityClass.SHARED,
@@ -1286,6 +1287,7 @@ def generate_inventory_seeds(
             description="Strong acid used in various industrial processes.",
             category=InventoryCategory.RAW_MATERIALS,
             unit_category=InventoryUnitCategory.VOLUME,
+            density=1.18,
             cas=[
                 # ensure it will reslove the cas obj to an id
                 CasAmount(cas=seeded_cas[0], min=0.50, max=1.0, cas_smiles=seeded_cas[0].smiles),
