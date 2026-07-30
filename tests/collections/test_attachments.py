@@ -2,6 +2,8 @@ from contextlib import suppress
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from albert import Albert
 from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileInfo
@@ -9,6 +11,8 @@ from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 from albert.resources.projects import Project
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_attach_file_to_note(
@@ -164,5 +168,25 @@ def test_upload_and_attach_document_to_project(
     )
     try:
         assert isinstance(attachment, Attachment)
+    finally:
+        client.attachments.delete(id=attachment.id)
+
+
+def test_upload_and_attach_document_to_inventory_item(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test uploading a generic document and attaching it to an inventory item."""
+    attachment = client.attachments.upload_and_attach_document_to_inventory_item(
+        inventory_id=seeded_inventory[0].id,
+        file_path=Path("tests/data/SDS_HCL.pdf"),
+        category=AttachmentCategory.COA,
+        revision_date=date(2024, 12, 1),
+        description="Test CoA attachment",
+    )
+    try:
+        assert isinstance(attachment, Attachment)
+        assert attachment.category == AttachmentCategory.COA
+        assert attachment.revision_date == date(2024, 12, 1)
     finally:
         client.attachments.delete(id=attachment.id)

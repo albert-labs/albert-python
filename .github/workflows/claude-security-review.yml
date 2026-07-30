@@ -36,7 +36,7 @@ jobs:
           claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude-model: claude-opus-4-8
           claudecode-timeout: 10
-          run-every-commit: true
+          custom-security-scan-instructions: .github/security-review-injection-defense.txt
 
       - name: Classify security findings by severity
         id: classify

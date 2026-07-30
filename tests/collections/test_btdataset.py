@@ -1,6 +1,10 @@
+import pytest
+
 from albert import Albert
 from albert.resources.btdataset import BTDataset, BTDatasetReferences
 from albert.resources.users import User
+
+pytestmark = pytest.mark.xdist_group("bt")
 
 
 def test_get_by_id(client: Albert, seeded_btdataset: BTDataset):

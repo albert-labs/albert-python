@@ -1,7 +1,11 @@
 import uuid
 
+import pytest
+
 from albert.client import Albert
 from albert.resources.parameters import Parameter
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_parameter_items(returned_list: list[Parameter]):

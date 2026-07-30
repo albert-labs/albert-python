@@ -5,35 +5,102 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
-from albert.core.pagination import AlbertPaginator
+from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
 class ProjectCollection(BaseCollection):
-    """ProjectCollection is a collection class for managing Project entities in the Albert platform."""
+    """Manage Projects in the Albert platform.
+
+    A Project is the top-level container for a piece of R&D work. It groups the
+    formulations designed for that work, the Project's Worksheet (1:1 with the
+    project), the Tasks run against it, and the inventory it references. Projects
+    are the entry point most workflows start from: you create a project, then
+    build formulas and run tasks inside it.
+
+    Every project is identified by a Project ID (format ``PRO...``, e.g.
+    ``"PRO123"``). A project always has a ``description`` (which doubles as its
+    display name) and a [`ProjectClass`][albert.resources.projects.ProjectClass]
+    controlling its access level (private, shared, or confidential).
+
+    This collection is accessed as ``client.projects``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.projects import Project
+        client = Albert()
+        project = client.projects.create(
+            project=Project(description="Weatherproof Coatings 2026")
+        )
+        print(project.id)
+        # 'PRO123'
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for project requests.
+
+    Methods
+    -------
+    create(project) -> Project
+        Create a new project.
+    get_by_id(id) -> Project
+        Get a single project by its ID.
+    update(project) -> Project
+        Update an existing project.
+    delete(id) -> None
+        Delete a project by its ID.
+    search(...) -> Iterator[ProjectSearchItem]
+        Fast, lightweight search returning partial projects (best for lookups).
+    get_all(...) -> Iterator[Project]
+        Same filters as search, but returns fully populated projects (slower).
+    document_search(...) -> Iterator[DocumentSearchItem]
+        Search documents (attachments) linked to a project.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {"description", "grid", "metadata", "state"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize a ProjectCollection object.
+        """Initialize a ProjectCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ProjectCollection._api_version}/projects"
 
     def create(self, *, project: Project) -> Project:
-        """
-        Create a new project.
+        """Create a new project.
+
+        Use this to register a new R&D container. Only ``description`` is
+        required; it doubles as the project's display name. Optionally set
+        ``locations``, ``project_class`` (defaults to private), ``metadata``, and
+        other fields on the [`Project`][albert.resources.projects.Project] first.
+
+        !!! example
+            ```python
+            from albert.resources.projects import Project
+            project = client.projects.create(
+                project=Project(description="Weatherproof Coatings 2026")
+            )
+            project.id
+            # 'PRO123'
+            ```
 
         Parameters
         ----------
@@ -42,8 +109,8 @@ class ProjectCollection(BaseCollection):
 
         Returns
         -------
-        Optional[Project]
-            The created project object if successful, None otherwise.
+        Project
+            The newly created project, populated with its assigned Project ID.
         """
         response = self.session.post(
             self.base_path, json=project.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -52,18 +119,27 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: ProjectId) -> Project:
-        """
-        Retrieve a project by its ID.
+        """Get a single project by its ID.
+
+        To find projects without knowing their IDs, use [`search`][albert.collections.projects.ProjectCollection.search] or
+        [`get_all`][albert.collections.projects.ProjectCollection.get_all].
+
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description
+            # 'Weatherproof Coatings 2026'
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the project to retrieve.
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
 
         Returns
         -------
         Project
-            The project object if found
+            The fully populated project.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -71,21 +147,34 @@ class ProjectCollection(BaseCollection):
         return Project(**response.json(), session=self.session)
 
     def update(self, *, project: Project) -> Project:
-        """Update a project.
+        """Update an existing project.
+
+        Retrieve the project (e.g. with
+        [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]), modify the updatable fields, then pass it
+        here. Only the fields listed in Notes are applied.
+
+        !!! example
+            ```python
+            project = client.projects.get_by_id(id="PRO123")
+            project.description = "Weatherproof Coatings 2026 (rev B)"
+            updated = client.projects.update(project=project)
+            ```
 
         Parameters
         ----------
         project : Project
-            The updated project object.
+            The project carrying the desired changes. Its ``id`` identifies which
+            project to update.
 
         Returns
         -------
         Project
-            The updated project object as returned by the server.
+            The updated project.
 
         Notes
         -----
-        The following fields can be updated: ``description``, ``grid``, ``metadata``, ``state``.
+        The following fields can be updated: ``description``, ``grid``,
+        ``metadata``, ``state``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
@@ -97,13 +186,17 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: ProjectId) -> None:
-        """
-        Delete a project by its ID.
+        """Delete a project by its ID.
+
+        !!! example
+            ```python
+            client.projects.delete(id="PRO123")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the project to delete.
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
 
         Returns
         -------
@@ -127,6 +220,9 @@ class ProjectCollection(BaseCollection):
         technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
         contains_field: list[str] | None = None,
@@ -140,11 +236,27 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[ProjectSearchItem]:
-        """
-        Search for Project matching the provided criteria.
+        """Search for projects matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        This is the fast way to find projects: it returns lightweight, partial
+        (unhydrated) [`ProjectSearchItem`][albert.resources.projects.ProjectSearchItem] results
+        and is best for lookups, counts, and pulling IDs. To retrieve fully
+        detailed [`Project`][albert.resources.projects.Project] entities, use
+        [`get_all`][albert.collections.projects.ProjectCollection.get_all] instead (slower, one full fetch per result).
+
+        All filters are optional; with no arguments this iterates over all
+        projects you can access.
+
+        !!! example
+            ```python
+            # Keep the paginator reference — do not wrap in list() if you need
+            # completeness signals after iteration.
+            hits = client.projects.search(text="coatings", max_items=25)
+            for hit in hits:
+                print(hit.id, hit.description)
+            if hits.has_more:
+                print(f"Stopped early; ~{hits.total} total matches")
+            ```
 
         Parameters
         ----------
@@ -159,7 +271,8 @@ class ProjectCollection(BaseCollection):
         technology : list[str], optional
             Filter by technology tags.
         created_by : list[str], optional
-            Filter by user names who created the project.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         location : list[str], optional
             Filter by location(s).
         program : list[str], optional
@@ -167,9 +280,18 @@ class ProjectCollection(BaseCollection):
         technical_lead : list[str], optional
             Filter by technical lead (custom field).
         from_created_at : str, optional
-            Earliest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or after this date, formatted as
+            ``YYYY-MM-DD``.
         to_created_at : str, optional
-            Latest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include projects updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include projects updated on or before this date (ISO 8601).
         facet_field : str, optional
             Facet field to filter on.
         facet_text : str, optional
@@ -185,7 +307,7 @@ class ProjectCollection(BaseCollection):
         my_role : list[str], optional
             User roles to filter by.
         metadata_filters : dict[str, Any], optional
-            Filters for custom field values, sent in the `metadataFilters` request body field.
+            Filter by custom field (metadata) values.
             !!! warning
                 Do not use this for application, technology, program, technical lead, or
                 market segment. Use their corresponding query parameters instead.
@@ -193,17 +315,17 @@ class ProjectCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by.
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[ProjectSearchItem]
-            An iterator of matching partial (unhydrated) Project results.
+            An iterator of matching partial (unhydrated) project results.
         """
-        query_params = {
+        # Always POST — same path as the Albert UI (searchProjectsWithPost). GET search
+        # sometimes ignores ``limit`` (defaults to 25) and returns empty for offset>0.
+        payload: dict[str, Any] = {
             "order": order_by,
             "offset": offset,
             "text": text,
@@ -218,6 +340,9 @@ class ProjectCollection(BaseCollection):
             "technicalLead": technical_lead,
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "facetField": facet_field,
             "facetText": facet_text,
             "containsField": contains_field,
@@ -226,33 +351,19 @@ class ProjectCollection(BaseCollection):
             "myProject": my_project,
             "myRole": my_role,
         }
-
         if metadata_filters is not None:
-            payload: dict[str, Any] = {
-                **query_params,
-                "metadataFilters": {"metadata": metadata_filters},
-            }
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=lambda items: [
-                    ProjectSearchItem(**item)._bind_collection(self) for item in items
-                ],
-                method="POST",
-                json=payload,
-            )
+            payload["metadataFilters"] = {"metadata": metadata_filters}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=query_params,
             max_items=max_items,
             deserialize=lambda items: [
                 ProjectSearchItem(**item)._bind_collection(self) for item in items
             ],
+            method="POST",
+            json=payload,
         )
 
     @validate_call
@@ -268,18 +379,27 @@ class ProjectCollection(BaseCollection):
     ) -> Iterator[DocumentSearchItem]:
         """Search for documents (attachments) linked to a project.
 
+        Each result is a lightweight
+        [`DocumentSearchItem`][albert.resources.projects.DocumentSearchItem] describing an
+        attachment (name, MIME type, size, uploader) rather than the file itself.
+
+        !!! example
+            ```python
+            for doc in client.projects.document_search(linked_to="PRO123"):
+                print(doc.name, doc.mime_type)
+            ```
+
         Parameters
         ----------
         linked_to : SearchProjectId
-            The project ID to filter documents by (e.g. ``P770``).
+            The project to filter documents by (format ``PRO...``, e.g.
+            ``"PRO123"``).
         text : str, optional
             Full-text search query for document names.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by (for example ``createdAt``).
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all.
 
@@ -320,6 +440,9 @@ class ProjectCollection(BaseCollection):
         technical_lead: list[str] | None = None,
         from_created_at: str | None = None,
         to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
         contains_field: list[str] | None = None,
@@ -332,11 +455,22 @@ class ProjectCollection(BaseCollection):
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[Project]:
-        """
-        Retrieve fully hydrated Project entities with optional filters.
+        """Get fully populated projects matching optional filters.
 
-        This method returns complete entity data using `get_by_id`.
-        Use :meth:`search` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Accepts the same filters as [`search`][albert.collections.projects.ProjectCollection.search], but yields complete
+        [`Project`][albert.resources.projects.Project] entities by fetching each
+        match individually via [`get_by_id`][albert.collections.projects.ProjectCollection.get_by_id]. This is convenient but slower;
+        prefer [`search`][albert.collections.projects.ProjectCollection.search] when you only need IDs or a few summary fields.
+
+        !!! example
+            ```python
+            projects = client.projects.get_all(text="coatings", max_items=10)
+            for project in projects:
+                print(project.id, project.description)
+            # has_more / total are preserved through hydration.
+            if projects.has_more:
+                print(f"Sample only; ~{projects.total} total matches")
+            ```
 
         Parameters
         ----------
@@ -351,7 +485,8 @@ class ProjectCollection(BaseCollection):
         technology : list[str], optional
             Filter by technology tags.
         created_by : list[str], optional
-            Filter by user names who created the project.
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         location : list[str], optional
             Filter by location(s).
         program : list[str], optional
@@ -359,9 +494,18 @@ class ProjectCollection(BaseCollection):
         technical_lead : list[str], optional
             Filter by technical lead (custom field).
         from_created_at : str, optional
-            Earliest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or after this date, formatted as
+            ``YYYY-MM-DD``.
         to_created_at : str, optional
-            Latest creation date in 'YYYY-MM-DD' format.
+            Only include projects created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the project. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include projects updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include projects updated on or before this date (ISO 8601).
         facet_field : str, optional
             Facet field to filter on.
         facet_text : str, optional
@@ -380,47 +524,54 @@ class ProjectCollection(BaseCollection):
             Sort order. Default is DESCENDING.
         sort_by : str, optional
             Field to sort by.
-        offset : int, optional
-            Pagination offset.
         max_items : int, optional
             Maximum number of items to return in total. If None, fetches all available items.
 
         Returns
         -------
         Iterator[Project]
-            An iterator of fully hydrated Project entities.
+            An iterator of fully populated Project entities. Preserves ``has_more`` /
+            ``total`` from the underlying search paginator.
         """
-        for project in self.search(
-            text=text,
-            status=status,
-            market_segment=market_segment,
-            application=application,
-            technology=technology,
-            created_by=created_by,
-            location=location,
-            program=program,
-            technical_lead=technical_lead,
-            from_created_at=from_created_at,
-            to_created_at=to_created_at,
-            facet_field=facet_field,
-            facet_text=facet_text,
-            contains_field=contains_field,
-            contains_text=contains_text,
-            linked_to=linked_to,
-            my_project=my_project,
-            my_role=my_role,
-            order_by=order_by,
-            sort_by=sort_by,
-            offset=offset,
-            max_items=max_items,
-        ):
+
+        def _hydrate(project: ProjectSearchItem) -> Project | None:
             project_id = getattr(project, "albertId", None) or getattr(project, "id", None)
             if not project_id:
-                continue
-
-            id = project_id if project_id.startswith("PRO") else f"PRO{project_id}"
-
+                return None
+            id = project_id if str(project_id).startswith("PRO") else f"PRO{project_id}"
             try:
-                yield self.get_by_id(id=id)
+                return self.get_by_id(id=id)
             except AlbertHTTPError as e:
                 logger.warning(f"Error fetching project details {id}: {e}")
+                return None
+
+        return MappedPaginator(
+            self.search(
+                text=text,
+                status=status,
+                market_segment=market_segment,
+                application=application,
+                technology=technology,
+                created_by=created_by,
+                location=location,
+                program=program,
+                technical_lead=technical_lead,
+                from_created_at=from_created_at,
+                to_created_at=to_created_at,
+                updated_by=updated_by,
+                from_updated_at=from_updated_at,
+                to_updated_at=to_updated_at,
+                facet_field=facet_field,
+                facet_text=facet_text,
+                contains_field=contains_field,
+                contains_text=contains_text,
+                linked_to=linked_to,
+                my_project=my_project,
+                my_role=my_role,
+                order_by=order_by,
+                sort_by=sort_by,
+                offset=offset,
+                max_items=max_items,
+            ),
+            _hydrate,
+        )

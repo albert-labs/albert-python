@@ -4,6 +4,8 @@ from albert.client import Albert
 from albert.exceptions import AlbertException
 from albert.resources.companies import Company
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 
 def assert_valid_company_items(items: list[Company]):
     """Assert basic structure and types of Company items."""

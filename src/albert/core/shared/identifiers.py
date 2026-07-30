@@ -18,6 +18,7 @@ _ALBERT_PREFIXES = {
     "DataTemplateId": "DAT",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
+    "LabelTemplateId": "TMP",
     "LinkId": "LNK",
     "LotId": "LOT",
     "NotebookId": "NTB",
@@ -269,6 +270,13 @@ def ensure_project_search_id(id: str) -> str:
 
 
 SearchProjectId = Annotated[str, AfterValidator(ensure_project_search_id)]
+
+
+def ensure_label_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "LabelTemplateId")
+
+
+LabelTemplateId = Annotated[str, AfterValidator(ensure_label_template_id)]
 
 
 def ensure_link_id(id: str) -> str:

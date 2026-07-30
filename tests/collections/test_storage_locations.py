@@ -1,8 +1,12 @@
 import uuid
 
+import pytest
+
 from albert import Albert
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 
 def assert_valid_storage_location_items(returned_list: list[StorageLocation]):

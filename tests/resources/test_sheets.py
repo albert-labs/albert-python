@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 import pytest
 
@@ -12,6 +14,9 @@ from albert.resources.sheets import (
     Row,
     Sheet,
 )
+from tests.utils.fake_session import FakeAlbertSession
+
+pytestmark = pytest.mark.xdist_group("sheets")
 
 
 def test_get_current_cell_exact_row_match():
@@ -324,6 +329,148 @@ def test_add_and_remove_blank_rows(seeded_sheet: Sheet):
         new_row = seeded_sheet.add_blank_row(
             row_name="TEST results Design", design=DesignType.RESULTS
         )
+
+
+def test_add_parameter_group_row_requires_process_design():
+    """Test that adding a PRG row fails when the sheet has no Process Design."""
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+    with pytest.raises(AlbertException, match="Process Design"):
+        sheet.add_parameter_group_row(parameter_group_id="PRG1")
+
+
+def test_add_parameter_group_row_empty_response_raises():
+    """Test that an empty create response raises a clear AlbertException."""
+    session = FakeAlbertSession()
+    session.configure_response(
+        "POST",
+        "/api/v3/designs/DES4/rows",
+        json.dumps([]).encode(),
+    )
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+    with pytest.raises(AlbertException, match="No rows returned"):
+        sheet.add_parameter_group_row(parameter_group_id="PRG1", reference_id="ROW1")
+
+
+def test_add_parameter_group_row_empty_process_design_omits_reference():
+    """First PRG on an empty Process Design must not send referenceId/position."""
+    session = FakeAlbertSession()
+    session.configure_response(
+        "POST",
+        "/api/v3/designs/DES4/rows",
+        json.dumps(
+            [{"rowId": "ROW5", "id": "PRG1", "type": "PRG", "name": "Mix", "labelName": "Mix"}]
+        ).encode(),
+    )
+    # Empty grid → process_design.rows is empty.
+    session.configure_response(
+        "GET",
+        "/api/v3/designs/DES4/grid",
+        json.dumps(
+            {
+                "total": 0,
+                "designId": "DES4",
+                "Items": [],
+                "Formulas": [],
+                "RowSequence": [],
+            }
+        ).encode(),
+    )
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+        session=session,
+    )
+    # FakeAlbertSession is not always copied onto nested Designs by validators.
+    for design in sheet.designs:
+        design._session = session
+
+    row = sheet.add_parameter_group_row(parameter_group_id="PRG1")
+
+    assert row.row_id == "ROW5"
+    assert row.type == CellType.PRG
+    posted = [r for r in session.requests if r["method"] == "POST" and r["url"].endswith("/rows")]
+    assert len(posted) == 1
+    assert posted[0]["json"] == [{"type": "PRG", "id": "PRG1"}]
+
+
+def test_add_blank_row_rejects_process_design():
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+            {"albertId": "DES4", "designType": "process", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+    with pytest.raises(AlbertException, match="add_parameter_group_row"):
+        sheet.add_blank_row(row_name="Blank", design=DesignType.PROCESS)
+
+
+def test_add_parameter_group_row(
+    seeded_sheet: Sheet,
+    seeded_parameter_groups: list,
+):
+    """Test adding a parameter group row to Process Design when the sheet has one."""
+    if seeded_sheet.process_design is None:
+        pytest.skip("Seeded sheet has no Process Design section")
+
+    pd_rows = seeded_sheet.process_design.rows
+    if not pd_rows:
+        pytest.skip("Seeded Process Design has no rows to reference")
+
+    pg = seeded_parameter_groups[0]
+    # Default reference_id resolves to the first Process Design row; pass it
+    # explicitly so the assertion documents the contract.
+    row = seeded_sheet.add_parameter_group_row(
+        parameter_group_id=pg.id,
+        reference_id=pd_rows[0].row_id,
+    )
+    assert isinstance(row, Row)
+    assert row.type == CellType.PRG
+    assert row.row_id.startswith("ROW")
+    # Process Design row deletes use the design-engine path.
+    seeded_sheet.session.delete(
+        f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
+        json=[{"rowId": row.row_id}],
+    )
 
 
 ########################## CELLS ##########################

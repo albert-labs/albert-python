@@ -1,5 +1,9 @@
+import pytest
+
 from albert import Albert
 from albert.resources.notes import Note
+
+pytestmark = pytest.mark.xdist_group("tasks")
 
 
 def test_get_by_id(client: Albert, seeded_notes: list[Note]):

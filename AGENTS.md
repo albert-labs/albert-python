@@ -28,6 +28,27 @@ Single source of truth for coding-agent guidance in this repo.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
 - Public collection methods use `@validate_call` for runtime validation.
 - Resources use `BaseAlbertModel`/`BaseResource` with Pydantic `Field` and aliases.
+- **Field documentation lives on attribute docstrings**, not in class-level ``Attributes`` sections.
+  ``BaseAlbertModel`` sets ``use_attribute_docstrings=True``, so Pydantic emits them as
+  JSON Schema ``description`` values (used by the ReAct worker tool factory and
+  ``expand_schema``). Place the docstring on the line immediately after each field, and
+  add a blank line after each field+docstring pair so adjacent fields are visually
+  separated in the IDE::
+
+    ```python
+    description: str = Field(min_length=1, max_length=2000)
+    """Human-readable project name/description. Also serves as the display name."""
+
+    status: str | None = Field(default=None)
+    """Lifecycle status of the project."""
+    ```
+
+  Keep the class docstring for narrative, examples, and cross-refs; document individual
+  fields only via attribute docstrings. Prefer attribute docstrings over
+  ``Field(description=...)`` so docs stay in one place (existing ``Field(description=...)``
+  values are left as-is until migrated). Collection classes (``*Collection``) are not
+  Pydantic models — their ``Attributes`` blocks document ``base_path`` / ``session`` and
+  stay in the class docstring.
 - **Search result models must be named `<Resource>SearchItem`** (e.g. `ActivitySearchItem`, `UserSearchItem`) when the shape returned by the search endpoint differs from the main resource model. Never reuse the main resource model for search results if the fields differ, and never name the search model `<Resource>Item` or anything else.
 - Keep API payloads in wire format (camelCase) via `Field(alias=...)` and `model_dump(by_alias=True, mode="json", exclude_none=True)`.
 - All new public methods and classes must have Numpy-style docstrings:
@@ -57,26 +78,156 @@ Many list/search methods use `AlbertPaginator` (`src/albert/core/pagination.py`)
 
 Expose a `max_items` parameter on public list/search methods where appropriate to allow early stopping.
 
+After iteration, `AlbertPaginator.has_more` is True when `max_items` stopped the iterator and more items are known to exist (unyielded items on the current page, or a continuation key/offset), or when response `total` exceeds items yielded. It is False after a natural end of results. Prefer this flag over comparing yielded count to `max_items` (backends can under-return a page).
+
+Offset search endpoints (projects, tasks, lots, inventories, datatemplates, parametergroups, propertydata) return a string/int `total` field — `_record_total` reads that key. Never wrap a returned paginator in `yield from` / `async for … yield` inside `get_all`; return the paginator (or `MappedPaginator` / `MetadataPreservingIterator`) so callers keep `has_more` / `total`.
+
+### Which iterator wrapper to return
+
+| Return | When |
+| --- | --- |
+| `AlbertPaginator` | The endpoint page is already the caller-facing type (or a trivial `deserialize`). Prefer this for direct list/search with no per-item hydration. |
+| `MappedPaginator` | `get_all` maps each list/search hit (usually `get_by_id`), including KEY-mode listings that hydrate after the page (e.g. users, storage_locations). Use when hydration is per-item and some hits may be dropped (`map_fn` returns `None`). |
+| `MetadataPreservingIterator` | Custom iteration over a source paginator that is not a simple 1:1 map (batch hydration, multi-step transforms). Pass the source paginator plus the items iterator you actually yield. |
+
+Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `MappedPaginator` / `MetadataPreservingIterator` only when a plain generator would strip `has_more` / `total`.
+
 **`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
 
 ## Testing
 
+- **Read `tests/TESTING.md` before writing or changing any test.** The suite runs in parallel
+  with pytest-xdist and that document is the authority on the required patterns.
+- The non-negotiables it covers:
+  - Every test file that consumes a session-scoped `seeded_*`/`static_*` fixture carries a
+    module-level `pytestmark = pytest.mark.xdist_group("...")`; pick the group that already
+    owns the fixtures (table in TESTING.md).
+  - Shared `seeded_*` fixtures are read-only; update/delete tests create private entities and
+    clean up in `try/finally`.
+  - Search assertions must be scoped to `seed_prefix`, filtered to the fixture's ids, and
+    wrapped in `poll_until` (`tests/utils/wait.py`); `text`/`name` params are fuzzy full-text
+    queries, and other workers delete their seeds mid-run.
+  - No exact-count asserts on unscoped queries.
 - Tests use pytest (see tests/).
-- Integration-style tests require environment variables:
-  - ALBERT_CLIENT_ID_SDK
-  - ALBERT_CLIENT_SECRET_SDK
-  - ALBERT_BASE_URL
 - Only add integration-style tests. Do not add unit tests that use `FakeAlbertSession`.
-- Seed helpers live in `tests/seeding.py` and are reused across fixtures.
+- Seed helpers live in `tests/seeding.py` and are reused across fixtures; new seed entities
+  are appended (tests index into seeded lists).
 - Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
 - Required env vars: `ALBERT_CLIENT_ID_SDK`, `ALBERT_CLIENT_SECRET_SDK`, `ALBERT_BASE_URL`.
-- Verify changes work by running the related tests — don't assume.
+- Verify changes work by running the related tests with `-n 4` — don't assume.
 
 ## Documentation
 
 - When adding a new collection, add a docs page under `docs/collections/` and link it in `mkdocs.yml` (alphabetical in nav).
 - When adding a new resource, add a docs page under `docs/resources/` and link it in `mkdocs.yml` (alphabetical in nav).
 - Keep docstrings Numpy-style for all public APIs.
+
+### Cross-references: use autorefs, NOT Sphinx roles
+
+`mkdocstrings` does not understand Sphinx roles. `:class:`, `:meth:`, and `:attr:` render as **literal text** on the docs site. Use autorefs links instead: `` [`DisplayName`][fully.qualified.path] ``.
+
+- Display text is the short name in backticks; the target is the fully-qualified dotted path.
+- Fully qualify every target, including a reference to a sibling method in the same class.
+- The `autorefs` plugin (bundled with `mkdocstrings`, enabled in `mkdocs.yml`) resolves these. A target only resolves if the class/method is rendered on some docs page.
+
+```text
+Wrong (renders as literal text):
+    See :meth:`get_all` and :class:`~albert.resources.tasks.BatchTask`.
+Right:
+    See [`get_all`][albert.collections.tasks.TaskCollection.get_all] and
+    [`BatchTask`][albert.resources.tasks.BatchTask].
+```
+
+### Examples: use `!!! example` admonitions, placed before `Parameters`
+
+Use `!!! example` admonitions for all examples -- they render as the styled purple box. Placement is critical:
+
+**Always place `!!! example` in the description block, before the first numpy section.** Every numpy section (`Parameters`, `Attributes`, `Methods`, `Returns`, `Notes`, `Raises`) renders its content as a table or structured list. Any markdown appended after the last entry in a section -- including admonitions -- gets absorbed into that section and rendered as a stray table row.
+
+The safe zone is the free-form description at the top of the docstring, before any section header.
+
+**Method docstrings** -- place before `Parameters`:
+
+```python
+def search(self, *, text: str | None = None) -> Iterator[Cas]:
+    """Search for CAS entries matching the given filters.
+
+    Results are returned as a lazily paginated iterator.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        for cas in client.cas.search(text="water"):
+            print(cas.id, cas.name)
+        ```
+
+    Parameters
+    ----------
+    text : str, optional
+        Free-text query.
+
+    Returns
+    -------
+    Iterator[Cas]
+        A lazily paginated iterator of matching CAS entries.
+    """
+```
+
+**Class docstrings** (collections and resources alike) -- place before `Parameters` or `Attributes`, whichever comes first:
+
+```python
+class CasCollection(BaseCollection):
+    """Manage CAS entries in the Albert platform.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for CAS requests.
+
+    Methods
+    -------
+    get_by_id(id) -> Cas
+        Get a single CAS by its ID.
+    """
+```
+
+**Do not** place `!!! example` after `Methods`, `Attributes`, `Returns`, or any other numpy section -- it will bleed into that section's table.
+**Do not** wrap examples in `Examples\n--------` -- it adds a redundant "Examples:" label above the box.
+**Do not** use a bare ` ```python ` fence inside an `Examples` numpy section -- it loses the box styling entirely.
+
+- Instantiate the client zero-arg (`client = Albert()`); show it once in the class-level example and reuse `client` in method examples.
+- Async collections (e.g. chat) use `async with AsyncAlbert() as client:` and `await`.
+- Show returned values as `# comment` lines. Verify example values against the model fields.
+
+### Wording conventions (keep consistent across the SDK)
+
+- Imperative mood: `Get`, `Create`, `Update`, `Delete`, `Search` (not `Gets`/`Retrieves`/`Creates`).
+- **Read** methods start with `Get ` (not `Retrieve`/`Fetch`). **Create** with `Create ` (not `Register`). **Update** with `Update `. **Delete** with `Delete `.
+- Class opener: `Manage <Entity> in the Albert platform.` Read-only collections that cannot create/update use `Access <Entity> …` (the established exception).
+- `__init__`: `Initialize a/an <CollectionClass>.` with the standard `session : AlbertSession` parameter.
+- IDs: refer generically as "by its ID" (keep a ``(format `INV...`)`` hint where useful).
+- Hydration: use "fully populated" (not "fully hydrated"); a `get_by_id` `Returns` reads `The fully populated <Resource>.`.
+- Search summary: `Search for <X> matching the given filters.`.
+- Beta badge: `(🧪 Beta)` (with a space).
+- No em dashes (`—`); use commas, colons, or parentheses (org language policy).
+
 - Docstrings must describe **what** a method does from the caller's perspective — never mention internal implementation details or backend API specifics (e.g. diffing, patching, HTTP methods, "returned by the API").
   - Wrong: `"""Update an attachment by diffing the current server state."""`
   - Right: `"""Update an attachment."""`
@@ -94,29 +245,30 @@ The following fields can be updated: ``field_a``, ``field_b``, ``field_c``.
 
 ```python
 class TagCollection(BaseCollection):
-    """
-    TagCollection manages Tag entities in the Albert platform.
+    """Manage Tags in the Albert platform.
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for tag API requests.
+        The base API route for tag requests.
 
     Methods
     -------
     get_all(...) -> Iterator[Tag]
-        Lists all tag entities with optional filters.
+        Get all tags, with optional filters.
     get_by_id(id) -> Tag
-        Retrieves a tag by its ID.
+        Get a single tag by its ID.
     create(tag) -> Tag
-        Creates a new tag entity.
+        Create a new tag.
+    update(tag) -> Tag
+        Update an existing tag.
     delete(id) -> None
-        Deletes a tag by its ID.
+        Delete a tag by its ID.
     """
 ```
 

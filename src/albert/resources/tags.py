@@ -8,27 +8,37 @@ from albert.core.shared.models.base import BaseResource
 
 
 class TagEntity(str, Enum):
-    """TagEntity is an enumeration of possible tag entities."""
+    """The kind of entity a tag can be attached to.
+
+    Attributes
+    ----------
+    INVENTORY : str
+        Inventory items.
+    COMPANY : str
+        Companies.
+    """
 
     INVENTORY = "Inventory"
     COMPANY = "Company"
 
 
 class Tag(BaseResource):
-    """
-    Tag is a Pydantic model representing a tag entity.
+    """A freeform text label used to categorize and connect entities.
 
-    Attributes
-    ----------
-    tag : str
-        The name of the tag.
-    id : str | None
-        The Albert ID of the tag. Set when the tag is retrieved from Albert.
+    Tags are shared by name across the platform and can be applied to inventory
+    items, companies, tasks, and other records to group and filter them. Managed
+    through [`TagCollection`][albert.collections.tags.TagCollection] (``client.tags``);
+    the usual entry point is [`get_or_create`][albert.collections.tags.TagCollection.get_or_create].
 
+    !!! example
+        ```python
+        from albert.resources.tags import Tag
+        tag = Tag(tag="high-priority")
+        ```
     Methods
     -------
-    from_string(tag: str) -> "Tag"
-        Creates a Tag object from a string.
+    from_string(tag) -> Tag
+        Build a Tag from its name string.
     """
 
     # different endpoints use different aliases for the fields
@@ -37,16 +47,23 @@ class Tag(BaseResource):
         alias=AliasChoices("name", "tagName"),
         serialization_alias="name",
     )
+    """The name of the tag (its text label)."""
     id: str | None = Field(
         None,
         alias=AliasChoices("albertId", "tagId"),
         serialization_alias="albertId",
     )
+    """The Albert ID of the tag (format ``TAG...``). Set when the tag is retrieved from or created in Albert. Methods ------- from_string(tag) -> Tag Build a Tag from its name string."""
 
     @classmethod
     def from_string(cls, tag: str) -> Tag:
-        """
-        Creates a Tag object from a string.
+        """Build a Tag from its name string.
+
+        !!! example
+            ```python
+            from albert.resources.tags import Tag
+            tag = Tag.from_string("experimental")
+            ```
 
         Parameters
         ----------
@@ -56,6 +73,6 @@ class Tag(BaseResource):
         Returns
         -------
         Tag
-            The Tag object created from the string.
+            A Tag with the given name.
         """
         return cls(tag=tag)
