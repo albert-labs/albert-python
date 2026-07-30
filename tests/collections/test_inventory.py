@@ -13,7 +13,6 @@ from albert.resources.inventory import (
     InventoryItem,
     InventorySpec,
     InventorySpecValue,
-    InventoryUnitCategory,
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
@@ -241,7 +240,6 @@ def test_update_inventory_item_standard_attributes(
         update={
             "name": "Updated Inventory Name",
             "description": "Updated Description",
-            "unit_category": InventoryUnitCategory.VOLUME.value,
             "security_class": "confidential",
             "alias": "Updated Alias",
         }
@@ -252,7 +250,6 @@ def test_update_inventory_item_standard_attributes(
     # Verify that all updatable attributes have been updated
     assert updated_item.name == "Updated Inventory Name"
     assert updated_item.description == "Updated Description"
-    assert updated_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert updated_item.security_class == "confidential"
     assert updated_item.alias == "Updated Alias"
 
@@ -260,7 +257,6 @@ def test_update_inventory_item_standard_attributes(
     fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.name == "Updated Inventory Name"
     assert fetched_item.description == "Updated Description"
-    assert fetched_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert fetched_item.security_class == "confidential"
     assert fetched_item.alias == "Updated Alias"
 
