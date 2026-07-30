@@ -256,8 +256,8 @@ class PricingCollection(BaseCollection):
             PatchDatum(
                 operation=datum.operation,
                 attribute=datum.attribute,
-                old_value=Pricing.default_patch_value(datum.old_value),
-                new_value=Pricing.default_patch_value(datum.new_value),
+                old_value=Pricing._default_patch_value(datum.old_value),
+                new_value=Pricing._default_patch_value(datum.new_value),
             )
             if datum.attribute == "default"
             else datum

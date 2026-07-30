@@ -97,8 +97,7 @@ class Pricing(BaseResource):
     """
 
     @staticmethod
-    def default_patch_value(value: Literal[0, 1] | None) -> str | None:
-        """Serialize ``default`` for PATCH (API expects string ``"0"``/``"1"``)."""
+    def _default_patch_value(value: Literal[0, 1] | None) -> str | None:
         return None if value is None else str(value)
 
 
