@@ -1,8 +1,10 @@
 import uuid
+from contextlib import suppress
 
 import pytest
 
 from albert import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.inventory import InventoryItem
 from albert.resources.locations import Location
 from albert.resources.pricings import Pricing
@@ -37,6 +39,32 @@ def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations
 
 
 def test_get_by_id_includes_default(client: Albert, seeded_pricings: list[Pricing]):
-    """Test get_by_id exposes the read-only default flag."""
+    """Test get_by_id exposes the default flag."""
     found = client.pricings.get_by_id(id=seeded_pricings[0].id)
     assert found.default is None or isinstance(found.default, int)
+
+
+def test_update_default(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_locations: list[Location],
+):
+    """Test update can set default=1 via PATCH."""
+    pricing = Pricing(
+        inventory_id=seeded_inventory[0].id,
+        company=seeded_inventory[0].company,
+        location=seeded_locations[0],
+        description=f"{seed_prefix} - default pricing update",
+        price=88.0,
+    )
+    created = client.pricings.create(pricing=pricing)
+    try:
+        created.default = 1
+        updated = client.pricings.update(pricing=created)
+        assert updated.default == 1
+        fetched = client.pricings.get_by_id(id=created.id)
+        assert fetched.default == 1
+    finally:
+        with suppress(NotFoundError):
+            client.pricings.delete(id=created.id)

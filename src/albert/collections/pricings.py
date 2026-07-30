@@ -67,6 +67,7 @@ class PricingCollection(BaseCollection):
         "lead_time",
         "lead_time_unit",
         "inventory_id",
+        "default",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -104,7 +105,8 @@ class PricingCollection(BaseCollection):
         pricing : Pricing
             The pricing to create. ``inventory_id``, ``company``, ``location``, and
             ``price`` identify the item, source, site, and cost; see
-            [`Pricing`][albert.resources.pricings.Pricing].
+            [`Pricing`][albert.resources.pricings.Pricing]. ``default`` cannot be
+            set on create; use [`update`][albert.collections.pricings.PricingCollection.update].
 
         Returns
         -------
@@ -250,6 +252,20 @@ class PricingCollection(BaseCollection):
 
     def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> PatchPayload:
         patch_payload = self._generate_patch_payload(existing=existing, updated=updated)
+        data = []
+        for datum in patch_payload.data:
+            if datum.attribute == "default":
+                data.append(
+                    PatchDatum(
+                        operation=datum.operation,
+                        attribute=datum.attribute,
+                        old_value=str(datum.old_value) if datum.old_value is not None else None,
+                        new_value=str(datum.new_value) if datum.new_value is not None else None,
+                    )
+                )
+            else:
+                data.append(datum)
+        patch_payload = PatchPayload(data=data)
         for attr in ("company", "location"):
             # These must be set, so we don't need to worry about add or delete
             existing_attr = getattr(existing, attr).id
@@ -293,9 +309,9 @@ class PricingCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``currency``, ``description``,
-        ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
-        ``lead_time_unit``, ``pack_size``, ``price``.
+        The following fields can be updated: ``currency``, ``default``,
+        ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
+        ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)
