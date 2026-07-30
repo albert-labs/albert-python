@@ -67,7 +67,6 @@ class PricingCollection(BaseCollection):
         "lead_time",
         "lead_time_unit",
         "inventory_id",
-        "default",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -112,7 +111,12 @@ class PricingCollection(BaseCollection):
         Pricing
             The newly created pricing, populated with its assigned ID.
         """
-        payload = pricing.model_dump(by_alias=True, exclude_none=True, mode="json")
+        payload = pricing.model_dump(
+            by_alias=True,
+            exclude_none=True,
+            mode="json",
+            exclude={"default"},
+        )
         response = self.session.post(self.base_path, json=payload)
         return Pricing(**response.json())
 
@@ -289,9 +293,9 @@ class PricingCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``currency``, ``default``,
-        ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
-        ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
+        The following fields can be updated: ``currency``, ``description``,
+        ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
+        ``lead_time_unit``, ``pack_size``, ``price``.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)

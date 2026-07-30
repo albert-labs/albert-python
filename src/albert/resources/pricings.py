@@ -87,8 +87,8 @@ class Pricing(BaseResource):
     expiration_date: str | None = Field(default=None, alias="expirationDate")
     """The date the pricing expires, in ``YYYY-MM-DD`` format."""
 
-    default: int | None = Field(default=None)
-    """When ``1``, this pricing is the default for its inventory item."""
+    default: int | None = Field(default=None, frozen=True)
+    """When ``1``, this pricing is the default for its inventory item. Read-only."""
 
 
 class InventoryPricings(BaseAlbertModel):
