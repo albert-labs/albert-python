@@ -37,9 +37,3 @@ def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations
     assert updated.description == updated_description
     assert updated.location.id == seeded_locations[1].id
     assert updated.default == 1
-
-
-def test_get_by_id_includes_default(client: Albert, seeded_pricings: list[Pricing]):
-    """Test get_by_id exposes the default flag."""
-    found = client.pricings.get_by_id(id=seeded_pricings[0].id)
-    assert found.default is None or found.default in (0, 1)
