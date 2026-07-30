@@ -1,7 +1,10 @@
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from typing import Any, Literal, TypeVar
 
+from pydantic import ValidationError
+
 from albert.core.async_session import AsyncAlbertSession
+from albert.core.logging import logger
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
@@ -155,7 +158,19 @@ class AlbertPaginator(Iterator[ItemType]):
                     return
                 seen_keys.add(current_key)
 
-            deserialized = list(self.deserialize(items))
+            try:
+                deserialized = list(self.deserialize(items))
+            except ValidationError:
+                # Fall back to deserializing one item at a time so a single
+                # unparseable row doesn't discard the rest of the page.
+                deserialized = []
+                for item in items:
+                    try:
+                        deserialized.extend(self.deserialize([item]))
+                    except ValidationError as e:
+                        item_id = item.get("albertId") or item.get("id")
+                        suffix = f" {item_id}" if item_id else ""
+                        logger.warning(f"Skipping unparseable item{suffix}: {e}")
 
             for item in deserialized:
                 if self.max_items is not None and yielded >= self.max_items:
