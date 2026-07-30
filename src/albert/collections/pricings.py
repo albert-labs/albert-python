@@ -252,19 +252,17 @@ class PricingCollection(BaseCollection):
 
     def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> PatchPayload:
         patch_payload = self._generate_patch_payload(existing=existing, updated=updated)
-        data = []
-        for datum in patch_payload.data:
-            if datum.attribute == "default":
-                data.append(
-                    PatchDatum(
-                        operation=datum.operation,
-                        attribute=datum.attribute,
-                        old_value=str(datum.old_value) if datum.old_value is not None else None,
-                        new_value=str(datum.new_value) if datum.new_value is not None else None,
-                    )
-                )
-            else:
-                data.append(datum)
+        data = [
+            PatchDatum(
+                operation=datum.operation,
+                attribute=datum.attribute,
+                old_value=Pricing.default_patch_value(datum.old_value),
+                new_value=Pricing.default_patch_value(datum.new_value),
+            )
+            if datum.attribute == "default"
+            else datum
+            for datum in patch_payload.data
+        ]
         patch_payload = PatchPayload(data=data)
         for attr in ("company", "location"):
             # These must be set, so we don't need to worry about add or delete
@@ -312,6 +310,9 @@ class PricingCollection(BaseCollection):
         The following fields can be updated: ``currency``, ``default``,
         ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
         ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
+
+        ``default`` must be ``0`` (not default) or ``1`` (default). Set via
+        PATCH only (not on create).
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)

@@ -1,10 +1,8 @@
 import uuid
-from contextlib import suppress
 
 import pytest
 
 from albert import Albert
-from albert.exceptions import NotFoundError
 from albert.resources.inventory import InventoryItem
 from albert.resources.locations import Location
 from albert.resources.pricings import Pricing
@@ -28,43 +26,20 @@ def test_get_by_id(client: Albert, seeded_pricings: list[Pricing]):
 
 
 def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations: list[Location]):
-    pricing = seeded_pricings[0]
+    """Test update changes description, location, and default."""
+    pricing = client.pricings.get_by_id(id=seeded_pricings[0].id)
     updated_description = f"TEST - {uuid.uuid4()}"
     pricing.description = updated_description
     pricing.location = seeded_locations[1]
+    pricing.default = 1
     assert client.pricings.update(pricing=pricing)
     updated = client.pricings.get_by_id(id=pricing.id)
     assert updated.description == updated_description
     assert updated.location.id == seeded_locations[1].id
+    assert updated.default == 1
 
 
 def test_get_by_id_includes_default(client: Albert, seeded_pricings: list[Pricing]):
     """Test get_by_id exposes the default flag."""
     found = client.pricings.get_by_id(id=seeded_pricings[0].id)
-    assert found.default is None or isinstance(found.default, int)
-
-
-def test_update_default(
-    client: Albert,
-    seed_prefix: str,
-    seeded_inventory: list[InventoryItem],
-    seeded_locations: list[Location],
-):
-    """Test update can set default=1 via PATCH."""
-    pricing = Pricing(
-        inventory_id=seeded_inventory[0].id,
-        company=seeded_inventory[0].company,
-        location=seeded_locations[0],
-        description=f"{seed_prefix} - default pricing update",
-        price=88.0,
-    )
-    created = client.pricings.create(pricing=pricing)
-    try:
-        created.default = 1
-        updated = client.pricings.update(pricing=created)
-        assert updated.default == 1
-        fetched = client.pricings.get_by_id(id=created.id)
-        assert fetched.default == 1
-    finally:
-        with suppress(NotFoundError):
-            client.pricings.delete(id=created.id)
+    assert found.default is None or found.default in (0, 1)
