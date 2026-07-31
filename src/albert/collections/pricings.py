@@ -311,8 +311,8 @@ class PricingCollection(BaseCollection):
         ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
         ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
 
-        ``default`` must be ``0`` (not default) or ``1`` (default). Set via
-        PATCH only (not on create).
+        ``default`` must be ``0`` (not default) or ``1`` (default). Can only be
+        set via update, not on create.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)
