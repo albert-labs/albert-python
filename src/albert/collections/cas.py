@@ -114,7 +114,7 @@ class CasCollection(BaseCollection):
         warnings.warn(
             "CasCollection is deprecated and will be removed in SDK 2.0. "
             "Use client.substances_v4 instead. "
-            "In SDK 2.0, all write operations target the Substance entity exclusively — "
+            "In SDK 2.0, all write operations target the Substance entity exclusively: "
             "CAS entities, reports, and SQL DWH tables backed by CAS will no longer be updated.",
             DeprecationWarning,
             stacklevel=2,

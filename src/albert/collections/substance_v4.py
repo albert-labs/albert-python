@@ -66,7 +66,9 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
 
 
 class SubstanceV4Collection(BaseCollection):
-    """SubstanceV4Collection manages substance entities in the Albert platform (🧪Beta).
+    """Manage substances in the Albert platform (🧪 Beta).
+
+    This collection is accessed as ``client.substances_v4``.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -75,30 +77,37 @@ class SubstanceV4Collection(BaseCollection):
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for substance API requests.
+        The base API route for substance requests.
 
     Methods
     -------
     get_by_ids(...) -> SubstanceV4Response
-        Retrieves substances by CAS IDs, substance IDs, or external IDs.
+        Get substances by CAS IDs, substance IDs, or external IDs.
     get_by_id(...) -> SubstanceV4Info | None
-        Retrieves a single substance by CAS ID, substance ID, or external ID.
+        Get a single substance by CAS ID, substance ID, or external ID.
     search(...) -> Iterator[SubstanceV4SearchItem]
-        Searches substances by keyword or advanced filters.
+        Search for substances matching the given filters.
     create(substance) -> SubstanceV4CreateResult
-        Creates a new substance record.
+        Create a new substance record.
     update_metadata(id, ...) -> None
-        Updates metadata fields on a substance.
+        Update metadata fields on a substance.
     """
 
     _api_version = "v4"
 
     def __init__(self, *, session: AlbertSession):
+        """Initialize a SubstanceV4Collection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{SubstanceV4Collection._api_version}/substances"
 
@@ -114,7 +123,7 @@ class SubstanceV4Collection(BaseCollection):
         language: str | None = None,
         classification_type: str | None = None,
     ) -> SubstanceV4Response:
-        """Retrieve substances by their identifiers.
+        """Get substances by their identifiers.
 
         At least one of ``cas_ids``, ``sub_ids``, or ``external_ids`` must be provided.
 
@@ -147,7 +156,7 @@ class SubstanceV4Collection(BaseCollection):
         Returns
         -------
         SubstanceV4Response
-            The matching substances and any per-substance retrieval errors.
+            The matching substances and any per-substance errors.
         """
         if not any([cas_ids, sub_ids, external_ids]):
             raise ValueError("At least one of cas_ids, sub_ids, or external_ids must be provided.")
@@ -181,7 +190,7 @@ class SubstanceV4Collection(BaseCollection):
         language: str | None = None,
         classification_type: str | None = None,
     ) -> SubstanceV4Info | None:
-        """Retrieve a single substance by its identifier.
+        """Get a single substance by its identifier.
 
         Provide exactly one of ``cas_id``, ``sub_id``, or ``external_id``.
 
@@ -214,7 +223,7 @@ class SubstanceV4Collection(BaseCollection):
         Returns
         -------
         SubstanceV4Info | None
-            The matching substance, or ``None`` if not found.
+            The fully populated substance, or ``None`` if not found.
         """
         provided = sum([cas_id is not None, sub_id is not None, external_id is not None])
         if provided != 1:
@@ -335,8 +344,17 @@ class SubstanceV4Collection(BaseCollection):
     ) -> None:
         """Update metadata fields on a substance.
 
-        Only the keyword arguments you pass are updated — all others are left unchanged.
-        The current state is fetched automatically.
+        Only the keyword arguments you pass are updated; omitted arguments are left
+        unchanged.
+
+        !!! example
+            ```python
+            client.substances_v4.update_metadata(
+                id="SUB123",
+                notes="new notes",
+                metadata={"solubility": "5 mg/mL"},
+            )
+            ```
 
         Parameters
         ----------
@@ -360,46 +378,19 @@ class SubstanceV4Collection(BaseCollection):
 
             Value types by field kind:
 
-            - **String / number fields** — pass the value directly (``"5 mg/mL"``, ``42``).
-            - **Single-select fields** — pass an ``EntityLink``; use
-              ``client.lists.get_matching_item()`` to look up the ID.
-            - **Multi-select fields** — pass a list of ``EntityLink`` objects; only the
+            - **String / number fields**: pass the value directly (``"5 mg/mL"``, ``42``).
+            - **Single-select fields**: pass an ``EntityLink``; use
+              [`get_matching_item`][albert.collections.lists.ListsCollection.get_matching_item]
+              to look up the ID.
+            - **Multi-select fields**: pass a list of ``EntityLink`` objects; only the
               changed items are sent.
-            - **Delete a field** — pass ``None`` as the value (works for all field types).
+            - **Delete a field**: pass ``None`` as the value (works for all field types).
 
         Notes
         -----
         The following fields can be updated: ``notes``, ``description``, ``cas_smiles``,
         ``inchi_key``, ``iupac_name``, ``cactus_status``, and any custom metadata fields
         configured for the tenant.
-
-        Examples
-        --------
-        Update a scalar field and a custom string field:
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                notes="new notes",
-                metadata={"solubility": "5 mg/mL"},
-            )
-
-        Set a single-select custom field:
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                metadata={"cmr_eu": EntityLink(id="LST1253")},
-            )
-
-        Update a multi-select custom field (becomes exactly this set):
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                metadata={"amide_category": [EntityLink(id="LST1256"), EntityLink(id="LST1257")]},
-            )
-
-        Delete a custom field:
-
-            client.substances_v4.update_metadata(id="SUB123", metadata={"old_key": None})
         """
         scalar_kwargs = {
             "notes": notes,

@@ -25,44 +25,106 @@ from albert.utils._patch import generate_enum_patches
 
 
 class AttributeCollection(BaseCollection):
-    """AttributeCollection manages Attribute entities in the Albert platform.
+    """Manage inventory reference Attributes in the Albert platform (🧪 Beta).
+
+    An Attribute is a centralized, reusable *inventory reference property*
+    template (e.g. "Viscosity @ 25°C"): it names what to track, which
+    [`DataColumn`][albert.resources.data_columns.DataColumn] it maps to, optional
+    parameter setpoints (e.g. Temperature = 25°C), an optional unit, and typed
+    validation. *Reference values* are the actual measured or assigned values for
+    that attribute on a specific inventory item or lot.
+
+    The API separates **definition** (create
+    [`Attribute`][albert.resources.attributes.Attribute] definitions) from **assignment**
+    (store values on a parent with
+    [`add_values`][albert.collections.attributes.AttributeCollection.add_values]).
+    Inventory-level values are the source of truth for worksheet lookup columns;
+    worksheet cells may override locally for what-if analysis without writing back
+    to inventory.
+
+    This replaces the deprecated per-item Inventory Specs API
+    ([`get_specs`][albert.collections.inventory.InventoryCollection.get_specs],
+    [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs]).
+
+    Attributes are identified by Attribute ID (format ``ATR...``, e.g.
+    ``"ATR469"``). Reference values are keyed by ``parent_id``: inventory items
+    (``INV...``), lots (``LOT...``), or other parent types as the platform expands.
+
+    This collection is accessed as ``client.attributes``.
+
+    !!! warning "Beta Feature!"
+        Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+        This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.attributes import (
+            Attribute,
+            AttributeCategory,
+            AttributeValue,
+            ValidationItem,
+        )
+        from albert.resources.parameter_groups import DataType, Operator
+
+        client = Albert()
+        viscosity = client.attributes.create(
+            attribute=Attribute(
+                datacolumn_id="DAC123",
+                category=AttributeCategory.PROPERTY,
+                reference_name="Viscosity @ 25°C",
+                validation=[
+                    ValidationItem(
+                        datatype=DataType.NUMBER,
+                        min=0.0,
+                        max=500.0,
+                        operator=Operator.BETWEEN,
+                    )
+                ],
+            )
+        )
+        client.attributes.add_values(
+            parent_id="INVA123",
+            values=[AttributeValue(attributeId=viscosity.id, referenceValue=45.2)],
+        )
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for attribute API requests.
+        The base API route for attribute requests.
 
     Methods
     -------
-    get_all(category, start_key, max_items) -> Iterator[Attribute]
-        Lists all attributes with optional filters.
+    get_all(...) -> Iterator[Attribute]
+        Get all attributes, with optional filters.
     get_by_id(id) -> Attribute
-        Retrieves an attribute by its ID.
+        Get a single attribute by its ID.
     get_by_ids(ids) -> list[Attribute]
-        Retrieves multiple attributes by their IDs.
+        Get multiple attributes by their IDs.
     create(attribute) -> Attribute
-        Creates a new attribute.
+        Create a new attribute.
     update(attribute) -> Attribute
-        Updates an existing attribute.
+        Update an existing attribute.
     delete(id) -> None
-        Deletes an attribute by its ID.
+        Delete an attribute by its ID.
     search(...) -> Iterator[AttributeSearchItem]
-        Searches for attributes.
+        Search for attributes matching the given filters.
     add_values(parent_id, values) -> AttributeValuesResponse
-        Adds or updates reference values for a parent entity.
+        Add or update reference values for a parent entity.
     get_values(parent_id, scope, start_key, max_items) -> Iterator[AttributeValuesResponse]
-        Retrieves reference values for a parent entity.
+        Get reference values for a parent entity.
     get_by_parent_ids(parent_ids, max_items) -> list[AttributeValuesResponse]
-        Retrieves reference values for multiple parent entities.
+        Get reference values for multiple parent entities.
     delete_values(parent_id, attribute_ids, scope) -> None
-        Deletes specific reference values from a parent entity.
+        Delete specific reference values from a parent entity.
     clear_values(parent_id, scope) -> None
-        Removes all reference values from a parent entity.
+        Remove all reference values from a parent entity.
     """
 
     _updatable_attributes = {"reference_name", "parameters", "validation"}
@@ -74,7 +136,7 @@ class AttributeCollection(BaseCollection):
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{self._api_version}/attributes"
@@ -87,12 +149,17 @@ class AttributeCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Attribute]:
-        """List all attributes with optional filters.
+        """Get all attribute definitions, with optional filters.
+
+        Lists reusable inventory reference property templates (e.g. "Viscosity @
+        25°C") that can be assigned to inventory items and lots. Use
+        [`search`][albert.collections.attributes.AttributeCollection.search] for
+        full-text and field filters across the catalogue.
 
         Parameters
         ----------
         category : AttributeCategory, optional
-            Filter attributes by category.
+            Filter attributes by category (currently ``Property``).
         start_key : str, optional
             Pagination start key from a previous request.
         max_items : int, optional
@@ -120,24 +187,27 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: AttributeId) -> Attribute:
-        """Retrieve an attribute by its ID.
+        """Get a single attribute definition by its ID.
+
+        Returns the full template: linked data column, parameter setpoints, unit,
+        and validation rules used when assigning reference values.
 
         Parameters
         ----------
         id : str
-            The attribute ID.
+            The attribute ID (format ``ATR...``).
 
         Returns
         -------
         Attribute
-            The matching Attribute.
+            The fully populated attribute.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Attribute(**response.json())
 
     @validate_call
     def get_by_ids(self, *, ids: list[AttributeId]) -> list[Attribute]:
-        """Retrieve multiple attributes by their IDs.
+        """Get multiple attributes by their IDs.
 
         Parameters
         ----------
@@ -147,7 +217,7 @@ class AttributeCollection(BaseCollection):
         Returns
         -------
         list[Attribute]
-            The matching Attribute objects.
+            The fully populated attributes.
         """
         response = self.session.get(f"{self.base_path}/ids", params={"id": ids})
         data = response.json()
@@ -156,7 +226,12 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def create(self, *, attribute: Attribute) -> Attribute:
-        """Create a new attribute.
+        """Create a new inventory reference attribute definition.
+
+        Define the property template once in the attribute catalogue, then assign values to
+        inventory items or lots with [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
+        Uniqueness is enforced on name and on the data column, unit, and parameter
+        setpoint combination.
 
         Parameters
         ----------
@@ -166,7 +241,7 @@ class AttributeCollection(BaseCollection):
         Returns
         -------
         Attribute
-            The created Attribute.
+            The fully populated attribute.
         """
         payload = attribute.model_dump(
             by_alias=True, exclude_unset=True, mode="json", exclude={"id"}
@@ -176,7 +251,11 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def update(self, *, attribute: Attribute) -> Attribute:
-        """Update an existing attribute.
+        """Update an existing attribute definition.
+
+        Changes apply to the attribute definition. Inventory items that already
+        store reference values keep their assignments; worksheet cells that
+        previously imported a value are not updated automatically.
 
         Parameters
         ----------
@@ -186,13 +265,14 @@ class AttributeCollection(BaseCollection):
         Returns
         -------
         Attribute
-            The updated Attribute.
+            The fully populated attribute.
 
         Notes
         -----
         The following fields can be updated: ``reference_name``, ``parameters``,
-        ``validation``. ``unit_id`` can only be set once (when no unit is currently
-        assigned); it cannot be changed afterwards.
+        ``validation``. ``reference_name`` must remain unique across definitions.
+        ``unit_id`` can only be set once (when no unit is currently assigned); it
+        cannot be changed afterwards.
         """
         if attribute.id is None:
             raise ValueError("Attribute ID is required for update.")
@@ -216,12 +296,16 @@ class AttributeCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: AttributeId) -> None:
-        """Delete an attribute by its ID.
+        """Delete an attribute definition by its ID.
+
+        Removes the template from the attribute catalogue and its inventory-level
+        reference values. Worksheet cells that already imported a value retain
+        their local copy.
 
         Parameters
         ----------
         id : str
-            The attribute ID.
+            The attribute ID (format ``ATR...``).
 
         Returns
         -------
@@ -243,7 +327,10 @@ class AttributeCollection(BaseCollection):
         data_type: list[DataType] | None = None,
         max_items: int | None = None,
     ) -> Iterator[AttributeSearchItem]:
-        """Search for attributes with optional filters.
+        """Search the central attribute catalogue.
+
+        Full-text and field filters help locate reusable definitions when wiring
+        worksheet lookup columns or assigning values on inventory details.
 
         Parameters
         ----------
@@ -306,10 +393,12 @@ class AttributeCollection(BaseCollection):
         parent_id: str,
         values: list[AttributeValue],
     ) -> AttributeValuesResponse:
-        """Add or update reference values for a parent entity.
+        """Add or update reference values on a parent entity.
 
-        If a value already exists for any of the provided attributes it is
-        replaced. Attributes not mentioned in ``values`` are left unchanged.
+        Upserts values for the given attributes on ``parent_id`` (inventory item,
+        lot, etc.). Values must match each attribute's datatype. Inventory-level
+        values feed worksheet lookups; each inventory item holds its own values.
+        Attributes not listed in ``values`` are left unchanged.
 
         Parameters
         ----------
@@ -339,7 +428,11 @@ class AttributeCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[AttributeValuesResponse]:
-        """Retrieve reference values for a parent entity.
+        """Get reference values for a parent entity.
+
+        Returns one [`AttributeValuesResponse`][albert.resources.attributes.AttributeValuesResponse]
+        per entity when ``scope`` includes child lots. Inventory item values are
+        the canonical source for worksheet reference columns.
 
         Parameters
         ----------
@@ -347,9 +440,9 @@ class AttributeCollection(BaseCollection):
             The ID of the parent entity.
         scope : AttributeScope, optional
             Defines which entities to fetch values for.
-            ``SELF`` (default) — the parent entity only.
-            ``LOT`` — lot entities under the parent (inventory parents only).
-            ``ALL`` — parent and all child entities.
+            ``SELF`` (default): the parent entity only.
+            ``LOT``: lot entities under the parent (inventory parents only).
+            ``ALL``: parent and all child entities.
         start_key : str, optional
             Pagination start key from a previous request.
         max_items : int, optional
@@ -382,7 +475,10 @@ class AttributeCollection(BaseCollection):
         parent_ids: list[str],
         max_items: int | None = None,
     ) -> list[AttributeValuesResponse]:
-        """Retrieve reference values for multiple parent entities.
+        """Get reference values for multiple parent entities.
+
+        Bulk read across inventory items (replaces deprecated
+        [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs]).
 
         Parameters
         ----------
@@ -429,14 +525,18 @@ class AttributeCollection(BaseCollection):
     ) -> None:
         """Delete specific reference values from a parent entity.
 
+        Removes assignments for the given attributes on ``parent_id`` without
+        deleting the attribute definitions themselves. Use ``scope`` to target lot-level
+        values under an inventory parent.
+
         Parameters
         ----------
         parent_id : str
-            The ID of the parent entity.
+            The ID of the parent entity (inventory item ``INV...`` or lot ``LOT...``).
         attribute_ids : list[str]
             The attribute IDs whose values should be removed.
         scope : AttributeScope, optional
-            Scope of deletion. Defaults to ``SELF``.
+            Scope of deletion. Defaults to ``SELF`` (only ``parent_id``).
 
         Returns
         -------
@@ -456,12 +556,16 @@ class AttributeCollection(BaseCollection):
     ) -> None:
         """Remove all reference values from a parent entity.
 
+        Clears every assignment on ``parent_id`` while leaving attribute
+        definitions in the attribute catalogue. Use ``scope`` to clear lot values
+        under an inventory item.
+
         Parameters
         ----------
         parent_id : str
-            The ID of the parent entity.
+            The ID of the parent entity (inventory item ``INV...`` or lot ``LOT...``).
         scope : AttributeScope, optional
-            Scope of deletion. Defaults to ``SELF``.
+            Scope of deletion. Defaults to ``SELF`` (only ``parent_id``).
 
         Returns
         -------
