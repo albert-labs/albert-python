@@ -7,6 +7,7 @@ from albert.client import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.lots import Lot, LotAdjustmentAction
 from albert.resources.storage_locations import StorageLocation
+from albert.resources.workflows import Workflow
 from tests.seeding import generate_lot_seeds
 
 pytestmark = pytest.mark.xdist_group("inventory")
@@ -105,6 +106,22 @@ def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_l
     refetched = client.lots.get_by_id(id=seeded_lot.id)
     assert refetched.pack_size == "NEW-PACK"
     assert refetched.manufacturer_lot_number == "PRESERVE-ME"
+
+
+def test_update_workflow_id(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_workflows: list[Workflow],
+):
+    """Test assigning workflow_id to a lot via update."""
+    assert seeded_lot.workflow_id is None
+
+    lot = seeded_lot.model_copy(update={"workflow_id": seeded_workflows[0].id})
+    updated_lot = client.lots.update(lot=lot)
+    assert updated_lot.workflow_id == seeded_workflows[0].id
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.workflow_id == seeded_workflows[0].id
 
 
 def test_adjust_add(client: Albert, seeded_lot: Lot):
