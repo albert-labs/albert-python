@@ -176,7 +176,7 @@ class AttributeCollection(BaseCollection):
         if start_key is not None:
             params["startKey"] = start_key
 
-        yield from AlbertPaginator(
+        return AlbertPaginator(
             path=self.base_path,
             mode=PaginationMode.KEY,
             session=self.session,
@@ -374,7 +374,7 @@ class AttributeCollection(BaseCollection):
         if data_type is not None:
             body["dataType"] = data_type
 
-        yield from AlbertPaginator(
+        return AlbertPaginator(
             path=f"{self.base_path}/search",
             mode=PaginationMode.OFFSET,
             session=self.session,
@@ -459,7 +459,7 @@ class AttributeCollection(BaseCollection):
         if start_key is not None:
             params["startKey"] = start_key
 
-        yield from AlbertPaginator(
+        return AlbertPaginator(
             path=f"{self.base_path}/values/{parent_id}",
             mode=PaginationMode.KEY,
             session=self.session,
