@@ -67,6 +67,7 @@ class PricingCollection(BaseCollection):
         "lead_time",
         "lead_time_unit",
         "inventory_id",
+        "default",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -104,14 +105,20 @@ class PricingCollection(BaseCollection):
         pricing : Pricing
             The pricing to create. ``inventory_id``, ``company``, ``location``, and
             ``price`` identify the item, source, site, and cost; see
-            [`Pricing`][albert.resources.pricings.Pricing].
+            [`Pricing`][albert.resources.pricings.Pricing]. ``default`` cannot be
+            set on create; use [`update`][albert.collections.pricings.PricingCollection.update].
 
         Returns
         -------
         Pricing
             The newly created pricing, populated with its assigned ID.
         """
-        payload = pricing.model_dump(by_alias=True, exclude_none=True, mode="json")
+        payload = pricing.model_dump(
+            by_alias=True,
+            exclude_none=True,
+            mode="json",
+            exclude={"default"},
+        )
         response = self.session.post(self.base_path, json=payload)
         return Pricing(**response.json())
 
@@ -245,6 +252,18 @@ class PricingCollection(BaseCollection):
 
     def _pricing_patch_payload(self, *, existing: Pricing, updated: Pricing) -> PatchPayload:
         patch_payload = self._generate_patch_payload(existing=existing, updated=updated)
+        data = [
+            PatchDatum(
+                operation=datum.operation,
+                attribute=datum.attribute,
+                old_value=Pricing._default_patch_value(datum.old_value),
+                new_value=Pricing._default_patch_value(datum.new_value),
+            )
+            if datum.attribute == "default"
+            else datum
+            for datum in patch_payload.data
+        ]
+        patch_payload = PatchPayload(data=data)
         for attr in ("company", "location"):
             # These must be set, so we don't need to worry about add or delete
             existing_attr = getattr(existing, attr).id
@@ -288,9 +307,12 @@ class PricingCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``currency``, ``description``,
-        ``expiration_date``, ``fob``, ``inventory_id``, ``lead_time``,
-        ``lead_time_unit``, ``pack_size``, ``price``.
+        The following fields can be updated: ``currency``, ``default``,
+        ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
+        ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
+
+        ``default`` must be ``0`` (not default) or ``1`` (default). Can only be
+        set via update, not on create.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)
