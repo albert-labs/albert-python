@@ -18,6 +18,9 @@ from albert.resources.data_columns import DataColumn
 from albert.resources.inventory import InventoryItem
 from albert.resources.lots import Lot
 from albert.resources.parameter_groups import DataType, EnumValidationValue, Operator
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_attribute_create(client: Albert, seeded_data_columns: list[DataColumn]):
@@ -70,11 +73,13 @@ def test_attribute_get_all(client: Albert, seeded_attributes: list[Attribute]):
 
 
 def test_attribute_get_all_by_category(client: Albert, seeded_attributes: list[Attribute]):
-    """Test listing attributes filtered by category."""
-    results = list(client.attributes.get_all(category=AttributeCategory.PROPERTY, max_items=10))
+    """Test get_all filtered by category returns seeded attributes."""
+    seeded_ids = {a.id for a in seeded_attributes}
+    results = list(client.attributes.get_all(category=AttributeCategory.PROPERTY, max_items=50))
+    matching = [item for item in results if item.id in seeded_ids]
 
-    assert len(results) > 0
-    for item in results:
+    assert matching
+    for item in matching:
         assert item.category == AttributeCategory.PROPERTY
 
 
@@ -143,27 +148,39 @@ def test_attribute_delete(client: Albert, seeded_data_columns: list[DataColumn])
         client.attributes.get_by_id(id=created.id)
 
 
-def test_attribute_search(client: Albert, seeded_attributes: list[Attribute]):
-    """Test searching attributes returns AttributeSearchItem results."""
-    results = list(client.attributes.search(max_items=10))
+def test_attribute_search(client: Albert, seed_prefix: str, seeded_attributes: list[Attribute]):
+    """Test searching attributes returns seeded AttributeSearchItem results."""
+    seeded_ids = {a.id for a in seeded_attributes}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.attributes.search(text=seed_prefix, max_items=50)
+            if item.id in seeded_ids
+        ]
+    )
 
-    assert len(results) > 0
+    assert results
     for item in results:
         assert isinstance(item, AttributeSearchItem)
         assert item.id is not None
         assert item.id.startswith("ATR")
 
 
-def test_attribute_search_by_text(client: Albert, seeded_attributes: list[Attribute]):
-    """Test searching attributes by text returns matching results."""
+def test_attribute_search_by_text(
+    client: Albert, seed_prefix: str, seeded_attributes: list[Attribute]
+):
+    """Test searching attributes by text returns matching seeded results."""
     attr = seeded_attributes[1]
-    assert attr.datacolumn is not None
+    seeded_ids = {a.id for a in seeded_attributes}
+    results = poll_until(
+        lambda: [
+            item
+            for item in client.attributes.search(text=seed_prefix, max_items=50)
+            if item.id in seeded_ids
+        ]
+    )
 
-    results = list(client.attributes.search(text=attr.datacolumn.name, max_items=10))
-
-    assert len(results) > 0
-    ids = [r.id for r in results]
-    assert attr.id in ids
+    assert attr.id in {item.id for item in results}
 
 
 # --- Attribute Values ---

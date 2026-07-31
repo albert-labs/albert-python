@@ -78,7 +78,7 @@ from albert.resources.parameter_groups import DataType, Operator
 # Create a reusable "Viscosity" attribute
 viscosity_attr = client.attributes.create(
     attribute=Attribute(
-        datacolumn_id="DAC123",           # the data column this property maps to
+        datacolumn_id="DAC123",  # the data column this property maps to
         category=AttributeCategory.PROPERTY,
         reference_name="Viscosity @ 25°C",
         validation=[

@@ -142,7 +142,7 @@ nav:
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
-          - Attributes: collections/attributes.md
+          - Attributes (🧪 Beta): collections/attributes.md
           - Batch Data: collections/batch_data.md
           - Base: collections/base.md
           - Breakthrough:
@@ -186,7 +186,7 @@ nav:
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
-          - Substances V4 (🧪Beta): collections/substances_v4.md
+          - Substances V4 (🧪 Beta): collections/substances_v4.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
           - Targets (🧪Beta): collections/targets.md
@@ -200,7 +200,7 @@ nav:
       - Resources:
           - Activities: resources/activities.md
           - Attachments: resources/attachments.md
-          - Attributes: resources/attributes.md
+          - Attributes (🧪 Beta): resources/attributes.md
           - ACL: resources/acls.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:

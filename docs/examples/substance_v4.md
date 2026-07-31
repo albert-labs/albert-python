@@ -4,7 +4,7 @@ The `substances_v4` collection wraps the Albert v4 substance API, which exposes 
 
 ## Update metadata
 
-Use `update_metadata` to change specific fields on a tenant substance. Only the keyword arguments you pass are updated — everything else on the substance is left as-is.
+Use `update_metadata` to change specific fields on a tenant substance. Only the keyword arguments you pass are updated; everything else on the substance is left as-is.
 
 !!! example "Update scalar fields"
     ```python
@@ -94,7 +94,7 @@ Use `update_metadata` to change specific fields on a tenant substance. Only the 
         metadata={
             "solubility": "10 mg/mL",
             "cmr_eu": EntityLink(id="LST1253"),
-            "old_field": None,          # deletes this custom field
+            "old_field": None,  # deletes this custom field
         },
     )
     ```
