@@ -129,6 +129,10 @@ class AlbertPaginator(Iterator[ItemType]):
     def _total_implies_more(self, yielded: int) -> bool:
         return self._total is not None and yielded < self._total
 
+    def _response_items(self, data: dict[str, Any]) -> list:
+        """Extract the list payload from a paginated response body."""
+        return data.get("Items") or data.get("items") or []
+
     def _create_iterator(self) -> Iterator[ItemType]:
         """Create an iterator that yields paginated items."""
         yielded = 0
@@ -138,7 +142,7 @@ class AlbertPaginator(Iterator[ItemType]):
             response = self._request()
             data = response.json()
             self._record_total(data)
-            items = data.get("Items") or data.get("items") or []
+            items = self._response_items(data)
             item_count = len(items)
 
             if not items and self.mode == PaginationMode.OFFSET:

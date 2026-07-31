@@ -22,7 +22,7 @@ _SEARCH_PAGE_SIZE = 20  # maximum page size accepted by the v4 search endpoint
 
 
 class SubstanceV4SearchPaginator(AlbertPaginator):
-    """Paginator for substance v4 search using integer offset pagination."""
+    """Paginator for substance v4 search using self-managed integer offset pagination."""
 
     def __init__(
         self,
@@ -33,8 +33,7 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
         max_items: int | None = None,
     ):
         params = dict(params or {})
-        self._offset = int(params.get("startKey", 0))
-        params["startKey"] = self._offset
+        params["startKey"] = self._offset = int(params.get("startKey", 0))
         params["limit"] = _SEARCH_PAGE_SIZE
         super().__init__(
             path=path,
@@ -45,24 +44,13 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
             max_items=max_items,
         )
 
-    def _create_iterator(self) -> Iterator[SubstanceV4SearchItem]:
-        """Yield paginated search items."""
-        yielded = 0
-        while True:
-            response = self._request()
-            items = response.json().get("substances", [])
+    def _response_items(self, data: dict[str, Any]) -> list:
+        return data.get("substances") or []
 
-            if not items:
-                return
-
-            for item in self.deserialize(items):
-                yield item
-                yielded += 1
-                if self.max_items is not None and yielded >= self.max_items:
-                    return
-
-            self._offset += len(items)
-            self.params["startKey"] = self._offset
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        self._offset += count
+        self.params["startKey"] = self._offset
+        return True
 
 
 class SubstanceV4Collection(BaseCollection):
@@ -304,7 +292,7 @@ class SubstanceV4Collection(BaseCollection):
         if classification_type:
             params["classificationType"] = classification_type
 
-        yield from SubstanceV4SearchPaginator(
+        return SubstanceV4SearchPaginator(
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,

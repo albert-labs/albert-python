@@ -128,9 +128,11 @@ def test_search_filters(client: Albert):
 
 
 def test_search_pagination(client: Albert):
-    """Test max_items cap, start_key resume, and multi-page uniqueness."""
-    capped = list(client.substances_v4.search(search_key="water", max_items=5))
+    """Test max_items cap, start_key resume, multi-page uniqueness, and has_more."""
+    capped_pag = client.substances_v4.search(search_key="water", max_items=5)
+    capped = list(capped_pag)
     assert len(capped) == 5
+    assert capped_pag.has_more is True
 
     results = list(client.substances_v4.search(search_key="water", max_items=45))
     keys = [_search_item_key(r) for r in results]
