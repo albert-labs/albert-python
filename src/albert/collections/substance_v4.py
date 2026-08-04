@@ -241,7 +241,7 @@ class SubstanceV4Collection(BaseCollection):
         region: str = "global",
         classification_type: str | None = None,
         start_key: int = 0,
-        max_items: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[SubstanceV4SearchItem]:
         """Search for substances by keyword or advanced filters.
 
@@ -270,7 +270,7 @@ class SubstanceV4Collection(BaseCollection):
         start_key : int, optional
             Offset to resume pagination from, by default 0.
         max_items : int, optional
-            Maximum number of items to yield, by default 100.
+            Maximum number of items to yield. Defaults to ``None`` (all results).
 
         Yields
         ------
