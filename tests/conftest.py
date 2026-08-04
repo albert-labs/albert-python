@@ -18,6 +18,7 @@ from albert.exceptions import (
     NotFoundError,
 )
 from albert.resources.attachments import Attachment
+from albert.resources.attributes import Attribute
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight
 from albert.resources.btmodel import BTModel, BTModelSession
@@ -60,6 +61,7 @@ from albert.resources.users import User
 from albert.resources.workflows import Workflow
 from albert.resources.worksheets import Worksheet
 from tests.seeding import (
+    generate_attribute_seeds,
     generate_btdataset_seed,
     generate_btinsight_seed,
     generate_btmodel_seed,
@@ -548,6 +550,30 @@ def seeded_data_columns(
         NotFoundError,
         BadRequestError,
     )
+
+
+@pytest.fixture(scope="session")
+def seeded_attributes(
+    client: Albert,
+    seed_prefix: str,
+    seeded_data_columns: list[DataColumn],
+) -> Iterator[list[Attribute]]:
+    seeded = []
+    for attribute in generate_attribute_seeds(
+        seed_prefix=seed_prefix,
+        seeded_data_columns=seeded_data_columns,
+    ):
+        created = client.attributes.create(attribute=attribute)
+        seeded.append(created)
+
+    # Avoid race condition while it populates through search DBs
+    time.sleep(1.5)
+
+    yield seeded
+
+    for attribute in seeded:
+        with suppress(NotFoundError, BadRequestError):
+            client.attributes.delete(id=attribute.id)
 
 
 @pytest.fixture(scope="session")

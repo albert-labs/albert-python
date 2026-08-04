@@ -24,6 +24,7 @@ dependencies = [
     "pandas>=2.2.2,<3",
     "pydantic[email]>=2.8.2,<3",
     "tenacity>=8.2.3",
+    "typing_extensions>=4.6.1",
 ]
 
 [dependency-groups]

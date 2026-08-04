@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from pydantic import TypeAdapter, validate_call
+from typing_extensions import deprecated
 
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
@@ -417,6 +418,10 @@ class InventoryCollection(BaseCollection):
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
         return inventory
 
+    @deprecated(
+        "get_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.get_by_parent_ids() instead."
+    )
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
         """Get the specs attached to a list of inventory items.
@@ -451,6 +456,10 @@ class InventoryCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
+    @deprecated(
+        "add_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.add_values() instead."
+    )
     @validate_call
     def add_specs(
         self,
@@ -1314,6 +1323,10 @@ class InventoryCollection(BaseCollection):
         The following fields can be updated: ``alias``, ``description``,
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
+        On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
+        ``cas_category``, ``inventory_function``.
+        ``substance_id`` can be set when adding a new CAS entry; it is not
+        patchable on existing entries.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

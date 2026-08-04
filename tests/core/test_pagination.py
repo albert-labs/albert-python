@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from albert.collections.cas import CasPaginator
+from albert.collections.substance_v4 import SubstanceV4SearchPaginator
 from albert.core.pagination import (
     AlbertPaginator,
     AsyncAlbertPaginator,
@@ -94,6 +95,16 @@ def _cas_page(count: int) -> dict[str, Any]:
     """A CAS listing page whose items deserialize into ``Cas`` (needs ``number``)."""
     return {
         "Items": [{"id": f"CAS{i}", "number": f"{i}-00-0"} for i in range(count)],
+    }
+
+
+def _substance_v4_page(count: int) -> dict[str, Any]:
+    """A substance v4 search page (``substances`` payload, not ``Items``)."""
+    return {
+        "substances": [
+            {"substanceId": f"SUB{i}", "casID": f"{i}-00-0", "name": f"Substance {i}"}
+            for i in range(count)
+        ],
     }
 
 
@@ -426,6 +437,40 @@ def test_cas_paginator_full_page_at_cap_signals_more() -> None:
     items = list(pag)
 
     assert len(items) == 50
+    assert pag.has_more is True
+    assert session.call_count == 1
+
+
+def test_substance_v4_paginator_full_page_at_cap_signals_more() -> None:
+    """SubstanceV4SearchPaginator: a full 20-item page at the cap signals more likely exist."""
+    session = _ScriptedSession([_substance_v4_page(20)])
+
+    pag = SubstanceV4SearchPaginator(
+        path="/api/v4/substances/search",
+        session=session,
+        params={"searchKey": "water"},
+        max_items=20,
+    )
+    items = list(pag)
+
+    assert len(items) == 20
+    assert pag.has_more is True
+    assert session.call_count == 1
+
+
+def test_substance_v4_paginator_mid_page_cap_sets_has_more() -> None:
+    """SubstanceV4SearchPaginator: max_items below page size sets has_more True."""
+    session = _ScriptedSession([_substance_v4_page(20)])
+
+    pag = SubstanceV4SearchPaginator(
+        path="/api/v4/substances/search",
+        session=session,
+        params={"searchKey": "water"},
+        max_items=5,
+    )
+    items = list(pag)
+
+    assert len(items) == 5
     assert pag.has_more is True
     assert session.call_count == 1
 

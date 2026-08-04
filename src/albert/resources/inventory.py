@@ -179,6 +179,9 @@ class CasAmount(BaseAlbertModel):
     classification_type: str | None = Field(default=None, alias="classificationType")
     """The EU classification source for the CAS: harmonized, notified, or REACH."""
 
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The substance ID linked to this CAS entry."""
+
     # Read-only fields
     cas: Cas | None = Field(default=None, exclude=True)
     """The full CAS object associated with this amount. Read-only after init; excluded from serialization. Provide either a ``cas`` or an ``id``."""
