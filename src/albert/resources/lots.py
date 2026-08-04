@@ -56,7 +56,7 @@ class LotAdjustmentAction(str, Enum):
 
 
 class LotWorkflowLink(BaseAlbertModel):
-    """A workflow association returned on lot GET responses."""
+    """A workflow associated with a lot."""
 
     id: str
     """The workflow ID (format ``WFL...``)."""
@@ -132,14 +132,13 @@ class Lot(BaseResource):
     workflow_id: WorkflowId | None = Field(default=None, alias="workflowId")
     """The Albert ID of the workflow associated with this lot (format ``WFL...``).
 
-    Populated on GET from the ``Workflows`` array when present. Can be set via
-    [`update`][albert.collections.lots.LotCollection.update].
+    Can be set via [`update`][albert.collections.lots.LotCollection.update].
     """
 
     workflows: list[LotWorkflowLink] | None = Field(
         default=None, alias="Workflows", exclude=True, frozen=True
     )
-    """Workflow associations from the API. Read-only; use ``workflow_id``."""
+    """Workflow associations for this lot. Read-only; use ``workflow_id``."""
 
     expiration_date: str | None = Field(None, alias="expirationDate")
     """The date the lot expires, in ``YYYY-MM-DD`` format."""
