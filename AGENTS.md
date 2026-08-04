@@ -3,8 +3,8 @@
 Single source of truth for coding-agent guidance in this repo.
 
 **Read `OPINIONS.md` before changing anything it covers** — patch/update logic,
-pagination, resource naming, docstrings, deprecations, releases, and testing
-edge cases. `AGENTS.md` states what to do; `OPINIONS.md` explains the traps.
+pagination, resource naming, deprecations, releases, and testing edge cases.
+`AGENTS.md` states what to do; `OPINIONS.md` explains the traps.
 
 ## Project Basics
 
@@ -271,11 +271,11 @@ class TagCollection(BaseCollection):
     """
 ```
 
-`update()` `Notes` sections and docstring wording rules: `OPINIONS.md`.
+`update()` `Notes` sections: `OPINIONS.md`.
 
 ## Deprecations
 
-See `OPINIONS.md` for method vs class deprecation mechanics and message format.
+See `OPINIONS.md` for the `@deprecated` runtime warning gotcha.
 
 ## After Every Code Edit
 

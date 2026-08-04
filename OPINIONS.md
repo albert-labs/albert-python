@@ -48,18 +48,29 @@ Regression tests: `test_update_partial_leaves_omitted_fields_untouched` (lots),
 
 ## Pagination — callers never see offset or limit
 
-`AlbertPaginator` (`src/albert/core/pagination.py`) owns pagination state internally.
-
-- **`offset` and `limit` are never public method parameters.** Do not add them to a
-  collection method signature or docstring. Expose `max_items` as the only
-  caller-facing control for early stopping.
-- **KEY mode** (`PaginationMode.KEY`) uses `startKey` / `lastKey`. Do not pass
-  `limit` from the SDK — the backend controls page size.
-- **OFFSET mode** (`PaginationMode.OFFSET`) defaults to `limit=1000` internally and
-  stops when `Items` is empty.
+`AlbertPaginator` owns all pagination state internally. `offset` and `limit` are
+never public method parameters; `max_items` is the only caller-facing control.
 
 Why: exposing raw pagination params leaks backend details, invites misuse, and
 diverges from the SDK's iterator-style API.
+
+## Paginators — override _response_items for non-standard response keys
+
+`AlbertPaginator._response_items` defaults to reading `data["Items"]` or
+`data["items"]`. If an endpoint returns its list under any other key (e.g.
+`substances`, `results`, `data`), you **must** override `_response_items` in the
+paginator subclass. Forgetting this makes every page look empty and iteration
+stops immediately after the first response.
+
+## max_items — always default to None in search methods
+
+Never set a non-`None` default for `max_items` on a `search()` method. A fixed
+default silently truncates results for callers writing `for x in client.foo.search(...)`
+expecting all matches, with no indication more exist unless they inspect `has_more`.
+The SDK convention is `max_items: int | None = None` (unbounded by default).
+
+Why: `substances_v4.search()` shipped with `max_items=100`, silently capping every
+search at 100 results. Fixed in commit fa639977.
 
 ## Resource & search model naming
 
@@ -71,39 +82,28 @@ diverges from the SDK's iterator-style API.
   the field already exists in the API response; the SDK was just incomplete.
   Reserve `feat` for new methods, parameters, or other caller-visible capabilities.
 
-## Docstrings — caller-facing only
+## Deprecations — @deprecated does not emit a runtime warning
 
-Docstrings describe **what** a method does from the caller's perspective. Never
-mention internal implementation or backend specifics (diffing, patching, HTTP
-methods, "returned by the API").
+`@deprecated` from `typing_extensions` gives IDE strike-through and static-analysis
+warnings only. It does **not** fire a `DeprecationWarning` at runtime. For class
+deprecations that need a runtime warning at instantiation (e.g. `CasCollection`),
+use `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__` as well.
 
-- Wrong: `"""Update an attachment by diffing the current server state."""`
-- Right: `"""Update an attachment."""`
-- Wrong: `The updated attachment returned by the API.`
-- Right: `The updated Attachment.`
+## Releases — docs vs chore commit type
 
-## Deprecations — method vs class
+`docs` is for documentation-only changes (AGENTS.md, OPINIONS.md, docstrings, guides).
+`chore` is for maintenance (dependency bumps, CI, build tooling) — not doc edits.
 
-- **Method**: `@deprecated("... will be removed in 2.0. Use X instead.")` from
-  `typing_extensions`. IDE strike-through and static-analysis warnings only.
-- **Class**: `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__`.
-  Fires a runtime warning at instantiation.
-- Message format: `"thing() is deprecated and will be removed in 2.0. Use client.x.y() instead."`
-- `@deprecated` alone does **not** emit a runtime `DeprecationWarning`.
+Why: release-please uses commit types to determine changelog entries. Mislabeling a
+doc improvement as `chore` buries it; mislabeling a build change as `docs` creates a
+spurious changelog section.
 
-## Releases & commits
+## Testing — when unit tests are acceptable
 
-- **Never bump the version manually.** Versions in `src/albert/__init__.py` and
-  `pyproject.toml` are managed exclusively by release-please. PRs that touch either
-  file will be flagged and must not be merged.
-- `docs` is for documentation-only changes (AGENTS.md, docstrings, guides).
-  `chore` is for maintenance (dependency bumps, CI, build tooling) — not doc edits.
+Prefer integration-style tests against the live API. Do not add unit tests that mock
+the API with `FakeAlbertSession`.
 
-## Testing — integration first, pure helpers excepted
-
-- Prefer integration-style tests against the live API (requires
-  `ALBERT_CLIENT_ID_SDK`, `ALBERT_CLIENT_SECRET_SDK`, `ALBERT_BASE_URL`).
-- Do not add unit tests that use `FakeAlbertSession` to mock the API.
-- Pure patch-payload builders and other side-effect-free helpers may have focused
-  unit tests (e.g. `tests/utils/test_inventory_patches.py`) when they guard
-  non-obvious diff behavior documented in this file.
+Exception: pure patch-payload builders and other side-effect-free helpers (e.g.
+`_generate_patch_payload`) may have focused unit tests when they guard non-obvious
+diff behavior — the same helpers documented in the `update()` section above. These
+are the cases where a unit test gives real signal because there is no I/O to fake.
