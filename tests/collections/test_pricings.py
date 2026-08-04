@@ -26,11 +26,14 @@ def test_get_by_id(client: Albert, seeded_pricings: list[Pricing]):
 
 
 def test_update(client: Albert, seeded_pricings: list[Pricing], seeded_locations: list[Location]):
-    pricing = seeded_pricings[0]
+    """Test update changes description, location, and default."""
+    pricing = client.pricings.get_by_id(id=seeded_pricings[0].id)
     updated_description = f"TEST - {uuid.uuid4()}"
     pricing.description = updated_description
     pricing.location = seeded_locations[1]
+    pricing.default = 1
     assert client.pricings.update(pricing=pricing)
     updated = client.pricings.get_by_id(id=pricing.id)
     assert updated.description == updated_description
     assert updated.location.id == seeded_locations[1].id
+    assert updated.default == 1

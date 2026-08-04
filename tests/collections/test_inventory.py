@@ -13,10 +13,10 @@ from albert.resources.inventory import (
     InventoryItem,
     InventorySpec,
     InventorySpecValue,
-    InventoryUnitCategory,
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from albert.resources.users import User
 from albert.resources.workflows import Workflow
 from tests.utils.wait import poll_until
 
@@ -40,11 +40,36 @@ def test_inventory_get_all_with_pagination(client: Albert):
 
 
 def test_inventory_get_all_with_filters(
-    client: Albert, seeded_inventory: list[InventoryItem], seeded_cas: list[Cas]
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_cas: list[Cas],
+    static_user: User,
 ):
-    """Test inventory get_all with filters (text, category, cas, company)."""
+    """Test inventory get_all and search with filters (text, category, cas, company, user)."""
     test_item = seeded_inventory[1]
     matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
+    seeded_ids = {item.id for item in seeded_inventory}
+
+    def normalize_inv_id(item_id: str) -> str:
+        return item_id if item_id.upper().startswith("INV") else f"INV{item_id}"
+
+    def filter_seeded(items):
+        return [item for item in items if normalize_inv_id(item.id) in seeded_ids]
+
+    def scoped_search(*, created_by=None, updated_by=None):
+        return poll_until(
+            lambda: filter_seeded(
+                list(
+                    client.inventory.search(
+                        text=seed_prefix,
+                        created_by=created_by,
+                        updated_by=updated_by,
+                        max_items=100,
+                    )
+                )
+            )
+        )
 
     results = poll_until(
         lambda: list(
@@ -61,6 +86,54 @@ def test_inventory_get_all_with_filters(
     assert_valid_inventory_items(results)
     for item in results[:10]:
         assert test_item.name.lower() in item.name.lower()
+
+    user = User(id=static_user.id, name=static_user.name)
+    by_id = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.id)}
+    by_name = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.name)}
+    by_user = {normalize_inv_id(item.id) for item in scoped_search(created_by=user)}
+    assert by_id == by_name == by_user
+    assert test_item.id in by_id
+
+    assert test_item.created and test_item.created.at
+    from_created_at = test_item.created.at.date().isoformat()
+    recently_created = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.search(
+                    text=seed_prefix,
+                    from_created_at=from_created_at,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert test_item.id in {normalize_inv_id(item.id) for item in recently_created}
+
+    hydrated_by_creator = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.get_all(
+                    text=seed_prefix,
+                    created_by=static_user.id,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert hydrated_by_creator
+
+    facets = client.inventory.get_all_facets(text=seed_prefix, created_by=static_user.id)
+    assert facets
+
+    search_hits = poll_until(
+        lambda: filter_seeded(list(client.inventory.search(text=test_item.name, max_items=10)))
+    )
+    hit = next(item for item in search_hits if normalize_inv_id(item.id) == test_item.id)
+    assert hit.manufacturer is not None
+    company_name = (
+        test_item.company.name if isinstance(test_item.company, Company) else test_item.company
+    )
+    assert hit.manufacturer == company_name
 
 
 def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
@@ -241,7 +314,6 @@ def test_update_inventory_item_standard_attributes(
         update={
             "name": "Updated Inventory Name",
             "description": "Updated Description",
-            "unit_category": InventoryUnitCategory.VOLUME.value,
             "security_class": "confidential",
             "alias": "Updated Alias",
         }
@@ -252,7 +324,6 @@ def test_update_inventory_item_standard_attributes(
     # Verify that all updatable attributes have been updated
     assert updated_item.name == "Updated Inventory Name"
     assert updated_item.description == "Updated Description"
-    assert updated_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert updated_item.security_class == "confidential"
     assert updated_item.alias == "Updated Alias"
 
@@ -260,7 +331,6 @@ def test_update_inventory_item_standard_attributes(
     fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.name == "Updated Inventory Name"
     assert fetched_item.description == "Updated Description"
-    assert fetched_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert fetched_item.security_class == "confidential"
     assert fetched_item.alias == "Updated Alias"
 

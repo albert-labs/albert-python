@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.40.0](https://github.com/albert-labs/albert-python/compare/v1.39.0...v1.40.0) (2026-07-31)
+
+
+### Features
+
+* **attachments:** add upload_and_attach_document_to_inventory_item ([#618](https://github.com/albert-labs/albert-python/issues/618)) ([1dc3145](https://github.com/albert-labs/albert-python/commit/1dc3145a4d75d1e7c864fda104d0355e6ec52e00))
+
+
+### Bug Fixes
+
+* **pricings:** support default field via update ([#653](https://github.com/albert-labs/albert-python/issues/653)) ([b0dfc0c](https://github.com/albert-labs/albert-python/commit/b0dfc0cfb06b63f91e4344b9b5f5ec197312e216))
+* **sdk:** tolerate malformed entity-link metadata in parameter groups ([#650](https://github.com/albert-labs/albert-python/issues/650)) ([4f71ae9](https://github.com/albert-labs/albert-python/commit/4f71ae9d62366f9c1c509ec9a253d4f2f28baa9b))
+
+## [1.39.0](https://github.com/albert-labs/albert-python/compare/v1.38.2...v1.39.0) (2026-07-29)
+
+
+### Features
+
+* **search:** add filters, metadata_filters, and SearchItem fields ([#636](https://github.com/albert-labs/albert-python/issues/636)) ([4557a03](https://github.com/albert-labs/albert-python/commit/4557a03765150ff26f9a93258b78f4503a98d751))
+
+## [1.38.2](https://github.com/albert-labs/albert-python/compare/v1.38.1...v1.38.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* **cas:** batch PATCH updates to respect 9-item API limit ([#646](https://github.com/albert-labs/albert-python/issues/646)) ([5d70ff8](https://github.com/albert-labs/albert-python/commit/5d70ff88e9ab7a48dc4f6290c0527f290b836123))
+* **locations:** exclude read-only fields from create payload ([#649](https://github.com/albert-labs/albert-python/issues/649)) ([e623176](https://github.com/albert-labs/albert-python/commit/e62317637e481dffe55273c7b758cd745238bebf))
+
+
+### Documentation
+
+* clarify workflow registration and WFL1 default ([#637](https://github.com/albert-labs/albert-python/issues/637)) ([919fd7f](https://github.com/albert-labs/albert-python/commit/919fd7f75ae9a3f27c947e0e6ad482a6a8fc984b))
+* **lots:** document create-required fields on Lot and create() ([#632](https://github.com/albert-labs/albert-python/issues/632)) ([68ecc51](https://github.com/albert-labs/albert-python/commit/68ecc51bf52a0c8cf11893098bde3a35e929d20e))
+
 ## [1.38.1](https://github.com/albert-labs/albert-python/compare/v1.38.0...v1.38.1) (2026-07-27)
 
 

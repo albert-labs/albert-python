@@ -18,6 +18,28 @@ from albert.resources.units import Unit
 from albert.resources.users import User
 
 
+def _sanitize_metadata(value: Any) -> Any:
+    """Drop entity-link metadata entries the API returns as bare/empty dicts.
+
+    Some tenants have parameter-group metadata whose entity-link fields were cleared
+    server-side to `[{}]` (list) or `{}` (scalar) instead of `[]`/`null`. These dicts
+    lack the required `id`, so `MetadataItem` can't parse them.
+    """
+    if not isinstance(value, dict):
+        return value
+    sanitized: dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(item, dict) and "id" not in item:
+            continue  # drop; MetadataItem has no None option to fall back to
+        if isinstance(item, list):
+            sanitized[key] = [
+                entry for entry in item if not (isinstance(entry, dict) and "id" not in entry)
+            ]
+        else:
+            sanitized[key] = item
+    return sanitized
+
+
 class PGType(str, Enum):
     """The kind of task a [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup] relates to.
 
@@ -104,6 +126,7 @@ class Operator(str, Enum):
     GREATER_THAN_OR_EQUAL = "gte"
     GREATER_THAN = "gt"
     EQUALS = "eq"
+    NOT_EQUALS = "neq"
 
 
 class EnumValidationValue(BaseAlbertModel):
@@ -311,6 +334,11 @@ class ParameterGroup(BaseTaggedResource):
     documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)
     """Documents (e.g. SOPs) associated with the Parameter Group. See Also --------"""
 
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def sanitize_metadata(cls, value: Any) -> Any:
+        return _sanitize_metadata(value)
+
 
 class ParameterSearchItemParameter(BaseAlbertModel):
     """A lightweight parameter reference within a parameter group search result."""
@@ -370,3 +398,8 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
 
     team: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="team")
     """The team associated with the group."""
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def sanitize_metadata(cls, value: Any) -> Any:
+        return _sanitize_metadata(value)

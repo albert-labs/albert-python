@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from itertools import islice
+from typing import Any
 
 from pydantic import Field, validate_call
 
@@ -379,6 +380,13 @@ class DataTemplateCollection(BaseCollection):
         data_columns: str | list[str] | None = None,
         standard_organization: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        created_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -414,6 +422,22 @@ class DataTemplateCollection(BaseCollection):
         additional_field : str or list[str], optional
             Additional fields to include on each returned item. If omitted, a default
             set of fields is requested.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include templates created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include templates created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the template. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include templates updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include templates updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
         order_by : OrderBy, optional
             The order in which to sort results. Default is ``DESCENDING``.
         max_items : int, optional
@@ -436,12 +460,20 @@ class DataTemplateCollection(BaseCollection):
             "tags": ensure_list(tags),
             "dataColumns": ensure_list(data_columns),
             "standardOrganization": ensure_list(standard_organization),
+            "createdBy": ensure_list(created_by),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
             "additionalField": (
                 ensure_list(additional_field)
                 if additional_field is not None
                 else list(DEFAULT_ADDITIONAL_FIELDS)
             ),
         }
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -669,6 +701,18 @@ class DataTemplateCollection(BaseCollection):
         *,
         name: str | None = None,
         user_id: UserId | None = None,
+        owner: str | list[str] | None = None,
+        tags: str | list[str] | None = None,
+        data_columns: str | list[str] | None = None,
+        standard_organization: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        created_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -692,6 +736,33 @@ class DataTemplateCollection(BaseCollection):
             Filter by data template name (text match).
         user_id : UserId, optional
             Filter by the ID of an associated user.
+        owner : str or list[str], optional
+            Filter by owner name(s).
+        tags : str or list[str], optional
+            Filter by tag name(s).
+        data_columns : str or list[str], optional
+            Filter by data column name(s).
+        standard_organization : str or list[str], optional
+            Filter by standards organization name(s).
+        additional_field : str or list[str], optional
+            Additional fields to include on each returned item. If omitted, a default
+            set of fields is requested.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        from_created_at : str, optional
+            Only include templates created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include templates created on or before this date (ISO 8601).
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the template. Accepts UserId(s)
+            only (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include templates updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include templates updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
         order_by : OrderBy, optional
             The order in which to sort results. Default is ``DESCENDING``.
         max_items : int, optional
@@ -707,6 +778,18 @@ class DataTemplateCollection(BaseCollection):
         source = self.search(
             name=name,
             user_id=user_id,
+            owner=owner,
+            tags=tags,
+            data_columns=data_columns,
+            standard_organization=standard_organization,
+            additional_field=additional_field,
+            created_by=created_by,
+            from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
+            metadata_filters=metadata_filters,
             order_by=order_by,
             max_items=max_items,
             offset=offset,

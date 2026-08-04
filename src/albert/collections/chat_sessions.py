@@ -2,25 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from pydantic import GetCoreSchemaHandler, validate_call
-from pydantic_core import core_schema
+from pydantic import validate_call
 
 from albert.core.async_session import AsyncAlbertSession
 from albert.core.pagination import AsyncAlbertPaginator
+from albert.core.shared.types import _UNSET, _UnsetType
 from albert.resources.chats import ChatSession
-
-
-class _UnsetType:
-    """Sentinel type for distinguishing unset parameters from explicit None."""
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, _source_type: object, _handler: GetCoreSchemaHandler
-    ) -> core_schema.CoreSchema:
-        return core_schema.is_instance_schema(cls)
-
-
-_UNSET = _UnsetType()
 
 
 class ChatSessionCollection:

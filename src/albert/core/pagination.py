@@ -1,7 +1,10 @@
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from typing import Any, Literal, TypeVar
 
+from pydantic import ValidationError
+
 from albert.core.async_session import AsyncAlbertSession
+from albert.core.logging import logger
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.exceptions import AlbertException
@@ -126,6 +129,10 @@ class AlbertPaginator(Iterator[ItemType]):
     def _total_implies_more(self, yielded: int) -> bool:
         return self._total is not None and yielded < self._total
 
+    def _response_items(self, data: dict[str, Any]) -> list:
+        """Extract the list payload from a paginated response body."""
+        return data.get("Items") or data.get("items") or []
+
     def _create_iterator(self) -> Iterator[ItemType]:
         """Create an iterator that yields paginated items."""
         yielded = 0
@@ -135,7 +142,7 @@ class AlbertPaginator(Iterator[ItemType]):
             response = self._request()
             data = response.json()
             self._record_total(data)
-            items = data.get("Items", [])
+            items = self._response_items(data)
             item_count = len(items)
 
             if not items and self.mode == PaginationMode.OFFSET:
@@ -155,7 +162,19 @@ class AlbertPaginator(Iterator[ItemType]):
                     return
                 seen_keys.add(current_key)
 
-            deserialized = list(self.deserialize(items))
+            try:
+                deserialized = list(self.deserialize(items))
+            except ValidationError:
+                # Fall back to deserializing one item at a time so a single
+                # unparseable row doesn't discard the rest of the page.
+                deserialized = []
+                for item in items:
+                    try:
+                        deserialized.extend(self.deserialize([item]))
+                    except ValidationError as e:
+                        item_id = item.get("albertId") or item.get("id")
+                        suffix = f" {item_id}" if item_id else ""
+                        logger.warning(f"Skipping unparseable item{suffix}: {e}")
 
             for item in deserialized:
                 if self.max_items is not None and yielded >= self.max_items:

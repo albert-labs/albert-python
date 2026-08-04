@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import Field
 
@@ -87,9 +88,17 @@ class Pricing(BaseResource):
     expiration_date: str | None = Field(default=None, alias="expirationDate")
     """The date the pricing expires, in ``YYYY-MM-DD`` format."""
 
-    # Read-only fields
-    default: int | None = Field(default=None, exclude=True, frozen=True)
-    """Whether the default price is being used rather than an overridden price (a flag)."""
+    default: Literal[0, 1] | None = Field(default=None)
+    """Whether this pricing is the default for its inventory item.
+
+    ``0``: not the default pricing. ``1``: the default pricing for the item
+    (only one pricing per item should be default). Cannot be set on create; use
+    [`update`][albert.collections.pricings.PricingCollection.update].
+    """
+
+    @staticmethod
+    def _default_patch_value(value: Literal[0, 1] | None) -> str | None:
+        return None if value is None else str(value)
 
 
 class InventoryPricings(BaseAlbertModel):

@@ -1,7 +1,9 @@
 import logging
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import TypeAdapter, validate_call
+from typing_extensions import deprecated
 
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
@@ -416,6 +418,10 @@ class InventoryCollection(BaseCollection):
             inventory.extend([InventoryItem(**item) for item in response.json()["Items"]])
         return inventory
 
+    @deprecated(
+        "get_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.get_by_parent_ids() instead."
+    )
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
         """Get the specs attached to a list of inventory items.
@@ -450,6 +456,10 @@ class InventoryCollection(BaseCollection):
             for item in self.session.get(url, params={"id": batch}).json()
         ]
 
+    @deprecated(
+        "add_specs() is deprecated and will be removed in 2.0. "
+        "Use client.attributes.add_values() instead."
+    )
     @validate_call
     def add_specs(
         self,
@@ -536,11 +546,15 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: SearchProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         offset: int | None = None,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -550,12 +564,26 @@ class InventoryCollection(BaseCollection):
             company = [company]
         if isinstance(lot_owner, User):
             lot_owner = [lot_owner]
-        if isinstance(created_by, User):
-            created_by = [created_by]
         if isinstance(location, Location):
             location = [location]
         if isinstance(storage_location, StorageLocation):
             storage_location = [storage_location]
+
+        # created_by accepts legacy User objects, display names, or UserIds as
+        # strings. User objects prefer display name (matching pre-SEA-158 behavior);
+        # strings pass through unchanged so callers can supply either form.
+        created_by_values: list[str] | None = None
+        if created_by is not None:
+            wire: list[str] = []
+            for item in ensure_list(created_by) or []:
+                if isinstance(item, str):
+                    if item:
+                        wire.append(item)
+                else:
+                    resolved = item.name or item.id
+                    if resolved:
+                        wire.append(resolved)
+            created_by_values = wire or None
 
         params = {
             "text": text,
@@ -570,11 +598,15 @@ class InventoryCollection(BaseCollection):
                 [c.name for c in storage_location] if storage_location is not None else None
             ),
             "lotOwner": [c.name for c in lot_owner] if lot_owner is not None else None,
-            "createdBy": [c.name for c in created_by] if created_by is not None else None,
+            "createdBy": created_by_values,
             "sheetId": sheet_id,
             "projectId": project_id,
             "offset": offset,
             "fromCreatedAt": from_created_at if from_created_at is not None else None,
+            "toCreatedAt": to_created_at if to_created_at is not None else None,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at if from_updated_at is not None else None,
+            "toUpdatedAt": to_updated_at if to_updated_at is not None else None,
         }
 
         return params
@@ -591,7 +623,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -630,8 +662,10 @@ class InventoryCollection(BaseCollection):
             Filter by project.
         sheet_id : WorksheetId, optional
             Filter by worksheet.
-        created_by : User or list[User], optional
-            Filter by creator.
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner.
         tags : list[str], optional
@@ -682,7 +716,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -721,8 +755,10 @@ class InventoryCollection(BaseCollection):
             Filter by project.
         sheet_id : WorksheetId | None, optional
             Filter by worksheet.
-        created_by : list[User] | User | None, optional
-            Filter by creator.
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : list[User] | User | None, optional
             Filter by lot owner.
         tags : list[str] | None, optional
@@ -771,7 +807,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -780,6 +816,11 @@ class InventoryCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
     ) -> Iterator[InventorySearchItem]:
         """Search for inventory items matching the given filters.
 
@@ -827,8 +868,10 @@ class InventoryCollection(BaseCollection):
             Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
-            Filter by creator(s).
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
@@ -845,6 +888,18 @@ class InventoryCollection(BaseCollection):
         from_created_at : str, optional
             Only include items created on or after this date, formatted as
             ``YYYY-MM-DD``.
+        to_created_at : str, optional
+            Only include items created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
 
         Returns
         -------
@@ -873,13 +928,35 @@ class InventoryCollection(BaseCollection):
             tags=tags,
             offset=offset,
             from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
         )
 
+        if metadata_filters is not None:
+            if match_all_conditions:
+                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
+            payload: dict[str, Any] = {
+                **query_params,
+                "metadataFilters": {"metadata": metadata_filters},
+            }
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
+
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
-            else f"{self.base_path}/search",
+            path=path,
             params=query_params,
             session=self.session,
             max_items=max_items,
@@ -898,7 +975,7 @@ class InventoryCollection(BaseCollection):
         storage_location: list[StorageLocation] | StorageLocation | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -907,6 +984,11 @@ class InventoryCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
     ) -> Iterator[InventoryItem]:
         """Get fully populated inventory items matching the given filters.
 
@@ -949,8 +1031,10 @@ class InventoryCollection(BaseCollection):
             Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
-            Filter by creator(s).
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
@@ -967,6 +1051,18 @@ class InventoryCollection(BaseCollection):
         from_created_at : str, optional
             Only include items created on or after this date, formatted as
             ``YYYY-MM-DD``.
+        to_created_at : str, optional
+            Only include items created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
 
         Returns
         -------
@@ -995,13 +1091,35 @@ class InventoryCollection(BaseCollection):
             tags=tags,
             offset=offset,
             from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
         )
 
+        if metadata_filters is not None:
+            if match_all_conditions:
+                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
+            payload: dict[str, Any] = {
+                **query_params,
+                "metadataFilters": {"metadata": metadata_filters},
+            }
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
+
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
-            else f"{self.base_path}/search",
+            path=path,
             params=query_params,
             session=self.session,
             max_items=max_items,
@@ -1205,6 +1323,10 @@ class InventoryCollection(BaseCollection):
         The following fields can be updated: ``alias``, ``description``,
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
+        On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
+        ``cas_category``, ``inventory_function``.
+        ``substance_id`` can be set when adding a new CAS entry; it is not
+        patchable on existing entries.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)
