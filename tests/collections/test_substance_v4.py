@@ -24,8 +24,10 @@ CAS_IDS = [
 WATER_CAS = "7732-18-5"
 
 
-def _search_item_key(item: SubstanceV4SearchItem) -> tuple[str | None, str | None]:
-    return (item.substance_id, item.cas_id)
+def _search_item_key(
+    item: SubstanceV4SearchItem,
+) -> tuple[str | None, str | None, str | None]:
+    return (item.substance_id, item.cas_id, item.classification_type)
 
 
 def test_get_by_ids(client: Albert):
