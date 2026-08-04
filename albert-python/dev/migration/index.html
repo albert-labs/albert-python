@@ -14,7 +14,7 @@
         <link rel="prev" href="../configuration/">
       
       
-        <link rel="next" href="../CONTRIBUTING/">
+        <link rel="next" href="alpha-to-v1/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Migration Guide - Albert Python SDK Docs</title>
+        <title>Overview - Albert Python SDK Docs</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#migration-guide-alpha-v100" class="md-skip">
+        <a href="#migration-guides" class="md-skip">
           Skip to content
         </a>
       
@@ -119,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Migration Guide
+              Overview
             
           </span>
         </div>
@@ -547,6 +547,63 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1_6" id="__nav_1_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -555,24 +612,6 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Migration Guide
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -580,7 +619,7 @@
   <span class="md-ellipsis">
     
   
-    Migration Guide
+    Overview
   
 
     
@@ -590,213 +629,97 @@
 
       </a>
       
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+              
+            
+              
+                
   
   
   
+  
+    <li class="md-nav__item">
+      <a href="alpha-to-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
     
   
+    Alpha → v1.0
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Authentication
-      
-    </span>
-  </a>
+
+    
+  </span>
   
-    <nav class="md-nav" aria-label="Changes to Authentication">
-      <ul class="md-nav__list">
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="substances-v4/" class="md-nav__link">
         
-          <li class="md-nav__item">
-  <a href="#unified-authmanager-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unified AuthManager system
-      
-    </span>
-  </a>
   
-</li>
+  
+  <span class="md-ellipsis">
+    
+  
+    Substances v3 → v4 (🧪Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="specs-to-attributes/" class="md-nav__link">
         
-      </ul>
-    </nav>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Collections
-      
-    </span>
-  </a>
   
-    <nav class="md-nav" aria-label="Changes to Collections">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#behavior-change-to-create-and-new-get_or_create" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Behavior change to create() and new get_or_create()
-      
-    </span>
-  </a>
+  <span class="md-ellipsis">
+    
   
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tagscollection-get_by_tag-renamed-to-get_by_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TagsCollection: get_by_tag() renamed to get_by_name()
-      
-    </span>
-  </a>
+    Specs → Attributes (🧪 Beta)
   
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#notescollection-list-replaced-with-get_by_parent_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NotesCollection: list() replaced with get_by_parent_id()
-      
-    </span>
-  </a>
+
+    
+  </span>
   
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#standardized-exists-method-across-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standardized exists() method across collections
-      
-    </span>
-  </a>
   
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deprecation-of-list-methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deprecation of list() methods
-      
-    </span>
-  </a>
+
+      </a>
+    </li>
   
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pagination-behavior-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pagination behavior change
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#batchdatacollection-get-renamed-to-get_by_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BatchDataCollection: get renamed to get_by_id
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-resources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Resources
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Changes to Resources">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#renamed-inventoryinformation-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Renamed InventoryInformation model
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other Changes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Other Changes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resourcehydrate-for-partial-resource-enrichment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        resource.hydrate() for partial resource enrichment
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#renamed-templates-module-to-custom_templates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Renamed templates module to custom_templates
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1381,6 +1304,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../collections/attributes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attributes (🧪 Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../collections/batch_data/" class="md-nav__link">
         
   
@@ -1450,10 +1401,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_6" >
         
           
-          <label class="md-nav__link" for="__nav_2_4_5" id="__nav_2_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_4_6" id="__nav_2_4_6_label" tabindex="0">
             
   
   
@@ -1471,8 +1422,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_4_5">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1622,10 +1573,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_2_4_7" id="__nav_2_4_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_4_8" id="__nav_2_4_8_label" tabindex="0">
             
   
   
@@ -1643,8 +1594,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_4_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2649,6 +2600,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../collections/substances_v4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substances V4 (🧪 Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../collections/synthesis/" class="md-nav__link">
         
   
@@ -3045,6 +3024,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../resources/attributes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attributes (🧪 Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/acls/" class="md-nav__link">
         
   
@@ -3114,10 +3121,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_6" >
         
           
-          <label class="md-nav__link" for="__nav_2_5_5" id="__nav_2_5_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_5_6" id="__nav_2_5_6_label" tabindex="0">
             
   
   
@@ -3135,8 +3142,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_5_5">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4225,6 +4232,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../resources/substances_v4/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Substances V4
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../resources/synthesis/" class="md-nav__link">
         
   
@@ -4490,10 +4525,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_50" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_52" >
         
           
-          <label class="md-nav__link" for="__nav_2_5_50" id="__nav_2_5_50_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_5_52" id="__nav_2_5_52_label" tabindex="0">
             
   
   
@@ -4511,8 +4546,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_50_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_5_50">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_52_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_52">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -4932,203 +4967,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-authentication" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Authentication
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Changes to Authentication">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#unified-authmanager-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unified AuthManager system
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Collections
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Changes to Collections">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#behavior-change-to-create-and-new-get_or_create" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Behavior change to create() and new get_or_create()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tagscollection-get_by_tag-renamed-to-get_by_name" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TagsCollection: get_by_tag() renamed to get_by_name()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#notescollection-list-replaced-with-get_by_parent_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NotesCollection: list() replaced with get_by_parent_id()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#standardized-exists-method-across-collections" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standardized exists() method across collections
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deprecation-of-list-methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deprecation of list() methods
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pagination-behavior-change" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pagination behavior change
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#batchdatacollection-get-renamed-to-get_by_id" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BatchDataCollection: get renamed to get_by_id
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changes-to-resources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Changes to Resources
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Changes to Resources">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#renamed-inventoryinformation-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Renamed InventoryInformation model
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Other Changes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Other Changes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resourcehydrate-for-partial-resource-enrichment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        resource.hydrate() for partial resource enrichment
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#renamed-templates-module-to-custom_templates" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Renamed templates module to custom_templates
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -5143,6 +4981,49 @@
 
 
 
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href=".." class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Migration Guides
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
               
               <article class="md-content__inner md-typeset">
                 
@@ -5153,198 +5034,32 @@
   
 
 
-<h1 id="migration-guide-alpha-v100">Migration Guide: Alpha → v1.0.0</h1>
-<p>Albert <code>v1.0.0</code> introduces a number of changes to the API, including some breaking changes.
-This guide provides details highlighting the most important changes to help you migrate your code.</p>
-<p>If you run into any issues, please open a <a href="https://github.com/albert-labs/albert-python/issues">GitHub issue</a> and use the <code>bug v1</code> label. This helps us track problems more efficiently and keep improving the library.</p>
-<h2 id="changes-to-authentication">Changes to Authentication</h2>
-<h3 id="unified-authmanager-system">Unified AuthManager system</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>
-<p>Introduced three built-in auth managers and helper constructors:</p>
-</li>
-<li>
-<p><strong>SSO</strong> via a new <code>AlbertSSOClient</code> and <code>Albert.from_sso(...)</code> (new in v1.0.0)</p>
-</li>
-<li><strong>Client Credentials</strong> via <code>AlbertClientCredentials</code> and <code>Albert.from_client_credentials(...)</code></li>
-<li>
-<p><strong>Static Token</strong> via <code>token</code> parameter, <code>ALBERT_TOKEN</code> env var, or <code>Albert.from_token(...)</code></p>
-</li>
-<li>
-<p>Deprecated the <code>client_credentials</code> and <code>token</code> parameters in <code>Albert(..)</code>, replaced by the <code>auth_manager</code> parameter.</p>
-</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<ol>
-<li>
-<p><strong>SSO (browser-based login) — new feature</strong></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># v1.0.0 SSO helper opens a browser for authentication</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_sso</span><span class="p">(</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">email</span><span class="o">=</span><span class="s2">&quot;yourname@albertinvent.com&quot;</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
-</span></code></pre></div>
-</li>
-<li>
-<p><strong>Client Credentials (service-to-service)</strong></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span><span class="p">,</span> <span class="n">AlbertClientCredentials</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># alpha: passed in client_credentials param</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># client = Albert(client_credentials=ClientCredentials(...))</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># v1.0.0: use from_client_credentials helper</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">(</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">client_id</span><span class="o">=</span><span class="n">CLIENT_ID</span><span class="p">,</span> <span class="n">client_secret</span><span class="o">=</span><span class="n">CLIENT_SECRET</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
-</span></code></pre></div>
-</li>
-<li>
-<p><strong>Static Token (environment or direct)</strong></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># alpha: passed token=... directly to constructor</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># client = Albert(token=&quot;MY_STATIC_TOKEN&quot;)</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># v1.0.0: use from_token helper or still pass token</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;MY_STATIC_TOKEN&quot;</span><span class="p">)</span>
-</span></code></pre></div>
-</li>
-</ol>
-<p><em>For advanced scenarios, you can still construct an auth manager manually and pass it to</em> <code>Albert(auth_manager=...)</code>.</p>
-<p>For complete details, see the <a href="../authentication/">Authentication Guide</a>.</p>
-<hr />
-<h2 id="changes-to-collections">Changes to Collections</h2>
-<h3 id="behavior-change-to-create-and-new-get_or_create">Behavior change to <code>create()</code> and new <code>get_or_create()</code></h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li><code>create()</code> no longer checks for existing entities and will raise an error if the entity already exists.</li>
-<li>A new method <code>get_or_create(...)</code> has been introduced to support idempotent creation behavior.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gd">- location = client.locations.create(location=new_location)</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="gi">+ location = client.locations.get_or_create(location=new_location)</span>
-</span></code></pre></div>
-<p>Use <code>create()</code> only when you are confident the entity does not already exist.</p>
-<h3 id="tagscollection-get_by_tag-renamed-to-get_by_name">TagsCollection: <code>get_by_tag()</code> renamed to <code>get_by_name()</code></h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>Renamed <code>tags.get_by_tag(tag=...)</code> to <code>tags.get_by_name(name=...)</code> for clearer semantics and naming consistency.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gd">- tag = client.tags.get_by_tag(tag=&quot;sustainability&quot;)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="gi">+ tag = client.tags.get_by_name(name=&quot;sustainability&quot;)</span>
-</span></code></pre></div>
-<h3 id="notescollection-list-replaced-with-get_by_parent_id">NotesCollection: <code>list()</code> replaced with <code>get_by_parent_id()</code></h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>The <code>list()</code> method has been removed from <code>NotesCollection</code>.</li>
-<li>Use <code>get_by_parent_id(parent_id=...)</code> to retrieve notes for a specific parent object.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gd">- results = list(client.notes.list(parent_id=parent_id))</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="gi">+ results = list(client.notes.get_by_parent_id(parent_id=parent_id))</span>
-</span></code></pre></div>
-<h3 id="standardized-exists-method-across-collections">Standardized <code>exists()</code> method across collections</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>Renamed all <code>collection.collection_exists()</code> methods to <code>collection.exists()</code> for consistency.</li>
-<li>For example, <code>tags.tags_exists()</code> is now <code>tags.exists()</code>.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gd">- company_exists = client.companies.company_exists(name=&quot;ACME&quot;, exact_match=True)</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="gi">+ company_exists = client.companies.exists(name=&quot;ACME&quot;, exact_match=True)</span>
-</span></code></pre></div>
-<h3 id="deprecation-of-list-methods">Deprecation of <code>list()</code> methods</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>Deprecated all <code>list()</code> methods across collections in favor of two new patterns:</li>
-<li><code>get_all()</code> returns <strong>detailed</strong> (hydrated) resource entities.</li>
-<li><code>search()</code> returns <strong>partial</strong> (unhydrated) entities optimized for performance.</li>
-<li>Added support for <code>.hydrate()</code> on search results to convert partial resources into fully populated ones.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gd">- project_list = list(client.projects.list())</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="gi">+ project_list = list(client.projects.get_all(max_items=10))</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gd">- project_matches = list(client.projects.list(status=&quot;Active&quot;))</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="gi">+ project_matches = list(client.projects.search(status=&quot;Active&quot;, max_items=10))</span>
-</span></code></pre></div>
-<p><strong>Optional:</strong> Hydrate individual items from <code>search()</code> results:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">project</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">project_full</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="n">hydrate</span><span class="p">()</span>
-</span></code></pre></div>
-<hr />
-<h3 id="pagination-behavior-change">Pagination behavior change</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>Added a <code>max_items</code> parameter to all <code>get_all()</code> and <code>search()</code> methods:</li>
-<li><code>max_items</code> : int, optional
-    Maximum number of items to return in total. If <code>None</code>, fetches all available items.</li>
-<li>You no longer need to slice iterators or use <code>itertools.islice</code> to control result length.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Fetch up to 10 items, fetching results in pages of 5</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">projects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># The same applies to search() as well</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">search_results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;Active&quot;</span><span class="p">,</span> <span class="n">max_items</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
-</span></code></pre></div>
-<h3 id="batchdatacollection-get-renamed-to-get_by_id">BatchDataCollection: <code>get</code> renamed to <code>get_by_id</code></h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>The <code>BatchDataCollection.get(id)</code> method has been renamed to <code>get_by_id(id)</code> for clarity and consistency.</li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gd">- item = client.batch_data.get(id=&quot;123&quot;)</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="gi">+ item = client.batch_data.get_by_id(id=&quot;123&quot;)</span>
-</span></code></pre></div>
-<hr />
-<h2 id="changes-to-resources">Changes to Resources</h2>
-<h3 id="renamed-inventoryinformation-model">Renamed <code>InventoryInformation</code> model</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>The <code>InventoryInformation</code> model was split into two more specific models:</li>
-<li><code>TaskInventoryInformation</code></li>
-<li><code>PropertyDataInventoryInformation</code></li>
-</ul>
-<p><strong>How to migrate:</strong></p>
-<ul>
-<li>Replace all references to <code>InventoryInformation</code> with the appropriate specific model.</li>
-<li>Choose <code>TaskInventoryInformation</code> for task-based inventory data.</li>
-<li>Choose <code>PropertyDataInventoryInformation</code> for property-based inventory data.</li>
-</ul>
-<hr />
-<h2 id="other-changes">Other Changes</h2>
-<h3 id="resourcehydrate-for-partial-resource-enrichment"><code>resource.hydrate()</code> for partial resource enrichment</h3>
-<p><strong>What changed:</strong></p>
-<ul>
-<li>Added <code>hydrate()</code> method to partial resources returned from <code>search()</code>.</li>
-<li>This allows upgrading an unhydrated object (e.g., <code>ProjectSearchItem</code>) into its full hydrated form (e.g., <code>Project</code>) using its <code>id</code>.</li>
-</ul>
-<p><strong>How to use:</strong></p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Perform a search (returns partial/unhydrated resources)</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">project_stub</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># Hydrate it to get full project details</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">full_project</span> <span class="o">=</span> <span class="n">project_stub</span><span class="o">.</span><span class="n">hydrate</span><span class="p">()</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
-</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">full_project</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">full_project</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
-</span></code></pre></div>
-<p><strong>Notes:</strong></p>
-<ul>
-<li><code>hydrate()</code> requires the resource to have a valid <code>id</code> and a bound collection.</li>
-<li>Only collections that implement <code>get_by_id(id=...)</code> support hydration.</li>
-</ul>
-<h3 id="renamed-templates-module-to-custom_templates">Renamed <code>templates</code> module to <code>custom_templates</code></h3>
-<p><strong>What changed:</strong></p>
-<p>The <code>templates</code> module is now <code>custom_templates</code>.</p>
-<p><strong>How to use:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="gd">- client.templates.get_by_id(id=&quot;xxx&quot;)</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="gi">+ client.custom_templates.get_by_id(id=&quot;xxx&quot;)</span>
-</span></code></pre></div>
+<h1 id="migration-guides">Migration Guides</h1>
+<p>This section documents breaking changes and feature transitions across Albert Python SDK versions.
+Pick the guide that matches your upgrade path.</p>
+<table>
+<thead>
+<tr>
+<th>Guide</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="alpha-to-v1/">Alpha → v1.0</a></td>
+<td>Breaking changes introduced in the v1.0.0 release</td>
+</tr>
+<tr>
+<td><a href="substances-v4/">Substances v3 → v4 (🧪Beta)</a></td>
+<td>Adopting the new Substance API ahead of SDK 2.0</td>
+</tr>
+<tr>
+<td><a href="specs-to-attributes/">Specs → Attributes (🧪 Beta)</a></td>
+<td>Replacing <code>inventory.get_specs</code> / <code>add_specs</code> with the new Attributes API ahead of SDK 2.0</td>
+</tr>
+</tbody>
+</table>
+<p>If you run into any issues, please open a <a href="https://github.com/albert-labs/albert-python/issues">GitHub issue</a>.</p>
 
 
 
