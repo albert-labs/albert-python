@@ -8,8 +8,8 @@ from pydantic import Field, field_validator, model_validator
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import InventoryId
-from albert.core.shared.models.base import AuditFields, EntityLink, EntityLinkWithName
-from albert.core.shared.types import SerializeAsEntityLink
+from albert.core.shared.models.base import AuditFields
+from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.cas import Cas
@@ -18,10 +18,6 @@ from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.tagged_base import BaseTaggedResource
 from albert.resources.tags import Tag
-
-InventoryMetadataItem = (
-    float | int | str | EntityLinkWithName | EntityLink | list[EntityLinkWithName | EntityLink]
-)
 
 
 class InventoryMergeModule(str, Enum):
@@ -324,7 +320,7 @@ class InventoryItem(BaseTaggedResource):
     is_formula_override: bool | None = Field(default=None, alias="isFormulaOverride")
     """Whether the substance/CAS-level breakdown for this formula has been overridden from the auto-calculated value; commonly set to indicate the formula is not a non-reactive homogeneous mixture."""
 
-    metadata: dict[str, InventoryMetadataItem] | None = Field(alias="Metadata", default=None)
+    metadata: dict[str, MetadataItem] | None = Field(alias="Metadata", default=None)
     """Custom metadata fields. Allowed keys are defined by the workspace's CustomFields configuration."""
 
     project_id: str | None = Field(default=None, alias="parentId")

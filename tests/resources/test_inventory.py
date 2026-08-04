@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from albert.core.shared.models.base import EntityLink
 from albert.resources.cas import Cas
 from albert.resources.inventory import (
     CasAmount,
@@ -65,3 +66,20 @@ def test_formula_requirements():
             description="Test",
             category=InventoryCategory.FORMULAS,
         )
+
+
+def test_inventory_metadata_preserves_named_links_and_supports_id_only_links():
+    item = InventoryItem(
+        name="Test",
+        category=InventoryCategory.RAW_MATERIALS,
+        metadata={
+            "named": [{"id": "LST1", "name": "United States"}],
+            "id_only": [EntityLink(id="LST2")],
+        },
+    )
+
+    assert item.metadata["named"][0].name == "United States"
+    assert item.model_dump(mode="json", by_alias=True)["Metadata"] == {
+        "named": [{"id": "LST1", "name": "United States"}],
+        "id_only": [{"id": "LST2"}],
+    }
