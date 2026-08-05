@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.41.0](https://github.com/albert-labs/albert-python/compare/v1.40.0...v1.41.0) (2026-08-05)
+
+
+### Features
+
+* **substance_v4, attributes:** promote substance v4 and attributes to stable ([#549](https://github.com/albert-labs/albert-python/issues/549)) ([92757b8](https://github.com/albert-labs/albert-python/commit/92757b8b58d497599b75909f4206ee4f2cfcf6a3))
+
+
+### Bug Fixes
+
+* **inventory:** preserve metadata list item names ([#658](https://github.com/albert-labs/albert-python/issues/658)) ([98798c2](https://github.com/albert-labs/albert-python/commit/98798c2b1af55881da949abbf097fc8a49b3bfdb))
+* **lots:** add workflow_id update support ([#656](https://github.com/albert-labs/albert-python/issues/656)) ([f9773f2](https://github.com/albert-labs/albert-python/commit/f9773f2077f901decb1ae83cbf5441c44c90fbb9))
+* **sheets:** use None default for Design.state field ([#657](https://github.com/albert-labs/albert-python/issues/657)) ([f488d01](https://github.com/albert-labs/albert-python/commit/f488d019e05445b16060447c55772b46153e6fb8))
+
 ## [1.40.0](https://github.com/albert-labs/albert-python/compare/v1.39.0...v1.40.0) (2026-07-31)
 
 
