@@ -100,6 +100,7 @@ class LotCollection(BaseCollection):
         "pack_size",
         "barcode_id",
         "owner",
+        "workflow_id",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -123,12 +124,12 @@ class LotCollection(BaseCollection):
         !!! example
             ```python
             from albert import Albert
+            from albert.core.shared.models.base import EntityLink
             from albert.resources.lots import Lot
-            from albert.resources.storage_locations import StorageLocation
             client = Albert()
             new_lot = Lot(
                 inventory_id="INVA1",
-                storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+                storage_location=EntityLink(id="STLA1"),
                 initial_quantity=10.0,
                 inventory_on_hand=10.0,
                 cost=50.0,
@@ -519,6 +520,18 @@ class LotCollection(BaseCollection):
             if not (d.attribute == "Owner" and d.old_value == d.new_value)
         ]
 
+        # workflowId only supports UPDATE (set-once); the base diff emits ADD when unset.
+        patch_data.data = [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute="workflowId",
+                new_value=d.new_value,
+            )
+            if d.attribute in {"workflowId", "WorkflowId"} and d.operation == PatchOperation.ADD
+            else d
+            for d in patch_data.data
+        ]
+
         return patch_data
 
     @staticmethod
@@ -757,7 +770,7 @@ class LotCollection(BaseCollection):
         The following fields can be updated: ``barcode_id``, ``cost``,
         ``expiration_date``, ``initial_quantity``, ``inventory_on_hand``,
         ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
-        ``status``, ``storage_location``.
+        ``status``, ``storage_location``, ``workflow_id``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)
