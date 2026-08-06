@@ -10,7 +10,6 @@ from albert.resources.targets import (
     NumericRange,
 )
 
-
 ignore_in_ten0 = pytest.mark.xfail(
     reason="No DWH available in TEN0 test environment.",
     strict=False,
