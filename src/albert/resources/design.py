@@ -36,10 +36,10 @@ class DesignRunViolationCode(StrEnum):
     JOB_TIMEOUT = "job_timeout"
 
 
-class AskAlbertSession(BaseAlbertModel):
-    """An Ask Albert chat session to notify when an asynchronous job finishes.
+class ChatSessionRef(BaseAlbertModel):
+    """A chat session to notify when an asynchronous job finishes.
 
-    Both identifiers are required. They are issued by the Ask Albert platform and
+    Both identifiers are required. They are issued by the chat platform and
     are normally supplied automatically by the agent runtime; a script calling the
     SDK directly has no reason to construct one.
 
@@ -51,7 +51,7 @@ class AskAlbertSession(BaseAlbertModel):
     """
 
     source_session_id: UUID = Field(alias="sourceSessionId")
-    """The originating Ask Albert frontend session identifier."""
+    """The originating frontend session identifier."""
 
     chat_session_id: str = Field(alias="chatSessionId")
     """The chat session identifier (``SES…``) that receives the completion message."""

@@ -5,7 +5,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId, TargetId
 from albert.resources.btinsight import BTInsight
 from albert.resources.design import (
-    AskAlbertSession,
+    ChatSessionRef,
     DesignMethod,
     DesignRunSettings,
     DesignRunValidationResponse,
@@ -19,7 +19,7 @@ def _build_design_run_request(
     objectives: dict[TargetId, Criterion] | None = None,
     method: DesignMethod = DesignMethod.GENERATE,
     settings: DesignRunSettings | None = None,
-    session: AskAlbertSession | None = None,
+    session: ChatSessionRef | None = None,
 ) -> dict:
     body: dict = {"smartDatasetId": smart_dataset_id, "method": method.value}
     if objectives is not None:
@@ -75,7 +75,7 @@ class DesignRunCollection(BaseCollection):
         objectives: dict[TargetId, Criterion] | None = None,
         method: DesignMethod = DesignMethod.GENERATE,
         settings: DesignRunSettings | None = None,
-        session: AskAlbertSession | None = None,
+        session: ChatSessionRef | None = None,
     ) -> BTInsight:
         """Trigger an inverse-design run for a smart dataset.
 
@@ -96,8 +96,8 @@ class DesignRunCollection(BaseCollection):
         settings : DesignRunSettings, optional
             Design run settings. See [`DesignRunSettings`][albert.resources.design.DesignRunSettings]
             for what each field controls and its allowed range.
-        session : AskAlbertSession, optional
-            Ask Albert chat session to notify when the run completes. Omit for no
+        session : ChatSessionRef, optional
+            Chat session to notify when the run completes. Omit for no
             callback; the run is still tracked through the returned ``BTInsight``.
 
         Returns

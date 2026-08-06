@@ -1,12 +1,12 @@
 import uuid
 
 from albert.collections.design_runs import _build_design_run_request
-from albert.resources.design import AskAlbertSession
+from albert.resources.design import ChatSessionRef
 
 
 def test_build_request_includes_session_in_camel_case() -> None:
     source_id = uuid.uuid4()
-    session = AskAlbertSession(source_session_id=source_id, chat_session_id="SES-test")
+    session = ChatSessionRef(source_session_id=source_id, chat_session_id="SES-test")
     body = _build_design_run_request(smart_dataset_id="SDT1", session=session)
     assert body["session"] == {
         "sourceSessionId": str(source_id),
@@ -20,7 +20,7 @@ def test_build_request_without_session_omits_key() -> None:
 
 
 def test_validate_path_body_never_contains_session() -> None:
-    session = AskAlbertSession(
+    session = ChatSessionRef(
         source_session_id=uuid.uuid4(),
         chat_session_id="SES-test",
     )
