@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 from pydantic import Field
 
@@ -140,6 +141,27 @@ class PageContext(TypedDict, total=False):
     parent_id: str
     parent_entity: str
     section: str
+
+
+class ChatSessionRef(BaseAlbertModel):
+    """A chat session to notify when an asynchronous job finishes.
+
+    Both identifiers are required. They are issued by the chat platform and
+    are normally supplied automatically by the agent runtime; a script calling the
+    SDK directly has no reason to construct one.
+
+    Notes
+    -----
+    This is a general async-callback context rather than a design-run concept, so
+    the same object is expected to carry completion routing for other long-running
+    jobs in future releases.
+    """
+
+    source_session_id: UUID = Field(alias="sourceSessionId")
+    """The originating frontend session identifier."""
+
+    chat_session_id: str = Field(alias="chatSessionId")
+    """The chat session identifier (``SES…``) that receives the completion message."""
 
 
 class ChatSession(BaseResource):
