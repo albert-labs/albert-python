@@ -135,6 +135,8 @@ def test_search_pagination(client: Albert):
     capped = list(capped_pag)
     assert len(capped) == 5
     assert capped_pag.has_more is True
+    assert capped_pag.total is not None
+    assert capped_pag.total > len(capped)
 
     results = list(client.substances_v4.search(search_key="water", max_items=45))
     keys = [_search_item_key(r) for r in results]
