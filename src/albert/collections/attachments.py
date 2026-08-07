@@ -835,7 +835,7 @@ class AttachmentCollection(BaseCollection):
             attachment = client.attachments.upload_and_attach_script_to_data_template(
                 data_template_id="DAT27984",
                 file_path=Path("etl.py"),
-                name="SDK-team-1",
+                name="CSV import script",
                 extension_names=["csv"],
             )
             ```
