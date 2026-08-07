@@ -8,7 +8,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.models.base import EntityLink
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertHTTPError
+from albert.exceptions import AlbertHTTPError, BadRequestError
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 
@@ -198,11 +198,40 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The newly created storage location, populated with its assigned ``id``.
         """
-        response = self.session.post(
-            self.base_path,
-            json=storage_location.model_dump(by_alias=True, exclude_none=True, mode="json"),
+        payload = storage_location.model_dump(
+            by_alias=True,
+            exclude_none=True,
+            mode="json",
+            exclude={"id", "status", "created", "updated"},
         )
+        response = self.session.post(self.base_path, json=payload)
         return StorageLocation(**response.json())
+
+    def _find_matching(self, *, storage_location: StorageLocation) -> StorageLocation | None:
+        name_lower = storage_location.name.lower()
+        location_ref = storage_location.location
+
+        def _match(items: Iterator[StorageLocation]) -> StorageLocation | None:
+            for match in items:
+                if match.name.lower() == name_lower:
+                    logging.warning(
+                        f"Storage location with name {storage_location.name} already exists, returning existing."
+                    )
+                    return match
+            return None
+
+        found = _match(
+            self.get_all(
+                name=storage_location.name,
+                location=location_ref,
+                exact_match=True,
+            )
+        )
+        if found:
+            return found
+
+        # Name filters can lag behind create; scan the parent location instead.
+        return _match(self.get_all(location=location_ref, max_items=1000))
 
     def get_or_create(self, *, storage_location: StorageLocation) -> StorageLocation:
         """Return the matching Storage Location if it exists, otherwise create it.
@@ -230,16 +259,20 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The existing or newly created storage location.
         """
-        matching = self.get_all(
-            name=storage_location.name, location=storage_location.location, exact_match=True
-        )
-        for m in matching:
-            if m.name.lower() == storage_location.name.lower():
-                logging.warning(
-                    f"Storage location with name {storage_location.name} already exists, returning existing."
-                )
-                return m
-        return self.create(storage_location=storage_location)
+        if storage_location.id:
+            return self.get_by_id(id=storage_location.id)
+
+        found = self._find_matching(storage_location=storage_location)
+        if found:
+            return found
+
+        try:
+            return self.create(storage_location=storage_location)
+        except BadRequestError:
+            found = self._find_matching(storage_location=storage_location)
+            if found:
+                return found
+            raise
 
     def delete(self, *, id: str) -> None:
         """Delete a Storage Location by its Albert ID.
