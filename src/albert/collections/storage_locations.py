@@ -209,36 +209,20 @@ class StorageLocationsCollection(BaseCollection):
 
     def _find_matching(self, *, storage_location: StorageLocation) -> StorageLocation | None:
         name_lower = storage_location.name.lower()
-        location_ref = storage_location.location
-
-        def _match(items: Iterator[StorageLocation]) -> StorageLocation | None:
-            for match in items:
-                if match.name.lower() == name_lower:
-                    logging.warning(
-                        f"Storage location with name {storage_location.name} already exists, returning existing."
-                    )
-                    return match
-            return None
-
-        found = _match(
-            self.get_all(
-                name=storage_location.name,
-                location=location_ref,
-                exact_match=True,
-            )
-        )
-        if found:
-            return found
-
-        # Name filters can lag behind create; scan the parent location instead.
-        return _match(self.get_all(location=location_ref, max_items=1000))
+        for match in self.get_all(location=storage_location.location, max_items=1000):
+            if match.name.lower() == name_lower:
+                logging.warning(
+                    f"Storage location with name {storage_location.name} already exists, returning existing."
+                )
+                return match
+        return None
 
     def get_or_create(self, *, storage_location: StorageLocation) -> StorageLocation:
         """Return the matching Storage Location if it exists, otherwise create it.
 
         Looks for an existing storage location with the same name under the same
-        parent Location (case-insensitive) and returns it; if none is found,
-        creates the storage location.
+        parent Location (case-insensitive) via a parent-location listing and
+        returns it; if none is found, creates the storage location.
 
         !!! example
             ```python
