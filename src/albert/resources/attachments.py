@@ -163,6 +163,3 @@ class Attachment(BaseResource):
 
     metadata: AttachmentMetadata | None = Field(default=None, alias="Metadata")
     """Optional safety and classification metadata. See [`AttachmentMetadata`][albert.resources.attachments.AttachmentMetadata]."""
-
-
-# TO DO: Script and SDS attachment
