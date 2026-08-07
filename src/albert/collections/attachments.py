@@ -845,7 +845,7 @@ class AttachmentCollection(BaseCollection):
         data_template_id : DataTemplateId
             The Albert ID of the data template (format ``DAT...``).
         file_path : Path
-            Local path to the script file to upload.
+            Local path to the Python script file to upload. Must have a ``.py`` extension.
         name : str
             Display name for the script attachment.
         extension_names : list[str]
@@ -862,11 +862,17 @@ class AttachmentCollection(BaseCollection):
         FileNotFoundError
             If ``file_path`` does not exist.
         ValueError
-            If an extension name cannot be resolved in the extensions list.
+            If ``file_path`` does not have a ``.py`` extension, or if an extension name
+            cannot be resolved in the extensions list.
         """
         resolved_path = file_path.expanduser()
         if not resolved_path.is_file():
             raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        if resolved_path.suffix.lower() != ".py":
+            raise ValueError(
+                f"Script file must have a .py extension, got '{resolved_path.suffix}'."
+            )
 
         lists_collection = self._get_lists_collection()
         available_extensions = {
@@ -886,13 +892,10 @@ class AttachmentCollection(BaseCollection):
                 )
             extension_links.append(EntityLinkWithName(id=list_item.id, name=list_item.name))
 
-        file_key = f"{data_template_id}/automated_scripts/{resolved_path.name}"
-        if resolved_path.suffix.lower() == ".py":
-            content_type = "text/x-python-script"
-        else:
-            content_type = (
-                mimetypes.guess_type(resolved_path.name)[0] or "application/octet-stream"
-            )
+        file_key = (
+            f"{data_template_id}/automated_scripts/{resolved_path.stem}{resolved_path.suffix}"
+        )
+        content_type = "text/x-python-script"
 
         file_collection = self._get_file_collection()
         with resolved_path.open("rb") as file_handle:

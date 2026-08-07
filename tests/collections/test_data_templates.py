@@ -705,3 +705,19 @@ def test_upload_and_attach_script_to_data_template_unknown_extension(
             name=f"{seed_prefix} invalid extension script",
             extension_names=["not-a-real-extension"],
         )
+
+
+def test_upload_and_attach_script_to_data_template_requires_py_suffix(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test non-Python script files are rejected."""
+    data_template = seeded_data_templates[0]
+    with pytest.raises(ValueError, match="must have a .py extension"):
+        client.attachments.upload_and_attach_script_to_data_template(
+            data_template_id=data_template.id,
+            file_path=Path("tests/data/dontpanic.jpg"),
+            name=f"{seed_prefix} invalid script file",
+            extension_names=["csv"],
+        )
