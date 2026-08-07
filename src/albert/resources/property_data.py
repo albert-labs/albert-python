@@ -23,6 +23,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.core.shared.types import SerializeAsEntityLink
+from albert.resources.data_columns import DataColumnType
 from albert.resources.data_templates import (
     CurveDBMetadata,
     DataTemplate,
@@ -34,6 +35,14 @@ from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
 
 ########################## Supporting GET Classes ##########################
+
+
+class CompositePropertyValue(BaseAlbertModel):
+    """A single entry in a composite (multi-sub-column) property value."""
+
+    key: int
+    id: DataColumnId
+    value: str | float | None = Field(default=None)
 
 
 class PropertyDataStatus(str, Enum):
@@ -95,7 +104,7 @@ class PropertyData(BaseAlbertModel):
     id: PropertyDataId | None = Field(default=None)
     """The Albert ID of this property data record (format ``PTD...``)."""
 
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
     """The stored result value. All values are stored as strings in Albert."""
 
     value_type: str | None = Field(default=None, alias="valueType")
@@ -144,7 +153,7 @@ class PropertyValue(BaseAlbertModel):
     string_value: str | None = Field(default=None, alias="valueString")
     """The string form of the value. Serialized as ``valueString``."""
 
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
     """The stored value."""
 
     unit: SerializeAsEntityLink[Unit] | dict = Field(default_factory=dict, alias="Unit")
@@ -158,6 +167,7 @@ class PropertyValue(BaseAlbertModel):
 
     hidden: bool | None = Field(default=False)
     """Whether the result is hidden. See Also --------"""
+    type: DataColumnType | None = Field(default=None)
 
 
 class Trial(BaseAlbertModel):
@@ -444,7 +454,8 @@ class BulkPropertyData(BaseAlbertModel):
 class TaskPropertyValue(BaseAlbertModel):
     """A single value wrapper for a task data column result."""
 
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
+    """The stored value."""
 
 
 class ImagePropertyValue(BaseAlbertModel):
@@ -518,6 +529,7 @@ class TaskDataColumn(BaseAlbertModel):
 
     column_sequence: str | None = Field(default=None, alias="columnId")
     """The column's sequence identifier within the block. Serialized as ``columnId``. See Also --------"""
+    type: DataColumnType | None = Field(default=None)
 
 
 class TaskDataColumnValue(TaskDataColumn):
@@ -527,10 +539,8 @@ class TaskDataColumnValue(TaskDataColumn):
 
     @field_validator("value", mode="before")
     def set_string_value(cls, v):
-        """
-        Converts a string to TaskPropertyValue if the input is a string.
-        """
-        if isinstance(v, str):
+        """Converts a string or composite list to TaskPropertyValue."""
+        if isinstance(v, str | list):
             return TaskPropertyValue(value=v)
         return v
 
@@ -561,7 +571,7 @@ class InventoryDataColumn(BaseAlbertModel):
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
     """The data column to write to (format ``DAC...``). Serialized as ``id``."""
 
-    value: str | None = Field(default=None)
+    value: str | list[CompositePropertyValue] | None = Field(default=None)
     """The value to store. See Also --------"""
 
 
@@ -630,11 +640,20 @@ class TaskPropertyCreate(BaseResource):
     data_column: TaskDataColumn = Field(
         alias="DataColumns", description="The data column associated with the task property."
     )
-    value: str | int | float | ImagePropertyValue | CurvePropertyValue | None = Field(
+    value: (
+        str
+        | list[CompositePropertyValue]
+        | int
+        | float
+        | ImagePropertyValue
+        | CurvePropertyValue
+        | None
+    ) = Field(
         default=None,
         description=(
-            "The value of the task property. Use ImagePropertyValue for image data columns or "
-            "CurvePropertyValue for curve data columns. Numeric values are coerced to strings."
+            "The value of the task property. Use ImagePropertyValue for image data columns, "
+            "CurvePropertyValue for curve data columns, or a list of CompositePropertyValue "
+            "for composite data columns. Numeric values are coerced to strings."
         ),
     )
     trial_number: int = Field(

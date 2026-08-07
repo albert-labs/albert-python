@@ -9,7 +9,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import DataColumnId
 from albert.core.utils import ensure_list
-from albert.resources.data_columns import DataColumn
+from albert.resources.data_columns import CompositeDataColumn, DataColumn
 
 
 class DataColumnCollection(BaseCollection):
@@ -52,7 +52,9 @@ class DataColumnCollection(BaseCollection):
     get_by_name(name) -> DataColumn | None
         Get a single data column by its exact name.
     create(data_column) -> DataColumn
-        Create a new data column.
+        Create a new data column entity.
+    create_composite(data_column) -> CompositeDataColumn
+        Create a new composite data column with its sub-data columns.
     get_or_create(data_column) -> DataColumn
         Return the existing data column matching by name, or create it.
     update(data_column) -> DataColumn
@@ -142,6 +144,7 @@ class DataColumnCollection(BaseCollection):
         exact_match: bool | None = None,
         default: bool | None = None,
         start_key: str | None = None,
+        raw: bool | None = None,
         max_items: int | None = None,
     ) -> Iterator[DataColumn]:
         """Get data columns matching the given filters.
@@ -170,7 +173,10 @@ class DataColumnCollection(BaseCollection):
         default : bool, optional
             When True, return only default data columns.
         start_key : str, optional
-            Pagination key to resume from. Usually left unset.
+            The pagination key to start from.
+        raw : bool, optional
+            When False, composite DataColumns are returned with their sub-columns nested and
+            standalone sub-type items are hidden. Defaults to True (flat list).
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -191,6 +197,7 @@ class DataColumnCollection(BaseCollection):
             "exactMatch": exact_match,
             "default": default,
             "dataColumns": ensure_list(ids),
+            "raw": raw,
         }
 
         return AlbertPaginator(
@@ -230,6 +237,23 @@ class DataColumnCollection(BaseCollection):
         response = self.session.post(self.base_path, json=payload)
 
         return DataColumn(**response.json()[0])
+
+    def create_composite(self, *, data_column: CompositeDataColumn) -> CompositeDataColumn:
+        """Create a new composite data column with its sub-data columns.
+
+        Parameters
+        ----------
+        data_column : CompositeDataColumn
+            The composite data column to create, including its sub-data columns.
+
+        Returns
+        -------
+        CompositeDataColumn
+            The created composite data column.
+        """
+        payload = data_column.model_dump(by_alias=True, exclude_none=True, mode="json")
+        response = self.session.post(f"{self.base_path}/composite", json=payload)
+        return CompositeDataColumn(**response.json())
 
     def get_or_create(self, *, data_column: DataColumn) -> DataColumn:
         """Return the existing data column matching by name, or create it.
