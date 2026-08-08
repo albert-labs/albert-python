@@ -157,7 +157,16 @@ class Cell(BaseResource):
     """The display name of the row this cell is in."""
 
     value: str | dict | list = ""
-    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value."""
+    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value.
+
+    For **special parameters** in the Process Design grid (parameters whose value
+    references an inventory item — equipment, consumables, raw materials), the
+    linked-cell form is the lookup string ``"<DisplayID> || <ItemName>"`` (double
+    pipe with spaces, INV prefix stripped), e.g. ``"B90948 || Copper Coupon"``.
+    Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked
+    plain text, so the UI shows the raw id instead of the linked item. On reads,
+    a linked cell's value is a dict of the form ``{"id": "INVB90948", "name":
+    "B90948 || Copper Coupon"}``."""
 
     min_value: str | None = Field(default=None, alias="minValue")
     """The minimum allowed value for inventory cells. Optional."""
@@ -1570,7 +1579,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            row = sheet.add_parameter_group_row(parameter_group_id="PRG1")
+            row = sheet.add_parameter_group_row(parameter_group_id="PRG9999999")
             ```
 
         Parameters
@@ -2131,7 +2140,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.pin_columns(col_ids=["COL1", "COL2"], side="left")
+            sheet.pin_columns(col_ids=["COL9999999", "COL2"], side="left")
             ```
 
         Parameters
@@ -2164,7 +2173,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.unpin_columns(col_ids=["COL1", "COL2"])
+            sheet.unpin_columns(col_ids=["COL9999999", "COL2"])
             ```
 
         Parameters
@@ -2195,7 +2204,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.set_columns_width(col_ids=["COL1"], width="200px")
+            sheet.set_columns_width(col_ids=["COL9999999"], width="200px")
             ```
 
         Parameters

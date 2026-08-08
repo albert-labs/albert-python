@@ -56,6 +56,13 @@ class TaskCategory(str, Enum):
 class BatchSizeUnit(str, Enum):
     """Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].
 
+    The enum values are the exact wire strings the platform expects —
+    note the non-SI capitalization ``"Kg"`` (lowercase ``"kg"`` is rejected).
+    The SDK performs **no unit conversion**: ``batch_size`` and batch-data
+    amounts are stored as sent. For mass-tracked inventory, the batch-data
+    grid is denominated in kilograms regardless of this unit — scale
+    amounts accordingly when writing used amounts.
+
     Attributes
     ----------
     GRAMS : str

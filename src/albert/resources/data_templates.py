@@ -114,7 +114,7 @@ class DataColumnValue(BaseResource):
         ```python
         from albert.resources.data_templates import DataColumnValue
 
-        column = DataColumnValue(data_column_id="DAC1", value="42")
+        column = DataColumnValue(data_column_id="DAC9999999", value="42")
         ```"""
 
     data_column: DataColumn | None = Field(exclude=True, default=None)
@@ -204,7 +204,7 @@ class DataTemplate(BaseTaggedResource):
 
         template = DataTemplate(
             name="Tensile Strength Test",
-            data_column_values=[DataColumnValue(data_column_id="DAC1")],
+            data_column_values=[DataColumnValue(data_column_id="DAC9999999")],
         )
         ```"""
 

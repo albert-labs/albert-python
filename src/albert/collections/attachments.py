@@ -38,8 +38,8 @@ class AttachmentCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA1"])
-        for attachment in attachments.get("INVA1", []):
+        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999"])
+        for attachment in attachments.get("INVA9999999", []):
             print(attachment.name)
         ```
 
@@ -144,7 +144,7 @@ class AttachmentCollection(BaseCollection):
             from albert.resources.attachments import Attachment
             attachment = client.attachments.create(
                 attachment=Attachment(
-                    parent_id="INVA1",
+                    parent_id="INVA9999999",
                     name="datasheet.pdf",
                     key="INVA1/documents/datasheet.pdf",
                 )
@@ -311,8 +311,8 @@ class AttachmentCollection(BaseCollection):
 
         !!! example
             ```python
-            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA1", "PROA1"])
-            by_parent.get("INVA1", [])
+            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999", "PROA1"])
+            by_parent.get("INVA9999999", [])
             # [Attachment(...), ...]
             ```
 
@@ -551,7 +551,7 @@ class AttachmentCollection(BaseCollection):
             from datetime import date
             from pathlib import Path
             attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 file_sds=Path("~/Downloads/acetone_sds.pdf"),
                 revision_date=date(2024, 1, 1),
                 storage_class="3",
@@ -633,7 +633,7 @@ class AttachmentCollection(BaseCollection):
             from albert.resources.attachments import AttachmentCategory
 
             attachment = client.attachments.upload_and_attach_document_to_inventory_item(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 file_path=Path("~/Downloads/certificate_of_analysis.pdf"),
                 category=AttachmentCategory.COA,
             )

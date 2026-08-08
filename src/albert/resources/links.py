@@ -30,7 +30,7 @@ class Link(BaseResource):
         from albert.resources.links import Link, LinkCategory
         from albert.core.shared.models.base import EntityLink
         link = Link(
-            parent=EntityLink(id="INVA1"),
+            parent=EntityLink(id="INVA9999999"),
             child=EntityLink(id="INVA2"),
             category=LinkCategory.LINKED_INVENTORY,
         )

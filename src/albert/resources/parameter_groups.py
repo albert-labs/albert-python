@@ -201,7 +201,7 @@ class ParameterValue(BaseAlbertModel):
         from albert.resources.parameter_groups import ParameterValue
 
         # Reference the parameter by its Albert ID
-        value = ParameterValue(id="PRM1", value="500")
+        value = ParameterValue(id="PRM9999999", value="500")
         ```"""
 
     parameter: Parameter | None = Field(default=None, exclude=True)
@@ -211,7 +211,7 @@ class ParameterValue(BaseAlbertModel):
     """The Albert ID of the associated Parameter. Provide either ``id`` or ``parameter``."""
 
     category: ParameterCategory | None = Field(default=None)
-    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided."""
+    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided. When only ``id`` is given, the parameter-group create API rejects the payload (``400 "Category mismatch ... Category undefined expected"``) — set ``category`` explicitly (``ParameterCategory.NORMAL`` for ordinary parameters) or pass the full ``parameter`` object."""
 
     short_name: str | None = Field(alias="shortName", default=None)
     """A short name for the parameter value. Serialized as ``shortName``."""
@@ -281,7 +281,7 @@ class ParameterGroup(BaseTaggedResource):
     fixed to setpoints inside a [`Workflow`][albert.resources.workflows.Workflow].
 
     Once saved, a group is referenced by its Parameter Group ID (format ``PRG...``,
-    e.g. ``"PRG1"``). Store test standards (e.g. ASTM or ISO) under the
+    e.g. ``"PRG9999999"``). Store test standards (e.g. ASTM or ISO) under the
     ``"Standards"`` key of ``metadata``.
 
     Groups are managed through
@@ -299,7 +299,7 @@ class ParameterGroup(BaseTaggedResource):
         pg = ParameterGroup(
             name="Mixing Step",
             type=PGType.BATCH,
-            parameters=[ParameterValue(id="PRM1", value="500")],
+            parameters=[ParameterValue(id="PRM9999999", value="500")],
         )
         ```"""
 

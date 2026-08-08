@@ -87,7 +87,7 @@ class Lot(BaseResource):
         from albert.resources.lots import Lot
         client = Albert()
         lot = Lot(
-            inventory_id="INVA1",
+            inventory_id="INVA9999999",
             storage_location=EntityLink(id="STLA1"),
             initial_quantity=10.0,
             inventory_on_hand=10.0,

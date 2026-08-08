@@ -122,7 +122,7 @@ class Attachment(BaseResource):
         ```python
         from albert.resources.attachments import Attachment
         attachment = Attachment(
-            parent_id="INVA1",
+            parent_id="INVA9999999",
             name="datasheet.pdf",
             key="INVA1/documents/datasheet.pdf",
         )
@@ -132,7 +132,7 @@ class Attachment(BaseResource):
     """The Albert ID of the attachment (format ``ATT...``). Assigned by Albert when the attachment is created."""
 
     parent_id: str = Field(..., alias="parentId")
-    """The ID of the entity the file is attached to. Must include the full entity prefix (e.g. ``"INVA1"``)."""
+    """The ID of the entity the file is attached to. Must include the full entity prefix (e.g. ``"INVA9999999"``)."""
 
     name: str
     """The display name of the attached file."""

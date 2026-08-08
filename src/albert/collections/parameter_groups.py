@@ -58,7 +58,7 @@ class ParameterGroupCollection(BaseCollection):
         from albert import Albert
 
         client = Albert()
-        pg = client.parameter_groups.get_by_id(id="PRG1")
+        pg = client.parameter_groups.get_by_id(id="PRG9999999")
         print(pg.name, pg.type)
         ```
 
@@ -117,7 +117,7 @@ class ParameterGroupCollection(BaseCollection):
 
         !!! example
             ```python
-            pg = client.parameter_groups.get_by_id(id="PRG1")
+            pg = client.parameter_groups.get_by_id(id="PRG9999999")
             pg.name
             # 'Mixing Step'
             ```
@@ -125,7 +125,7 @@ class ParameterGroupCollection(BaseCollection):
         Parameters
         ----------
         id : ParameterGroupId
-            The Parameter Group ID (format ``PRG...``, e.g. ``"PRG1"``).
+            The Parameter Group ID (format ``PRG...``, e.g. ``"PRG9999999"``).
 
         Returns
         -------
@@ -145,7 +145,7 @@ class ParameterGroupCollection(BaseCollection):
 
         !!! example
             ```python
-            groups = client.parameter_groups.get_by_ids(ids=["PRG1", "PRG2"])
+            groups = client.parameter_groups.get_by_ids(ids=["PRG9999999", "PRG2"])
             [g.name for g in groups]
             # ['Mixing Step', 'Cure Schedule']
             ```
@@ -411,7 +411,7 @@ class ParameterGroupCollection(BaseCollection):
 
         !!! example
             ```python
-            client.parameter_groups.delete(id="PRG1")
+            client.parameter_groups.delete(id="PRG9999999")
             ```
 
         Parameters
@@ -445,7 +445,7 @@ class ParameterGroupCollection(BaseCollection):
             pg = ParameterGroup(
                 name="Mixing Step",
                 type=PGType.BATCH,
-                parameters=[ParameterValue(id="PRM1", value="500")],
+                parameters=[ParameterValue(id="PRM9999999", value="500")],
             )
             created = client.parameter_groups.create(parameter_group=pg)
             created.id
@@ -509,7 +509,7 @@ class ParameterGroupCollection(BaseCollection):
 
         !!! example
             ```python
-            pg = client.parameter_groups.get_by_id(id="PRG1")
+            pg = client.parameter_groups.get_by_id(id="PRG9999999")
             pg.description = "Updated description"
             updated = client.parameter_groups.update(parameter_group=pg)
             updated.description

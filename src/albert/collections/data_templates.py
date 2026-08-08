@@ -81,7 +81,7 @@ class DataTemplateCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        dt = client.data_templates.get_by_id(id="DAT1")
+        dt = client.data_templates.get_by_id(id="DAT9999999")
         print(dt.name)
         # 'Tensile Strength Test'
         ```
@@ -151,7 +151,7 @@ class DataTemplateCollection(BaseCollection):
             from albert.resources.data_templates import DataTemplate, DataColumnValue
             template = DataTemplate(
                 name="Tensile Strength Test",
-                data_column_values=[DataColumnValue(data_column_id="DAC1")],
+                data_column_values=[DataColumnValue(data_column_id="DAC9999999")],
             )
             created = client.data_templates.create(data_template=template)
             created.id
@@ -205,7 +205,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
+            dt = client.data_templates.get_by_id(id="DAT9999999")
             dt.name
             # 'Tensile Strength Test'
             ```
@@ -213,7 +213,7 @@ class DataTemplateCollection(BaseCollection):
         Parameters
         ----------
         id : DataTemplateId
-            The Data Template ID (format ``DAT...``, e.g. ``"DAT1"``).
+            The Data Template ID (format ``DAT...``, e.g. ``"DAT9999999"``).
 
         Returns
         -------
@@ -232,7 +232,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            templates = client.data_templates.get_by_ids(ids=["DAT1", "DAT2"])
+            templates = client.data_templates.get_by_ids(ids=["DAT9999999", "DAT9999998"])
             [t.name for t in templates]
             # ['Tensile Strength Test', 'Melt Flow Index']
             ```
@@ -297,8 +297,8 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import DataColumnValue
             updated = client.data_templates.add_data_columns(
-                data_template_id="DAT1",
-                data_columns=[DataColumnValue(data_column_id="DAC1")],
+                data_template_id="DAT9999999",
+                data_columns=[DataColumnValue(data_column_id="DAC9999999")],
             )
             ```
 
@@ -339,8 +339,8 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.parameter_groups import ParameterValue
             updated = client.data_templates.add_parameters(
-                data_template_id="DAT1",
-                parameters=[ParameterValue(id="PRM1", value="25")],
+                data_template_id="DAT9999999",
+                parameters=[ParameterValue(id="PRM9999999", value="25")],
             )
             ```
 
@@ -496,7 +496,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
+            dt = client.data_templates.get_by_id(id="DAT9999999")
             dt.description = "Updated per ASTM D638"
             updated = client.data_templates.update(data_template=dt)
             ```
@@ -681,7 +681,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            client.data_templates.delete(id="DAT1")
+            client.data_templates.delete(id="DAT9999999")
             ```
 
         Parameters
@@ -826,7 +826,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import CurveExample
             updated = client.data_templates.set_curve_example(
-                data_template_id="DAT1",
+                data_template_id="DAT9999999",
                 data_column_name="Viscosity Curve",
                 example=CurveExample(file_path="curve.csv"),
             )
@@ -893,7 +893,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import ImageExample
             updated = client.data_templates.set_image_example(
-                data_template_id="DAT1",
+                data_template_id="DAT9999999",
                 data_column_name="Fracture Surface",
                 example=ImageExample(file_path="fracture.png"),
             )

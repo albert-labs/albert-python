@@ -15,7 +15,7 @@ from albert.resources.parameters import Parameter
 class ParameterCollection(BaseCollection):
     """Manage Parameters in the Albert platform.
 
-    A Parameter (ID format ``PRM...``, e.g. ``"PRM1"``) is the definition of a
+    A Parameter (ID format ``PRM...``, e.g. ``"PRM9999999"``) is the definition of a
     single condition or input variable used when running experiments, such as
     Temperature, Spin Speed, or Instrument. It is often called an "indirect
     variable": the Parameter itself only names the variable, and its actual value
@@ -32,7 +32,7 @@ class ParameterCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        param = client.parameters.get_by_id(id="PRM1")
+        param = client.parameters.get_by_id(id="PRM9999999")
         param.name
         # 'Temperature'
         ```
@@ -85,7 +85,7 @@ class ParameterCollection(BaseCollection):
 
         !!! example
             ```python
-            param = client.parameters.get_by_id(id="PRM1")
+            param = client.parameters.get_by_id(id="PRM9999999")
             param.name
             # 'Temperature'
             ```
@@ -93,7 +93,7 @@ class ParameterCollection(BaseCollection):
         Parameters
         ----------
         id : ParameterId
-            The Parameter ID (format ``PRM...``, e.g. ``"PRM1"``).
+            The Parameter ID (format ``PRM...``, e.g. ``"PRM9999999"``).
 
         Returns
         -------
@@ -177,7 +177,7 @@ class ParameterCollection(BaseCollection):
 
         !!! example
             ```python
-            client.parameters.delete(id="PRM1")
+            client.parameters.delete(id="PRM9999999")
             ```
 
         Parameters
@@ -281,7 +281,7 @@ class ParameterCollection(BaseCollection):
 
         !!! example
             ```python
-            param = client.parameters.get_by_id(id="PRM1")
+            param = client.parameters.get_by_id(id="PRM9999999")
             param.name = "Bath Temperature"
             updated = client.parameters.update(parameter=param)
             updated.name
