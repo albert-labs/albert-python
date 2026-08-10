@@ -449,7 +449,7 @@ class ParameterGroupCollection(BaseCollection):
             )
             created = client.parameter_groups.create(parameter_group=pg)
             created.id
-            # 'PRG1'
+            # 'PRG9999999'
             ```
 
         Parameters
@@ -479,7 +479,7 @@ class ParameterGroupCollection(BaseCollection):
             ```python
             pg = client.parameter_groups.get_by_name(name="Mixing Step")
             pg.id if pg else "no match"
-            # 'PRG1'
+            # 'PRG9999999'
             ```
 
         Parameters

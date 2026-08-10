@@ -155,7 +155,7 @@ class DataTemplateCollection(BaseCollection):
             )
             created = client.data_templates.create(data_template=template)
             created.id
-            # 'DAT1'
+            # 'DAT9999999'
             ```
 
         Parameters
@@ -265,7 +265,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             dt = client.data_templates.get_by_name(name="Tensile Strength Test")
             dt.id if dt else "no match"
-            # 'DAT1'
+            # 'DAT9999999'
             ```
 
         Parameters

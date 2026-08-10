@@ -211,7 +211,7 @@ class ParameterValue(BaseAlbertModel):
     """The Albert ID of the associated Parameter. Provide either ``id`` or ``parameter``."""
 
     category: ParameterCategory | None = Field(default=None)
-    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided. When only ``id`` is given, the parameter-group create API rejects the payload (``400 "Category mismatch ... Category undefined expected"``) — set ``category`` explicitly (``ParameterCategory.NORMAL`` for ordinary parameters) or pass the full ``parameter`` object."""
+    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided. When only ``id`` is given, the parameter-group create API rejects the payload (``400 "Category mismatch ... Category undefined expected"``), so set ``category`` explicitly (``ParameterCategory.NORMAL`` for ordinary parameters) or pass the full ``parameter`` object."""
 
     short_name: str | None = Field(alias="shortName", default=None)
     """A short name for the parameter value. Serialized as ``shortName``."""

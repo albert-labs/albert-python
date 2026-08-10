@@ -233,7 +233,7 @@ class InventoryCollection(BaseCollection):
             ```python
             existing = client.inventory.get_match_or_none(inventory_item=candidate)
             existing.id if existing else "no match"
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -298,7 +298,7 @@ class InventoryCollection(BaseCollection):
             )
             created = client.inventory.create(inventory_item=item)
             created.id
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -475,14 +475,14 @@ class InventoryCollection(BaseCollection):
         experimentally measured results. A spec can optionally carry the
         conditions under which it holds, expressed via a workflow.
 
-        .. warning::
-            This method issues a ``PUT`` with the provided list as the item's
-            complete spec set — it is not an append. Always pass every spec the
-            item should carry in one call; a follow-up call with a subset can
-            drop previously attached specs. A ``500 Duplicate reference name``
-            error means spec rows with those names already exist on the item
-            (even when ``get_specs`` shows none); do not blindly retry — call
-            ``get_specs`` first and reconcile.
+        !!! warning
+            This call replaces the item's complete spec set; it is not an
+            append. Always pass every spec the item should carry in one call: a
+            follow-up call with a subset can drop previously attached specs. A
+            ``500 Duplicate reference name`` error means spec rows with those
+            names already exist on the item (even when ``get_specs`` shows
+            none); do not blindly retry, call ``get_specs`` first and
+            reconcile.
 
         !!! example
             ```python

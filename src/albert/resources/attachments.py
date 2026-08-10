@@ -124,7 +124,7 @@ class Attachment(BaseResource):
         attachment = Attachment(
             parent_id="INVA9999999",
             name="datasheet.pdf",
-            key="INVA1/documents/datasheet.pdf",
+            key="INVA9999999/documents/datasheet.pdf",
         )
         ```"""
 

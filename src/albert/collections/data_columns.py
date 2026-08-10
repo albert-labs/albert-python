@@ -86,7 +86,7 @@ class DataColumnCollection(BaseCollection):
             ```python
             dc = client.data_columns.get_by_name(name="Viscosity")
             dc.id if dc else "no match"
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters
@@ -213,7 +213,7 @@ class DataColumnCollection(BaseCollection):
             from albert.resources.data_columns import DataColumn
             created = client.data_columns.create(data_column=DataColumn(name="Viscosity"))
             created.id
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters
@@ -243,7 +243,7 @@ class DataColumnCollection(BaseCollection):
             from albert.resources.data_columns import DataColumn
             dc = client.data_columns.get_or_create(data_column=DataColumn(name="Viscosity"))
             dc.id
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters

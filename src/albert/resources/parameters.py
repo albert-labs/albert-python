@@ -51,7 +51,7 @@ class Parameter(BaseResource):
         client = Albert()
         param = client.parameters.create(parameter=Parameter(name="Temperature"))
         param.id
-        # 'PRM1'
+        # 'PRM9999999'
         ```"""
 
     name: str

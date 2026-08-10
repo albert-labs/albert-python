@@ -160,7 +160,7 @@ class Cell(BaseResource):
     """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value.
 
     For **special parameters** in the Process Design grid (parameters whose value
-    references an inventory item — equipment, consumables, raw materials), the
+    references an inventory item: equipment, consumables, raw materials), the
     linked-cell form is the lookup string ``"<DisplayID> || <ItemName>"`` (double
     pipe with spaces, INV prefix stripped), e.g. ``"B90948 || Copper Coupon"``.
     Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked

@@ -27,7 +27,7 @@ class DataColumn(BaseResource):
         column = DataColumn(name="Viscosity")
         created = client.data_columns.create(data_column=column)
         created.id
-        # 'DAC1'
+        # 'DAC9999999'
         ```"""
 
     name: str

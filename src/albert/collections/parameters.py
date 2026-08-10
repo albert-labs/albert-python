@@ -117,7 +117,7 @@ class ParameterCollection(BaseCollection):
             from albert.resources.parameters import Parameter
             param = client.parameters.create(parameter=Parameter(name="Spin Speed"))
             param.id
-            # 'PRM1'
+            # 'PRM9999999'
             ```
 
         Parameters
@@ -148,7 +148,7 @@ class ParameterCollection(BaseCollection):
             from albert.resources.parameters import Parameter
             param = client.parameters.get_or_create(parameter=Parameter(name="Temperature"))
             param.id
-            # 'PRM1'
+            # 'PRM9999999'
             ```
 
         Parameters
