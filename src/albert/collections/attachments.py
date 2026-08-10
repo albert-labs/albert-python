@@ -146,7 +146,7 @@ class AttachmentCollection(BaseCollection):
                 attachment=Attachment(
                     parent_id="INVA9999999",
                     name="datasheet.pdf",
-                    key="INVA1/documents/datasheet.pdf",
+                    key="INVA9999999/documents/datasheet.pdf",
                 )
             )
             ```
@@ -359,7 +359,7 @@ class AttachmentCollection(BaseCollection):
             attachment = client.attachments.attach_file_to_note(
                 note_id="...",
                 file_name="results.csv",
-                file_key="INVA1/notes/results.csv",
+                file_key="INVA9999999/notes/results.csv",
             )
             ```
 
