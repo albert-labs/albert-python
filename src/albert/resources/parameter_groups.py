@@ -23,12 +23,17 @@ def _sanitize_metadata(value: Any) -> Any:
 
     Some tenants have parameter-group metadata whose entity-link fields were cleared
     server-side to `[{}]` (list) or `{}` (scalar) instead of `[]`/`null`. These dicts
-    lack the required `id`, so `MetadataItem` can't parse them.
+    lack the required `id`, so `MetadataItem` can't parse them. The search endpoint
+    also returns custom-field entries wrapped in one extra list level
+    (`[[{"name": ..., "id": ...}]]`); flatten that level first.
     """
     if not isinstance(value, dict):
         return value
     sanitized: dict[str, Any] = {}
     for key, item in value.items():
+        # Flatten one level of list nesting ([[{...}]] → [{...}]).
+        if isinstance(item, list) and item and all(isinstance(e, list) for e in item):
+            item = [entry for sub in item for entry in sub]
         if isinstance(item, dict) and "id" not in item:
             continue  # drop; MetadataItem has no None option to fall back to
         if isinstance(item, list):
@@ -346,10 +351,10 @@ class ParameterSearchItemParameter(BaseAlbertModel):
     name: str | None = None
     """The name of the parameter."""
 
-    id: str
-    """The Albert ID of the parameter."""
+    id: str | None = None
+    """The Albert ID of the parameter. ``None`` on search rows that omit it."""
 
-    localized_names: LocalizedNames = Field(alias="localizedNames")
+    localized_names: LocalizedNames | None = Field(default=None, alias="localizedNames")
     """Localized name variants for the parameter."""
 
 
@@ -360,9 +365,6 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     [`search`][albert.collections.parameter_groups.ParameterGroupCollection.search].
     Search results omit some detail for speed; call `hydrate()` to fetch the
     full [`ParameterGroup`][albert.resources.parameter_groups.ParameterGroup]."""
-
-    name: str
-    """The name of the parameter group."""
 
     name: str
     """The name of the parameter group."""

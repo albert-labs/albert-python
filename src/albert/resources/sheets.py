@@ -312,7 +312,7 @@ class Design(BaseSessionResource):
     id: str = Field(alias="albertId")
     """The Albert ID of the design."""
 
-    design_type: DesignType | str = Field(alias="designType")
+    design_type: DesignType | str = Field(alias="designType", union_mode="left_to_right")
     """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]. Unknown legacy/tenant values parse as plain strings."""
 
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
@@ -682,7 +682,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ```python
         from albert import Albert
         client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PROP9999999")
+        worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
         sheet = worksheet.sheets[0]
         print(sheet.grid)
         ```
@@ -955,7 +955,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             from albert import Albert
             from albert.resources.sheets import Component
             client = Albert()
-            worksheet = client.worksheets.get_by_project_id(project_id="PROP9999999")
+            worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
             sheet = worksheet.sheets[0]
             column = sheet.add_formulation(
                 formulation_name="Formulation A",
@@ -2555,7 +2555,7 @@ class Column(BaseSessionResource):  # noqa:F811
     def cells(self) -> pd.Series:
         """This column's cells as a pandas Series keyed by row id.
 
-        Empty cells may appear as ``NaN`` floats (pandas padding) — check
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
         ``isinstance(value, Cell)`` before using a value.
         """
         return self.sheet.grid[self.df_name]
@@ -2695,7 +2695,7 @@ class Row(BaseSessionResource):  # noqa:F811
     def cells(self) -> pd.Series:
         """This row's cells as a pandas Series keyed by column df-name.
 
-        Empty cells may appear as ``NaN`` floats (pandas padding) — check
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
         ``isinstance(value, Cell)`` before using a value.
         """
         return self.sheet.grid.loc[self.row_unique_id]

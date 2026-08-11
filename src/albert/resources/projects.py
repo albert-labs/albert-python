@@ -142,7 +142,7 @@ class Project(BaseSessionResource):
     """Read-only status string returned by Albert."""
 
     # Cannot be sent in a create POST, but can be referenced from a PATCH for update.
-    state: State | str | None = Field(default=None, exclude=True)
+    state: State | str | None = Field(default=None, exclude=True, union_mode="left_to_right")
     """The project's lifecycle state. Read only on create; can be changed via [`update`][albert.collections.projects.ProjectCollection.update]. Tenant-customized states outside [`State`][albert.resources.projects.State] parse as plain strings."""
 
     _smart: list[SmartProject] | None = PrivateAttr(default=None)
