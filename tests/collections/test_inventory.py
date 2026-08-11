@@ -3,9 +3,11 @@ import pytest
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
 from albert.core.shared.identifiers import ensure_inventory_id
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
+from albert.resources.custom_fields import FieldType, ServiceType
 from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
@@ -198,6 +200,43 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert isinstance(get_by_id, InventoryItem)
     assert seeded_inventory[0].name == get_by_id.name
     assert seeded_inventory[0].id == get_by_id.id
+
+
+def test_get_by_id_preserves_metadata_list_item_names(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields,
+    static_lists,
+    seeded_companies,
+):
+    """Test list metadata includes names when an inventory item is retrieved."""
+    custom_field = next(
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.INVENTORIES and field.field_type == FieldType.LIST
+    )
+    list_item = next(item for item in static_lists if item.list_type == custom_field.name)
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Metadata names",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            metadata={custom_field.name: [EntityLink(id=list_item.id)]},
+        ),
+        avoid_duplicates=False,
+    )
+
+    try:
+        retrieved = client.inventory.get_by_id(id=created.id)
+        metadata_link = retrieved.metadata[custom_field.name][0]
+
+        assert metadata_link.id == list_item.id
+        assert metadata_link.name == list_item.name
+        assert retrieved.model_dump(mode="json", by_alias=True)["Metadata"][custom_field.name] == [
+            {"id": list_item.id, "name": list_item.name}
+        ]
+    finally:
+        client.inventory.delete(id=created.id)
 
 
 def test_get_by_ids(client: Albert, seeded_inventory):

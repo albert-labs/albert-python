@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 from pydantic import Field
 
@@ -140,6 +141,21 @@ class PageContext(TypedDict, total=False):
     parent_id: str
     parent_entity: str
     section: str
+
+
+class ChatSessionRef(BaseAlbertModel):
+    """A chat session to notify when an asynchronous job finishes.
+
+    Both identifiers are required. They are issued by the chat platform and
+    are normally supplied automatically by the agent runtime; a script calling the
+    SDK directly has no reason to construct one.
+    """
+
+    source_session_id: UUID = Field(alias="sourceSessionId")
+    """The originating frontend session identifier."""
+
+    chat_session_id: str = Field(alias="chatSessionId")
+    """The chat session identifier (``SES…``) that receives the completion message."""
 
 
 class ChatSession(BaseResource):

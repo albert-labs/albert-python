@@ -295,7 +295,7 @@ class Design(BaseSessionResource):
         Get all row groups in this design.
     """
 
-    state: DesignState | None = Field({})
+    state: DesignState | None = Field(default=None)
     """The display state of the design. Optional. Default is None."""
 
     id: str = Field(alias="albertId")

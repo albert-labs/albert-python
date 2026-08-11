@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, NonNegativeFloat, field_serializer, field_validator
+from pydantic import Field, NonNegativeFloat, field_serializer, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import InventoryId, LotId
+from albert.core.shared.identifiers import InventoryId, LotId, WorkflowId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -75,6 +75,16 @@ class InventoryOnHandFilter(str, Enum):
     EQ_ZERO = "eqZero"
 
 
+class LotWorkflowLink(BaseAlbertModel):
+    """A workflow associated with a lot."""
+
+    id: str
+    """The workflow ID (format ``WFL...``)."""
+
+    category: str | None = None
+    """Workflow category (e.g. ``FINAL``)."""
+
+
 class Lot(BaseResource):
     """A specific physical batch or quantity of an Inventory Item.
 
@@ -93,12 +103,12 @@ class Lot(BaseResource):
     !!! example
         ```python
         from albert import Albert
+        from albert.core.shared.models.base import EntityLink
         from albert.resources.lots import Lot
-        from albert.resources.storage_locations import StorageLocation
         client = Albert()
         lot = Lot(
             inventory_id="INVA1",
-            storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+            storage_location=EntityLink(id="STLA1"),
             initial_quantity=10.0,
             inventory_on_hand=10.0,
             cost=50.0,
@@ -139,6 +149,17 @@ class Lot(BaseResource):
     ``location`` instead of ``storage_location``.
     """
 
+    workflow_id: WorkflowId | None = Field(default=None, alias="workflowId")
+    """The Albert ID of the workflow associated with this lot (format ``WFL...``).
+
+    Can be set via [`update`][albert.collections.lots.LotCollection.update].
+    """
+
+    workflows: list[LotWorkflowLink] | None = Field(
+        default=None, alias="Workflows", exclude=True, frozen=True
+    )
+    """Workflow associations for this lot. Read-only; use ``workflow_id``."""
+
     expiration_date: str | None = Field(None, alias="expirationDate")
     """The date the lot expires, in ``YYYY-MM-DD`` format."""
 
@@ -154,8 +175,11 @@ class Lot(BaseResource):
     )
     """The specific place within a location where the lot is stored (e.g. a bin, cabinet, or hood).
 
-    Required when creating a non-task lot (no ``task_id``). Not used on the task /
-    batch (``Formulas``) create path.
+    When creating or updating, pass an [`EntityLink`][albert.core.shared.models.base.EntityLink]
+    with the storage location ID (format ``STL...``), or a fully populated
+    [`StorageLocation`][albert.resources.storage_locations.StorageLocation].
+    Do not construct ``StorageLocation`` with only ``id``/``name``; ``location`` is required
+    on that model.
     """
 
     pack_size: str | None = Field(None, alias="packSize")
@@ -245,6 +269,28 @@ class Lot(BaseResource):
         default=None, alias="taskCompletionDate", exclude=True, frozen=True
     )
     """The completion date of the Task that produced the lot. Read-only."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_workflow_id_from_workflows(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        if data.get("workflowId") or data.get("workflow_id"):
+            return data
+        workflows = data.get("Workflows") or data.get("workflows")
+        if not workflows:
+            return data
+        final = next(
+            (
+                w
+                for w in workflows
+                if (w.get("category") if isinstance(w, dict) else w.category) == "FINAL"
+            ),
+            None,
+        )
+        link = final or workflows[0]
+        workflow_id = link.get("id") if isinstance(link, dict) else link.id
+        return {**data, "workflowId": workflow_id}
 
     @field_validator("has_notes", mode="before")
     def validate_has_notes(cls, value: Any) -> Any:
