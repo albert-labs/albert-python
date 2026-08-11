@@ -789,8 +789,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     inventory_id: InventoryId = Field(..., alias="inventoryId")
     """The inventory item the result applies to (format ``INV...``). Serialized as ``inventoryId``."""
 
-    project_id: ProjectId = Field(..., alias="projectId")
-    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``."""
+    project_id: ProjectId | None = Field(default=None, alias="projectId")
+    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``. ``None`` for records with no project association (tenant-global data)."""
 
     workflow_id: WorkflowId = Field(..., alias="workflowId")
     """The workflow (format ``WFL...``). Serialized as ``workflowId``."""

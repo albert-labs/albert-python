@@ -311,7 +311,7 @@ class AttachmentCollection(BaseCollection):
 
         !!! example
             ```python
-            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999", "PROA1"])
+            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999", "PROA9999999"])
             by_parent.get("INVA9999999", [])
             # [Attachment(...), ...]
             ```

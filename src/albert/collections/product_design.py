@@ -41,7 +41,7 @@ class ProductDesignCollection(BaseCollection):
         from albert import Albert
         client = Albert()
         unpacked = client.product_design.get_unpacked_products(
-            inventory_ids=["INVA9999999", "INVA2"],
+            inventory_ids=["INVA9999999", "INVA9999998"],
         )
         for product in unpacked:
             for ingredient in product.inventories or []:

@@ -78,7 +78,7 @@ class LinksCollection(BaseCollection):
                 links=[
                     Link(
                         parent=EntityLink(id="INVA9999999"),
-                        child=EntityLink(id="INVA2"),
+                        child=EntityLink(id="INVA9999998"),
                         category=LinkCategory.LINKED_INVENTORY,
                     )
                 ]

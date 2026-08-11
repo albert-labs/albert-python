@@ -129,7 +129,7 @@ class LotCollection(BaseCollection):
             client = Albert()
             new_lot = Lot(
                 inventory_id="INVA9999999",
-                storage_location=EntityLink(id="STLA1"),
+                storage_location=EntityLink(id="STL9999999"),
                 initial_quantity=10.0,
                 inventory_on_hand=10.0,
                 cost=50.0,

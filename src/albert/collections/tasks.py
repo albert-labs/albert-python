@@ -86,7 +86,7 @@ class TaskCollection(BaseCollection):
         from albert.resources.tasks import PropertyTask
         client = Albert()
         task = client.tasks.create(
-            task=PropertyTask(name="Viscosity screen", parent_id="PRO1")
+            task=PropertyTask(name="Viscosity screen", parent_id="PROP9999999")
         )
         client.tasks.add_block(
             task_id=task.id, data_template_id="DAT9999999", workflow_id="WFL1"

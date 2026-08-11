@@ -327,13 +327,13 @@ class ImageExample(BaseAlbertModel):
 class DataTemplateSearchItemDataColumn(BaseAlbertModel):
     """A lightweight data column reference within a data template search result."""
 
-    id: str
-    """The Albert ID of the data column."""
+    id: str | None = None
+    """The Albert ID of the data column. ``None`` on search rows that omit it."""
 
     name: str | None = None
     """The name of the data column."""
 
-    localized_names: LocalizedNames = Field(alias="localizedNames")
+    localized_names: LocalizedNames | None = Field(default=None, alias="localizedNames")
     """Localized name variants for the data column."""
 
 

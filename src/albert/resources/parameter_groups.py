@@ -364,6 +364,9 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     name: str
     """The name of the parameter group."""
 
+    name: str
+    """The name of the parameter group."""
+
     type: PGType | None = Field(default=None)
     """The kind of task the group relates to."""
 
@@ -403,3 +406,11 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     @classmethod
     def sanitize_metadata(cls, value: Any) -> Any:
         return _sanitize_metadata(value)
+
+    @field_validator("owner", "tags", "acl", "team", mode="before")
+    @classmethod
+    def sanitize_entity_link_lists(cls, value: Any) -> Any:
+        """Drop entity-link entries the search endpoint returns without an ``id``."""
+        if not isinstance(value, list):
+            return value
+        return [entry for entry in value if not (isinstance(entry, dict) and "id" not in entry)]

@@ -33,6 +33,12 @@ class BaseTaggedResource(BaseResource):
                 elif isinstance(t, str):
                     new_tags.append(Tag.from_string(t))
                 elif isinstance(t, dict):
+                    if "id" in t and not (t.get("name") or t.get("tagName") or t.get("tag")):
+                        raise ValueError(
+                            "Tag references by dict require the tag's name alongside its id "
+                            "(e.g. {'id': 'TAG…', 'name': 'AAMA'}): the platform requires both "
+                            "on write. Resolve the pair via client.tags.get_or_create first."
+                        )
                     new_tags.append(Tag(**t))
                 else:
                     # We do not expect this else to be hit because tags should only be Tag or str

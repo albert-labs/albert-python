@@ -152,7 +152,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            client.inventory.merge(parent_id="INVA9999999", child_id=["INVA2", "INVA3"])
+            client.inventory.merge(parent_id="INVA9999999", child_id=["INVA9999998", "INVA9999997"])
             ```
 
         Parameters
@@ -395,7 +395,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA2"])
+            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])
             [i.name for i in items]
             # ['Titanium Dioxide', 'Acetone']
             ```

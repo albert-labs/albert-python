@@ -210,7 +210,7 @@ class PricingCollection(BaseCollection):
         !!! example
             ```python
             grouped = client.pricings.get_by_inventory_ids(
-                inventory_ids=["INVA9999999", "INVA2"]
+                inventory_ids=["INVA9999999", "INVA9999998"]
             )
             grouped[0].pricings
             ```

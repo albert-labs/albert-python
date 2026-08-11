@@ -455,7 +455,7 @@ class PropertyTask(BaseTask):
         ```python
         from albert.resources.tasks import PropertyTask
 
-        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        task = PropertyTask(name="Viscosity screen", parent_id="PROP9999999")
         ```
     Notes
     -----
@@ -497,7 +497,7 @@ class BatchTask(BaseTask):
 
         task = BatchTask(
             name="Make 500 g of Formula A",
-            parent_id="PRO1",
+            parent_id="PROP9999999",
             inventory_information=[
                 TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
             ],

@@ -114,6 +114,8 @@ class DesignType(str, Enum):
     PRODUCTS = "products"
     RESULTS = "results"
     PROCESS = "process"
+    # Additional legacy/tenant values observed in the wild:
+    REAGENTS = "reagents"
 
 
 class ColumnPosition(str, Enum):
@@ -220,7 +222,7 @@ class Component(BaseResource):
     !!! example
         ```python
         from albert.resources.sheets import Component
-        component = Component(inventory_id="INV1", amount=42.0)
+        component = Component(inventory_id="INVA9999999", amount=42.0)
         ```"""
 
     inventory_item: InventoryItem | None = Field(default=None)
@@ -310,8 +312,8 @@ class Design(BaseSessionResource):
     id: str = Field(alias="albertId")
     """The Albert ID of the design."""
 
-    design_type: DesignType = Field(alias="designType")
-    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]."""
+    design_type: DesignType | str = Field(alias="designType")
+    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]. Unknown legacy/tenant values parse as plain strings."""
 
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
     _rows: list[Row] | None = PrivateAttr(default=None)
@@ -504,7 +506,12 @@ class Design(BaseSessionResource):
         if self.design_type == DesignType.PROCESS:
             endpoint = f"/api/v3/designs/{self.id}/grid"
         else:
-            endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
+            design_type = (
+                self.design_type.value
+                if isinstance(self.design_type, DesignType)
+                else str(self.design_type)
+            )
+            endpoint = f"/api/v3/worksheet/{self.id}/{design_type}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -675,7 +682,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ```python
         from albert import Albert
         client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        worksheet = client.worksheets.get_by_project_id(project_id="PROP9999999")
         sheet = worksheet.sheets[0]
         print(sheet.grid)
         ```
@@ -948,13 +955,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
             from albert import Albert
             from albert.resources.sheets import Component
             client = Albert()
-            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+            worksheet = client.worksheets.get_by_project_id(project_id="PROP9999999")
             sheet = worksheet.sheets[0]
             column = sheet.add_formulation(
                 formulation_name="Formulation A",
                 components=[
-                    Component(inventory_id="INV1", amount=80.0),
-                    Component(inventory_id="INV2", amount=20.0),
+                    Component(inventory_id="INVA9999999", amount=80.0),
+                    Component(inventory_id="INVA9999998", amount=20.0),
                 ],
             )
             ```
@@ -1110,7 +1117,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             from albert.resources.sheets import Component
             column = sheet.add_components_to_formulation(
                 formulation_name="Formulation A",
-                components=[Component(inventory_id="INV3", amount=5.0)],
+                components=[Component(inventory_id="INVA9999997", amount=5.0)],
             )
             ```
 
@@ -1389,7 +1396,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            row = sheet.add_inventory_row(inventory_id="INV1")
+            row = sheet.add_inventory_row(inventory_id="INVA9999999")
             ```
 
         Parameters
@@ -2545,7 +2552,12 @@ class Column(BaseSessionResource):  # noqa:F811
         return f"{self.column_id}#{self.name}"
 
     @property
-    def cells(self) -> list[Cell]:
+    def cells(self) -> pd.Series:
+        """This column's cells as a pandas Series keyed by row id.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding) — check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid[self.df_name]
 
     def rename(self, new_name):
@@ -2680,7 +2692,12 @@ class Row(BaseSessionResource):  # noqa:F811
         return bool(self.child_row_ids)
 
     @property
-    def cells(self) -> list[Cell]:
+    def cells(self) -> pd.Series:
+        """This row's cells as a pandas Series keyed by column df-name.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding) — check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid.loc[self.row_unique_id]
 
     def recolor_cells(self, color: CellColor):
