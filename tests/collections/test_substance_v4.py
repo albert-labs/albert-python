@@ -55,6 +55,12 @@ def test_get_by_id_not_found(client: Albert):
     assert substance is None
 
 
+def test_get_by_ids_not_found(client: Albert):
+    """Test that get_by_ids omits placeholders for non-existent CAS IDs."""
+    response = client.substances_v4.get_by_ids(cas_ids=["DUMMY-CAS-NO"])
+    assert response.substances == []
+
+
 def test_get_by_id_region(client: Albert):
     """Test retrieving a substance with a specific region."""
     substance = client.substances_v4.get_by_id(cas_id="134180-76-0", region="EU")

@@ -186,7 +186,15 @@ class SubstanceV4Collection(BaseCollection):
             params["classificationType"] = classification_type
 
         response = self.session.get(self.base_path, params=params)
-        return SubstanceV4Response.model_validate(response.json())
+        result = SubstanceV4Response.model_validate(response.json())
+        if cas_ids:
+            requested_cas_ids = set(cas_ids)
+            result.substances = [
+                substance
+                for substance in result.substances
+                if substance.is_cas or substance.cas_id not in requested_cas_ids
+            ]
+        return result
 
     @validate_call
     def get_by_id(
