@@ -1,16 +1,19 @@
 from contextlib import suppress
+from pathlib import Path
 
 import pytest
 
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
+from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
     DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
 )
+from albert.resources.lists import ListItemCategory
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -645,3 +648,76 @@ def test_add_parameters_enum_ids_populated(
     assert len(added_param.validation[0].value) == 2
     for v in added_param.validation[0].value:
         assert v.id is not None, f"Enum value '{v.text}' has no ID"
+
+
+def test_upload_and_attach_script_to_data_template(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test uploading a script and attaching it to a data template."""
+    data_template = seeded_data_templates[0]
+    available_extensions = list(
+        client.lists.get_all(
+            category=ListItemCategory.EXTENSIONS,
+            list_type="extensions",
+            max_items=1,
+        )
+    )
+    if not available_extensions:
+        pytest.skip("No extensions configured in tenant")
+    extension = available_extensions[0]
+
+    attachment = client.attachments.upload_and_attach_script_to_data_template(
+        data_template_id=data_template.id,
+        file_path=Path("tests/data/etl.py"),
+        name=f"{seed_prefix} etl script",
+        extension_names=[extension.name],
+    )
+    try:
+        assert isinstance(attachment, Attachment)
+        assert attachment.parent_id == data_template.id
+        assert attachment.category == AttachmentCategory.SCRIPT
+        assert attachment.key == f"{data_template.id}/automated_scripts/etl.py"
+        assert attachment.metadata is not None
+        assert attachment.metadata.extensions is not None
+        assert any(ext.id == extension.id for ext in attachment.metadata.extensions)
+
+        by_parent = client.attachments.get_by_parent_ids(parent_ids=[data_template.id])
+        attached_ids = {item.id for item in by_parent.get(data_template.id, [])}
+        assert attachment.id in attached_ids
+    finally:
+        with suppress(NotFoundError):
+            client.attachments.delete(id=attachment.id)
+
+
+def test_upload_and_attach_script_to_data_template_unknown_extension(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test unknown extension names raise a clear error."""
+    data_template = seeded_data_templates[0]
+    with pytest.raises(ValueError, match="not found in the extensions list"):
+        client.attachments.upload_and_attach_script_to_data_template(
+            data_template_id=data_template.id,
+            file_path=Path("tests/data/etl.py"),
+            name=f"{seed_prefix} invalid extension script",
+            extension_names=["not-a-real-extension"],
+        )
+
+
+def test_upload_and_attach_script_to_data_template_requires_py_suffix(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test non-Python script files are rejected."""
+    data_template = seeded_data_templates[0]
+    with pytest.raises(ValueError, match="must have a .py extension"):
+        client.attachments.upload_and_attach_script_to_data_template(
+            data_template_id=data_template.id,
+            file_path=Path("tests/data/dontpanic.jpg"),
+            name=f"{seed_prefix} invalid script file",
+            extension_names=["csv"],
+        )
