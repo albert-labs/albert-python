@@ -20,7 +20,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
-from albert.resources.lots import Lot, LotAdjustmentAction, LotSearchItem
+from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
@@ -396,7 +396,7 @@ class LotCollection(BaseCollection):
         inventory_id: InventoryId | None = None,
         barcode_id: str | None = None,
         parent_id_category: str | None = None,
-        inventory_on_hand: str | None = None,
+        inventory_on_hand: InventoryOnHandFilter | None = None,
         location_id: str | None = None,
         exact_match: bool = False,
         begins_with: bool = False,
@@ -417,7 +417,10 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # List only lots of an item that still have stock
-            for lot in client.lots.get_all(parent_id="INVA9999999", inventory_on_hand="gtZero"):
+            from albert.resources.lots import InventoryOnHandFilter
+            for lot in client.lots.get_all(
+                parent_id="INVA9999999", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
+            ):
                 print(lot.id, lot.inventory_on_hand)
             ```
 
@@ -432,9 +435,9 @@ class LotCollection(BaseCollection):
         parent_id_category : str, optional
             Filter by the parent inventory category (e.g. ``RawMaterials``,
             ``Consumables``).
-        inventory_on_hand : str, optional
-            Filter by inventory on hand relative to zero. One of ``"lteZero"``,
-            ``"gtZero"``, or ``"eqZero"``.
+        inventory_on_hand : InventoryOnHandFilter, optional
+            Filter by inventory on hand relative to zero. Requires ``parent_id``,
+            ``barcode_id``, or ``parent_id_category``.
         location_id : str, optional
             Filter by location ID.
         exact_match : bool, optional
