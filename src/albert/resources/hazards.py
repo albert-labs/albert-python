@@ -16,11 +16,14 @@ class HazardSymbolStatus(str, Enum):
         The hazard symbol is hidden from normal operations and disabled from use.
     ADDED_MANUALLY : str
         The hazard symbol was manually chosen.
+    FROM_MODEL : str
+        The hazard symbol was selected by a model.
     """
 
     ACTIVE = "active"
     INACTIVE = "inactive"
     ADDED_MANUALLY = "Added Manually"
+    FROM_MODEL = "From Model"
 
 
 class HazardSymbol(EntityLinkWithName):
@@ -30,7 +33,7 @@ class HazardSymbol(EntityLinkWithName):
     [`get_symbols`][albert.collections.hazards.HazardsCollection.get_symbols]."""
 
     status: HazardSymbolStatus | None = Field(default=None)
-    """Whether the symbol is active, inactive, or was added manually."""
+    """Whether the symbol is active, inactive, manually added, or selected by a model."""
 
 
 class HazardStatement(EntityLinkWithName):
