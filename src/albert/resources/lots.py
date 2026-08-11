@@ -55,6 +55,26 @@ class LotAdjustmentAction(str, Enum):
     ZERO = "ZERO"
 
 
+class InventoryOnHandFilter(str, Enum):
+    """Filter lots by inventory on hand relative to zero.
+
+    Used with [`get_all`][albert.collections.lots.LotCollection.get_all].
+
+    Attributes
+    ----------
+    LTE_ZERO
+        On hand is less than or equal to zero.
+    GT_ZERO
+        On hand is greater than zero.
+    EQ_ZERO
+        On hand equals zero.
+    """
+
+    LTE_ZERO = "lteZero"
+    GT_ZERO = "gtZero"
+    EQ_ZERO = "eqZero"
+
+
 class Lot(BaseResource):
     """A specific physical batch or quantity of an Inventory Item.
 
