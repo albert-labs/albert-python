@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.43.0](https://github.com/albert-labs/albert-python/compare/v1.42.0...v1.43.0) (2026-08-12)
+
+
+### Features
+
+* **attachments:** add upload_and_attach_script_to_data_template ([#662](https://github.com/albert-labs/albert-python/issues/662)) ([e3047b9](https://github.com/albert-labs/albert-python/commit/e3047b9f3ad783f71122031a6d9dcbe7eac7da97))
+
+
+### Bug Fixes
+
+* **lots:** type inventory_on_hand filter as enum ([#669](https://github.com/albert-labs/albert-python/issues/669)) ([c3efb2a](https://github.com/albert-labs/albert-python/commit/c3efb2a1dbcf516a680cbdc81e337e7cc5b20fc6))
+* **projects:** support ACL updates via update() ([#668](https://github.com/albert-labs/albert-python/issues/668)) ([5652e31](https://github.com/albert-labs/albert-python/commit/5652e3138f1dc62a7ea3925b160f307ee9a3395b))
+* **sheets:** omit referenceId so new formula columns aren't dropped ([#630](https://github.com/albert-labs/albert-python/issues/630)) ([b70d07e](https://github.com/albert-labs/albert-python/commit/b70d07e43cc65e3826dcdbb72d0fde8a3e868848))
+* **substance_v4:** stop search pagination at final page ([#663](https://github.com/albert-labs/albert-python/issues/663)) ([4f49c67](https://github.com/albert-labs/albert-python/commit/4f49c67c3d19f978e0ba0ad67fe83938da372b04))
+
 ## [1.42.0](https://github.com/albert-labs/albert-python/compare/v1.41.0...v1.42.0) (2026-08-06)
 
 
