@@ -5316,7 +5316,7 @@ rather than one at a time.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pricings</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pricings</span><span class="o">.</span><span class="n">get_by_inventory_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pricings</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pricings</span><span class="o">.</span><span class="n">get_by_inventory_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">for</span> <span class="n">pricing</span> <span class="ow">in</span> <span class="n">pricings</span><span class="p">:</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">pricing</span><span class="o">.</span><span class="n">price</span><span class="p">,</span> <span class="n">pricing</span><span class="o">.</span><span class="n">currency</span><span class="p">)</span>
 </span></code></pre></div>
@@ -5559,7 +5559,7 @@ rather than one at a time.</p>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.locations</span><span class="w"> </span><span class="kn">import</span> <span class="n">Location</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">pricing</span> <span class="o">=</span> <span class="n">Pricing</span><span class="p">(</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">company</span><span class="o">=</span><span class="n">Company</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Acme Chemicals&quot;</span><span class="p">),</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">location</span><span class="o">=</span><span class="n">Location</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Pittsburgh&quot;</span><span class="p">),</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">price</span><span class="o">=</span><span class="mf">12.50</span><span class="p">,</span>
@@ -5678,7 +5678,7 @@ set on create; use <a class="autorefs autorefs-internal" href="#albert.collectio
 </span><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91"></a><span class="sd">        from albert.resources.locations import Location</span>
 </span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92"></a>
 </span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        pricing = Pricing(</span>
-</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">            company=Company(name=&quot;Acme Chemicals&quot;),</span>
 </span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">            location=Location(name=&quot;Pittsburgh&quot;),</span>
 </span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">            price=12.50,</span>
@@ -5869,7 +5869,7 @@ optional grouping, filtering, and sorting. To pull pricings for many items
 at once, use <a class="autorefs autorefs-internal" href="#albert.collections.pricings.PricingCollection.get_by_inventory_ids"><code>get_by_inventory_ids</code></a>.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pricings</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pricings</span><span class="o">.</span><span class="n">get_by_inventory_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pricings</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pricings</span><span class="o">.</span><span class="n">get_by_inventory_id</span><span class="p">(</span><span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">price</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pricings</span><span class="p">]</span>
 </span></code></pre></div>
 </div>
@@ -6067,7 +6067,7 @@ at once, use <a class="autorefs autorefs-internal" href="#albert.collections.pri
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a>
 </span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-166"><a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        pricings = client.pricings.get_by_inventory_id(inventory_id=&quot;INVA1&quot;)</span>
+</span><span id="__span-0-167"><a id="__codelineno-0-167" name="__codelineno-0-167"></a><span class="sd">        pricings = client.pricings.get_by_inventory_id(inventory_id=&quot;INVA9999999&quot;)</span>
 </span><span id="__span-0-168"><a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">        [p.price for p in pricings]</span>
 </span><span id="__span-0-169"><a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        ```</span>
 </span><span id="__span-0-170"><a id="__codelineno-0-170" name="__codelineno-0-170"></a>
@@ -6129,7 +6129,7 @@ one item's pricings under its inventory ID.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">grouped</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pricings</span><span class="o">.</span><span class="n">get_by_inventory_ids</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="s2">&quot;INVA2&quot;</span><span class="p">]</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="s2">&quot;INVA9999998&quot;</span><span class="p">]</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">grouped</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pricings</span>
 </span></code></pre></div>
@@ -6229,7 +6229,7 @@ one item's pricings under its inventory ID.</p>
 </span><span id="__span-0-210"><a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-211"><a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-212"><a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">        grouped = client.pricings.get_by_inventory_ids(</span>
-</span><span id="__span-0-213"><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">            inventory_ids=[&quot;INVA1&quot;, &quot;INVA2&quot;]</span>
+</span><span id="__span-0-213"><a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">            inventory_ids=[&quot;INVA9999999&quot;, &quot;INVA9999998&quot;]</span>
 </span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">        )</span>
 </span><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">        grouped[0].pricings</span>
 </span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">        ```</span>

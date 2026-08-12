@@ -5375,13 +5375,13 @@ throughout the platform: they qualify inventory quantities, parameter values,
 and property results. Each unit has a name, an optional display symbol, an
 optional list of synonyms (alternate spellings), and a category
 (<a class="autorefs autorefs-internal" href="../../resources/units/#albert.resources.units.UnitCategory"><code>UnitCategory</code></a>, e.g. <code>Mass</code> or <code>Volume</code>).</p>
-<p>Units are referenced by their Unit ID (format <code>UNI...</code>, e.g. <code>"UNI1"</code>).</p>
+<p>Units are referenced by their Unit ID (format <code>UNI...</code>, e.g. <code>"UNI9999999"</code>).</p>
 <p>This collection is accessed as <code>client.units</code>.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI1&quot;</span><span class="p">)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">unit</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="n">unit</span><span class="o">.</span><span class="n">category</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -5928,7 +5928,7 @@ found it is returned unchanged; otherwise a new unit is created.</p>
         <p>Get a single unit by its ID.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI9999999&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 
@@ -6017,7 +6017,7 @@ found it is returned unchanged; otherwise a new unit is created.</p>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a>
 </span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        unit = client.units.get_by_id(id=&quot;UNI1&quot;)</span>
+</span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        unit = client.units.get_by_id(id=&quot;UNI9999999&quot;)</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        ```</span>
 </span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151"></a>
 </span><span id="__span-0-152"><a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Parameters</span>
@@ -6057,7 +6057,7 @@ found it is returned unchanged; otherwise a new unit is created.</p>
 <p>IDs are fetched in batches, so arbitrarily long lists are supported.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">units</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;UNI1&quot;</span><span class="p">,</span> <span class="s2">&quot;UNI2&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">units</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;UNI9999999&quot;</span><span class="p">,</span> <span class="s2">&quot;UNI2&quot;</span><span class="p">])</span>
 </span></code></pre></div>
 </div>
 
@@ -6153,7 +6153,7 @@ found it is returned unchanged; otherwise a new unit is created.</p>
 </span><span id="__span-0-172"><a id="__codelineno-0-172" name="__codelineno-0-172"></a>
 </span><span id="__span-0-173"><a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-174"><a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">        units = client.units.get_by_ids(ids=[&quot;UNI1&quot;, &quot;UNI2&quot;])</span>
+</span><span id="__span-0-175"><a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="sd">        units = client.units.get_by_ids(ids=[&quot;UNI9999999&quot;, &quot;UNI2&quot;])</span>
 </span><span id="__span-0-176"><a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">        ```</span>
 </span><span id="__span-0-177"><a id="__codelineno-0-177" name="__codelineno-0-177"></a>
 </span><span id="__span-0-178"><a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="sd">    Parameters</span>
@@ -6197,7 +6197,7 @@ found it is returned unchanged; otherwise a new unit is created.</p>
 the returned object, then pass it here. The unit is matched by its <code>id</code>.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">unit</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">unit</span><span class="o">.</span><span class="n">symbol</span> <span class="o">=</span> <span class="s2">&quot;g&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unit</span><span class="o">.</span><span class="n">synonyms</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;gram&quot;</span><span class="p">,</span> <span class="s2">&quot;grams&quot;</span><span class="p">]</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">updated</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">)</span>
@@ -6321,7 +6321,7 @@ the returned object, then pass it here. The unit is matched by its <code>id</cod
 </span><span id="__span-0-202"><a id="__codelineno-0-202" name="__codelineno-0-202"></a>
 </span><span id="__span-0-203"><a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-204"><a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-205"><a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        unit = client.units.get_by_id(id=&quot;UNI1&quot;)</span>
+</span><span id="__span-0-205"><a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        unit = client.units.get_by_id(id=&quot;UNI9999999&quot;)</span>
 </span><span id="__span-0-206"><a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="sd">        unit.symbol = &quot;g&quot;</span>
 </span><span id="__span-0-207"><a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">        unit.synonyms = [&quot;gram&quot;, &quot;grams&quot;]</span>
 </span><span id="__span-0-208"><a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">        updated = client.units.update(unit=unit)</span>
@@ -6381,7 +6381,7 @@ the returned object, then pass it here. The unit is matched by its <code>id</cod
         <p>Delete a unit by its ID.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;UNI9999999&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 
@@ -6467,7 +6467,7 @@ the returned object, then pass it here. The unit is matched by its <code>id</cod
 </span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270"></a>
 </span><span id="__span-0-271"><a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-272"><a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">        client.units.delete(id=&quot;UNI1&quot;)</span>
+</span><span id="__span-0-273"><a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">        client.units.delete(id=&quot;UNI9999999&quot;)</span>
 </span><span id="__span-0-274"><a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">        ```</span>
 </span><span id="__span-0-275"><a id="__codelineno-0-275" name="__codelineno-0-275"></a>
 </span><span id="__span-0-276"><a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    Parameters</span>

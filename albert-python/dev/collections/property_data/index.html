@@ -5948,7 +5948,7 @@ specific task, use <a class="autorefs autorefs-internal" href="#albert.collectio
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">props</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">get_properties_on_inventory</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">len</span><span class="p">(</span><span class="n">props</span><span class="o">.</span><span class="n">custom_property_data</span><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># 3</span>
@@ -6055,7 +6055,7 @@ specific task, use <a class="autorefs autorefs-internal" href="#albert.collectio
 </span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-160"><a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-161"><a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">        props = client.property_data.get_properties_on_inventory(</span>
-</span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">            inventory_id=&quot;INVA1&quot;</span>
+</span><span id="__span-0-162"><a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;</span>
 </span><span id="__span-0-163"><a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">        )</span>
 </span><span id="__span-0-164"><a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">        len(props.custom_property_data)</span>
 </span><span id="__span-0-165"><a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">        # 3</span>
@@ -6108,8 +6108,8 @@ value. Properties are added one at a time and collected into the result.</p>
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.property_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryDataColumn</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">props</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">add_properties_to_inventory</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">InventoryDataColumn</span><span class="p">(</span><span class="n">data_column_id</span><span class="o">=</span><span class="s2">&quot;DAC1&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;1.2&quot;</span><span class="p">)],</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">InventoryDataColumn</span><span class="p">(</span><span class="n">data_column_id</span><span class="o">=</span><span class="s2">&quot;DAC9999999&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;1.2&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -6245,8 +6245,8 @@ value. Properties are added one at a time and collected into the result.</p>
 </span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">        from albert.resources.property_data import InventoryDataColumn</span>
 </span><span id="__span-0-198"><a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">        props = client.property_data.add_properties_to_inventory(</span>
-</span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
-</span><span id="__span-0-200"><a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">            properties=[InventoryDataColumn(data_column_id=&quot;DAC1&quot;, value=&quot;1.2&quot;)],</span>
+</span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
+</span><span id="__span-0-200"><a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">            properties=[InventoryDataColumn(data_column_id=&quot;DAC9999999&quot;, value=&quot;1.2&quot;)],</span>
 </span><span id="__span-0-201"><a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">        )</span>
 </span><span id="__span-0-202"><a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">        ```</span>
 </span><span id="__span-0-203"><a id="__codelineno-0-203" name="__codelineno-0-203"></a>
@@ -6306,8 +6306,8 @@ the item has no value yet for that data column, the value is added.</p>
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.property_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">InventoryDataColumn</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">updated</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">update_property_on_inventory</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">property_data</span><span class="o">=</span><span class="n">InventoryDataColumn</span><span class="p">(</span><span class="n">data_column_id</span><span class="o">=</span><span class="s2">&quot;DAC1&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;1.3&quot;</span><span class="p">),</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">property_data</span><span class="o">=</span><span class="n">InventoryDataColumn</span><span class="p">(</span><span class="n">data_column_id</span><span class="o">=</span><span class="s2">&quot;DAC9999999&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;1.3&quot;</span><span class="p">),</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -6467,8 +6467,8 @@ the item has no value yet for that data column, the value is added.</p>
 </span><span id="__span-0-241"><a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-242"><a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">        from albert.resources.property_data import InventoryDataColumn</span>
 </span><span id="__span-0-243"><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">        updated = client.property_data.update_property_on_inventory(</span>
-</span><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
-</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">            property_data=InventoryDataColumn(data_column_id=&quot;DAC1&quot;, value=&quot;1.3&quot;),</span>
+</span><span id="__span-0-244"><a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
+</span><span id="__span-0-245"><a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">            property_data=InventoryDataColumn(data_column_id=&quot;DAC9999999&quot;, value=&quot;1.3&quot;),</span>
 </span><span id="__span-0-246"><a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">        )</span>
 </span><span id="__span-0-247"><a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">        ```</span>
 </span><span id="__span-0-248"><a id="__codelineno-0-248" name="__codelineno-0-248"></a>
@@ -6556,7 +6556,7 @@ combination. To sweep every combination on a task at once, use
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">data</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">get_task_block_properties</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">data</span><span class="o">.</span><span class="n">block_id</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># &#39;BLK1&#39;</span>
@@ -6739,7 +6739,7 @@ interval and trial.</p>
 </span><span id="__span-0-317"><a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-318"><a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-319"><a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">        data = client.property_data.get_task_block_properties(</span>
-</span><span id="__span-0-320"><a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">            inventory_id=&quot;INVA1&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
+</span><span id="__span-0-320"><a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
 </span><span id="__span-0-321"><a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">        )</span>
 </span><span id="__span-0-322"><a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        data.block_id</span>
 </span><span id="__span-0-323"><a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">        # &#39;BLK1&#39;</span>
@@ -7721,7 +7721,7 @@ here; use <a class="autorefs autorefs-internal" href="#albert.collections.proper
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">void_task_data</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -7898,7 +7898,7 @@ here; use <a class="autorefs autorefs-internal" href="#albert.collections.proper
 </span><span id="__span-0-577"><a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-578"><a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-579"><a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">        client.property_data.void_task_data(</span>
-</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, inventory_id=&quot;INVA1&quot;, block_id=&quot;BLK1&quot;</span>
+</span><span id="__span-0-580"><a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, inventory_id=&quot;INVA9999999&quot;, block_id=&quot;BLK1&quot;</span>
 </span><span id="__span-0-581"><a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        )</span>
 </span><span id="__span-0-582"><a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        ```</span>
 </span><span id="__span-0-583"><a id="__codelineno-0-583" name="__codelineno-0-583"></a>
@@ -7960,7 +7960,7 @@ here; use <a class="autorefs autorefs-internal" href="#albert.collections.proper
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">unvoid_task_data</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -8133,7 +8133,7 @@ here; use <a class="autorefs autorefs-internal" href="#albert.collections.proper
 </span><span id="__span-0-626"><a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-627"><a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-628"><a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">        client.property_data.unvoid_task_data(</span>
-</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, inventory_id=&quot;INVA1&quot;, block_id=&quot;BLK1&quot;</span>
+</span><span id="__span-0-629"><a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, inventory_id=&quot;INVA9999999&quot;, block_id=&quot;BLK1&quot;</span>
 </span><span id="__span-0-630"><a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        )</span>
 </span><span id="__span-0-631"><a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">        ```</span>
 </span><span id="__span-0-632"><a id="__codelineno-0-632" name="__codelineno-0-632"></a>
@@ -8200,7 +8200,7 @@ here; use <a class="autorefs autorefs-internal" href="#albert.collections.proper
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">void_interval_data</span><span class="p">(</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">interval_id</span><span class="o">=</span><span class="s2">&quot;ROW1&quot;</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -8427,7 +8427,7 @@ one with <a class="autorefs autorefs-internal" href="../../resources/workflows/#
 </span><span id="__span-0-680"><a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">        client.property_data.void_interval_data(</span>
 </span><span id="__span-0-681"><a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-682"><a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">            interval_id=&quot;ROW1&quot;,</span>
-</span><span id="__span-0-683"><a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-683"><a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-684"><a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-685"><a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">        )</span>
 </span><span id="__span-0-686"><a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">        ```</span>
@@ -8502,7 +8502,7 @@ one with <a class="autorefs autorefs-internal" href="../../resources/workflows/#
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">unvoid_interval_data</span><span class="p">(</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">interval_id</span><span class="o">=</span><span class="s2">&quot;ROW1&quot;</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -8725,7 +8725,7 @@ List a task's interval IDs with <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-742"><a id="__codelineno-0-742" name="__codelineno-0-742"></a><span class="sd">        client.property_data.unvoid_interval_data(</span>
 </span><span id="__span-0-743"><a id="__codelineno-0-743" name="__codelineno-0-743"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-744"><a id="__codelineno-0-744" name="__codelineno-0-744"></a><span class="sd">            interval_id=&quot;ROW1&quot;,</span>
-</span><span id="__span-0-745"><a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-745"><a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-746"><a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-747"><a id="__codelineno-0-747" name="__codelineno-0-747"></a><span class="sd">        )</span>
 </span><span id="__span-0-748"><a id="__codelineno-0-748" name="__codelineno-0-748"></a><span class="sd">        ```</span>
@@ -8801,7 +8801,7 @@ List a task's interval IDs with <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">interval_id</span><span class="o">=</span><span class="s2">&quot;ROW1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">trial_number</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -9029,7 +9029,7 @@ List a task's interval IDs with <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-805"><a id="__codelineno-0-805" name="__codelineno-0-805"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-806"><a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">            interval_id=&quot;ROW1&quot;,</span>
 </span><span id="__span-0-807"><a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="sd">            trial_number=2,</span>
-</span><span id="__span-0-808"><a id="__codelineno-0-808" name="__codelineno-0-808"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-808"><a id="__codelineno-0-808" name="__codelineno-0-808"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-809"><a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-810"><a id="__codelineno-0-810" name="__codelineno-0-810"></a><span class="sd">        )</span>
 </span><span id="__span-0-811"><a id="__codelineno-0-811" name="__codelineno-0-811"></a><span class="sd">        ```</span>
@@ -9105,7 +9105,7 @@ List a task's interval IDs with <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">interval_id</span><span class="o">=</span><span class="s2">&quot;ROW1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">trial_number</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span>
 </span></code></pre></div>
@@ -9331,7 +9331,7 @@ List a task's interval IDs with <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-868"><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-869"><a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="sd">            interval_id=&quot;ROW1&quot;,</span>
 </span><span id="__span-0-870"><a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="sd">            trial_number=2,</span>
-</span><span id="__span-0-871"><a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-871"><a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-872"><a id="__codelineno-0-872" name="__codelineno-0-872"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-873"><a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="sd">        )</span>
 </span><span id="__span-0-874"><a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="sd">        ```</span>
@@ -9410,7 +9410,7 @@ column and an interval combination (build the interval ID with
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.property_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskPropertyCreate</span><span class="p">,</span> <span class="n">TaskDataColumn</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Derive the required data column / template from the existing block</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">block</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">get_task_block_properties</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">column</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">trials</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data_columns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">new_value</span> <span class="o">=</span> <span class="n">TaskPropertyCreate</span><span class="p">(</span>
@@ -9422,7 +9422,7 @@ column and an interval combination (build the interval ID with
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">data_template</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">data_template</span><span class="p">,</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">add_properties_to_task</span><span class="p">(</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">new_value</span><span class="p">],</span>
@@ -9724,7 +9724,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-934"><a id="__codelineno-0-934" name="__codelineno-0-934"></a><span class="sd">        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn</span>
 </span><span id="__span-0-935"><a id="__codelineno-0-935" name="__codelineno-0-935"></a><span class="sd">        # Derive the required data column / template from the existing block</span>
 </span><span id="__span-0-936"><a id="__codelineno-0-936" name="__codelineno-0-936"></a><span class="sd">        block = client.property_data.get_task_block_properties(</span>
-</span><span id="__span-0-937"><a id="__codelineno-0-937" name="__codelineno-0-937"></a><span class="sd">            inventory_id=&quot;INVA1&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
+</span><span id="__span-0-937"><a id="__codelineno-0-937" name="__codelineno-0-937"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
 </span><span id="__span-0-938"><a id="__codelineno-0-938" name="__codelineno-0-938"></a><span class="sd">        )</span>
 </span><span id="__span-0-939"><a id="__codelineno-0-939" name="__codelineno-0-939"></a><span class="sd">        column = block.data[0].trials[0].data_columns[0]</span>
 </span><span id="__span-0-940"><a id="__codelineno-0-940" name="__codelineno-0-940"></a><span class="sd">        new_value = TaskPropertyCreate(</span>
@@ -9736,7 +9736,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-946"><a id="__codelineno-0-946" name="__codelineno-0-946"></a><span class="sd">            data_template=block.data_template,</span>
 </span><span id="__span-0-947"><a id="__codelineno-0-947" name="__codelineno-0-947"></a><span class="sd">        )</span>
 </span><span id="__span-0-948"><a id="__codelineno-0-948" name="__codelineno-0-948"></a><span class="sd">        client.property_data.add_properties_to_task(</span>
-</span><span id="__span-0-949"><a id="__codelineno-0-949" name="__codelineno-0-949"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-949"><a id="__codelineno-0-949" name="__codelineno-0-949"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-950"><a id="__codelineno-0-950" name="__codelineno-0-950"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-951"><a id="__codelineno-0-951" name="__codelineno-0-951"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-952"><a id="__codelineno-0-952" name="__codelineno-0-952"></a><span class="sd">            properties=[new_value],</span>
@@ -9863,7 +9863,7 @@ image and curve values, which <a class="autorefs autorefs-internal" href="#alber
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.property_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskPropertyCreate</span><span class="p">,</span> <span class="n">TaskDataColumn</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">block</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">get_task_block_properties</span><span class="p">(</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">column</span> <span class="o">=</span> <span class="n">block</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">trials</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data_columns</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">value</span> <span class="o">=</span> <span class="n">TaskPropertyCreate</span><span class="p">(</span>
@@ -9876,7 +9876,7 @@ image and curve values, which <a class="autorefs autorefs-internal" href="#alber
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">data_template</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">data_template</span><span class="p">,</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">update_or_create_task_properties</span><span class="p">(</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">value</span><span class="p">],</span>
@@ -10217,7 +10217,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-1060"><a id="__codelineno-0-1060" name="__codelineno-0-1060"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-1061"><a id="__codelineno-0-1061" name="__codelineno-0-1061"></a><span class="sd">        from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn</span>
 </span><span id="__span-0-1062"><a id="__codelineno-0-1062" name="__codelineno-0-1062"></a><span class="sd">        block = client.property_data.get_task_block_properties(</span>
-</span><span id="__span-0-1063"><a id="__codelineno-0-1063" name="__codelineno-0-1063"></a><span class="sd">            inventory_id=&quot;INVA1&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
+</span><span id="__span-0-1063"><a id="__codelineno-0-1063" name="__codelineno-0-1063"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;, task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;</span>
 </span><span id="__span-0-1064"><a id="__codelineno-0-1064" name="__codelineno-0-1064"></a><span class="sd">        )</span>
 </span><span id="__span-0-1065"><a id="__codelineno-0-1065" name="__codelineno-0-1065"></a><span class="sd">        column = block.data[0].trials[0].data_columns[0]</span>
 </span><span id="__span-0-1066"><a id="__codelineno-0-1066" name="__codelineno-0-1066"></a><span class="sd">        value = TaskPropertyCreate(</span>
@@ -10230,7 +10230,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-1073"><a id="__codelineno-0-1073" name="__codelineno-0-1073"></a><span class="sd">            data_template=block.data_template,</span>
 </span><span id="__span-0-1074"><a id="__codelineno-0-1074" name="__codelineno-0-1074"></a><span class="sd">        )</span>
 </span><span id="__span-0-1075"><a id="__codelineno-0-1075" name="__codelineno-0-1075"></a><span class="sd">        client.property_data.update_or_create_task_properties(</span>
-</span><span id="__span-0-1076"><a id="__codelineno-0-1076" name="__codelineno-0-1076"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-1076"><a id="__codelineno-0-1076" name="__codelineno-0-1076"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-1077"><a id="__codelineno-0-1077" name="__codelineno-0-1077"></a><span class="sd">            task_id=&quot;TASFOR1&quot;,</span>
 </span><span id="__span-0-1078"><a id="__codelineno-0-1078" name="__codelineno-0-1078"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
 </span><span id="__span-0-1079"><a id="__codelineno-0-1079" name="__codelineno-0-1079"></a><span class="sd">            properties=[value],</span>
@@ -10401,7 +10401,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">data</span> <span class="o">=</span> <span class="n">BulkPropertyData</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">my_dataframe</span><span class="p">)</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">bulk_load_task_properties</span><span class="p">(</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">property_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR291760&quot;</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
@@ -10684,7 +10684,7 @@ trials one call at a time (loop for many) to avoid unexpected behavior.</p>
 </span><span id="__span-0-1231"><a id="__codelineno-0-1231" name="__codelineno-0-1231"></a><span class="sd">        data = BulkPropertyData.from_dataframe(df=my_dataframe)</span>
 </span><span id="__span-0-1232"><a id="__codelineno-0-1232" name="__codelineno-0-1232"></a><span class="sd">        results = client.property_data.bulk_load_task_properties(</span>
 </span><span id="__span-0-1233"><a id="__codelineno-0-1233" name="__codelineno-0-1233"></a><span class="sd">            block_id=&quot;BLK1&quot;,</span>
-</span><span id="__span-0-1234"><a id="__codelineno-0-1234" name="__codelineno-0-1234"></a><span class="sd">            inventory_id=&quot;INVA1&quot;,</span>
+</span><span id="__span-0-1234"><a id="__codelineno-0-1234" name="__codelineno-0-1234"></a><span class="sd">            inventory_id=&quot;INVA9999999&quot;,</span>
 </span><span id="__span-0-1235"><a id="__codelineno-0-1235" name="__codelineno-0-1235"></a><span class="sd">            property_data=data,</span>
 </span><span id="__span-0-1236"><a id="__codelineno-0-1236" name="__codelineno-0-1236"></a><span class="sd">            task_id=&quot;TASFOR291760&quot;,</span>
 </span><span id="__span-0-1237"><a id="__codelineno-0-1237" name="__codelineno-0-1237"></a><span class="sd">        )</span>
@@ -10783,7 +10783,7 @@ use the void methods (<a class="autorefs autorefs-internal" href="#albert.collec
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">property_data</span><span class="o">.</span><span class="n">bulk_delete_task_data</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">task_id</span><span class="o">=</span><span class="s2">&quot;TASFOR1&quot;</span><span class="p">,</span> <span class="n">block_id</span><span class="o">=</span><span class="s2">&quot;BLK1&quot;</span><span class="p">,</span> <span class="n">inventory_id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -10977,7 +10977,7 @@ to None (all intervals in the block).</p>
 </span><span id="__span-0-1317"><a id="__codelineno-0-1317" name="__codelineno-0-1317"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-1318"><a id="__codelineno-0-1318" name="__codelineno-0-1318"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-1319"><a id="__codelineno-0-1319" name="__codelineno-0-1319"></a><span class="sd">        client.property_data.bulk_delete_task_data(</span>
-</span><span id="__span-0-1320"><a id="__codelineno-0-1320" name="__codelineno-0-1320"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;, inventory_id=&quot;INVA1&quot;</span>
+</span><span id="__span-0-1320"><a id="__codelineno-0-1320" name="__codelineno-0-1320"></a><span class="sd">            task_id=&quot;TASFOR1&quot;, block_id=&quot;BLK1&quot;, inventory_id=&quot;INVA9999999&quot;</span>
 </span><span id="__span-0-1321"><a id="__codelineno-0-1321" name="__codelineno-0-1321"></a><span class="sd">        )</span>
 </span><span id="__span-0-1322"><a id="__codelineno-0-1322" name="__codelineno-0-1322"></a><span class="sd">        ```</span>
 </span><span id="__span-0-1323"><a id="__codelineno-0-1323" name="__codelineno-0-1323"></a>

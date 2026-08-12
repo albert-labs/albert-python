@@ -5220,7 +5220,7 @@ the substances resolve to CAS entries (see
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">unpacked</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">product_design</span><span class="o">.</span><span class="n">get_unpacked_products</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="s2">&quot;INVA2&quot;</span><span class="p">],</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="s2">&quot;INVA9999998&quot;</span><span class="p">],</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="k">for</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">unpacked</span><span class="p">:</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="k">for</span> <span class="n">ingredient</span> <span class="ow">in</span> <span class="n">product</span><span class="o">.</span><span class="n">inventories</span> <span class="ow">or</span> <span class="p">[]:</span>
@@ -5430,7 +5430,7 @@ inventory IDs, so large lists can be passed in a single call.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">unpacked</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">product_design</span><span class="o">.</span><span class="n">get_unpacked_products</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA1&quot;</span><span class="p">],</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">inventory_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">],</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">unpack_id</span><span class="o">=</span><span class="s2">&quot;DESIGN&quot;</span><span class="p">,</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">substances</span> <span class="o">=</span> <span class="n">unpacked</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cas_level_substances</span> <span class="ow">or</span> <span class="p">[]</span>
@@ -5460,7 +5460,7 @@ inventory IDs, so large lists can be passed in a single call.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The formula Inventory IDs to unpack (format <code>INV...</code>, e.g. <code>"INVA1"</code>).</p>
+                <p>The formula Inventory IDs to unpack (format <code>INV...</code>, e.g. <code>"INVA9999999"</code>).</p>
               </div>
             </td>
             <td>
@@ -5574,7 +5574,7 @@ inventory IDs, so large lists can be passed in a single call.</p>
 </span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98"></a><span class="sd">        unpacked = client.product_design.get_unpacked_products(</span>
-</span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">            inventory_ids=[&quot;INVA1&quot;],</span>
+</span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="sd">            inventory_ids=[&quot;INVA9999999&quot;],</span>
 </span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100"></a><span class="sd">            unpack_id=&quot;DESIGN&quot;,</span>
 </span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        )</span>
 </span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        substances = unpacked[0].cas_level_substances or []</span>
@@ -5585,7 +5585,7 @@ inventory IDs, so large lists can be passed in a single call.</p>
 </span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-108"><a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-109"><a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">    inventory_ids : list[InventoryId]</span>
-</span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        The formula Inventory IDs to unpack (format ``INV...``, e.g. ``&quot;INVA1&quot;``).</span>
+</span><span id="__span-0-110"><a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">        The formula Inventory IDs to unpack (format ``INV...``, e.g. ``&quot;INVA9999999&quot;``).</span>
 </span><span id="__span-0-111"><a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">    unpack_id : {&quot;DESIGN&quot;, &quot;PREDICTION&quot;}, optional</span>
 </span><span id="__span-0-112"><a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Which unpacking mode the server should use. Defaults to ``&quot;PREDICTION&quot;``.</span>
 </span><span id="__span-0-113"><a id="__codelineno-0-113" name="__codelineno-0-113"></a>

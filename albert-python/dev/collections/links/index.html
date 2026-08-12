@@ -5271,7 +5271,7 @@ updatable fields; they are created, retrieved, and deleted.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert.resources.links</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinkCategory</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">links</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">LinkCategory</span><span class="o">.</span><span class="n">MENTION</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">links</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">LinkCategory</span><span class="o">.</span><span class="n">MENTION</span><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="n">link</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div>
@@ -5496,8 +5496,8 @@ updatable fields; they are created, retrieved, and deleted.</p>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">created</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">links</span><span class="o">=</span><span class="p">[</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n">Link</span><span class="p">(</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            <span class="n">parent</span><span class="o">=</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">),</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="n">child</span><span class="o">=</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA2&quot;</span><span class="p">),</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            <span class="n">parent</span><span class="o">=</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">),</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>            <span class="n">child</span><span class="o">=</span><span class="n">EntityLink</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA9999998&quot;</span><span class="p">),</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>            <span class="n">category</span><span class="o">=</span><span class="n">LinkCategory</span><span class="o">.</span><span class="n">LINKED_INVENTORY</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="p">)</span>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="p">]</span>
@@ -5610,8 +5610,8 @@ updatable fields; they are created, retrieved, and deleted.</p>
 </span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        created = client.links.create(</span>
 </span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">            links=[</span>
 </span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">                Link(</span>
-</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">                    parent=EntityLink(id=&quot;INVA1&quot;),</span>
-</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">                    child=EntityLink(id=&quot;INVA2&quot;),</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">                    parent=EntityLink(id=&quot;INVA9999999&quot;),</span>
+</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a><span class="sd">                    child=EntityLink(id=&quot;INVA9999998&quot;),</span>
 </span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a><span class="sd">                    category=LinkCategory.LINKED_INVENTORY,</span>
 </span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83"></a><span class="sd">                )</span>
 </span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="sd">            ]</span>
@@ -5665,7 +5665,7 @@ updatable fields; they are created, retrieved, and deleted.</p>
         <p>Iterate over links, with optional filters.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">client</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA1&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">):</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">client</span><span class="o">.</span><span class="n">links</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;INVA9999999&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">):</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="n">link</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">link</span><span class="o">.</span><span class="n">child</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -5728,7 +5728,7 @@ both parent and child records for the given ID are returned.</p>
             <td>
               <div class="doc-md-description">
                 <p>The ID of the entity to fetch links for. Must include the full entity
-prefix (e.g. <code>"INVA1"</code>).</p>
+prefix (e.g. <code>"INVA9999999"</code>).</p>
               </div>
             </td>
             <td>
@@ -5863,7 +5863,7 @@ prefix (e.g. <code>"INVA1"</code>).</p>
 </span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>
 </span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        for link in client.links.get_all(id=&quot;INVA1&quot;, type=&quot;all&quot;):</span>
+</span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        for link in client.links.get_all(id=&quot;INVA9999999&quot;, type=&quot;all&quot;):</span>
 </span><span id="__span-0-121"><a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">            print(link.category, link.parent.id, link.child.id)</span>
 </span><span id="__span-0-122"><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        ```</span>
 </span><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123"></a>
@@ -5879,7 +5879,7 @@ prefix (e.g. <code>"INVA1"</code>).</p>
 </span><span id="__span-0-133"><a id="__codelineno-0-133" name="__codelineno-0-133"></a><span class="sd">        [`LinkCategory`][albert.resources.links.LinkCategory].</span>
 </span><span id="__span-0-134"><a id="__codelineno-0-134" name="__codelineno-0-134"></a><span class="sd">    id : str, optional</span>
 </span><span id="__span-0-135"><a id="__codelineno-0-135" name="__codelineno-0-135"></a><span class="sd">        The ID of the entity to fetch links for. Must include the full entity</span>
-</span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">        prefix (e.g. ``&quot;INVA1&quot;``).</span>
+</span><span id="__span-0-136"><a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="sd">        prefix (e.g. ``&quot;INVA9999999&quot;``).</span>
 </span><span id="__span-0-137"><a id="__codelineno-0-137" name="__codelineno-0-137"></a><span class="sd">    start_key : str, optional</span>
 </span><span id="__span-0-138"><a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">        The pagination key to start from.</span>
 </span><span id="__span-0-139"><a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">    max_items : int, optional</span>

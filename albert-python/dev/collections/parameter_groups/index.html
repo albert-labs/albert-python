@@ -5366,7 +5366,7 @@ a group's <code>metadata</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="p">()</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG1&quot;</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">pg</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pg</span><span class="o">.</span><span class="n">type</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
@@ -5620,7 +5620,7 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
 <a class="autorefs autorefs-internal" href="#albert.collections.parameter_groups.ParameterGroupCollection.get_by_name"><code>get_by_name</code></a>.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">pg</span><span class="o">.</span><span class="n">name</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># &#39;Mixing Step&#39;</span>
 </span></code></pre></div>
@@ -5647,7 +5647,7 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The Parameter Group ID (format <code>PRG...</code>, e.g. <code>"PRG1"</code>).</p>
+                <p>The Parameter Group ID (format <code>PRG...</code>, e.g. <code>"PRG9999999"</code>).</p>
               </div>
             </td>
             <td>
@@ -5720,7 +5720,7 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
 </span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117"></a>
 </span><span id="__span-0-118"><a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-119"><a id="__codelineno-0-119" name="__codelineno-0-119"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        pg = client.parameter_groups.get_by_id(id=&quot;PRG1&quot;)</span>
+</span><span id="__span-0-120"><a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        pg = client.parameter_groups.get_by_id(id=&quot;PRG9999999&quot;)</span>
 </span><span id="__span-0-121"><a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        pg.name</span>
 </span><span id="__span-0-122"><a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        # &#39;Mixing Step&#39;</span>
 </span><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">        ```</span>
@@ -5728,7 +5728,7 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
 </span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">    Parameters</span>
 </span><span id="__span-0-126"><a id="__codelineno-0-126" name="__codelineno-0-126"></a><span class="sd">    ----------</span>
 </span><span id="__span-0-127"><a id="__codelineno-0-127" name="__codelineno-0-127"></a><span class="sd">    id : ParameterGroupId</span>
-</span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">        The Parameter Group ID (format ``PRG...``, e.g. ``&quot;PRG1&quot;``).</span>
+</span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128"></a><span class="sd">        The Parameter Group ID (format ``PRG...``, e.g. ``&quot;PRG9999999&quot;``).</span>
 </span><span id="__span-0-129"><a id="__codelineno-0-129" name="__codelineno-0-129"></a>
 </span><span id="__span-0-130"><a id="__codelineno-0-130" name="__codelineno-0-130"></a><span class="sd">    Returns</span>
 </span><span id="__span-0-131"><a id="__codelineno-0-131" name="__codelineno-0-131"></a><span class="sd">    -------</span>
@@ -5764,7 +5764,7 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
 lists are supported. Groups not found are omitted from the result.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">groups</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PRG1&quot;</span><span class="p">,</span> <span class="s2">&quot;PRG2&quot;</span><span class="p">])</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">groups</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;PRG9999999&quot;</span><span class="p">,</span> <span class="s2">&quot;PRG2&quot;</span><span class="p">])</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">[</span><span class="n">g</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">]</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># [&#39;Mixing Step&#39;, &#39;Cure Schedule&#39;]</span>
 </span></code></pre></div>
@@ -5868,7 +5868,7 @@ input.</p>
 </span><span id="__span-0-145"><a id="__codelineno-0-145" name="__codelineno-0-145"></a>
 </span><span id="__span-0-146"><a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-147"><a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        groups = client.parameter_groups.get_by_ids(ids=[&quot;PRG1&quot;, &quot;PRG2&quot;])</span>
+</span><span id="__span-0-148"><a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        groups = client.parameter_groups.get_by_ids(ids=[&quot;PRG9999999&quot;, &quot;PRG2&quot;])</span>
 </span><span id="__span-0-149"><a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        [g.name for g in groups]</span>
 </span><span id="__span-0-150"><a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        # [&#39;Mixing Step&#39;, &#39;Cure Schedule&#39;]</span>
 </span><span id="__span-0-151"><a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        ```</span>
@@ -7061,7 +7061,7 @@ the underlying search paginator.</p>
 <p>This permanently removes the parameter group.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG9999999&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 
@@ -7151,7 +7151,7 @@ the underlying search paginator.</p>
 </span><span id="__span-0-411"><a id="__codelineno-0-411" name="__codelineno-0-411"></a>
 </span><span id="__span-0-412"><a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        client.parameter_groups.delete(id=&quot;PRG1&quot;)</span>
+</span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        client.parameter_groups.delete(id=&quot;PRG9999999&quot;)</span>
 </span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        ```</span>
 </span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>
 </span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    Parameters</span>
@@ -7202,11 +7202,11 @@ list of <a class="autorefs autorefs-internal" href="../../resources/parameter_gr
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">ParameterGroup</span><span class="p">(</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Mixing Step&quot;</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="nb">type</span><span class="o">=</span><span class="n">PGType</span><span class="o">.</span><span class="n">BATCH</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">ParameterValue</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRM1&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;500&quot;</span><span class="p">)],</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">ParameterValue</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRM9999999&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;500&quot;</span><span class="p">)],</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">)</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">created</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">parameter_group</span><span class="o">=</span><span class="n">pg</span><span class="p">)</span>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="n">created</span><span class="o">.</span><span class="n">id</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># &#39;PRG1&#39;</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># &#39;PRG9999999&#39;</span>
 </span></code></pre></div>
 </div>
 
@@ -7327,11 +7327,11 @@ list of <a class="autorefs autorefs-internal" href="../../resources/parameter_gr
 </span><span id="__span-0-445"><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="sd">        pg = ParameterGroup(</span>
 </span><span id="__span-0-446"><a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">            name=&quot;Mixing Step&quot;,</span>
 </span><span id="__span-0-447"><a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">            type=PGType.BATCH,</span>
-</span><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">            parameters=[ParameterValue(id=&quot;PRM1&quot;, value=&quot;500&quot;)],</span>
+</span><span id="__span-0-448"><a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">            parameters=[ParameterValue(id=&quot;PRM9999999&quot;, value=&quot;500&quot;)],</span>
 </span><span id="__span-0-449"><a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">        )</span>
 </span><span id="__span-0-450"><a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">        created = client.parameter_groups.create(parameter_group=pg)</span>
 </span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">        created.id</span>
-</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">        # &#39;PRG1&#39;</span>
+</span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">        # &#39;PRG9999999&#39;</span>
 </span><span id="__span-0-453"><a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        ```</span>
 </span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>
 </span><span id="__span-0-455"><a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">    Parameters</span>
@@ -7376,7 +7376,7 @@ exactly (case-insensitive). Returns None when no exact match is found.</p>
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_name</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;Mixing Step&quot;</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">pg</span><span class="o">.</span><span class="n">id</span> <span class="k">if</span> <span class="n">pg</span> <span class="k">else</span> <span class="s2">&quot;no match&quot;</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># &#39;PRG1&#39;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># &#39;PRG9999999&#39;</span>
 </span></code></pre></div>
 </div>
 
@@ -7474,7 +7474,7 @@ exactly (case-insensitive). Returns None when no exact match is found.</p>
 </span><span id="__span-0-479"><a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">        ```python</span>
 </span><span id="__span-0-480"><a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">        pg = client.parameter_groups.get_by_name(name=&quot;Mixing Step&quot;)</span>
 </span><span id="__span-0-481"><a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">        pg.id if pg else &quot;no match&quot;</span>
-</span><span id="__span-0-482"><a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">        # &#39;PRG1&#39;</span>
+</span><span id="__span-0-482"><a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">        # &#39;PRG9999999&#39;</span>
 </span><span id="__span-0-483"><a id="__codelineno-0-483" name="__codelineno-0-483"></a><span class="sd">        ```</span>
 </span><span id="__span-0-484"><a id="__codelineno-0-484" name="__codelineno-0-484"></a>
 </span><span id="__span-0-485"><a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">    Parameters</span>
@@ -7521,7 +7521,7 @@ parameters on the group. Only the fields listed in Notes are applied;
 changes to other fields are ignored.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG1&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pg</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&quot;PRG9999999&quot;</span><span class="p">)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">pg</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Updated description&quot;</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">updated</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">parameter_groups</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parameter_group</span><span class="o">=</span><span class="n">pg</span><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">updated</span><span class="o">.</span><span class="n">description</span>
@@ -7680,7 +7680,7 @@ changes to other fields are ignored.</p>
 </span><span id="__span-0-509"><a id="__codelineno-0-509" name="__codelineno-0-509"></a>
 </span><span id="__span-0-510"><a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-511"><a id="__codelineno-0-511" name="__codelineno-0-511"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-512"><a id="__codelineno-0-512" name="__codelineno-0-512"></a><span class="sd">        pg = client.parameter_groups.get_by_id(id=&quot;PRG1&quot;)</span>
+</span><span id="__span-0-512"><a id="__codelineno-0-512" name="__codelineno-0-512"></a><span class="sd">        pg = client.parameter_groups.get_by_id(id=&quot;PRG9999999&quot;)</span>
 </span><span id="__span-0-513"><a id="__codelineno-0-513" name="__codelineno-0-513"></a><span class="sd">        pg.description = &quot;Updated description&quot;</span>
 </span><span id="__span-0-514"><a id="__codelineno-0-514" name="__codelineno-0-514"></a><span class="sd">        updated = client.parameter_groups.update(parameter_group=pg)</span>
 </span><span id="__span-0-515"><a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="sd">        updated.description</span>
