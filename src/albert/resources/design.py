@@ -17,6 +17,7 @@ class DesignMethod(StrEnum):
     """The kind of inverse-design run to create."""
 
     GENERATE = "generate"
+    SPACE_FILLING = "space_filling"
 
 
 class DesignRunViolationCode(StrEnum):
@@ -56,6 +57,34 @@ class DesignRunValidationResponse(BaseAlbertModel):
 
     violations: list[DesignRunViolation] = Field(default_factory=list)
     """Structured failures when ``valid`` is ``False``."""
+
+    target_sample_counts: dict[str, int] | None = Field(default=None, alias="targetSampleCounts")
+    """Non-null measurement count per performance target in the dataset scope."""
+
+    in_scope_row_count: int | None = Field(default=None, alias="inScopeRowCount")
+    """Rows available for diversity anchoring within the dataset scope."""
+
+
+class SpaceFillingRunSettings(BaseAlbertModel):
+    """Optional sizing for a space-filling design run.
+
+    All fields are optional; omit a field (or pass ``None``) to use the platform
+    default for that knob.
+    """
+
+    num_proposals: int | None = Field(default=None, alias="numProposals", ge=1, le=100)
+    """Number of space-filling proposals to generate."""
+
+    num_samples_per_dimension: int | None = Field(
+        default=None, alias="numSamplesPerDimension", ge=1
+    )
+    """Samples per design-space dimension."""
+
+    max_num_polytopes: int | None = Field(default=None, alias="maxNumPolytopes", ge=1)
+    """Maximum polytopes for space-filling sampling."""
+
+    max_num_samples: int | None = Field(default=None, alias="maxNumSamples", ge=1)
+    """Maximum samples for space-filling sampling."""
 
 
 class DesignRunSettings(BaseAlbertModel):
