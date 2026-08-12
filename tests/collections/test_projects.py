@@ -5,6 +5,7 @@ import pytest
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
+from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.attachments import Attachment
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 from tests.utils.wait import poll_until
@@ -126,6 +127,69 @@ def test_update_project(seeded_locations, client: Albert, seed_prefix: str):
     finally:
         with suppress(NotFoundError):
             client.projects.delete(id=project.id)
+
+
+def test_update_project_acl(
+    client: Albert,
+    seeded_locations,
+    seed_prefix: str,
+):
+    """Test updating a project's ACL via update()."""
+    team = client.teams.create(name=f"{seed_prefix} - project ACL team")
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - ACL update project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            acl=[ACL(id=team.id, fgc=AccessControlLevel.PROJECT_VIEWER)],
+        )
+    )
+    try:
+        fetched = client.projects.get_by_id(id=project.id)
+        updated_acl = [
+            ACL(
+                id=entry.id,
+                fgc=(
+                    AccessControlLevel.PROJECT_STRICT_VIEWER if entry.id == team.id else entry.fgc
+                ),
+            )
+            for entry in fetched.acl or []
+        ]
+        updated = client.projects.update(project=fetched.model_copy(update={"acl": updated_acl}))
+        entry = next(entry for entry in updated.acl or [] if entry.id == team.id)
+        assert entry.fgc == AccessControlLevel.PROJECT_STRICT_VIEWER
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        with suppress(NotFoundError):
+            client.teams.delete(id=team.id)
+
+
+def test_update_project_acl_in_place(
+    client: Albert,
+    seeded_locations,
+    seed_prefix: str,
+):
+    """Test in-place ACL edits trigger update without reassigning acl."""
+    team = client.teams.create(name=f"{seed_prefix} - in-place ACL team")
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - in-place ACL project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            acl=[ACL(id=team.id, fgc=AccessControlLevel.PROJECT_VIEWER)],
+        )
+    )
+    try:
+        fetched = client.projects.get_by_id(id=project.id)
+        team_entry = next(entry for entry in fetched.acl or [] if entry.id == team.id)
+        team_entry.fgc = AccessControlLevel.PROJECT_STRICT_VIEWER
+        updated = client.projects.update(project=fetched)
+        entry = next(entry for entry in updated.acl or [] if entry.id == team.id)
+        assert entry.fgc == AccessControlLevel.PROJECT_STRICT_VIEWER
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        with suppress(NotFoundError):
+            client.teams.delete(id=team.id)
 
 
 def test_delete_project(client: Albert, seeded_locations):

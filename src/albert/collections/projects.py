@@ -11,6 +11,7 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
+from albert.resources.acls import ACL
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
@@ -174,15 +175,85 @@ class ProjectCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
-        ``metadata``, ``state``.
+        ``metadata``, ``state``, ``acl``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
         url = f"{self.base_path}/{project.id}"
+        patch_payload = patch_data.model_dump(mode="json", by_alias=True)
 
-        self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
+        acl_operations: list[dict[str, Any]] = []
+        if "acl" in project.model_fields_set:
+            acl_operations = self._generate_acl_patch_operations(
+                existing=existing_project.acl,
+                updated=project.acl,
+            )
+
+        if patch_payload["data"]:
+            self.session.patch(url, json=patch_payload)
+
+        if acl_operations:
+            self.session.patch(f"{url}/acl", json={"data": acl_operations})
+
+        if not patch_payload["data"] and not acl_operations:
+            return existing_project
 
         return self.get_by_id(id=project.id)
+
+    def _generate_acl_patch_operations(
+        self,
+        *,
+        existing: list[ACL] | None,
+        updated: list[ACL] | None,
+    ) -> list[dict[str, Any]]:
+        """Build PATCH operations for project ACL changes."""
+        existing_entries = existing or []
+        updated_entries = updated or []
+        existing_ids = [entry.id for entry in existing_entries]
+        updated_ids = [entry.id for entry in updated_entries]
+        to_add = set(updated_ids) - set(existing_ids)
+        to_delete = set(existing_ids) - set(updated_ids)
+        to_update = set(existing_ids).intersection(updated_ids)
+
+        operations: list[dict[str, Any]] = []
+
+        if to_add:
+            operations.append(
+                {
+                    "attribute": "ACL",
+                    "operation": "add",
+                    "newValue": [
+                        entry.model_dump(by_alias=True, exclude_none=True)
+                        for entry in updated_entries
+                        if entry.id in to_add
+                    ],
+                }
+            )
+
+        if to_delete:
+            operations.append(
+                {
+                    "attribute": "ACL",
+                    "operation": "delete",
+                    "oldValue": [{"id": entry_id} for entry_id in to_delete],
+                }
+            )
+
+        for entry_id in to_update:
+            existing_fgc = next(entry.fgc for entry in existing_entries if entry.id == entry_id)
+            updated_fgc = next(entry.fgc for entry in updated_entries if entry.id == entry_id)
+            if existing_fgc != updated_fgc:
+                operations.append(
+                    {
+                        "attribute": "fgc",
+                        "id": entry_id,
+                        "operation": "update",
+                        "oldValue": existing_fgc.value if existing_fgc is not None else None,
+                        "newValue": updated_fgc.value if updated_fgc is not None else None,
+                    }
+                )
+
+        return operations
 
     @validate_call
     def delete(self, *, id: ProjectId) -> None:
