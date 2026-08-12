@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.43.1](https://github.com/albert-labs/albert-python/compare/v1.43.0...v1.43.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* agent-safety docstring + search-model tolerance fixes from alpha feedback RCA ([#666](https://github.com/albert-labs/albert-python/issues/666)) ([56f83af](https://github.com/albert-labs/albert-python/commit/56f83afb4a9226235cb90b2d89c4452799a17517))
+
 ## [1.43.0](https://github.com/albert-labs/albert-python/compare/v1.42.0...v1.43.0) (2026-08-12)
 
 
