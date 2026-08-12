@@ -31,13 +31,17 @@ class State(str, Enum):
     """The lifecycle state of a project.
 
     The set of allowed states is customizable per tenant via the entity-status
-    API; these are the platform defaults.
+    API; these are the platform defaults. Unknown tenant-specific values are
+    tolerated as plain strings on [`Project.state`][albert.resources.projects.Project.state].
     """
 
     NOT_STARTED = "Not Started"
     ACTIVE = "Active"
     CLOSED_SUCCESS = "Closed - Success"
     CLOSED_ARCHIVED = "Closed - Archived"
+    # Additional tenant-defined values observed in the wild:
+    JUST_STARTED = "Just Started"
+    IN_PROGRESS = "In Progress"
 
 
 class TaskConfig(BaseAlbertModel):
@@ -138,8 +142,8 @@ class Project(BaseSessionResource):
     """Read-only status string returned by Albert."""
 
     # Cannot be sent in a create POST, but can be referenced from a PATCH for update.
-    state: State | None = Field(default=None, exclude=True)
-    """The project's lifecycle state. Read only on create; can be changed via [`update`][albert.collections.projects.ProjectCollection.update]."""
+    state: State | str | None = Field(default=None, exclude=True, union_mode="left_to_right")
+    """The project's lifecycle state. Read only on create; can be changed via [`update`][albert.collections.projects.ProjectCollection.update]. Tenant-customized states outside [`State`][albert.resources.projects.State] parse as plain strings."""
 
     _smart: list[SmartProject] | None = PrivateAttr(default=None)
 

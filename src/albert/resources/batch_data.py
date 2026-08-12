@@ -54,7 +54,7 @@ class BatchValueId(BaseAlbertModel):
         ```python
         from albert.resources.batch_data import BatchValueId
 
-        location = BatchValueId(row_id="ROW1", col_id="COL1")
+        location = BatchValueId(row_id="ROW1", col_id="COL9999999")
         ```"""
 
     col_id: str | None = Field(default=None, alias="colId")
@@ -80,7 +80,7 @@ class BatchValuePatchPayload(BaseAlbertModel):
         )
 
         patch = BatchValuePatchPayload(
-            id=BatchValueId(row_id="ROW1", col_id="COL1"),
+            id=BatchValueId(row_id="ROW1", col_id="COL9999999"),
             data=[BatchValuePatchDatum(operation="update", new_value="LOT123")],
         )
         ```"""

@@ -22,7 +22,7 @@ class UnitCollection(BaseCollection):
     optional list of synonyms (alternate spellings), and a category
     ([`UnitCategory`][albert.resources.units.UnitCategory], e.g. ``Mass`` or ``Volume``).
 
-    Units are referenced by their Unit ID (format ``UNI...``, e.g. ``"UNI1"``).
+    Units are referenced by their Unit ID (format ``UNI...``, e.g. ``"UNI9999999"``).
 
     This collection is accessed as ``client.units``.
 
@@ -30,7 +30,7 @@ class UnitCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        unit = client.units.get_by_id(id="UNI1")
+        unit = client.units.get_by_id(id="UNI9999999")
         print(unit.name, unit.symbol, unit.category)
         ```
 
@@ -146,7 +146,7 @@ class UnitCollection(BaseCollection):
 
         !!! example
             ```python
-            unit = client.units.get_by_id(id="UNI1")
+            unit = client.units.get_by_id(id="UNI9999999")
             ```
 
         Parameters
@@ -172,7 +172,7 @@ class UnitCollection(BaseCollection):
 
         !!! example
             ```python
-            units = client.units.get_by_ids(ids=["UNI1", "UNI2"])
+            units = client.units.get_by_ids(ids=["UNI9999999", "UNI2"])
             ```
 
         Parameters
@@ -202,7 +202,7 @@ class UnitCollection(BaseCollection):
 
         !!! example
             ```python
-            unit = client.units.get_by_id(id="UNI1")
+            unit = client.units.get_by_id(id="UNI9999999")
             unit.symbol = "g"
             unit.synonyms = ["gram", "grams"]
             updated = client.units.update(unit=unit)
@@ -270,7 +270,7 @@ class UnitCollection(BaseCollection):
 
         !!! example
             ```python
-            client.units.delete(id="UNI1")
+            client.units.delete(id="UNI9999999")
             ```
 
         Parameters

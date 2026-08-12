@@ -36,7 +36,7 @@ class FileCollection(BaseCollection):
         with open("results.csv", "rb") as fh:
             client.files.sign_and_upload_file(
                 data=fh,
-                name="INVA1/results.csv",
+                name="INVA9999999/results.csv",
                 namespace=FileNamespace.RESULT,
                 content_type="text/csv",
             )
@@ -90,7 +90,7 @@ class FileCollection(BaseCollection):
             ```python
             from albert.resources.files import FileNamespace
             info = client.files.get_by_name(
-                name="INVA1/results.csv", namespace=FileNamespace.RESULT
+                name="INVA9999999/results.csv", namespace=FileNamespace.RESULT
             )
             info.size
             # 2048
@@ -135,7 +135,7 @@ class FileCollection(BaseCollection):
             ```python
             from albert.resources.files import FileNamespace
             url = client.files.get_signed_download_url(
-                name="INVA1/results.csv", namespace=FileNamespace.RESULT
+                name="INVA9999999/results.csv", namespace=FileNamespace.RESULT
             )
             ```
 
@@ -191,7 +191,7 @@ class FileCollection(BaseCollection):
             ```python
             from albert.resources.files import FileNamespace
             url = client.files.get_signed_upload_url(
-                name="INVA1/results.csv",
+                name="INVA9999999/results.csv",
                 namespace=FileNamespace.RESULT,
                 content_type="text/csv",
             )
@@ -259,7 +259,7 @@ class FileCollection(BaseCollection):
             with open("results.csv", "rb") as fh:
                 client.files.sign_and_upload_file(
                     data=fh,
-                    name="INVA1/results.csv",
+                    name="INVA9999999/results.csv",
                     namespace=FileNamespace.RESULT,
                     content_type="text/csv",
                 )

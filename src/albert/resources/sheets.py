@@ -114,6 +114,8 @@ class DesignType(str, Enum):
     PRODUCTS = "products"
     RESULTS = "results"
     PROCESS = "process"
+    # Additional legacy/tenant values observed in the wild:
+    REAGENTS = "reagents"
 
 
 class ColumnPosition(str, Enum):
@@ -157,7 +159,16 @@ class Cell(BaseResource):
     """The display name of the row this cell is in."""
 
     value: str | dict | list = ""
-    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value."""
+    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value.
+
+    For **special parameters** in the Process Design grid (parameters whose value
+    references an inventory item: equipment, consumables, raw materials), the
+    linked-cell form is the lookup string ``"<DisplayID> || <ItemName>"`` (double
+    pipe with spaces, INV prefix stripped), e.g. ``"B90948 || Copper Coupon"``.
+    Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked
+    plain text, so the UI shows the raw id instead of the linked item. On reads,
+    a linked cell's value is a dict of the form ``{"id": "INVB90948", "name":
+    "B90948 || Copper Coupon"}``."""
 
     min_value: str | None = Field(default=None, alias="minValue")
     """The minimum allowed value for inventory cells. Optional."""
@@ -211,7 +222,7 @@ class Component(BaseResource):
     !!! example
         ```python
         from albert.resources.sheets import Component
-        component = Component(inventory_id="INV1", amount=42.0)
+        component = Component(inventory_id="INVA9999999", amount=42.0)
         ```"""
 
     inventory_item: InventoryItem | None = Field(default=None)
@@ -301,8 +312,8 @@ class Design(BaseSessionResource):
     id: str = Field(alias="albertId")
     """The Albert ID of the design."""
 
-    design_type: DesignType = Field(alias="designType")
-    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]."""
+    design_type: DesignType | str = Field(alias="designType", union_mode="left_to_right")
+    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]. Unknown legacy/tenant values parse as plain strings."""
 
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
     _rows: list[Row] | None = PrivateAttr(default=None)
@@ -495,7 +506,12 @@ class Design(BaseSessionResource):
         if self.design_type == DesignType.PROCESS:
             endpoint = f"/api/v3/designs/{self.id}/grid"
         else:
-            endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
+            design_type = (
+                self.design_type.value
+                if isinstance(self.design_type, DesignType)
+                else str(self.design_type)
+            )
+            endpoint = f"/api/v3/worksheet/{self.id}/{design_type}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -666,7 +682,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ```python
         from albert import Albert
         client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
         sheet = worksheet.sheets[0]
         print(sheet.grid)
         ```
@@ -943,13 +959,13 @@ class Sheet(BaseSessionResource):  # noqa:F811
             from albert import Albert
             from albert.resources.sheets import Component
             client = Albert()
-            worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+            worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
             sheet = worksheet.sheets[0]
             column = sheet.add_formulation(
                 formulation_name="Formulation A",
                 components=[
-                    Component(inventory_id="INV1", amount=80.0),
-                    Component(inventory_id="INV2", amount=20.0),
+                    Component(inventory_id="INVA9999999", amount=80.0),
+                    Component(inventory_id="INVA9999998", amount=20.0),
                 ],
             )
             ```
@@ -1105,7 +1121,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             from albert.resources.sheets import Component
             column = sheet.add_components_to_formulation(
                 formulation_name="Formulation A",
-                components=[Component(inventory_id="INV3", amount=5.0)],
+                components=[Component(inventory_id="INVA9999997", amount=5.0)],
             )
             ```
 
@@ -1371,7 +1387,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            row = sheet.add_inventory_row(inventory_id="INV1")
+            row = sheet.add_inventory_row(inventory_id="INVA9999999")
             ```
 
         Parameters
@@ -1561,7 +1577,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            row = sheet.add_parameter_group_row(parameter_group_id="PRG1")
+            row = sheet.add_parameter_group_row(parameter_group_id="PRG9999999")
             ```
 
         Parameters
@@ -2122,7 +2138,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.pin_columns(col_ids=["COL1", "COL2"], side="left")
+            sheet.pin_columns(col_ids=["COL9999999", "COL2"], side="left")
             ```
 
         Parameters
@@ -2155,7 +2171,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.unpin_columns(col_ids=["COL1", "COL2"])
+            sheet.unpin_columns(col_ids=["COL9999999", "COL2"])
             ```
 
         Parameters
@@ -2186,7 +2202,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            sheet.set_columns_width(col_ids=["COL1"], width="200px")
+            sheet.set_columns_width(col_ids=["COL9999999"], width="200px")
             ```
 
         Parameters
@@ -2527,7 +2543,12 @@ class Column(BaseSessionResource):  # noqa:F811
         return f"{self.column_id}#{self.name}"
 
     @property
-    def cells(self) -> list[Cell]:
+    def cells(self) -> pd.Series:
+        """This column's cells as a pandas Series keyed by row id.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid[self.df_name]
 
     def rename(self, new_name):
@@ -2662,7 +2683,12 @@ class Row(BaseSessionResource):  # noqa:F811
         return bool(self.child_row_ids)
 
     @property
-    def cells(self) -> list[Cell]:
+    def cells(self) -> pd.Series:
+        """This row's cells as a pandas Series keyed by column df-name.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid.loc[self.row_unique_id]
 
     def recolor_cells(self, color: CellColor):

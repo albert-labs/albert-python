@@ -50,7 +50,7 @@ class LotCollection(BaseCollection):
         from albert import Albert
         client = Albert()
         # Look up all lots of a given inventory item
-        lots = client.lots.get_all(parent_id="INVA1")
+        lots = client.lots.get_all(parent_id="INVA9999999")
         for lot in lots:
             print(lot.id, lot.inventory_on_hand)
         ```
@@ -128,8 +128,8 @@ class LotCollection(BaseCollection):
             from albert.resources.lots import Lot
             client = Albert()
             new_lot = Lot(
-                inventory_id="INVA1",
-                storage_location=EntityLink(id="STLA1"),
+                inventory_id="INVA9999999",
+                storage_location=EntityLink(id="STL9999999"),
                 initial_quantity=10.0,
                 inventory_on_hand=10.0,
                 cost=50.0,
@@ -315,7 +315,7 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # Find lots of a given inventory item that are running low
-            for lot in client.lots.search(inventory_id="INVA1", max_items=50):
+            for lot in client.lots.search(inventory_id="INVA9999999", max_items=50):
                 print(lot.id, lot.parent_name)
             ```
 
@@ -419,7 +419,7 @@ class LotCollection(BaseCollection):
             # List only lots of an item that still have stock
             from albert.resources.lots import InventoryOnHandFilter
             for lot in client.lots.get_all(
-                parent_id="INVA1", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
+                parent_id="INVA9999999", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
             ):
                 print(lot.id, lot.inventory_on_hand)
             ```

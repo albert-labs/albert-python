@@ -52,7 +52,7 @@ class InventoryCollection(BaseCollection):
       not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
-    (format ``INV...``, e.g. ``"INVA1"``). They are the building blocks that
+    (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
     Worksheets, Tasks, and Property Data all point back to.
 
     This collection is accessed as ``client.inventory``.
@@ -152,7 +152,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
+            client.inventory.merge(parent_id="INVA9999999", child_id=["INVA9999998", "INVA9999997"])
             ```
 
         Parameters
@@ -233,7 +233,7 @@ class InventoryCollection(BaseCollection):
             ```python
             existing = client.inventory.get_match_or_none(inventory_item=candidate)
             existing.id if existing else "no match"
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -298,7 +298,7 @@ class InventoryCollection(BaseCollection):
             )
             created = client.inventory.create(inventory_item=item)
             created.id
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -367,7 +367,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            item = client.inventory.get_by_id(id="INVA1")
+            item = client.inventory.get_by_id(id="INVA9999999")
             item.name
             # 'Titanium Dioxide'
             ```
@@ -375,7 +375,7 @@ class InventoryCollection(BaseCollection):
         Parameters
         ----------
         id : InventoryId
-            The Inventory ID (format ``INV...``, e.g. ``"INVA1"``).
+            The Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``).
 
         Returns
         -------
@@ -395,7 +395,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
+            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])
             [i.name for i in items]
             # ['Titanium Dioxide', 'Acetone']
             ```
@@ -432,7 +432,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            spec_lists = client.inventory.get_specs(ids=["INVA1"])
+            spec_lists = client.inventory.get_specs(ids=["INVA9999999"])
             spec_lists[0].specs
             # [...]
             ```
@@ -475,15 +475,24 @@ class InventoryCollection(BaseCollection):
         experimentally measured results. A spec can optionally carry the
         conditions under which it holds, expressed via a workflow.
 
+        !!! warning
+            This call replaces the item's complete spec set; it is not an
+            append. Always pass every spec the item should carry in one call: a
+            follow-up call with a subset can drop previously attached specs. A
+            ``500 Duplicate reference name`` error means spec rows with those
+            names already exist on the item (even when ``get_specs`` shows
+            none); do not blindly retry, call ``get_specs`` first and
+            reconcile.
+
         !!! example
             ```python
             from albert.resources.inventory import InventorySpec, InventorySpecValue
             spec = InventorySpec(
                 name="Density",
-                data_column_id="DAC1",
+                data_column_id="DAC9999999",
                 value=InventorySpecValue(min="1.1", max="1.3"),
             )
-            client.inventory.add_specs(inventory_id="INVA1", specs=spec)
+            client.inventory.add_specs(inventory_id="INVA9999999", specs=spec)
             ```
 
         Parameters
@@ -516,7 +525,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            client.inventory.delete(id="INVA1")
+            client.inventory.delete(id="INVA9999999")
             ```
 
         Parameters
@@ -1301,7 +1310,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            item = client.inventory.get_by_id(id="INVA1")
+            item = client.inventory.get_by_id(id="INVA9999999")
             item.description = "Updated description"
             updated = client.inventory.update(inventory_item=item)
             updated.description

@@ -26,7 +26,7 @@ class LinksCollection(BaseCollection):
         from albert import Albert
         from albert.resources.links import LinkCategory
         client = Albert()
-        links = client.links.get_all(id="INVA1", type="all", category=LinkCategory.MENTION)
+        links = client.links.get_all(id="INVA9999999", type="all", category=LinkCategory.MENTION)
         for link in links:
             print(link.parent.id, "->", link.child.id)
         ```
@@ -77,8 +77,8 @@ class LinksCollection(BaseCollection):
             created = client.links.create(
                 links=[
                     Link(
-                        parent=EntityLink(id="INVA1"),
-                        child=EntityLink(id="INVA2"),
+                        parent=EntityLink(id="INVA9999999"),
+                        child=EntityLink(id="INVA9999998"),
                         category=LinkCategory.LINKED_INVENTORY,
                     )
                 ]
@@ -117,7 +117,7 @@ class LinksCollection(BaseCollection):
 
         !!! example
             ```python
-            for link in client.links.get_all(id="INVA1", type="all"):
+            for link in client.links.get_all(id="INVA9999999", type="all"):
                 print(link.category, link.parent.id, link.child.id)
             ```
 
@@ -133,7 +133,7 @@ class LinksCollection(BaseCollection):
             [`LinkCategory`][albert.resources.links.LinkCategory].
         id : str, optional
             The ID of the entity to fetch links for. Must include the full entity
-            prefix (e.g. ``"INVA1"``).
+            prefix (e.g. ``"INVA9999999"``).
         start_key : str, optional
             The pagination key to start from.
         max_items : int, optional

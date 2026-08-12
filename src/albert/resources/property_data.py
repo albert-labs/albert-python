@@ -555,7 +555,7 @@ class InventoryDataColumn(BaseAlbertModel):
         ```python
         from albert.resources.property_data import InventoryDataColumn
 
-        prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
+        prop = InventoryDataColumn(data_column_id="DAC9999999", value="1.2")
         ```"""
 
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
@@ -589,7 +589,7 @@ class TaskPropertyCreate(BaseResource):
 
         # Derive the data column and template from the existing block
         block = client.property_data.get_task_block_properties(
-            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+            inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
         )
         column = block.data[0].trials[0].data_columns[0]
         new_value = TaskPropertyCreate(
@@ -789,8 +789,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     inventory_id: InventoryId = Field(..., alias="inventoryId")
     """The inventory item the result applies to (format ``INV...``). Serialized as ``inventoryId``."""
 
-    project_id: ProjectId = Field(..., alias="projectId")
-    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``."""
+    project_id: ProjectId | None = Field(default=None, alias="projectId")
+    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``. ``None`` for records with no project association (tenant-global data)."""
 
     workflow_id: WorkflowId = Field(..., alias="workflowId")
     """The workflow (format ``WFL...``). Serialized as ``workflowId``."""
