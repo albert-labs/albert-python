@@ -61,9 +61,6 @@ class DesignRunValidationResponse(BaseAlbertModel):
     target_sample_counts: dict[str, int] | None = Field(default=None, alias="targetSampleCounts")
     """Non-null measurement count per performance target in the dataset scope."""
 
-    in_scope_row_count: int | None = Field(default=None, alias="inScopeRowCount")
-    """Rows available for diversity anchoring within the dataset scope."""
-
 
 class SpaceFillingRunSettings(BaseAlbertModel):
     """Optional sizing for a space-filling design run.

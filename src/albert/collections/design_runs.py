@@ -228,8 +228,8 @@ class DesignRunCollection(BaseCollection):
         Returns
         -------
         DesignRunValidationResponse
-            Preflight result with ``valid``, ``violations``, ``target_sample_counts``,
-            and ``in_scope_row_count`` when available.
+            Preflight result with ``valid``, ``violations``, and ``target_sample_counts``
+            when available.
 
         Raises
         ------
