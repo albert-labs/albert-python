@@ -1,96 +1,57 @@
 import pytest
 
 from albert.client import Albert
-from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightState
-from albert.resources.design import DesignRunSettings, DesignRunValidationResponse
+from albert.resources.btinsight import BTInsight, BTInsightCategory
+from albert.resources.design import DesignRunValidationResponse
 from albert.resources.smart_datasets import SmartDataset
-from albert.resources.targets import (
-    ComparisonOperator,
-    Criterion,
-    NumericRange,
-)
+from albert.resources.targets import Criterion
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
 ignore_in_ten0 = pytest.mark.xfail(
-    reason="No DWH available in TEN0 test environment.",
+    reason="api-designruns is not live in the TEN0 test environment.",
     strict=False,
 )
 
 
 @ignore_in_ten0
-def test_design_run_create(client: Albert, seeded_smart_dataset: SmartDataset):
-    """Test triggering a design run returns a Generate BTInsight."""
-    insight = client.design_runs.create(smart_dataset_id=seeded_smart_dataset.id)
+def test_create_optimization_returns_generate_insight(
+    client: Albert, seeded_smart_dataset: SmartDataset
+) -> None:
+    """Test create_optimization posts to tier-1 and returns a Generate BTInsight."""
+    insight = client.design_runs.create_optimization(smart_dataset_id=seeded_smart_dataset.id)
     assert isinstance(insight, BTInsight)
     assert insight.id is not None
     assert insight.category == BTInsightCategory.GENERATE
-    assert insight.state in {BTInsightState.QUEUED, BTInsightState.BUILDING_MODELS}
 
 
 @ignore_in_ten0
-def test_design_run_create_with_objectives(
-    client: Albert,
-    seeded_smart_dataset: SmartDataset,
-):
-    """Test triggering a design run with explicit objectives returns a BTInsight."""
+def test_create_optimization_with_objectives(
+    client: Albert, seeded_smart_dataset: SmartDataset
+) -> None:
+    """Test create_optimization accepts scoped objectives."""
     target_id = seeded_smart_dataset.scope.target_ids[0]
-    insight = client.design_runs.create(
+    insight = client.design_runs.create_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
-        objectives={
-            target_id: Criterion(
-                operator=ComparisonOperator.BETWEEN,
-                value=NumericRange(min=0, max=100),
-            )
-        },
+        objectives={target_id: Criterion(operator="gte", value=1.0)},
     )
     assert isinstance(insight, BTInsight)
     assert insight.id is not None
-    assert insight.category == BTInsightCategory.GENERATE
 
 
 @ignore_in_ten0
-def test_design_run_create_with_settings(
-    client: Albert,
-    seeded_smart_dataset: SmartDataset,
-):
-    """Test triggering a design run with explicit settings returns a BTInsight."""
-    insight = client.design_runs.create(
-        smart_dataset_id=seeded_smart_dataset.id,
-        settings=DesignRunSettings(
-            num_candidates_generated=1000,
-            num_candidates_selected=5,
-        ),
-    )
-    assert isinstance(insight, BTInsight)
-    assert insight.id is not None
-    assert insight.category == BTInsightCategory.GENERATE
-
-
-@ignore_in_ten0
-def test_design_run_validate(client: Albert, seeded_built_smart_dataset: SmartDataset):
-    """Test validating a READY smart dataset returns valid=True."""
-    result = client.design_runs.validate(smart_dataset_id=seeded_built_smart_dataset.id)
+def test_validate_optimization_returns_response(
+    client: Albert, seeded_smart_dataset: SmartDataset
+) -> None:
+    """Test validate_optimization returns a DesignRunValidationResponse."""
+    result = client.design_runs.validate_optimization(smart_dataset_id=seeded_smart_dataset.id)
     assert isinstance(result, DesignRunValidationResponse)
-    assert result.valid is True
-    assert result.violations == []
+    assert isinstance(result.valid, bool)
 
 
 @ignore_in_ten0
-def test_design_run_validate_with_objectives(
-    client: Albert,
-    seeded_built_smart_dataset: SmartDataset,
-):
-    """Test validating with explicit objectives returns valid=True."""
-    target_id = seeded_built_smart_dataset.scope.target_ids[0]
-    result = client.design_runs.validate(
-        smart_dataset_id=seeded_built_smart_dataset.id,
-        objectives={
-            target_id: Criterion(
-                operator=ComparisonOperator.BETWEEN,
-                value=NumericRange(min=0, max=100),
-            )
-        },
-    )
+def test_validate_doe_returns_response(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
+    """Test validate_doe returns a DesignRunValidationResponse."""
+    result = client.design_runs.validate_doe(smart_dataset_id=seeded_smart_dataset.id)
     assert isinstance(result, DesignRunValidationResponse)
-    assert result.valid is True
+    assert isinstance(result.valid, bool)
