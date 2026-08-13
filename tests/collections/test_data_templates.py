@@ -650,6 +650,45 @@ def test_add_parameters_enum_ids_populated(
         assert v.id is not None, f"Enum value '{v.text}' has no ID"
 
 
+def test_add_data_columns_default_number_validation(
+    client: Albert,
+    seeded_data_columns: list[DataColumn],
+    seed_prefix: str,
+):
+    """Test add_data_columns applies NUMBER validation when none is provided."""
+    data_column = client.data_columns.create(
+        data_column=DataColumn(name=f"{seed_prefix} - default validation column"),
+    )
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - default validation template",
+            data_column_values=[],
+        )
+    )
+    try:
+        updated_dt = client.data_templates.add_data_columns(
+            data_template_id=dt.id,
+            data_columns=[DataColumnValue(data_column_id=data_column.id)],
+        )
+        added_column = next(
+            col for col in updated_dt.data_column_values if col.data_column_id == data_column.id
+        )
+        assert added_column.validation
+        assert added_column.validation[0].datatype == DataType.NUMBER
+
+        fetched_dt = client.data_templates.get_by_id(id=dt.id)
+        fetched_column = next(
+            col for col in fetched_dt.data_column_values if col.data_column_id == data_column.id
+        )
+        assert fetched_column.validation
+        assert fetched_column.validation[0].datatype == DataType.NUMBER
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+        with suppress(NotFoundError):
+            client.data_columns.delete(id=data_column.id)
+
+
 def test_upload_and_attach_script_to_data_template(
     client: Albert,
     seeded_data_templates: list[DataTemplate],
