@@ -6,55 +6,13 @@ from albert.core.shared.identifiers import SmartDatasetId, TargetId
 from albert.resources.btinsight import BTInsight
 from albert.resources.chats import ChatSessionRef
 from albert.resources.design import (
-    DesignMethod,
     DesignRunValidationResponse,
+    DOEDesignRunRequest,
     DOERunSettings,
+    OptimizationDesignRunRequest,
     OptimizationRunSettings,
 )
 from albert.resources.targets import Criterion
-
-
-def _build_optimization_run_request(
-    *,
-    smart_dataset_id: SmartDatasetId,
-    objectives: dict[TargetId, Criterion] | None = None,
-    settings: OptimizationRunSettings | None = None,
-    chat_session: ChatSessionRef | None = None,
-) -> dict:
-    body: dict = {
-        "smartDatasetId": smart_dataset_id,
-        "method": DesignMethod.GENERATE.value,
-    }
-    if objectives is not None:
-        body["objectives"] = {
-            tid: c.model_dump(by_alias=True, mode="json", exclude_none=True)
-            for tid, c in objectives.items()
-        }
-    if settings is not None:
-        body["settings"] = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
-    if chat_session is not None:
-        body["session"] = chat_session.model_dump(by_alias=True, mode="json", exclude_none=True)
-    return body
-
-
-def _build_doe_run_request(
-    *,
-    smart_dataset_id: SmartDatasetId,
-    settings: DOERunSettings | None = None,
-    chat_session: ChatSessionRef | None = None,
-    anchor_targets: list[str] | None = None,
-) -> dict:
-    body: dict = {
-        "smartDatasetId": smart_dataset_id,
-        "method": DesignMethod.SPACE_FILLING.value,
-    }
-    if settings is not None:
-        body["settings"] = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
-    if anchor_targets is not None:
-        body["anchorTargets"] = anchor_targets
-    if chat_session is not None:
-        body["session"] = chat_session.model_dump(by_alias=True, mode="json", exclude_none=True)
-    return body
 
 
 class DesignRunCollection(BaseCollection):
@@ -138,12 +96,12 @@ class DesignRunCollection(BaseCollection):
             ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
             candidates in the insight viewer.
         """
-        body = _build_optimization_run_request(
+        body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
             objectives=objectives,
             settings=settings,
-            chat_session=chat_session,
-        )
+            session=chat_session,
+        ).model_dump(by_alias=True, mode="json", exclude_none=True)
         response = self.session.post(self.base_path, json=body)
         return BTInsight(**response.json())
 
@@ -195,12 +153,12 @@ class DesignRunCollection(BaseCollection):
             ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
             candidates in the insight viewer.
         """
-        body = _build_doe_run_request(
+        body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
             settings=settings,
-            chat_session=chat_session,
+            session=chat_session,
             anchor_targets=anchor_targets,
-        )
+        ).model_dump(by_alias=True, mode="json", exclude_none=True)
         response = self.session.post(self.base_path, json=body)
         return BTInsight(**response.json())
 
@@ -248,11 +206,11 @@ class DesignRunCollection(BaseCollection):
         AlbertHTTPError
             Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
         """
-        body = _build_optimization_run_request(
+        body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
             objectives=objectives,
             settings=settings,
-        )
+        ).model_dump(by_alias=True, mode="json", exclude_none=True)
         response = self.session.post(f"{self.base_path}/validate", json=body)
         return DesignRunValidationResponse(**response.json())
 
@@ -301,10 +259,10 @@ class DesignRunCollection(BaseCollection):
         AlbertHTTPError
             Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
         """
-        body = _build_doe_run_request(
+        body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
             settings=settings,
             anchor_targets=anchor_targets,
-        )
+        ).model_dump(by_alias=True, mode="json", exclude_none=True)
         response = self.session.post(f"{self.base_path}/validate", json=body)
         return DesignRunValidationResponse(**response.json())
