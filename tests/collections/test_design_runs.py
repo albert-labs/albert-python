@@ -8,7 +8,13 @@ from albert.resources.targets import Criterion
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
+ignore_in_ten0 = pytest.mark.xfail(
+    reason="api-designruns is not live in the TEN0 test environment.",
+    strict=False,
+)
 
+
+@ignore_in_ten0
 def test_create_optimization_returns_generate_insight(
     client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:
@@ -19,6 +25,7 @@ def test_create_optimization_returns_generate_insight(
     assert insight.category == BTInsightCategory.GENERATE
 
 
+@ignore_in_ten0
 def test_create_optimization_with_objectives(
     client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:
@@ -32,6 +39,7 @@ def test_create_optimization_with_objectives(
     assert insight.id is not None
 
 
+@ignore_in_ten0
 def test_validate_optimization_returns_response(
     client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:
@@ -41,6 +49,7 @@ def test_validate_optimization_returns_response(
     assert isinstance(result.valid, bool)
 
 
+@ignore_in_ten0
 def test_validate_doe_returns_response(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
     """Test validate_doe returns a DesignRunValidationResponse."""
     result = client.design_runs.validate_doe(smart_dataset_id=seeded_smart_dataset.id)
