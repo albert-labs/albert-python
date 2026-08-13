@@ -20,7 +20,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
-from albert.resources.lots import Lot, LotAdjustmentAction, LotSearchItem
+from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
@@ -50,7 +50,7 @@ class LotCollection(BaseCollection):
         from albert import Albert
         client = Albert()
         # Look up all lots of a given inventory item
-        lots = client.lots.get_all(parent_id="INVA1")
+        lots = client.lots.get_all(parent_id="INVA9999999")
         for lot in lots:
             print(lot.id, lot.inventory_on_hand)
         ```
@@ -100,6 +100,7 @@ class LotCollection(BaseCollection):
         "pack_size",
         "barcode_id",
         "owner",
+        "workflow_id",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -123,12 +124,12 @@ class LotCollection(BaseCollection):
         !!! example
             ```python
             from albert import Albert
+            from albert.core.shared.models.base import EntityLink
             from albert.resources.lots import Lot
-            from albert.resources.storage_locations import StorageLocation
             client = Albert()
             new_lot = Lot(
-                inventory_id="INVA1",
-                storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+                inventory_id="INVA9999999",
+                storage_location=EntityLink(id="STL9999999"),
                 initial_quantity=10.0,
                 inventory_on_hand=10.0,
                 cost=50.0,
@@ -314,7 +315,7 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # Find lots of a given inventory item that are running low
-            for lot in client.lots.search(inventory_id="INVA1", max_items=50):
+            for lot in client.lots.search(inventory_id="INVA9999999", max_items=50):
                 print(lot.id, lot.parent_name)
             ```
 
@@ -395,7 +396,7 @@ class LotCollection(BaseCollection):
         inventory_id: InventoryId | None = None,
         barcode_id: str | None = None,
         parent_id_category: str | None = None,
-        inventory_on_hand: str | None = None,
+        inventory_on_hand: InventoryOnHandFilter | None = None,
         location_id: str | None = None,
         exact_match: bool = False,
         begins_with: bool = False,
@@ -416,7 +417,10 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # List only lots of an item that still have stock
-            for lot in client.lots.get_all(parent_id="INVA1", inventory_on_hand="gtZero"):
+            from albert.resources.lots import InventoryOnHandFilter
+            for lot in client.lots.get_all(
+                parent_id="INVA9999999", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
+            ):
                 print(lot.id, lot.inventory_on_hand)
             ```
 
@@ -431,9 +435,9 @@ class LotCollection(BaseCollection):
         parent_id_category : str, optional
             Filter by the parent inventory category (e.g. ``RawMaterials``,
             ``Consumables``).
-        inventory_on_hand : str, optional
-            Filter by inventory on hand relative to zero. One of ``"lteZero"``,
-            ``"gtZero"``, or ``"eqZero"``.
+        inventory_on_hand : InventoryOnHandFilter, optional
+            Filter by inventory on hand relative to zero. Requires ``parent_id``,
+            ``barcode_id``, or ``parent_id_category``.
         location_id : str, optional
             Filter by location ID.
         exact_match : bool, optional
@@ -517,6 +521,18 @@ class LotCollection(BaseCollection):
             d
             for d in patch_data.data
             if not (d.attribute == "Owner" and d.old_value == d.new_value)
+        ]
+
+        # workflowId only supports UPDATE (set-once); the base diff emits ADD when unset.
+        patch_data.data = [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute="workflowId",
+                new_value=d.new_value,
+            )
+            if d.attribute in {"workflowId", "WorkflowId"} and d.operation == PatchOperation.ADD
+            else d
+            for d in patch_data.data
         ]
 
         return patch_data
@@ -757,7 +773,7 @@ class LotCollection(BaseCollection):
         The following fields can be updated: ``barcode_id``, ``cost``,
         ``expiration_date``, ``initial_quantity``, ``inventory_on_hand``,
         ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
-        ``status``, ``storage_location``.
+        ``status``, ``storage_location``, ``workflow_id``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

@@ -4,6 +4,7 @@ from albert.collections.base import BaseCollection
 from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import SmartDatasetId, TargetId
 from albert.resources.btinsight import BTInsight
+from albert.resources.chats import ChatSessionRef
 from albert.resources.design import (
     DesignMethod,
     DesignRunSettings,
@@ -18,6 +19,7 @@ def _build_design_run_request(
     objectives: dict[TargetId, Criterion] | None = None,
     method: DesignMethod = DesignMethod.GENERATE,
     settings: DesignRunSettings | None = None,
+    chat_session: ChatSessionRef | None = None,
 ) -> dict:
     body: dict = {"smartDatasetId": smart_dataset_id, "method": method.value}
     if objectives is not None:
@@ -27,6 +29,8 @@ def _build_design_run_request(
         }
     if settings is not None:
         body["settings"] = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
+    if chat_session is not None:
+        body["session"] = chat_session.model_dump(by_alias=True, mode="json", exclude_none=True)
     return body
 
 
@@ -51,7 +55,7 @@ class DesignRunCollection(BaseCollection):
 
     Methods
     -------
-    create(smart_dataset_id, objectives=None, settings=None, method=DesignMethod.GENERATE) -> BTInsight
+    create(smart_dataset_id, objectives=None, settings=None, method=DesignMethod.GENERATE, chat_session=None) -> BTInsight
         Triggers a model-guided candidate-generation run for a smart dataset.
     validate(smart_dataset_id, objectives=None, settings=None, method=DesignMethod.GENERATE) -> DesignRunValidationResponse
         Validates a design-run configuration without starting a job.
@@ -71,6 +75,7 @@ class DesignRunCollection(BaseCollection):
         objectives: dict[TargetId, Criterion] | None = None,
         method: DesignMethod = DesignMethod.GENERATE,
         settings: DesignRunSettings | None = None,
+        chat_session: ChatSessionRef | None = None,
     ) -> BTInsight:
         """Trigger an inverse-design run for a smart dataset.
 
@@ -91,6 +96,11 @@ class DesignRunCollection(BaseCollection):
         settings : DesignRunSettings, optional
             Design run settings. See [`DesignRunSettings`][albert.resources.design.DesignRunSettings]
             for what each field controls and its allowed range.
+        chat_session : ChatSessionRef, optional
+            Chat session to notify when the run completes. See
+            [`ChatSessionRef`][albert.resources.chats.ChatSessionRef]. Omit for no
+            callback; the run is still tracked through the returned ``BTInsight``.
+            Serialized to the wire as ``session``.
 
         Returns
         -------
@@ -104,6 +114,7 @@ class DesignRunCollection(BaseCollection):
             objectives=objectives,
             method=method,
             settings=settings,
+            chat_session=chat_session,
         )
         response = self.session.post(self.base_path, json=body)
         return BTInsight(**response.json())

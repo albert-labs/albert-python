@@ -44,10 +44,32 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
             max_items=max_items,
         )
 
+    def _record_total(self, data: dict[str, Any]) -> None:
+        pagination = data.get("pagination") or {}
+        raw = pagination.get("total")
+        if raw is None:
+            return
+        try:
+            self._total = int(raw)
+        except (TypeError, ValueError):
+            return
+
     def _response_items(self, data: dict[str, Any]) -> list:
         return data.get("substances") or []
 
     def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        pagination = data.get("pagination") or {}
+        last_key = pagination.get("lastKey")
+        if last_key is not None:
+            self._last_key = str(last_key)
+
+        if count == 0:
+            return False
+
+        # The API omits pagination.lastKey on the final page.
+        if "lastKey" not in pagination:
+            return False
+
         self._offset += count
         self.params["startKey"] = self._offset
         return True

@@ -159,7 +159,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             props = client.property_data.get_properties_on_inventory(
-                inventory_id="INVA1"
+                inventory_id="INVA9999999"
             )
             len(props.custom_property_data)
             # 3
@@ -196,8 +196,8 @@ class PropertyDataCollection(BaseCollection):
             ```python
             from albert.resources.property_data import InventoryDataColumn
             props = client.property_data.add_properties_to_inventory(
-                inventory_id="INVA1",
-                properties=[InventoryDataColumn(data_column_id="DAC1", value="1.2")],
+                inventory_id="INVA9999999",
+                properties=[InventoryDataColumn(data_column_id="DAC9999999", value="1.2")],
             )
             ```
 
@@ -241,8 +241,8 @@ class PropertyDataCollection(BaseCollection):
             ```python
             from albert.resources.property_data import InventoryDataColumn
             updated = client.property_data.update_property_on_inventory(
-                inventory_id="INVA1",
-                property_data=InventoryDataColumn(data_column_id="DAC1", value="1.3"),
+                inventory_id="INVA9999999",
+                property_data=InventoryDataColumn(data_column_id="DAC9999999", value="1.3"),
             )
             ```
 
@@ -317,7 +317,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             data = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             data.block_id
             # 'BLK1'
@@ -577,7 +577,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.void_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
             )
             ```
 
@@ -626,7 +626,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.unvoid_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
             )
             ```
 
@@ -680,7 +680,7 @@ class PropertyDataCollection(BaseCollection):
             client.property_data.void_interval_data(
                 task_id="TASFOR1",
                 interval_id="ROW1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -742,7 +742,7 @@ class PropertyDataCollection(BaseCollection):
             client.property_data.unvoid_interval_data(
                 task_id="TASFOR1",
                 interval_id="ROW1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -805,7 +805,7 @@ class PropertyDataCollection(BaseCollection):
                 task_id="TASFOR1",
                 interval_id="ROW1",
                 trial_number=2,
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -868,7 +868,7 @@ class PropertyDataCollection(BaseCollection):
                 task_id="TASFOR1",
                 interval_id="ROW1",
                 trial_number=2,
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -934,7 +934,7 @@ class PropertyDataCollection(BaseCollection):
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
             # Derive the required data column / template from the existing block
             block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             column = block.data[0].trials[0].data_columns[0]
             new_value = TaskPropertyCreate(
@@ -946,7 +946,7 @@ class PropertyDataCollection(BaseCollection):
                 data_template=block.data_template,
             )
             client.property_data.add_properties_to_task(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 task_id="TASFOR1",
                 block_id="BLK1",
                 properties=[new_value],
@@ -1060,7 +1060,7 @@ class PropertyDataCollection(BaseCollection):
             ```python
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
             block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             column = block.data[0].trials[0].data_columns[0]
             value = TaskPropertyCreate(
@@ -1073,7 +1073,7 @@ class PropertyDataCollection(BaseCollection):
                 data_template=block.data_template,
             )
             client.property_data.update_or_create_task_properties(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 task_id="TASFOR1",
                 block_id="BLK1",
                 properties=[value],
@@ -1231,7 +1231,7 @@ class PropertyDataCollection(BaseCollection):
             data = BulkPropertyData.from_dataframe(df=my_dataframe)
             results = client.property_data.bulk_load_task_properties(
                 block_id="BLK1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 property_data=data,
                 task_id="TASFOR291760",
             )
@@ -1317,7 +1317,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.bulk_delete_task_data(
-                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA1"
+                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA9999999"
             )
             ```
 

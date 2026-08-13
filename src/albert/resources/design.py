@@ -32,6 +32,7 @@ class DesignRunViolationCode(StrEnum):
     MODEL_TRAINING_ERROR = "model_training_error"
     OPTIMIZATION_SYSTEM_MISMATCH = "optimization_system_mismatch"
     INTERNAL = "internal"
+    JOB_TIMEOUT = "job_timeout"
 
 
 class DesignRunViolation(BaseAlbertModel):

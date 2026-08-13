@@ -230,7 +230,7 @@ class InventoryMinimum(BaseAlbertModel):
         ```python
         from albert.resources.inventory import InventoryMinimum
 
-        minimum = InventoryMinimum(id="LOC1", minimum=500)
+        minimum = InventoryMinimum(id="LOC9999999", minimum=500)
         ```"""
 
     id: str | None = Field(default=None)
@@ -270,7 +270,7 @@ class InventoryItem(BaseTaggedResource):
     An ``InventoryItem`` is the canonical record for a raw material, consumable,
     piece of equipment, or formula. Its [`InventoryCategory`][albert.resources.inventory.InventoryCategory] determines how it
     is used across the platform, and once saved it is referenced everywhere by its
-    Inventory ID (format ``INV...``, e.g. ``"INVA1"``). Raw materials are typically
+    Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``). Raw materials are typically
     linked to a manufacturing ``company`` and a compositional breakdown of CAS
     amounts. Formula items are designed in Worksheets rather than created here (the
     [`create`][albert.collections.inventory.InventoryCollection.create] method rejects
@@ -432,7 +432,7 @@ class InventorySpec(BaseAlbertModel):
 
         spec = InventorySpec(
             name="Viscosity",
-            data_column_id="DAC1",
+            data_column_id="DAC9999999",
             value=InventorySpecValue(min=100, max=200),
         )
         ```"""
@@ -600,7 +600,7 @@ class MergeInventory(BaseAlbertModel):
         from albert.resources.inventory import MergeInventory
 
         merge = MergeInventory(
-            parent_id="INVA1",
+            parent_id="INVA9999999",
             child_inventories=[{"id": "INVB1"}, {"id": "INVC1"}],
         )
         ```"""

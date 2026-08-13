@@ -6,7 +6,9 @@ from pydantic_core import core_schema
 from albert.core.shared.models.base import BaseResource, EntityLink, EntityLinkWithName
 
 EntityType = TypeVar("EntityType", bound=BaseResource)
-MetadataItem = float | int | str | EntityLink | list[EntityLink]
+MetadataItem = (
+    float | int | str | EntityLinkWithName | EntityLink | list[EntityLinkWithName | EntityLink]
+)
 
 
 class _UnsetType:

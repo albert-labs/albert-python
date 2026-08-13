@@ -15,7 +15,7 @@ class DataColumn(BaseResource):
     column during experiments are stored as Property Data.
 
     Data columns are identified by a Data Column ID (format ``DAC...``, e.g.
-    ``"DAC1"``) and are managed through
+    ``"DAC9999999"``) and are managed through
     [`DataColumnCollection`][albert.collections.data_columns.DataColumnCollection], accessed as
     ``client.data_columns``.
 
@@ -27,7 +27,7 @@ class DataColumn(BaseResource):
         column = DataColumn(name="Viscosity")
         created = client.data_columns.create(data_column=column)
         created.id
-        # 'DAC1'
+        # 'DAC9999999'
         ```"""
 
     name: str
