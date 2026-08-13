@@ -62,7 +62,7 @@ class DesignRunValidationResponse(BaseAlbertModel):
     """Non-null measurement count per performance target in the dataset scope."""
 
 
-class SpaceFillingRunSettings(BaseAlbertModel):
+class DOERunSettings(BaseAlbertModel):
     """Optional sizing for a space-filling design run.
 
     All fields are optional; omit a field (or pass ``None``) to use the platform
@@ -84,7 +84,7 @@ class SpaceFillingRunSettings(BaseAlbertModel):
     """Maximum samples for space-filling sampling."""
 
 
-class DesignRunSettings(BaseAlbertModel):
+class OptimizationRunSettings(BaseAlbertModel):
     """Optional run sizing for an inverse-design generate run.
 
     All fields are optional; omit a field (or pass ``None``) to use the platform

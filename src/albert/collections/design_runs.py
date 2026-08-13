@@ -7,66 +7,47 @@ from albert.resources.btinsight import BTInsight
 from albert.resources.chats import ChatSessionRef
 from albert.resources.design import (
     DesignMethod,
-    DesignRunSettings,
     DesignRunValidationResponse,
-    SpaceFillingRunSettings,
+    DOERunSettings,
+    OptimizationRunSettings,
 )
 from albert.resources.targets import Criterion
 
 
-def _validate_create_args(
-    *,
-    method: DesignMethod,
-    objectives: dict[TargetId, Criterion] | None,
-    settings: DesignRunSettings | SpaceFillingRunSettings | None,
-    anchor_targets: list[str] | None,
-) -> None:
-    if method is DesignMethod.SPACE_FILLING:
-        if objectives is not None:
-            raise ValueError(
-                "objectives cannot be used with method='space_filling'. "
-                "Space-filling proposes a batch that covers the design space relative "
-                "to existing experiments; it does not optimize toward target values."
-            )
-        if isinstance(settings, DesignRunSettings):
-            raise ValueError(
-                "Generate run settings cannot be used with method='space_filling'. "
-                "Pass SpaceFillingRunSettings instead."
-            )
-    elif anchor_targets is not None:
-        raise ValueError(
-            "anchor_targets is only supported for method='space_filling'. "
-            "It narrows which existing rows count as historical anchors; "
-            "it has no meaning for model-guided generate runs."
-        )
-    if method is DesignMethod.GENERATE and isinstance(settings, SpaceFillingRunSettings):
-        raise ValueError(
-            "Space-filling run settings cannot be used with method='generate'. "
-            "Pass DesignRunSettings instead."
-        )
-
-
-def _build_design_run_request(
+def _build_optimization_run_request(
     *,
     smart_dataset_id: SmartDatasetId,
     objectives: dict[TargetId, Criterion] | None = None,
-    method: DesignMethod = DesignMethod.GENERATE,
-    settings: DesignRunSettings | SpaceFillingRunSettings | None = None,
+    settings: OptimizationRunSettings | None = None,
     chat_session: ChatSessionRef | None = None,
-    anchor_targets: list[str] | None = None,
 ) -> dict:
-    _validate_create_args(
-        method=method,
-        objectives=objectives,
-        settings=settings,
-        anchor_targets=anchor_targets,
-    )
-    body: dict = {"smartDatasetId": smart_dataset_id, "method": method.value}
-    if method is DesignMethod.GENERATE and objectives is not None:
+    body: dict = {
+        "smartDatasetId": smart_dataset_id,
+        "method": DesignMethod.GENERATE.value,
+    }
+    if objectives is not None:
         body["objectives"] = {
             tid: c.model_dump(by_alias=True, mode="json", exclude_none=True)
             for tid, c in objectives.items()
         }
+    if settings is not None:
+        body["settings"] = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
+    if chat_session is not None:
+        body["session"] = chat_session.model_dump(by_alias=True, mode="json", exclude_none=True)
+    return body
+
+
+def _build_doe_run_request(
+    *,
+    smart_dataset_id: SmartDatasetId,
+    settings: DOERunSettings | None = None,
+    chat_session: ChatSessionRef | None = None,
+    anchor_targets: list[str] | None = None,
+) -> dict:
+    body: dict = {
+        "smartDatasetId": smart_dataset_id,
+        "method": DesignMethod.SPACE_FILLING.value,
+    }
     if settings is not None:
         body["settings"] = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
     if anchor_targets is not None:
@@ -97,10 +78,14 @@ class DesignRunCollection(BaseCollection):
 
     Methods
     -------
-    create(smart_dataset_id, objectives=None, settings=None, method=DesignMethod.GENERATE, chat_session=None) -> BTInsight
-        Triggers an inverse-design run for a smart dataset.
-    validate(smart_dataset_id, objectives=None, settings=None, method=DesignMethod.GENERATE) -> DesignRunValidationResponse
-        Validates a design-run configuration without starting a job.
+    create_optimization(smart_dataset_id, objectives=None, settings=None, chat_session=None) -> BTInsight
+        Triggers a model-guided optimization run for a smart dataset.
+    create_doe(smart_dataset_id, settings=None, chat_session=None, anchor_targets=None) -> BTInsight
+        Triggers a space-filling design run for a smart dataset.
+    validate_optimization(smart_dataset_id, objectives=None, settings=None) -> DesignRunValidationResponse
+        Validates an optimization run configuration without starting a job.
+    validate_doe(smart_dataset_id, settings=None, anchor_targets=None) -> DesignRunValidationResponse
+        Validates a space-filling run configuration without starting a job.
     """
 
     _api_version = "v3"
@@ -109,67 +94,42 @@ class DesignRunCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{DesignRunCollection._api_version}/designruns"
 
-    _validate_create_args = staticmethod(_validate_create_args)
-
     @validate_call
-    def create(
+    def create_optimization(
         self,
         *,
         smart_dataset_id: SmartDatasetId,
         objectives: dict[TargetId, Criterion] | None = None,
-        method: DesignMethod = DesignMethod.GENERATE,
-        settings: DesignRunSettings | SpaceFillingRunSettings | None = None,
+        settings: OptimizationRunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
-        anchor_targets: list[str] | None = None,
     ) -> BTInsight:
-        """Trigger an inverse-design run for a smart dataset.
+        """Trigger a model-guided optimization run for a smart dataset.
 
-        Two methods are available:
-
-        **``generate``** trains a surrogate on historical data and searches for
-        candidates predicted to meet your targets. Each candidate carries predicted
-        values, uncertainty, and a score. Use this when the user wants candidates
-        optimized toward specific performance targets.
-
-        **``space_filling``** proposes a batch that **covers the design space** and
-        is spread relative to the experiments the user already has in the Smart
-        Dataset. It produces **no scores and no predictions** and trains no model.
-        It needs **no objectives**; passing them is an error. Use it when there is
-        little or no data to model, or when the user wants a screening or starting
-        batch rather than optimized candidates.
+        Trains a surrogate on historical data and searches for candidates predicted
+        to meet targets. Each candidate carries predicted values, uncertainty, and
+        a score. Use this when the user wants candidates optimized toward specific
+        performance targets.
 
         The historical experiments a run accounts for are fixed by the **Smart
         Dataset**, not by anything on this call. To compare against a different
-        history, use a different Smart Dataset. For space-filling only,
-        ``anchor_targets`` optionally narrows the comparison further to rows that
-        already have a measurement for every listed target id. That changes which
-        existing rows the batch is spread against, not what the batch is optimized
-        for — there is no direction, target value, or scoring involved.
+        history, use a different Smart Dataset.
 
         Parameters
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset whose experiment history anchors the run.
         objectives : dict[TargetId, Criterion], optional
-            Per-target objectives for ``generate`` only. Each key must be present
-            within the dataset. When ``None``, all targets in the dataset are
-            optimized using their own target values. Must not be passed with
-            ``space_filling``.
-        method : DesignMethod, default DesignMethod.GENERATE
-            ``generate`` for model-guided optimization, or ``space_filling`` for a
-            coverage batch with no scoring.
-        settings : DesignRunSettings or SpaceFillingRunSettings, optional
-            Method-specific run sizing. See
-            [`DesignRunSettings`][albert.resources.design.DesignRunSettings] and
-            [`SpaceFillingRunSettings`][albert.resources.design.SpaceFillingRunSettings].
+            Per-target objectives. Each key must be present within the dataset.
+            When ``None``, all targets in the dataset are optimized using their own
+            target values.
+        settings : OptimizationRunSettings, optional
+            Run sizing for candidate generation and selection. See
+            [`OptimizationRunSettings`][albert.resources.design.OptimizationRunSettings].
         chat_session : ChatSessionRef, optional
             Chat session to notify when the run completes. See
             [`ChatSessionRef`][albert.resources.chats.ChatSessionRef]. Omit for no
             callback; the run is still tracked through the returned ``BTInsight``.
             Serialized to the wire as ``session``.
-        anchor_targets : list[str], optional
-            Space-filling only. Performance target ids; only experiments measured
-            on every listed target count as historical anchors for diversity.
 
         Returns
         -------
@@ -178,10 +138,65 @@ class DesignRunCollection(BaseCollection):
             ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
             candidates in the insight viewer.
         """
-        body = _build_design_run_request(
+        body = _build_optimization_run_request(
             smart_dataset_id=smart_dataset_id,
             objectives=objectives,
-            method=method,
+            settings=settings,
+            chat_session=chat_session,
+        )
+        response = self.session.post(self.base_path, json=body)
+        return BTInsight(**response.json())
+
+    @validate_call
+    def create_doe(
+        self,
+        *,
+        smart_dataset_id: SmartDatasetId,
+        settings: DOERunSettings | None = None,
+        chat_session: ChatSessionRef | None = None,
+        anchor_targets: list[str] | None = None,
+    ) -> BTInsight:
+        """Trigger a space-filling design run for a smart dataset.
+
+        Proposes a batch that **covers the design space**, spread relative to the
+        experiments the user already has. Produces **no scores and no predictions**.
+        Trains no model. There is no ``objectives`` parameter on this method. Use it
+        when there is little or no data to model, or when the user wants a screening
+        or starting batch.
+
+        The set of historical experiments it accounts for is fixed by the **Smart
+        Dataset**, not by anything on this call. To compare against a different
+        history, use a different Smart Dataset. ``anchor_targets`` optionally narrows
+        the comparison further to experiments that already have a measurement for
+        every named target id. That changes which existing rows the batch is spread
+        against, not what the batch is optimized for — there is no direction, target
+        value, or scoring involved.
+
+        Parameters
+        ----------
+        smart_dataset_id : SmartDatasetId
+            The smart dataset whose experiment history anchors the run.
+        settings : DOERunSettings, optional
+            Run sizing for space-filling sampling. See
+            [`DOERunSettings`][albert.resources.design.DOERunSettings].
+        chat_session : ChatSessionRef, optional
+            Chat session to notify when the run completes. See
+            [`ChatSessionRef`][albert.resources.chats.ChatSessionRef]. Omit for no
+            callback; the run is still tracked through the returned ``BTInsight``.
+            Serialized to the wire as ``session``.
+        anchor_targets : list[str], optional
+            Performance target ids; only experiments measured on every listed target
+            count as historical anchors for diversity.
+
+        Returns
+        -------
+        BTInsight
+            A handle to the run. Poll its ``state`` via
+            ``client.btinsights.get_by_id(id=insight.id)`` for completion and view
+            candidates in the insight viewer.
+        """
+        body = _build_doe_run_request(
+            smart_dataset_id=smart_dataset_id,
             settings=settings,
             chat_session=chat_session,
             anchor_targets=anchor_targets,
@@ -190,18 +205,17 @@ class DesignRunCollection(BaseCollection):
         return BTInsight(**response.json())
 
     @validate_call
-    def validate(
+    def validate_optimization(
         self,
         *,
         smart_dataset_id: SmartDatasetId,
         objectives: dict[TargetId, Criterion] | None = None,
-        method: DesignMethod = DesignMethod.GENERATE,
-        settings: DesignRunSettings | SpaceFillingRunSettings | None = None,
-        anchor_targets: list[str] | None = None,
+        settings: OptimizationRunSettings | None = None,
     ) -> DesignRunValidationResponse:
-        """Validate a design run configuration without starting a job.
+        """Validate an optimization run configuration without starting a job.
 
-        Uses the same request shape as [`create`][albert.collections.design_runs.DesignRunCollection.create].
+        Uses the same request shape as
+        [`create_optimization`][albert.collections.design_runs.DesignRunCollection.create_optimization].
 
         Returns a preflight result with ``valid`` and ``violations``. ``valid=False`` with
         populated ``violations`` is a normal result and is not raised as an exception.
@@ -209,21 +223,17 @@ class DesignRunCollection(BaseCollection):
         Pre-check failures (e.g. dataset not ``READY``, objective out of scope, invalid
         settings) are raised as [`AlbertClientError`][albert.exceptions.AlbertClientError],
         the same class of failure as calling
-        [`create`][albert.collections.design_runs.DesignRunCollection.create] with a bad
-        configuration.
+        [`create_optimization`][albert.collections.design_runs.DesignRunCollection.create_optimization]
+        with a bad configuration.
 
         Parameters
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset used to train the surrogate model.
         objectives : dict[TargetId, Criterion], optional
-            Per-target objectives for ``generate`` only.
-        method : DesignMethod, default DesignMethod.GENERATE
-            The design method to validate.
-        settings : DesignRunSettings or SpaceFillingRunSettings, optional
-            Method-specific run sizing.
-        anchor_targets : list[str], optional
-            Space-filling only. See [`create`][albert.collections.design_runs.DesignRunCollection.create].
+            Per-target objectives for the optimization run.
+        settings : OptimizationRunSettings, optional
+            Run sizing for candidate generation and selection.
 
         Returns
         -------
@@ -238,10 +248,61 @@ class DesignRunCollection(BaseCollection):
         AlbertHTTPError
             Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
         """
-        body = _build_design_run_request(
+        body = _build_optimization_run_request(
             smart_dataset_id=smart_dataset_id,
             objectives=objectives,
-            method=method,
+            settings=settings,
+        )
+        response = self.session.post(f"{self.base_path}/validate", json=body)
+        return DesignRunValidationResponse(**response.json())
+
+    @validate_call
+    def validate_doe(
+        self,
+        *,
+        smart_dataset_id: SmartDatasetId,
+        settings: DOERunSettings | None = None,
+        anchor_targets: list[str] | None = None,
+    ) -> DesignRunValidationResponse:
+        """Validate a space-filling run configuration without starting a job.
+
+        Uses the same request shape as
+        [`create_doe`][albert.collections.design_runs.DesignRunCollection.create_doe].
+
+        Returns a preflight result with ``valid`` and ``violations``. ``valid=False`` with
+        populated ``violations`` is a normal result and is not raised as an exception.
+
+        Pre-check failures (e.g. dataset not ``READY``, invalid settings) are raised as
+        [`AlbertClientError`][albert.exceptions.AlbertClientError], the same class of
+        failure as calling
+        [`create_doe`][albert.collections.design_runs.DesignRunCollection.create_doe]
+        with a bad configuration.
+
+        Parameters
+        ----------
+        smart_dataset_id : SmartDatasetId
+            The smart dataset whose experiment history anchors the run.
+        settings : DOERunSettings, optional
+            Run sizing for space-filling sampling.
+        anchor_targets : list[str], optional
+            Performance target ids that narrow which existing rows count as historical
+            anchors for diversity.
+
+        Returns
+        -------
+        DesignRunValidationResponse
+            Preflight result with ``valid``, ``violations``, and ``target_sample_counts``
+            when available.
+
+        Raises
+        ------
+        AlbertClientError
+            Pre-check failures (invalid configuration before validation can run).
+        AlbertHTTPError
+            Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
+        """
+        body = _build_doe_run_request(
+            smart_dataset_id=smart_dataset_id,
             settings=settings,
             anchor_targets=anchor_targets,
         )
