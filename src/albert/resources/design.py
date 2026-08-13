@@ -112,24 +112,21 @@ class DOERunSettings(BaseAlbertModel):
     """Settings for a space-filling DOE design run.
 
     All fields are optional; omit a field (or pass ``None``) to use the platform
-    default for that knob.
+    default for that knob. Values outside the allowed ranges are rejected before
+    the run is submitted.
+
+    Notes
+    -----
+    These two settings work together: up to ``num_candidates_generated`` candidates
+    are sampled from the design space, then a space-filling subset of size
+    ``num_candidates_selected`` is returned.
     """
 
-    num_proposals: int | None = Field(default=None, alias="numProposals", ge=1, le=100)
-    """Number of space-filling proposals to generate."""
+    num_candidates_generated: int | None = Field(default=None, alias="numCandidatesGenerated")
+    """Maximum candidates to sample before downsampling (default ``10000``, range ``1``–unbounded)."""
 
-    num_samples_per_dimension: int | None = Field(
-        default=None,
-        alias="numSamplesPerDimension",
-        ge=1,
-    )
-    """Samples per design-space dimension."""
-
-    max_num_polytopes: int | None = Field(default=None, alias="maxNumPolytopes", ge=1)
-    """Maximum polytopes for space-filling sampling."""
-
-    max_num_samples: int | None = Field(default=None, alias="maxNumSamples", ge=1)
-    """Maximum samples for space-filling sampling."""
+    num_candidates_selected: int | None = Field(default=None, alias="numCandidatesSelected")
+    """Size of the space-filling subset returned (default ``20``, range ``1``–``100``)."""
 
 
 class DOEDesignRunRequest(BaseAlbertModel):

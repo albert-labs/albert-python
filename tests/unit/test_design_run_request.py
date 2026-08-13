@@ -39,13 +39,13 @@ def test_create_optimization_serializes_generate_method() -> None:
 
 
 def test_create_doe_serializes_space_filling_method_and_settings() -> None:
-    """Test DOE request body uses method space_filling and DOE settings keys."""
-    settings = DOERunSettings(num_proposals=5, num_samples_per_dimension=10)
+    """Test DOE request body uses method space_filling and candidate settings keys."""
+    settings = DOERunSettings(num_candidates_generated=5000, num_candidates_selected=5)
     body = _wire(DOEDesignRunRequest(smart_dataset_id="SDT2", settings=settings))
     assert body["method"] == "space_filling"
     assert body["settings"] == {
-        "numProposals": 5,
-        "numSamplesPerDimension": 10,
+        "numCandidatesGenerated": 5000,
+        "numCandidatesSelected": 5,
     }
 
 
@@ -178,13 +178,11 @@ def test_optimization_run_settings_round_trip_camel_case() -> None:
 def test_doe_run_settings_round_trip_camel_case() -> None:
     """Test DOERunSettings round-trips with the expected camelCase keys."""
     settings = DOERunSettings(
-        num_proposals=10,
-        max_num_polytopes=3,
-        max_num_samples=100,
+        num_candidates_generated=10_000,
+        num_candidates_selected=10,
     )
     dumped = settings.model_dump(by_alias=True, mode="json", exclude_none=True)
     assert dumped == {
-        "numProposals": 10,
-        "maxNumPolytopes": 3,
-        "maxNumSamples": 100,
+        "numCandidatesGenerated": 10_000,
+        "numCandidatesSelected": 10,
     }

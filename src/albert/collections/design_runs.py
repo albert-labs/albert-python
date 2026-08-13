@@ -110,11 +110,11 @@ class DesignRunCollection(BaseCollection):
         self,
         *,
         smart_dataset_id: SmartDatasetId,
+        anchor_targets: list[str] | None = None,
         settings: DOERunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
-        anchor_targets: list[str] | None = None,
     ) -> BTInsight:
-        """Trigger a space-filling design run for a smart dataset.
+        """Trigger a space-filling DOE design run.
 
         Proposes a batch that **covers the design space**, spread relative to the
         experiments the user already has. Produces **no scores and no predictions**.
@@ -134,6 +134,9 @@ class DesignRunCollection(BaseCollection):
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset whose experiment history anchors the run.
+        anchor_targets : list[str], optional
+            Performance target ids; only experiments measured on every listed target
+            count as historical anchors for diversity.
         settings : DOERunSettings, optional
             Run sizing for space-filling sampling. See
             [`DOERunSettings`][albert.resources.design.DOERunSettings].
@@ -142,9 +145,6 @@ class DesignRunCollection(BaseCollection):
             [`ChatSessionRef`][albert.resources.chats.ChatSessionRef]. Omit for no
             callback; the run is still tracked through the returned ``BTInsight``.
             Serialized to the wire as ``session``.
-        anchor_targets : list[str], optional
-            Performance target ids; only experiments measured on every listed target
-            count as historical anchors for diversity.
 
         Returns
         -------
@@ -219,8 +219,8 @@ class DesignRunCollection(BaseCollection):
         self,
         *,
         smart_dataset_id: SmartDatasetId,
-        settings: DOERunSettings | None = None,
         anchor_targets: list[str] | None = None,
+        settings: DOERunSettings | None = None,
     ) -> DesignRunValidationResponse:
         """Validate a space-filling run configuration without starting a job.
 
@@ -240,11 +240,11 @@ class DesignRunCollection(BaseCollection):
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset whose experiment history anchors the run.
-        settings : DOERunSettings, optional
-            Run sizing for space-filling sampling.
         anchor_targets : list[str], optional
             Performance target ids that narrow which existing rows count as historical
             anchors for diversity.
+        settings : DOERunSettings, optional
+            Run sizing for space-filling sampling.
 
         Returns
         -------
