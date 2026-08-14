@@ -105,9 +105,9 @@ class InventoryCollection(BaseCollection):
     get_match_or_none(inventory_item) -> InventoryItem | None
         Return the existing item matching name + company, or None.
     add_specs(inventory_id, specs) -> InventorySpecList
-        Attach specification properties to an item.
+        Attach inventory reference specs to an item (deprecated; prefer client.attributes).
     get_specs(ids) -> list[InventorySpecList]
-        Get the specs attached to a list of items.
+        Get inventory reference specs for items (deprecated; prefer client.attributes).
     get_all_facets(...) -> list[FacetItem]
         Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
@@ -424,17 +424,26 @@ class InventoryCollection(BaseCollection):
     )
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Get the specs attached to a list of inventory items.
+        """Get the legacy inventory reference specs attached to inventory items.
 
-        A spec is a declared property of an item (see [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] for the
-        distinction between specs and task-measured Property Data). Requests are
-        automatically batched.
+        Each [`InventorySpecList`][albert.resources.inventory.InventorySpecList]
+        holds that item's declared reference properties (definition and value
+        together). This is **not** Property Data: for measured task results or
+        custom property-data values, use
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection].
+        Requests are automatically batched.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids]
+            (``client.attributes``). Specs are removed in SDK 2.0. See the Specs →
+            Attributes migration guide.
 
         !!! example
             ```python
             spec_lists = client.inventory.get_specs(ids=["INVA9999999"])
-            spec_lists[0].specs
-            # [...]
+            for spec in spec_lists[0].specs:
+                print(spec.name, spec.value.reference if spec.value else None)
             ```
 
         Parameters
@@ -467,13 +476,22 @@ class InventoryCollection(BaseCollection):
         inventory_id: InventoryId,
         specs: InventorySpec | list[InventorySpec],
     ) -> InventorySpecList:
-        """Attach one or more specs to an inventory item.
+        """Attach legacy inventory reference specs to an inventory item.
 
-        An ``InventorySpec`` is a declared property of an item, as opposed to a
-        value measured through a Task. Use specs for generic, known properties
-        (e.g. a supplier-stated density); use Tasks and Property Data for
-        experimentally measured results. A spec can optionally carry the
-        conditions under which it holds, expressed via a workflow.
+        Each [`InventorySpec`][albert.resources.inventory.InventorySpec] both
+        defines a property (``name``, ``data_column_id``) and assigns its expected
+        [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue] on
+        this item. Use Specs for inventory **reference** properties (e.g. a
+        supplier-stated density that worksheets look up). For experimentally
+        measured results, use Tasks and
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
+        instead. A spec may optionally name conditions via a workflow.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`add_values`][albert.collections.attributes.AttributeCollection.add_values]
+            (``client.attributes``) after creating shared attribute definitions.
+            Specs are removed in SDK 2.0. See the Specs → Attributes migration guide.
 
         !!! warning
             This call replaces the item's complete spec set; it is not an
@@ -482,7 +500,7 @@ class InventoryCollection(BaseCollection):
             ``500 Duplicate reference name`` error means spec rows with those
             names already exist on the item (even when ``get_specs`` shows
             none); do not blindly retry, call ``get_specs`` first and
-            reconcile.
+            reconcile. There is no Specs API to remove individual values.
 
         !!! example
             ```python
@@ -500,8 +518,8 @@ class InventoryCollection(BaseCollection):
         inventory_id : InventoryId
             The item to attach the specs to (format ``INV...``).
         specs : InventorySpec or list[InventorySpec]
-            The spec(s) to attach. Each describes a value and, optionally, the
-            associated conditions (via workflow).
+            The full set of reference specs the item should carry. Each embeds
+            the property definition and value (and optionally workflow conditions).
 
         Returns
         -------

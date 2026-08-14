@@ -51,9 +51,16 @@ class PropertyDataCollection(BaseCollection):
     - **On a Task**: the results captured when a Property Task is executed,
       organized per Block, interval combination, and trial. Task methods here are
       named ``*_task_*`` / ``*_interval_*`` / ``*_trial_*``.
-    - **On an Inventory Item**: properties attached directly to a material.
-      Inventory methods here are named ``*_on_inventory``. Task-measured results
-      roll up to the associated inventory item's properties.
+    - **On an Inventory Item**: custom property-data values attached directly to a
+      material (methods named ``*_on_inventory``). Task-measured results also roll
+      up to the associated inventory item's properties.
+
+    Property Data is **not** Inventory Specs or Attributes. Specs
+    (``client.inventory.get_specs`` / ``add_specs``, deprecated) and
+    [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+    (``client.attributes``) store inventory **reference** properties for worksheet
+    lookup. Use this collection for experimentally measured (or custom PTD)
+    values.
 
     **Intervals and trials.** Within a Block, results are addressed by:
 
@@ -102,11 +109,11 @@ class PropertyDataCollection(BaseCollection):
     Methods
     -------
     get_properties_on_inventory(inventory_id) -> InventoryPropertyData
-        Get all properties attached to an inventory item.
+        Get all property data attached to an inventory item (not Specs/Attributes).
     add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
-        Add properties directly to an inventory item.
+        Add custom property-data values directly to an inventory item.
     update_property_on_inventory(inventory_id, property_data) -> InventoryPropertyData
-        Update a property on an inventory item.
+        Update a property-data value on an inventory item.
     get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
         Get the results in one task block for one inventory item.
     get_all_task_properties(task_id, with_data_only=False) -> list[TaskPropertyData]
@@ -150,11 +157,16 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
-        """Get all properties attached to an inventory item.
+        """Get all property data attached to an inventory item.
 
         This includes both task-measured results that have rolled up to the item
-        and properties added directly to it. For results in the context of a
-        specific task, use [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties] instead.
+        and custom property-data values added directly to it. This is **not**
+        Inventory Specs / Attributes (inventory reference properties); for those
+        use ``client.inventory.get_specs`` (deprecated) or
+        [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids].
+        For results in the context of a specific task, use
+        [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        instead.
 
         !!! example
             ```python
@@ -186,11 +198,17 @@ class PropertyDataCollection(BaseCollection):
     def add_properties_to_inventory(
         self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
-        """Add properties directly to an inventory item.
+        """Add custom property-data values directly to an inventory item.
 
-        Use this for properties known independently of a task (e.g. a
-        supplier-stated value). Each property targets a data column and carries a
+        Use this for property-data values known independently of a task (stored
+        as PTD on the item). Each entry targets a data column and carries a
         value. Properties are added one at a time and collected into the result.
+
+        This is **not** Inventory Specs / Attributes. For inventory **reference**
+        properties (worksheet lookup source of truth), use
+        [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs]
+        (deprecated) or
+        [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
 
         !!! example
             ```python
