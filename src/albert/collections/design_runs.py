@@ -36,9 +36,9 @@ class DesignRunCollection(BaseCollection):
 
     Methods
     -------
-    create_optimization(smart_dataset_id, objectives=None, settings=None, chat_session=None) -> BTInsight
+    create_optimization(smart_dataset_id, name=None, objectives=None, settings=None, chat_session=None) -> BTInsight
         Triggers a model-guided optimization run for a smart dataset.
-    create_doe(smart_dataset_id, settings=None, chat_session=None, anchor_targets=None) -> BTInsight
+    create_doe(smart_dataset_id, name=None, settings=None, chat_session=None, anchor_targets=None) -> BTInsight
         Triggers a space-filling design run for a smart dataset.
     validate_optimization(smart_dataset_id, objectives=None, settings=None) -> DesignRunValidationResponse
         Validates an optimization run configuration without starting a job.
@@ -57,6 +57,7 @@ class DesignRunCollection(BaseCollection):
         self,
         *,
         smart_dataset_id: SmartDatasetId,
+        name: str | None = None,
         objectives: dict[TargetId, Criterion] | None = None,
         settings: OptimizationRunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
@@ -76,6 +77,9 @@ class DesignRunCollection(BaseCollection):
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset whose experiment history anchors the run.
+        name : str, optional
+            Display name for the resulting insight. When ``None``, a name is
+            generated from the smart dataset id.
         objectives : dict[TargetId, Criterion], optional
             Per-target objectives. Each key must be present within the dataset.
             When ``None``, all targets in the dataset are optimized using their own
@@ -98,6 +102,7 @@ class DesignRunCollection(BaseCollection):
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
+            name=name,
             objectives=objectives,
             settings=settings,
             session=chat_session,
@@ -110,6 +115,7 @@ class DesignRunCollection(BaseCollection):
         self,
         *,
         smart_dataset_id: SmartDatasetId,
+        name: str | None = None,
         anchor_targets: list[str] | None = None,
         settings: DOERunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
@@ -134,6 +140,9 @@ class DesignRunCollection(BaseCollection):
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset whose experiment history anchors the run.
+        name : str, optional
+            Display name for the resulting insight. When ``None``, a name is
+            generated from the smart dataset id.
         anchor_targets : list[str], optional
             Performance target ids; only experiments measured on every listed target
             count as historical anchors for diversity.
@@ -155,6 +164,7 @@ class DesignRunCollection(BaseCollection):
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
+            name=name,
             settings=settings,
             session=chat_session,
             anchor_targets=anchor_targets,
