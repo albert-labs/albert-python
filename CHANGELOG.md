@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.44.0](https://github.com/albert-labs/albert-python/compare/v1.43.1...v1.44.0) (2026-08-13)
+
+
+### Features
+
+* add space_filling design-run SDK surface ([#677](https://github.com/albert-labs/albert-python/issues/677)) ([84bf374](https://github.com/albert-labs/albert-python/commit/84bf37407dfb1f0db85c3b4364c3a2f22bba289a))
+
+
+### Bug Fixes
+
+* **data_templates:** apply default number validation on add ([#675](https://github.com/albert-labs/albert-python/issues/675)) ([30f294c](https://github.com/albert-labs/albert-python/commit/30f294c57ca97d2458dfe420f556ec703564dafe))
+
+
+### Documentation
+
+* clarify service filter behavior in custom fields list docstring ([#629](https://github.com/albert-labs/albert-python/issues/629)) ([a581afa](https://github.com/albert-labs/albert-python/commit/a581afa7bd50bb5bcbed7b91f901518acb490eb4))
+
 ## [1.43.1](https://github.com/albert-labs/albert-python/compare/v1.43.0...v1.43.1) (2026-08-12)
 
 
