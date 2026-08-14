@@ -40,6 +40,26 @@ def test_create_optimization_with_objectives(
 
 
 @ignore_in_ten0
+def test_create_optimization_with_name(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
+    """Test create_optimization names the resulting insight."""
+    insight = client.design_runs.create_optimization(
+        smart_dataset_id=seeded_smart_dataset.id,
+        name="SDK optimization run",
+    )
+    assert insight.name == "SDK optimization run"
+
+
+@ignore_in_ten0
+def test_create_doe_with_name(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
+    """Test create_doe names the resulting insight."""
+    insight = client.design_runs.create_doe(
+        smart_dataset_id=seeded_smart_dataset.id,
+        name="SDK space-filling run",
+    )
+    assert insight.name == "SDK space-filling run"
+
+
+@ignore_in_ten0
 def test_validate_optimization_returns_response(
     client: Albert, seeded_smart_dataset: SmartDataset
 ) -> None:

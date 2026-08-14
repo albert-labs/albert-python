@@ -98,6 +98,9 @@ class OptimizationDesignRunRequest(BaseAlbertModel):
     smart_dataset_id: SmartDatasetId = Field(alias="smartDatasetId")
     """Smart dataset whose experiment history anchors the run."""
 
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    """Display name for the resulting insight; a name is generated when omitted."""
+
     objectives: dict[TargetId, Criterion] | None = None
     """Per-target objectives; omitted to optimize every scoped target."""
 
@@ -137,6 +140,9 @@ class DOEDesignRunRequest(BaseAlbertModel):
 
     smart_dataset_id: SmartDatasetId = Field(alias="smartDatasetId")
     """Smart dataset whose experiment history anchors the run."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    """Display name for the resulting insight; a name is generated when omitted."""
 
     anchor_targets: list[TargetId] | None = Field(default=None, alias="anchorTargets")
     """Target ids that narrow which existing rows count as historical anchors."""
