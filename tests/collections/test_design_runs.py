@@ -34,28 +34,25 @@ def test_create_optimization_with_objectives(
     insight = client.design_runs.create_optimization(
         smart_dataset_id=seeded_smart_dataset.id,
         objectives={target_id: Criterion(operator="gte", value=1.0)},
+        name="SDK optimization run",
     )
     assert isinstance(insight, BTInsight)
     assert insight.id is not None
-
-
-@ignore_in_ten0
-def test_create_optimization_with_name(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
-    """Test create_optimization names the resulting insight."""
-    insight = client.design_runs.create_optimization(
-        smart_dataset_id=seeded_smart_dataset.id,
-        name="SDK optimization run",
-    )
     assert insight.name == "SDK optimization run"
 
 
 @ignore_in_ten0
-def test_create_doe_with_name(client: Albert, seeded_smart_dataset: SmartDataset) -> None:
-    """Test create_doe names the resulting insight."""
+def test_create_doe_returns_generate_insight(
+    client: Albert, seeded_smart_dataset: SmartDataset
+) -> None:
+    """Test create_doe posts to tier-1 and returns a Generate BTInsight."""
     insight = client.design_runs.create_doe(
         smart_dataset_id=seeded_smart_dataset.id,
         name="SDK space-filling run",
     )
+    assert isinstance(insight, BTInsight)
+    assert insight.id is not None
+    assert insight.category == BTInsightCategory.GENERATE
     assert insight.name == "SDK space-filling run"
 
 
