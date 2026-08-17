@@ -1356,6 +1356,7 @@ class PropertyDataCollection(BaseCollection):
         text: str | None = None,
         # Sorting/pagination
         order: OrderBy | None = None,
+        order_by: OrderBy | None = None,
         sort_by: str | None = None,
         # Core platform identifiers
         inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
@@ -1363,6 +1364,7 @@ class PropertyDataCollection(BaseCollection):
         lot_ids: list[LotId] | LotId | None = None,
         data_template_ids: DataTemplateId | list[DataTemplateId] | None = None,
         data_column_ids: DataColumnId | list[DataColumnId] | None = None,
+        sheet_ids: list[str] | None = None,
         # Data structure filters
         category: list[DataEntity] | DataEntity | None = None,
         data_templates: list[str] | str | None = None,
@@ -1370,6 +1372,7 @@ class PropertyDataCollection(BaseCollection):
         # Data content filters
         parameters: list[str] | str | None = None,
         parameter_group: list[str] | str | None = None,
+        parameter_set: list[str] | None = None,
         unit: list[str] | str | None = None,
         # User filters
         created_by: str | list[str] | None = None,
@@ -1379,7 +1382,11 @@ class PropertyDataCollection(BaseCollection):
         to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
-        # Response customization
+        # Search field filters
+        search_field: list[str] | None = None,
+        source_field: list[str] | None = None,
+        facet_list: list[str] | None = None,
+        # Response customization (accepted for backwards compatibility; not sent to API)
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
@@ -1409,7 +1416,9 @@ class PropertyDataCollection(BaseCollection):
         text : str, optional
             Free text search across all fields.
         order : OrderBy, optional
-            Sort order (ascending/descending).
+            Sort direction (ascending/descending).
+        order_by : OrderBy, optional
+            Alternate sort-direction parameter supported by the search API.
         sort_by : str, optional
             Field to sort results by.
         inventory_ids : SearchInventoryId or list[SearchInventoryId], optional
@@ -1422,6 +1431,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by data template IDs.
         data_column_ids : DataColumnId or list[DataColumnId], optional
             Filter by data column IDs.
+        sheet_ids : list[str], optional
+            Filter by sheet IDs.
         category : DataEntity or list[DataEntity], optional
             Filter by data entity categories.
         data_templates : str or list[str], optional
@@ -1432,6 +1443,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by parameter names.
         parameter_group : str or list[str], optional
             Filter by parameter group names.
+        parameter_set : list[str], optional
+            Filter by parameter, unit, and parameter-group combinations.
         unit : str or list[str], optional
             Filter by unit names.
         created_by : str or list[str], optional
@@ -1450,10 +1463,16 @@ class PropertyDataCollection(BaseCollection):
             Only include records updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include records updated on or before this date (ISO 8601).
+        search_field : list[str], optional
+            Restrict which fields the text query searches.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        facet_list : list[str], optional
+            Fields to include in search facets.
         return_fields : str or list[str], optional
-            Specific fields to return.
+            Deprecated. Not sent to the API; use ``source_field`` instead.
         return_facets : str or list[str], optional
-            Specific facets to return.
+            Deprecated. Not sent to the API; use ``facet_list`` instead.
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -1469,31 +1488,37 @@ class PropertyDataCollection(BaseCollection):
 
         category_values = ensure_list(category)
 
+        _ = return_fields, return_facets
+
         params = {
             "result": result,
             "text": text,
             "order": order,
+            "orderBy": order_by,
             "sortBy": sort_by,
             "inventoryIds": ensure_list(inventory_ids),
             "projectIds": ensure_list(project_ids),
-            "lotIds": ensure_list(lot_ids),
+            "lot": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
+            "sheetIds": sheet_ids,
             "category": category_values if category_values else None,
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),
             "parameterGroup": ensure_list(parameter_group),
+            "parameterSet": parameter_set,
             "unit": ensure_list(unit),
             "createdBy": ensure_list(created_by),
-            "taskCreatedBy": ensure_list(task_created_by),
+            "taskCreatedby": ensure_list(task_created_by),
             "updatedBy": ensure_list(updated_by),
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
-            "returnFields": ensure_list(return_fields),
-            "returnFacets": ensure_list(return_facets),
+            "searchField": search_field,
+            "sourceField": source_field,
+            "facetList": facet_list,
         }
 
         return AlbertPaginator(
