@@ -133,7 +133,7 @@ def test_attachment_update(
             HazardStatement(id="H207 - Desensitized explosives - Category 2", name=None),
         ]
         current_attachment.metadata.symbols = [
-            HazardSymbol(id="GHS07", name="Exclamation Mark", status="active")
+            HazardSymbol(id="GHS07", name="Exclamation Mark", status="From Model")
         ]
 
         updated = client.attachments.update(attachment=current_attachment)
