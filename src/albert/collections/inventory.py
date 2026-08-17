@@ -571,7 +571,7 @@ class InventoryCollection(BaseCollection):
         contains_field: str | list[str] | None = None,
         contains_text: str | list[str] | None = None,
         created_by_id: str | list[str] | None = None,
-        details: str | list[str] | None = None,
+        details: bool | None = None,
         drop_down_text: str | None = None,
         drop_down_text_prop: str | None = None,
         dup_detection: bool | None = None,
@@ -592,7 +592,7 @@ class InventoryCollection(BaseCollection):
         source_field: str | list[str] | None = None,
         status: str | list[str] | None = None,
         sub_category: str | list[str] | None = None,
-        synthesis_product_created: bool | None = None,
+        synthesis_product_created: str | list[str] | None = None,
         to_expiration_date: str | None = None,
         to_lot_created_at: str | None = None,
         to_on_hand: str | None = None,
@@ -658,7 +658,7 @@ class InventoryCollection(BaseCollection):
             "containsField": ensure_list(contains_field),
             "containsText": ensure_list(contains_text),
             "createdById": ensure_list(created_by_id),
-            "details": ensure_list(details),
+            "details": details,
             "dropDownText": drop_down_text,
             "dropDownTextProp": drop_down_text_prop,
             "dupDetection": dup_detection,
@@ -679,7 +679,7 @@ class InventoryCollection(BaseCollection):
             "sourceField": ensure_list(source_field),
             "status": ensure_list(status),
             "subCategory": ensure_list(sub_category),
-            "synthesisProductCreated": synthesis_product_created,
+            "synthesisProductCreated": ensure_list(synthesis_product_created),
             "toExpirationDate": to_expiration_date,
             "toLotCreatedAt": to_lot_created_at,
             "toOnHand": to_on_hand,
@@ -718,6 +718,7 @@ class InventoryCollection(BaseCollection):
                     "composite_search)."
                 )
             payload: dict[str, Any] = dict(query_params)
+            payload.pop("attributeId", None)
             if metadata_filters is not None:
                 payload["metadataFilters"] = {"metadata": metadata_filters}
             if custom_fields is not None:
@@ -966,7 +967,7 @@ class InventoryCollection(BaseCollection):
         contains_field: str | list[str] | None = None,
         contains_text: str | list[str] | None = None,
         created_by_id: str | list[str] | None = None,
-        details: str | list[str] | None = None,
+        details: bool | None = None,
         drop_down_text: str | None = None,
         drop_down_text_prop: str | None = None,
         dup_detection: bool | None = None,
@@ -987,7 +988,7 @@ class InventoryCollection(BaseCollection):
         source_field: str | list[str] | None = None,
         status: str | list[str] | None = None,
         sub_category: str | list[str] | None = None,
-        synthesis_product_created: bool | None = None,
+        synthesis_product_created: str | list[str] | None = None,
         to_expiration_date: str | None = None,
         to_lot_created_at: str | None = None,
         to_on_hand: str | None = None,
@@ -1089,8 +1090,8 @@ class InventoryCollection(BaseCollection):
             Text value(s) paired with ``contains_field``.
         created_by_id : str or list[str], optional
             Filter by creator UserId(s).
-        details : str or list[str], optional
-            Filter by detail field value(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
         drop_down_text : str, optional
             Dropdown search text.
         drop_down_text_prop : str, optional
@@ -1132,8 +1133,8 @@ class InventoryCollection(BaseCollection):
             Filter by status value(s).
         sub_category : str or list[str], optional
             Filter by sub-category.
-        synthesis_product_created : bool, optional
-            Filter by synthesis product creation flag.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (``YYYY-MM-DD``).
         to_lot_created_at : str, optional
@@ -1258,7 +1259,7 @@ class InventoryCollection(BaseCollection):
         contains_field: str | list[str] | None = None,
         contains_text: str | list[str] | None = None,
         created_by_id: str | list[str] | None = None,
-        details: str | list[str] | None = None,
+        details: bool | None = None,
         drop_down_text: str | None = None,
         drop_down_text_prop: str | None = None,
         dup_detection: bool | None = None,
@@ -1279,7 +1280,7 @@ class InventoryCollection(BaseCollection):
         source_field: str | list[str] | None = None,
         status: str | list[str] | None = None,
         sub_category: str | list[str] | None = None,
-        synthesis_product_created: bool | None = None,
+        synthesis_product_created: str | list[str] | None = None,
         to_expiration_date: str | None = None,
         to_lot_created_at: str | None = None,
         to_on_hand: str | None = None,
@@ -1376,8 +1377,8 @@ class InventoryCollection(BaseCollection):
             Text value(s) paired with ``contains_field``.
         created_by_id : str or list[str], optional
             Filter by creator UserId(s).
-        details : str or list[str], optional
-            Filter by detail field value(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
         drop_down_text : str, optional
             Dropdown search text.
         drop_down_text_prop : str, optional
@@ -1419,8 +1420,8 @@ class InventoryCollection(BaseCollection):
             Filter by status value(s).
         sub_category : str or list[str], optional
             Filter by sub-category.
-        synthesis_product_created : bool, optional
-            Filter by synthesis product creation flag.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
         to_expiration_date : str, optional
             Only include lots expiring on or before this date (``YYYY-MM-DD``).
         to_lot_created_at : str, optional
