@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import validate_call
 
@@ -294,6 +294,19 @@ class LotCollection(BaseCollection):
         search_field: str | list[str] | None = None,
         source_field: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        created_by: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        inventory: list[str] | None = None,
+        location: list[str] | None = None,
+        storage_location: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        owner: list[str] | None = None,
+        status: list[str] | None = None,
+        to_expiration_date: str | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -341,6 +354,32 @@ class LotCollection(BaseCollection):
             Restrict which fields are returned in the response.
         additional_field : str or list[str], optional
             Request additional columns from the search index.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within ``contains_field``.
+        created_by : list[str], optional
+            Filter by creator display name(s) or UserId(s).
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values. Requires POST search.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        inventory : list[str], optional
+            Filter by parent inventory name(s).
+        location : list[str], optional
+            Filter by location name(s).
+        storage_location : list[str], optional
+            Filter by storage location name(s).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values. Requires POST search.
+        owner : list[str], optional
+            Filter by lot owner display name(s) or UserId(s).
+        status : list[str], optional
+            Filter by lot status values.
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (ISO 8601).
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
@@ -359,7 +398,7 @@ class LotCollection(BaseCollection):
 
         search_text = text if (text is None or len(text) < 50) else text[:50]
 
-        params = {
+        params: dict[str, Any] = {
             "offset": offset,
             "order": order_by,
             "text": search_text,
@@ -375,6 +414,41 @@ class LotCollection(BaseCollection):
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
         }
+
+        post_only_params: dict[str, Any] = {
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "createdBy": created_by,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "inventory": inventory,
+            "location": location,
+            "storageLocation": storage_location,
+            "owner": owner,
+            "status": status,
+            "toExpirationDate": to_expiration_date,
+        }
+
+        deserialize = lambda items: [
+            LotSearchItem(**item)._bind_collection(self) for item in items
+        ]
+
+        if metadata_filters is not None or custom_fields is not None:
+            payload: dict[str, Any] = {**params, **post_only_params}
+            if metadata_filters is not None:
+                payload["metadataFilters"] = {"metadata": metadata_filters}
+            if custom_fields is not None:
+                payload["customFields"] = {"metadata": custom_fields}
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
+
         params = {key: value for key, value in params.items() if value is not None}
 
         return AlbertPaginator(
@@ -383,9 +457,7 @@ class LotCollection(BaseCollection):
             session=self.session,
             params=params,
             max_items=max_items,
-            deserialize=lambda items: [
-                LotSearchItem(**item)._bind_collection(self) for item in items
-            ],
+            deserialize=deserialize,
         )
 
     @validate_call
