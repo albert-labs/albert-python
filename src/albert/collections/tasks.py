@@ -689,8 +689,8 @@ class TaskCollection(BaseCollection):
         due_date_duration: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
-        has_attachment: bool | None = None,
-        has_notes: bool | None = None,
+        has_attachment: str | list[str] | None = None,
+        has_notes: str | list[str] | None = None,
         linked_to: list[str] | None = None,
         source_field: str | list[str] | None = None,
         witness_status: list[str] | None = None,
@@ -776,10 +776,10 @@ class TaskCollection(BaseCollection):
             Facet field to filter on.
         facet_text : str, optional
             Facet text to search for.
-        has_attachment : bool, optional
-            When set, filter tasks by attachment presence.
-        has_notes : bool, optional
-            When set, filter tasks by note presence.
+        has_attachment : str or list[str], optional
+            Filter tasks by attachment presence.
+        has_notes : str or list[str], optional
+            Filter tasks by note presence.
         linked_to : list[str], optional
             Filter by linked entity ID(s).
         source_field : str or list[str], optional
@@ -834,8 +834,8 @@ class TaskCollection(BaseCollection):
             "dueDateDuration": due_date_duration,
             "facetField": facet_field,
             "facetText": facet_text,
-            "hasAttachment": has_attachment,
-            "hasNotes": has_notes,
+            "hasAttachment": ensure_list(has_attachment),
+            "hasNotes": ensure_list(has_notes),
             "linkedTo": linked_to,
             "sourceField": ensure_list(source_field),
             "witnessStatus": witness_status,
@@ -903,8 +903,8 @@ class TaskCollection(BaseCollection):
         due_date_duration: str | None = None,
         facet_field: str | None = None,
         facet_text: str | None = None,
-        has_attachment: bool | None = None,
-        has_notes: bool | None = None,
+        has_attachment: str | list[str] | None = None,
+        has_notes: str | list[str] | None = None,
         linked_to: list[str] | None = None,
         source_field: str | list[str] | None = None,
         witness_status: list[str] | None = None,
@@ -990,10 +990,10 @@ class TaskCollection(BaseCollection):
             Facet field to filter on.
         facet_text : str, optional
             Facet text to search for.
-        has_attachment : bool, optional
-            When set, filter tasks by attachment presence.
-        has_notes : bool, optional
-            When set, filter tasks by note presence.
+        has_attachment : str or list[str], optional
+            Filter tasks by attachment presence.
+        has_notes : str or list[str], optional
+            Filter tasks by note presence.
         linked_to : list[str], optional
             Filter by linked entity ID(s).
         source_field : str or list[str], optional
