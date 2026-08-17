@@ -12,8 +12,25 @@ class CasLevelSubstance(BaseAlbertModel):
     cas_id: str | None = Field(default=None, alias="casID")
     """The CAS identifier for the substance (format ``CAS...``)."""
 
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry.
+
+    Prefer this over ``cas_id`` when looking a substance up in the Regulatory DB
+    (see [`SubstanceV4Collection`][albert.collections.substance_v4.SubstanceV4Collection]):
+    a single CAS number can map to more than one substance record, so the substance
+    ID is the precise key."""
+
+    albert_id: str | None = Field(default=None, alias="albertId")
+    """The Inventory ID of the ingredient this substance was unpacked from."""
+
     amount: float | None = Field(default=None)
     """The amount of this substance in the unpacked composition."""
+
+    min: float | None = Field(default=None)
+    """The minimum proportion of this substance in the unpacked composition."""
+
+    target: float | None = Field(default=None)
+    """The target proportion of this substance in the unpacked composition."""
 
 
 class NormalizedCAS(BaseAlbertModel):
@@ -53,6 +70,9 @@ class UnpackedCasInfo(BaseAlbertModel):
 
     id: str | None = Field(default=None)
     """The Albert identifier for the CAS record."""
+
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry."""
 
     name: str | None = Field(default=None)
     """The name of the CAS substance."""
