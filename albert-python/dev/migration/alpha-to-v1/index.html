@@ -5487,7 +5487,7 @@ This guide provides details highlighting the most important changes to help you 
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># v1.0.0 SSO helper opens a browser for authentication</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_sso</span><span class="p">(</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">email</span><span class="o">=</span><span class="s2">&quot;yourname@albertinvent.com&quot;</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">email</span><span class="o">=</span><span class="s2">"yourname@albertinvent.com"</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">"https://app.albertinvent.com"</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
 </span></code></pre></div>
 </li>
@@ -5500,7 +5500,7 @@ This guide provides details highlighting the most important changes to help you 
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># v1.0.0: use from_client_credentials helper</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_client_credentials</span><span class="p">(</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">client_id</span><span class="o">=</span><span class="n">CLIENT_ID</span><span class="p">,</span> <span class="n">client_secret</span><span class="o">=</span><span class="n">CLIENT_SECRET</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">client_id</span><span class="o">=</span><span class="n">CLIENT_ID</span><span class="p">,</span> <span class="n">client_secret</span><span class="o">=</span><span class="n">CLIENT_SECRET</span><span class="p">,</span> <span class="n">base_url</span><span class="o">=</span><span class="s2">"https://app.albertinvent.com"</span>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
 </span></code></pre></div>
 </li>
@@ -5509,10 +5509,10 @@ This guide provides details highlighting the most important changes to help you 
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># alpha: passed token=... directly to constructor</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># client = Albert(token=&quot;MY_STATIC_TOKEN&quot;)</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># client = Albert(token="MY_STATIC_TOKEN")</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># v1.0.0: use from_token helper or still pass token</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://app.albertinvent.com&quot;</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">&quot;MY_STATIC_TOKEN&quot;</span><span class="p">)</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Albert</span><span class="o">.</span><span class="n">from_token</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">"https://app.albertinvent.com"</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">"MY_STATIC_TOKEN"</span><span class="p">)</span>
 </span></code></pre></div>
 </li>
 </ol>
@@ -5537,8 +5537,8 @@ This guide provides details highlighting the most important changes to help you 
 <li>Renamed <code>tags.get_by_tag(tag=...)</code> to <code>tags.get_by_name(name=...)</code> for clearer semantics and naming consistency.</li>
 </ul>
 <p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gd">- tag = client.tags.get_by_tag(tag=&quot;sustainability&quot;)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="gi">+ tag = client.tags.get_by_name(name=&quot;sustainability&quot;)</span>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gd">- tag = client.tags.get_by_tag(tag="sustainability")</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="gi">+ tag = client.tags.get_by_name(name="sustainability")</span>
 </span></code></pre></div>
 <h3 id="notescollection-list-replaced-with-get_by_parent_id">NotesCollection: <code>list()</code> replaced with <code>get_by_parent_id()</code></h3>
 <p><strong>What changed:</strong></p>
@@ -5557,8 +5557,8 @@ This guide provides details highlighting the most important changes to help you 
 <li>For example, <code>tags.tags_exists()</code> is now <code>tags.exists()</code>.</li>
 </ul>
 <p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gd">- company_exists = client.companies.company_exists(name=&quot;ACME&quot;, exact_match=True)</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="gi">+ company_exists = client.companies.exists(name=&quot;ACME&quot;, exact_match=True)</span>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gd">- company_exists = client.companies.company_exists(name="ACME", exact_match=True)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="gi">+ company_exists = client.companies.exists(name="ACME", exact_match=True)</span>
 </span></code></pre></div>
 <h3 id="deprecation-of-list-methods">Deprecation of <code>list()</code> methods</h3>
 <p><strong>What changed:</strong></p>
@@ -5572,8 +5572,8 @@ This guide provides details highlighting the most important changes to help you 
 <div class="language-diff highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gd">- project_list = list(client.projects.list())</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="gi">+ project_list = list(client.projects.get_all(max_items=10))</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gd">- project_matches = list(client.projects.list(status=&quot;Active&quot;))</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="gi">+ project_matches = list(client.projects.search(status=&quot;Active&quot;, max_items=10))</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gd">- project_matches = list(client.projects.list(status="Active"))</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="gi">+ project_matches = list(client.projects.search(status="Active", max_items=10))</span>
 </span></code></pre></div>
 <p><strong>Optional:</strong> Hydrate individual items from <code>search()</code> results:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">project</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">1</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
@@ -5593,7 +5593,7 @@ This guide provides details highlighting the most important changes to help you 
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="n">projects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">max_items</span><span class="o">=</span><span class="mi">10</span><span class="p">))</span>
 </span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># The same applies to search() as well</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">search_results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">&quot;Active&quot;</span><span class="p">,</span> <span class="n">max_items</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">search_results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">client</span><span class="o">.</span><span class="n">projects</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">"Active"</span><span class="p">,</span> <span class="n">max_items</span><span class="o">=</span><span class="mi">20</span><span class="p">))</span>
 </span></code></pre></div>
 <h3 id="batchdatacollection-get-renamed-to-get_by_id">BatchDataCollection: <code>get</code> renamed to <code>get_by_id</code></h3>
 <p><strong>What changed:</strong></p>
@@ -5601,8 +5601,8 @@ This guide provides details highlighting the most important changes to help you 
 <li>The <code>BatchDataCollection.get(id)</code> method has been renamed to <code>get_by_id(id)</code> for clarity and consistency.</li>
 </ul>
 <p><strong>How to migrate:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gd">- item = client.batch_data.get(id=&quot;123&quot;)</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="gi">+ item = client.batch_data.get_by_id(id=&quot;123&quot;)</span>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gd">- item = client.batch_data.get(id="123")</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="gi">+ item = client.batch_data.get_by_id(id="123")</span>
 </span></code></pre></div>
 <hr />
 <h2 id="changes-to-resources">Changes to Resources</h2>
@@ -5646,8 +5646,8 @@ This guide provides details highlighting the most important changes to help you 
 <p><strong>What changed:</strong></p>
 <p>The <code>templates</code> module is now <code>custom_templates</code>.</p>
 <p><strong>How to use:</strong></p>
-<div class="language-diff highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="gd">- client.templates.get_by_id(id=&quot;xxx&quot;)</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="gi">+ client.custom_templates.get_by_id(id=&quot;xxx&quot;)</span>
+<div class="language-diff highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="gd">- client.templates.get_by_id(id="xxx")</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="gi">+ client.custom_templates.get_by_id(id="xxx")</span>
 </span></code></pre></div>
 
 
