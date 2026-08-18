@@ -112,7 +112,7 @@ class Unit(BaseResource):
     """The Albert ID of the unit (format ``UNI...``). Set when the unit is retrieved from or created in Albert."""
 
     name: str
-    """The name of the unit (e.g. ``"gram"``)."""
+    """Currently this is the only field that is displayed in Albert, so use this for display purposes. Therefore, users often use the symbol for the unit here as that's the preferred display."""
 
     symbol: str | None = Field(None)
     """The display symbol for the unit (e.g. ``"g"``)."""

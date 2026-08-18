@@ -230,7 +230,7 @@ class InventoryMinimum(BaseAlbertModel):
         ```python
         from albert.resources.inventory import InventoryMinimum
 
-        minimum = InventoryMinimum(id="LOC1", minimum=500)
+        minimum = InventoryMinimum(id="LOC9999999", minimum=500)
         ```"""
 
     id: str | None = Field(default=None)
@@ -270,7 +270,7 @@ class InventoryItem(BaseTaggedResource):
     An ``InventoryItem`` is the canonical record for a raw material, consumable,
     piece of equipment, or formula. Its [`InventoryCategory`][albert.resources.inventory.InventoryCategory] determines how it
     is used across the platform, and once saved it is referenced everywhere by its
-    Inventory ID (format ``INV...``, e.g. ``"INVA1"``). Raw materials are typically
+    Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``). Raw materials are typically
     linked to a manufacturing ``company`` and a compositional breakdown of CAS
     amounts. Formula items are designed in Worksheets rather than created here (the
     [`create`][albert.collections.inventory.InventoryCollection.create] method rejects
@@ -389,11 +389,17 @@ class InventoryItem(BaseTaggedResource):
 
 
 class InventorySpecValue(BaseAlbertModel):
-    """The acceptance value(s) of an [`InventorySpec`][albert.resources.inventory.InventorySpec].
+    """The expected or reference value(s) of a legacy [`InventorySpec`][albert.resources.inventory.InventorySpec].
 
-    Expresses the expected value of a declared property as a range (``min`` to ``max``),
-    a single ``reference`` value, and/or a ``comparison_operator``. Numeric inputs are
-    accepted and stored as strings."""
+    Expresses the declared value of an inventory reference property as a range
+    (``min`` to ``max``), a single ``reference`` value, and/or a
+    ``comparison_operator``. Numeric inputs are accepted and stored as strings.
+
+    Deprecated with Inventory Specs (removed in SDK 2.0). Prefer
+    [`AttributeValue`][albert.resources.attributes.AttributeValue] and
+    [`AttributeValueRange`][albert.resources.attributes.AttributeValueRange] via
+    ``client.attributes``.
+    """
 
     min: str | None = Field(default=None)
     """The lower bound of the acceptable range."""
@@ -416,15 +422,30 @@ class InventorySpecValue(BaseAlbertModel):
 
 
 class InventorySpec(BaseAlbertModel):
-    """A declared property of an [`InventoryItem`][albert.resources.inventory.InventoryItem].
+    """A legacy inventory reference property (definition and value in one object).
 
-    A spec is a property asserted directly on an item (a declared expectation), as
-    opposed to a value measured through a Task. Each spec points at a data column
-    (``data_column_id``, format ``DAC...``) and carries the expected
-    [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue]. Specs are attached to and retrieved from an item via
+    An ``InventorySpec`` both *defines* a property and *assigns* its expected value
+    on one [`InventoryItem`][albert.resources.inventory.InventoryItem]: the property
+    ``name``, the data column (``data_column_id``, format ``DAC...``), and the
+    [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue] live
+    inline. Specs are per-item (not shared across inventory) and are attached or
+    read with
     [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] and
-    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs], and are
-    grouped for an item by [`InventorySpecList`][albert.resources.inventory.InventorySpecList].
+    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs].
+    Multiple specs on one item are grouped as
+    [`InventorySpecList`][albert.resources.inventory.InventorySpecList].
+
+    Use Specs for inventory **reference** properties (declared expectations that
+    worksheets look up). Do **not** use Specs for experimentally measured results:
+    those belong in
+    [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
+    (``client.property_data``).
+
+    !!! warning "Deprecated"
+        Inventory Specs are deprecated and will be removed in SDK 2.0. Prefer
+        [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+        (``client.attributes``), which separates reusable attribute definitions from
+        per-item reference values. See the Specs → Attributes migration guide.
 
     !!! example
         ```python
@@ -432,10 +453,11 @@ class InventorySpec(BaseAlbertModel):
 
         spec = InventorySpec(
             name="Viscosity",
-            data_column_id="DAC1",
+            data_column_id="DAC9999999",
             value=InventorySpecValue(min=100, max=200),
         )
-        ```"""
+        ```
+    """
 
     id: str | None = Field(default=None, alias="albertId")
     """The Albert ID of the spec. Serialized as ``albertId``."""
@@ -475,12 +497,19 @@ class InventorySpec(BaseAlbertModel):
 
 
 class InventorySpecList(BaseAlbertModel):
-    """The set of [`InventorySpec`][albert.resources.inventory.InventorySpec] entries attached to one [`InventoryItem`][albert.resources.inventory.InventoryItem].
+    """The set of legacy [`InventorySpec`][albert.resources.inventory.InventorySpec] entries on one inventory item.
 
     Returned by
-    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs] and accepted by
-    [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs], this binds a
-    list of specs to the item they belong to."""
+    [`get_specs`][albert.collections.inventory.InventoryCollection.get_specs] and by
+    [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs]. Binds a
+    list of per-item reference specs to the
+    [`InventoryItem`][albert.resources.inventory.InventoryItem] they belong to
+    (``parent_id``).
+
+    Deprecated with Inventory Specs (removed in SDK 2.0). Prefer
+    [`AttributeValuesResponse`][albert.resources.attributes.AttributeValuesResponse]
+    from ``client.attributes``.
+    """
 
     parent_id: str = Field(..., alias="parentId")
     """The Inventory ID of the item the specs belong to. Serialized as ``parentId``."""
@@ -600,7 +629,7 @@ class MergeInventory(BaseAlbertModel):
         from albert.resources.inventory import MergeInventory
 
         merge = MergeInventory(
-            parent_id="INVA1",
+            parent_id="INVA9999999",
             child_inventories=[{"id": "INVB1"}, {"id": "INVC1"}],
         )
         ```"""

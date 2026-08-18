@@ -45,7 +45,7 @@ class Pricing(BaseResource):
         from albert.resources.locations import Location
 
         pricing = Pricing(
-            inventory_id="INVA1",
+            inventory_id="INVA9999999",
             company=Company(name="Acme Chemicals"),
             location=Location(name="Pittsburgh"),
             price=12.50,

@@ -163,6 +163,8 @@ class BTInsightCollection(BaseCollection):
         to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        model_session: str | list[str] | None = None,
+        tag: str | list[str] | None = None,
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[BTInsight]:
@@ -211,6 +213,10 @@ class BTInsightCollection(BaseCollection):
             Only include insights updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include insights updated on or before this date (ISO 8601).
+        model_session : str or list[str], optional
+            Filter by model session ID(s) (format ``MDS...``).
+        tag : str or list[str], optional
+            Filter by tag name(s).
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -239,6 +245,8 @@ class BTInsightCollection(BaseCollection):
         params["toCreatedAt"] = to_created_at
         params["fromUpdatedAt"] = from_updated_at
         params["toUpdatedAt"] = to_updated_at
+        params["modelSession"] = ensure_list(model_session)
+        params["tag"] = ensure_list(tag)
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,

@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import validate_call
 
@@ -20,7 +20,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
-from albert.resources.lots import Lot, LotAdjustmentAction, LotSearchItem
+from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
@@ -50,7 +50,7 @@ class LotCollection(BaseCollection):
         from albert import Albert
         client = Albert()
         # Look up all lots of a given inventory item
-        lots = client.lots.get_all(parent_id="INVA1")
+        lots = client.lots.get_all(parent_id="INVA9999999")
         for lot in lots:
             print(lot.id, lot.inventory_on_hand)
         ```
@@ -100,6 +100,7 @@ class LotCollection(BaseCollection):
         "pack_size",
         "barcode_id",
         "owner",
+        "workflow_id",
     }
 
     def __init__(self, *, session: AlbertSession):
@@ -123,12 +124,12 @@ class LotCollection(BaseCollection):
         !!! example
             ```python
             from albert import Albert
+            from albert.core.shared.models.base import EntityLink
             from albert.resources.lots import Lot
-            from albert.resources.storage_locations import StorageLocation
             client = Albert()
             new_lot = Lot(
-                inventory_id="INVA1",
-                storage_location=StorageLocation(name="Main Warehouse", id="STLA1"),
+                inventory_id="INVA9999999",
+                storage_location=EntityLink(id="STL9999999"),
                 initial_quantity=10.0,
                 inventory_on_hand=10.0,
                 cost=50.0,
@@ -293,6 +294,19 @@ class LotCollection(BaseCollection):
         search_field: str | list[str] | None = None,
         source_field: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        created_by: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        inventory: list[str] | None = None,
+        location: list[str] | None = None,
+        storage_location: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        owner: list[str] | None = None,
+        status: list[str] | None = None,
+        to_expiration_date: str | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -314,7 +328,7 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # Find lots of a given inventory item that are running low
-            for lot in client.lots.search(inventory_id="INVA1", max_items=50):
+            for lot in client.lots.search(inventory_id="INVA9999999", max_items=50):
                 print(lot.id, lot.parent_name)
             ```
 
@@ -340,6 +354,32 @@ class LotCollection(BaseCollection):
             Restrict which fields are returned in the response.
         additional_field : str or list[str], optional
             Request additional columns from the search index.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within ``contains_field``.
+        created_by : list[str], optional
+            Filter by creator display name(s) or UserId(s).
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        inventory : list[str], optional
+            Filter by parent inventory name(s).
+        location : list[str], optional
+            Filter by location name(s).
+        storage_location : list[str], optional
+            Filter by storage location name(s).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        owner : list[str], optional
+            Filter by lot owner display name(s) or UserId(s).
+        status : list[str], optional
+            Filter by lot status values.
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (ISO 8601).
         is_drop_down : bool, optional
             Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
@@ -358,7 +398,7 @@ class LotCollection(BaseCollection):
 
         search_text = text if (text is None or len(text) < 50) else text[:50]
 
-        params = {
+        params: dict[str, Any] = {
             "offset": offset,
             "order": order_by,
             "text": search_text,
@@ -374,17 +414,39 @@ class LotCollection(BaseCollection):
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
         }
-        params = {key: value for key, value in params.items() if value is not None}
+
+        post_only_params: dict[str, Any] = {
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "createdBy": created_by,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "inventory": inventory,
+            "location": location,
+            "storageLocation": storage_location,
+            "owner": owner,
+            "status": status,
+            "toExpirationDate": to_expiration_date,
+        }
+
+        deserialize = lambda items: [
+            LotSearchItem(**item)._bind_collection(self) for item in items
+        ]
+
+        payload: dict[str, Any] = {**params, **post_only_params}
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
             max_items=max_items,
-            deserialize=lambda items: [
-                LotSearchItem(**item)._bind_collection(self) for item in items
-            ],
+            deserialize=deserialize,
+            method="POST",
+            json=payload,
         )
 
     @validate_call
@@ -395,7 +457,7 @@ class LotCollection(BaseCollection):
         inventory_id: InventoryId | None = None,
         barcode_id: str | None = None,
         parent_id_category: str | None = None,
-        inventory_on_hand: str | None = None,
+        inventory_on_hand: InventoryOnHandFilter | None = None,
         location_id: str | None = None,
         exact_match: bool = False,
         begins_with: bool = False,
@@ -416,7 +478,10 @@ class LotCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             # List only lots of an item that still have stock
-            for lot in client.lots.get_all(parent_id="INVA1", inventory_on_hand="gtZero"):
+            from albert.resources.lots import InventoryOnHandFilter
+            for lot in client.lots.get_all(
+                parent_id="INVA9999999", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
+            ):
                 print(lot.id, lot.inventory_on_hand)
             ```
 
@@ -431,9 +496,9 @@ class LotCollection(BaseCollection):
         parent_id_category : str, optional
             Filter by the parent inventory category (e.g. ``RawMaterials``,
             ``Consumables``).
-        inventory_on_hand : str, optional
-            Filter by inventory on hand relative to zero. One of ``"lteZero"``,
-            ``"gtZero"``, or ``"eqZero"``.
+        inventory_on_hand : InventoryOnHandFilter, optional
+            Filter by inventory on hand relative to zero. Requires ``parent_id``,
+            ``barcode_id``, or ``parent_id_category``.
         location_id : str, optional
             Filter by location ID.
         exact_match : bool, optional
@@ -517,6 +582,18 @@ class LotCollection(BaseCollection):
             d
             for d in patch_data.data
             if not (d.attribute == "Owner" and d.old_value == d.new_value)
+        ]
+
+        # workflowId only supports UPDATE (set-once); the base diff emits ADD when unset.
+        patch_data.data = [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute="workflowId",
+                new_value=d.new_value,
+            )
+            if d.attribute in {"workflowId", "WorkflowId"} and d.operation == PatchOperation.ADD
+            else d
+            for d in patch_data.data
         ]
 
         return patch_data
@@ -757,7 +834,7 @@ class LotCollection(BaseCollection):
         The following fields can be updated: ``barcode_id``, ``cost``,
         ``expiration_date``, ``initial_quantity``, ``inventory_on_hand``,
         ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
-        ``status``, ``storage_location``.
+        ``status``, ``storage_location``, ``workflow_id``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

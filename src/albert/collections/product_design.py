@@ -41,7 +41,7 @@ class ProductDesignCollection(BaseCollection):
         from albert import Albert
         client = Albert()
         unpacked = client.product_design.get_unpacked_products(
-            inventory_ids=["INVA1", "INVA2"],
+            inventory_ids=["INVA9999999", "INVA9999998"],
         )
         for product in unpacked:
             for ingredient in product.inventories or []:
@@ -96,7 +96,7 @@ class ProductDesignCollection(BaseCollection):
         !!! example
             ```python
             unpacked = client.product_design.get_unpacked_products(
-                inventory_ids=["INVA1"],
+                inventory_ids=["INVA9999999"],
                 unpack_id="DESIGN",
             )
             substances = unpacked[0].cas_level_substances or []
@@ -107,7 +107,7 @@ class ProductDesignCollection(BaseCollection):
         Parameters
         ----------
         inventory_ids : list[InventoryId]
-            The formula Inventory IDs to unpack (format ``INV...``, e.g. ``"INVA1"``).
+            The formula Inventory IDs to unpack (format ``INV...``, e.g. ``"INVA9999999"``).
         unpack_id : {"DESIGN", "PREDICTION"}, optional
             Which unpacking mode the server should use. Defaults to ``"PREDICTION"``.
 

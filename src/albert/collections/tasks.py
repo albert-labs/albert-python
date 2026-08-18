@@ -86,10 +86,10 @@ class TaskCollection(BaseCollection):
         from albert.resources.tasks import PropertyTask
         client = Albert()
         task = client.tasks.create(
-            task=PropertyTask(name="Viscosity screen", parent_id="PRO1")
+            task=PropertyTask(name="Viscosity screen", parent_id="PROA9999999")
         )
         client.tasks.add_block(
-            task_id=task.id, data_template_id="DAT1", workflow_id="WFL1"
+            task_id=task.id, data_template_id="DAT9999999", workflow_id="WFL1"
         )
         ```
 
@@ -203,7 +203,7 @@ class TaskCollection(BaseCollection):
         !!! example
             ```python
             client.tasks.add_block(
-                task_id="TASFOR1", data_template_id="DAT1", workflow_id="WFL1"
+                task_id="TASFOR1", data_template_id="DAT9999999", workflow_id="WFL1"
             )
             ```
 
@@ -670,6 +670,7 @@ class TaskCollection(BaseCollection):
         albert_id: list[str] | None = None,
         data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
+        assigned_to_id: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
@@ -681,6 +682,18 @@ class TaskCollection(BaseCollection):
         updated_by: str | list[str] | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        additional_field: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        due_date_duration: str | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        has_attachment: str | list[str] | None = None,
+        has_notes: str | list[str] | None = None,
+        linked_to: list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        witness_status: list[str] | None = None,
         metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -747,6 +760,32 @@ class TaskCollection(BaseCollection):
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
+        assigned_to_id : list[str], optional
+            Filter by assigned user ID(s) (e.g. ``"USR4227"``).
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        collaborator_pop_up : bool, optional
+            When True, restrict results for the collaborator pop-up UI.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within ``contains_field``.
+        due_date_duration : str, optional
+            Filter by due date duration bucket.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        has_attachment : str or list[str], optional
+            Filter tasks by attachment presence.
+        has_notes : str or list[str], optional
+            Filter tasks by note presence.
+        linked_to : list[str], optional
+            Filter by linked entity ID(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in the response.
+        witness_status : list[str], optional
+            Filter by witness status (e.g. ``"witnessed"``).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
         order_by : OrderBy, optional
@@ -776,6 +815,7 @@ class TaskCollection(BaseCollection):
             "albertId": albert_id,
             "dataTemplate": data_template,
             "assignedTo": assigned_to,
+            "assignedToId": assigned_to_id,
             "location": location,
             "priority": priority,
             "status": status,
@@ -787,6 +827,18 @@ class TaskCollection(BaseCollection):
             "updatedBy": ensure_list(updated_by),
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
+            "additionalField": ensure_list(additional_field),
+            "collaboratorPopUp": collaborator_pop_up,
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "dueDateDuration": due_date_duration,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "hasAttachment": ensure_list(has_attachment),
+            "hasNotes": ensure_list(has_notes),
+            "linkedTo": linked_to,
+            "sourceField": ensure_list(source_field),
+            "witnessStatus": witness_status,
         }
 
         category_values = ensure_list(category)
@@ -795,6 +847,9 @@ class TaskCollection(BaseCollection):
         deserialize = lambda items: [
             TaskSearchItem(**item)._bind_collection(self) for item in items
         ]
+
+        # TODO(SDK-89): always POST task search once POST SearchTask accepts
+        # updatedBy, fromUpdatedAt, and toUpdatedAt.
 
         if metadata_filters is not None:
             payload: dict[str, Any] = {
@@ -832,6 +887,7 @@ class TaskCollection(BaseCollection):
         albert_id: list[str] | None = None,
         data_template: list[str] | None = None,
         assigned_to: list[str] | None = None,
+        assigned_to_id: list[str] | None = None,
         location: list[str] | None = None,
         priority: list[str] | None = None,
         status: list[str] | None = None,
@@ -843,6 +899,18 @@ class TaskCollection(BaseCollection):
         updated_by: str | list[str] | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        additional_field: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        due_date_duration: str | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        has_attachment: str | list[str] | None = None,
+        has_notes: str | list[str] | None = None,
+        linked_to: list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        witness_status: list[str] | None = None,
         metadata_filters: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
@@ -909,6 +977,32 @@ class TaskCollection(BaseCollection):
             Only include items updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
+        assigned_to_id : list[str], optional
+            Filter by assigned user ID(s) (e.g. ``"USR4227"``).
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        collaborator_pop_up : bool, optional
+            When True, restrict results for the collaborator pop-up UI.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within ``contains_field``.
+        due_date_duration : str, optional
+            Filter by due date duration bucket.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        has_attachment : str or list[str], optional
+            Filter tasks by attachment presence.
+        has_notes : str or list[str], optional
+            Filter tasks by note presence.
+        linked_to : list[str], optional
+            Filter by linked entity ID(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in the response.
+        witness_status : list[str], optional
+            Filter by witness status (e.g. ``"witnessed"``).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
         order_by : OrderBy, optional
@@ -946,6 +1040,7 @@ class TaskCollection(BaseCollection):
                 albert_id=albert_id,
                 data_template=data_template,
                 assigned_to=assigned_to,
+                assigned_to_id=assigned_to_id,
                 location=location,
                 priority=priority,
                 status=status,
@@ -957,6 +1052,18 @@ class TaskCollection(BaseCollection):
                 updated_by=updated_by,
                 from_updated_at=from_updated_at,
                 to_updated_at=to_updated_at,
+                additional_field=additional_field,
+                collaborator_pop_up=collaborator_pop_up,
+                contains_field=contains_field,
+                contains_text=contains_text,
+                due_date_duration=due_date_duration,
+                facet_field=facet_field,
+                facet_text=facet_text,
+                has_attachment=has_attachment,
+                has_notes=has_notes,
+                linked_to=linked_to,
+                source_field=source_field,
+                witness_status=witness_status,
                 metadata_filters=metadata_filters,
                 order_by=order_by,
                 sort_by=sort_by,

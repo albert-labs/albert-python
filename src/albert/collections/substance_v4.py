@@ -44,10 +44,32 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
             max_items=max_items,
         )
 
+    def _record_total(self, data: dict[str, Any]) -> None:
+        pagination = data.get("pagination") or {}
+        raw = pagination.get("total")
+        if raw is None:
+            return
+        try:
+            self._total = int(raw)
+        except (TypeError, ValueError):
+            return
+
     def _response_items(self, data: dict[str, Any]) -> list:
         return data.get("substances") or []
 
     def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        pagination = data.get("pagination") or {}
+        last_key = pagination.get("lastKey")
+        if last_key is not None:
+            self._last_key = str(last_key)
+
+        if count == 0:
+            return False
+
+        # The API omits pagination.lastKey on the final page.
+        if "lastKey" not in pagination:
+            return False
+
         self._offset += count
         self.params["startKey"] = self._offset
         return True
@@ -238,16 +260,21 @@ class SubstanceV4Collection(BaseCollection):
         cas: str | None = None,
         ec: str | None = None,
         name: str | None = None,
+        inciname: str | None = None,
+        cas_ids: str | None = None,
         region: str = "global",
         classification_type: str | None = None,
+        catch_errors: bool | None = None,
+        language: str | None = None,
+        fetch_structures: bool | None = None,
         start_key: int = 0,
         max_items: int | None = None,
     ) -> Iterator[SubstanceV4SearchItem]:
         """Search for substances by keyword or advanced filters.
 
-        At least one of ``search_key``, ``cas``, ``ec``, or ``name`` must be provided.
-        If both ``search_key`` and advanced filters are provided, the advanced filters
-        take precedence.
+        At least one of ``search_key``, ``cas``, ``ec``, ``name``, ``inciname``, or
+        ``cas_ids`` must be provided. If both ``search_key`` and advanced filters are
+        provided, the advanced filters take precedence.
 
         Parameters
         ----------
@@ -259,6 +286,10 @@ class SubstanceV4Collection(BaseCollection):
             Filter by EC identifier.
         name : str | None
             Filter by substance name.
+        inciname : str | None
+            Filter by INCI name identifier.
+        cas_ids : str | None
+            Comma-separated CAS IDs to filter by (for example ``"7732-18-5,50-00-0"``).
         region : str, optional
             Region for hazard data. Common values: ``"global"``, ``"EU"``, ``"US"``,
             ``"UK"``. Defaults to ``"global"``.
@@ -267,6 +298,18 @@ class SubstanceV4Collection(BaseCollection):
             ``"NOTIFIED"``, ``"SELF_CLASSIFIED"``; or their display labels
             ``"Harmonised C&L"``, ``"Notified C&L"``, ``"Self Classified"``,
             by default None.
+        catch_errors : bool | None, optional
+            When ``False``, substances with incomplete hazard data are still
+            returned alongside any per-substance errors. When ``True`` or omitted,
+            the request fails if any substance has incomplete hazard data.
+            Does not affect whether not-found identifiers are included in the
+            results. By default ``None``.
+        language : str | None, optional
+            BCP-47 language code for name translation (e.g. ``"EN"``, ``"DE"``,
+            ``"FR"``), by default None.
+        fetch_structures : bool | None, optional
+            When ``True``, each result includes linked structure identifiers and
+            chemical identity fields. By default ``None``.
         start_key : int, optional
             Offset to resume pagination from, by default 0.
         max_items : int, optional
@@ -277,8 +320,10 @@ class SubstanceV4Collection(BaseCollection):
         SubstanceV4SearchItem
             Matching substance search records.
         """
-        if not any([search_key, cas, ec, name]):
-            raise ValueError("At least one of search_key, cas, ec, or name must be provided.")
+        if not any([search_key, cas, ec, name, inciname, cas_ids]):
+            raise ValueError(
+                "At least one of search_key, cas, ec, name, inciname, or cas_ids must be provided."
+            )
 
         params: dict = {"region": region, "startKey": start_key}
         if search_key:
@@ -289,8 +334,18 @@ class SubstanceV4Collection(BaseCollection):
             params["ec"] = ec
         if name:
             params["name"] = name
+        if inciname:
+            params["inciname"] = inciname
+        if cas_ids:
+            params["casIDs"] = cas_ids
         if classification_type:
             params["classificationType"] = classification_type
+        if catch_errors is not None:
+            params["catchErrors"] = catch_errors
+        if language:
+            params["language"] = language
+        if fetch_structures is not None:
+            params["fetchStructures"] = fetch_structures
 
         return SubstanceV4SearchPaginator(
             path=f"{self.base_path}/search",

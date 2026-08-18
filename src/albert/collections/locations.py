@@ -5,6 +5,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.utils import ensure_list
+from albert.exceptions import BadRequestError
 from albert.resources.locations import Location
 
 
@@ -192,6 +193,15 @@ class LocationCollection(BaseCollection):
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         return self.get_by_id(id=location.id)
 
+    def _find_by_name(self, *, location: Location) -> Location | None:
+        name_lower = location.name.lower()
+        for exact_match in (True, False):
+            hits = self.get_all(name=location.name, exact_match=exact_match)
+            for hit in hits:
+                if hit and hit.name.lower() == name_lower:
+                    return hit
+        return None
+
     def exists(self, *, location: Location) -> Location | None:
         """Return the existing Location matching the given name, or None.
 
@@ -221,11 +231,7 @@ class LocationCollection(BaseCollection):
         Location or None
             The matching registered location, or None if no match is found.
         """
-        hits = self.get_all(name=location.name)
-        for hit in hits:
-            if hit and hit.name.lower() == location.name.lower():
-                return hit
-        return None
+        return self._find_by_name(location=location)
 
     def create(self, *, location: Location) -> Location:
         """Create a new Location.
@@ -294,11 +300,20 @@ class LocationCollection(BaseCollection):
         Location
             The existing or newly created location.
         """
-        found = self.exists(location=location)
+        if location.id:
+            return self.get_by_id(id=location.id)
+
+        found = self._find_by_name(location=location)
         if found:
             return found
-        else:
+
+        try:
             return self.create(location=location)
+        except BadRequestError:
+            found = self._find_by_name(location=location)
+            if found:
+                return found
+            raise
 
     def delete(self, *, id: str) -> None:
         """Delete a Location by its Albert ID.

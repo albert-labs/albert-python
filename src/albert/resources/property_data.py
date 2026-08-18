@@ -68,7 +68,9 @@ class DataEntity(str, Enum):
     WORKFLOW : str
         Data keyed to a workflow (a specific set of parameter setpoints).
     INVENTORY : str
-        Data stored directly on an inventory item, independent of any task.
+        Custom property data stored directly on an inventory item, independent of
+        any task. Distinct from Inventory Specs / Attributes (reference
+        properties).
     """
 
     TASK = "task"
@@ -299,8 +301,10 @@ class InventoryPropertyData(BaseResource):
 
     Returned by
     [`get_properties_on_inventory`][albert.collections.property_data.PropertyDataCollection.get_properties_on_inventory].
-    Separates results that rolled up from tasks from custom values entered directly
-    on the item."""
+    Separates results that rolled up from tasks from custom values entered
+    directly on the item. Distinct from Inventory Specs / Attributes, which store
+    inventory reference properties rather than measured (or custom PTD) values.
+    """
 
     inventory_id: str = Field(alias="inventoryId")
     """The inventory item (format ``INV...``). Serialized as ``inventoryId``."""
@@ -543,20 +547,23 @@ class TaskTrialData(BaseAlbertModel):
 
 
 class InventoryDataColumn(BaseAlbertModel):
-    """A data column and value to store on an inventory item.
+    """A data column and value to store as property data on an inventory item.
 
-    The input unit for adding or updating a property directly on an inventory item
-    via
+    The input unit for adding or updating custom property data directly on an
+    inventory item via
     [`add_properties_to_inventory`][albert.collections.property_data.PropertyDataCollection.add_properties_to_inventory]
     and
     [`update_property_on_inventory`][albert.collections.property_data.PropertyDataCollection.update_property_on_inventory].
+    Not an Inventory Spec: for inventory reference properties use Specs
+    (deprecated) or ``client.attributes``.
 
     !!! example
         ```python
         from albert.resources.property_data import InventoryDataColumn
 
-        prop = InventoryDataColumn(data_column_id="DAC1", value="1.2")
-        ```"""
+        prop = InventoryDataColumn(data_column_id="DAC9999999", value="1.2")
+        ```
+    """
 
     data_column_id: DataColumnId | None = Field(alias="id", default=None)
     """The data column to write to (format ``DAC...``). Serialized as ``id``."""
@@ -589,7 +596,7 @@ class TaskPropertyCreate(BaseResource):
 
         # Derive the data column and template from the existing block
         block = client.property_data.get_task_block_properties(
-            inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+            inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
         )
         column = block.data[0].trials[0].data_columns[0]
         new_value = TaskPropertyCreate(
@@ -789,8 +796,8 @@ class PropertyDataSearchItem(BaseAlbertModel):
     inventory_id: InventoryId = Field(..., alias="inventoryId")
     """The inventory item the result applies to (format ``INV...``). Serialized as ``inventoryId``."""
 
-    project_id: ProjectId = Field(..., alias="projectId")
-    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``."""
+    project_id: ProjectId | None = Field(default=None, alias="projectId")
+    """The project the data belongs to (format ``PRO...``). Serialized as ``projectId``. ``None`` for records with no project association (tenant-global data)."""
 
     workflow_id: WorkflowId = Field(..., alias="workflowId")
     """The workflow (format ``WFL...``). Serialized as ``workflowId``."""

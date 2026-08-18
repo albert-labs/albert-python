@@ -14,20 +14,28 @@ class CasLevelSubstance(BaseAlbertModel):
     cas_id: str | None = Field(default=None, alias="casID")
     """The CAS identifier for the substance (registry number or ``CAS...`` id)."""
 
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry.
+
+    Prefer this over ``cas_id`` when looking a substance up in the Regulatory DB
+    (see [`SubstanceV4Collection`][albert.collections.substance_v4.SubstanceV4Collection]):
+    a single CAS number can map to more than one substance record, so the substance
+    ID is the precise key."""
+
+    albert_id: str | None = Field(default=None, alias="albertId")
+    """The Inventory ID of the ingredient this substance was unpacked from."""
+
     amount: float | None = Field(default=None)
     """The amount of this substance in the unpacked composition."""
 
     min: float | None = Field(default=None)
-    """The minimum amount of this substance in the unpacked composition."""
+    """The minimum proportion of this substance in the unpacked composition."""
 
     target: float | None = Field(default=None)
-    """The target amount of this substance in the unpacked composition."""
+    """The target proportion of this substance in the unpacked composition."""
 
     aggregated_func: list[Any] | None = Field(default=None, alias="aggregatedFunc")
     """Aggregated function values associated with this substance, when present."""
-
-    albert_id: str | None = Field(default=None, alias="albertId")
-    """The inventory Albert ID this substance was unpacked from."""
 
 
 class NormalizedCAS(BaseAlbertModel):
@@ -70,6 +78,9 @@ class UnpackedCasInfo(BaseAlbertModel):
 
     cas_id: str | None = Field(default=None, alias="casID")
     """The CAS identifier for this row, when distinct from ``id`` (e.g. unknown CAS placeholders)."""
+
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry."""
 
     name: str | None = Field(default=None)
     """The name of the CAS substance."""

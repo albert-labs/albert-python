@@ -98,13 +98,27 @@ def _cas_page(count: int) -> dict[str, Any]:
     }
 
 
-def _substance_v4_page(count: int) -> dict[str, Any]:
+def _substance_v4_page(
+    count: int,
+    *,
+    total: int | None = None,
+    start_key: int = 0,
+    has_more: bool | None = None,
+) -> dict[str, Any]:
     """A substance v4 search page (``substances`` payload, not ``Items``)."""
+    if has_more is None:
+        has_more = count >= 20
+    pagination: dict[str, Any] = {"limit": 20}
+    if total is not None:
+        pagination["total"] = total
+    if has_more:
+        pagination["lastKey"] = start_key
     return {
         "substances": [
             {"substanceId": f"SUB{i}", "casID": f"{i}-00-0", "name": f"Substance {i}"}
             for i in range(count)
         ],
+        "pagination": pagination,
     }
 
 
@@ -443,7 +457,7 @@ def test_cas_paginator_full_page_at_cap_signals_more() -> None:
 
 def test_substance_v4_paginator_full_page_at_cap_signals_more() -> None:
     """SubstanceV4SearchPaginator: a full 20-item page at the cap signals more likely exist."""
-    session = _ScriptedSession([_substance_v4_page(20)])
+    session = _ScriptedSession([_substance_v4_page(20, total=486, start_key=0, has_more=True)])
 
     pag = SubstanceV4SearchPaginator(
         path="/api/v4/substances/search",
@@ -460,7 +474,7 @@ def test_substance_v4_paginator_full_page_at_cap_signals_more() -> None:
 
 def test_substance_v4_paginator_mid_page_cap_sets_has_more() -> None:
     """SubstanceV4SearchPaginator: max_items below page size sets has_more True."""
-    session = _ScriptedSession([_substance_v4_page(20)])
+    session = _ScriptedSession([_substance_v4_page(20, total=100)])
 
     pag = SubstanceV4SearchPaginator(
         path="/api/v4/substances/search",
@@ -472,6 +486,47 @@ def test_substance_v4_paginator_mid_page_cap_sets_has_more() -> None:
 
     assert len(items) == 5
     assert pag.has_more is True
+    assert pag.total == 100
+    assert session.call_count == 1
+
+
+def test_substance_v4_paginator_stops_when_last_key_absent() -> None:
+    """SubstanceV4SearchPaginator: omitting pagination.lastKey ends iteration."""
+    session = _ScriptedSession(
+        [
+            _substance_v4_page(20, total=27, start_key=0, has_more=True),
+            _substance_v4_page(7, total=27, start_key=20, has_more=False),
+        ]
+    )
+
+    pag = SubstanceV4SearchPaginator(
+        path="/api/v4/substances/search",
+        session=session,
+        params={"searchKey": "water"},
+    )
+    items = list(pag)
+
+    assert len(items) == 27
+    assert pag.has_more is False
+    assert pag.total == 27
+    assert session.call_count == 2
+
+
+def test_substance_v4_paginator_full_page_at_cap_uses_total() -> None:
+    """SubstanceV4SearchPaginator: a capped full page uses pagination.total for has_more."""
+    session = _ScriptedSession([_substance_v4_page(20, total=486, start_key=0, has_more=True)])
+
+    pag = SubstanceV4SearchPaginator(
+        path="/api/v4/substances/search",
+        session=session,
+        params={"searchKey": "water"},
+        max_items=20,
+    )
+    items = list(pag)
+
+    assert len(items) == 20
+    assert pag.has_more is True
+    assert pag.total == 486
     assert session.call_count == 1
 
 

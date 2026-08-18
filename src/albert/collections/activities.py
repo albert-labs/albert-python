@@ -40,7 +40,7 @@ class ActivityCollection(BaseCollection):
         # Recent activity for a single entity, newest first
         for activity in client.activities.get_all(
             type=ActivityType.ENTITY_ID,
-            id="INVA1",
+            id="INVA9999999",
             max_items=25,
         ):
             print(activity.name, activity.action)
@@ -104,7 +104,7 @@ class ActivityCollection(BaseCollection):
 
             for activity in client.activities.get_all(
                 type=ActivityType.ENTITY_ID,
-                id="INVA1",
+                id="INVA9999999",
                 max_items=10,
             ):
                 print(activity.name, activity.action)
