@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from contextlib import suppress
 
@@ -1386,7 +1387,7 @@ class PropertyDataCollection(BaseCollection):
         search_field: list[str] | None = None,
         source_field: list[str] | None = None,
         facet_list: list[str] | None = None,
-        # Response customization (accepted for backwards compatibility; not sent to API)
+        # Deprecated; accepted for backwards compatibility
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
@@ -1470,9 +1471,9 @@ class PropertyDataCollection(BaseCollection):
         facet_list : list[str], optional
             Fields to include in search facets.
         return_fields : str or list[str], optional
-            Deprecated. Not sent to the API; use ``source_field`` instead.
+            Deprecated and ignored. Use ``source_field`` instead.
         return_facets : str or list[str], optional
-            Deprecated. Not sent to the API; use ``facet_list`` instead.
+            Deprecated and ignored. Use ``facet_list`` instead.
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -1488,7 +1489,18 @@ class PropertyDataCollection(BaseCollection):
 
         category_values = ensure_list(category)
 
-        _ = return_fields, return_facets
+        if return_fields is not None:
+            warnings.warn(
+                "return_fields is deprecated and ignored; use source_field instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if return_facets is not None:
+            warnings.warn(
+                "return_facets is deprecated and ignored; use facet_list instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         params = {
             "result": result,
