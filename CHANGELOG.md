@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.46.0](https://github.com/albert-labs/albert-python/compare/v1.45.0...v1.46.0) (2026-08-18)
+
+
+### Features
+
+* **collections:** add missing search filters for attributes and btinsight ([#684](https://github.com/albert-labs/albert-python/issues/684)) ([d269e60](https://github.com/albert-labs/albert-python/commit/d269e604d5d7511932d11edb38fc5ea44564f0aa))
+* **collections:** add missing search filters for data templates and parameter groups ([#685](https://github.com/albert-labs/albert-python/issues/685)) ([0a20d70](https://github.com/albert-labs/albert-python/commit/0a20d709f4140ad6e0720f5cb05ed2657db0451a))
+* **collections:** add missing search filters for projects and users ([#683](https://github.com/albert-labs/albert-python/issues/683)) ([53bca03](https://github.com/albert-labs/albert-python/commit/53bca03ddda860889d166c2c28b9e328eb3a3de6))
+* **collections:** add missing search filters for substance v4 and property data ([#687](https://github.com/albert-labs/albert-python/issues/687)) ([37a87ac](https://github.com/albert-labs/albert-python/commit/37a87ac9516f779780dc6eb152762d213fb31ec5))
+* **collections:** add missing search filters for tasks and lots ([#686](https://github.com/albert-labs/albert-python/issues/686)) ([4d89e71](https://github.com/albert-labs/albert-python/commit/4d89e71ad012f3d0b189ece442e9819011b6dbfd))
+* **inventory:** add missing search filters for parity with API ([#688](https://github.com/albert-labs/albert-python/issues/688)) ([203397c](https://github.com/albert-labs/albert-python/commit/203397cc68902a4dc83c561b064e7f79c56df4c5))
+
+
+### Bug Fixes
+
+* **hazards:** support model-selected symbol status ([#670](https://github.com/albert-labs/albert-python/issues/670)) ([9054239](https://github.com/albert-labs/albert-python/commit/90542392d1834749949ef874cc9424a38c020842))
+* keep substance ids and region-scoped fields the substance v4 API returns ([#691](https://github.com/albert-labs/albert-python/issues/691)) ([e55cbae](https://github.com/albert-labs/albert-python/commit/e55cbaeb4dec2ae9afb6b3bf76cb6cc57866e059))
+* **property_data:** use correct search wire keys for lot and taskCreatedby ([#682](https://github.com/albert-labs/albert-python/issues/682)) ([e175cc2](https://github.com/albert-labs/albert-python/commit/e175cc20a167215e1efef5843e828ff11935feea))
+
 ## [1.45.0](https://github.com/albert-labs/albert-python/compare/v1.44.0...v1.45.0) (2026-08-14)
 
 
