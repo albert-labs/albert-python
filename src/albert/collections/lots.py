@@ -361,7 +361,7 @@ class LotCollection(BaseCollection):
         created_by : list[str], optional
             Filter by creator display name(s) or UserId(s).
         custom_fields : dict[str, Any], optional
-            Filter by custom field values. Requires POST search.
+            Filter by custom field values.
         facet_field : str, optional
             Facet field to filter on.
         facet_text : str, optional
@@ -373,7 +373,7 @@ class LotCollection(BaseCollection):
         storage_location : list[str], optional
             Filter by storage location name(s).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values. Requires POST search.
+            Filter by custom field (metadata) values.
         owner : list[str], optional
             Filter by lot owner display name(s) or UserId(s).
         status : list[str], optional
@@ -433,31 +433,20 @@ class LotCollection(BaseCollection):
             LotSearchItem(**item)._bind_collection(self) for item in items
         ]
 
-        if metadata_filters is not None or custom_fields is not None:
-            payload: dict[str, Any] = {**params, **post_only_params}
-            if metadata_filters is not None:
-                payload["metadataFilters"] = {"metadata": metadata_filters}
-            if custom_fields is not None:
-                payload["customFields"] = {"metadata": custom_fields}
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=deserialize,
-                method="POST",
-                json=payload,
-            )
-
-        params = {key: value for key, value in params.items() if value is not None}
+        payload: dict[str, Any] = {**params, **post_only_params}
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
             max_items=max_items,
             deserialize=deserialize,
+            method="POST",
+            json=payload,
         )
 
     @validate_call
