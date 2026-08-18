@@ -700,6 +700,7 @@ class InventoryCollection(BaseCollection):
         project_facets: dict[str, Any] | None = None,
         composite_search: dict[str, Any] | None = None,
     ) -> AlbertPaginator:
+        # TODO(SDK-90): always POST inventory search once POST SearchInventory accepts attributeId.
         uses_post = any(
             value is not None
             for value in (
@@ -717,8 +718,13 @@ class InventoryCollection(BaseCollection):
                     "(metadata_filters, custom_fields, additional_field, project_facets, "
                     "composite_search)."
                 )
+            if query_params.get("attributeId") is not None:
+                raise ValueError(
+                    "attribute_id cannot be used with POST-only search filters "
+                    "(metadata_filters, custom_fields, additional_field, project_facets, "
+                    "composite_search)."
+                )
             payload: dict[str, Any] = dict(query_params)
-            payload.pop("attributeId", None)
             if metadata_filters is not None:
                 payload["metadataFilters"] = {"metadata": metadata_filters}
             if custom_fields is not None:
@@ -1079,7 +1085,7 @@ class InventoryCollection(BaseCollection):
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
-            Filter by attribute ID(s).
+            Filter by attribute ID(s). Cannot be combined with POST-only filters (``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, ``composite_search``).
         cas_smile : str or list[str], optional
             Filter by CAS SMILES string(s).
         collaborator_pop_up : bool, optional
@@ -1366,7 +1372,7 @@ class InventoryCollection(BaseCollection):
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
-            Filter by attribute ID(s).
+            Filter by attribute ID(s). Cannot be combined with POST-only filters (``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, ``composite_search``).
         cas_smile : str or list[str], optional
             Filter by CAS SMILES string(s).
         collaborator_pop_up : bool, optional
