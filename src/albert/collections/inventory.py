@@ -1081,11 +1081,11 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values (POST search only).
+            Filter by custom field (metadata) values.
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
-            Filter by attribute ID(s). Cannot be combined with POST-only filters (``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, ``composite_search``).
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
         cas_smile : str or list[str], optional
             Filter by CAS SMILES string(s).
         collaborator_pop_up : bool, optional
@@ -1148,13 +1148,13 @@ class InventoryCollection(BaseCollection):
         to_on_hand : str, optional
             Maximum on-hand quantity filter.
         custom_fields : dict[str, Any], optional
-            Filter by custom field values (POST search only).
+            Filter by custom field values.
         additional_field : str or list[str], optional
-            Request additional columns from the search index (POST search only).
+            Request additional columns from the search index.
         project_facets : dict[str, Any], optional
-            Project facet filters (POST search only).
+            Project facet filters.
         composite_search : dict[str, Any], optional
-            Composite search specification (POST search only).
+            Composite search specification.
 
         Returns
         -------
@@ -1368,11 +1368,11 @@ class InventoryCollection(BaseCollection):
         to_updated_at : str, optional
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
-            Filter by custom field (metadata) values (POST search only).
+            Filter by custom field (metadata) values.
         albert_id : str or list[str], optional
             Filter by Albert ID(s).
         attribute_id : str or list[str], optional
-            Filter by attribute ID(s). Cannot be combined with POST-only filters (``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, ``composite_search``).
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
         cas_smile : str or list[str], optional
             Filter by CAS SMILES string(s).
         collaborator_pop_up : bool, optional
@@ -1435,13 +1435,13 @@ class InventoryCollection(BaseCollection):
         to_on_hand : str, optional
             Maximum on-hand quantity filter.
         custom_fields : dict[str, Any], optional
-            Filter by custom field values (POST search only).
+            Filter by custom field values.
         additional_field : str or list[str], optional
-            Request additional columns from the search index (POST search only).
+            Request additional columns from the search index.
         project_facets : dict[str, Any], optional
-            Project facet filters (POST search only).
+            Project facet filters.
         composite_search : dict[str, Any], optional
-            Composite search specification (POST search only).
+            Composite search specification.
 
         Returns
         -------
