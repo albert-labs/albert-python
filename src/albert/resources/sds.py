@@ -7,7 +7,6 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import InventoryId, remove_id_prefix
-from albert.resources.product_design import UnpackedProductDesign
 
 
 class SDSDataEntity(str, Enum):
@@ -124,7 +123,7 @@ class SDSRequest(BaseAlbertModel):
     model_config = ConfigDict(extra="forbid")
 
     albert_id: InventoryId = Field(alias="albertID")
-    """Formula inventory Albert ID. A leading ``INV`` is added if omitted and stripped when the request is sent."""
+    """Formula inventory Albert ID. ``INV`` is added on input if omitted and stripped on output because generate expects ``albertID`` without the prefix."""
 
     product_type: str = Field(alias="productType")
     """Product-type code from [`get_products`][albert.collections.sds.SDSCollection.get_products] (e.g. ``"acrylate"``)."""
@@ -201,7 +200,11 @@ class SDSRequest(BaseAlbertModel):
 
 
 class GeneratedSDS(BaseAlbertModel):
-    """The SDS generated for a formula inventory item."""
+    """The SDS generated for a formula inventory item.
+
+    The inner SDS JSON can include keys beyond the core GHS sections, so unknown
+    response fields are preserved on the model.
+    """
 
     model_config = ConfigDict(extra="allow")
 
@@ -216,15 +219,3 @@ class GeneratedSDS(BaseAlbertModel):
 
     metadata_url: str | None = Field(default=None, alias="presignedURL_Metadata")
     """Short-lived URL for the generated SDS metadata spreadsheet, when present."""
-
-
-def _dump_unpack_rows(rows: list[Any] | None) -> list[dict[str, Any]]:
-    return [row.model_dump(by_alias=True, mode="json", exclude_none=True) for row in rows or []]
-
-
-def _composition_from_unpacked(unpacked: UnpackedProductDesign) -> dict[str, Any]:
-    return {
-        "substances": _dump_unpack_rows(unpacked.substances),
-        "cas_level_substances": _dump_unpack_rows(unpacked.cas_level_substances),
-        "inventory_sds_list": _dump_unpack_rows(unpacked.inventory_sds_list),
-    }

@@ -1,11 +1,11 @@
 import pytest
 from pydantic import ValidationError
 
-from albert.collections.sds import _require_formula_inventory
+from albert.collections.sds import SDSCollection
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryCategory, InventoryItem
 from albert.resources.product_design import UnpackedProductDesign
-from albert.resources.sds import SDSRequest, _composition_from_unpacked
+from albert.resources.sds import SDSRequest
 
 
 def _identity_kwargs() -> dict:
@@ -65,7 +65,7 @@ def test_require_formula_inventory_rejects_raw_materials():
     """Test SDS generate rejects non-formula inventory items."""
     item = InventoryItem(name="ethanol", category=InventoryCategory.RAW_MATERIALS)
     with pytest.raises(AlbertException, match="formula inventory items only"):
-        _require_formula_inventory(item)
+        SDSCollection._require_formula_inventory(item)
 
 
 def test_composition_copies_unpack_substance_rows():
@@ -86,15 +86,9 @@ def test_composition_copies_unpack_substance_rows():
             "inventorySDSList": [{"albertId": "INVB1", "class": "N/A", "value": 0}],
         }
     )
-    mapped = _composition_from_unpacked(unpacked)
+    mapped = SDSCollection._composition_from_unpacked(unpacked)
     assert mapped["substances"][0]["casID"] == "64-17-5"
     assert mapped["substances"][0]["min"] == 0.003332
     assert mapped["substances"][0]["albertId"] == "INVB1"
     assert mapped["cas_level_substances"][0]["casPrimaryKeyId"] == "CAS1"
     assert mapped["inventory_sds_list"][0]["class"] == "N/A"
-
-
-def test_unpacked_product_design_rejects_extra_keys():
-    """Test unpack models reject keys that are not on the wire shape."""
-    with pytest.raises(ValidationError):
-        UnpackedProductDesign.model_validate({"unexpected": True})

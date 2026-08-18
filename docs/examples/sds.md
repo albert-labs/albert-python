@@ -39,12 +39,4 @@ Generate a GHS Safety Data Sheet for a **formula** inventory item. Lookups are t
 Leave name and composition off [`SDSRequest`][albert.resources.sds.SDSRequest].
 [`generate_sds`][albert.collections.sds.SDSCollection.generate_sds] loads the
 inventory name and unpacks the formula for ingredients, CAS, and inventory SDS
-rows, matching the Albert UI.
-
-To attach an existing SDS PDF to an inventory item, use
-[`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
-Do not reuse
-[`get_jurisdiction_codes`][albert.collections.attachments.AttachmentCollection.get_jurisdiction_codes]
-or
-[`get_language_codes`][albert.collections.attachments.AttachmentCollection.get_language_codes]
-for generate.
+rows.

@@ -8,21 +8,14 @@ from albert.collections.product_design import ProductDesignCollection
 from albert.core.session import AlbertSession
 from albert.exceptions import AlbertException
 from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.product_design import UnpackedProductDesign
 from albert.resources.sds import (
     GeneratedSDS,
     SDSDataEntity,
     SDSFieldOptions,
     SDSLegalEntity,
     SDSRequest,
-    _composition_from_unpacked,
 )
-
-
-def _require_formula_inventory(item: InventoryItem) -> None:
-    if item.category != InventoryCategory.FORMULAS:
-        raise AlbertException(
-            f"SDS generation is available for formula inventory items only, not {item.category}."
-        )
 
 
 class SDSCollection(BaseCollection):
@@ -34,48 +27,17 @@ class SDSCollection(BaseCollection):
     also region-scoped. Always send lookup **values** on
     [`SDSRequest`][albert.resources.sds.SDSRequest], not display names.
 
-    [`generate_sds`][albert.collections.sds.SDSCollection.generate_sds] always
-    loads the inventory name and unpacks the formula for ingredients, CAS-level
-    composition, and inventory SDS rows. Callers do not supply those lists. This
-    collection does not generate SDS for raw materials.
+    [`generate_sds`][albert.collections.sds.SDSCollection.generate_sds] loads the
+    inventory name and unpacks the formula for ingredients, CAS-level composition,
+    and inventory SDS rows. Callers do not supply those lists. This collection does
+    not generate SDS for raw materials.
 
-    This collection is accessed as ``client.sds``. Do not use
-    [`attachments.get_jurisdiction_codes`][albert.collections.attachments.AttachmentCollection.get_jurisdiction_codes]
-    or
-    [`attachments.get_language_codes`][albert.collections.attachments.AttachmentCollection.get_language_codes]
-    for generate; those tag uploaded PDFs. To attach an existing SDS PDF, use
-    [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
+    This collection is accessed as ``client.sds``.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert.
         This feature currently falls outside of the Albert support contract, but
         we'd love your feedback!
-
-    !!! example
-        ```python
-        from albert import Albert
-        from albert.resources.sds import SDSRequest
-
-        client = Albert()
-        region = next(iter(client.sds.get_jurisdictions().values()))
-        language = next(iter(client.sds.get_languages(region=region).values()))
-        physical_state = next(iter(client.sds.get_physical_states().values()))
-        product_type = next(
-            iter(client.sds.get_products(region=region, physical_state=physical_state).values())
-        )
-        legal_entity = client.sds.get_legal_entities(region=region)[0].value
-        result = client.sds.generate_sds(
-            sds=SDSRequest(
-                albert_id="INVMO137681-012",
-                region=region,
-                language=language,
-                product_type=product_type,
-                physical_state=physical_state,
-                legal_entity=legal_entity,
-            )
-        )
-        result.pdf_url
-        ```
 
     Parameters
     ----------
@@ -121,26 +83,63 @@ class SDSCollection(BaseCollection):
         self.base_path = f"/api/{SDSCollection._api_version}/documentgenerator"
         self._rule_engine_path = f"/api/{SDSCollection._api_version}/sdsruleengine"
 
+    @staticmethod
+    def _require_formula_inventory(item: InventoryItem) -> None:
+        if item.category != InventoryCategory.FORMULAS:
+            raise AlbertException(
+                f"SDS generation is available for formula inventory items only, not {item.category}."
+            )
+
+    @staticmethod
+    def _dump_unpack_rows(rows: list[Any] | None) -> list[dict[str, Any]]:
+        return [
+            row.model_dump(by_alias=True, mode="json", exclude_none=True) for row in rows or []
+        ]
+
+    @staticmethod
+    def _composition_from_unpacked(unpacked: UnpackedProductDesign) -> dict[str, Any]:
+        return {
+            "substances": SDSCollection._dump_unpack_rows(unpacked.substances),
+            "cas_level_substances": SDSCollection._dump_unpack_rows(unpacked.cas_level_substances),
+            "inventory_sds_list": SDSCollection._dump_unpack_rows(unpacked.inventory_sds_list),
+        }
+
     @validate_call
     def generate_sds(self, *, sds: SDSRequest) -> GeneratedSDS:
         """Generate an SDS for a formula inventory item.
 
-        Always unpacks the formula (same as the Albert UI) and fills the product
-        name, ingredients, CAS-level composition, and inventory SDS rows. Callers
-        supply the formula Albert ID and lookup codes only.
+        Unpacks the formula and fills the product name, ingredients, CAS-level
+        composition, and inventory SDS rows. Callers supply the formula Albert ID
+        and lookup codes only.
 
         Formula inventory only. Region, language, product type, physical state,
         and legal entity must already be lookup **values**. The product name is
-        taken from the inventory item.
-
-        The returned PDF URL is a short-lived download link. This is the SDS
-        generate workflow; do not call
-        [`PDFGeneratorCollection`][albert.collections.pdf_generator.PDFGeneratorCollection]
-        for SDS.
+        taken from the inventory item. The returned PDF URL is a short-lived
+        download link.
 
         !!! example
             ```python
-            result = client.sds.generate_sds(sds=sds)
+            from albert import Albert
+            from albert.resources.sds import SDSRequest
+
+            client = Albert()
+            region = next(iter(client.sds.get_jurisdictions().values()))
+            language = next(iter(client.sds.get_languages(region=region).values()))
+            physical_state = next(iter(client.sds.get_physical_states().values()))
+            product_type = next(
+                iter(client.sds.get_products(region=region, physical_state=physical_state).values())
+            )
+            legal_entity = client.sds.get_legal_entities(region=region)[0].value
+            result = client.sds.generate_sds(
+                sds=SDSRequest(
+                    albert_id="INVMO137681-012",
+                    region=region,
+                    language=language,
+                    product_type=product_type,
+                    physical_state=physical_state,
+                    legal_entity=legal_entity,
+                )
+            )
             result.sds_json["section1"]
             result.pdf_url
             # 'https://...'
@@ -163,14 +162,14 @@ class SDSCollection(BaseCollection):
             If the inventory item is not a formula, or unpack returns no products.
         """
         item = InventoryCollection(session=self.session).get_by_id(id=sds.albert_id)
-        _require_formula_inventory(item)
+        self._require_formula_inventory(item)
         unpacked = ProductDesignCollection(session=self.session).get_unpacked_products(
             inventory_ids=[sds.albert_id],
             unpack_id="DESIGN",
         )
         if not unpacked:
             raise AlbertException("Unpack returned no products for this formula inventory id.")
-        composition = _composition_from_unpacked(unpacked[0])
+        composition = self._composition_from_unpacked(unpacked[0])
         payload = sds.model_dump(by_alias=True, mode="json", exclude_none=True)
         payload["name"] = item.name or payload["albertID"]
         payload["substances"] = composition["substances"]
@@ -305,10 +304,6 @@ class SDSCollection(BaseCollection):
         set. Send the **values** (e.g. ``"EN"``) as
         [`SDSRequest.language`][albert.resources.sds.SDSRequest.language].
 
-        Do not use
-        [`get_language_codes`][albert.collections.attachments.AttachmentCollection.get_language_codes]
-        for generate.
-
         !!! example
             ```python
             languages = client.sds.get_languages(region=region)
@@ -336,11 +331,8 @@ class SDSCollection(BaseCollection):
 
         Tenant-specific. Omit ``region`` for the tenant list. Pass
         ``region="all"`` for the full set. Send the **values** (e.g. ``"US"``)
-        as [`SDSRequest.region`][albert.resources.sds.SDSRequest.region].
-
-        Do not use
-        [`get_jurisdiction_codes`][albert.collections.attachments.AttachmentCollection.get_jurisdiction_codes]
-        for generate. For grouped jurisdictions see
+        as [`SDSRequest.region`][albert.resources.sds.SDSRequest.region]. For
+        grouped jurisdictions see
         [`get_jurisdiction_groups`][albert.collections.sds.SDSCollection.get_jurisdiction_groups].
 
         !!! example

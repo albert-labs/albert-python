@@ -1,17 +1,11 @@
 from typing import Any
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
 
 
-class _UnpackedModel(BaseAlbertModel):
-    """Unpack payload models. Extra keys are rejected so the SDK stays aligned with the wire shape."""
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CasLevelSubstance(_UnpackedModel):
+class CasLevelSubstance(BaseAlbertModel):
     """A single CAS-level substance in an unpacked product's composition."""
 
     cas_primary_key_id: str | None = Field(default=None, alias="casPrimaryKeyId")
@@ -36,7 +30,7 @@ class CasLevelSubstance(_UnpackedModel):
     """The inventory Albert ID this substance was unpacked from."""
 
 
-class NormalizedCAS(_UnpackedModel):
+class NormalizedCAS(BaseAlbertModel):
     """A CAS entry with its normalized proportion in the unpacked product."""
 
     name: str | None = Field(default=None)
@@ -52,7 +46,7 @@ class NormalizedCAS(_UnpackedModel):
     """The SMILES string describing the substance's chemical structure."""
 
 
-class UnpackedInventorySDS(_UnpackedModel):
+class UnpackedInventorySDS(BaseAlbertModel):
     """Safety data sheet (SDS) and regulatory details for an unpacked ingredient."""
 
     albert_id: str | None = Field(default=None, alias="albertId")
@@ -68,7 +62,7 @@ class UnpackedInventorySDS(_UnpackedModel):
     """The UN number used for transport / regulatory classification."""
 
 
-class UnpackedCasInfo(_UnpackedModel):
+class UnpackedCasInfo(BaseAlbertModel):
     """CAS composition detail for an ingredient in an unpacked product."""
 
     id: str | None = Field(default=None)
@@ -114,7 +108,7 @@ class UnpackedCasInfo(_UnpackedModel):
     """Aggregated function values associated with this CAS constituent."""
 
 
-class UnpackedInventoryListItem(_UnpackedModel):
+class UnpackedInventoryListItem(BaseAlbertModel):
     """A single flattened ingredient entry linking a formula cell to an item.
 
     Represents one row/column position in the unpacked formula together with the
@@ -170,7 +164,7 @@ class UnpackedInventory(UnpackedInventoryListItem):
     """Child CAS rows for the ingredient, including unknown-CAS placeholders."""
 
 
-class UnpackedProductDesign(_UnpackedModel):
+class UnpackedProductDesign(BaseAlbertModel):
     """The full unpacked composition of a single formulated product.
 
     Returned by
