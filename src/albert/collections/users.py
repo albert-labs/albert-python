@@ -257,29 +257,20 @@ class UserCollection(BaseCollection):
             UserSearchItem(**item)._bind_collection(self) for item in items
         ]
 
-        if metadata_filters is not None or custom_fields is not None:
-            payload: dict[str, Any] = {**params}
-            if metadata_filters is not None:
-                payload["metadataFilters"] = {"metadata": metadata_filters}
-            if custom_fields is not None:
-                payload["customFields"] = {"metadata": custom_fields}
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=deserialize,
-                method="POST",
-                json=payload,
-            )
+        payload: dict[str, Any] = {**params}
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
             max_items=max_items,
             deserialize=deserialize,
+            method="POST",
+            json=payload,
         )
 
     @validate_call
