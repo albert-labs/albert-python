@@ -848,6 +848,9 @@ class TaskCollection(BaseCollection):
             TaskSearchItem(**item)._bind_collection(self) for item in items
         ]
 
+        # TODO(SDK-89): always POST task search once POST SearchTask accepts
+        # updatedBy, fromUpdatedAt, and toUpdatedAt.
+
         if metadata_filters is not None:
             payload: dict[str, Any] = {
                 **params,
