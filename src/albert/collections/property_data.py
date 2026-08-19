@@ -1056,6 +1056,44 @@ class PropertyDataCollection(BaseCollection):
             get_task_block_properties=self.get_task_block_properties,
         )
 
+    def _apply_calculated_task_property_patches(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None,
+        properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope,
+    ) -> list[TaskPropertyData]:
+        """Re-fetch block data and patch calculated columns from current input values."""
+        existing_data_rows = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=properties,
+        )
+        if patches:
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
+
     @validate_call
     def update_or_create_task_properties(
         self,
@@ -1138,73 +1176,19 @@ class PropertyDataCollection(BaseCollection):
             properties=properties,
         )
 
-        calculated_patches = property_data_utils.form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows,
-            properties=properties,
-        )
-        all_patches = update_patches + calculated_patches
-        if len(new_values) > 0:
-            if len(all_patches) > 0:
-                self.update_property_on_task(
-                    task_id=task_id,
-                    patch_payload=all_patches,
-                    return_scope="none",
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-            if any(
-                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
-                for prop in new_values
-            ):
-                params = {
-                    "blockId": block_id,
-                    "inventoryId": inventory_id,
-                }
-                params = {k: v for k, v in params.items() if v is not None}
-                payload = property_data_utils.resolve_task_property_payload(
-                    session=self.session,
-                    task_id=task_id,
-                    block_id=block_id,
-                    properties=new_values,
-                )
-                response = self.session.post(
-                    url=f"{self.base_path}/{task_id}",
-                    json=payload,
-                    params=params,
-                )
-                registered_properties = [
-                    TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-                ]
-                existing_data_rows = self.get_task_block_properties(
-                    inventory_id=inventory_id,
-                    task_id=task_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-                patches = property_data_utils.form_calculated_task_property_patches(
-                    existing_data_rows=existing_data_rows,
-                    properties=registered_properties,
-                )
-                if len(patches) > 0:
-                    return self.update_property_on_task(
-                        task_id=task_id,
-                        patch_payload=patches,
-                        return_scope=return_scope,
-                        inventory_id=inventory_id,
-                        block_id=block_id,
-                        lot_id=lot_id,
-                    )
-                return property_data_utils.resolve_return_scope(
-                    task_id=task_id,
-                    return_scope=return_scope,
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                    prefetched_block=existing_data_rows,
-                    get_all_task_properties=self.get_all_task_properties,
-                    get_task_block_properties=self.get_task_block_properties,
-                )
+        if not update_patches and not new_values:
+            return property_data_utils.resolve_return_scope(
+                task_id=task_id,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                prefetched_block=existing_data_rows,
+                get_all_task_properties=self.get_all_task_properties,
+                get_task_block_properties=self.get_task_block_properties,
+            )
+
+        if not update_patches:
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
@@ -1213,15 +1197,32 @@ class PropertyDataCollection(BaseCollection):
                 properties=new_values,
                 return_scope=return_scope,
             )
-        else:
-            return self.update_property_on_task(
-                task_id=task_id,
-                patch_payload=all_patches,
-                return_scope=return_scope,
+
+        self.update_property_on_task(
+            task_id=task_id,
+            patch_payload=update_patches,
+            return_scope="none",
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+        )
+        if new_values:
+            self.add_properties_to_task(
                 inventory_id=inventory_id,
+                task_id=task_id,
                 block_id=block_id,
                 lot_id=lot_id,
+                properties=new_values,
+                return_scope="none",
             )
+        return self._apply_calculated_task_property_patches(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=properties,
+            return_scope=return_scope,
+        )
 
     def bulk_load_task_properties(
         self,
