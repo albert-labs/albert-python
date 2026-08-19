@@ -55,6 +55,33 @@ pagination, resource naming, deprecations, releases, and testing edge cases.
   stay in the class docstring.
 - Search result model naming: see `OPINIONS.md`.
 - Keep API payloads in wire format (camelCase) via `Field(alias=...)` and `model_dump(by_alias=True, mode="json", exclude_none=True)`.
+
+### Pydantic `extra` on resource models
+
+`BaseAlbertModel` does not set `extra`. Pydantic's default is `extra="ignore"`: undeclared
+keys are dropped with no error.
+
+- **API responses** (resources, unpack rows, lookup results): inherit `BaseAlbertModel`
+  with no `extra` override so new API keys do not break validation.
+- **`extra="allow"`**: only when the model must preserve unknown top-level keys on the
+  instance (e.g. evolving response wrappers).
+- **Caller request models** (a caller-facing subset of a wire payload the collection may
+  enrich): set `model_config = ConfigDict(extra="forbid")` when the collection fills fields
+  that are not declared on the model. Without `forbid`, undeclared keys (e.g.
+  `substances=[]` on a model where composition is filled from unpack) are silently ignored
+  instead of rejected at construction time.
+- Do not use `extra="forbid"` on models that deserialize API responses.
+
+### Orchestration helpers
+
+- **`resources/`**: wire shapes and public request/response models only, not orchestration
+  logic.
+- **Collection-private helpers** (`@staticmethod` or `_`-prefixed methods on the collection):
+  default for steps used by one collection (e.g. unpack → POST payload assembly).
+- **`src/albert/utils/`**: shared logic used by multiple collections, or large
+  patch/transform helpers that would bloat a collection module (see `utils/inventory.py`).
+  Keep helpers pure (no `session`) when possible.
+
 - All new public methods and classes must have Numpy-style docstrings:
 
 ```python
