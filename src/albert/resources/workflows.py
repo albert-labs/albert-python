@@ -520,8 +520,8 @@ class WorkflowParameterSet(BaseAlbertModel):
     data_template_name: str | None = Field(default=None, alias="dataTemplateName")
     """The name of the data template."""
 
-    category: str | None = None
-    """The parameter category (e.g. ``Normal``)."""
+    category: ParameterCategory | None = None
+    """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
 
 
 class WorkflowSearchItemGroup(BaseAlbertModel):
