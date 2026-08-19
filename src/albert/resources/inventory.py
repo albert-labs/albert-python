@@ -281,12 +281,14 @@ class InventoryItem(BaseTaggedResource):
 
     !!! example
         ```python
+        from albert.core.shared.enums import SecurityClass
         from albert.resources.inventory import InventoryItem, InventoryCategory
 
         item = InventoryItem(
             name="Titanium Dioxide",
             category=InventoryCategory.RAW_MATERIALS,
             company="Acme Chemicals",
+            security_class=SecurityClass.SHARED,
         )
         ```"""
 
@@ -306,7 +308,7 @@ class InventoryItem(BaseTaggedResource):
     """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
 
     security_class: SecurityClass | None = Field(default=None, alias="class")
-    """The access/security class of the item (e.g. confidential, shared, restricted)."""
+    """Access-control class: ``shared``, ``restricted``, or ``confidential``. Serialized as ``class``."""
 
     company: SerializeAsEntityLink[Company] | None = Field(default=None, alias="Company")
     """The manufacturing Company associated with the item (links to the Company collection). Accepts a [`Company`][albert.resources.companies.Company] or a name string; a string is turned into a Company that is first-or-created on save."""

@@ -1,10 +1,13 @@
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import ensure_inventory_id
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import FieldType, ServiceType
@@ -237,6 +240,33 @@ def test_get_by_id_preserves_metadata_list_item_names(
         ]
     finally:
         client.inventory.delete(id=created.id)
+
+
+def test_create_inventory_item_with_security_class(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test creating an inventory item with a non-default security class."""
+    item = InventoryItem(
+        name=f"{seed_prefix} - Confidential class",
+        category=InventoryCategory.RAW_MATERIALS,
+        company=seeded_companies[0],
+        security_class=SecurityClass.CONFIDENTIAL,
+    )
+    assert item.security_class == SecurityClass.CONFIDENTIAL
+    assert (
+        item.model_dump(by_alias=True, exclude_none=True, mode="json")["class"] == "confidential"
+    )
+
+    created = client.inventory.create(inventory_item=item, avoid_duplicates=False)
+    try:
+        assert created.security_class == SecurityClass.CONFIDENTIAL
+        fetched = client.inventory.get_by_id(id=created.id)
+        assert fetched.security_class == SecurityClass.CONFIDENTIAL
+    finally:
+        with suppress(NotFoundError):
+            client.inventory.delete(id=created.id)
 
 
 def test_get_by_ids(client: Albert, seeded_inventory):

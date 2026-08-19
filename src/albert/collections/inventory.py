@@ -289,12 +289,14 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
+            from albert.core.shared.enums import SecurityClass
             from albert.resources.inventory import InventoryItem, InventoryCategory
             from albert.resources.companies import Company
             item = InventoryItem(
                 name="Titanium Dioxide",
                 category=InventoryCategory.RAW_MATERIALS,
                 company=Company(name="Acme Chemicals"),
+                security_class=SecurityClass.SHARED,
             )
             created = client.inventory.create(inventory_item=item)
             created.id
@@ -306,7 +308,8 @@ class InventoryCollection(BaseCollection):
         inventory_item : InventoryItem
             The item to create. ``name`` and ``category`` are required. For raw
             materials, set ``company`` to the manufacturing Company and ``cas`` to
-            the relevant CAS numbers.
+            the relevant CAS numbers. Set ``security_class`` to ``shared``,
+            ``restricted``, or ``confidential``.
         avoid_duplicates : bool, optional
             When True (default), if an item with the same name and company already
             exists, that existing item is returned instead of creating a duplicate.
