@@ -102,11 +102,13 @@ def test_workflow_search_by_parameter_groups(
     client: Albert,
     seed_prefix: str,
     seeded_workflows: list[Workflow],
-    seeded_parameter_groups,
 ):
     """Test search by parameter group name scoped to seeded workflow ids."""
-    seeded_ids = {wf.id for wf in seeded_workflows}
-    group_name = seeded_parameter_groups[0].name
+    wf = client.workflows.get_by_id(id=seeded_workflows[0].id)
+    assert wf.parameter_group_setpoints, "Seeded workflow should have parameter groups"
+    group_name = wf.parameter_group_setpoints[0].parameter_group_name
+
+    seeded_ids = {item.id for item in seeded_workflows}
     hits = poll_until(
         lambda: [
             item
