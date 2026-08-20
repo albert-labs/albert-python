@@ -129,6 +129,14 @@ def test_search_filters(client: Albert):
     assert any(r.cas_id == WATER_CAS for r in by_name)
 
 
+# Remove xfail when https://github.com/MoleculeEngineering/api-substance-v4/issues/57 is fixed.
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "api-substance-v4 search pagination intermittently returns duplicate items across "
+        "pages (MoleculeEngineering/api-substance-v4#57)."
+    ),
+)
 def test_search_pagination(client: Albert):
     """Test max_items cap, start_key resume, multi-page uniqueness, and has_more."""
     capped_pag = client.substances_v4.search(search_key="water", max_items=5)
