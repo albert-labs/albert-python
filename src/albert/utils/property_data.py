@@ -390,9 +390,60 @@ def form_existing_row_value_patches(
             if prop_patches:
                 patches.extend(prop_patches)
             continue
-        new_properties.append(prop)
+        new_properties.append(
+            prepare_new_task_property(
+                prop=prop,
+                existing_data_rows=existing_data_rows,
+                trial_number=resolved_trial_number,
+            )
+        )
 
     return patches, new_properties
+
+
+def trial_has_recorded_data(
+    *,
+    existing_data_rows: TaskPropertyData,
+    interval_combination: str,
+    trial_number: int,
+) -> bool:
+    """Return True if the trial already has at least one stored property-data value."""
+    trial = get_on_platform_row(
+        existing_data_rows=existing_data_rows,
+        interval_combination=interval_combination,
+        trial_number=trial_number,
+    )
+    if trial is None:
+        return False
+    return any(col.property_data is not None for col in trial.data_columns)
+
+
+def prepare_new_task_property(
+    *,
+    prop: TaskPropertyCreate,
+    existing_data_rows: TaskPropertyData,
+    trial_number: int | None,
+) -> TaskPropertyCreate:
+    """Keep trial_number only when it refers to a trial that already has stored data.
+
+    A block listing can include an empty placeholder trial. That placeholder is
+    not a stored trial, so trial_number is omitted and a new trial is created.
+    If the trial already has data, trial_number is kept so a missing column is
+    added to that trial.
+    """
+    if trial_number is None:
+        return prop
+    if trial_has_recorded_data(
+        existing_data_rows=existing_data_rows,
+        interval_combination=prop.interval_combination,
+        trial_number=trial_number,
+    ):
+        if prop.trial_number == trial_number:
+            return prop
+        return prop.model_copy(update={"trial_number": trial_number})
+    if prop.trial_number is None:
+        return prop
+    return prop.model_copy(update={"trial_number": None})
 
 
 def process_property(
@@ -528,7 +579,15 @@ def form_calculated_task_property_patches(
         first_row_data_column=first_row_data_column
     )
     for posted_prop in properties:
-        this_interval_trial = f"{posted_prop.interval_combination}-{posted_prop.trial_number}"
+        trial_number = posted_prop.trial_number
+        if trial_number is None:
+            trial_number = resolve_trial_number(
+                prop=posted_prop,
+                existing_data_rows=existing_data_rows,
+            )
+        if trial_number is None:
+            continue
+        this_interval_trial = f"{posted_prop.interval_combination}-{trial_number}"
         if (
             this_interval_trial in covered_interval_trials
             or posted_prop.data_column.column_sequence not in columns_used_in_calculations
@@ -536,7 +595,7 @@ def form_calculated_task_property_patches(
             continue
         on_platform_row = get_on_platform_row(
             existing_data_rows=existing_data_rows,
-            trial_number=posted_prop.trial_number,
+            trial_number=trial_number,
             interval_combination=posted_prop.interval_combination,
         )
         if on_platform_row is not None:
@@ -669,7 +728,7 @@ def generate_data_patch_payload(*, trial: Trial) -> list[PropertyDataPatchDatum]
 
     patch_data = []
     for column in trial.data_columns:
-        if column.calculation:
+        if column.calculation and column.property_data is not None:
             recalculated_value = evaluate_calculation(
                 calculation=column.calculation, column_values=column_values
             )
