@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.0](https://github.com/albert-labs/albert-python/compare/v1.46.0...v1.47.0) (2026-08-20)
+
+
+### Features
+
+* **sds:** add generate_sds for formula inventory items ([#689](https://github.com/albert-labs/albert-python/issues/689)) ([95bbde2](https://github.com/albert-labs/albert-python/commit/95bbde2c49956e403b706d59662ce1b50ccf8e31))
+
+
+### Bug Fixes
+
+* column unpinning in sheet ([#696](https://github.com/albert-labs/albert-python/issues/696)) ([4036f7f](https://github.com/albert-labs/albert-python/commit/4036f7ffee8e1ee9172998405925f0918acbf872))
+
 ## [1.46.0](https://github.com/albert-labs/albert-python/compare/v1.45.0...v1.46.0) (2026-08-18)
 
 
