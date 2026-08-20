@@ -1,3 +1,9 @@
+<!--
+PR title (required, enforced by CI): type(scope): summary
+Examples: feat(cas): add search by name support, fix(pagination): preserve has_more
+The title must follow Conventional Commits even when individual commit messages do not.
+-->
+
 ## What
 
 <!-- What can callers do now that they couldn't before? 1–2 sentences. Not a file list. -->

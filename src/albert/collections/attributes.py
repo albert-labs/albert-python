@@ -325,6 +325,10 @@ class AttributeCollection(BaseCollection):
         parameter: list[str] | None = None,
         unit: list[str] | None = None,
         data_type: list[DataType] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
         max_items: int | None = None,
     ) -> Iterator[AttributeSearchItem]:
         """Search the central attribute catalogue.
@@ -350,6 +354,14 @@ class AttributeCollection(BaseCollection):
             Filter by unit name(s) (e.g., ``["cP", "MPa"]``).
         data_type : list[DataType], optional
             Filter by data type(s).
+        facet_text : str, optional
+            Facet text to search for.
+        facet_field : str, optional
+            Facet field to filter on.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within the ``contains_field``.
         max_items : int, optional
             Maximum number of items to return.
 
@@ -373,6 +385,14 @@ class AttributeCollection(BaseCollection):
             body["unit"] = unit
         if data_type is not None:
             body["dataType"] = data_type
+        if facet_text is not None:
+            body["facetText"] = facet_text
+        if facet_field is not None:
+            body["facetField"] = facet_field
+        if contains_field is not None:
+            body["containsField"] = contains_field
+        if contains_text is not None:
+            body["containsText"] = contains_text
 
         return AlbertPaginator(
             path=f"{self.base_path}/search",

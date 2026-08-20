@@ -56,6 +56,12 @@ class SubstanceV4Info(BaseAlbertModel):
     hazards: list[dict] | None = None
     """Hazard classifications."""
 
+    wgk: str | None = Field(None, alias="WGK")
+    """Water hazard class (WGK).
+
+    Only returned when the request is scoped to the German region
+    (``region="DE"``); other regions omit it."""
+
     specific_concentration_limit: list[dict] | None = Field(
         None, alias="specificConcentrationLimit"
     )
@@ -349,11 +355,15 @@ class SubstanceV4Info(BaseAlbertModel):
     pcr_regulated: bool | None = Field(None, alias="pcrRegulated")
     """Whether the substance is PCR regulated."""
 
-    pdscl: str | None = None
-    """PDSCL classification."""
+    pdscl: dict | None = None
+    """PDSCL classification, with keys ``maxValue`` and ``unit``.
 
-    prtr: str | None = None
-    """PRTR classification."""
+    Returned when the request is scoped to the Japanese region (``region="JP"``)."""
+
+    prtr: dict | None = None
+    """PRTR classification, with keys ``className``, ``controlNumber``, ``maxValue`` and ``unit``.
+
+    Returned when the request is scoped to the Japanese region (``region="JP"``)."""
 
     page_number: int | None = Field(None, alias="pageNumber")
     """Reference page number."""

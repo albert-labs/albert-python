@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -156,6 +157,11 @@ class UserCollection(BaseCollection):
         contains_field: list[str] | None = None,
         contains_text: list[str] | None = None,
         mentions: bool | None = None,
+        additional_field: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        source_field: list[str] | None = None,
+        witnesser: list[str] | None = None,
         offset: int = 0,
         max_items: int | None = None,
     ) -> Iterator[UserSearchItem]:
@@ -206,6 +212,16 @@ class UserCollection(BaseCollection):
             Substrings to match within the corresponding ``contains_field``.
         mentions : bool, optional
             When True, restrict to users who are mentioned.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        witnesser : list[str], optional
+            Filter by witnesser status.
         max_items : int, optional
             Maximum total number of users to return. If None, returns all
             matches.
@@ -231,18 +247,30 @@ class UserCollection(BaseCollection):
             "containsField": contains_field,
             "containsText": contains_text,
             "mentions": mentions,
+            "additionalField": additional_field,
+            "sourceField": source_field,
+            "witnesser": witnesser,
             "offset": offset,
         }
+
+        deserialize = lambda items: [
+            UserSearchItem(**item)._bind_collection(self) for item in items
+        ]
+
+        payload: dict[str, Any] = {**params}
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
             max_items=max_items,
-            deserialize=lambda items: [
-                UserSearchItem(**item)._bind_collection(self) for item in items
-            ],
+            deserialize=deserialize,
+            method="POST",
+            json=payload,
         )
 
     @validate_call

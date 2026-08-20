@@ -302,6 +302,11 @@ class ProjectCollection(BaseCollection):
         my_project: bool | None = None,
         my_role: list[str] | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        additional_field: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        formula_access: list[str] | None = None,
+        linked_to_grid: str | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -382,6 +387,16 @@ class ProjectCollection(BaseCollection):
             !!! warning
                 Do not use this for application, technology, program, technical lead, or
                 market segment. Use their corresponding query parameters instead.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        formula_access : list[str], optional
+            Filter by formula access level.
+        linked_to_grid : str, optional
+            Text for linked-to dropdown search in grid/report flows.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -421,9 +436,15 @@ class ProjectCollection(BaseCollection):
             "linkedTo": linked_to,
             "myProject": my_project,
             "myRole": my_role,
+            "additionalField": additional_field,
+            "formulaAccess": formula_access,
+            "linkedToGrid": linked_to_grid,
+            "sourceField": source_field,
         }
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -443,6 +464,9 @@ class ProjectCollection(BaseCollection):
         *,
         linked_to: SearchProjectId,
         text: str | None = None,
+        source_field: list[str] | None = None,
+        additional_field: list[str] | None = None,
+        search_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -467,6 +491,12 @@ class ProjectCollection(BaseCollection):
             ``"PRO123"``).
         text : str, optional
             Full-text search query for document names.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        search_field : list[str], optional
+            Restrict which fields the ``text`` query searches.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -482,6 +512,9 @@ class ProjectCollection(BaseCollection):
         query_params = {
             "linkedTo": linked_to,
             "text": text,
+            "sourceField": source_field,
+            "additionalField": additional_field,
+            "searchField": search_field,
             "order": order_by,
             "sortBy": sort_by,
             "offset": offset,
@@ -521,6 +554,12 @@ class ProjectCollection(BaseCollection):
         linked_to: str | None = None,
         my_project: bool | None = None,
         my_role: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        additional_field: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        formula_access: list[str] | None = None,
+        linked_to_grid: str | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -591,6 +630,18 @@ class ProjectCollection(BaseCollection):
             If True, return only projects owned by current user.
         my_role : list[str], optional
             User roles to filter by.
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        formula_access : list[str], optional
+            Filter by formula access level.
+        linked_to_grid : str, optional
+            Text for linked-to dropdown search in grid/report flows.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -639,6 +690,12 @@ class ProjectCollection(BaseCollection):
                 linked_to=linked_to,
                 my_project=my_project,
                 my_role=my_role,
+                metadata_filters=metadata_filters,
+                additional_field=additional_field,
+                custom_fields=custom_fields,
+                formula_access=formula_access,
+                linked_to_grid=linked_to_grid,
+                source_field=source_field,
                 order_by=order_by,
                 sort_by=sort_by,
                 offset=offset,

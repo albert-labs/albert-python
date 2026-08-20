@@ -43,6 +43,7 @@ from albert.collections.property_data import PropertyDataCollection
 from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
+from albert.collections.sds import SDSCollection
 from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
@@ -332,6 +333,10 @@ class Albert:
     @property
     def product_design(self) -> ProductDesignCollection:
         return ProductDesignCollection(session=self.session)
+
+    @property
+    def sds(self) -> SDSCollection:
+        return SDSCollection(session=self.session)
 
     @property
     def storage_locations(self) -> StorageLocationsCollection:

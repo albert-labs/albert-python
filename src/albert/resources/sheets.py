@@ -2189,7 +2189,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     "operation": "update",
                     "attribute": "pinned",
                     "colIds": col_ids,
-                    "newValue": None,
+                    "newValue": False,
                 }
             ]
         }

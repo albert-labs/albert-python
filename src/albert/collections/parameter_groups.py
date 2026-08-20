@@ -10,7 +10,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import ParameterGroupId
+from albert.core.shared.identifiers import ParameterGroupId, UserId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
 from albert.resources.parameter_groups import (
@@ -186,6 +186,19 @@ class ParameterGroupCollection(BaseCollection):
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        user_id: UserId | None = None,
+        is_drop_down: bool | None = None,
+        sort_by: str | None = None,
+        data_template: list[str] | None = None,
+        parameter_group: str | None = None,
+        source_field: list[str] | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        is_sam: bool | None = None,
+        search_query_string: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -246,6 +259,32 @@ class ParameterGroupCollection(BaseCollection):
             Only include groups updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        user_id : UserId, optional
+            Filter by the ID of an associated user.
+        is_drop_down : bool, optional
+            When True, apply smart dropdown search behavior.
+        sort_by : str, optional
+            Attribute to sort results by.
+        data_template : list[str], optional
+            Filter by data template name(s) for smart dropdown search.
+        parameter_group : str, optional
+            Filter by parameter group name for smart dropdown search.
+        source_field : list[str], optional
+            Restrict which fields are returned in search results.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        is_sam : bool, optional
+            When True, filter to equipment-linked parameter groups.
+        search_query_string : str, optional
+            Filter by custom field query string.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
@@ -262,6 +301,18 @@ class ParameterGroupCollection(BaseCollection):
             "offset": offset,
             "order": order_by,
             "text": text,
+            "userId": user_id,
+            "isDropDown": is_drop_down,
+            "sortBy": sort_by,
+            "dataTemplate": ensure_list(data_template),
+            "parameterGroup": parameter_group,
+            "sourceField": ensure_list(source_field),
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "isSAM": is_sam,
+            "searchQueryString": search_query_string,
             "types": ensure_list(types),
             "owner": ensure_list(owner),
             "tags": ensure_list(tags),
@@ -280,6 +331,8 @@ class ParameterGroupCollection(BaseCollection):
         }
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -310,6 +363,19 @@ class ParameterGroupCollection(BaseCollection):
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        user_id: UserId | None = None,
+        is_drop_down: bool | None = None,
+        sort_by: str | None = None,
+        data_template: list[str] | None = None,
+        parameter_group: str | None = None,
+        source_field: list[str] | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        is_sam: bool | None = None,
+        search_query_string: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         offset: int | None = None,
         max_items: int | None = None,
@@ -361,6 +427,32 @@ class ParameterGroupCollection(BaseCollection):
             Only include groups updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        user_id : UserId, optional
+            Filter by the ID of an associated user.
+        is_drop_down : bool, optional
+            When True, apply smart dropdown search behavior.
+        sort_by : str, optional
+            Attribute to sort results by.
+        data_template : list[str], optional
+            Filter by data template name(s) for smart dropdown search.
+        parameter_group : str, optional
+            Filter by parameter group name for smart dropdown search.
+        source_field : list[str], optional
+            Restrict which fields are returned in search results.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        is_sam : bool, optional
+            When True, filter to equipment-linked parameter groups.
+        search_query_string : str, optional
+            Filter by custom field query string.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
         order_by : OrderBy, optional
             Sort direction. Default ``OrderBy.DESCENDING``.
         max_items : int, optional
@@ -396,6 +488,19 @@ class ParameterGroupCollection(BaseCollection):
                 from_updated_at=from_updated_at,
                 to_updated_at=to_updated_at,
                 metadata_filters=metadata_filters,
+                user_id=user_id,
+                is_drop_down=is_drop_down,
+                sort_by=sort_by,
+                data_template=data_template,
+                parameter_group=parameter_group,
+                source_field=source_field,
+                contains_field=contains_field,
+                contains_text=contains_text,
+                facet_text=facet_text,
+                facet_field=facet_field,
+                is_sam=is_sam,
+                search_query_string=search_query_string,
+                custom_fields=custom_fields,
                 order_by=order_by,
                 offset=offset,
                 max_items=max_items,

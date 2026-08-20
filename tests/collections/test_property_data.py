@@ -374,3 +374,186 @@ def test_task_property_calculation_evaluation(
         for dc_id in calc_dc_ids:
             with suppress(NotFoundError):
                 client.data_columns.delete(id=dc_id)
+
+
+def test_update_or_create_task_property_calculation_evaluation(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_projects,
+    seeded_workflows,
+):
+    """Test update_or_create_task_properties on an empty trial, then recalculates."""
+    calc_task_id = None
+    calc_dt_id = None
+    calc_dc_ids = []
+
+    try:
+        dc_one = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - upsert calc col one")
+        )
+        dc_two = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - upsert calc col two")
+        )
+        dc_calc = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - upsert calc col result")
+        )
+        calc_dc_ids = [dc_one.id, dc_two.id, dc_calc.id]
+
+        calc_dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - upsert calc dt",
+                description="Integration test template for calculated columns via upsert.",
+                data_column_values=[
+                    DataColumnValue(
+                        data_column=dc_one,
+                    ),
+                    DataColumnValue(
+                        data_column=dc_two,
+                    ),
+                ],
+            )
+        )
+        calc_dt_id = calc_dt.id
+        sequence_by_id = {col.data_column_id: col.sequence for col in calc_dt.data_column_values}
+        seq_one = sequence_by_id[dc_one.id]
+        seq_two = sequence_by_id[dc_two.id]
+        calc_dt = client.data_templates.add_data_columns(
+            data_template_id=calc_dt.id,
+            data_columns=[
+                DataColumnValue(
+                    data_column=dc_calc,
+                    calculation=f"={seq_one}+sqrt({seq_two})",
+                )
+            ],
+        )
+        sequence_by_id = {col.data_column_id: col.sequence for col in calc_dt.data_column_values}
+        seq_calc = sequence_by_id[dc_calc.id]
+
+        lot = next(
+            (l for l in seeded_lots if l.inventory_id == seeded_inventory[0].id),
+            None,
+        )
+        workflow = seeded_workflows[0]
+
+        calc_task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - upsert calc task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[
+                    TaskInventoryInformation(
+                        inventory_id=seeded_inventory[0].id,
+                        lot_id=lot.id if lot else None,
+                    )
+                ],
+                parent_id=seeded_inventory[0].id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[
+                    Block(
+                        workflow=[workflow],
+                        data_template=[calc_dt],
+                    )
+                ],
+            )
+        )
+        calc_task_id = calc_task.id
+        calc_task = client.tasks.get_by_id(id=calc_task_id)
+        block_id = calc_task.blocks[0].id
+        block = client.property_data.get_task_block_properties(
+            inventory_id=seeded_inventory[0].id,
+            task_id=calc_task_id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+        )
+        interval_id = block.data[0].interval_combination
+        trial_number = block.data[0].trials[0].trial_number
+
+        seed_result = client.property_data.update_or_create_task_properties(
+            task_id=calc_task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_one.id,
+                        column_sequence=seq_one,
+                    ),
+                    value="5",
+                    trial_number=trial_number,
+                ),
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_two.id,
+                        column_sequence=seq_two,
+                    ),
+                    value="16",
+                    trial_number=trial_number,
+                ),
+            ],
+            return_scope="block",
+        )
+        seeded_trial = max(
+            (
+                t
+                for t in seed_result[0].data[0].trials
+                if t.data_columns[0].property_data is not None
+            ),
+            key=lambda t: t.trial_number,
+        )
+        trial_number = seeded_trial.trial_number
+        calc_column = next(c for c in seeded_trial.data_columns if c.sequence == seq_calc)
+        assert calc_column.property_data is not None
+        assert float(calc_column.property_data.value) == pytest.approx(9.0)
+
+        result = client.property_data.update_or_create_task_properties(
+            task_id=calc_task_id,
+            inventory_id=seeded_inventory[0].id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=[
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_one.id,
+                        column_sequence=seq_one,
+                    ),
+                    value="10",
+                    trial_number=trial_number,
+                ),
+                TaskPropertyCreate(
+                    interval_combination=interval_id,
+                    data_template=calc_dt,
+                    data_column=TaskDataColumn(
+                        data_column_id=dc_two.id,
+                        column_sequence=seq_two,
+                    ),
+                    value="16",
+                    trial_number=trial_number,
+                ),
+            ],
+            return_scope="block",
+        )
+
+        trial = next(t for t in result[0].data[0].trials if t.trial_number == trial_number)
+        calc_column = next(c for c in trial.data_columns if c.sequence == seq_calc)
+        assert calc_column.property_data is not None
+        assert float(calc_column.property_data.value) == pytest.approx(14.0)
+    finally:
+        if calc_task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=calc_task_id)
+        if calc_dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=calc_dt_id)
+        for dc_id in calc_dc_ids:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=dc_id)

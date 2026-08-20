@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
@@ -10,10 +12,30 @@ class CasLevelSubstance(BaseAlbertModel):
     """Internal key identifying the CAS record for this substance."""
 
     cas_id: str | None = Field(default=None, alias="casID")
-    """The CAS identifier for the substance (format ``CAS...``)."""
+    """The CAS identifier for the substance (registry number or ``CAS...`` id)."""
+
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry.
+
+    Prefer this over ``cas_id`` when looking a substance up in the Regulatory DB
+    (see [`SubstanceV4Collection`][albert.collections.substance_v4.SubstanceV4Collection]):
+    a single CAS number can map to more than one substance record, so the substance
+    ID is the precise key."""
+
+    albert_id: str | None = Field(default=None, alias="albertId")
+    """The Inventory ID of the ingredient this substance was unpacked from."""
 
     amount: float | None = Field(default=None)
     """The amount of this substance in the unpacked composition."""
+
+    min: float | None = Field(default=None)
+    """The minimum proportion of this substance in the unpacked composition."""
+
+    target: float | None = Field(default=None)
+    """The target proportion of this substance in the unpacked composition."""
+
+    aggregated_func: list[Any] | None = Field(default=None, alias="aggregatedFunc")
+    """Aggregated function values associated with this substance, when present."""
 
 
 class NormalizedCAS(BaseAlbertModel):
@@ -54,6 +76,12 @@ class UnpackedCasInfo(BaseAlbertModel):
     id: str | None = Field(default=None)
     """The Albert identifier for the CAS record."""
 
+    cas_id: str | None = Field(default=None, alias="casID")
+    """The CAS identifier for this row, when distinct from ``id`` (e.g. unknown CAS placeholders)."""
+
+    substance_id: str | None = Field(default=None, alias="substanceId")
+    """The Regulatory DB substance identifier for this CAS entry."""
+
     name: str | None = Field(default=None)
     """The name of the CAS substance."""
 
@@ -69,8 +97,26 @@ class UnpackedCasInfo(BaseAlbertModel):
     cas_average: float | None = Field(default=None, alias="casAvg")
     """The averaged CAS proportion."""
 
+    cas_min_average: float | None = Field(default=None, alias="casMinAvg")
+    """The minimum averaged CAS proportion."""
+
+    cas_target_average: float | None = Field(default=None, alias="casTargetAvg")
+    """The target averaged CAS proportion."""
+
     cas_sum: float | None = Field(default=None, alias="casSum")
     """The summed CAS proportion."""
+
+    min_sum: float | None = Field(default=None, alias="minSum")
+    """The summed minimum CAS proportion."""
+
+    target_sum: float | None = Field(default=None, alias="targetSum")
+    """The summed target CAS proportion."""
+
+    cas_smiles: str | None = Field(default=None, alias="casSmiles")
+    """The SMILES string for this CAS constituent."""
+
+    aggregated_func: list[Any] | None = Field(default=None, alias="aggregatedFunc")
+    """Aggregated function values associated with this CAS constituent."""
 
 
 class UnpackedInventoryListItem(BaseAlbertModel):
@@ -84,6 +130,9 @@ class UnpackedInventoryListItem(BaseAlbertModel):
 
     value: float | None = Field(default=None)
     """The amount contributed by this entry."""
+
+    function_value: list[Any] | None = Field(default=None, alias="functionValue")
+    """Function values associated with this formula cell, when present."""
 
     column_id: str | None = Field(default=None, alias="colId")
     """The identifier of the formula column this entry belongs to."""
@@ -116,14 +165,14 @@ class UnpackedInventory(UnpackedInventoryListItem):
     total_cas_sum: float | None = Field(default=None, alias="totalCasSum")
     """The summed CAS proportion across the ingredient's constituents."""
 
-    value: float | None = Field(default=None)
-    """The amount of this ingredient in the unpacked product."""
-
     sds_info: UnpackedInventorySDS | None = Field(default=None, alias="sdsInfo")
     """The SDS / regulatory details for the ingredient."""
 
     cas_info: list[UnpackedCasInfo] | None = Field(default=None, alias="casInfo")
     """The CAS-level composition breakdown for the ingredient."""
+
+    child_cas: list[UnpackedCasInfo] | None = Field(default=None, alias="childCas")
+    """Child CAS rows for the ingredient, including unknown-CAS placeholders."""
 
 
 class UnpackedProductDesign(BaseAlbertModel):
@@ -150,6 +199,9 @@ class UnpackedProductDesign(BaseAlbertModel):
         default=None, alias="inventorySDSList"
     )
     """The SDS / regulatory details collected across the ingredients."""
+
+    substances: list[CasLevelSubstance] | None = Field(default=None)
+    """The formula's substance rows (CAS identifiers, amounts, and related fields)."""
 
     cas_level_substances: list[CasLevelSubstance] | None = Field(
         default=None, alias="casLevelSubstances"

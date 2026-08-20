@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from contextlib import suppress
 
@@ -1055,6 +1056,44 @@ class PropertyDataCollection(BaseCollection):
             get_task_block_properties=self.get_task_block_properties,
         )
 
+    def _apply_calculated_task_property_patches(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None,
+        properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope,
+    ) -> list[TaskPropertyData]:
+        """Re-fetch block data and patch calculated columns from current input values."""
+        existing_data_rows = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=properties,
+        )
+        if patches:
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
+
     @validate_call
     def update_or_create_task_properties(
         self,
@@ -1137,73 +1176,19 @@ class PropertyDataCollection(BaseCollection):
             properties=properties,
         )
 
-        calculated_patches = property_data_utils.form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows,
-            properties=properties,
-        )
-        all_patches = update_patches + calculated_patches
-        if len(new_values) > 0:
-            if len(all_patches) > 0:
-                self.update_property_on_task(
-                    task_id=task_id,
-                    patch_payload=all_patches,
-                    return_scope="none",
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-            if any(
-                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
-                for prop in new_values
-            ):
-                params = {
-                    "blockId": block_id,
-                    "inventoryId": inventory_id,
-                }
-                params = {k: v for k, v in params.items() if v is not None}
-                payload = property_data_utils.resolve_task_property_payload(
-                    session=self.session,
-                    task_id=task_id,
-                    block_id=block_id,
-                    properties=new_values,
-                )
-                response = self.session.post(
-                    url=f"{self.base_path}/{task_id}",
-                    json=payload,
-                    params=params,
-                )
-                registered_properties = [
-                    TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-                ]
-                existing_data_rows = self.get_task_block_properties(
-                    inventory_id=inventory_id,
-                    task_id=task_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-                patches = property_data_utils.form_calculated_task_property_patches(
-                    existing_data_rows=existing_data_rows,
-                    properties=registered_properties,
-                )
-                if len(patches) > 0:
-                    return self.update_property_on_task(
-                        task_id=task_id,
-                        patch_payload=patches,
-                        return_scope=return_scope,
-                        inventory_id=inventory_id,
-                        block_id=block_id,
-                        lot_id=lot_id,
-                    )
-                return property_data_utils.resolve_return_scope(
-                    task_id=task_id,
-                    return_scope=return_scope,
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                    prefetched_block=existing_data_rows,
-                    get_all_task_properties=self.get_all_task_properties,
-                    get_task_block_properties=self.get_task_block_properties,
-                )
+        if not update_patches and not new_values:
+            return property_data_utils.resolve_return_scope(
+                task_id=task_id,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                prefetched_block=existing_data_rows,
+                get_all_task_properties=self.get_all_task_properties,
+                get_task_block_properties=self.get_task_block_properties,
+            )
+
+        if not update_patches:
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
@@ -1212,15 +1197,32 @@ class PropertyDataCollection(BaseCollection):
                 properties=new_values,
                 return_scope=return_scope,
             )
-        else:
-            return self.update_property_on_task(
-                task_id=task_id,
-                patch_payload=all_patches,
-                return_scope=return_scope,
+
+        self.update_property_on_task(
+            task_id=task_id,
+            patch_payload=update_patches,
+            return_scope="none",
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+        )
+        if new_values:
+            self.add_properties_to_task(
                 inventory_id=inventory_id,
+                task_id=task_id,
                 block_id=block_id,
                 lot_id=lot_id,
+                properties=new_values,
+                return_scope="none",
             )
+        return self._apply_calculated_task_property_patches(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=properties,
+            return_scope=return_scope,
+        )
 
     def bulk_load_task_properties(
         self,
@@ -1374,6 +1376,7 @@ class PropertyDataCollection(BaseCollection):
         text: str | None = None,
         # Sorting/pagination
         order: OrderBy | None = None,
+        order_by: OrderBy | None = None,
         sort_by: str | None = None,
         # Core platform identifiers
         inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
@@ -1381,6 +1384,7 @@ class PropertyDataCollection(BaseCollection):
         lot_ids: list[LotId] | LotId | None = None,
         data_template_ids: DataTemplateId | list[DataTemplateId] | None = None,
         data_column_ids: DataColumnId | list[DataColumnId] | None = None,
+        sheet_ids: list[str] | None = None,
         # Data structure filters
         category: list[DataEntity] | DataEntity | None = None,
         data_templates: list[str] | str | None = None,
@@ -1388,6 +1392,7 @@ class PropertyDataCollection(BaseCollection):
         # Data content filters
         parameters: list[str] | str | None = None,
         parameter_group: list[str] | str | None = None,
+        parameter_set: list[str] | None = None,
         unit: list[str] | str | None = None,
         # User filters
         created_by: str | list[str] | None = None,
@@ -1397,7 +1402,11 @@ class PropertyDataCollection(BaseCollection):
         to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
-        # Response customization
+        # Search field filters
+        search_field: list[str] | None = None,
+        source_field: list[str] | None = None,
+        facet_list: list[str] | None = None,
+        # Deprecated; accepted for backwards compatibility
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
@@ -1427,7 +1436,9 @@ class PropertyDataCollection(BaseCollection):
         text : str, optional
             Free text search across all fields.
         order : OrderBy, optional
-            Sort order (ascending/descending).
+            Sort direction (ascending/descending).
+        order_by : OrderBy, optional
+            Alternate sort-direction parameter supported by the search API.
         sort_by : str, optional
             Field to sort results by.
         inventory_ids : SearchInventoryId or list[SearchInventoryId], optional
@@ -1440,6 +1451,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by data template IDs.
         data_column_ids : DataColumnId or list[DataColumnId], optional
             Filter by data column IDs.
+        sheet_ids : list[str], optional
+            Filter by sheet IDs.
         category : DataEntity or list[DataEntity], optional
             Filter by data entity categories.
         data_templates : str or list[str], optional
@@ -1450,6 +1463,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by parameter names.
         parameter_group : str or list[str], optional
             Filter by parameter group names.
+        parameter_set : list[str], optional
+            Filter by parameter, unit, and parameter-group combinations.
         unit : str or list[str], optional
             Filter by unit names.
         created_by : str or list[str], optional
@@ -1468,10 +1483,16 @@ class PropertyDataCollection(BaseCollection):
             Only include records updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include records updated on or before this date (ISO 8601).
+        search_field : list[str], optional
+            Restrict which fields the text query searches.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        facet_list : list[str], optional
+            Fields to include in search facets.
         return_fields : str or list[str], optional
-            Specific fields to return.
+            Deprecated and ignored. Use ``source_field`` instead.
         return_facets : str or list[str], optional
-            Specific facets to return.
+            Deprecated and ignored. Use ``facet_list`` instead.
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -1487,31 +1508,48 @@ class PropertyDataCollection(BaseCollection):
 
         category_values = ensure_list(category)
 
+        if return_fields is not None:
+            warnings.warn(
+                "return_fields is deprecated and ignored; use source_field instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if return_facets is not None:
+            warnings.warn(
+                "return_facets is deprecated and ignored; use facet_list instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         params = {
             "result": result,
             "text": text,
             "order": order,
+            "orderBy": order_by,
             "sortBy": sort_by,
             "inventoryIds": ensure_list(inventory_ids),
             "projectIds": ensure_list(project_ids),
-            "lotIds": ensure_list(lot_ids),
+            "lot": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
+            "sheetIds": sheet_ids,
             "category": category_values if category_values else None,
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),
             "parameterGroup": ensure_list(parameter_group),
+            "parameterSet": parameter_set,
             "unit": ensure_list(unit),
             "createdBy": ensure_list(created_by),
-            "taskCreatedBy": ensure_list(task_created_by),
+            "taskCreatedby": ensure_list(task_created_by),
             "updatedBy": ensure_list(updated_by),
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
-            "returnFields": ensure_list(return_fields),
-            "returnFacets": ensure_list(return_facets),
+            "searchField": search_field,
+            "sourceField": source_field,
+            "facetList": facet_list,
         }
 
         return AlbertPaginator(

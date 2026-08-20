@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.0](https://github.com/albert-labs/albert-python/compare/v1.46.0...v1.47.0) (2026-08-20)
+
+
+### Features
+
+* **sds:** add generate_sds for formula inventory items ([#689](https://github.com/albert-labs/albert-python/issues/689)) ([95bbde2](https://github.com/albert-labs/albert-python/commit/95bbde2c49956e403b706d59662ce1b50ccf8e31))
+
+
+### Bug Fixes
+
+* column unpinning in sheet ([#696](https://github.com/albert-labs/albert-python/issues/696)) ([4036f7f](https://github.com/albert-labs/albert-python/commit/4036f7ffee8e1ee9172998405925f0918acbf872))
+
+## [1.46.0](https://github.com/albert-labs/albert-python/compare/v1.45.0...v1.46.0) (2026-08-18)
+
+
+### Features
+
+* **collections:** add missing search filters for attributes and btinsight ([#684](https://github.com/albert-labs/albert-python/issues/684)) ([d269e60](https://github.com/albert-labs/albert-python/commit/d269e604d5d7511932d11edb38fc5ea44564f0aa))
+* **collections:** add missing search filters for data templates and parameter groups ([#685](https://github.com/albert-labs/albert-python/issues/685)) ([0a20d70](https://github.com/albert-labs/albert-python/commit/0a20d709f4140ad6e0720f5cb05ed2657db0451a))
+* **collections:** add missing search filters for projects and users ([#683](https://github.com/albert-labs/albert-python/issues/683)) ([53bca03](https://github.com/albert-labs/albert-python/commit/53bca03ddda860889d166c2c28b9e328eb3a3de6))
+* **collections:** add missing search filters for substance v4 and property data ([#687](https://github.com/albert-labs/albert-python/issues/687)) ([37a87ac](https://github.com/albert-labs/albert-python/commit/37a87ac9516f779780dc6eb152762d213fb31ec5))
+* **collections:** add missing search filters for tasks and lots ([#686](https://github.com/albert-labs/albert-python/issues/686)) ([4d89e71](https://github.com/albert-labs/albert-python/commit/4d89e71ad012f3d0b189ece442e9819011b6dbfd))
+* **inventory:** add missing search filters for parity with API ([#688](https://github.com/albert-labs/albert-python/issues/688)) ([203397c](https://github.com/albert-labs/albert-python/commit/203397cc68902a4dc83c561b064e7f79c56df4c5))
+
+
+### Bug Fixes
+
+* **hazards:** support model-selected symbol status ([#670](https://github.com/albert-labs/albert-python/issues/670)) ([9054239](https://github.com/albert-labs/albert-python/commit/90542392d1834749949ef874cc9424a38c020842))
+* keep substance ids and region-scoped fields the substance v4 API returns ([#691](https://github.com/albert-labs/albert-python/issues/691)) ([e55cbae](https://github.com/albert-labs/albert-python/commit/e55cbaeb4dec2ae9afb6b3bf76cb6cc57866e059))
+* **property_data:** use correct search wire keys for lot and taskCreatedby ([#682](https://github.com/albert-labs/albert-python/issues/682)) ([e175cc2](https://github.com/albert-labs/albert-python/commit/e175cc20a167215e1efef5843e828ff11935feea))
+
+## [1.45.0](https://github.com/albert-labs/albert-python/compare/v1.44.0...v1.45.0) (2026-08-14)
+
+
+### Features
+
+* added name for designruns ([#679](https://github.com/albert-labs/albert-python/issues/679)) ([a466d02](https://github.com/albert-labs/albert-python/commit/a466d0206e0a024a27859583422c76b997b65696))
+
+## [1.44.0](https://github.com/albert-labs/albert-python/compare/v1.43.1...v1.44.0) (2026-08-13)
+
+
+### Features
+
+* add space_filling design-run SDK surface ([#677](https://github.com/albert-labs/albert-python/issues/677)) ([84bf374](https://github.com/albert-labs/albert-python/commit/84bf37407dfb1f0db85c3b4364c3a2f22bba289a))
+
+
+### Bug Fixes
+
+* **data_templates:** apply default number validation on add ([#675](https://github.com/albert-labs/albert-python/issues/675)) ([30f294c](https://github.com/albert-labs/albert-python/commit/30f294c57ca97d2458dfe420f556ec703564dafe))
+
+
+### Documentation
+
+* clarify service filter behavior in custom fields list docstring ([#629](https://github.com/albert-labs/albert-python/issues/629)) ([a581afa](https://github.com/albert-labs/albert-python/commit/a581afa7bd50bb5bcbed7b91f901518acb490eb4))
+
 ## [1.43.1](https://github.com/albert-labs/albert-python/compare/v1.43.0...v1.43.1) (2026-08-12)
 
 
