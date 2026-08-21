@@ -1,12 +1,7 @@
-import uuid
-from contextlib import suppress
 from datetime import date, timedelta
 
 from albert import Albert
-from albert.exceptions import NotFoundError
 from albert.resources.activities import Activity, ActivitySearchItem, ActivityType
-from albert.resources.tags import Tag
-from tests.utils.wait import poll_until
 
 
 def assert_valid_activity_items(returned_list):
@@ -18,21 +13,15 @@ def assert_valid_activity_items(returned_list):
 
 def test_activity_get_all(client: Albert):
     """Test activity get_all returns the feed for a single entity."""
-    tag = client.tags.create(tag=Tag(tag=f"TEST - activity scope {uuid.uuid4()}"))
-    try:
-        results = poll_until(
-            lambda: list(
-                client.activities.get_all(
-                    type=ActivityType.ENTITY_ID,
-                    id=tag.id,
-                    max_items=10,
-                )
-            )
+    tag = next(iter(client.tags.get_all(max_items=1)))
+    results = list(
+        client.activities.get_all(
+            type=ActivityType.ENTITY_ID,
+            id=tag.id,
+            max_items=10,
         )
-        assert_valid_activity_items(results)
-    finally:
-        with suppress(NotFoundError):
-            client.tags.delete(id=tag.id)
+    )
+    assert_valid_activity_items(results)
 
 
 def test_activity_search(client: Albert):
