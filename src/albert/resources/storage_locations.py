@@ -39,7 +39,7 @@ class StorageLocationFilter(BaseAlbertModel):
     Inventory search and listing serialize the storage location filter by
     storage-location name only, so unlike [`StorageLocation`][albert.resources.storage_locations.StorageLocation]
     (the create/update type, which requires a parent ``location``) this filter
-    needs just the exact unit name.
+    needs just the exact storage location name.
 
     !!! example
         ```python
