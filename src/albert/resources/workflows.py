@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass, Status
 from albert.core.shared.identifiers import (
     DataTemplateId,
     IntervalId,
@@ -16,6 +17,7 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
+from albert.resources._mixins import HydrationMixin
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.units import Unit
@@ -486,3 +488,96 @@ class Workflow(BaseResource):
             )
 
         return interval_id
+
+
+class WorkflowParameterSet(BaseAlbertModel):
+    """One parameter constraint for workflow search filtering."""
+
+    parameter: str | None = None
+    """Parameter name for filtering. Optional inline range syntax: ``name``, ``name(value)``, ``name(>n)``, ``name(<n)``, or ``name(min-max)``."""
+
+    parameter_short_name: str | None = Field(default=None, alias="parameterShortName")
+    """The short name of the parameter."""
+
+    min: float | None = None
+    """Lower bound on the parameter value."""
+
+    max: float | None = None
+    """Upper bound on the parameter value."""
+
+    unit: str | None = None
+    """The unit name for the parameter value."""
+
+    unit_id: str | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``)."""
+
+    parameter_group: str | None = None
+    """The parameter group ID (format ``PRG...``)."""
+
+    parameter_group_name: str | None = Field(default=None, alias="parameterGroupName")
+    """The name of the parameter group."""
+
+    data_template_name: str | None = Field(default=None, alias="dataTemplateName")
+    """The name of the data template."""
+
+    category: ParameterCategory | None = None
+    """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
+
+
+class WorkflowSearchItemGroup(BaseAlbertModel):
+    """A lightweight data template or parameter group reference in a workflow search hit."""
+
+    id: str | None = None
+    """The Albert ID of the group. ``None`` when omitted from the search hit."""
+
+    name: str | None = None
+    """The display name of the group."""
+
+
+class WorkflowSearchItem(BaseAlbertModel, HydrationMixin[Workflow]):
+    """Lightweight workflow search hit.
+
+    Returned by [`search`][albert.collections.workflows.WorkflowCollection.search].
+    Call `hydrate()` to fetch the full
+    [`Workflow`][albert.resources.workflows.Workflow].
+    """
+
+    id: str = Field(alias="albertId", validation_alias=AliasChoices("albertId", "id"))
+    """The Albert ID of the workflow (format ``WFL...``)."""
+
+    name: str
+    """The name of the workflow."""
+
+    status: Status | None = None
+    """The lifecycle status of the workflow."""
+
+    created_by: str | None = Field(default=None, alias="createdBy")
+    """The ID of the user who created the workflow."""
+
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The display name of the user who created the workflow."""
+
+    created_at: str | None = Field(default=None, alias="createdAt")
+    """ISO 8601 timestamp of when the workflow was created."""
+
+    resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
+    """The security class of the workflow."""
+
+    data_template_ids: list[str] | None = Field(default=None, alias="dataTemplateIds")
+    """IDs of data templates linked to the workflow."""
+
+    parameter_group_ids: list[str] | None = Field(default=None, alias="parameterGroupIds")
+    """IDs of parameter groups linked to the workflow."""
+
+    parameter_ids: list[str] | None = Field(default=None, alias="parameterIds")
+    """IDs of parameters linked to the workflow."""
+
+    data_templates: list[WorkflowSearchItemGroup] | None = Field(
+        default=None, alias="dataTemplates"
+    )
+    """Data templates linked to the workflow."""
+
+    parameter_groups: list[WorkflowSearchItemGroup] | None = Field(
+        default=None, alias="parameterGroups"
+    )
+    """Parameter groups linked to the workflow."""
