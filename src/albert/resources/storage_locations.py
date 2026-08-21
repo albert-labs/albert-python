@@ -29,5 +29,5 @@ class StorageLocation(BaseResource):
     id: str | None = Field(alias="albertId", default=None)
     """The Albert ID of the storage location (format ``STL...``). Assigned by Albert and populated once the storage location has been created or retrieved."""
 
-    location: SerializeAsEntityLink[Location] = Field(alias="Location")
-    """The parent Location this storage location belongs to."""
+    location: SerializeAsEntityLink[Location] | None = Field(alias="Location", default=None)
+    """The parent Location this storage location belongs to. Required when creating a storage location; optional when the object is passed as an inventory search filter, which serializes it by storage-location name only."""

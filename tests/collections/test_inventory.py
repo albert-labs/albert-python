@@ -16,6 +16,8 @@ from albert.resources.inventory import (
     InventorySpec,
     InventorySpecValue,
 )
+from albert.resources.lots import Lot
+from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
@@ -156,6 +158,37 @@ def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seede
         hydrated = partial.hydrate()
         assert hydrated.id == f"INV{partial.id}"
         assert hydrated.name == partial.name
+
+
+def test_inventory_search_with_name_only_storage_location(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_lots: list[Lot],
+    seeded_storage_locations: list[StorageLocation],
+):
+    """Test that inventory search accepts a name-only StorageLocation filter."""
+    unit = seeded_storage_locations[1]
+    seeded_ids = {i.id for i in seeded_inventory}
+    expected_ids = {
+        lot.inventory_id
+        for lot in seeded_lots
+        if lot.storage_location and lot.storage_location.id == unit.id
+    }
+    assert expected_ids, "Expected seeded lots at the storage location"
+
+    search_results = poll_until(
+        lambda: [
+            p
+            for p in client.inventory.search(
+                text=seed_prefix,
+                storage_location=[StorageLocation(name=unit.name)],
+                max_items=100,
+            )
+            if f"INV{p.id}" in seeded_ids
+        ]
+    )
+    assert {f"INV{p.id}" for p in search_results} == expected_ids
 
 
 @pytest.mark.skip(reason="LLM search is currently not working as expected.")

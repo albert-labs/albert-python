@@ -68,3 +68,16 @@ def test_update(client: Albert, seeded_storage_locations: list[StorageLocation])
     updated = client.storage_locations.update(storage_location=sl)
     assert updated.id == seeded_storage_locations[0].id
     assert updated.name == sl.name
+
+
+def test_name_only_storage_location_constructs_for_filter_use():
+    """Test that a name-only StorageLocation validates (inventory search filters by name)."""
+    sl = StorageLocation(name="Freezer A")
+    assert sl.location is None
+    assert sl.model_dump(by_alias=True, exclude_none=True)["name"] == "Freezer A"
+
+
+def test_create_requires_location(client: Albert):
+    """Test that create rejects a name-only StorageLocation before any API call."""
+    with pytest.raises(ValueError, match="location is required"):
+        client.storage_locations.create(storage_location=StorageLocation(name="No Parent"))
