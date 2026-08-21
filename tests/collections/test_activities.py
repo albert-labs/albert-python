@@ -29,7 +29,7 @@ def test_activity_get_all(client: Albert):
 def test_activity_search(client: Albert):
     """Test that activity search returns ActivitySearchItem results."""
     end_date = date.today()
-    start_date = end_date - timedelta(days=7)
+    start_date = end_date - timedelta(days=1)
     try:
         results = list(
             client.activities.search(

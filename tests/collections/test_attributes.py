@@ -265,10 +265,6 @@ def test_attribute_get_values_scope_all(
     client.attributes.clear_values(parent_id=inventory.id, scope=AttributeScope.ALL)
 
 
-@pytest.mark.xfail(
-    reason="POST /api/v3/attributes/values is not yet deployed to prod.",
-    strict=False,
-)
 def test_attribute_get_by_parent_ids(
     client: Albert,
     seeded_attributes: list[Attribute],
