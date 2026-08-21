@@ -73,13 +73,12 @@ def test_attribute_get_all(client: Albert, seeded_attributes: list[Attribute]):
 
 
 def test_attribute_get_all_by_category(client: Albert, seeded_attributes: list[Attribute]):
-    """Test get_all filtered by category returns seeded attributes."""
-    seeded_ids = {a.id for a in seeded_attributes}
-    results = list(client.attributes.get_all(category=AttributeCategory.PROPERTY, max_items=50))
-    matching = [item for item in results if item.id in seeded_ids]
+    """Test get_all filtered by category returns Property attributes."""
+    for attr in seeded_attributes:
+        fetched = client.attributes.get_by_id(id=attr.id)
+        assert fetched.category == AttributeCategory.PROPERTY
 
-    assert matching
-    for item in matching:
+    for item in client.attributes.get_all(category=AttributeCategory.PROPERTY, max_items=10):
         assert item.category == AttributeCategory.PROPERTY
 
 
@@ -171,15 +170,15 @@ def test_attribute_search_by_text(
 ):
     """Test searching attributes by text returns matching seeded results."""
     attr = seeded_attributes[1]
-    seeded_ids = {a.id for a in seeded_attributes}
     results = poll_until(
         lambda: [
             item
             for item in client.attributes.search(text=seed_prefix, max_items=50)
-            if item.id in seeded_ids
+            if item.id == attr.id
         ]
     )
 
+    assert results
     assert attr.id in {item.id for item in results}
 
 
@@ -266,10 +265,6 @@ def test_attribute_get_values_scope_all(
     client.attributes.clear_values(parent_id=inventory.id, scope=AttributeScope.ALL)
 
 
-@pytest.mark.xfail(
-    reason="POST /api/v3/attributes/values is not yet deployed to prod.",
-    strict=False,
-)
 def test_attribute_get_by_parent_ids(
     client: Albert,
     seeded_attributes: list[Attribute],

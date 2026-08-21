@@ -40,8 +40,10 @@ def assert_valid_lot_items(returned_list: list[Lot]):
 
 def test_lot_get_all_basic(client: Albert, seeded_lots):
     """Test basic usage of lots.get_all()."""
-    results = list(client.lots.get_all(max_items=10))
+    parent_id = seeded_lots[0].inventory_id
+    results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
+    assert any(lot.id == seeded_lots[0].id for lot in results)
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):

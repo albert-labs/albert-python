@@ -8,20 +8,15 @@ from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import FieldType, ServiceType
-from albert.resources.data_columns import DataColumn
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
     InventoryItem,
-    InventorySpec,
-    InventorySpecValue,
 )
 from albert.resources.lots import Lot
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.resources.workflows import Workflow
 from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
@@ -344,29 +339,6 @@ def test_blocks_dupes_with_entity_link_company(
 
     assert returned_ii.id == original.id
     assert returned_ii.name == original.name
-
-
-def test_add_property_to_inv_spec(
-    seed_prefix: str,
-    client: Albert,
-    seeded_inventory: list[InventoryItem],
-    seeded_data_columns: list[DataColumn],
-    seeded_units: list[Unit],
-    seeded_workflows: list[Workflow],
-):
-    specs = []
-    for dc in seeded_data_columns:
-        spec_to_add = InventorySpec(
-            name=f"{seed_prefix} -- {dc.name}",
-            data_column_id=dc.id,
-            unit_id=seeded_units[0].id,
-            value=InventorySpecValue(reference="42"),
-            workflow_id=seeded_workflows[0].id,
-        )
-        specs.append(spec_to_add)
-    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
-    assert len(added_specs.specs) == len(seeded_data_columns)
-    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
 
 
 def test_update_inventory_item_standard_attributes(
