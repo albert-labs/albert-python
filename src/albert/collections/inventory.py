@@ -31,7 +31,7 @@ from albert.resources.inventory import (
     MergeInventory,
 )
 from albert.resources.locations import Location
-from albert.resources.storage_locations import StorageLocation
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
 
@@ -570,7 +570,10 @@ class InventoryCollection(BaseCollection):
         order: OrderBy | None = None,
         sort_by: str | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: SearchProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -625,7 +628,7 @@ class InventoryCollection(BaseCollection):
             lot_owner = [lot_owner]
         if isinstance(location, Location):
             location = [location]
-        if isinstance(storage_location, StorageLocation):
+        if isinstance(storage_location, StorageLocation | StorageLocationFilter):
             storage_location = [storage_location]
 
         def _resolve_user_values(
@@ -784,7 +787,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -820,7 +826,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : ProjectId, optional
             Filter by project.
@@ -877,7 +883,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -913,7 +922,7 @@ class InventoryCollection(BaseCollection):
             Filter by company.
         location : list[Location] | Location | None, optional
             Filter by location.
-        storage_location : list[StorageLocation] | StorageLocation | None, optional
+        storage_location : list[StorageLocation | StorageLocationFilter] | StorageLocation | StorageLocationFilter | None, optional
             Filter by storage location.
         project_id : ProjectId | None, optional
             Filter by project.
@@ -968,7 +977,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -1062,7 +1074,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
             Filter by the project a formula belongs to (Formula items only).
@@ -1260,7 +1272,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -1349,7 +1364,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
             Filter by the project a formula belongs to (Formula items only).
