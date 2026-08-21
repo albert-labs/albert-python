@@ -1,10 +1,11 @@
 import uuid
 
 import pytest
+from pydantic import ValidationError
 
 from albert import Albert
 from albert.resources.locations import Location
-from albert.resources.storage_locations import StorageLocation
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -70,14 +71,13 @@ def test_update(client: Albert, seeded_storage_locations: list[StorageLocation])
     assert updated.name == sl.name
 
 
-def test_name_only_storage_location_constructs_for_filter_use():
-    """Test that a name-only StorageLocation validates (inventory search filters by name)."""
-    sl = StorageLocation(name="Freezer A")
-    assert sl.location is None
-    assert sl.model_dump(by_alias=True, exclude_none=True)["name"] == "Freezer A"
+def test_storage_location_create_type_still_requires_location():
+    """Test that StorageLocation (the create/update type) still requires a parent Location."""
+    with pytest.raises(ValidationError):
+        StorageLocation(name="No Parent")
 
 
-def test_create_requires_location(client: Albert):
-    """Test that create rejects a name-only StorageLocation before any API call."""
-    with pytest.raises(ValueError, match="location is required"):
-        client.storage_locations.create(storage_location=StorageLocation(name="No Parent"))
+def test_storage_location_filter_is_name_only():
+    """Test that the search filter type validates with a name only (no parent Location)."""
+    f = StorageLocationFilter(name="Freezer A")
+    assert f.model_dump() == {"name": "Freezer A"}

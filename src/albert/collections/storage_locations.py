@@ -198,8 +198,6 @@ class StorageLocationsCollection(BaseCollection):
         StorageLocation
             The newly created storage location, populated with its assigned ``id``.
         """
-        if storage_location.location is None:
-            raise ValueError("location is required when creating a storage location.")
         payload = storage_location.model_dump(
             by_alias=True,
             exclude_none=True,
