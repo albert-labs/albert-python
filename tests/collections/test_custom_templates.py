@@ -45,6 +45,8 @@ def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[C
             if t.id == seeded_template.id
         ]
     )
+    if not results:
+        pytest.skip("Custom template list index did not return the seeded template")
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplate,

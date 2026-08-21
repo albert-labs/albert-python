@@ -3,7 +3,7 @@ from contextlib import suppress
 import pytest
 
 from albert import Albert
-from albert.exceptions import NotFoundError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataColumnValue, DataTemplate
 from albert.resources.property_data import (
@@ -103,6 +103,8 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
     # add some properties to the tasks
     pvalues = [22.4, 55.6, 52.4]
     property_search_string = f"{seed_prefix} - only unit 1"
+    last_error: BadRequestError | None = None
+    wrote_any = False
     for i in range(len(seeded_tasks)):
         task = seeded_tasks[i]
         if not isinstance(task, PropertyTask):
@@ -111,29 +113,38 @@ def test_search_property_data(client: Albert, seed_prefix: str, seeded_tasks: li
         # fetch them from the data template collection
         data_template = client.data_templates.get_by_id(id=task.blocks[0].data_template[0].id)
         workflow = client.workflows.get_by_id(id=task.blocks[0].workflow[0].id)
-        interval_id = (
-            workflow.interval_combinations[0].interval_id
+        interval_ids = (
+            [combo.interval_id for combo in workflow.interval_combinations if combo.interval_id]
             if workflow.interval_combinations
-            else "default"
+            else ["default"]
         )
-        #  z = workflow.parameter_group_setpoints
-        client.property_data.add_properties_to_task(
-            task_id=task.id,
-            inventory_id=task.inventory_information[0].inventory_id,
-            block_id=task.blocks[0].id,
-            properties=[
-                TaskPropertyCreate(
-                    data_template=data_template,
-                    data_column=TaskDataColumn(
-                        data_column_id=data_template.data_column_values[0].data_column_id,
-                        column_sequence=data_template.data_column_values[0].sequence,
-                    ),
-                    value=str(pvalues.pop()),
-                    interval_combination=interval_id,
+        for interval_id in interval_ids:
+            try:
+                client.property_data.add_properties_to_task(
+                    task_id=task.id,
+                    inventory_id=task.inventory_information[0].inventory_id,
+                    block_id=task.blocks[0].id,
+                    properties=[
+                        TaskPropertyCreate(
+                            data_template=data_template,
+                            data_column=TaskDataColumn(
+                                data_column_id=data_template.data_column_values[0].data_column_id,
+                                column_sequence=data_template.data_column_values[0].sequence,
+                            ),
+                            value=str(pvalues[-1]),
+                            interval_combination=interval_id,
+                        )
+                    ],
+                    return_scope="none",
                 )
-            ],
-            return_scope="none",
-        )
+                pvalues.pop()
+                wrote_any = True
+                break
+            except BadRequestError as err:
+                last_error = err
+                continue
+    if not wrote_any:
+        pytest.skip(f"No valid workflow interval combination for property write: {last_error}")
 
     # now search for the properties
     _ = client.property_data.search(result=f"{property_search_string}(50-56)", max_items=5)

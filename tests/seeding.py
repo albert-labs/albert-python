@@ -213,9 +213,19 @@ def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[Li
     return all_list_items
 
 
+# Prefer the tenant TEN.prefix map (staging: FOR/LAB/GEN). PT/BT/GT are
+# api-entitytype DEFAULT_PREFIX.tasks when the category is absent from TEN.
+_DEFAULT_TASK_PREFIXES = {
+    EntityCategory.PROPERTY: "FOR",
+    EntityCategory.BATCH: "LAB",
+    EntityCategory.GENERAL: "GEN",
+}
+
+
 def generate_entity_type_seeds(
     seed_prefix: str,
     static_entity_custom_fields: list[CustomField],
+    prefixes: dict[EntityCategory, str] | None = None,
 ) -> list[EntityType]:
     """Generate entity type seeds scoped to the tasks service."""
     task_custom_field_string_type = next(
@@ -262,17 +272,15 @@ def generate_entity_type_seeds(
         required: tuple[bool, bool, bool],
     ) -> EntityType:
         seed_prefix = seed_prefix.replace("-", "")
-        # Staging rejects reserved system prefixes (PT/GT). Use a tenant-unique
-        # 3-char prefix derived from the worker seed instead.
-        compact = "".join(c for c in seed_prefix if c.isalnum()).upper()
-        letter = "X" if category == EntityCategory.PROPERTY else "Z"
-        unique_prefix = f"{letter}{compact[-2:]}"[:3]
+        # POST /entitytypes requires prefix for tasks; validatePrefix only
+        # accepts values already on the tenant TEN.prefix map.
+        prefix = (prefixes or {}).get(category) or _DEFAULT_TASK_PREFIXES[category]
         return EntityType(
             category=category,
             custom_category=f"Category{seed_prefix}",
             label=f"LABEL - {category.value} - {seed_prefix}",
             service=EntityServiceType.TASKS,
-            prefix=unique_prefix,
+            prefix=prefix,
             custom_fields=build_custom_fields(hide_list_field=hide_list_field),
             standard_field_visibility=EntityTypeStandardFieldVisibility(
                 notes=visibility[0],

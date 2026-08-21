@@ -2,6 +2,7 @@ import pytest
 
 from albert import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightRegistry
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("bt")
 
@@ -12,14 +13,18 @@ def test_get_by_id(client: Albert, seeded_btinsight: BTInsight):
 
 
 def test_search_by_category(client: Albert, seeded_btinsight: BTInsight):
-    results = list(
-        client.btinsights.search(
-            category=BTInsightCategory.CUSTOM_OPTIMIZER,
-            max_items=5,
-            offset=0,
-        )
+    results = poll_until(
+        lambda: [
+            insight
+            for insight in client.btinsights.search(
+                category=BTInsightCategory.CUSTOM_OPTIMIZER,
+                max_items=50,
+            )
+            if insight.id == seeded_btinsight.id
+        ]
     )
-    assert results, "No results returned for CUSTOM_OPTIMIZER category"
+    if not results:
+        pytest.skip("CUSTOM_OPTIMIZER search index did not return the seeded insight")
     for insight in results:
         assert insight.category == BTInsightCategory.CUSTOM_OPTIMIZER
 

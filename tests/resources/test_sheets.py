@@ -32,23 +32,6 @@ def _inventory_cells(column: Column) -> list[Cell]:
     ]
 
 
-def _restore_seeded_formulation(
-    sheet: Sheet,
-    product: InventoryItem,
-    inventory: list[InventoryItem],
-) -> None:
-    """Reset the seeded formula column to 66/34 with no min/max (matches conftest)."""
-    column = _formulation_column(sheet, product)
-    sheet.add_formulation(
-        formulation_name=column.name,
-        components=[
-            Component(inventory_item=inventory[0], amount=66),
-            Component(inventory_item=inventory[1], amount=34),
-        ],
-        clear=True,
-    )
-
-
 def test_get_current_cell_exact_row_match():
     sheet = Sheet(
         albertId="SHEET1",
@@ -105,73 +88,82 @@ def test_get_current_cell_exact_row_match():
 
 
 def test_update_cells_updates_inventory_values(
+    seed_prefix: str,
     seeded_sheet: Sheet,
-    seeded_products: list[InventoryItem],
-    seeded_inventory: list[InventoryItem],
+    seeded_inventory,
 ):
-    column = _formulation_column(seeded_sheet, seeded_products[0])
+    """Patch cells on a private formulation column (seeded formulas lock on staging)."""
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - update cells",
+        components=[
+            Component(
+                inventory_item=seeded_inventory[0], amount=20.0, min_value=10.0, max_value=40.0
+            ),
+            Component(
+                inventory_item=seeded_inventory[1], amount=80.0, min_value=60.0, max_value=90.0
+            ),
+        ],
+        enforce_order=True,
+    )
     inventory_cells = _inventory_cells(column)
     assert len(inventory_cells) >= 2
 
-    try:
-        expected_values = {}
-        updated_cells = []
-        for idx, cell in enumerate(inventory_cells[:2]):
-            base_value = float(cell.value)
-            base_min = float(cell.min_value) if cell.min_value is not None else 0.0
-            base_max = float(cell.max_value) if cell.max_value is not None else base_value
+    expected_values = {}
+    updated_cells = []
+    for idx, cell in enumerate(inventory_cells[:2]):
+        base_value = float(cell.value)
+        base_min = float(cell.min_value) if cell.min_value is not None else 0.0
+        base_max = float(cell.max_value) if cell.max_value is not None else base_value
 
-            new_value = round(base_value + 5 + idx, 3)
-            # max must stay >= both the current and the new value; the API
-            # applies max patches before value patches.
-            new_max = round(max(base_max, base_value, new_value) + 2.5, 3)
-            new_min = round(min(base_min + 1.5, new_value), 3)
+        new_value = round(base_value + 5 + idx, 3)
+        # max must stay >= both the current and the new value; the API
+        # applies max patches before value patches.
+        new_max = round(max(base_max, base_value, new_value) + 2.5, 3)
+        new_min = round(min(base_min + 1.5, new_value), 3)
 
-            expected_values[cell.row_id] = {
-                "value": new_value,
-                "min": new_min,
-                "max": new_max,
-            }
+        expected_values[cell.row_id] = {
+            "value": new_value,
+            "min": new_min,
+            "max": new_max,
+        }
 
-            updated_cells.append(
-                cell.model_copy(
-                    update={
-                        "value": f"{new_value}",
-                        "min_value": f"{new_min}",
-                        "max_value": f"{new_max}",
-                    }
-                )
+        updated_cells.append(
+            cell.model_copy(
+                update={
+                    "value": f"{new_value}",
+                    "min_value": f"{new_min}",
+                    "max_value": f"{new_max}",
+                }
             )
+        )
 
-        updated, failed = seeded_sheet.update_cells(cells=updated_cells)
+    updated, failed = seeded_sheet.update_cells(cells=updated_cells)
 
-        assert failed == []
-        assert {(c.row_id, c.column_id) for c in updated} == {
-            (c.row_id, c.column_id) for c in updated_cells
-        }
+    assert failed == []
+    assert {(c.row_id, c.column_id) for c in updated} == {
+        (c.row_id, c.column_id) for c in updated_cells
+    }
 
-        refreshed_column = seeded_sheet.get_column(column_id=column.column_id)
-        refreshed_cells = {
-            cell.row_id: cell
-            for cell in refreshed_column.cells
-            if cell.row_id in expected_values
-            and cell.type == CellType.INVENTORY
-            and cell.row_type == CellType.INVENTORY
-        }
+    refreshed_column = seeded_sheet.get_column(column_id=column.column_id)
+    refreshed_cells = {
+        cell.row_id: cell
+        for cell in refreshed_column.cells
+        if cell.row_id in expected_values
+        and cell.type == CellType.INVENTORY
+        and cell.row_type == CellType.INVENTORY
+    }
 
-        assert set(refreshed_cells.keys()) == set(expected_values.keys())
+    assert set(refreshed_cells.keys()) == set(expected_values.keys())
 
-        for row_id, expected in expected_values.items():
-            refreshed = refreshed_cells[row_id]
-            assert float(refreshed.value) == pytest.approx(expected["value"], rel=1e-6)
-            if refreshed.min_value is not None:
-                assert float(refreshed.min_value) == pytest.approx(expected["min"], rel=1e-6)
-            else:
-                assert expected["min"] == pytest.approx(0.0, rel=1e-6)
-            if refreshed.max_value is not None:
-                assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
-    finally:
-        _restore_seeded_formulation(seeded_sheet, seeded_products[0], seeded_inventory)
+    for row_id, expected in expected_values.items():
+        refreshed = refreshed_cells[row_id]
+        assert float(refreshed.value) == pytest.approx(expected["value"], rel=1e-6)
+        if refreshed.min_value is not None:
+            assert float(refreshed.min_value) == pytest.approx(expected["min"], rel=1e-6)
+        else:
+            assert expected["min"] == pytest.approx(0.0, rel=1e-6)
+        if refreshed.max_value is not None:
+            assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
 
 
 def test_get_test_sheet(seeded_sheet: Sheet):
@@ -209,56 +201,56 @@ def test_formulation_column_names_use_display_name(
 
 
 def test_add_formulation_lifecycle(
+    seed_prefix: str,
     seeded_sheet: Sheet,
     seeded_inventory,
-    seeded_products: list[InventoryItem],
 ):
-    """Test clear-and-reuse of an existing formulation column, then a no-clear duplicate."""
-    existing = _formulation_column(seeded_sheet, seeded_products[0])
-    name = existing.name
+    """Test clear-and-reuse of a private formulation column, then a no-clear duplicate."""
+    name = f"{seed_prefix} - formulation lifecycle"
     components_with_bounds = [
         Component(inventory_item=seeded_inventory[0], amount=33.1, min_value=0, max_value=50),
         Component(inventory_item=seeded_inventory[1], amount=66.9, min_value=50, max_value=100),
     ]
 
-    try:
-        new_col = seeded_sheet.add_formulation(
-            formulation_name=name,
-            components=components_with_bounds,
-            enforce_order=True,
-            clear=True,
-        )
-        assert isinstance(new_col, Column)
-        assert new_col.column_id == existing.column_id
+    new_col = seeded_sheet.add_formulation(
+        formulation_name=name,
+        components=components_with_bounds,
+        enforce_order=True,
+    )
+    assert isinstance(new_col, Column)
 
-        component_map = {c.inventory_item.id: c for c in components_with_bounds}
-        row_id_to_inv_id = {
-            row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows
-        }
+    reused = seeded_sheet.add_formulation(
+        formulation_name=name,
+        components=components_with_bounds,
+        enforce_order=True,
+        clear=True,
+    )
+    assert reused.column_id == new_col.column_id
 
-        found_cells = 0
-        for cell in new_col.cells:
-            if cell.type == "INV" and cell.row_type == "INV":
-                inv_id = row_id_to_inv_id.get(cell.row_id)
-                if not inv_id or inv_id not in component_map:
-                    continue
+    component_map = {c.inventory_item.id: c for c in components_with_bounds}
+    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
 
-                component = component_map[inv_id]
-                assert float(cell.value) == float(component.amount)
-                assert float(cell.min_value) == float(component.min_value)
-                assert float(cell.max_value) == float(component.max_value)
-                found_cells += 1
-            elif cell.row_type == "TOT":
-                assert cell.value == "100"
+    found_cells = 0
+    for cell in reused.cells:
+        if cell.type == "INV" and cell.row_type == "INV":
+            inv_id = row_id_to_inv_id.get(cell.row_id)
+            if not inv_id or inv_id not in component_map:
+                continue
 
-        assert found_cells == len(components_with_bounds)
+            component = component_map[inv_id]
+            assert float(cell.value) == float(component.amount)
+            assert float(cell.min_value) == float(component.min_value)
+            assert float(cell.max_value) == float(component.max_value)
+            found_cells += 1
+        elif cell.row_type == "TOT":
+            assert cell.value == "100"
 
-        duplicate = seeded_sheet.add_formulation(
-            formulation_name=name, components=components_with_bounds, clear=False
-        )
-        assert duplicate.column_id != new_col.column_id
-    finally:
-        _restore_seeded_formulation(seeded_sheet, seeded_products[0], seeded_inventory)
+    assert found_cells == len(components_with_bounds)
+
+    duplicate = seeded_sheet.add_formulation(
+        formulation_name=name, components=components_with_bounds, clear=False
+    )
+    assert duplicate.column_id != new_col.column_id
 
 
 ########################## COLUMNS ##########################

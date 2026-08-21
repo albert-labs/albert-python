@@ -23,14 +23,6 @@ jobs:
           name: Install dependencies
           command: uv sync
       - run:
-          name: Confirm testing API URL
-          command: |
-            if [ -z "${ALBERT_BASE_URL}" ]; then
-              echo "ALBERT_BASE_URL is not set. Add it to the CircleCI context used by this job."
-              exit 1
-            fi
-            echo "Tests will use ALBERT_BASE_URL=${ALBERT_BASE_URL}"
-      - run:
           name: Check formatting
           command: |
             uv run ruff format . --check

@@ -36,7 +36,7 @@ from albert.resources.custom_fields import CustomField
 from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
-from albert.resources.entity_types import EntityType
+from albert.resources.entity_types import EntityCategory, EntityServiceType, EntityType
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
 from albert.resources.inventory import InventoryItem
 from albert.resources.label_templates import LabelTemplate, LabelTemplateType
@@ -854,6 +854,59 @@ def seeded_tasks(
     _delete_all(lambda t: client.tasks.delete(id=t.id), seeded, NotFoundError, BadRequestError)
 
 
+# POST /entitytypes requires an allowlisted prefix (api-entitytype TEN.prefix).
+# Staging: property=FOR, Batch=LAB, General=GEN. API default when the category
+# is absent from TEN: PT/BT/GT. Listing is empty for this bot, so try both.
+_TASK_PREFIX_CANDIDATES = {
+    EntityCategory.PROPERTY: ("FOR", "PT"),
+    EntityCategory.BATCH: ("LAB", "BT"),
+    EntityCategory.GENERAL: ("GEN", "GT"),
+}
+
+
+def _task_entity_type_prefixes(client: Albert) -> dict[EntityCategory, str]:
+    """Copy allowlisted task prefixes already on this tenant, if listing returns any."""
+    needed = {EntityCategory.PROPERTY, EntityCategory.GENERAL}
+    found: dict[EntityCategory, str] = {}
+    for et in client.entity_types.get_all(service=EntityServiceType.TASKS):
+        category = et.category
+        if category not in needed or category in found:
+            continue
+        prefix = et.prefix
+        if not prefix and et.id:
+            prefix = client.entity_types.get_by_id(id=et.id).prefix
+        if prefix:
+            found[category] = prefix
+        if needed <= found.keys():
+            break
+    return found
+
+
+def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for prefix in (
+        entity_type.prefix,
+        *_TASK_PREFIX_CANDIDATES.get(entity_type.category, ()),
+    ):
+        if prefix and prefix not in seen:
+            seen.add(prefix)
+            candidates.append(prefix)
+
+    last_error: BadRequestError | None = None
+    for prefix in candidates:
+        entity_type.prefix = prefix
+        try:
+            return client.entity_types.create(entity_type=entity_type)
+        except BadRequestError as err:
+            if "Invalid prefix" not in str(err):
+                raise
+            last_error = err
+    if last_error is not None:
+        raise last_error
+    raise ValueError(f"No prefix candidates for category {entity_type.category}")
+
+
 @pytest.fixture(scope="session")
 def seeded_entity_types(
     client: Albert,
@@ -861,11 +914,13 @@ def seeded_entity_types(
     static_entity_custom_fields: list[CustomField],
 ) -> Iterator[list[EntityType]]:
     # Sequential on purpose: the entitytypes endpoint 500s under concurrent creates
+    prefixes = _task_entity_type_prefixes(client)
     seeded = [
-        client.entity_types.create(entity_type=entity_type)
+        _create_entity_type(client, entity_type)
         for entity_type in generate_entity_type_seeds(
             seed_prefix=seed_prefix,
             static_entity_custom_fields=static_entity_custom_fields,
+            prefixes=prefixes,
         )
     ]
     yield seeded

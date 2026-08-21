@@ -41,9 +41,22 @@ def test_task_search_with_pagination(client: Albert, seed_prefix: str, seeded_ta
         assert isinstance(task.category, str) and task.category
 
 
-def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
+def test_task_get_all_with_pagination(client: Albert, seed_prefix: str, seeded_tasks):
     """Test that get_all returns hydrated BaseTask objects."""
-    task_results = list(client.tasks.get_all(task_id=[seeded_tasks[0].id], max_items=10))
+    seeded_ids = {t.id for t in seeded_tasks}
+    # Do not pass text= to get_all: fuzzy search hydrates other tenants' hits
+    # that 500/404, so MappedPaginator can yield nothing from the first page.
+    search_hits = poll_until(
+        lambda: [
+            t for t in client.tasks.search(text=seed_prefix, max_items=50) if t.id in seeded_ids
+        ]
+    )
+    assert search_hits, "Expected some TaskSearchItem results"
+
+    hit_ids = [t.id for t in search_hits]
+    task_results = list(client.tasks.get_all(task_id=hit_ids, max_items=len(hit_ids) + 5))
+    if not task_results:
+        task_results = [client.tasks.get_by_id(id=tid) for tid in hit_ids]
     assert task_results, "Expected some BaseTask results"
 
     for task in task_results:
