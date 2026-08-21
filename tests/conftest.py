@@ -778,7 +778,7 @@ def seeded_pricings(client: Albert, seed_prefix: str, seeded_inventory, seeded_l
         generate_pricing_seeds(seed_prefix, seeded_inventory, seeded_locations),
     )
     yield seeded
-    _delete_all(lambda p: client.pricings.delete(id=p.id), seeded, NotFoundError)
+    _delete_all(lambda p: client.pricings.delete(id=p.id), seeded, NotFoundError, BadRequestError)
 
 
 @pytest.fixture(scope="session")
