@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.1](https://github.com/albert-labs/albert-python/compare/v1.47.0...v1.47.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **property_data:** recalculate columns on task property upsert ([#693](https://github.com/albert-labs/albert-python/issues/693)) ([f486dcc](https://github.com/albert-labs/albert-python/commit/f486dcc846d067aa95b33e7104c38201a3400898))
+* speed the test suite and harden fixtures for staging ([#702](https://github.com/albert-labs/albert-python/issues/702)) ([410a959](https://github.com/albert-labs/albert-python/commit/410a9590b840b3a944b5dc7debba5997bfc7f63c))
+
 ## [1.47.0](https://github.com/albert-labs/albert-python/compare/v1.46.0...v1.47.0) (2026-08-20)
 
 
