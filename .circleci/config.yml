@@ -23,10 +23,6 @@ jobs:
           name: Install dependencies
           command: uv sync
       - run:
-          name: Set environment
-          command: |
-            echo 'export ALBERT_BASE_URL="https://app.albertinvent.com"' >> "$BASH_ENV"
-      - run:
           name: Check formatting
           command: |
             uv run ruff format . --check

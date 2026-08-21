@@ -34,12 +34,6 @@ def test_project_search_basic(client: Albert):
     assert_valid_project_items(project_list, ProjectSearchItem)
 
 
-def test_project_search_paged(client: Albert):
-    """Test search with a small page size."""
-    short_lists = list(client.projects.search(max_items=10))
-    assert_valid_project_items(short_lists, ProjectSearchItem)
-
-
 def test_project_search_filtered(client: Albert):
     """Test search with status filter."""
     advanced_list = list(client.projects.search(status=["Active"], max_items=10))

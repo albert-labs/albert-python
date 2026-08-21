@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
 import pytest
@@ -69,41 +70,30 @@ def test_cas_exists(client: Albert):
     assert not client.cas_numbers.exists(number=str(uuid.uuid4()))
 
 
-def test_update_cas(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
-    """Test that updating a CAS object reflects changes."""
+def test_update_cas(
+    client: Albert,
+    seed_prefix: str,
+    seeded_cas: list[Cas],
+    static_custom_fields: list[CustomField],
+):
+    """Test that updating a CAS description and string metadata reflects changes."""
     if not seeded_cas:
         pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
+    field_name = next(
+        field.name
+        for field in static_custom_fields
+        if field.service == ServiceType.CAS and field.field_type == FieldType.STRING
+    )
     cas_to_update = seeded_cas[0]
     updated_description = f"{seed_prefix} - A new description"
+    new_value = f"{seed_prefix} - metadata test"
     cas_to_update.description = updated_description
+    cas_to_update.metadata = {**(cas_to_update.metadata or {}), field_name: new_value}
 
     updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
 
     assert updated_cas.description == updated_description
-
-
-def test_update_cas_metadata(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
-    """Test that updating CAS metadata reflects changes."""
-    if not seeded_cas:
-        pytest.skip("No seeded CAS available — stale prod data prevented fixture setup")
-    field_name = f"test_cas_meta_{seed_prefix.replace('-', '_')[:20]}".lower()
-    custom_field = client.custom_fields.create(
-        custom_field=CustomField(
-            name=field_name,
-            display_name=f"TEST CAS Meta {seed_prefix[:10]}",
-            field_type=FieldType.STRING,
-            service=ServiceType.CAS,
-        )
-    )
-    try:
-        cas_to_update = seeded_cas[0]
-        new_value = f"{seed_prefix} - metadata test"
-        cas_to_update.metadata = {**cas_to_update.metadata, field_name: new_value}
-        updated_cas = client.cas_numbers.update(updated_object=cas_to_update)
-        assert updated_cas.metadata.get(field_name) == new_value
-    finally:
-        with suppress(NotFoundError):
-            client.custom_fields.delete(id=custom_field.id)
+    assert updated_cas.metadata.get(field_name) == new_value
 
 
 def test_update_cas_metadata_batching(client: Albert, seed_prefix: str, seeded_cas: list[Cas]):
@@ -114,18 +104,19 @@ def test_update_cas_metadata_batching(client: Albert, seed_prefix: str, seeded_c
     prefix = seed_prefix.replace("-", "_")[:12].lower()
     custom_fields: list[CustomField] = []
     try:
-        for index in range(field_count):
-            field_name = f"test_cas_batch_{prefix}_{index}"
-            custom_fields.append(
-                client.custom_fields.create(
-                    custom_field=CustomField(
-                        name=field_name,
-                        display_name=f"TEST CAS Batch {prefix} {index}",
-                        field_type=FieldType.STRING,
-                        service=ServiceType.CAS,
-                    )
+
+        def _create_field(index: int) -> CustomField:
+            return client.custom_fields.create(
+                custom_field=CustomField(
+                    name=f"test_cas_batch_{prefix}_{index}",
+                    display_name=f"TEST CAS Batch {prefix} {index}",
+                    field_type=FieldType.STRING,
+                    service=ServiceType.CAS,
                 )
             )
+
+        with ThreadPoolExecutor(max_workers=field_count) as pool:
+            custom_fields = list(pool.map(_create_field, range(field_count)))
 
         cas_to_update = seeded_cas[0]
         new_metadata = {
@@ -141,9 +132,13 @@ def test_update_cas_metadata_batching(client: Albert, seed_prefix: str, seeded_c
         for index, field in enumerate(custom_fields):
             assert updated_cas.metadata.get(field.name) == f"{seed_prefix} - batch value {index}"
     finally:
-        for field in custom_fields:
+
+        def _delete_field(field: CustomField) -> None:
             with suppress(NotFoundError):
                 client.custom_fields.delete(id=field.id)
+
+        with ThreadPoolExecutor(max_workers=max(1, len(custom_fields))) as pool:
+            list(pool.map(_delete_field, custom_fields))
 
 
 def test_create_cas_with_list_metadata(
