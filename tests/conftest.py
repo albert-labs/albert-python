@@ -1,4 +1,3 @@
-import os
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
@@ -156,36 +155,28 @@ def _delete_all(delete_fn: Callable, items, *suppressed: type[Exception]) -> Non
     _pmap(_one, items)
 
 
-def _sdk_credentials() -> AlbertClientCredentials:
+@pytest.fixture(scope="session")
+def client() -> Albert:
     credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
         base_url_env="ALBERT_BASE_URL",
     )
-    if credentials is None:
-        pytest.fail(
-            "Missing ALBERT_CLIENT_ID_SDK, ALBERT_CLIENT_SECRET_SDK, or ALBERT_BASE_URL. "
-            "Set them in the environment or a pytest-dotenv .env file."
-        )
-    return credentials
-
-
-@pytest.fixture(scope="session")
-def client() -> Albert:
-    credentials = _sdk_credentials()
     return Albert(
         auth_manager=credentials,
-        base_url=os.environ["ALBERT_BASE_URL"],
         retries=3,
     )
 
 
 @pytest_asyncio.fixture(scope="session")
 async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
-    credentials = _sdk_credentials()
+    credentials = AlbertClientCredentials.from_env(
+        client_id_env="ALBERT_CLIENT_ID_SDK",
+        client_secret_env="ALBERT_CLIENT_SECRET_SDK",
+        base_url_env="ALBERT_BASE_URL",
+    )
     client = AsyncAlbert(
         auth_manager=credentials,
-        base_url=os.environ["ALBERT_BASE_URL"],
     )
     yield client
     await client.aclose()
