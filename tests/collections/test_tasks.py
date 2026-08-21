@@ -24,9 +24,14 @@ def _final_workflow_id(block) -> str:
     return block.workflow[0].id
 
 
-def test_task_search_with_pagination(client: Albert, seeded_tasks):
+def test_task_search_with_pagination(client: Albert, seed_prefix: str, seeded_tasks):
     """Test that task search returns unhydrated search items."""
-    search_results = list(client.tasks.search(max_items=10))
+    seeded_ids = {t.id for t in seeded_tasks}
+    search_results = poll_until(
+        lambda: [
+            t for t in client.tasks.search(text=seed_prefix, max_items=50) if t.id in seeded_ids
+        ]
+    )
     assert search_results, "Expected some TaskSearchItem results"
 
     for task in search_results:
@@ -38,7 +43,7 @@ def test_task_search_with_pagination(client: Albert, seeded_tasks):
 
 def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
     """Test that get_all returns hydrated BaseTask objects."""
-    task_results = list(client.tasks.get_all(max_items=10))
+    task_results = list(client.tasks.get_all(task_id=[seeded_tasks[0].id], max_items=10))
     assert task_results, "Expected some BaseTask results"
 
     for task in task_results:

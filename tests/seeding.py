@@ -253,11 +253,6 @@ def generate_entity_type_seeds(
             ),
         ]
 
-    prefix_map = {
-        EntityCategory.PROPERTY: "PT",
-        EntityCategory.GENERAL: "GT",
-    }
-
     def build_entity_type(
         seed_prefix: str,
         category: EntityCategory,
@@ -267,12 +262,17 @@ def generate_entity_type_seeds(
         required: tuple[bool, bool, bool],
     ) -> EntityType:
         seed_prefix = seed_prefix.replace("-", "")
+        # Staging rejects reserved system prefixes (PT/GT). Use a tenant-unique
+        # 3-char prefix derived from the worker seed instead.
+        compact = "".join(c for c in seed_prefix if c.isalnum()).upper()
+        letter = "X" if category == EntityCategory.PROPERTY else "Z"
+        unique_prefix = f"{letter}{compact[-2:]}"[:3]
         return EntityType(
             category=category,
             custom_category=f"Category{seed_prefix}",
             label=f"LABEL - {category.value} - {seed_prefix}",
             service=EntityServiceType.TASKS,
-            prefix=prefix_map.get(category),
+            prefix=unique_prefix,
             custom_fields=build_custom_fields(hide_list_field=hide_list_field),
             standard_field_visibility=EntityTypeStandardFieldVisibility(
                 notes=visibility[0],
@@ -1601,7 +1601,9 @@ def generate_task_seeds(
         list_items = [x for x in static_lists if x.list_type == custom_field.name]
         faux_metadata[custom_field.name] = [list_items[i].to_entity_link()]
 
-    formulation_proj = [x for x in seeded_projects if x.id == seeded_products[2].project_id][0]
+    formula = seeded_products[0]
+    # Worksheet (and therefore the formula) is always created on seeded_projects[0].
+    formulation_proj = seeded_projects[0]
     return [
         # Property Task 1
         PropertyTask(
@@ -1676,54 +1678,15 @@ def generate_task_seeds(
             location=seeded_locations[1],
             metadata=dict(faux_metadata),
         ),
-        # Batch Task 1
-        # Use the Formulations used in #tests/resources/test_sheets/py defined as seeded_products
-        BatchTask(
-            name=f"{seed_prefix} - Batch Task 1",
-            category=TaskCategory.BATCH,
-            batch_size_unit=BatchSizeUnit.KILOGRAMS,
-            inventory_information=[
-                TaskInventoryInformation(
-                    inventory_id=seeded_products[2].id,
-                    batch_size=100.0,
-                )
-            ],
-            location=seeded_locations[1],
-            priority=TaskPriority.LOW,
-            project=formulation_proj,
-            parent_id=formulation_proj.id,
-            assigned_to=user,
-            start_date="2024-10-01",
-            due_date="2024-10-31",
-            workflows=[seeded_workflows[1]],
-        ),
-        # Batch Task 2
-        BatchTask(
-            name=f"{seed_prefix} - Batch Task 2",
-            category=TaskCategory.BATCH,
-            batch_size_unit=BatchSizeUnit.GRAMS,
-            inventory_information=[
-                TaskInventoryInformation(
-                    inventory_id=seeded_products[1].id,
-                    batch_size=250.0,
-                )
-            ],
-            location=seeded_locations[2],
-            priority=TaskPriority.MEDIUM,
-            project=formulation_proj,
-            parent_id=formulation_proj.id,
-            assigned_to=user,
-            start_date="2024-10-01",
-            due_date="2024-10-31",
-        ),
-        # Batch Task with property blocks
+        # One batch task on the single seeded formula covers get/create/update
+        # batch-data tests and the block add/update/remove tests.
         BatchTask(
             name=f"{seed_prefix} - Batch Task With Blocks",
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.GRAMS,
             inventory_information=[
                 TaskInventoryInformation(
-                    inventory_id=seeded_products[0].id,
+                    inventory_id=formula.id,
                     batch_size=50.0,
                 )
             ],

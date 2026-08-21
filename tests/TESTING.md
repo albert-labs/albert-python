@@ -33,11 +33,11 @@ Pick the group whose worker already builds the fixtures you need:
 
 | Group | Owns fixture chain | Files (non-exhaustive) |
 |---|---|---|
-| `tasks` | `seeded_tasks` and everything under it (`seeded_workflows`, `seeded_notes`, `seeded_links`, `seeded_reports`) | test_tasks, test_batch_data, test_property_data, test_notes, test_links, test_reports, test_workflows |
-| `sheets` | `seeded_worksheet`, `seeded_sheet`, `seeded_products` | test_worksheet, test_product_design, resources/test_sheets |
-| `inventory` | `seeded_inventory`, `seeded_lots`, `seeded_pricings`, `seeded_label_templates` | test_inventory, test_attachments, test_lots, test_pricings, test_label_templates |
+| `tasks` | `seeded_tasks` and everything under it (`seeded_workflows`, `seeded_notes`, `seeded_links`, `seeded_reports`). Also pulls `seeded_products` (one formulation) for the batch-task seed. Do not add tests here unless they need `seeded_tasks`. | test_tasks, test_batch_data, test_property_data, test_notes, test_links, test_reports, test_workflows |
+| `sheets` | `seeded_worksheet`, `seeded_sheet`, `seeded_products` (one formulation) | test_worksheet, test_product_design, resources/test_sheets, test_sds |
+| `inventory` | `seeded_inventory`, `seeded_lots`, `seeded_pricings`, `seeded_label_templates`. `test_attributes` stays here because value tests bind to inventory/lots. | test_inventory, test_attachments, test_lots, test_pricings, test_label_templates, test_attributes |
 | `datatemplates` | `seeded_data_templates`, `seeded_data_columns`, `seeded_units`, `seeded_parameters`, `seeded_parameter_groups`, `seeded_targets`, `seeded_smart_dataset` | test_data_templates, test_data_columns, test_units, test_parameters, test_parameter_groups, test_targets, test_smart_datasets, test_design_runs |
-| `projects` | `seeded_projects`, `seeded_locations`, `seeded_storage_locations`, `seeded_cas`, `seeded_companies`, `seeded_notebooks` | test_projects, test_notebooks, test_locations, test_storage_locations, test_cas, test_company |
+| `projects` | `seeded_projects`, `seeded_locations`, `seeded_storage_locations`, `seeded_cas`, `seeded_companies`, `seeded_notebooks`. Also `static_custom_fields` (used by `test_substance_v4`). | test_projects, test_notebooks, test_locations, test_storage_locations, test_cas, test_company, test_substance_v4 |
 | `bt` | `seeded_btdataset`, `seeded_btmodelsession`, `seeded_btmodel`, `seeded_btinsight` | test_btdataset, test_btmodel, test_btinsight |
 | `entitytypes`, `teams`, `tags`, `customtemplates`, `lists`, `customfields` | one small fixture family each | the matching single file |
 
@@ -120,10 +120,13 @@ Also:
   5xx because urllib3 does not retry POSTs) and tear down through `_delete_all`.
 - **Append** new seed entities at the end of a generator's list. Tests and other seeders index
   into these lists (`seeded_locations[2]`), so reordering or removing entries breaks them.
-- Shared, non-prefixed static entities (`static_custom_fields`, `static_lists`) must be
-  registered **sequentially** through `_get_or_register`: concurrent same-name creates from
-  multiple workers 504 the backend. The `entitytypes` endpoint 500s under concurrent creates,
-  so `seeded_entity_types` also stays sequential.
+- Shared, non-prefixed static entities (`static_custom_fields`, `static_lists`) go through
+  `_get_or_register`, which **GETs first** and creates only if missing. Parallel GETs
+  within a worker are fine; same-name creates across workers still 504, which is why
+  create is the fallback rather than the default. The `entitytypes` endpoint 500s under
+  concurrent creates, so `seeded_entity_types` stays sequential.
+- `seeded_products` is a **single** formulation. `add_formulation` is the most expensive
+  seed call in the suite; do not add more formulas to that fixture without measuring.
 - The fixed `time.sleep(1.5)` / `time.sleep(3)` calls after seeding are deliberate
   search-index buffers. Do not remove them; in tests, prefer `poll_until` over new sleeps.
 

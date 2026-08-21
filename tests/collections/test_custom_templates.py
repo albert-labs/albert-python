@@ -9,6 +9,7 @@ from albert.resources.custom_templates import (
     _CustomTemplateDataUnion,
 )
 from albert.resources.users import User
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("customtemplates")
 
@@ -35,10 +36,14 @@ def assert_template_items(
 def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[CustomTemplate]):
     """Test get_all returns hydrated CustomTemplate items."""
     seeded_template = seeded_custom_templates[0]
-    results = list(
-        client.custom_templates.get_all(
-            name=seeded_template.name, category=seeded_template.category
-        )
+    results = poll_until(
+        lambda: [
+            t
+            for t in client.custom_templates.get_all(
+                name=seeded_template.name, category=seeded_template.category
+            )
+            if t.id == seeded_template.id
+        ]
     )
     assert_template_items(
         list_iterator=results,

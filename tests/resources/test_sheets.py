@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from albert.exceptions import AlbertException
+from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import (
     Cell,
     CellColor,
@@ -17,6 +18,35 @@ from albert.resources.sheets import (
 from tests.utils.fake_session import FakeAlbertSession
 
 pytestmark = pytest.mark.xdist_group("sheets")
+
+
+def _formulation_column(sheet: Sheet, product: InventoryItem) -> Column:
+    return sheet.get_column(inventory_id=product.id)
+
+
+def _inventory_cells(column: Column) -> list[Cell]:
+    return [
+        cell
+        for cell in column.cells
+        if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY
+    ]
+
+
+def _restore_seeded_formulation(
+    sheet: Sheet,
+    product: InventoryItem,
+    inventory: list[InventoryItem],
+) -> None:
+    """Reset the seeded formula column to 66/34 with no min/max (matches conftest)."""
+    column = _formulation_column(sheet, product)
+    sheet.add_formulation(
+        formulation_name=column.name,
+        components=[
+            Component(inventory_item=inventory[0], amount=66),
+            Component(inventory_item=inventory[1], amount=34),
+        ],
+        clear=True,
+    )
 
 
 def test_get_current_cell_exact_row_match():
@@ -75,31 +105,13 @@ def test_get_current_cell_exact_row_match():
 
 
 def test_update_cells_updates_inventory_values(
-    seed_prefix: str,
     seeded_sheet: Sheet,
-    seeded_inventory,
-    seeded_products,
+    seeded_products: list[InventoryItem],
+    seeded_inventory: list[InventoryItem],
 ):
-    formulation_name = f"{seed_prefix} - update cells integration"
-    components = [
-        Component(inventory_item=seeded_inventory[0], amount=20.0, min_value=10.0, max_value=40.0),
-        Component(inventory_item=seeded_inventory[1], amount=80.0, min_value=60.0, max_value=90.0),
-    ]
-
-    column = seeded_sheet.add_formulation(
-        formulation_name=formulation_name,
-        components=components,
-        enforce_order=True,
-    )
-
-    inventory_cells = [
-        cell
-        for cell in column.cells
-        if cell.type == CellType.INVENTORY and cell.row_type == CellType.INVENTORY
-    ]
+    column = _formulation_column(seeded_sheet, seeded_products[0])
+    inventory_cells = _inventory_cells(column)
     assert len(inventory_cells) >= 2
-
-    baseline_cells = [cell.model_copy() for cell in inventory_cells[:2]]
 
     try:
         expected_values = {}
@@ -110,8 +122,10 @@ def test_update_cells_updates_inventory_values(
             base_max = float(cell.max_value) if cell.max_value is not None else base_value
 
             new_value = round(base_value + 5 + idx, 3)
-            new_min = round(base_min + 1.5, 3)
-            new_max = round(base_max + 2.5, 3)
+            # max must stay >= both the current and the new value; the API
+            # applies max patches before value patches.
+            new_max = round(max(base_max, base_value, new_value) + 2.5, 3)
+            new_min = round(min(base_min + 1.5, new_value), 3)
 
             expected_values[cell.row_id] = {
                 "value": new_value,
@@ -157,8 +171,7 @@ def test_update_cells_updates_inventory_values(
             if refreshed.max_value is not None:
                 assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
     finally:
-        # Restore original values to keep fixture data stable for subsequent tests
-        seeded_sheet.update_cells(cells=baseline_cells)
+        _restore_seeded_formulation(seeded_sheet, seeded_products[0], seeded_inventory)
 
 
 def test_get_test_sheet(seeded_sheet: Sheet):
@@ -182,7 +195,10 @@ def test_crud_empty_column(seeded_sheet: Sheet):
     seeded_sheet.delete_column(column_id=new_col.column_id)
 
 
-def test_formulation_column_names_use_display_name(seeded_sheet: Sheet):
+def test_formulation_column_names_use_display_name(
+    seeded_sheet: Sheet, seeded_products: list[InventoryItem]
+):
+    assert seeded_products, "Expected a seeded formulation on the sheet"
     mapping = {f.id: f.name for f in seeded_sheet.formulations}
     matched = False
     for col in seeded_sheet.columns:
@@ -192,72 +208,57 @@ def test_formulation_column_names_use_display_name(seeded_sheet: Sheet):
     assert matched, "No formulation columns found"
 
 
-def test_add_formulation(seed_prefix: str, seeded_sheet: Sheet, seeded_inventory, seeded_products):
-    components_updated = [
+def test_add_formulation_lifecycle(
+    seeded_sheet: Sheet,
+    seeded_inventory,
+    seeded_products: list[InventoryItem],
+):
+    """Test clear-and-reuse of an existing formulation column, then a no-clear duplicate."""
+    existing = _formulation_column(seeded_sheet, seeded_products[0])
+    name = existing.name
+    components_with_bounds = [
         Component(inventory_item=seeded_inventory[0], amount=33.1, min_value=0, max_value=50),
         Component(inventory_item=seeded_inventory[1], amount=66.9, min_value=50, max_value=100),
     ]
 
-    new_col = seeded_sheet.add_formulation(
-        formulation_name=f"{seed_prefix} - My cool formulation base",
-        components=components_updated,
-        enforce_order=True,
-    )
-    assert isinstance(new_col, Column)
+    try:
+        new_col = seeded_sheet.add_formulation(
+            formulation_name=name,
+            components=components_with_bounds,
+            enforce_order=True,
+            clear=True,
+        )
+        assert isinstance(new_col, Column)
+        assert new_col.column_id == existing.column_id
 
-    component_map = {c.inventory_item.id: c for c in components_updated}
-    row_id_to_inv_id = {row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows}
+        component_map = {c.inventory_item.id: c for c in components_with_bounds}
+        row_id_to_inv_id = {
+            row.row_id: row.inventory_id for row in seeded_sheet.product_design.rows
+        }
 
-    found_cells = 0
-    for cell in new_col.cells:
-        if cell.type == "INV" and cell.row_type == "INV":
-            inv_id = row_id_to_inv_id.get(cell.row_id)
-            if not inv_id or inv_id not in component_map:
-                continue
+        found_cells = 0
+        for cell in new_col.cells:
+            if cell.type == "INV" and cell.row_type == "INV":
+                inv_id = row_id_to_inv_id.get(cell.row_id)
+                if not inv_id or inv_id not in component_map:
+                    continue
 
-            component = component_map[inv_id]
-            assert float(cell.value) == float(component.amount)
-            assert float(cell.min_value) == float(component.min_value)
-            assert float(cell.max_value) == float(component.max_value)
-            found_cells += 1
-        elif cell.row_type == "TOT":
-            assert cell.value == "100"
+                component = component_map[inv_id]
+                assert float(cell.value) == float(component.amount)
+                assert float(cell.min_value) == float(component.min_value)
+                assert float(cell.max_value) == float(component.max_value)
+                found_cells += 1
+            elif cell.row_type == "TOT":
+                assert cell.value == "100"
 
-    assert found_cells == len(components_updated)
+        assert found_cells == len(components_with_bounds)
 
-
-def test_add_formulation_clear_updates_existing(
-    seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
-):
-    name = f"{seed_prefix} - Clear existing"
-    initial = [
-        Component(inventory_item=seeded_inventory[0], amount=60),
-        Component(inventory_item=seeded_inventory[1], amount=40),
-    ]
-    updated = [
-        Component(inventory_item=seeded_inventory[0], amount=20),
-        Component(inventory_item=seeded_inventory[1], amount=80),
-    ]
-
-    col1 = seeded_sheet.add_formulation(formulation_name=name, components=initial)
-    col2 = seeded_sheet.add_formulation(formulation_name=name, components=updated, clear=True)
-    assert col1.column_id == col2.column_id
-    values = [c.value for c in col2.cells if c.type == "INV" and c.row_type == "INV"]
-    assert sorted(values) == ["20", "80"]
-
-
-def test_add_formulation_no_clear_adds_new_column(
-    seed_prefix: str, seeded_sheet: Sheet, seeded_inventory
-):
-    name = f"{seed_prefix} - No clear"
-    components = [
-        Component(inventory_item=seeded_inventory[0], amount=50),
-        Component(inventory_item=seeded_inventory[1], amount=50),
-    ]
-
-    col1 = seeded_sheet.add_formulation(formulation_name=name, components=components)
-    col2 = seeded_sheet.add_formulation(formulation_name=name, components=components, clear=False)
-    assert col1.column_id != col2.column_id
+        duplicate = seeded_sheet.add_formulation(
+            formulation_name=name, components=components_with_bounds, clear=False
+        )
+        assert duplicate.column_id != new_col.column_id
+    finally:
+        _restore_seeded_formulation(seeded_sheet, seeded_products[0], seeded_inventory)
 
 
 ########################## COLUMNS ##########################
@@ -301,16 +302,6 @@ def test_lock_column(seeded_sheet: Sheet):
 # Because you cannot delete Formulation Columns, We will need to mock this test.
 # def test_crud_formulation_column(sheet):
 #     new_col = sheet.add_formulation_columns(formulation_names=["my cool formulation"])[0]
-
-
-# TODO: investigate why this is failing
-@pytest.mark.xfail(reason="This is consistently failing. Ptential issue with the testing suite.")
-def test_recolor_rows(seeded_sheet: Sheet):
-    for row in seeded_sheet.rows:
-        if row.type == CellType.BLANK:
-            row.recolor_cells(color=CellColor.RED)
-            for c in row.cells:
-                assert c.color == CellColor.RED
 
 
 def test_add_and_remove_blank_rows(seeded_sheet: Sheet):

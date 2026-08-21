@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from collections.abc import AsyncGenerator, Callable, Iterator
@@ -38,7 +39,7 @@ from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
 from albert.resources.entity_types import EntityType
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
-from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.inventory import InventoryItem
 from albert.resources.label_templates import LabelTemplate, LabelTemplateType
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
@@ -122,12 +123,15 @@ def _pmap(fn: Callable, items) -> list:
 
 
 def _get_or_register(create_fn: Callable, get_fn: Callable, *, timeout: float = 5.0):
-    """Create a shared (non-prefixed) entity, falling back to fetching it.
+    """Fetch a shared (non-prefixed) entity, creating it only if missing.
 
-    Concurrent xdist workers register the same static entities; the backend may answer
-    the loser with a 400 (already exists) or buckle with a 5xx. Either way the entity
-    usually exists, so try the getter (briefly polling) before giving up.
+    These names are global across xdist workers and CI runs. GET first to avoid
+    a create-400-poll storm; if create still races, poll the getter before giving up.
     """
+    with suppress(Exception):
+        found = get_fn()
+        if found is not None:
+            return found
     try:
         return create_fn()
     except (BadRequestError, AlbertServerError) as e:
@@ -152,28 +156,36 @@ def _delete_all(delete_fn: Callable, items, *suppressed: type[Exception]) -> Non
     _pmap(_one, items)
 
 
-@pytest.fixture(scope="session")
-def client() -> Albert:
+def _sdk_credentials() -> AlbertClientCredentials:
     credentials = AlbertClientCredentials.from_env(
         client_id_env="ALBERT_CLIENT_ID_SDK",
         client_secret_env="ALBERT_CLIENT_SECRET_SDK",
         base_url_env="ALBERT_BASE_URL",
     )
+    if credentials is None:
+        pytest.fail(
+            "Missing ALBERT_CLIENT_ID_SDK, ALBERT_CLIENT_SECRET_SDK, or ALBERT_BASE_URL. "
+            "Set them in the environment or a pytest-dotenv .env file."
+        )
+    return credentials
+
+
+@pytest.fixture(scope="session")
+def client() -> Albert:
+    credentials = _sdk_credentials()
     return Albert(
         auth_manager=credentials,
+        base_url=os.environ["ALBERT_BASE_URL"],
         retries=3,
     )
 
 
 @pytest_asyncio.fixture(scope="session")
 async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
-    credentials = AlbertClientCredentials.from_env(
-        client_id_env="ALBERT_CLIENT_ID_SDK",
-        client_secret_env="ALBERT_CLIENT_SECRET_SDK",
-        base_url_env="ALBERT_BASE_URL",
-    )
+    credentials = _sdk_credentials()
     client = AsyncAlbert(
         auth_manager=credentials,
+        base_url=os.environ["ALBERT_BASE_URL"],
     )
     yield client
     await client.aclose()
@@ -259,14 +271,15 @@ def _register_custom_field(client: Albert, cf: CustomField) -> CustomField:
 
 @pytest.fixture(scope="session")
 def static_custom_fields(client: Albert) -> list[CustomField]:
-    # Sequential on purpose: shared names race across xdist workers
-    return [_register_custom_field(client, cf) for cf in generate_custom_fields()]
+    # Distinct names: parallel GETs (then rare creates) are safe. Same-name creates
+    # across workers are handled by get-first in `_get_or_register`.
+    return _pmap(lambda cf: _register_custom_field(client, cf), generate_custom_fields())
 
 
 @pytest.fixture(scope="session")
 def static_entity_custom_fields(client: Albert) -> list[CustomField]:
     """Custom fields associated with an entity type."""
-    return [_register_custom_field(client, cf) for cf in generate_entity_custom_fields()]
+    return _pmap(lambda cf: _register_custom_field(client, cf), generate_entity_custom_fields())
 
 
 @pytest.fixture(scope="session")
@@ -274,16 +287,15 @@ def static_lists(
     client: Albert,
     static_custom_fields: list[CustomField],
 ) -> list[ListItem]:
-    # Sequential on purpose: shared names race across xdist workers
-    return [
-        _get_or_register(
-            lambda li=list_item: client.lists.create(list_item=li),
-            lambda li=list_item: client.lists.get_matching_item(
-                name=li.name, list_type=li.list_type
+    def _one(list_item: ListItem) -> ListItem:
+        return _get_or_register(
+            lambda: client.lists.create(list_item=list_item),
+            lambda: client.lists.get_matching_item(
+                name=list_item.name, list_type=list_item.list_type
             ),
         )
-        for list_item in generate_list_item_seeds(seeded_custom_fields=static_custom_fields)
-    ]
+
+    return _pmap(_one, generate_list_item_seeds(seeded_custom_fields=static_custom_fields))
 
 
 ### TEAM FIXTURES
@@ -293,7 +305,11 @@ def static_lists(
 def second_user(client: Albert, static_user: User) -> User:
     """Get a second active user distinct from the static SDK bot user."""
     for user in client.users.search(max_items=50):
-        hydrated = client.users.get_by_id(id=user.id)
+        try:
+            hydrated = client.users.get_by_id(id=user.id)
+        except (NotFoundError, ForbiddenError):
+            # Search indexes can return stale IDs that GET no longer finds.
+            continue
         if hydrated.id != static_user.id and hydrated.status == Status.ACTIVE:
             return hydrated
     pytest.skip("No second active user available for team tests")
@@ -558,13 +574,13 @@ def seeded_attributes(
     seed_prefix: str,
     seeded_data_columns: list[DataColumn],
 ) -> Iterator[list[Attribute]]:
-    seeded = []
-    for attribute in generate_attribute_seeds(
-        seed_prefix=seed_prefix,
-        seeded_data_columns=seeded_data_columns,
-    ):
-        created = client.attributes.create(attribute=attribute)
-        seeded.append(created)
+    seeded = _pmap(
+        lambda attribute: client.attributes.create(attribute=attribute),
+        generate_attribute_seeds(
+            seed_prefix=seed_prefix,
+            seeded_data_columns=seeded_data_columns,
+        ),
+    )
 
     # Avoid race condition while it populates through search DBs
     time.sleep(1.5)
@@ -801,28 +817,17 @@ def seeded_products(
     seeded_sheet: Sheet,
     seeded_inventory: list[InventoryItem],
 ) -> list[InventoryItem]:
-    product_name_prefix = f"{seed_prefix} - My cool formulation"
-    products = []
-
-    components = [
-        Component(inventory_item=seeded_inventory[0], amount=66),
-        Component(inventory_item=seeded_inventory[1], amount=34),
-    ]
-    for n in range(4):
-        products.append(
-            seeded_sheet.add_formulation(
-                formulation_name=f"{product_name_prefix} {str(n)}",
-                components=components,
-            )
-        )
-    return [
-        x
-        for x in client.inventory.get_all(
-            category=InventoryCategory.FORMULAS,
-            text=product_name_prefix,
-        )
-        if x.name is not None and x.name.startswith(product_name_prefix)
-    ]
+    # One formulation is enough for batch-task seeds, SDS, and unpack tests.
+    # add_formulation is the most expensive seed call in the suite.
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - My cool formulation",
+        components=[
+            Component(inventory_item=seeded_inventory[0], amount=66),
+            Component(inventory_item=seeded_inventory[1], amount=34),
+        ],
+    )
+    assert column.inventory_id, "add_formulation should register a formula inventory item"
+    return [client.inventory.get_by_id(id=column.inventory_id)]
 
 
 @pytest.fixture(scope="session")
