@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.2](https://github.com/albert-labs/albert-python/compare/v1.47.1...v1.47.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **storage_locations:** add name-only StorageLocationFilter for inventory search ([#699](https://github.com/albert-labs/albert-python/issues/699)) ([dd4fb44](https://github.com/albert-labs/albert-python/commit/dd4fb440ca440cd868cf65fcbdd54a8a6efecd8c))
+
+
+### Documentation
+
+* **storage_locations:** clarify StorageLocationFilter name wording ([#704](https://github.com/albert-labs/albert-python/issues/704)) ([4002571](https://github.com/albert-labs/albert-python/commit/40025711374375fd3bbf2aa78f35eddf3e3b914a))
+
 ## [1.47.1](https://github.com/albert-labs/albert-python/compare/v1.47.0...v1.47.1) (2026-08-21)
 
 
