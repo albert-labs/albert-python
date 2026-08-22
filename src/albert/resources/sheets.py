@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId
+from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException, AlbertHTTPError
@@ -706,6 +706,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add an application row.
     add_parameter_group_row(parameter_group_id, ...) -> Row
         Add a parameter group (PRG) row to Process Design.
+    add_task_row(task_id, ...) -> Row
+        Link a task into the Results section as a task (TAS) row.
     add_blank_column(name, ...) -> Column
         Add a blank column.
     add_lookup_column(name, ...) -> Column
@@ -1640,6 +1642,94 @@ class Sheet(BaseSessionResource):  # noqa:F811
             design=design_obj,
             sheet=self,
             name=data.get("labelName") or data.get("name"),
+            inventory_id=data.get("id"),
+        )
+
+    @validate_call
+    def add_task_row(
+        self,
+        *,
+        task_id: TaskId,
+        name: str | None = None,
+        reference_id: str | None = None,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Link a task into this sheet's Results section as a task (TAS) row.
+
+        Creating a task does not place it in the worksheet's Results grid — the
+        platform only adds the TAS row when the task is created from the worksheet
+        UI. Call this after creating a property task programmatically so the task
+        (and its results) shows up in the sheet.
+
+        !!! example
+            ```python
+            row = sheet.add_task_row(task_id="TASPT9999999")
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Task ID to link (format ``TAS...``).
+        name : str, optional
+            The display name of the row. Defaults to the task's current name,
+            read from the platform.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to the first Results
+            row when one exists. Omit (or leave ``None``) when the Results
+            section has no rows.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``. Ignored when the Results section has no rows
+            and ``reference_id`` is omitted.
+
+        Returns
+        -------
+        Row
+            The created task row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Results section, or the response has no rows.
+        """
+        design_obj = self.result_design
+        if design_obj is None:
+            raise AlbertException("Sheet has no Results section; cannot add a task row")
+        if name is None:
+            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            name = task.get("name") or task_id
+        payload_item: dict[str, str] = {
+            "type": CellType.TAS.value,
+            "id": task_id,
+            "name": name,
+        }
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
+
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload_item]
+        )
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding task '{task_id}' to Results design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.TAS.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("name") or name,
             inventory_id=data.get("id"),
         )
 
