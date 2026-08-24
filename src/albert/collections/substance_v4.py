@@ -273,23 +273,21 @@ class SubstanceV4Collection(BaseCollection):
         """Search for substances by keyword or advanced filters.
 
         At least one of ``search_key``, ``cas``, ``ec``, ``name``, ``inciname``, or
-        ``cas_ids`` must be provided. When ``search_key`` is provided, advanced filters
-        (``cas``, ``ec``, ``name``, ``inciname``) are ignored. Use ``cas_ids`` for
-        multi-value identifier lookups instead of combining it with ``search_key``.
+        ``cas_ids`` must be provided.
 
         Parameters
         ----------
         search_key : str | None
-            Free-text search term. Takes precedence over ``cas``, ``ec``, ``name``, and
-            ``inciname`` when more than one is provided.
+            Free-text search term. When provided, takes precedence over ``cas``, ``ec``,
+            ``name``, and ``inciname``.
         cas : str | None
-            Filter by CAS identifier. Ignored when ``search_key`` is also provided.
+            Filter by CAS identifier.
         ec : str | None
-            Filter by EC identifier. Ignored when ``search_key`` is also provided.
+            Filter by EC identifier.
         name : str | None
-            Filter by substance name. Ignored when ``search_key`` is also provided.
+            Filter by substance name.
         inciname : str | None
-            Filter by INCI name identifier. Ignored when ``search_key`` is also provided.
+            Filter by INCI name identifier.
         cas_ids : str | None
             Comma-separated CAS IDs to filter by (for example ``"7732-18-5,50-00-0"``).
         region : str, optional
