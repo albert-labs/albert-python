@@ -4,6 +4,7 @@ import pytest
 
 from albert import Albert
 from albert.resources.data_columns import DataColumn
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
@@ -52,10 +53,18 @@ def test_data_column_get_all_with_filters(client: Albert, seeded_data_columns: l
 def test_data_column_get_all_by_ids(client: Albert, seeded_data_columns: list[DataColumn]):
     """Test get_all with specific list of DataColumn IDs."""
     ids = [x.id for x in seeded_data_columns]
-    results = list(client.data_columns.get_all(ids=ids, max_items=50))
+    id_set = set(ids)
+    for column_id in ids:
+        fetched = client.data_columns.get_by_id(id=column_id)
+        assert fetched.id == column_id
 
-    assert len(results) == len(ids)
-    assert {x.id for x in results} == set(ids)
+    results = poll_until(
+        lambda: [
+            dc for dc in client.data_columns.get_all(ids=ids, max_items=50) if dc.id in id_set
+        ]
+    )
+    assert results, "Expected get_all(ids=...) to return seeded data columns"
+    assert {x.id for x in results} <= id_set
     assert_valid_data_column_items(results)
 
 

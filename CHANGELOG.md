@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.2](https://github.com/albert-labs/albert-python/compare/v1.47.1...v1.47.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **storage_locations:** add name-only StorageLocationFilter for inventory search ([#699](https://github.com/albert-labs/albert-python/issues/699)) ([dd4fb44](https://github.com/albert-labs/albert-python/commit/dd4fb440ca440cd868cf65fcbdd54a8a6efecd8c))
+
+
+### Documentation
+
+* **storage_locations:** clarify StorageLocationFilter name wording ([#704](https://github.com/albert-labs/albert-python/issues/704)) ([4002571](https://github.com/albert-labs/albert-python/commit/40025711374375fd3bbf2aa78f35eddf3e3b914a))
+
+## [1.47.1](https://github.com/albert-labs/albert-python/compare/v1.47.0...v1.47.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **property_data:** recalculate columns on task property upsert ([#693](https://github.com/albert-labs/albert-python/issues/693)) ([f486dcc](https://github.com/albert-labs/albert-python/commit/f486dcc846d067aa95b33e7104c38201a3400898))
+* speed the test suite and harden fixtures for staging ([#702](https://github.com/albert-labs/albert-python/issues/702)) ([410a959](https://github.com/albert-labs/albert-python/commit/410a9590b840b3a944b5dc7debba5997bfc7f63c))
+
 ## [1.47.0](https://github.com/albert-labs/albert-python/compare/v1.46.0...v1.47.0) (2026-08-20)
 
 

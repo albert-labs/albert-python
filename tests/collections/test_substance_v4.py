@@ -13,6 +13,8 @@ from albert.resources.substance_v4 import (
     SubstanceV4SearchItem,
 )
 
+pytestmark = pytest.mark.xdist_group("projects")
+
 CAS_IDS = [
     "134180-76-0",
     "26530-20-1",

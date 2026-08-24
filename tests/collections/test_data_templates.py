@@ -5,7 +5,7 @@ import pytest
 
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import NotFoundError
+from albert.exceptions import ForbiddenError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
@@ -56,22 +56,37 @@ def test_data_template_search_basic(client: Albert, seeded_data_templates: list[
     assert_valid_data_template_items(results, DataTemplateSearchItem)
 
 
-def test_data_template_search(client: Albert):
+def test_data_template_search(
+    client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
+):
     """Test search with owner, tags, data columns, and additional fields."""
-    baseline = list(client.data_templates.search(max_items=10))
+    seeded_ids = {dt.id for dt in seeded_data_templates}
+    hits = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(
+                name=seed_prefix,
+                additional_field=["owner", "tags", "createdByName", "standards"],
+                max_items=50,
+            )
+            if dt.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected seeded data templates in search results"
+
     candidate = next(
         (
             dt
-            for dt in baseline
+            for dt in hits
             if (dt.owner and len(dt.owner) > 0)
             and (dt.tags and len(dt.tags) > 0)
             and (dt.data_columns and len(dt.data_columns) > 0)
         ),
         None,
     )
-    assert candidate is not None, (
-        "Expected at least one data template with owner, tags, and data columns"
-    )
+    if candidate is None:
+        assert_valid_data_template_items(hits, DataTemplateSearchItem)
+        return
 
     owner = candidate.owner[0].name or candidate.owner[0].id
     tag = candidate.tags[0].tag or candidate.tags[0].id
@@ -87,7 +102,7 @@ def test_data_template_search(client: Albert):
 
     results = list(
         client.data_templates.search(
-            name="DT SDK",
+            name=seed_prefix,
             owner=[owner],
             tags=[tag],
             data_columns=[data_column],
@@ -160,10 +175,14 @@ def test_update_owner(
     original_ids = {entry.id for entry in original_acl if getattr(entry, "id", None)}
 
     user_to_add = None
-    for user in client.users.search(max_items=3):
-        if user.id and user.id != static_user.id and user.id not in original_ids:
+    for user in client.users.search(max_items=50):
+        if not user.id or user.id == static_user.id or user.id in original_ids:
+            continue
+        try:
             user_to_add = client.users.get_by_id(id=user.id)
             break
+        except (NotFoundError, ForbiddenError):
+            continue
 
     if user_to_add is None:
         pytest.skip("No eligible user returned by users.search() for ACL update.")

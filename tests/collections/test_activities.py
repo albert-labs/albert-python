@@ -1,6 +1,9 @@
 from datetime import date, timedelta
 
+import pytest
+
 from albert import Albert
+from albert.exceptions import InternalServerError
 from albert.resources.activities import Activity, ActivitySearchItem, ActivityType
 
 
@@ -12,21 +15,30 @@ def assert_valid_activity_items(returned_list):
 
 
 def test_activity_get_all(client: Albert):
-    end_date = date.today()
-    start_date = end_date - timedelta(days=1)
-    simple_list = client.activities.get_all(
-        type=ActivityType.DATE_RANGE,
-        start_date=start_date,
-        end_date=end_date,
-        max_items=10,
+    """Test activity get_all returns the feed for a single entity."""
+    tag = next(iter(client.tags.get_all(max_items=1)))
+    results = list(
+        client.activities.get_all(
+            type=ActivityType.ENTITY_ID,
+            id=tag.id,
+            max_items=10,
+        )
     )
-    assert_valid_activity_items(simple_list)
+    assert_valid_activity_items(results)
 
 
+@pytest.mark.xfail(
+    raises=InternalServerError,
+    reason=(
+        "GET /api/v3/activities/search 500 OpenSearch on TEN0 staging: "
+        "https://linear.app/albert-invent/issue/SEA-221"
+    ),
+    strict=False,
+)
 def test_activity_search(client: Albert):
     """Test that activity search returns ActivitySearchItem results."""
     end_date = date.today()
-    start_date = end_date - timedelta(days=7)
+    start_date = end_date - timedelta(days=1)
     results = list(
         client.activities.search(
             start_date=start_date,

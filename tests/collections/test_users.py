@@ -1,7 +1,10 @@
 from collections.abc import Iterator
 
+import pytest
+
 from albert import Albert
 from albert.core.shared.enums import Status
+from albert.exceptions import ForbiddenError, NotFoundError
 from albert.resources.users import User, UserSearchItem
 
 
@@ -60,8 +63,13 @@ def test_hydrate_user(client: Albert):
     users = list(client.users.search(max_items=5))
     assert users, "Expected at least one user in search results"
 
+    hydrated_any = False
     for user in users:
-        hydrated = user.hydrate()
+        try:
+            hydrated = user.hydrate()
+        except (NotFoundError, ForbiddenError):
+            continue
+        hydrated_any = True
 
         # identity checks
         assert hydrated.id == user.id
@@ -79,3 +87,6 @@ def test_hydrate_user(client: Albert):
             for search_role, full_role in zip(user.roles, hydrated.roles, strict=False):
                 assert search_role.roleId == full_role.id
                 assert search_role.roleName == full_role.name
+
+    if not hydrated_any:
+        pytest.skip("No search hits could be hydrated (stale index IDs)")

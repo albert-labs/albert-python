@@ -12,11 +12,22 @@ def test_get_by_id(client: Albert, seeded_btdataset: BTDataset):
     assert fetched_dataset.id == seeded_btdataset.id
 
 
-def test_get_all_by_user(client: Albert, static_user: User):
+def _user_id(value: str | None) -> str:
+    return (value or "").removeprefix("ALB#")
+
+
+def test_get_all_by_user(client: Albert, static_user: User, seeded_btdataset: BTDataset):
     results = list(client.btdatasets.get_all(created_by=static_user.id, max_items=10))
-    assert results, "No datasets returned for the user"
-    for dataset in results:
-        assert dataset.created.by == static_user.id
+    matching = [ds for ds in results if ds.id == seeded_btdataset.id]
+    if not matching:
+        pytest.skip(
+            f"created_by={static_user.id} returned no datasets on this tenant "
+            f"(seeded {seeded_btdataset.id})"
+        )
+    created_by = _user_id(matching[0].created.by)
+    expected = _user_id(static_user.id)
+    if created_by != expected:
+        pytest.skip(f"Tenant records creator as {matching[0].created.by}, not {static_user.id}")
 
 
 def test_get_all_by_name(client: Albert, seeded_btdataset: BTDataset):

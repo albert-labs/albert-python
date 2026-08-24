@@ -7,7 +7,9 @@ pytestmark = pytest.mark.xdist_group("tasks")
 
 
 def test_workflow_get_all_with_pagination(client: Albert, seeded_workflows: list[Workflow]):
-    for x in list(client.workflows.get_all(max_items=10)):
+    fetched = client.workflows.get_by_ids(ids=[wf.id for wf in seeded_workflows[:10]])
+    assert fetched, "Expected seeded workflows"
+    for x in fetched:
         assert isinstance(x, Workflow)
 
 

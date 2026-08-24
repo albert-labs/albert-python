@@ -111,41 +111,52 @@ def test_parameter_group_search_with_filters(
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
-def test_parameter_group_search(client: Albert):
+def test_parameter_group_search(
+    client: Albert, seed_prefix: str, seeded_parameter_groups: list[ParameterGroup]
+):
     """Test POST search with owner, tags, parameters, and additional fields."""
-    baseline = list(client.parameter_groups.search(max_items=10))
-    candidate = next(
-        (
-            pg
-            for pg in baseline
-            if (pg.owner and len(pg.owner) > 0)
-            and (pg.tags and len(pg.tags) > 0)
-            and (pg.parameters and len(pg.parameters) > 0)
-        ),
+    seeded = next(
+        (pg for pg in seeded_parameter_groups if pg.tags and pg.parameters),
         None,
     )
-    assert candidate is not None, (
-        "Expected at least one parameter group with owner, tags, and parameters"
+    assert seeded is not None, "Expected a seeded parameter group with tags and parameters"
+    pg = client.parameter_groups.get_by_id(id=seeded.id)
+    tag = pg.tags[0].tag or pg.tags[0].id
+    parameter = pg.parameters[0].name
+    assert tag and parameter
+
+    seeded_ids = {item.id for item in seeded_parameter_groups}
+    hits = poll_until(
+        lambda: [
+            hit
+            for hit in client.parameter_groups.search(
+                text=seed_prefix,
+                additional_field=["owner", "tags", "parameters", "createdByName"],
+                max_items=50,
+            )
+            if hit.id == pg.id and hit.owner
+        ]
     )
+    assert hits, "Expected seeded parameter group with owner in search"
+    owner = hits[0].owner[0].name or hits[0].owner[0].id
+    assert owner
 
-    owner = candidate.owner[0].name or candidate.owner[0].id
-    tag = candidate.tags[0].tag or candidate.tags[0].id
-    parameter = candidate.parameters[0].name
-
-    assert owner is not None
-    assert tag is not None
-    assert parameter is not None
-
-    results = list(
-        client.parameter_groups.search(
-            owner=[owner],
-            tags=[tag],
-            parameters=[parameter],
-            additional_field=["owner", "tags", "createdByName"],
-            max_items=10,
-        )
+    results = poll_until(
+        lambda: [
+            hit
+            for hit in client.parameter_groups.search(
+                text=seed_prefix,
+                owner=[owner],
+                tags=[tag],
+                parameters=[parameter],
+                additional_field=["owner", "tags", "createdByName"],
+                max_items=50,
+            )
+            if hit.id in seeded_ids
+        ]
     )
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
+    assert pg.id in {hit.id for hit in results}
 
 
 def test_hydrate_pg(client: Albert, seed_prefix: str, seeded_parameter_groups):
