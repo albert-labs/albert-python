@@ -216,6 +216,7 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Design: resources/design.md
+          - Documents: resources/documents.md
           - Entity Types: resources/entity_types.md
           - Enums: resources/enums.md
           - Files: resources/files.md
