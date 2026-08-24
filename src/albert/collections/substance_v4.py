@@ -273,21 +273,23 @@ class SubstanceV4Collection(BaseCollection):
         """Search for substances by keyword or advanced filters.
 
         At least one of ``search_key``, ``cas``, ``ec``, ``name``, ``inciname``, or
-        ``cas_ids`` must be provided. If both ``search_key`` and advanced filters are
-        provided, the advanced filters take precedence.
+        ``cas_ids`` must be provided. When ``search_key`` is provided, advanced filters
+        (``cas``, ``ec``, ``name``, ``inciname``) are ignored. Use ``cas_ids`` for
+        multi-value identifier lookups instead of combining it with ``search_key``.
 
         Parameters
         ----------
         search_key : str | None
-            Free-text search term.
+            Free-text search term. Takes precedence over ``cas``, ``ec``, ``name``, and
+            ``inciname`` when more than one is provided.
         cas : str | None
-            Filter by CAS identifier.
+            Filter by CAS identifier. Ignored when ``search_key`` is also provided.
         ec : str | None
-            Filter by EC identifier.
+            Filter by EC identifier. Ignored when ``search_key`` is also provided.
         name : str | None
-            Filter by substance name.
+            Filter by substance name. Ignored when ``search_key`` is also provided.
         inciname : str | None
-            Filter by INCI name identifier.
+            Filter by INCI name identifier. Ignored when ``search_key`` is also provided.
         cas_ids : str | None
             Comma-separated CAS IDs to filter by (for example ``"7732-18-5,50-00-0"``).
         region : str, optional
@@ -328,16 +330,17 @@ class SubstanceV4Collection(BaseCollection):
         params: dict = {"region": region, "startKey": start_key}
         if search_key:
             params["searchKey"] = search_key
-        if cas:
-            params["cas"] = cas
-        if ec:
-            params["ec"] = ec
-        if name:
-            params["name"] = name
-        if inciname:
-            params["inciname"] = inciname
         if cas_ids:
             params["casIDs"] = cas_ids
+        if not search_key:
+            if cas:
+                params["cas"] = cas
+            if ec:
+                params["ec"] = ec
+            if name:
+                params["name"] = name
+            if inciname:
+                params["inciname"] = inciname
         if classification_type:
             params["classificationType"] = classification_type
         if catch_errors is not None:
