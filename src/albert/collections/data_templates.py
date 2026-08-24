@@ -26,7 +26,7 @@ from albert.resources.data_templates import (
     ImageExample,
     ParameterValue,
 )
-from albert.resources.documents import DocumentVersion
+from albert.resources.documents import DocumentState, DocumentVersion
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import (
     build_acl_patch_payload,
@@ -1025,6 +1025,8 @@ class DataTemplateCollection(BaseCollection):
         self,
         *,
         document_id: DocumentId,
+        doc_version: int | None = None,
+        state: DocumentState | None = None,
     ) -> list[DocumentVersion]:
         """Get the version history for a document attached to a data template.
 
@@ -1051,15 +1053,21 @@ class DataTemplateCollection(BaseCollection):
             The document ID (format ``DOC...``). Obtain this from
             ``DataTemplate.documents[i].id`` after calling
             [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id].
+        doc_version : int, optional
+            Return only this specific version number. Requires ``document_id``.
+        state : DocumentState, optional
+            Filter by document state (``draft``, ``published``, or ``archived``).
 
         Returns
         -------
         list[DocumentVersion]
-            All versions of the document, each representing a snapshot at a
+            Matching versions of the document, each representing a snapshot at a
             point in time. See [`DocumentVersion`][albert.resources.documents.DocumentVersion].
         """
-        response = self.session.get(
-            "/api/v3/documents",
-            params={"documentId": document_id},
-        )
+        params: dict = {"documentId": document_id}
+        if doc_version is not None:
+            params["docVersion"] = doc_version
+        if state is not None:
+            params["state"] = state
+        response = self.session.get("/api/v3/documents", params=params)
         return [DocumentVersion(**item) for item in response.json().get("Items", [])]
