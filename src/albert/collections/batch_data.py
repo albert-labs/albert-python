@@ -186,7 +186,7 @@ class BatchDataCollection(BaseCollection):
 
             client = Albert()
             patch = BatchValuePatchPayload(
-                id=BatchValueId(row_id="ROW1", col_id="COL1"),
+                id=BatchValueId(row_id="ROW1", col_id="COL9999999"),
                 data=[
                     BatchValuePatchDatum(
                         operation="update",

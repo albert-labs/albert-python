@@ -36,9 +36,9 @@ from albert.resources.custom_fields import CustomField
 from albert.resources.custom_templates import CustomTemplate, GeneralData, TemplateCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataTemplate
-from albert.resources.entity_types import EntityType
+from albert.resources.entity_types import EntityCategory, EntityServiceType, EntityType
 from albert.resources.files import FileCategory, FileInfo, FileNamespace
-from albert.resources.inventory import InventoryCategory, InventoryItem
+from albert.resources.inventory import InventoryItem
 from albert.resources.label_templates import LabelTemplate, LabelTemplateType
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
@@ -122,12 +122,15 @@ def _pmap(fn: Callable, items) -> list:
 
 
 def _get_or_register(create_fn: Callable, get_fn: Callable, *, timeout: float = 5.0):
-    """Create a shared (non-prefixed) entity, falling back to fetching it.
+    """Fetch a shared (non-prefixed) entity, creating it only if missing.
 
-    Concurrent xdist workers register the same static entities; the backend may answer
-    the loser with a 400 (already exists) or buckle with a 5xx. Either way the entity
-    usually exists, so try the getter (briefly polling) before giving up.
+    These names are global across xdist workers and CI runs. GET first to avoid
+    a create-400-poll storm; if create still races, poll the getter before giving up.
     """
+    with suppress(Exception):
+        found = get_fn()
+        if found is not None:
+            return found
     try:
         return create_fn()
     except (BadRequestError, AlbertServerError) as e:
@@ -259,14 +262,15 @@ def _register_custom_field(client: Albert, cf: CustomField) -> CustomField:
 
 @pytest.fixture(scope="session")
 def static_custom_fields(client: Albert) -> list[CustomField]:
-    # Sequential on purpose: shared names race across xdist workers
-    return [_register_custom_field(client, cf) for cf in generate_custom_fields()]
+    # Distinct names: parallel GETs (then rare creates) are safe. Same-name creates
+    # across workers are handled by get-first in `_get_or_register`.
+    return _pmap(lambda cf: _register_custom_field(client, cf), generate_custom_fields())
 
 
 @pytest.fixture(scope="session")
 def static_entity_custom_fields(client: Albert) -> list[CustomField]:
     """Custom fields associated with an entity type."""
-    return [_register_custom_field(client, cf) for cf in generate_entity_custom_fields()]
+    return _pmap(lambda cf: _register_custom_field(client, cf), generate_entity_custom_fields())
 
 
 @pytest.fixture(scope="session")
@@ -274,16 +278,15 @@ def static_lists(
     client: Albert,
     static_custom_fields: list[CustomField],
 ) -> list[ListItem]:
-    # Sequential on purpose: shared names race across xdist workers
-    return [
-        _get_or_register(
-            lambda li=list_item: client.lists.create(list_item=li),
-            lambda li=list_item: client.lists.get_matching_item(
-                name=li.name, list_type=li.list_type
+    def _one(list_item: ListItem) -> ListItem:
+        return _get_or_register(
+            lambda: client.lists.create(list_item=list_item),
+            lambda: client.lists.get_matching_item(
+                name=list_item.name, list_type=list_item.list_type
             ),
         )
-        for list_item in generate_list_item_seeds(seeded_custom_fields=static_custom_fields)
-    ]
+
+    return _pmap(_one, generate_list_item_seeds(seeded_custom_fields=static_custom_fields))
 
 
 ### TEAM FIXTURES
@@ -293,7 +296,11 @@ def static_lists(
 def second_user(client: Albert, static_user: User) -> User:
     """Get a second active user distinct from the static SDK bot user."""
     for user in client.users.search(max_items=50):
-        hydrated = client.users.get_by_id(id=user.id)
+        try:
+            hydrated = client.users.get_by_id(id=user.id)
+        except (NotFoundError, ForbiddenError):
+            # Search indexes can return stale IDs that GET no longer finds.
+            continue
         if hydrated.id != static_user.id and hydrated.status == Status.ACTIVE:
             return hydrated
     pytest.skip("No second active user available for team tests")
@@ -558,13 +565,13 @@ def seeded_attributes(
     seed_prefix: str,
     seeded_data_columns: list[DataColumn],
 ) -> Iterator[list[Attribute]]:
-    seeded = []
-    for attribute in generate_attribute_seeds(
-        seed_prefix=seed_prefix,
-        seeded_data_columns=seeded_data_columns,
-    ):
-        created = client.attributes.create(attribute=attribute)
-        seeded.append(created)
+    seeded = _pmap(
+        lambda attribute: client.attributes.create(attribute=attribute),
+        generate_attribute_seeds(
+            seed_prefix=seed_prefix,
+            seeded_data_columns=seeded_data_columns,
+        ),
+    )
 
     # Avoid race condition while it populates through search DBs
     time.sleep(1.5)
@@ -771,7 +778,7 @@ def seeded_pricings(client: Albert, seed_prefix: str, seeded_inventory, seeded_l
         generate_pricing_seeds(seed_prefix, seeded_inventory, seeded_locations),
     )
     yield seeded
-    _delete_all(lambda p: client.pricings.delete(id=p.id), seeded, NotFoundError)
+    _delete_all(lambda p: client.pricings.delete(id=p.id), seeded, NotFoundError, BadRequestError)
 
 
 @pytest.fixture(scope="session")
@@ -801,28 +808,17 @@ def seeded_products(
     seeded_sheet: Sheet,
     seeded_inventory: list[InventoryItem],
 ) -> list[InventoryItem]:
-    product_name_prefix = f"{seed_prefix} - My cool formulation"
-    products = []
-
-    components = [
-        Component(inventory_item=seeded_inventory[0], amount=66),
-        Component(inventory_item=seeded_inventory[1], amount=34),
-    ]
-    for n in range(4):
-        products.append(
-            seeded_sheet.add_formulation(
-                formulation_name=f"{product_name_prefix} {str(n)}",
-                components=components,
-            )
-        )
-    return [
-        x
-        for x in client.inventory.get_all(
-            category=InventoryCategory.FORMULAS,
-            text=product_name_prefix,
-        )
-        if x.name is not None and x.name.startswith(product_name_prefix)
-    ]
+    # One formulation is enough for batch-task seeds, SDS, and unpack tests.
+    # add_formulation is the most expensive seed call in the suite.
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - My cool formulation",
+        components=[
+            Component(inventory_item=seeded_inventory[0], amount=66),
+            Component(inventory_item=seeded_inventory[1], amount=34),
+        ],
+    )
+    assert column.inventory_id, "add_formulation should register a formula inventory item"
+    return [client.inventory.get_by_id(id=column.inventory_id)]
 
 
 @pytest.fixture(scope="session")
@@ -858,6 +854,59 @@ def seeded_tasks(
     _delete_all(lambda t: client.tasks.delete(id=t.id), seeded, NotFoundError, BadRequestError)
 
 
+# POST /entitytypes requires an allowlisted prefix (api-entitytype TEN.prefix).
+# Staging: property=FOR, Batch=LAB, General=GEN. API default when the category
+# is absent from TEN: PT/BT/GT. Listing is empty for this bot, so try both.
+_TASK_PREFIX_CANDIDATES = {
+    EntityCategory.PROPERTY: ("FOR", "PT"),
+    EntityCategory.BATCH: ("LAB", "BT"),
+    EntityCategory.GENERAL: ("GEN", "GT"),
+}
+
+
+def _task_entity_type_prefixes(client: Albert) -> dict[EntityCategory, str]:
+    """Copy allowlisted task prefixes already on this tenant, if listing returns any."""
+    needed = {EntityCategory.PROPERTY, EntityCategory.GENERAL}
+    found: dict[EntityCategory, str] = {}
+    for et in client.entity_types.get_all(service=EntityServiceType.TASKS):
+        category = et.category
+        if category not in needed or category in found:
+            continue
+        prefix = et.prefix
+        if not prefix and et.id:
+            prefix = client.entity_types.get_by_id(id=et.id).prefix
+        if prefix:
+            found[category] = prefix
+        if needed <= found.keys():
+            break
+    return found
+
+
+def _create_entity_type(client: Albert, entity_type: EntityType) -> EntityType:
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for prefix in (
+        entity_type.prefix,
+        *_TASK_PREFIX_CANDIDATES.get(entity_type.category, ()),
+    ):
+        if prefix and prefix not in seen:
+            seen.add(prefix)
+            candidates.append(prefix)
+
+    last_error: BadRequestError | None = None
+    for prefix in candidates:
+        entity_type.prefix = prefix
+        try:
+            return client.entity_types.create(entity_type=entity_type)
+        except BadRequestError as err:
+            if "Invalid prefix" not in str(err):
+                raise
+            last_error = err
+    if last_error is not None:
+        raise last_error
+    raise ValueError(f"No prefix candidates for category {entity_type.category}")
+
+
 @pytest.fixture(scope="session")
 def seeded_entity_types(
     client: Albert,
@@ -865,11 +914,13 @@ def seeded_entity_types(
     static_entity_custom_fields: list[CustomField],
 ) -> Iterator[list[EntityType]]:
     # Sequential on purpose: the entitytypes endpoint 500s under concurrent creates
+    prefixes = _task_entity_type_prefixes(client)
     seeded = [
-        client.entity_types.create(entity_type=entity_type)
+        _create_entity_type(client, entity_type)
         for entity_type in generate_entity_type_seeds(
             seed_prefix=seed_prefix,
             static_entity_custom_fields=static_entity_custom_fields,
+            prefixes=prefixes,
         )
     ]
     yield seeded

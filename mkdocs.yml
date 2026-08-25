@@ -182,6 +182,7 @@ nav:
           - Report Templates: collections/report_templates.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
+          - SDS (🧪 Beta): collections/sds.md
           - Smart Datasets (🧪Beta): collections/smart_datasets.md
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
@@ -238,6 +239,7 @@ nav:
           - Report Templates: resources/report_templates.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
+          - SDS (🧪 Beta): resources/sds.md
           - Smart Datasets (🧪Beta): resources/smart_datasets.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
@@ -263,6 +265,7 @@ nav:
       - Parameter Groups: examples/parameter_groups.md
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
+      - SDS (🧪 Beta): examples/sds.md
       - Tasks: examples/tasks.md
       - Teams: examples/teams.md
 

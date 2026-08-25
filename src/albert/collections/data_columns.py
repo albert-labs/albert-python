@@ -28,7 +28,7 @@ class DataColumnCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        dc = client.data_columns.get_by_id(id="DAC1")
+        dc = client.data_columns.get_by_id(id="DAC9999999")
         dc.name
         # 'Viscosity'
         ```
@@ -86,7 +86,7 @@ class DataColumnCollection(BaseCollection):
             ```python
             dc = client.data_columns.get_by_name(name="Viscosity")
             dc.id if dc else "no match"
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters
@@ -113,7 +113,7 @@ class DataColumnCollection(BaseCollection):
 
         !!! example
             ```python
-            dc = client.data_columns.get_by_id(id="DAC1")
+            dc = client.data_columns.get_by_id(id="DAC9999999")
             dc.name
             # 'Viscosity'
             ```
@@ -121,7 +121,7 @@ class DataColumnCollection(BaseCollection):
         Parameters
         ----------
         id : DataColumnId
-            The Data Column ID (format ``DAC...``, e.g. ``"DAC1"``).
+            The Data Column ID (format ``DAC...``, e.g. ``"DAC9999999"``).
 
         Returns
         -------
@@ -213,7 +213,7 @@ class DataColumnCollection(BaseCollection):
             from albert.resources.data_columns import DataColumn
             created = client.data_columns.create(data_column=DataColumn(name="Viscosity"))
             created.id
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters
@@ -243,7 +243,7 @@ class DataColumnCollection(BaseCollection):
             from albert.resources.data_columns import DataColumn
             dc = client.data_columns.get_or_create(data_column=DataColumn(name="Viscosity"))
             dc.id
-            # 'DAC1'
+            # 'DAC9999999'
             ```
 
         Parameters
@@ -270,7 +270,7 @@ class DataColumnCollection(BaseCollection):
 
         !!! example
             ```python
-            client.data_columns.delete(id="DAC1")
+            client.data_columns.delete(id="DAC9999999")
             ```
 
         Parameters
@@ -308,7 +308,7 @@ class DataColumnCollection(BaseCollection):
 
         !!! example
             ```python
-            dc = client.data_columns.get_by_id(id="DAC1")
+            dc = client.data_columns.get_by_id(id="DAC9999999")
             dc.name = "Kinematic Viscosity"
             updated = client.data_columns.update(data_column=dc)
             updated.name

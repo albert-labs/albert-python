@@ -11,6 +11,7 @@ from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError
+from albert.resources.acls import ACL
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
@@ -174,15 +175,85 @@ class ProjectCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``grid``,
-        ``metadata``, ``state``.
+        ``metadata``, ``state``, ``acl``.
         """
         existing_project = self.get_by_id(id=project.id)
         patch_data = self._generate_patch_payload(existing=existing_project, updated=project)
         url = f"{self.base_path}/{project.id}"
+        patch_payload = patch_data.model_dump(mode="json", by_alias=True)
 
-        self.session.patch(url, json=patch_data.model_dump(mode="json", by_alias=True))
+        acl_operations: list[dict[str, Any]] = []
+        if "acl" in project.model_fields_set:
+            acl_operations = self._generate_acl_patch_operations(
+                existing=existing_project.acl,
+                updated=project.acl,
+            )
+
+        if patch_payload["data"]:
+            self.session.patch(url, json=patch_payload)
+
+        if acl_operations:
+            self.session.patch(f"{url}/acl", json={"data": acl_operations})
+
+        if not patch_payload["data"] and not acl_operations:
+            return existing_project
 
         return self.get_by_id(id=project.id)
+
+    def _generate_acl_patch_operations(
+        self,
+        *,
+        existing: list[ACL] | None,
+        updated: list[ACL] | None,
+    ) -> list[dict[str, Any]]:
+        """Build PATCH operations for project ACL changes."""
+        existing_entries = existing or []
+        updated_entries = updated or []
+        existing_ids = [entry.id for entry in existing_entries]
+        updated_ids = [entry.id for entry in updated_entries]
+        to_add = set(updated_ids) - set(existing_ids)
+        to_delete = set(existing_ids) - set(updated_ids)
+        to_update = set(existing_ids).intersection(updated_ids)
+
+        operations: list[dict[str, Any]] = []
+
+        if to_add:
+            operations.append(
+                {
+                    "attribute": "ACL",
+                    "operation": "add",
+                    "newValue": [
+                        entry.model_dump(by_alias=True, exclude_none=True)
+                        for entry in updated_entries
+                        if entry.id in to_add
+                    ],
+                }
+            )
+
+        if to_delete:
+            operations.append(
+                {
+                    "attribute": "ACL",
+                    "operation": "delete",
+                    "oldValue": [{"id": entry_id} for entry_id in to_delete],
+                }
+            )
+
+        for entry_id in to_update:
+            existing_fgc = next(entry.fgc for entry in existing_entries if entry.id == entry_id)
+            updated_fgc = next(entry.fgc for entry in updated_entries if entry.id == entry_id)
+            if existing_fgc != updated_fgc:
+                operations.append(
+                    {
+                        "attribute": "fgc",
+                        "id": entry_id,
+                        "operation": "update",
+                        "oldValue": existing_fgc.value if existing_fgc is not None else None,
+                        "newValue": updated_fgc.value if updated_fgc is not None else None,
+                    }
+                )
+
+        return operations
 
     @validate_call
     def delete(self, *, id: ProjectId) -> None:
@@ -231,6 +302,11 @@ class ProjectCollection(BaseCollection):
         my_project: bool | None = None,
         my_role: list[str] | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        additional_field: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        formula_access: list[str] | None = None,
+        linked_to_grid: str | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -311,6 +387,16 @@ class ProjectCollection(BaseCollection):
             !!! warning
                 Do not use this for application, technology, program, technical lead, or
                 market segment. Use their corresponding query parameters instead.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        formula_access : list[str], optional
+            Filter by formula access level.
+        linked_to_grid : str, optional
+            Text for linked-to dropdown search in grid/report flows.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -350,9 +436,15 @@ class ProjectCollection(BaseCollection):
             "linkedTo": linked_to,
             "myProject": my_project,
             "myRole": my_role,
+            "additionalField": additional_field,
+            "formulaAccess": formula_access,
+            "linkedToGrid": linked_to_grid,
+            "sourceField": source_field,
         }
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -372,6 +464,9 @@ class ProjectCollection(BaseCollection):
         *,
         linked_to: SearchProjectId,
         text: str | None = None,
+        source_field: list[str] | None = None,
+        additional_field: list[str] | None = None,
+        search_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -396,6 +491,12 @@ class ProjectCollection(BaseCollection):
             ``"PRO123"``).
         text : str, optional
             Full-text search query for document names.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        search_field : list[str], optional
+            Restrict which fields the ``text`` query searches.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -411,6 +512,9 @@ class ProjectCollection(BaseCollection):
         query_params = {
             "linkedTo": linked_to,
             "text": text,
+            "sourceField": source_field,
+            "additionalField": additional_field,
+            "searchField": search_field,
             "order": order_by,
             "sortBy": sort_by,
             "offset": offset,
@@ -450,6 +554,12 @@ class ProjectCollection(BaseCollection):
         linked_to: str | None = None,
         my_project: bool | None = None,
         my_role: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        additional_field: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        formula_access: list[str] | None = None,
+        linked_to_grid: str | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
@@ -520,6 +630,18 @@ class ProjectCollection(BaseCollection):
             If True, return only projects owned by current user.
         my_role : list[str], optional
             User roles to filter by.
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        additional_field : list[str], optional
+            Request additional columns from the search index.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        formula_access : list[str], optional
+            Filter by formula access level.
+        linked_to_grid : str, optional
+            Text for linked-to dropdown search in grid/report flows.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
         order_by : OrderBy, optional
             Sort order. Default is DESCENDING.
         sort_by : str, optional
@@ -568,6 +690,12 @@ class ProjectCollection(BaseCollection):
                 linked_to=linked_to,
                 my_project=my_project,
                 my_role=my_role,
+                metadata_filters=metadata_filters,
+                additional_field=additional_field,
+                custom_fields=custom_fields,
+                formula_access=formula_access,
+                linked_to_grid=linked_to_grid,
+                source_field=source_field,
                 order_by=order_by,
                 sort_by=sort_by,
                 offset=offset,

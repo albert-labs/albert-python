@@ -52,6 +52,11 @@ Fill every section from the diff and commit history. Delete optional sections
 <!-- User-facing release-notes blurb. Delete if not applicable. -->
 ```
 
-Create PRs with `gh pr create`, targeting `main` unless told otherwise. PR title:
-Conventional Commit (`type(scope): summary`). Never include an "AI-assisted code"
-disclaimer in the body.
+Create PRs with `gh pr create`, targeting `main` unless told otherwise.
+
+**PR title (required):** Conventional Commit (`type(scope): summary`), enforced by the
+`PR Title` GitHub Action. Derive the title from the overall change, not from individual
+commit messages (commits may be messy; the PR title must still be conventional).
+Examples: `feat(cas): add search by name support`, `fix(pagination): preserve has_more`.
+
+Never include an "AI-assisted code" disclaimer in the body.

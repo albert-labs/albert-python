@@ -141,8 +141,8 @@ class Target(BaseResource):
         target = Target(
             name="Viscosity spec",
             type=TargetType.PERFORMANCE,
-            data_template_id="DAT1",
-            data_column_id="DAC1",
+            data_template_id="DAT9999999",
+            data_column_id="DAC9999999",
             target_value=Criterion(operator=ComparisonOperator.BETWEEN, value={"min": 10, "max": 20}),
             is_required=True,
         )

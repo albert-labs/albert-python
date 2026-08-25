@@ -8,8 +8,16 @@ from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
+from albert.collections.lists import ListsCollection
 from albert.collections.notes import NotesCollection
-from albert.core.shared.identifiers import AttachmentId, DataColumnId, InventoryId, ProjectId
+from albert.core.shared.identifiers import (
+    AttachmentId,
+    DataColumnId,
+    DataTemplateId,
+    InventoryId,
+    ProjectId,
+)
+from albert.core.shared.models.base import EntityLinkWithName
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
 from albert.resources.attachments import (
@@ -19,6 +27,7 @@ from albert.resources.attachments import (
 )
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
+from albert.resources.lists import ListItemCategory
 from albert.resources.notes import Note
 
 
@@ -38,8 +47,8 @@ class AttachmentCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA1"])
-        for attachment in attachments.get("INVA1", []):
+        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999"])
+        for attachment in attachments.get("INVA9999999", []):
             print(attachment.name)
         ```
 
@@ -75,6 +84,8 @@ class AttachmentCollection(BaseCollection):
         Upload a document and attach it to an inventory item.
     upload_and_attach_document_to_project(project_id, file_path) -> Attachment
         Upload a file and attach it as a document to a project.
+    upload_and_attach_script_to_data_template(data_template_id, file_path, name, extension_names) -> Attachment
+        Upload a script and attach it to a data template.
     get_jurisdiction_codes() -> dict[str, str]
         Get available SDS jurisdiction codes.
     get_language_codes() -> dict[str, str]
@@ -104,6 +115,9 @@ class AttachmentCollection(BaseCollection):
 
     def _get_note_collection(self):
         return NotesCollection(session=self.session)
+
+    def _get_lists_collection(self):
+        return ListsCollection(session=self.session)
 
     @validate_call
     def get_by_id(self, *, id: AttachmentId) -> Attachment:
@@ -144,9 +158,9 @@ class AttachmentCollection(BaseCollection):
             from albert.resources.attachments import Attachment
             attachment = client.attachments.create(
                 attachment=Attachment(
-                    parent_id="INVA1",
+                    parent_id="INVA9999999",
                     name="datasheet.pdf",
-                    key="INVA1/documents/datasheet.pdf",
+                    key="INVA9999999/documents/datasheet.pdf",
                 )
             )
             ```
@@ -311,8 +325,8 @@ class AttachmentCollection(BaseCollection):
 
         !!! example
             ```python
-            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA1", "PROA1"])
-            by_parent.get("INVA1", [])
+            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999", "PROA9999999"])
+            by_parent.get("INVA9999999", [])
             # [Attachment(...), ...]
             ```
 
@@ -359,7 +373,7 @@ class AttachmentCollection(BaseCollection):
             attachment = client.attachments.attach_file_to_note(
                 note_id="...",
                 file_name="results.csv",
-                file_key="INVA1/notes/results.csv",
+                file_key="INVA9999999/notes/results.csv",
             )
             ```
 
@@ -551,7 +565,7 @@ class AttachmentCollection(BaseCollection):
             from datetime import date
             from pathlib import Path
             attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 file_sds=Path("~/Downloads/acetone_sds.pdf"),
                 revision_date=date(2024, 1, 1),
                 storage_class="3",
@@ -633,7 +647,7 @@ class AttachmentCollection(BaseCollection):
             from albert.resources.attachments import AttachmentCategory
 
             attachment = client.attachments.upload_and_attach_document_to_inventory_item(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 file_path=Path("~/Downloads/certificate_of_analysis.pdf"),
                 category=AttachmentCategory.COA,
             )
@@ -797,5 +811,107 @@ class AttachmentCollection(BaseCollection):
             key=file_key,
             namespace=FileNamespace.RESULT.value,
             category=AttachmentCategory.OTHER,
+        )
+        return self.create(attachment=attachment)
+
+    @validate_call
+    def upload_and_attach_script_to_data_template(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        file_path: Path,
+        name: str,
+        extension_names: list[str],
+    ) -> Attachment:
+        """Upload a script and attach it to a data template.
+
+        The script is stored under ``{data_template_id}/automated_scripts/`` and
+        registered as a ``Script`` attachment. Allowed input file extensions are
+        resolved from the platform extensions list (``list_type="extensions"``).
+
+        !!! example
+            ```python
+            from pathlib import Path
+            attachment = client.attachments.upload_and_attach_script_to_data_template(
+                data_template_id="DAT27984",
+                file_path=Path("etl.py"),
+                name="CSV import script",
+                extension_names=["csv"],
+            )
+            ```
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            The Albert ID of the data template (format ``DAT...``).
+        file_path : Path
+            Local path to the Python script file to upload. Must have a ``.py`` extension.
+        name : str
+            Display name for the script attachment.
+        extension_names : list[str]
+            Allowed input file extensions for the script (e.g. ``["csv"]``). Each
+            name is resolved via the extensions list.
+
+        Returns
+        -------
+        Attachment
+            The created script attachment linked to the data template.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``file_path`` does not exist.
+        ValueError
+            If ``file_path`` does not have a ``.py`` extension, or if an extension name
+            cannot be resolved in the extensions list.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        if resolved_path.suffix.lower() != ".py":
+            raise ValueError(
+                f"Script file must have a .py extension, got '{resolved_path.suffix}'."
+            )
+
+        lists_collection = self._get_lists_collection()
+        available_extensions = {
+            item.name.lower(): item
+            for item in lists_collection.get_all(
+                category=ListItemCategory.EXTENSIONS,
+                list_type="extensions",
+            )
+            if item.name
+        }
+        extension_links: list[EntityLinkWithName] = []
+        for extension_name in extension_names:
+            list_item = available_extensions.get(extension_name.lower())
+            if list_item is None:
+                raise ValueError(
+                    f"Extension '{extension_name}' was not found in the extensions list."
+                )
+            extension_links.append(EntityLinkWithName(id=list_item.id, name=list_item.name))
+
+        file_key = (
+            f"{data_template_id}/automated_scripts/{resolved_path.stem}{resolved_path.suffix}"
+        )
+        content_type = "text/x-python-script"
+
+        file_collection = self._get_file_collection()
+        with resolved_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=file_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+            )
+
+        attachment = Attachment(
+            parent_id=data_template_id,
+            name=name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.SCRIPT,
+            metadata=AttachmentMetadata(extensions=extension_links),
         )
         return self.create(attachment=attachment)

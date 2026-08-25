@@ -56,8 +56,8 @@ class Interval(BaseAlbertModel):
         from albert.resources.workflows import Interval
 
         # A Normal parameter varied across two temperatures.
-        low = Interval(value="25", unit={"id": "UNI1"})
-        high = Interval(value="60", unit={"id": "UNI1"})
+        low = Interval(value="25", unit={"id": "UNI9999999"})
+        high = Interval(value="60", unit={"id": "UNI9999999"})
         ```"""
 
     value: str | None = Field(default=None)
@@ -140,15 +140,15 @@ class ParameterSetpoint(BaseAlbertModel):
         from albert.resources.workflows import ParameterSetpoint, Interval
 
         # A single fixed setpoint identified by parameter ID.
-        temp = ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp")
+        temp = ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp")
 
         # The same parameter intervalized across two values.
         temp_varied = ParameterSetpoint(
-            parameter_id="PRM1",
+            parameter_id="PRM9999999",
             short_name="Temp",
             intervals=[
-                Interval(value="25", unit={"id": "UNI1"}),
-                Interval(value="60", unit={"id": "UNI1"}),
+                Interval(value="25", unit={"id": "UNI9999999"}),
+                Interval(value="60", unit={"id": "UNI9999999"}),
             ],
         )
         ```"""
@@ -163,7 +163,7 @@ class ParameterSetpoint(BaseAlbertModel):
     """The unit of ``value``, where applicable."""
 
     parameter_id: ParameterId | None = Field(alias="id", default=None)
-    """The ID of the parameter (e.g. ``"PRM1"``). Provide either ``parameter`` or ``parameter_id``."""
+    """The ID of the parameter (e.g. ``"PRM9999999"``). Provide either ``parameter`` or ``parameter_id``."""
 
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")
     """The interval values when the parameter is intervalized. Provide either ``intervals`` or ``value`` (plus ``unit``), not both."""
@@ -254,9 +254,9 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         )
 
         group = ParameterGroupSetpoints(
-            id="PRG1",
+            id="PRG9999999",
             parameter_setpoints=[
-                ParameterSetpoint(parameter_id="PRM1", value="25", short_name="Temp"),
+                ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp"),
             ],
         )
         ```"""
@@ -351,15 +351,15 @@ class Workflow(BaseResource):
             parameter_group_setpoints=[
                 # Pre-linked parameters on a Data Template (used just like a PRG here)
                 ParameterGroupSetpoints(
-                    id="DAT1",
+                    id="DAT9999999",
                     parameter_setpoints=[
-                        ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                        ParameterSetpoint(parameter_id="PRM9999999", value="23", short_name="Temperature"),
                         ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
                     ],
                 ),
                 # A Parameter Group describing sample prep
                 ParameterGroupSetpoints(
-                    id="PRG1",
+                    id="PRG9999999",
                     parameter_setpoints=[
                         ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
                     ],

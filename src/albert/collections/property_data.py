@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Iterator
 from contextlib import suppress
 
@@ -51,9 +52,16 @@ class PropertyDataCollection(BaseCollection):
     - **On a Task**: the results captured when a Property Task is executed,
       organized per Block, interval combination, and trial. Task methods here are
       named ``*_task_*`` / ``*_interval_*`` / ``*_trial_*``.
-    - **On an Inventory Item**: properties attached directly to a material.
-      Inventory methods here are named ``*_on_inventory``. Task-measured results
-      roll up to the associated inventory item's properties.
+    - **On an Inventory Item**: custom property-data values attached directly to a
+      material (methods named ``*_on_inventory``). Task-measured results also roll
+      up to the associated inventory item's properties.
+
+    Property Data is **not** Inventory Specs or Attributes. Specs
+    (``client.inventory.get_specs`` / ``add_specs``, deprecated) and
+    [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+    (``client.attributes``) store inventory **reference** properties for worksheet
+    lookup. Use this collection for experimentally measured (or custom PTD)
+    values.
 
     **Intervals and trials.** Within a Block, results are addressed by:
 
@@ -102,11 +110,11 @@ class PropertyDataCollection(BaseCollection):
     Methods
     -------
     get_properties_on_inventory(inventory_id) -> InventoryPropertyData
-        Get all properties attached to an inventory item.
+        Get all property data attached to an inventory item (not Specs/Attributes).
     add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
-        Add properties directly to an inventory item.
+        Add custom property-data values directly to an inventory item.
     update_property_on_inventory(inventory_id, property_data) -> InventoryPropertyData
-        Update a property on an inventory item.
+        Update a property-data value on an inventory item.
     get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
         Get the results in one task block for one inventory item.
     get_all_task_properties(task_id, with_data_only=False) -> list[TaskPropertyData]
@@ -150,16 +158,21 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
-        """Get all properties attached to an inventory item.
+        """Get all property data attached to an inventory item.
 
         This includes both task-measured results that have rolled up to the item
-        and properties added directly to it. For results in the context of a
-        specific task, use [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties] instead.
+        and custom property-data values added directly to it. This is **not**
+        Inventory Specs / Attributes (inventory reference properties); for those
+        use ``client.inventory.get_specs`` (deprecated) or
+        [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids].
+        For results in the context of a specific task, use
+        [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        instead.
 
         !!! example
             ```python
             props = client.property_data.get_properties_on_inventory(
-                inventory_id="INVA1"
+                inventory_id="INVA9999999"
             )
             len(props.custom_property_data)
             # 3
@@ -186,18 +199,24 @@ class PropertyDataCollection(BaseCollection):
     def add_properties_to_inventory(
         self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
-        """Add properties directly to an inventory item.
+        """Add custom property-data values directly to an inventory item.
 
-        Use this for properties known independently of a task (e.g. a
-        supplier-stated value). Each property targets a data column and carries a
+        Use this for property-data values known independently of a task (stored
+        as PTD on the item). Each entry targets a data column and carries a
         value. Properties are added one at a time and collected into the result.
+
+        This is **not** Inventory Specs / Attributes. For inventory **reference**
+        properties (worksheet lookup source of truth), use
+        [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs]
+        (deprecated) or
+        [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
 
         !!! example
             ```python
             from albert.resources.property_data import InventoryDataColumn
             props = client.property_data.add_properties_to_inventory(
-                inventory_id="INVA1",
-                properties=[InventoryDataColumn(data_column_id="DAC1", value="1.2")],
+                inventory_id="INVA9999999",
+                properties=[InventoryDataColumn(data_column_id="DAC9999999", value="1.2")],
             )
             ```
 
@@ -241,8 +260,8 @@ class PropertyDataCollection(BaseCollection):
             ```python
             from albert.resources.property_data import InventoryDataColumn
             updated = client.property_data.update_property_on_inventory(
-                inventory_id="INVA1",
-                property_data=InventoryDataColumn(data_column_id="DAC1", value="1.3"),
+                inventory_id="INVA9999999",
+                property_data=InventoryDataColumn(data_column_id="DAC9999999", value="1.3"),
             )
             ```
 
@@ -317,7 +336,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             data = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             data.block_id
             # 'BLK1'
@@ -577,7 +596,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.void_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
             )
             ```
 
@@ -626,7 +645,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.unvoid_task_data(
-                task_id="TASFOR1", inventory_id="INVA1", block_id="BLK1"
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
             )
             ```
 
@@ -680,7 +699,7 @@ class PropertyDataCollection(BaseCollection):
             client.property_data.void_interval_data(
                 task_id="TASFOR1",
                 interval_id="ROW1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -742,7 +761,7 @@ class PropertyDataCollection(BaseCollection):
             client.property_data.unvoid_interval_data(
                 task_id="TASFOR1",
                 interval_id="ROW1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -805,7 +824,7 @@ class PropertyDataCollection(BaseCollection):
                 task_id="TASFOR1",
                 interval_id="ROW1",
                 trial_number=2,
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -868,7 +887,7 @@ class PropertyDataCollection(BaseCollection):
                 task_id="TASFOR1",
                 interval_id="ROW1",
                 trial_number=2,
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 block_id="BLK1",
             )
             ```
@@ -934,7 +953,7 @@ class PropertyDataCollection(BaseCollection):
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
             # Derive the required data column / template from the existing block
             block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             column = block.data[0].trials[0].data_columns[0]
             new_value = TaskPropertyCreate(
@@ -946,7 +965,7 @@ class PropertyDataCollection(BaseCollection):
                 data_template=block.data_template,
             )
             client.property_data.add_properties_to_task(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 task_id="TASFOR1",
                 block_id="BLK1",
                 properties=[new_value],
@@ -1037,6 +1056,44 @@ class PropertyDataCollection(BaseCollection):
             get_task_block_properties=self.get_task_block_properties,
         )
 
+    def _apply_calculated_task_property_patches(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None,
+        properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope,
+    ) -> list[TaskPropertyData]:
+        """Re-fetch block data and patch calculated columns from current input values."""
+        existing_data_rows = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=properties,
+        )
+        if patches:
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
+
     @validate_call
     def update_or_create_task_properties(
         self,
@@ -1060,7 +1117,7 @@ class PropertyDataCollection(BaseCollection):
             ```python
             from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
             block = client.property_data.get_task_block_properties(
-                inventory_id="INVA1", task_id="TASFOR1", block_id="BLK1"
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
             )
             column = block.data[0].trials[0].data_columns[0]
             value = TaskPropertyCreate(
@@ -1073,7 +1130,7 @@ class PropertyDataCollection(BaseCollection):
                 data_template=block.data_template,
             )
             client.property_data.update_or_create_task_properties(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 task_id="TASFOR1",
                 block_id="BLK1",
                 properties=[value],
@@ -1119,73 +1176,19 @@ class PropertyDataCollection(BaseCollection):
             properties=properties,
         )
 
-        calculated_patches = property_data_utils.form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows,
-            properties=properties,
-        )
-        all_patches = update_patches + calculated_patches
-        if len(new_values) > 0:
-            if len(all_patches) > 0:
-                self.update_property_on_task(
-                    task_id=task_id,
-                    patch_payload=all_patches,
-                    return_scope="none",
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-            if any(
-                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
-                for prop in new_values
-            ):
-                params = {
-                    "blockId": block_id,
-                    "inventoryId": inventory_id,
-                }
-                params = {k: v for k, v in params.items() if v is not None}
-                payload = property_data_utils.resolve_task_property_payload(
-                    session=self.session,
-                    task_id=task_id,
-                    block_id=block_id,
-                    properties=new_values,
-                )
-                response = self.session.post(
-                    url=f"{self.base_path}/{task_id}",
-                    json=payload,
-                    params=params,
-                )
-                registered_properties = [
-                    TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-                ]
-                existing_data_rows = self.get_task_block_properties(
-                    inventory_id=inventory_id,
-                    task_id=task_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                )
-                patches = property_data_utils.form_calculated_task_property_patches(
-                    existing_data_rows=existing_data_rows,
-                    properties=registered_properties,
-                )
-                if len(patches) > 0:
-                    return self.update_property_on_task(
-                        task_id=task_id,
-                        patch_payload=patches,
-                        return_scope=return_scope,
-                        inventory_id=inventory_id,
-                        block_id=block_id,
-                        lot_id=lot_id,
-                    )
-                return property_data_utils.resolve_return_scope(
-                    task_id=task_id,
-                    return_scope=return_scope,
-                    inventory_id=inventory_id,
-                    block_id=block_id,
-                    lot_id=lot_id,
-                    prefetched_block=existing_data_rows,
-                    get_all_task_properties=self.get_all_task_properties,
-                    get_task_block_properties=self.get_task_block_properties,
-                )
+        if not update_patches and not new_values:
+            return property_data_utils.resolve_return_scope(
+                task_id=task_id,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                prefetched_block=existing_data_rows,
+                get_all_task_properties=self.get_all_task_properties,
+                get_task_block_properties=self.get_task_block_properties,
+            )
+
+        if not update_patches:
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
@@ -1194,15 +1197,32 @@ class PropertyDataCollection(BaseCollection):
                 properties=new_values,
                 return_scope=return_scope,
             )
-        else:
-            return self.update_property_on_task(
-                task_id=task_id,
-                patch_payload=all_patches,
-                return_scope=return_scope,
+
+        self.update_property_on_task(
+            task_id=task_id,
+            patch_payload=update_patches,
+            return_scope="none",
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+        )
+        if new_values:
+            self.add_properties_to_task(
                 inventory_id=inventory_id,
+                task_id=task_id,
                 block_id=block_id,
                 lot_id=lot_id,
+                properties=new_values,
+                return_scope="none",
             )
+        return self._apply_calculated_task_property_patches(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=properties,
+            return_scope=return_scope,
+        )
 
     def bulk_load_task_properties(
         self,
@@ -1231,7 +1251,7 @@ class PropertyDataCollection(BaseCollection):
             data = BulkPropertyData.from_dataframe(df=my_dataframe)
             results = client.property_data.bulk_load_task_properties(
                 block_id="BLK1",
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 property_data=data,
                 task_id="TASFOR291760",
             )
@@ -1317,7 +1337,7 @@ class PropertyDataCollection(BaseCollection):
         !!! example
             ```python
             client.property_data.bulk_delete_task_data(
-                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA1"
+                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA9999999"
             )
             ```
 
@@ -1356,6 +1376,7 @@ class PropertyDataCollection(BaseCollection):
         text: str | None = None,
         # Sorting/pagination
         order: OrderBy | None = None,
+        order_by: OrderBy | None = None,
         sort_by: str | None = None,
         # Core platform identifiers
         inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
@@ -1363,6 +1384,7 @@ class PropertyDataCollection(BaseCollection):
         lot_ids: list[LotId] | LotId | None = None,
         data_template_ids: DataTemplateId | list[DataTemplateId] | None = None,
         data_column_ids: DataColumnId | list[DataColumnId] | None = None,
+        sheet_ids: list[str] | None = None,
         # Data structure filters
         category: list[DataEntity] | DataEntity | None = None,
         data_templates: list[str] | str | None = None,
@@ -1370,6 +1392,7 @@ class PropertyDataCollection(BaseCollection):
         # Data content filters
         parameters: list[str] | str | None = None,
         parameter_group: list[str] | str | None = None,
+        parameter_set: list[str] | None = None,
         unit: list[str] | str | None = None,
         # User filters
         created_by: str | list[str] | None = None,
@@ -1379,7 +1402,11 @@ class PropertyDataCollection(BaseCollection):
         to_created_at: str | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
-        # Response customization
+        # Search field filters
+        search_field: list[str] | None = None,
+        source_field: list[str] | None = None,
+        facet_list: list[str] | None = None,
+        # Deprecated; accepted for backwards compatibility
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
@@ -1409,7 +1436,9 @@ class PropertyDataCollection(BaseCollection):
         text : str, optional
             Free text search across all fields.
         order : OrderBy, optional
-            Sort order (ascending/descending).
+            Sort direction (ascending/descending).
+        order_by : OrderBy, optional
+            Alternate sort-direction parameter supported by the search API.
         sort_by : str, optional
             Field to sort results by.
         inventory_ids : SearchInventoryId or list[SearchInventoryId], optional
@@ -1422,6 +1451,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by data template IDs.
         data_column_ids : DataColumnId or list[DataColumnId], optional
             Filter by data column IDs.
+        sheet_ids : list[str], optional
+            Filter by sheet IDs.
         category : DataEntity or list[DataEntity], optional
             Filter by data entity categories.
         data_templates : str or list[str], optional
@@ -1432,6 +1463,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by parameter names.
         parameter_group : str or list[str], optional
             Filter by parameter group names.
+        parameter_set : list[str], optional
+            Filter by parameter, unit, and parameter-group combinations.
         unit : str or list[str], optional
             Filter by unit names.
         created_by : str or list[str], optional
@@ -1450,10 +1483,16 @@ class PropertyDataCollection(BaseCollection):
             Only include records updated on or after this date (ISO 8601).
         to_updated_at : str, optional
             Only include records updated on or before this date (ISO 8601).
+        search_field : list[str], optional
+            Restrict which fields the text query searches.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        facet_list : list[str], optional
+            Fields to include in search facets.
         return_fields : str or list[str], optional
-            Specific fields to return.
+            Deprecated and ignored. Use ``source_field`` instead.
         return_facets : str or list[str], optional
-            Specific facets to return.
+            Deprecated and ignored. Use ``facet_list`` instead.
         max_items : int, optional
             Maximum number of items to return in total. If None, iterates over all
             matches.
@@ -1469,31 +1508,48 @@ class PropertyDataCollection(BaseCollection):
 
         category_values = ensure_list(category)
 
+        if return_fields is not None:
+            warnings.warn(
+                "return_fields is deprecated and ignored; use source_field instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if return_facets is not None:
+            warnings.warn(
+                "return_facets is deprecated and ignored; use facet_list instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         params = {
             "result": result,
             "text": text,
             "order": order,
+            "orderBy": order_by,
             "sortBy": sort_by,
             "inventoryIds": ensure_list(inventory_ids),
             "projectIds": ensure_list(project_ids),
-            "lotIds": ensure_list(lot_ids),
+            "lot": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
+            "sheetIds": sheet_ids,
             "category": category_values if category_values else None,
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),
             "parameterGroup": ensure_list(parameter_group),
+            "parameterSet": parameter_set,
             "unit": ensure_list(unit),
             "createdBy": ensure_list(created_by),
-            "taskCreatedBy": ensure_list(task_created_by),
+            "taskCreatedby": ensure_list(task_created_by),
             "updatedBy": ensure_list(updated_by),
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
             "fromUpdatedAt": from_updated_at,
             "toUpdatedAt": to_updated_at,
-            "returnFields": ensure_list(return_fields),
-            "returnFacets": ensure_list(return_facets),
+            "searchField": search_field,
+            "sourceField": source_field,
+            "facetList": facet_list,
         }
 
         return AlbertPaginator(

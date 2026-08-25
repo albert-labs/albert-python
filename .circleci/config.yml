@@ -23,10 +23,6 @@ jobs:
           name: Install dependencies
           command: uv sync
       - run:
-          name: Set environment
-          command: |
-            echo 'export ALBERT_BASE_URL="https://app.albertinvent.com"' >> "$BASH_ENV"
-      - run:
           name: Check formatting
           command: |
             uv run ruff format . --check
@@ -37,7 +33,7 @@ jobs:
       - run:
           name: Run pytest
           command: |
-            uv run pytest -n 4 -v --tb=long -r fEsxX --showlocals --durations=15
+            uv run pytest -n 4 -v --tb=short -r fEsxX --durations=15
 
   validate_version_bump:
     executor:

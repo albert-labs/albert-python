@@ -72,6 +72,33 @@ SUPPORTED_IMAGE_EXTENSIONS = [
 ]
 
 
+def ensure_data_column_validation(column: DataColumnValue) -> None:
+    """Apply default validation before data-column write requests.
+
+    ``DataColumnValue`` defaults ``validation`` to an empty list, which the API
+    persists as untyped. The datatemplate API only applies the ``number`` default
+    when validation is omitted (null/undefined), not when it is ``[]``.
+    """
+    if column.calculation:
+        return
+
+    validation = column.validation
+    if validation and len(validation) > 0 and validation[0].datatype is not None:
+        return
+
+    if column.curve_data:
+        column.validation = [ValueValidation(datatype=DataType.CURVE)]
+        return
+
+    if validation and len(validation) > 0:
+        first = validation[0]
+        if isinstance(first.value, list) and first.value:
+            column.validation = [ValueValidation(datatype=DataType.ENUM, value=first.value)]
+            return
+
+    column.validation = [ValueValidation(datatype=DataType.NUMBER)]
+
+
 def get_target_data_column(
     *,
     data_template: DataTemplate,

@@ -36,6 +36,7 @@ from albert.utils._patch import (
 from albert.utils.data_template import (
     build_curve_example,
     build_image_example,
+    ensure_data_column_validation,
     get_target_data_column,
 )
 
@@ -81,7 +82,7 @@ class DataTemplateCollection(BaseCollection):
         ```python
         from albert import Albert
         client = Albert()
-        dt = client.data_templates.get_by_id(id="DAT1")
+        dt = client.data_templates.get_by_id(id="DAT9999999")
         print(dt.name)
         # 'Tensile Strength Test'
         ```
@@ -151,11 +152,11 @@ class DataTemplateCollection(BaseCollection):
             from albert.resources.data_templates import DataTemplate, DataColumnValue
             template = DataTemplate(
                 name="Tensile Strength Test",
-                data_column_values=[DataColumnValue(data_column_id="DAC1")],
+                data_column_values=[DataColumnValue(data_column_id="DAC9999999")],
             )
             created = client.data_templates.create(data_template=template)
             created.id
-            # 'DAT1'
+            # 'DAT9999999'
             ```
 
         Parameters
@@ -170,9 +171,6 @@ class DataTemplateCollection(BaseCollection):
         DataTemplate
             The newly created template, populated with its assigned Data Template ID.
         """
-        # Preprocess data_column_values to set validation to None if it is an empty list
-        # Handle a bug in the API where validation is an empty list
-        # https://support.albertinvent.com/hc/en-us/requests/9177
         if (
             isinstance(data_template.data_column_values, list)
             and len(data_template.data_column_values) == 0
@@ -180,8 +178,7 @@ class DataTemplateCollection(BaseCollection):
             data_template.data_column_values = None
         if data_template.data_column_values is not None:
             for column_value in data_template.data_column_values:
-                if isinstance(column_value.validation, list) and len(column_value.validation) == 0:
-                    column_value.validation = None
+                ensure_data_column_validation(column_value)
         # remove them on the initial post
         parameter_values = data_template.parameter_values
         data_template.parameter_values = None
@@ -205,7 +202,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
+            dt = client.data_templates.get_by_id(id="DAT9999999")
             dt.name
             # 'Tensile Strength Test'
             ```
@@ -213,7 +210,7 @@ class DataTemplateCollection(BaseCollection):
         Parameters
         ----------
         id : DataTemplateId
-            The Data Template ID (format ``DAT...``, e.g. ``"DAT1"``).
+            The Data Template ID (format ``DAT...``, e.g. ``"DAT9999999"``).
 
         Returns
         -------
@@ -232,7 +229,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            templates = client.data_templates.get_by_ids(ids=["DAT1", "DAT2"])
+            templates = client.data_templates.get_by_ids(ids=["DAT9999999", "DAT9999998"])
             [t.name for t in templates]
             # ['Tensile Strength Test', 'Melt Flow Index']
             ```
@@ -265,7 +262,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             dt = client.data_templates.get_by_name(name="Tensile Strength Test")
             dt.id if dt else "no match"
-            # 'DAT1'
+            # 'DAT9999999'
             ```
 
         Parameters
@@ -297,8 +294,8 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import DataColumnValue
             updated = client.data_templates.add_data_columns(
-                data_template_id="DAT1",
-                data_columns=[DataColumnValue(data_column_id="DAC1")],
+                data_template_id="DAT9999999",
+                data_columns=[DataColumnValue(data_column_id="DAC9999999")],
             )
             ```
 
@@ -339,8 +336,8 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.parameter_groups import ParameterValue
             updated = client.data_templates.add_parameters(
-                data_template_id="DAT1",
-                parameters=[ParameterValue(id="PRM1", value="25")],
+                data_template_id="DAT9999999",
+                parameters=[ParameterValue(id="PRM9999999", value="25")],
             )
             ```
 
@@ -387,6 +384,16 @@ class DataTemplateCollection(BaseCollection):
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        is_drop_down: bool | None = None,
+        sort_by: str | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        search_field: list[str] | None = None,
+        search_query_string: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -438,6 +445,26 @@ class DataTemplateCollection(BaseCollection):
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        is_drop_down : bool, optional
+            When True, apply smart dropdown search behavior.
+        sort_by : str, optional
+            Attribute to sort results by.
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        search_field : list[str], optional
+            Restrict which fields the name query searches.
+        search_query_string : str, optional
+            Filter by custom field query string.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        source_field : list[str], optional
+            Restrict which fields are returned in search results.
         order_by : OrderBy, optional
             The order in which to sort results. Default is ``DESCENDING``.
         max_items : int, optional
@@ -456,10 +483,19 @@ class DataTemplateCollection(BaseCollection):
             "order": order_by,
             "text": name,
             "userId": user_id,
+            "isDropDown": is_drop_down,
+            "sortBy": sort_by,
             "owner": ensure_list(owner),
             "tags": ensure_list(tags),
             "dataColumns": ensure_list(data_columns),
             "standardOrganization": ensure_list(standard_organization),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "searchField": ensure_list(search_field),
+            "searchQueryString": search_query_string,
+            "sourceField": ensure_list(source_field),
             "createdBy": ensure_list(created_by),
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
@@ -474,6 +510,8 @@ class DataTemplateCollection(BaseCollection):
         }
         if metadata_filters is not None:
             payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
@@ -496,7 +534,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            dt = client.data_templates.get_by_id(id="DAT1")
+            dt = client.data_templates.get_by_id(id="DAT9999999")
             dt.description = "Updated per ASTM D638"
             updated = client.data_templates.update(data_template=dt)
             ```
@@ -681,7 +719,7 @@ class DataTemplateCollection(BaseCollection):
 
         !!! example
             ```python
-            client.data_templates.delete(id="DAT1")
+            client.data_templates.delete(id="DAT9999999")
             ```
 
         Parameters
@@ -713,6 +751,16 @@ class DataTemplateCollection(BaseCollection):
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        is_drop_down: bool | None = None,
+        sort_by: str | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        search_field: list[str] | None = None,
+        search_query_string: str | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        source_field: list[str] | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         max_items: int | None = None,
         offset: int | None = 0,
@@ -763,6 +811,26 @@ class DataTemplateCollection(BaseCollection):
             Only include templates updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        is_drop_down : bool, optional
+            When True, apply smart dropdown search behavior.
+        sort_by : str, optional
+            Attribute to sort results by.
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        search_field : list[str], optional
+            Restrict which fields the name query searches.
+        search_query_string : str, optional
+            Filter by custom field query string.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        source_field : list[str], optional
+            Restrict which fields are returned in search results.
         order_by : OrderBy, optional
             The order in which to sort results. Default is ``DESCENDING``.
         max_items : int, optional
@@ -790,6 +858,16 @@ class DataTemplateCollection(BaseCollection):
             from_updated_at=from_updated_at,
             to_updated_at=to_updated_at,
             metadata_filters=metadata_filters,
+            is_drop_down=is_drop_down,
+            sort_by=sort_by,
+            facet_text=facet_text,
+            facet_field=facet_field,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            search_field=search_field,
+            search_query_string=search_query_string,
+            custom_fields=custom_fields,
+            source_field=source_field,
             order_by=order_by,
             max_items=max_items,
             offset=offset,
@@ -826,7 +904,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import CurveExample
             updated = client.data_templates.set_curve_example(
-                data_template_id="DAT1",
+                data_template_id="DAT9999999",
                 data_column_name="Viscosity Curve",
                 example=CurveExample(file_path="curve.csv"),
             )
@@ -893,7 +971,7 @@ class DataTemplateCollection(BaseCollection):
             ```python
             from albert.resources.data_templates import ImageExample
             updated = client.data_templates.set_image_example(
-                data_template_id="DAT1",
+                data_template_id="DAT9999999",
                 data_column_name="Fracture Surface",
                 example=ImageExample(file_path="fracture.png"),
             )

@@ -25,7 +25,7 @@ class PricingCollection(BaseCollection):
         from albert import Albert
 
         client = Albert()
-        pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+        pricings = client.pricings.get_by_inventory_id(inventory_id="INVA9999999")
         for pricing in pricings:
             print(pricing.price, pricing.currency)
         ```
@@ -91,7 +91,7 @@ class PricingCollection(BaseCollection):
             from albert.resources.locations import Location
 
             pricing = Pricing(
-                inventory_id="INVA1",
+                inventory_id="INVA9999999",
                 company=Company(name="Acme Chemicals"),
                 location=Location(name="Pittsburgh"),
                 price=12.50,
@@ -164,7 +164,7 @@ class PricingCollection(BaseCollection):
 
         !!! example
             ```python
-            pricings = client.pricings.get_by_inventory_id(inventory_id="INVA1")
+            pricings = client.pricings.get_by_inventory_id(inventory_id="INVA9999999")
             [p.price for p in pricings]
             ```
 
@@ -210,7 +210,7 @@ class PricingCollection(BaseCollection):
         !!! example
             ```python
             grouped = client.pricings.get_by_inventory_ids(
-                inventory_ids=["INVA1", "INVA2"]
+                inventory_ids=["INVA9999999", "INVA9999998"]
             )
             grouped[0].pricings
             ```

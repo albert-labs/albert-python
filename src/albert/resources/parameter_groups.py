@@ -23,12 +23,17 @@ def _sanitize_metadata(value: Any) -> Any:
 
     Some tenants have parameter-group metadata whose entity-link fields were cleared
     server-side to `[{}]` (list) or `{}` (scalar) instead of `[]`/`null`. These dicts
-    lack the required `id`, so `MetadataItem` can't parse them.
+    lack the required `id`, so `MetadataItem` can't parse them. The search endpoint
+    also returns custom-field entries wrapped in one extra list level
+    (`[[{"name": ..., "id": ...}]]`); flatten that level first.
     """
     if not isinstance(value, dict):
         return value
     sanitized: dict[str, Any] = {}
     for key, item in value.items():
+        # Flatten one level of list nesting ([[{...}]] → [{...}]).
+        if isinstance(item, list) and item and all(isinstance(e, list) for e in item):
+            item = [entry for sub in item for entry in sub]
         if isinstance(item, dict) and "id" not in item:
             continue  # drop; MetadataItem has no None option to fall back to
         if isinstance(item, list):
@@ -201,7 +206,7 @@ class ParameterValue(BaseAlbertModel):
         from albert.resources.parameter_groups import ParameterValue
 
         # Reference the parameter by its Albert ID
-        value = ParameterValue(id="PRM1", value="500")
+        value = ParameterValue(id="PRM9999999", value="500")
         ```"""
 
     parameter: Parameter | None = Field(default=None, exclude=True)
@@ -211,7 +216,7 @@ class ParameterValue(BaseAlbertModel):
     """The Albert ID of the associated Parameter. Provide either ``id`` or ``parameter``."""
 
     category: ParameterCategory | None = Field(default=None)
-    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided."""
+    """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided. When only ``id`` is given, the parameter-group create API rejects the payload (``400 "Category mismatch ... Category undefined expected"``), so set ``category`` explicitly (``ParameterCategory.NORMAL`` for ordinary parameters) or pass the full ``parameter`` object."""
 
     short_name: str | None = Field(alias="shortName", default=None)
     """A short name for the parameter value. Serialized as ``shortName``."""
@@ -281,7 +286,7 @@ class ParameterGroup(BaseTaggedResource):
     fixed to setpoints inside a [`Workflow`][albert.resources.workflows.Workflow].
 
     Once saved, a group is referenced by its Parameter Group ID (format ``PRG...``,
-    e.g. ``"PRG1"``). Store test standards (e.g. ASTM or ISO) under the
+    e.g. ``"PRG9999999"``). Store test standards (e.g. ASTM or ISO) under the
     ``"Standards"`` key of ``metadata``.
 
     Groups are managed through
@@ -299,7 +304,7 @@ class ParameterGroup(BaseTaggedResource):
         pg = ParameterGroup(
             name="Mixing Step",
             type=PGType.BATCH,
-            parameters=[ParameterValue(id="PRM1", value="500")],
+            parameters=[ParameterValue(id="PRM9999999", value="500")],
         )
         ```"""
 
@@ -346,10 +351,10 @@ class ParameterSearchItemParameter(BaseAlbertModel):
     name: str | None = None
     """The name of the parameter."""
 
-    id: str
-    """The Albert ID of the parameter."""
+    id: str | None = None
+    """The Albert ID of the parameter. ``None`` on search rows that omit it."""
 
-    localized_names: LocalizedNames = Field(alias="localizedNames")
+    localized_names: LocalizedNames | None = Field(default=None, alias="localizedNames")
     """Localized name variants for the parameter."""
 
 
@@ -403,3 +408,11 @@ class ParameterGroupSearchItem(BaseAlbertModel, HydrationMixin[ParameterGroup]):
     @classmethod
     def sanitize_metadata(cls, value: Any) -> Any:
         return _sanitize_metadata(value)
+
+    @field_validator("owner", "tags", "acl", "team", mode="before")
+    @classmethod
+    def sanitize_entity_link_lists(cls, value: Any) -> Any:
+        """Drop entity-link entries the search endpoint returns without an ``id``."""
+        if not isinstance(value, list):
+            return value
+        return [entry for entry in value if not (isinstance(entry, dict) and "id" not in entry)]

@@ -31,7 +31,7 @@ from albert.resources.inventory import (
     MergeInventory,
 )
 from albert.resources.locations import Location
-from albert.resources.storage_locations import StorageLocation
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
 
@@ -52,7 +52,7 @@ class InventoryCollection(BaseCollection):
       not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
 
     Inventory Items are referenced throughout the platform by their Inventory ID
-    (format ``INV...``, e.g. ``"INVA1"``). They are the building blocks that
+    (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
     Worksheets, Tasks, and Property Data all point back to.
 
     This collection is accessed as ``client.inventory``.
@@ -105,9 +105,9 @@ class InventoryCollection(BaseCollection):
     get_match_or_none(inventory_item) -> InventoryItem | None
         Return the existing item matching name + company, or None.
     add_specs(inventory_id, specs) -> InventorySpecList
-        Attach specification properties to an item.
+        Attach inventory reference specs to an item (deprecated; prefer client.attributes).
     get_specs(ids) -> list[InventorySpecList]
-        Get the specs attached to a list of items.
+        Get inventory reference specs for items (deprecated; prefer client.attributes).
     get_all_facets(...) -> list[FacetItem]
         Get facet groups (aggregated filter counts) for a query.
     get_facet_by_name(name, ...) -> list[FacetItem]
@@ -152,7 +152,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            client.inventory.merge(parent_id="INVA1", child_id=["INVA2", "INVA3"])
+            client.inventory.merge(parent_id="INVA9999999", child_id=["INVA9999998", "INVA9999997"])
             ```
 
         Parameters
@@ -233,7 +233,7 @@ class InventoryCollection(BaseCollection):
             ```python
             existing = client.inventory.get_match_or_none(inventory_item=candidate)
             existing.id if existing else "no match"
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -298,7 +298,7 @@ class InventoryCollection(BaseCollection):
             )
             created = client.inventory.create(inventory_item=item)
             created.id
-            # 'INVA1'
+            # 'INVA9999999'
             ```
 
         Parameters
@@ -367,7 +367,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            item = client.inventory.get_by_id(id="INVA1")
+            item = client.inventory.get_by_id(id="INVA9999999")
             item.name
             # 'Titanium Dioxide'
             ```
@@ -375,7 +375,7 @@ class InventoryCollection(BaseCollection):
         Parameters
         ----------
         id : InventoryId
-            The Inventory ID (format ``INV...``, e.g. ``"INVA1"``).
+            The Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``).
 
         Returns
         -------
@@ -395,7 +395,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            items = client.inventory.get_by_ids(ids=["INVA1", "INVA2"])
+            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])
             [i.name for i in items]
             # ['Titanium Dioxide', 'Acetone']
             ```
@@ -424,17 +424,26 @@ class InventoryCollection(BaseCollection):
     )
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Get the specs attached to a list of inventory items.
+        """Get the legacy inventory reference specs attached to inventory items.
 
-        A spec is a declared property of an item (see [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs] for the
-        distinction between specs and task-measured Property Data). Requests are
-        automatically batched.
+        Each [`InventorySpecList`][albert.resources.inventory.InventorySpecList]
+        holds that item's declared reference properties (definition and value
+        together). This is **not** Property Data: for measured task results or
+        custom property-data values, use
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection].
+        Requests are automatically batched.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids]
+            (``client.attributes``). Specs are removed in SDK 2.0. See the Specs →
+            Attributes migration guide.
 
         !!! example
             ```python
-            spec_lists = client.inventory.get_specs(ids=["INVA1"])
-            spec_lists[0].specs
-            # [...]
+            spec_lists = client.inventory.get_specs(ids=["INVA9999999"])
+            for spec in spec_lists[0].specs:
+                print(spec.name, spec.value.reference if spec.value else None)
             ```
 
         Parameters
@@ -467,23 +476,41 @@ class InventoryCollection(BaseCollection):
         inventory_id: InventoryId,
         specs: InventorySpec | list[InventorySpec],
     ) -> InventorySpecList:
-        """Attach one or more specs to an inventory item.
+        """Attach legacy inventory reference specs to an inventory item.
 
-        An ``InventorySpec`` is a declared property of an item, as opposed to a
-        value measured through a Task. Use specs for generic, known properties
-        (e.g. a supplier-stated density); use Tasks and Property Data for
-        experimentally measured results. A spec can optionally carry the
-        conditions under which it holds, expressed via a workflow.
+        Each [`InventorySpec`][albert.resources.inventory.InventorySpec] both
+        defines a property (``name``, ``data_column_id``) and assigns its expected
+        [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue] on
+        this item. Use Specs for inventory **reference** properties (e.g. a
+        supplier-stated density that worksheets look up). For experimentally
+        measured results, use Tasks and
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
+        instead. A spec may optionally name conditions via a workflow.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`add_values`][albert.collections.attributes.AttributeCollection.add_values]
+            (``client.attributes``) after creating shared attribute definitions.
+            Specs are removed in SDK 2.0. See the Specs → Attributes migration guide.
+
+        !!! warning
+            This call replaces the item's complete spec set; it is not an
+            append. Always pass every spec the item should carry in one call: a
+            follow-up call with a subset can drop previously attached specs. A
+            ``500 Duplicate reference name`` error means spec rows with those
+            names already exist on the item (even when ``get_specs`` shows
+            none); do not blindly retry, call ``get_specs`` first and
+            reconcile. There is no Specs API to remove individual values.
 
         !!! example
             ```python
             from albert.resources.inventory import InventorySpec, InventorySpecValue
             spec = InventorySpec(
                 name="Density",
-                data_column_id="DAC1",
+                data_column_id="DAC9999999",
                 value=InventorySpecValue(min="1.1", max="1.3"),
             )
-            client.inventory.add_specs(inventory_id="INVA1", specs=spec)
+            client.inventory.add_specs(inventory_id="INVA9999999", specs=spec)
             ```
 
         Parameters
@@ -491,8 +518,8 @@ class InventoryCollection(BaseCollection):
         inventory_id : InventoryId
             The item to attach the specs to (format ``INV...``).
         specs : InventorySpec or list[InventorySpec]
-            The spec(s) to attach. Each describes a value and, optionally, the
-            associated conditions (via workflow).
+            The full set of reference specs the item should carry. Each embeds
+            the property definition and value (and optionally workflow conditions).
 
         Returns
         -------
@@ -516,7 +543,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            client.inventory.delete(id="INVA1")
+            client.inventory.delete(id="INVA9999999")
             ```
 
         Parameters
@@ -543,7 +570,10 @@ class InventoryCollection(BaseCollection):
         order: OrderBy | None = None,
         sort_by: str | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: SearchProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -555,6 +585,38 @@ class InventoryCollection(BaseCollection):
         updated_by: str | list[str] | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -566,16 +628,16 @@ class InventoryCollection(BaseCollection):
             lot_owner = [lot_owner]
         if isinstance(location, Location):
             location = [location]
-        if isinstance(storage_location, StorageLocation):
+        if isinstance(storage_location, StorageLocation | StorageLocationFilter):
             storage_location = [storage_location]
 
-        # created_by accepts legacy User objects, display names, or UserIds as
-        # strings. User objects prefer display name (matching pre-SEA-158 behavior);
-        # strings pass through unchanged so callers can supply either form.
-        created_by_values: list[str] | None = None
-        if created_by is not None:
+        def _resolve_user_values(
+            value: list[User] | User | str | list[str] | None,
+        ) -> list[str] | None:
+            if value is None:
+                return None
             wire: list[str] = []
-            for item in ensure_list(created_by) or []:
+            for item in ensure_list(value) or []:
                 if isinstance(item, str):
                     if item:
                         wire.append(item)
@@ -583,7 +645,10 @@ class InventoryCollection(BaseCollection):
                     resolved = item.name or item.id
                     if resolved:
                         wire.append(resolved)
-            created_by_values = wire or None
+            return wire or None
+
+        created_by_values = _resolve_user_values(created_by)
+        lot_created_by_values = _resolve_user_values(lot_created_by)
 
         params = {
             "text": text,
@@ -607,9 +672,111 @@ class InventoryCollection(BaseCollection):
             "updatedBy": ensure_list(updated_by),
             "fromUpdatedAt": from_updated_at if from_updated_at is not None else None,
             "toUpdatedAt": to_updated_at if to_updated_at is not None else None,
+            "albertId": ensure_list(albert_id),
+            "attributeId": ensure_list(attribute_id),
+            "casSmile": ensure_list(cas_smile),
+            "collaboratorPopUp": collaborator_pop_up,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "createdById": ensure_list(created_by_id),
+            "details": details,
+            "dropDownText": drop_down_text,
+            "dropDownTextProp": drop_down_text_prop,
+            "dupDetection": dup_detection,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "fromExpirationDate": from_expiration_date,
+            "fromLotCreatedAt": from_lot_created_at,
+            "fromOnHand": from_on_hand,
+            "gsloGroup": ensure_list(gslo_group),
+            "idh": ensure_list(idh),
+            "isPopUp": is_pop_up,
+            "lotCreatedBy": lot_created_by_values,
+            "materialCategory": ensure_list(material_category),
+            "packSize": ensure_list(pack_size),
+            "pictogramName": ensure_list(pictogram_name),
+            "result": ensure_list(result),
+            "rsn": ensure_list(rsn),
+            "sourceField": ensure_list(source_field),
+            "status": ensure_list(status),
+            "subCategory": ensure_list(sub_category),
+            "synthesisProductCreated": ensure_list(synthesis_product_created),
+            "toExpirationDate": to_expiration_date,
+            "toLotCreatedAt": to_lot_created_at,
+            "toOnHand": to_on_hand,
         }
 
         return params
+
+    def _paginate_inventory_search(
+        self,
+        *,
+        deserialize,
+        query_params: dict[str, Any],
+        match_all_conditions: bool,
+        max_items: int | None,
+        metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
+    ) -> AlbertPaginator:
+        # TODO(SDK-90): always POST inventory search once POST SearchInventory accepts attributeId.
+        uses_post = any(
+            value is not None
+            for value in (
+                metadata_filters,
+                custom_fields,
+                additional_field,
+                project_facets,
+                composite_search,
+            )
+        )
+        if uses_post:
+            if match_all_conditions:
+                raise ValueError(
+                    "match_all_conditions cannot be used with POST-only search filters "
+                    "(metadata_filters, custom_fields, additional_field, project_facets, "
+                    "composite_search)."
+                )
+            if query_params.get("attributeId") is not None:
+                raise ValueError(
+                    "attribute_id cannot be used with POST-only search filters "
+                    "(metadata_filters, custom_fields, additional_field, project_facets, "
+                    "composite_search)."
+                )
+            payload: dict[str, Any] = dict(query_params)
+            if metadata_filters is not None:
+                payload["metadataFilters"] = {"metadata": metadata_filters}
+            if custom_fields is not None:
+                payload["customFields"] = {"metadata": custom_fields}
+            if additional_field is not None:
+                payload["additionalField"] = ensure_list(additional_field)
+            if project_facets is not None:
+                payload["projectFacets"] = project_facets
+            if composite_search is not None:
+                payload["compositeSearch"] = composite_search
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
+
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=path,
+            params=query_params,
+            session=self.session,
+            max_items=max_items,
+            deserialize=deserialize,
+        )
 
     @validate_call
     def get_all_facets(
@@ -620,7 +787,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -656,7 +826,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : ProjectId, optional
             Filter by project.
@@ -713,7 +883,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -749,7 +922,7 @@ class InventoryCollection(BaseCollection):
             Filter by company.
         location : list[Location] | Location | None, optional
             Filter by location.
-        storage_location : list[StorageLocation] | StorageLocation | None, optional
+        storage_location : list[StorageLocation | StorageLocationFilter] | StorageLocation | StorageLocationFilter | None, optional
             Filter by storage location.
         project_id : ProjectId | None, optional
             Filter by project.
@@ -804,7 +977,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -820,7 +996,43 @@ class InventoryCollection(BaseCollection):
         updated_by: str | list[str] | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
     ) -> Iterator[InventorySearchItem]:
         """Search for inventory items matching the given filters.
 
@@ -862,7 +1074,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
             Filter by the project a formula belongs to (Formula items only).
@@ -900,6 +1112,79 @@ class InventoryCollection(BaseCollection):
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        albert_id : str or list[str], optional
+            Filter by Albert ID(s).
+        attribute_id : str or list[str], optional
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
+        cas_smile : str or list[str], optional
+            Filter by CAS SMILES string(s).
+        collaborator_pop_up : bool, optional
+            Apply collaborator popup search behavior.
+        contains_field : str or list[str], optional
+            Field(s) for contains-style filtering.
+        contains_text : str or list[str], optional
+            Text value(s) paired with ``contains_field``.
+        created_by_id : str or list[str], optional
+            Filter by creator UserId(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
+        drop_down_text : str, optional
+            Dropdown search text.
+        drop_down_text_prop : str, optional
+            Dropdown search property name.
+        dup_detection : bool, optional
+            Enable duplicate-detection text sanitization.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to match.
+        from_expiration_date : str, optional
+            Only include lots expiring on or after this date (``YYYY-MM-DD``).
+        from_lot_created_at : str, optional
+            Only include lots created on or after this date (``YYYY-MM-DD``).
+        from_on_hand : str, optional
+            Minimum on-hand quantity filter.
+        gslo_group : str or list[str], optional
+            Filter by GSLO group(s).
+        idh : str or list[str], optional
+            Filter by IDH value(s).
+        is_pop_up : bool, optional
+            Apply popup search behavior.
+        lot_created_by : User, list[User], str, or list[str], optional
+            Filter by lot creator. Accepts display name(s), UserId(s), or
+            [`User`][albert.resources.users.User] object(s).
+        material_category : str or list[str], optional
+            Filter by material category.
+        pack_size : str or list[str], optional
+            Filter by pack size.
+        pictogram_name : str or list[str], optional
+            Filter by pictogram name(s).
+        result : str or list[str], optional
+            Filter by result value(s).
+        rsn : str or list[str], optional
+            Filter by RSN value(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in search results.
+        status : str or list[str], optional
+            Filter by status value(s).
+        sub_category : str or list[str], optional
+            Filter by sub-category.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (``YYYY-MM-DD``).
+        to_lot_created_at : str, optional
+            Only include lots created on or before this date (``YYYY-MM-DD``).
+        to_on_hand : str, optional
+            Maximum on-hand quantity filter.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        project_facets : dict[str, Any], optional
+            Project facet filters.
+        composite_search : dict[str, Any], optional
+            Composite search specification.
 
         Returns
         -------
@@ -932,35 +1217,50 @@ class InventoryCollection(BaseCollection):
             updated_by=updated_by,
             from_updated_at=from_updated_at,
             to_updated_at=to_updated_at,
+            albert_id=albert_id,
+            attribute_id=attribute_id,
+            cas_smile=cas_smile,
+            collaborator_pop_up=collaborator_pop_up,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            created_by_id=created_by_id,
+            details=details,
+            drop_down_text=drop_down_text,
+            drop_down_text_prop=drop_down_text_prop,
+            dup_detection=dup_detection,
+            facet_field=facet_field,
+            facet_text=facet_text,
+            from_expiration_date=from_expiration_date,
+            from_lot_created_at=from_lot_created_at,
+            from_on_hand=from_on_hand,
+            gslo_group=gslo_group,
+            idh=idh,
+            is_pop_up=is_pop_up,
+            lot_created_by=lot_created_by,
+            material_category=material_category,
+            pack_size=pack_size,
+            pictogram_name=pictogram_name,
+            result=result,
+            rsn=rsn,
+            source_field=source_field,
+            status=status,
+            sub_category=sub_category,
+            synthesis_product_created=synthesis_product_created,
+            to_expiration_date=to_expiration_date,
+            to_lot_created_at=to_lot_created_at,
+            to_on_hand=to_on_hand,
         )
 
-        if metadata_filters is not None:
-            if match_all_conditions:
-                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
-            payload: dict[str, Any] = {
-                **query_params,
-                "metadataFilters": {"metadata": metadata_filters},
-            }
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=deserialize,
-                method="POST",
-                json=payload,
-            )
-
-        path = (
-            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
-        )
-        return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
-            path=path,
-            params=query_params,
-            session=self.session,
-            max_items=max_items,
+        return self._paginate_inventory_search(
             deserialize=deserialize,
+            query_params=query_params,
+            match_all_conditions=match_all_conditions,
+            max_items=max_items,
+            metadata_filters=metadata_filters,
+            custom_fields=custom_fields,
+            additional_field=additional_field,
+            project_facets=project_facets,
+            composite_search=composite_search,
         )
 
     @validate_call
@@ -972,7 +1272,10 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
         created_by: list[User] | User | str | list[str] | None = None,
@@ -988,7 +1291,43 @@ class InventoryCollection(BaseCollection):
         updated_by: str | list[str] | None = None,
         from_updated_at: str | None = None,
         to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
     ) -> Iterator[InventoryItem]:
         """Get fully populated inventory items matching the given filters.
 
@@ -1025,7 +1364,7 @@ class InventoryCollection(BaseCollection):
             Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
             Filter by the project a formula belongs to (Formula items only).
@@ -1063,6 +1402,79 @@ class InventoryCollection(BaseCollection):
             Only include items updated on or before this date (ISO 8601).
         metadata_filters : dict[str, Any], optional
             Filter by custom field (metadata) values.
+        albert_id : str or list[str], optional
+            Filter by Albert ID(s).
+        attribute_id : str or list[str], optional
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
+        cas_smile : str or list[str], optional
+            Filter by CAS SMILES string(s).
+        collaborator_pop_up : bool, optional
+            Apply collaborator popup search behavior.
+        contains_field : str or list[str], optional
+            Field(s) for contains-style filtering.
+        contains_text : str or list[str], optional
+            Text value(s) paired with ``contains_field``.
+        created_by_id : str or list[str], optional
+            Filter by creator UserId(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
+        drop_down_text : str, optional
+            Dropdown search text.
+        drop_down_text_prop : str, optional
+            Dropdown search property name.
+        dup_detection : bool, optional
+            Enable duplicate-detection text sanitization.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to match.
+        from_expiration_date : str, optional
+            Only include lots expiring on or after this date (``YYYY-MM-DD``).
+        from_lot_created_at : str, optional
+            Only include lots created on or after this date (``YYYY-MM-DD``).
+        from_on_hand : str, optional
+            Minimum on-hand quantity filter.
+        gslo_group : str or list[str], optional
+            Filter by GSLO group(s).
+        idh : str or list[str], optional
+            Filter by IDH value(s).
+        is_pop_up : bool, optional
+            Apply popup search behavior.
+        lot_created_by : User, list[User], str, or list[str], optional
+            Filter by lot creator. Accepts display name(s), UserId(s), or
+            [`User`][albert.resources.users.User] object(s).
+        material_category : str or list[str], optional
+            Filter by material category.
+        pack_size : str or list[str], optional
+            Filter by pack size.
+        pictogram_name : str or list[str], optional
+            Filter by pictogram name(s).
+        result : str or list[str], optional
+            Filter by result value(s).
+        rsn : str or list[str], optional
+            Filter by RSN value(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in search results.
+        status : str or list[str], optional
+            Filter by status value(s).
+        sub_category : str or list[str], optional
+            Filter by sub-category.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (``YYYY-MM-DD``).
+        to_lot_created_at : str, optional
+            Only include lots created on or before this date (``YYYY-MM-DD``).
+        to_on_hand : str, optional
+            Maximum on-hand quantity filter.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        project_facets : dict[str, Any], optional
+            Project facet filters.
+        composite_search : dict[str, Any], optional
+            Composite search specification.
 
         Returns
         -------
@@ -1095,35 +1507,50 @@ class InventoryCollection(BaseCollection):
             updated_by=updated_by,
             from_updated_at=from_updated_at,
             to_updated_at=to_updated_at,
+            albert_id=albert_id,
+            attribute_id=attribute_id,
+            cas_smile=cas_smile,
+            collaborator_pop_up=collaborator_pop_up,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            created_by_id=created_by_id,
+            details=details,
+            drop_down_text=drop_down_text,
+            drop_down_text_prop=drop_down_text_prop,
+            dup_detection=dup_detection,
+            facet_field=facet_field,
+            facet_text=facet_text,
+            from_expiration_date=from_expiration_date,
+            from_lot_created_at=from_lot_created_at,
+            from_on_hand=from_on_hand,
+            gslo_group=gslo_group,
+            idh=idh,
+            is_pop_up=is_pop_up,
+            lot_created_by=lot_created_by,
+            material_category=material_category,
+            pack_size=pack_size,
+            pictogram_name=pictogram_name,
+            result=result,
+            rsn=rsn,
+            source_field=source_field,
+            status=status,
+            sub_category=sub_category,
+            synthesis_product_created=synthesis_product_created,
+            to_expiration_date=to_expiration_date,
+            to_lot_created_at=to_lot_created_at,
+            to_on_hand=to_on_hand,
         )
 
-        if metadata_filters is not None:
-            if match_all_conditions:
-                raise ValueError("match_all_conditions cannot be used with metadata_filters.")
-            payload: dict[str, Any] = {
-                **query_params,
-                "metadataFilters": {"metadata": metadata_filters},
-            }
-            return AlbertPaginator(
-                mode=PaginationMode.OFFSET,
-                path=f"{self.base_path}/search",
-                session=self.session,
-                max_items=max_items,
-                deserialize=deserialize,
-                method="POST",
-                json=payload,
-            )
-
-        path = (
-            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
-        )
-        return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
-            path=path,
-            params=query_params,
-            session=self.session,
-            max_items=max_items,
+        return self._paginate_inventory_search(
             deserialize=deserialize,
+            query_params=query_params,
+            match_all_conditions=match_all_conditions,
+            max_items=max_items,
+            metadata_filters=metadata_filters,
+            custom_fields=custom_fields,
+            additional_field=additional_field,
+            project_facets=project_facets,
+            composite_search=composite_search,
         )
 
     def _generate_inventory_patch_payload(
@@ -1301,7 +1728,7 @@ class InventoryCollection(BaseCollection):
 
         !!! example
             ```python
-            item = client.inventory.get_by_id(id="INVA1")
+            item = client.inventory.get_by_id(id="INVA9999999")
             item.description = "Updated description"
             updated = client.inventory.update(inventory_item=item)
             updated.description

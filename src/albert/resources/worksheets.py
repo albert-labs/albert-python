@@ -23,7 +23,7 @@ class Worksheet(BaseSessionResource):
         ```python
         from albert import Albert
         client = Albert()
-        worksheet = client.worksheets.get_by_project_id(project_id="PRO1")
+        worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
         for sheet in worksheet.sheets:
             print(sheet.id, sheet.name)
         ```"""

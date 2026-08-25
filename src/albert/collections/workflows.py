@@ -129,14 +129,14 @@ class WorkflowCollection(BaseCollection):
                 name="Tensile test at 23C, 50% RH",
                 parameter_group_setpoints=[
                     ParameterGroupSetpoints(
-                        id="DAT1",
+                        id="DAT9999999",
                         parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM1", value="23", short_name="Temperature"),
+                            ParameterSetpoint(parameter_id="PRM9999999", value="23", short_name="Temperature"),
                             ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
                         ],
                     ),
                     ParameterGroupSetpoints(
-                        id="PRG1",
+                        id="PRG9999999",
                         parameter_setpoints=[
                             ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
                         ],

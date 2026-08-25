@@ -3,21 +3,20 @@ import pytest
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
 from albert.core.shared.identifiers import ensure_inventory_id
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
-from albert.resources.data_columns import DataColumn
+from albert.resources.custom_fields import FieldType, ServiceType
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
     InventoryItem,
-    InventorySpec,
-    InventorySpecValue,
 )
+from albert.resources.lots import Lot
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
 from albert.resources.users import User
-from albert.resources.workflows import Workflow
 from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
@@ -156,6 +155,40 @@ def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seede
         assert hydrated.name == partial.name
 
 
+def test_inventory_search_with_name_only_storage_location_filter(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_lots: list[Lot],
+    seeded_storage_locations: list[StorageLocation],
+):
+    """Test that inventory search accepts a name-only StorageLocationFilter."""
+    unit = seeded_storage_locations[1]
+    seeded_ids = {i.id for i in seeded_inventory}
+    expected_ids = {
+        lot.inventory_id
+        for lot in seeded_lots
+        if lot.storage_location and lot.storage_location.id == unit.id
+    }
+    assert expected_ids, "Expected seeded lots at the storage location"
+
+    def search_scoped(**kwargs):
+        return [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100, **kwargs)
+            if f"INV{p.id}" in seeded_ids
+        ]
+
+    filter_results = poll_until(
+        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)])
+    )
+    assert {f"INV{p.id}" for p in filter_results} == expected_ids
+
+    # The full StorageLocation object from a lookup remains accepted.
+    object_results = poll_until(lambda: search_scoped(storage_location=unit))
+    assert {f"INV{p.id}" for p in object_results} == expected_ids
+
+
 @pytest.mark.skip(reason="LLM search is currently not working as expected.")
 def test_inventory_get_all_match_all_conditions(
     client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
@@ -198,6 +231,43 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert isinstance(get_by_id, InventoryItem)
     assert seeded_inventory[0].name == get_by_id.name
     assert seeded_inventory[0].id == get_by_id.id
+
+
+def test_get_by_id_preserves_metadata_list_item_names(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields,
+    static_lists,
+    seeded_companies,
+):
+    """Test list metadata includes names when an inventory item is retrieved."""
+    custom_field = next(
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.INVENTORIES and field.field_type == FieldType.LIST
+    )
+    list_item = next(item for item in static_lists if item.list_type == custom_field.name)
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Metadata names",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            metadata={custom_field.name: [EntityLink(id=list_item.id)]},
+        ),
+        avoid_duplicates=False,
+    )
+
+    try:
+        retrieved = client.inventory.get_by_id(id=created.id)
+        metadata_link = retrieved.metadata[custom_field.name][0]
+
+        assert metadata_link.id == list_item.id
+        assert metadata_link.name == list_item.name
+        assert retrieved.model_dump(mode="json", by_alias=True)["Metadata"][custom_field.name] == [
+            {"id": list_item.id, "name": list_item.name}
+        ]
+    finally:
+        client.inventory.delete(id=created.id)
 
 
 def test_get_by_ids(client: Albert, seeded_inventory):
@@ -269,29 +339,6 @@ def test_blocks_dupes_with_entity_link_company(
 
     assert returned_ii.id == original.id
     assert returned_ii.name == original.name
-
-
-def test_add_property_to_inv_spec(
-    seed_prefix: str,
-    client: Albert,
-    seeded_inventory: list[InventoryItem],
-    seeded_data_columns: list[DataColumn],
-    seeded_units: list[Unit],
-    seeded_workflows: list[Workflow],
-):
-    specs = []
-    for dc in seeded_data_columns:
-        spec_to_add = InventorySpec(
-            name=f"{seed_prefix} -- {dc.name}",
-            data_column_id=dc.id,
-            unit_id=seeded_units[0].id,
-            value=InventorySpecValue(reference="42"),
-            workflow_id=seeded_workflows[0].id,
-        )
-        specs.append(spec_to_add)
-    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
-    assert len(added_specs.specs) == len(seeded_data_columns)
-    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
 
 
 def test_update_inventory_item_standard_attributes(

@@ -56,6 +56,13 @@ class TaskCategory(str, Enum):
 class BatchSizeUnit(str, Enum):
     """Unit of measure for the size of a batch made in a [`BatchTask`][albert.resources.tasks.BatchTask].
 
+    The enum values are the exact wire strings the platform expects;
+    note the non-SI capitalization ``"Kg"`` (lowercase ``"kg"`` is rejected).
+    The SDK performs **no unit conversion**: ``batch_size`` and batch-data
+    amounts are stored as sent. For mass-tracked inventory, the batch-data
+    grid is denominated in kilograms regardless of this unit, so scale
+    amounts accordingly when writing used amounts.
+
     Attributes
     ----------
     GRAMS : str
@@ -448,7 +455,7 @@ class PropertyTask(BaseTask):
         ```python
         from albert.resources.tasks import PropertyTask
 
-        task = PropertyTask(name="Viscosity screen", parent_id="PRO1")
+        task = PropertyTask(name="Viscosity screen", parent_id="PROA9999999")
         ```
     Notes
     -----
@@ -490,9 +497,9 @@ class BatchTask(BaseTask):
 
         task = BatchTask(
             name="Make 500 g of Formula A",
-            parent_id="PRO1",
+            parent_id="PROA9999999",
             inventory_information=[
-                TaskInventoryInformation(inventory_id="INVEXP1", batch_size=500)
+                TaskInventoryInformation(inventory_id="INVEXP9999999", batch_size=500)
             ],
         )
         ```
