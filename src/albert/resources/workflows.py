@@ -129,9 +129,11 @@ class ParameterSetpoint(BaseAlbertModel):
     Normal parameters take exactly one of ``value`` or ``intervals``. Special parameters
     (Equipment, Consumables, Templates) take an entity ID as their value.
 
-    ``sequence`` (``prgPrmRowId``) is read-only: do not set it when building a workflow for
-    [`create`][albert.collections.workflows.WorkflowCollection.create]. Albert assigns row
-    ordering; the SDK may supply it internally for special parameters only.
+    ``sequence`` is read-only: do not set it when building a workflow for
+    [`create`][albert.collections.workflows.WorkflowCollection.create]. Provide the parent
+    group's ``id`` (``PRG...`` or ``DAT...``) on
+    [`ParameterGroupSetpoints`][albert.resources.workflows.ParameterGroupSetpoints]; the SDK
+    resolves each setpoint's row id from that group before create.
 
     !!! example
         ```python
@@ -179,7 +181,7 @@ class ParameterSetpoint(BaseAlbertModel):
     """Read-only. The row ID of this parameter with respect to its interval row."""
 
     sequence: str | None = Field(default=None, alias="prgPrmRowId")
-    """Read-only. Maps this setpoint to its parameter-group row. Assigned by Albert; do not set when creating workflows."""
+    """Read-only. Maps this setpoint to its row in the parent Data Template or Parameter Group. Populated by the SDK during [`create`][albert.collections.workflows.WorkflowCollection.create]; do not set when building workflows."""
 
     @model_validator(mode="after")
     def validate_shape(self) -> ParameterSetpoint:
@@ -240,8 +242,9 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     and carries the [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] list for the parameters in it. A
     [`Workflow`][albert.resources.workflows.Workflow] holds one of these per group. Both the order of setpoints within a
     group and the order of groups within the workflow are part of what makes a workflow
-    unique, so preserve the order you intend. ``sequence`` (``prgSequence``) on the group and
-    on each setpoint is read-only; list order alone defines ordering when creating workflows.
+    unique, so preserve the order you intend. Group ``sequence`` is read-only; list order
+    alone defines group ordering when creating workflows. Setpoint ``sequence`` is also
+    read-only (see [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint]).
 
     !!! example
         ```python
@@ -275,7 +278,7 @@ class ParameterGroupSetpoints(BaseAlbertModel):
     """Read-only. The group's interval row ID."""
 
     sequence: int | None = Field(default=None, alias="prgSequence", frozen=True, exclude=True)
-    """Read-only. Order of this group within the workflow. Assigned by Albert; do not set when creating workflows."""
+    """Read-only. Order of this group within the workflow. Assigned from list order when creating workflows; do not set."""
 
     @model_validator(mode="after")
     def validate_identifiers(self):
