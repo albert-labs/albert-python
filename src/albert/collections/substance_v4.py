@@ -273,13 +273,13 @@ class SubstanceV4Collection(BaseCollection):
         """Search for substances by keyword or advanced filters.
 
         At least one of ``search_key``, ``cas``, ``ec``, ``name``, ``inciname``, or
-        ``cas_ids`` must be provided. If both ``search_key`` and advanced filters are
-        provided, the advanced filters take precedence.
+        ``cas_ids`` must be provided.
 
         Parameters
         ----------
         search_key : str | None
-            Free-text search term.
+            Free-text search term. When provided, takes precedence over ``cas``, ``ec``,
+            ``name``, and ``inciname``.
         cas : str | None
             Filter by CAS identifier.
         ec : str | None
@@ -328,16 +328,17 @@ class SubstanceV4Collection(BaseCollection):
         params: dict = {"region": region, "startKey": start_key}
         if search_key:
             params["searchKey"] = search_key
-        if cas:
-            params["cas"] = cas
-        if ec:
-            params["ec"] = ec
-        if name:
-            params["name"] = name
-        if inciname:
-            params["inciname"] = inciname
         if cas_ids:
             params["casIDs"] = cas_ids
+        if not search_key:
+            if cas:
+                params["cas"] = cas
+            if ec:
+                params["ec"] = ec
+            if name:
+                params["name"] = name
+            if inciname:
+                params["inciname"] = inciname
         if classification_type:
             params["classificationType"] = classification_type
         if catch_errors is not None:
