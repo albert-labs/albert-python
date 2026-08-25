@@ -17,6 +17,7 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
     "LabelTemplateId": "TMP",
@@ -238,6 +239,13 @@ def ensure_data_column_id(id: str) -> str:
 
 
 DataColumnId = Annotated[str, AfterValidator(ensure_data_column_id)]
+
+
+def ensure_document_id(id: str) -> str:
+    return _ensure_albert_id(id, "DocumentId")
+
+
+DocumentId = Annotated[str, AfterValidator(ensure_document_id)]
 
 
 def ensure_datatemplate_id(id: str) -> str:
