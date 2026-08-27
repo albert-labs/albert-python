@@ -271,6 +271,14 @@ class NotebookCollection(BaseCollection):
         created, and any existing block that is no longer present is deleted. This
         does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).
 
+        When writing @-mention chips (``<span data-albertid="..." data-type="...">``
+        spans) into block text, also create the backing mention links — saving the
+        HTML does not register them, and without a link the chip does not resolve
+        in the UI. Create one link per mentioned entity with
+        [`create`][albert.collections.links.LinksCollection.create]
+        (``category="mention"``, parent = the notebook, child = the mentioned
+        entity), then re-read the notebook and confirm its ``links`` list them.
+
         !!! warning
             Updating existing Ketcher blocks is not supported. To change a Ketcher
             block, delete it and create a new one instead.
