@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.48.0](https://github.com/albert-labs/albert-python/compare/v1.47.2...v1.48.0) (2026-08-27)
+
+
+### Features
+
+* **data_templates:** add get_document_version_history method ([#706](https://github.com/albert-labs/albert-python/issues/706)) ([4840b76](https://github.com/albert-labs/albert-python/commit/4840b76b99901675933b07411a0550c66af00f0c))
+* **design_runs:** add per-run objective weights ([#710](https://github.com/albert-labs/albert-python/issues/710)) ([3114416](https://github.com/albert-labs/albert-python/commit/3114416ecbc4462800b46a53f18abfdce38bd1e2))
+
+
+### Bug Fixes
+
+* **ci:** restore [@claude](https://github.com/claude) interactive mode in Claude Code workflow ([#708](https://github.com/albert-labs/albert-python/issues/708)) ([368fc30](https://github.com/albert-labs/albert-python/commit/368fc30211a9f33262104a17a7b3cf9bdcb5d245))
+* **substances_v4:** align search docs with search_key precedence ([#707](https://github.com/albert-labs/albert-python/issues/707)) ([397eefb](https://github.com/albert-labs/albert-python/commit/397eefbcea645ca2ba711cd086299461c8ceeaea))
+
 ## [1.47.2](https://github.com/albert-labs/albert-python/compare/v1.47.1...v1.47.2) (2026-08-21)
 
 
