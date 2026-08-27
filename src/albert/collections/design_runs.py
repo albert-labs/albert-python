@@ -6,13 +6,13 @@ from albert.core.shared.identifiers import SmartDatasetId, TargetId
 from albert.resources.btinsight import BTInsight
 from albert.resources.chats import ChatSessionRef
 from albert.resources.design import (
+    DesignObjective,
     DesignRunValidationResponse,
     DOEDesignRunRequest,
     DOERunSettings,
     OptimizationDesignRunRequest,
     OptimizationRunSettings,
 )
-from albert.resources.targets import Criterion
 
 
 class DesignRunCollection(BaseCollection):
@@ -58,7 +58,7 @@ class DesignRunCollection(BaseCollection):
         *,
         smart_dataset_id: SmartDatasetId,
         name: str | None = None,
-        objectives: dict[TargetId, Criterion] | None = None,
+        objectives: dict[TargetId, DesignObjective] | None = None,
         settings: OptimizationRunSettings | None = None,
         chat_session: ChatSessionRef | None = None,
     ) -> BTInsight:
@@ -80,10 +80,14 @@ class DesignRunCollection(BaseCollection):
         name : str, optional
             Display name for the resulting insight. When ``None``, a name is
             generated from the smart dataset id.
-        objectives : dict[TargetId, Criterion], optional
-            Per-target objectives. Each key must be present within the dataset.
-            When ``None``, all targets in the dataset are optimized using their own
-            target values.
+        objectives : dict[TargetId, DesignObjective], optional
+            Per-target objectives, each carrying an optional ``weight`` that sets how
+            much it counts relative to the others on this run. See
+            [`DesignObjective`][albert.resources.design.DesignObjective]. Each key must
+            be present within the dataset. When ``None``, all targets in the dataset are
+            optimized using their own target values, each at the default weight. A plain
+            [`Criterion`][albert.resources.targets.Criterion] is accepted and takes the
+            default weight.
         settings : OptimizationRunSettings, optional
             Run sizing for candidate generation and selection. See
             [`OptimizationRunSettings`][albert.resources.design.OptimizationRunSettings].
@@ -177,7 +181,7 @@ class DesignRunCollection(BaseCollection):
         self,
         *,
         smart_dataset_id: SmartDatasetId,
-        objectives: dict[TargetId, Criterion] | None = None,
+        objectives: dict[TargetId, DesignObjective] | None = None,
         settings: OptimizationRunSettings | None = None,
     ) -> DesignRunValidationResponse:
         """Validate an optimization run configuration without starting a job.
@@ -198,8 +202,9 @@ class DesignRunCollection(BaseCollection):
         ----------
         smart_dataset_id : SmartDatasetId
             The smart dataset used to train the surrogate model.
-        objectives : dict[TargetId, Criterion], optional
-            Per-target objectives for the optimization run.
+        objectives : dict[TargetId, DesignObjective], optional
+            Per-target objectives for the optimization run, each carrying an optional
+            ``weight``. See [`DesignObjective`][albert.resources.design.DesignObjective].
         settings : OptimizationRunSettings, optional
             Run sizing for candidate generation and selection.
 
