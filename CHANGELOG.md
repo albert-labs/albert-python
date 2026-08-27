@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.49.0](https://github.com/albert-labs/albert-python/compare/v1.48.0...v1.49.0) (2026-08-27)
+
+
+### Features
+
+* **sheets:** Sheet.add_task_row + batch lot-assignment docstring fixes (Ask Albert SDK follow-up [#2](https://github.com/albert-labs/albert-python/issues/2)) ([#705](https://github.com/albert-labs/albert-python/issues/705)) ([d3c7898](https://github.com/albert-labs/albert-python/commit/d3c7898e0fc65288f3141d362aef9108112b0708))
+
 ## [1.48.0](https://github.com/albert-labs/albert-python/compare/v1.47.2...v1.48.0) (2026-08-27)
 
 
