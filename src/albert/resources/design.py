@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import SmartDatasetId, TargetId
@@ -89,6 +89,58 @@ class OptimizationRunSettings(BaseAlbertModel):
     """Top diverse candidates to return after ranking (default ``20``, range ``1``–``100``)."""
 
 
+class DesignObjective(Criterion):
+    """A per-run optimization goal: a success criterion plus how much it matters.
+
+    A [`Criterion`][albert.resources.targets.Criterion] states what good looks like.
+    ``weight`` states how much that goal counts relative to the other objectives on the
+    same run, and belongs to the run rather than to the Target. A Target carries no
+    priority of its own, so the same targets can be reweighted from one run to the next
+    to see how the trade-off moves the candidates.
+
+    A plain ``Criterion`` is accepted anywhere a ``DesignObjective`` is expected and
+    takes the default weight.
+
+    !!! example
+        ```python
+        from albert.resources.design import DesignObjective
+
+        # a hard specification that should not be traded away
+        DesignObjective(operator="gte", value=95, weight=3.0)
+
+        # the same goal at the default weight
+        DesignObjective(operator="gte", value=95)
+        ```
+    """
+
+    weight: float = Field(default=1.0, gt=0)
+    """How much this objective counts relative to the others on the same run.
+
+    Candidate scores are combined as a product of each objective's score raised to its
+    weight, so a weight above ``1.0`` makes the objective harder to trade away and a
+    weight below ``1.0`` makes it easier. Must be positive; to ignore an objective,
+    leave it out.
+
+    Always a float, never ``None``: an unweighted objective is ``1.0``, which weighs it
+    equally against the others. Omitting the field, or passing an explicit ``None``,
+    both give ``1.0``.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_plain_criterion(cls, value: object) -> object:
+        """Accept a plain Criterion, giving it the default weight."""
+        if isinstance(value, Criterion) and not isinstance(value, cls):
+            return value.model_dump()
+        return value
+
+    @field_validator("weight", mode="before")
+    @classmethod
+    def _null_weight_is_unweighted(cls, value: object) -> object:
+        """Treat an explicit null as unset, so the weight is always a float."""
+        return 1.0 if value is None else value
+
+
 class OptimizationDesignRunRequest(BaseAlbertModel):
     """Request body for a model-guided optimization design run."""
 
@@ -101,8 +153,8 @@ class OptimizationDesignRunRequest(BaseAlbertModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     """Display name for the resulting insight; a name is generated when omitted."""
 
-    objectives: dict[TargetId, Criterion] | None = None
-    """Per-target objectives; omitted to optimize every scoped target."""
+    objectives: dict[TargetId, DesignObjective] | None = None
+    """Per-target objectives, each with its weight; omitted to optimize every scoped target."""
 
     settings: OptimizationRunSettings | None = None
     """Settings for a model-guided optimization design run."""
