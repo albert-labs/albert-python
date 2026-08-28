@@ -1274,7 +1274,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position : dict, optional
             Where to insert the new columns, as a dict with ``reference_id`` (a
             column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
-            omitted, the platform chooses the default placement.
+            omitted, inserts ``RIGHT_OF`` the last product-design column, matching
+            [`add_blank_column`][albert.resources.sheets.Sheet.add_blank_column] and
+            other ``add_*_column`` helpers.
 
         Returns
         -------
@@ -1288,15 +1290,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
             formulation_names if isinstance(formulation_names, list) else [formulation_names]
         )
 
+        if starting_position is None:
+            starting_position = {
+                "reference_id": (
+                    self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                ),
+                "position": ColumnPosition.RIGHT_OF.value,
+            }
+
         payload = []
         for formulation_name in formulation_names:
-            entry = {"type": "INV", "name": formulation_name}
-            # When no position is given, omit referenceId/position so the platform
-            # applies its default placement. Sending a null (or stale) referenceId
-            # leaves the new column out of the sheet sequence, hiding it on refresh.
-            if starting_position is not None:
-                entry["referenceId"] = starting_position["reference_id"]
-                entry["position"] = starting_position["position"]
+            entry = {
+                "type": "INV",
+                "name": formulation_name,
+                "referenceId": starting_position["reference_id"],
+                "position": starting_position["position"],
+            }
             payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
