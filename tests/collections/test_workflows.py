@@ -1,17 +1,10 @@
 import pytest
 
 from albert import Albert
-from albert.exceptions import NotFoundError
 from albert.resources.workflows import Workflow, WorkflowSearchItem
 from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
-
-search_not_deployed = pytest.mark.xfail(
-    reason="POST /api/v3/workflows/search is not yet deployed (api-workflow#129). Remove decorator once live.",
-    raises=NotFoundError,
-    strict=False,
-)
 
 
 def test_workflow_get_all_with_pagination(client: Albert, seeded_workflows: list[Workflow]):
@@ -36,7 +29,6 @@ def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
     assert r[0].id == seeded_workflows[0].id
 
 
-@search_not_deployed
 def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
     """Test search returns WorkflowSearchItem results with WFL ids."""
     results = list(client.workflows.search(max_items=10))
@@ -47,7 +39,6 @@ def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow])
         assert item.name
 
 
-@search_not_deployed
 def test_workflow_search_by_text(
     client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]
 ):
@@ -63,7 +54,6 @@ def test_workflow_search_by_text(
     assert hits, "Expected at least one seeded workflow in text search results"
 
 
-@search_not_deployed
 def test_workflow_search_by_ids(client: Albert, seeded_workflows: list[Workflow]):
     """Test search by workflow ids returns seeded workflows."""
     seeded_ids = {wf.id for wf in seeded_workflows}
@@ -78,7 +68,6 @@ def test_workflow_search_by_ids(client: Albert, seeded_workflows: list[Workflow]
     assert {item.id for item in hits}.issubset(seeded_ids)
 
 
-@search_not_deployed
 def test_workflow_search_hydrate(
     client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]
 ):
@@ -99,7 +88,6 @@ def test_workflow_search_hydrate(
     assert hydrated.name == hits[0].name
 
 
-@search_not_deployed
 def test_workflow_search_by_parameter_groups(
     client: Albert,
     seed_prefix: str,
