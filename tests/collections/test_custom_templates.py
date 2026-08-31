@@ -93,9 +93,20 @@ def test_custom_template_update_acl(
     assert any(entry.id == static_user.id for entry in updated.acl.fgclist)
 
 
-def test_hydrate_custom_template(client: Albert, seeded_custom_templates: list[CustomTemplate]):
-    seeded_template = seeded_custom_templates[0]
-    custom_templates = list(client.custom_templates.search(text=seeded_template.name, max_items=5))
+def test_hydrate_custom_template(
+    client: Albert,
+    seed_prefix: str,
+    seeded_custom_templates: list[CustomTemplate],
+):
+    """Test hydrate on search hits scoped to the seeded custom template ids."""
+    seeded_ids = {t.id for t in seeded_custom_templates}
+    custom_templates = poll_until(
+        lambda: [
+            t
+            for t in client.custom_templates.search(text=seed_prefix, max_items=100)
+            if t.id in seeded_ids
+        ]
+    )
     assert custom_templates, "Expected at least one custom_template in search results"
 
     for custom_template in custom_templates:
