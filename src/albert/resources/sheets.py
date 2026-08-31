@@ -732,6 +732,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Show a hidden column.
     set_columns_width(col_ids, width) -> None
         Set the display width of columns.
+    reorder_columns(column_ids) -> None
+        Reorder all columns left to right by column ID.
     delete_column(column_id) -> None
         Delete a column.
     delete_row(row_id, design_id) -> None
@@ -2225,6 +2227,97 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "datacolumnName": data_column_name,
             },
         )
+
+    def _move_column(
+        self,
+        *,
+        source_id: str,
+        reference_id: str,
+        position: ColumnPosition,
+    ) -> None:
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "sequence",
+                    "sourceId": source_id,
+                    "referenceId": reference_id,
+                    "position": (
+                        position.value if isinstance(position, ColumnPosition) else position
+                    ),
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+
+    @validate_call
+    def reorder_columns(self, *, column_ids: list[str]) -> None:
+        """Reorder all columns on this sheet from left to right.
+
+        Provide every column ID on the sheet exactly once, in the desired display
+        order. The first ID is placed at the left edge; the last at the right.
+
+        !!! example
+            ```python
+            column_ids = [col.column_id for col in sheet.columns]
+            column_ids = [column_ids[2], column_ids[0], column_ids[1], *column_ids[3:]]
+            sheet.reorder_columns(column_ids=column_ids)
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            Column IDs in the desired left-to-right order. Must include every column
+            on the sheet exactly once.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertException
+            If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
+            any column on the sheet.
+        """
+        if not column_ids:
+            raise AlbertException("column_ids must include at least one column ID.")
+
+        current_ids = [col.column_id for col in self.columns]
+        current_set = set(current_ids)
+        if len(column_ids) != len(set(column_ids)):
+            raise AlbertException("column_ids must not contain duplicates.")
+
+        unknown = set(column_ids) - current_set
+        if unknown:
+            raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
+
+        missing = current_set - set(column_ids)
+        if missing:
+            raise AlbertException(
+                "column_ids must include every column on the sheet; "
+                f"missing: {', '.join(sorted(missing))}"
+            )
+
+        if column_ids == current_ids:
+            return
+
+        order = list(current_ids)
+        for i, target_id in enumerate(column_ids):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            reference_id = order[i]
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            self._move_column(
+                source_id=target_id,
+                reference_id=reference_id,
+                position=position,
+            )
+            order.pop(j)
+            order.insert(i, target_id)
+
+        self.grid = None
 
     @validate_call
     def pin_columns(
