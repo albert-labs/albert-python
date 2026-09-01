@@ -54,6 +54,8 @@ never public method parameters; `max_items` is the only caller-facing control.
 Why: exposing raw pagination params leaks backend details, invites misuse, and
 diverges from the SDK's iterator-style API.
 
+Some endpoints reject `limit` above a fixed cap (e.g. workflow search `<= 100`, substance v4 search `<= 20`). Set a module-level page-size constant and pass `limit` in the payload or paginator params to that cap; `AlbertPaginator` still owns `offset` and must not surface `limit` on the public collection method.
+
 ## Paginators — override _response_items for non-standard response keys
 
 `AlbertPaginator._response_items` defaults to reading `data["Items"]` or

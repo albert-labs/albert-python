@@ -125,7 +125,9 @@ Offset search endpoints (projects, tasks, lots, inventories, datatemplates, para
 
 Rule of thumb: if you already have an `AlbertPaginator`, return it. Reach for `MappedPaginator` / `MetadataPreservingIterator` only when a plain generator would strip `has_more` / `total`.
 
-**`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Collection methods must not set `limit` or `offset` in search/list payloads (query params or POST JSON); pass filters only and let `AlbertPaginator` inject page size and continuation. Use `max_items` as the only caller-facing pagination control.
+**`offset` and `limit` are never exposed as method parameters.** They are internal pagination state managed entirely by `AlbertPaginator`. Never add `offset` or `limit` to a public method signature or docstring. Use `max_items` as the only caller-facing pagination control.
+
+Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limit` in the search/list payload (or paginator params) to that cap so the first request is valid (see `substance_v4`, `workflows`). Collections still must not expose `limit` as a public method parameter.
 
 ## Testing
 

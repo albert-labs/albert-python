@@ -19,6 +19,8 @@ from albert.resources.workflows import (
     WorkflowSearchItem,
 )
 
+_SEARCH_PAGE_SIZE = 100  # maximum page size accepted by the workflow search endpoint
+
 
 class WorkflowCollection(BaseCollection):
     """Manage Workflows in the Albert platform.
@@ -492,6 +494,7 @@ class WorkflowCollection(BaseCollection):
             "fromCreatedAt": from_created_at,
             "toCreatedAt": to_created_at,
             "sortBy": sort_by,
+            "limit": _SEARCH_PAGE_SIZE,
         }
         if parameter_set is not None:
             payload["parameterSet"] = [
