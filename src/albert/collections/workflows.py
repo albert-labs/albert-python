@@ -472,7 +472,6 @@ class WorkflowCollection(BaseCollection):
             [`Workflow`][albert.resources.workflows.Workflow].
         """
         payload: dict[str, Any] = {
-            "limit": 100,
             "order": order_by,
             "text": text,
             "status": ensure_list(status),
