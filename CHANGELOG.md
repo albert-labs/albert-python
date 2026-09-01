@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.50.0](https://github.com/albert-labs/albert-python/compare/v1.49.0...v1.50.0) (2026-08-31)
+
+
+### Features
+
+* **sds:** model the remaining optional SDSRequest fields ([#711](https://github.com/albert-labs/albert-python/issues/711)) ([c3d1d4a](https://github.com/albert-labs/albert-python/commit/c3d1d4a4b4032cbbf5650346339bf10805386b84))
+
+
+### Bug Fixes
+
+* **sheets:** default new formula columns to rightOf last column ([#713](https://github.com/albert-labs/albert-python/issues/713)) ([cc4a64b](https://github.com/albert-labs/albert-python/commit/cc4a64b98d37adb656304de7a75fcf435a7b642e))
+
 ## [1.49.0](https://github.com/albert-labs/albert-python/compare/v1.48.0...v1.49.0) (2026-08-27)
 
 

@@ -74,6 +74,22 @@ def test_generate_sds_unpacks_formula(client: Albert, seeded_products: list[Inve
         pytest.skip("Tenant SDS lookups are missing language, state, product, or legal entity")
 
     formula = seeded_products[0]
+    intended_use = None
+    try:
+        intended_use_options = client.sds.get_field_options(
+            entity=SDSDataEntity.INTENDED_USE, region=region
+        )
+    except AlbertClientError:
+        intended_use_options = SDSFieldOptions(display=False)
+    if intended_use_options.display and isinstance(intended_use_options.data, list):
+        intended_use = next(
+            (
+                item["value"]
+                for item in intended_use_options.data
+                if isinstance(item, dict) and item.get("value") is not None
+            ),
+            None,
+        )
     sds = SDSRequest(
         albert_id=formula.id,
         region=region,
@@ -81,6 +97,7 @@ def test_generate_sds_unpacks_formula(client: Albert, seeded_products: list[Inve
         product_type=_first_code(products),
         physical_state=_first_code(states),
         legal_entity=entities[0].value,
+        intended_use=intended_use,
     )
     try:
         result = client.sds.generate_sds(sds=sds)
