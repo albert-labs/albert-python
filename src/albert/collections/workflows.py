@@ -178,6 +178,11 @@ class WorkflowCollection(BaseCollection):
 
         Notes
         -----
+        When a group is identified by ``id``, the SDK resolves setpoint ``sequence`` row
+        ids from that Data Template or Parameter Group before create. Do not supply
+        ``sequence`` on [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint]
+        objects.
+
         Returned workflows carry an empty ``parameter_group_setpoints`` list
         whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
         fetch the full setpoints.
