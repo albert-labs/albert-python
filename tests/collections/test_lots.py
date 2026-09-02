@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from contextlib import suppress
+from uuid import uuid4
 
 import pytest
 
@@ -80,6 +81,7 @@ def test_update(
     )
     lot.storage_location = new_storage_location
     lot.owner = [second_user]
+    lot.external_barcode_id = str(uuid4())
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
@@ -87,6 +89,7 @@ def test_update(
     assert updated_lot.storage_location.id == new_storage_location.id
     assert updated_lot.owner is not None
     assert any(o.id == second_user.id for o in updated_lot.owner)
+    assert updated_lot.external_barcode_id == lot.external_barcode_id
 
 
 def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
