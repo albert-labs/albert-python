@@ -1,7 +1,8 @@
 import pytest
 
 from albert import Albert
-from albert.resources.workflows import Workflow
+from albert.resources.workflows import Workflow, WorkflowSearchItem
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 
@@ -26,3 +27,87 @@ def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
 
     r = client.workflows.create(workflows=wf)
     assert r[0].id == seeded_workflows[0].id
+
+
+def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
+    """Test search returns WorkflowSearchItem results with WFL ids."""
+    results = list(client.workflows.search(max_items=10))
+    assert results, "Expected at least one workflow search result"
+    for item in results:
+        assert isinstance(item, WorkflowSearchItem)
+        assert item.id.startswith("WFL")
+        assert item.name
+
+
+def test_workflow_search_by_text(
+    client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]
+):
+    """Test text search scoped to seed_prefix finds seeded workflows."""
+    seeded_ids = {wf.id for wf in seeded_workflows}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.workflows.search(text=seed_prefix, max_items=100)
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected at least one seeded workflow in text search results"
+
+
+def test_workflow_search_by_ids(client: Albert, seeded_workflows: list[Workflow]):
+    """Test search by workflow ids returns seeded workflows."""
+    seeded_ids = {wf.id for wf in seeded_workflows}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.workflows.search(ids=[wf.id for wf in seeded_workflows])
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected at least one seeded workflow in id search results"
+    assert {item.id for item in hits}.issubset(seeded_ids)
+
+
+def test_workflow_search_hydrate(
+    client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]
+):
+    """Test hydrating a search hit returns a full Workflow."""
+    seeded_ids = {wf.id for wf in seeded_workflows}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.workflows.search(text=seed_prefix, max_items=100)
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected at least one seeded workflow in search results"
+
+    hydrated = hits[0].hydrate()
+    assert isinstance(hydrated, Workflow)
+    assert hydrated.id == hits[0].id
+    assert hydrated.name == hits[0].name
+
+
+def test_workflow_search_by_parameter_groups(
+    client: Albert,
+    seed_prefix: str,
+    seeded_workflows: list[Workflow],
+):
+    """Test search by parameter group name scoped to seeded workflow ids."""
+    wf = client.workflows.get_by_id(id=seeded_workflows[0].id)
+    assert wf.parameter_group_setpoints, "Seeded workflow should have parameter groups"
+    group_name = wf.parameter_group_setpoints[0].parameter_group_name
+
+    seeded_ids = {item.id for item in seeded_workflows}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.workflows.search(
+                text=seed_prefix,
+                parameter_groups=group_name,
+                max_items=100,
+            )
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected at least one seeded workflow matching parameter group filter"
