@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.51.0](https://github.com/albert-labs/albert-python/compare/v1.50.0...v1.51.0) (2026-09-02)
+
+
+### Features
+
+* **workflows:** add search method ([#694](https://github.com/albert-labs/albert-python/issues/694)) ([1b2f1e9](https://github.com/albert-labs/albert-python/commit/1b2f1e92a6932f1a730eb1c6f49529963f35fb25))
+
+
+### Bug Fixes
+
+* **lots:** include external_barcode_id in update patch ([#716](https://github.com/albert-labs/albert-python/issues/716)) ([a36e2a1](https://github.com/albert-labs/albert-python/commit/a36e2a11d2f17c0e32066124de0180fcfd4dc98d))
+
 ## [1.50.0](https://github.com/albert-labs/albert-python/compare/v1.49.0...v1.50.0) (2026-08-31)
 
 
