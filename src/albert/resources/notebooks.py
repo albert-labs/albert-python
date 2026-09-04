@@ -507,8 +507,8 @@ class NotebookSearchItem(BaseAlbertModel):
     notebook_id: NotebookId | None = Field(default=None, alias="notebookId")
     """The ID of the notebook containing the matching block (format ``NTB...``)."""
 
-    project_id: ProjectId | None = Field(default=None, alias="projectId")
-    """The ID of the project the notebook belongs to (format ``PRO...``)."""
+    project_id: str | None = Field(default=None, alias="projectId")
+    """The notebook parent entity ID returned by search (often a project, but may be a task or template)."""
 
     block_type: str | None = Field(default=None, alias="blockType")
     """The type of the matching block (for example, ``paragraph``, ``ketcher``, or ``table``)."""
