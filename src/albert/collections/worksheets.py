@@ -8,7 +8,7 @@ from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.resources.acls import ACLContainer
 from albert.resources.custom_templates import CustomTemplate
@@ -147,7 +147,7 @@ class WorksheetCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        project_id: ProjectId | None = None,
+        project_id: SearchProjectId | None = None,
         sheet_id: str | None = None,
         tags: str | list[str] | None = None,
         albert_id: str | list[str] | None = None,
@@ -185,8 +185,9 @@ class WorksheetCollection(BaseCollection):
         ----------
         text : str, optional
             Free-text query matched against formula fields.
-        project_id : ProjectId, optional
+        project_id : SearchProjectId, optional
             Scope the search to a Project (format ``PRO...``).
+            The ``PRO`` prefix is stripped before the request is sent.
         sheet_id : str, optional
             Filter to formulas on a given Sheet.
         tags : str or list[str], optional
