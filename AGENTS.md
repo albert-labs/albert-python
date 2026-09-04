@@ -56,6 +56,27 @@ pagination, resource naming, deprecations, releases, and testing edge cases.
 - Search result model naming: see `OPINIONS.md`.
 - Keep API payloads in wire format (camelCase) via `Field(alias=...)` and `model_dump(by_alias=True, mode="json", exclude_none=True)`.
 
+### Reuse shared enums and types
+
+Before typing a field as a bare `str` (or declaring a new local enum/model), check
+`src/albert/core/shared/` for an existing definition. Common cross-resource concepts
+already live there:
+
+- `enums.py` — `Status` (active/inactive), `OrderBy` (asc/desc), `SecurityClass`.
+- `models/base.py` — `EntityLink`, `EntityLinkWithName`, `AuditFields`, `LocalizedNames`.
+- `types.py` — `MetadataItem`, `SerializeAsEntityLink`.
+
+This applies to search items too (e.g. `status` on a `{Entity}SearchItem` is
+`Status | None`, not `str | None`), so wire values stay consistent and invalid values
+fail validation instead of passing through silently.
+
+**Reuse only on an exact match.** Use a shared enum/type only when it covers exactly
+what the field requires: the same value set and the same semantics. Do not force-fit
+`Status` onto a field whose lifecycle has more or different states, and do not add
+members to a shared enum just to make one field fit. When the match is not exact, use
+`str` (for open-ended values) or a resource-specific enum (for a fixed but different
+value set).
+
 ### Pydantic `extra` on resource models
 
 `BaseAlbertModel` does not set `extra`. Pydantic's default is `extra="ignore"`: undeclared
