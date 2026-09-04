@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import NotebookId, SynthesisId
+from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
-from albert.resources.synthesis import ReactantValues, RowSequence, Synthesis
+from albert.resources.synthesis import (
+    ReactantValues,
+    RowSequence,
+    Synthesis,
+    SynthesisSearchItem,
+)
 
 
 class SynthesisCollection(BaseCollection):
@@ -60,6 +69,8 @@ class SynthesisCollection(BaseCollection):
         Create a synthesis record for a notebook Ketcher block.
     get_by_id(id, include_recommendations=False, include_predictions=False, version=None) -> Synthesis
         Get a single synthesis record by its ID.
+    search(...) -> Iterator[SynthesisSearchItem]
+        Search for synthesis records matching the given filters, returning lightweight hits.
     update(synthesis) -> Synthesis
         Update an existing synthesis record.
     update_canvas_data(synthesis_id, smiles, data, png) -> Synthesis
@@ -184,6 +195,132 @@ class SynthesisCollection(BaseCollection):
             params=params,
         )
         return Synthesis(**response.json())
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        created_by: str | list[str] | None = None,
+        created_by_name: str | list[str] | None = None,
+        smiles: str | list[str] | None = None,
+        product_created: str | list[str] | None = None,
+        chemical_name: str | list[str] | None = None,
+        cas: str | list[str] | None = None,
+        reactant_name: str | list[str] | None = None,
+        reactant_cas: str | list[str] | None = None,
+        product_name: str | list[str] | None = None,
+        product_cas: str | list[str] | None = None,
+        project_id: str | list[str] | None = None,
+        inventory_id: str | list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[SynthesisSearchItem]:
+        """Search for synthesis records matching the given filters.
+
+        Returns lightweight
+        [`SynthesisSearchItem`][albert.resources.synthesis.SynthesisSearchItem] hits, best for
+        free-text lookups and pulling IDs. Results are returned as a lazily paginated
+        iterator. Pass a hit's ID to
+        [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id] to fetch the
+        fully populated [`Synthesis`][albert.resources.synthesis.Synthesis].
+
+        !!! example
+            ```python
+            hits = client.synthesis.search(text="amide coupling", max_items=10)
+            first = next(iter(hits))
+            first.name
+            # 'Amide coupling'
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against synthesis names and metadata.
+        created_by : str or list[str], optional
+            Filter by creator user ID(s).
+        created_by_name : str or list[str], optional
+            Filter by creator display name(s).
+        smiles : str or list[str], optional
+            Filter by SMILES structure(s).
+        product_created : str or list[str], optional
+            Filter by product-created flag(s).
+        chemical_name : str or list[str], optional
+            Filter by chemical name(s).
+        cas : str or list[str], optional
+            Filter by CAS number(s).
+        reactant_name : str or list[str], optional
+            Filter by reactant name(s).
+        reactant_cas : str or list[str], optional
+            Filter by reactant CAS number(s).
+        product_name : str or list[str], optional
+            Filter by product name(s).
+        product_cas : str or list[str], optional
+            Filter by product CAS number(s).
+        project_id : str or list[str], optional
+            Filter by Project ID(s) (format ``PRO...``).
+        inventory_id : str or list[str], optional
+            Filter by linked Inventory ID(s) (format ``INV...``).
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        source_field : str or list[str], optional
+            Restrict which fields are returned on each search hit.
+        sort_by : str, optional
+            Attribute to sort results by.
+        order : OrderBy, optional
+            The order in which to sort results (``asc`` or ``desc``).
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matching items.
+
+        Returns
+        -------
+        Iterator[SynthesisSearchItem]
+            A lazily paginated iterator of matching lightweight synthesis hits.
+        """
+        params: dict[str, Any] = {
+            "text": text,
+            "createdBy": ensure_list(created_by),
+            "createdByName": ensure_list(created_by_name),
+            "smiles": ensure_list(smiles),
+            "productCreated": ensure_list(product_created),
+            "chemicalName": ensure_list(chemical_name),
+            "cas": ensure_list(cas),
+            "reactantName": ensure_list(reactant_name),
+            "reactantCas": ensure_list(reactant_cas),
+            "productName": ensure_list(product_name),
+            "productCas": ensure_list(product_cas),
+            "projectId": ensure_list(project_id),
+            "inventoryId": ensure_list(inventory_id),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "sourceField": ensure_list(source_field),
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [SynthesisSearchItem.model_validate(x) for x in items],
+        )
 
     @validate_call
     def update_canvas_data(
