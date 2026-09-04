@@ -12,6 +12,7 @@ from pandas import DataFrame
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import Status
 from albert.core.shared.identifiers import (
     CustomTemplateId,
     LinkId,
@@ -518,7 +519,7 @@ class NotebookSearchItem(BaseAlbertModel):
     name: str | None = Field(default=None)
     """The notebook name, when indexed."""
 
-    status: str | None = Field(default=None)
+    status: Status | None = Field(default=None)
     """The notebook status."""
 
     created: AuditFields | None = Field(default=None, alias="Created")
