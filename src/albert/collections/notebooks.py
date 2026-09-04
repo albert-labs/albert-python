@@ -12,7 +12,13 @@ from albert.core.base import BaseAlbertModel
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import NotebookId, ProjectId, SynthesisId, TaskId
+from albert.core.shared.identifiers import (
+    NotebookId,
+    ProjectId,
+    SearchProjectId,
+    SynthesisId,
+    TaskId,
+)
 from albert.exceptions import AlbertException
 from albert.resources.files import FileNamespace
 from albert.resources.notebooks import (
@@ -172,7 +178,7 @@ class NotebookCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        project_id: ProjectId | None = None,
+        project_id: SearchProjectId | None = None,
         sort_by: str | None = None,
         order: OrderBy | None = None,
         max_items: int | None = None,
@@ -198,8 +204,9 @@ class NotebookCollection(BaseCollection):
         ----------
         text : str, optional
             Free-text search term matched against block content.
-        project_id : ProjectId, optional
+        project_id : SearchProjectId, optional
             Scope the search to notebooks in the given project (format ``PRO...``).
+            The ``PRO`` prefix is stripped before the request is sent.
         sort_by : str, optional
             Field to sort on.
         order : OrderBy, optional
