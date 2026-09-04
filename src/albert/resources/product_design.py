@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import InventoryId
 
 
 class CasLevelSubstance(BaseAlbertModel):
@@ -212,3 +213,45 @@ class UnpackedProductDesign(BaseAlbertModel):
         default=None, alias="normalizedCasList"
     )
     """The CAS substances with their normalized proportions in the product."""
+
+
+class ProductDesignSearchInventoryLine(BaseAlbertModel):
+    """A single ingredient row on a [`ProductDesignSearchItem`][albert.resources.product_design.ProductDesignSearchItem]."""
+
+    id: InventoryId | None = Field(default=None)
+    """The Inventory ID of the ingredient (format ``INV...``)."""
+
+    name: str | None = Field(default=None)
+    """The name of the ingredient."""
+
+
+class ProductDesignSearchTag(BaseAlbertModel):
+    """A tag attached to a formula hit on the product design grid."""
+
+    tag_id: str | None = Field(default=None, alias="tagId")
+    """The Tag ID (format ``TAG...``)."""
+
+    tag_name: str | None = Field(default=None, alias="tagName")
+    """The name of the tag."""
+
+
+class ProductDesignSearchItem(BaseAlbertModel):
+    """A lightweight formula hit returned by product design grid search.
+
+    Returned by
+    [`search`][albert.collections.product_design.ProductDesignCollection.search],
+    this carries only summary fields for fast listing rather than the full
+    formula. To retrieve the complete formula, pass ``id`` to
+    [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]."""
+
+    id: InventoryId | None = Field(default=None, alias="albertId")
+    """The Inventory ID of the formula (format ``INV...``)."""
+
+    name: str | None = Field(default=None)
+    """The display name of the formula."""
+
+    inventory: list[ProductDesignSearchInventoryLine] | None = Field(default=None)
+    """The ingredient rows of the formula, when returned."""
+
+    tags: list[ProductDesignSearchTag] | None = Field(default=None)
+    """The tags attached to the formula, when returned."""
