@@ -1,11 +1,15 @@
+from collections.abc import Iterator
 from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import ReportId
-from albert.resources.reports import FullAnalyticalReport, ReportInfo
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ProjectId, ReportId
+from albert.core.utils import ensure_list
+from albert.resources.reports import FullAnalyticalReport, ReportInfo, ReportSearchItem
 
 
 class ReportCollection(BaseCollection):
@@ -59,6 +63,8 @@ class ReportCollection(BaseCollection):
         Run an analytics report and return its results.
     get_datascience_report(report_type_id, input_data=None) -> ReportInfo
         Run a datascience report and return its results.
+    search(...) -> Iterator[ReportSearchItem]
+        Search for saved reports matching the given filters.
     get_full_report(report_id) -> FullAnalyticalReport
         Get a saved report by its ID, with configuration and data.
     create_report(report) -> FullAnalyticalReport
@@ -202,8 +208,117 @@ class ReportCollection(BaseCollection):
         )
 
     @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        created_by: str | None = None,
+        project_id: ProjectId | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        report_type: str | list[str] | None = None,
+        created_by_name: str | list[str] | None = None,
+        linked_to: str | list[str] | None = None,
+        shared_with: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[ReportSearchItem]:
+        """Search for saved reports matching the given filters.
+
+        Returns lightweight, partial [`ReportSearchItem`][albert.resources.reports.ReportSearchItem]
+        results. Call ``hydrate()`` on a result to fetch the fully populated
+        [`FullAnalyticalReport`][albert.resources.reports.FullAnalyticalReport].
+
+        All filters are optional; with no arguments this iterates over all saved
+        reports you can access.
+
+        !!! example
+            ```python
+            for hit in client.reports.search(text="solubility", max_items=25):
+                print(hit.id, hit.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Full-text search query.
+        created_by : str, optional
+            Filter by creator User ID.
+        project_id : ProjectId, optional
+            Filter to reports scoped to a project (format ``PRO...``).
+        facet_text : str, optional
+            Facet text to search for.
+        facet_field : str, optional
+            Facet field to filter on.
+        contains_field : str or list[str], optional
+            Fields to search inside.
+        contains_text : str or list[str], optional
+            Values to search for within the ``contains_field``.
+        report_type : str or list[str], optional
+            Filter by report type name(s).
+        created_by_name : str or list[str], optional
+            Filter by creator display name(s).
+        linked_to : str or list[str], optional
+            Filter by linked entity or project ID(s).
+        shared_with : str or list[str], optional
+            Filter by user(s) the report is shared with.
+        source_field : str or list[str], optional
+            Restrict which fields are returned in the response.
+        additional_field : str or list[str], optional
+            Request additional fields from the search index.
+        sort_by : str, optional
+            Field to sort by.
+        order : OrderBy, optional
+            Sort order (``asc`` or ``desc``).
+        max_items : int, optional
+            Maximum number of items to return in total. If None, fetches all available items.
+
+        Returns
+        -------
+        Iterator[ReportSearchItem]
+            An iterator of matching partial (unhydrated) report results.
+        """
+        payload: dict[str, Any] = {
+            "text": text,
+            "createdBy": created_by,
+            "projectId": project_id,
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "reportType": ensure_list(report_type),
+            "createdByName": ensure_list(created_by_name),
+            "linkedTo": ensure_list(linked_to),
+            "sharedWith": ensure_list(shared_with),
+            "sourceField": ensure_list(source_field),
+            "additionalField": ensure_list(additional_field),
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            method="POST",
+            json=payload,
+            max_items=max_items,
+            deserialize=lambda items: [
+                ReportSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
+        )
+
+    @validate_call
     def get_full_report(self, *, report_id: ReportId) -> FullAnalyticalReport:
         """Get a saved analytical report by its ID.
+
+        To find saved reports without knowing their IDs, use
+        [`search`][albert.collections.reports.ReportCollection.search].
 
         !!! example
             ```python
