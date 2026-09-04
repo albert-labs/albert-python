@@ -20,7 +20,7 @@ from albert.core.shared.identifiers import (
     SynthesisId,
     TaskId,
 )
-from albert.core.shared.models.base import BaseResource, EntityLink
+from albert.core.shared.models.base import AuditFields, BaseResource, EntityLink
 from albert.exceptions import AlbertException
 from albert.resources.acls import ACL, ACLContainer
 
@@ -487,6 +487,45 @@ class ListBlock(BaseBlock):
 
     content: ListContent
     """The list entries and style."""
+
+
+class NotebookSearchItem(BaseAlbertModel):
+    """A block-level notebook search hit.
+
+    Returned by
+    [`search`][albert.collections.notebooks.NotebookCollection.search],
+    each hit represents a single matching content block rather than a full
+    notebook. Use
+    [`get_by_id`][albert.collections.notebooks.NotebookCollection.get_by_id]
+    or [`get_block_by_id`][albert.collections.notebooks.NotebookCollection.get_block_by_id]
+    to retrieve full notebook content."""
+
+    block_id: str | None = Field(default=None, alias="blockId")
+    """The ID of the matching block."""
+
+    notebook_id: NotebookId | None = Field(default=None, alias="notebookId")
+    """The ID of the notebook containing the matching block (format ``NTB...``)."""
+
+    project_id: ProjectId | None = Field(default=None, alias="projectId")
+    """The ID of the project the notebook belongs to (format ``PRO...``)."""
+
+    block_type: str | None = Field(default=None, alias="blockType")
+    """The type of the matching block (for example, ``paragraph``, ``ketcher``, or ``table``)."""
+
+    content: dict[str, Any] | None = Field(default=None)
+    """The block payload. The shape varies by block type."""
+
+    name: str | None = Field(default=None)
+    """The notebook name, when indexed."""
+
+    status: str | None = Field(default=None)
+    """The notebook status."""
+
+    created: AuditFields | None = Field(default=None, alias="Created")
+    """Audit information for when the notebook was created."""
+
+    updated: AuditFields | None = Field(default=None, alias="Updated")
+    """Audit information for when the notebook was last updated."""
 
 
 class NotebookLink(BaseAlbertModel):
