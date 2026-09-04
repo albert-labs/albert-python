@@ -68,6 +68,27 @@ def test_data_column_get_all_by_ids(client: Albert, seeded_data_columns: list[Da
     assert_valid_data_column_items(results)
 
 
+def test_data_column_search(
+    client: Albert, seed_prefix: str, seeded_data_columns: list[DataColumn]
+):
+    """Test search finds seeded data columns and hits hydrate to full DataColumn."""
+    seeded_ids = {dc.id for dc in seeded_data_columns}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.data_columns.search(text=seed_prefix, max_items=50)
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected seeded data columns in search results"
+    hit = hits[0]
+    assert hit.id in seeded_ids
+
+    hydrated = hit.hydrate()
+    assert isinstance(hydrated, DataColumn)
+    assert hydrated.id == hit.id
+
+
 def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):
     name = seeded_data_columns[0].name
     dc = client.data_columns.get_by_name(name=name)
