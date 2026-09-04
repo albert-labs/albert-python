@@ -68,9 +68,14 @@ already live there:
 
 This applies to search items too (e.g. `status` on a `{Entity}SearchItem` is
 `Status | None`, not `str | None`), so wire values stay consistent and invalid values
-fail validation instead of passing through silently. If the API returns a value the
-shared enum lacks, add the member to the shared enum rather than widening the field to
-`str`. Only use a plain `str` when the field's values are genuinely open-ended.
+fail validation instead of passing through silently.
+
+**Reuse only on an exact match.** Use a shared enum/type only when it covers exactly
+what the field requires: the same value set and the same semantics. Do not force-fit
+`Status` onto a field whose lifecycle has more or different states, and do not add
+members to a shared enum just to make one field fit. When the match is not exact, use
+`str` (for open-ended values) or a resource-specific enum (for a fixed but different
+value set).
 
 ### Pydantic `extra` on resource models
 
