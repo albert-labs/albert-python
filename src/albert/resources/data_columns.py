@@ -3,6 +3,7 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import Status
 from albert.core.shared.identifiers import DataColumnId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem
@@ -55,7 +56,7 @@ class DataColumnSearchItemDataTemplate(BaseAlbertModel):
     name: str | None = None
     """The name of the data template."""
 
-    status: str | None = None
+    status: Status | None = None
     """The status of the data template."""
 
 
@@ -76,7 +77,7 @@ class DataColumnSearchItem(BaseAlbertModel, HydrationMixin[DataColumn]):
     name: str | None = None
     """The name of the data column."""
 
-    status: str | None = None
+    status: Status | None = None
     """The status of the data column."""
 
     created_by_name: str | None = Field(default=None, alias="createdByName")
