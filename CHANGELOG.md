@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.52.0](https://github.com/albert-labs/albert-python/compare/v1.51.0...v1.52.0) (2026-09-04)
+
+
+### Features
+
+* **data_columns:** add search support ([#720](https://github.com/albert-labs/albert-python/issues/720)) ([b2d7ded](https://github.com/albert-labs/albert-python/commit/b2d7ded6b0380b5a8987fabb30a9d68cf0862145))
+* **sheets:** add reorder_columns for worksheet column order ([#714](https://github.com/albert-labs/albert-python/issues/714)) ([605e049](https://github.com/albert-labs/albert-python/commit/605e04968f5ed88aee9a75c27e1c7c9b0475aa6a))
+
 ## [1.51.0](https://github.com/albert-labs/albert-python/compare/v1.50.0...v1.51.0) (2026-09-02)
 
 

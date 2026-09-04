@@ -4,4 +4,4 @@ from albert.core.auth.sso import AlbertSSOClient
 
 __all__ = ["Albert", "AsyncAlbert", "AlbertClientCredentials", "AlbertSSOClient"]
 
-__version__ = "1.51.0"
+__version__ = "1.52.0"
