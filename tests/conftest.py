@@ -761,7 +761,9 @@ def seeded_notebooks(
 ):
     def _seed(nb):
         seed = client.notebooks.create(notebook=nb)
-        seed.blocks = generate_notebook_block_seeds()  # generate each iteration for new block ids
+        seed.blocks = generate_notebook_block_seeds(
+            seed_prefix=seed_prefix
+        )  # generate each iteration for new block ids
         return client.notebooks.update_block_content(notebook=seed)
 
     seeded = _pmap(

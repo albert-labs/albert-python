@@ -26,7 +26,7 @@ def seeded_notebook(
 ) -> Iterator[Notebook]:
     notebook = generate_notebook_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects)[0]
     seeded = client.notebooks.create(notebook=notebook)
-    seeded.blocks = generate_notebook_block_seeds()
+    seeded.blocks = generate_notebook_block_seeds(seed_prefix=seed_prefix)
     yield client.notebooks.update_block_content(notebook=seeded)
     client.notebooks.delete(id=seeded.id)
 
@@ -118,11 +118,11 @@ def test_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Noteboo
             for hit in client.notebooks.search(
                 text=seed_prefix, project_id=nb.parent_id, max_items=50
             )
-            if hit.notebook_id in seeded_ids
+            if hit.notebook_id in seeded_ids and hit.block_id
         ]
     )
     assert hits, "Expected at least one notebook search hit"
-    assert any(hit.notebook_id == nb.id and hit.block_id for hit in hits)
+    assert any(hit.notebook_id == nb.id for hit in hits)
 
 
 def test_get_block_by_id(client: Albert, seeded_notebooks: list[Notebook]):

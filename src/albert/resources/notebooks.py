@@ -513,7 +513,7 @@ class NotebookSearchItem(BaseAlbertModel):
     block_type: str | None = Field(default=None, alias="blockType")
     """The type of the matching block (for example, ``paragraph``, ``ketcher``, or ``table``)."""
 
-    content: dict[str, Any] | None = Field(default=None)
+    content: Any | None = Field(default=None)
     """The block payload. The shape varies by block type."""
 
     name: str | None = Field(default=None)
