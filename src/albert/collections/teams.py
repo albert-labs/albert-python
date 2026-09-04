@@ -1,15 +1,16 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import TeamId, UserId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
-from albert.resources.teams import Team, TeamMember
+from albert.resources.teams import Team, TeamMember, TeamSearchItem
 from albert.resources.users import User
 
 
@@ -46,6 +47,8 @@ class TeamCollection(BaseCollection):
 
     Methods
     -------
+    search(...) -> Iterator[TeamSearchItem]
+        Search teams with free text and filters, returning partial items.
     get_all(name, exact_match, created_by, updated_by, user_id, max_items) -> Iterator[Team]
         Lists all teams with optional filters.
     get_by_id(id) -> Team
@@ -81,6 +84,86 @@ class TeamCollection(BaseCollection):
             return user.id
         return user
 
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        status: str | None = None,
+        team_id: str | list[str] | None = None,
+        search_field: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[TeamSearchItem]:
+        """Search for teams matching the given filters.
+
+        Returns partial (unhydrated)
+        [`TeamSearchItem`][albert.resources.teams.TeamSearchItem] entities, best for
+        free-text lookups and pulling IDs. Results are returned lazily as an
+        iterator that pages through matches on demand. Call ``hydrate()`` on an item
+        to fetch its full [`Team`][albert.resources.teams.Team]. For exact name
+        listing, use [`get_all`][albert.collections.teams.TeamCollection.get_all].
+
+        !!! example
+            ```python
+            for item in client.teams.search(text="Coatings", max_items=10):
+                print(item.id, item.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against team fields.
+        status : str, optional
+            Filter by team status.
+        team_id : str or list[str], optional
+            Filter by Team ID(s) (format ``TEM...``).
+        search_field : str or list[str], optional
+            Restrict which indexed fields the free-text query searches.
+        source_field : str or list[str], optional
+            Restrict which fields are returned on each search hit.
+        additional_field : str or list[str], optional
+            Additional fields to include on each search hit.
+        sort_by : str, optional
+            Attribute to sort results by.
+        order : OrderBy, optional
+            The order in which to sort results (``asc`` or ``desc``).
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matching items.
+
+        Returns
+        -------
+        Iterator[TeamSearchItem]
+            A lazy iterator of matching partial teams. Call ``hydrate()`` on an
+            item to fetch its full [`Team`][albert.resources.teams.Team].
+        """
+        payload: dict[str, Any] = {
+            "text": text,
+            "status": status,
+            "teamId": ensure_list(team_id),
+            "searchField": ensure_list(search_field),
+            "sourceField": ensure_list(source_field),
+            "additionalField": ensure_list(additional_field),
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            method="POST",
+            json=payload,
+            max_items=max_items,
+            deserialize=lambda items: [
+                TeamSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
+        )
+
     def get_all(
         self,
         *,
@@ -92,6 +175,9 @@ class TeamCollection(BaseCollection):
         max_items: int | None = None,
     ) -> Iterator[Team]:
         """List all teams with optional filters.
+
+        Best for exact name listing. For free-text search, use
+        [`search`][albert.collections.teams.TeamCollection.search].
 
         !!! example
             ```python
