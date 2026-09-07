@@ -90,6 +90,11 @@ def test_ensure_lot_id_display_format():
 def test_ensure_interval_id():
     assert ensure_interval_id("ROW123") == "ROW123"
     assert ensure_interval_id("ROW123XROW456") == "ROW123XROW456"
+    assert ensure_interval_id("ROW123XROW456XROW789") == "ROW123XROW456XROW789"
+    assert ensure_interval_id("default") == "default"
+    assert ensure_interval_id("WFL375962") == "WFL375962"
+    assert ensure_interval_id("V1a9Km2xL") == "V1a9Km2xL"
+
     with pytest.raises(ValueError, match="IntervalId cannot be empty"):
         ensure_interval_id("")
 
@@ -97,20 +102,14 @@ def test_ensure_interval_id():
 
     assert ensure_row_id("row123Xrow456") == "ROW123XROW456"
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
-        ensure_interval_id("ROW123XROW456XROW789")
-
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="IntervalId .* is invalid"):
         ensure_interval_id("123")
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="IntervalId .* is invalid"):
         ensure_interval_id("123X456")
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="IntervalId .* is invalid"):
         ensure_interval_id("ROW123XROW456X")
-
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
-        ensure_interval_id("ROW123XROW456XROW789")
 
 
 @pytest.mark.parametrize(

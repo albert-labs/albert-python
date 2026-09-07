@@ -54,6 +54,21 @@ class WorkerJobMetadata(BaseAlbertModel):
     s3_output_key: str | None = Field(default=None, alias="s3OutputKey")
     """The S3 key for the job's output file."""
 
+    albert_id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the entity the job operates on (e.g. a task id)."""
+
+    block_id: str | None = Field(default=None, alias="blockId")
+    """The block id when the job targets a task block."""
+
+    s3_url: str | None = Field(default=None, alias="s3Url")
+    """The S3 key for an interval-combinations input file."""
+
+    new_workflow_id: str | None = Field(default=None, alias="newWorkflowId")
+    """The workflow id assigned to the block for this generation run."""
+
+    old_workflow_id: str | None = Field(default=None, alias="oldWorkflowId")
+    """The previous workflow id, when regenerating combinations after a workflow swap."""
+
 
 class WorkerJobCreateRequest(BaseAlbertModel):
     """Request payload for creating a new worker job."""

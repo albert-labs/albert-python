@@ -62,8 +62,8 @@ class Interval(BaseAlbertModel):
         high = Interval(value="60", unit={"id": "UNI9999999"})
         ```"""
 
-    value: str | None = Field(default=None)
-    """The value of this interval. For Special parameters (Equipment, Consumables, Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters this is a plain scalar string (e.g. ``"23"``). Required."""
+    value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of this interval. For Special parameters (Equipment, Consumables, Templates) this is the entity ID or link (e.g. ``"INVC191778"`` or ``{"id": "INVC191778", "name": "..."}``). For Normal parameters this is a plain scalar string (e.g. ``"23"``). May be empty when the backend returns an unset interval slot."""
 
     name: str | None = Field(default=None)
     """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters."""
@@ -75,8 +75,8 @@ class Interval(BaseAlbertModel):
 
     @model_validator(mode="after")
     def validate_interval(self) -> Interval:
-        if not self.value:
-            raise ValueError("Interval: 'value' is required.")
+        if self.value is None or self.value == {}:
+            return self
         if self.unit and not getattr(self.unit, "id", None):
             raise ValueError("Interval: 'Unit.id' is required.")
         return self
@@ -394,7 +394,7 @@ class Workflow(BaseResource):
     """The Albert ID of the workflow (``WFL...``). Set when a workflow is created or retrieved from the platform."""
 
     block_mapping: str | None = Field(default=None, alias="blockMapping")
-    """Read-only / informational. When a Workflow is returned in the context of a block, this is hydrated for convenience. See Also --------"""
+    """Caller-supplied correlation key on ``POST /workflows/bulk`` tying each created workflow to its block position (e.g. ``"0"``, ``"1"``). Also returned on read for convenience."""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)
@@ -408,11 +408,18 @@ class Workflow(BaseResource):
             for parameter_setpoint in parameter_group_setpoint.parameter_setpoints:
                 if parameter_setpoint.intervals is not None:
                     for interval in parameter_setpoint.intervals:
+                        interval_value = interval.value
+                        if isinstance(interval_value, dict):
+                            interval_value = interval_value.get("id") or interval_value.get("name")
+                        elif hasattr(interval_value, "id"):
+                            interval_value = interval_value.id
+                        elif interval_value is not None and not isinstance(interval_value, str):
+                            interval_value = str(interval_value)
                         self._interval_parameters.append(
                             IntervalParameter(
                                 interval_param_name=parameter_setpoint.name,
                                 interval_id=interval.row_id,
-                                interval_value=interval.value,
+                                interval_value=interval_value,
                                 interval_unit=interval.unit.name if interval.unit else None,
                             )
                         )

@@ -180,6 +180,7 @@ class FileCollection(BaseCollection):
         content_type: str,
         generic: bool = False,
         category: FileCategory | None = None,
+        metadata: list[dict[str, str]] | None = None,
     ) -> str:
         """Get a temporary signed URL for uploading a file.
 
@@ -211,6 +212,9 @@ class FileCollection(BaseCollection):
             files. Defaults to False.
         category : FileCategory | None, optional
             The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
+        metadata : list[dict[str, str]] | None, optional
+            Key/value metadata entries (e.g. ``[{"key": "sizeInMB", "value": "0.008640"}]``)
+            included in the presigned signature. Defaults to None.
 
         Returns
         -------
@@ -226,6 +230,7 @@ class FileCollection(BaseCollection):
                     namespace=namespace,
                     content_type=content_type,
                     category=category,
+                    metadata=metadata,
                 )
             ]
         )
@@ -245,6 +250,7 @@ class FileCollection(BaseCollection):
         content_type: str,
         generic: bool = False,
         category: FileCategory | None = None,
+        metadata: list[dict[str, str]] | None = None,
     ) -> None:
         """Sign and upload a file to Albert in one step.
 
@@ -281,6 +287,8 @@ class FileCollection(BaseCollection):
             files. Defaults to False.
         category : FileCategory | None, optional
             The category of the file (e.g. ``SDS``, ``OTHER``). Defaults to None.
+        metadata : list[dict[str, str]] | None, optional
+            Key/value metadata entries forwarded to the sign call. Defaults to None.
 
         Returns
         -------
@@ -292,5 +300,6 @@ class FileCollection(BaseCollection):
             content_type=content_type,
             generic=generic,
             category=category,
+            metadata=metadata,
         )
         requests.put(upload_url, data=data, headers={"Content-Type": content_type})

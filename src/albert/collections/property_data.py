@@ -451,7 +451,8 @@ class PropertyDataCollection(BaseCollection):
         }
 
         response = self.session.get(url=self.base_path, params=params)
-        return CheckPropertyData(response.json())
+        results = [CheckPropertyData(**x) for x in response.json()]
+        return results[0]
 
     @validate_call
     def get_all_task_properties(

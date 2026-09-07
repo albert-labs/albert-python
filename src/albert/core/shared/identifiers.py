@@ -161,16 +161,26 @@ def ensure_interval_id(id: str) -> str:
     if not id:
         raise ValueError("IntervalId cannot be empty")
 
-    # Check if it matches ROW# or ROW#XROW# pattern
-    parts = id.upper().split("X")
-    if len(parts) > 2:
-        raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    if id == "default":
+        return id
 
+    if id.upper().startswith("WFL"):
+        if len(id) <= 3:
+            raise ValueError(f"IntervalId {id} is invalid.")
+        return id
+
+    if len(id) == 9 and not id.upper().startswith("ROW") and not id.upper().startswith("WFL"):
+        return id
+
+    parts = id.split("X")
     for part in parts:
-        if not part.startswith("ROW") or not part[3:].isdigit():
-            raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+        if not part.upper().startswith("ROW") or not part[3:].isdigit():
+            raise ValueError(
+                f"IntervalId {id} is invalid. Must be a ROW chain, WFL id, "
+                f"9-character barcode, or 'default'"
+            )
 
-    return id.upper()
+    return id
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]
