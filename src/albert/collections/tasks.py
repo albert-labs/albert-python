@@ -31,6 +31,7 @@ from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.attachments import AttachmentCategory
 from albert.resources.data_templates import ImportMode
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
@@ -56,6 +57,18 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     resolve_attachment,
 )
+
+
+class _BlockCombinationsPaginator(AlbertPaginator):
+    """KEY-mode paginator for GET /tasks/{id}/blocks/{blockId}/combinations.
+
+    The envelope lists items under ``combinations``, not ``Items``. ``lastKey`` is
+    omitted when exhausted; a page may under-return because of DynamoDB's 1MB cap,
+    so completion is inferred from ``lastKey``, not page size.
+    """
+
+    def _response_items(self, data: dict[str, Any]) -> list:
+        return data.get("combinations") or []
 
 
 class TaskCollection(BaseCollection):
@@ -124,6 +137,8 @@ class TaskCollection(BaseCollection):
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
         Swap the Workflow assigned to a Block.
+    get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem]
+        Get the child-workflow combinations of a block.
     import_results(...) -> BaseTask
         Import measured results into a Property task from a file or attachment.
     get_history(id, ...) -> TaskHistory
@@ -328,6 +343,53 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=url, json=patch)
+
+    @validate_call
+    def get_block_combinations(
+        self, *, task_id: TaskId, block_id: BlockId, max_items: int | None = None
+    ) -> Iterator[IntervalCombinationItem]:
+        """Get the child-workflow combinations of a task block.
+
+        Use this instead of any combinations array embedded on the task or block.
+        That embedded array is empty once the block has 500 or more combinations.
+
+        Results are returned as a lazily paginated iterator. Do not infer the end
+        of results from page size: a page can under-return while more combinations
+        remain.
+
+        !!! example
+            ```python
+            combos = client.tasks.get_block_combinations(
+                task_id="TASFOR1", block_id="BLK1"
+            )
+            [(c.id, c.interval_barcode) for c in combos]
+            # [('WFL999', 'OhI8ap0HY')]
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block whose combinations to list (format ``BLK...``).
+        max_items : int, optional
+            Maximum number of combinations to return. If None, iterates over all
+            combinations.
+
+        Returns
+        -------
+        Iterator[IntervalCombinationItem]
+            A lazily paginated iterator of combinations. After iteration,
+            ``has_more`` is True when ``max_items`` stopped the iterator and more
+            combinations remain.
+        """
+        return _BlockCombinationsPaginator(
+            mode=PaginationMode.KEY,
+            path=f"{self.base_path}/{task_id}/blocks/{block_id}/combinations",
+            session=self.session,
+            max_items=max_items,
+            deserialize=lambda items: [IntervalCombinationItem(**item) for item in items],
+        )
 
     @validate_call
     def remove_block(self, *, task_id: TaskId, block_id: BlockId) -> None:

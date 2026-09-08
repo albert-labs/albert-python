@@ -308,6 +308,12 @@ class Block(BaseAlbertModel):
     )
     """Read-only internal mapping of parameter quantities consumed by the block."""
 
+    job_id: str | None = Field(default=None, alias="jobId", exclude=True)
+    """The worker job generating this block's child workflows, when one has been posted (format ``JOB...``). Serialized as ``jobId``."""
+
+    job_state: str | None = Field(default=None, alias="jobState", exclude=True)
+    """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
+
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.
         # Workflow and DataTemplate are both lists of length one, which is annoying to

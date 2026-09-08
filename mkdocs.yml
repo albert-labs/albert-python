@@ -223,6 +223,7 @@ nav:
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Interval Combinations: resources/interval_combinations.md
           - Label Templates: resources/label_templates.md
           - Links: resources/links.md
           - Lists: resources/lists.md

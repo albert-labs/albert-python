@@ -18,6 +18,7 @@ from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
 from albert.resources._mixins import HydrationMixin
+from albert.resources.interval_combinations import IntervalCombinationItem
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.units import Unit
@@ -395,6 +396,21 @@ class Workflow(BaseResource):
 
     block_mapping: str | None = Field(default=None, alias="blockMapping")
     """Caller-supplied correlation key on workflow bulk create, used to tie each created workflow to a block position (e.g. ``"0"``, ``"1"``). Also hydrated on read when a Workflow is returned in the context of a block."""
+
+    combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
+    """Number of child-workflow combinations on this workflow when it is a block's FINAL workflow. Always present (including ``0``) on flag-ON reads. The embedded ``combinations`` array is empty at 500 or more; use [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations] to list them."""
+
+    # GET /tasks/{id}/blocks/{blockId} spells this Combinations; POST /tasks/multi and
+    # GET /tasks/multi/{id} spell it Combination. Both keys are permanent. Serialize as
+    # Combination so writes and GET-multi match. Prefer get_block_combinations when the
+    # count is 500 or more: the embedded array is then empty.
+    combinations: list[IntervalCombinationItem] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("Combinations", "Combination"),
+        serialization_alias="Combination",
+        exclude=True,
+    )
+    """Child-workflow combinations embedded on a block's FINAL workflow. Empty at 500 or more combinations. Read ``Combinations`` or ``Combination``; serialized as ``Combination``."""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)
