@@ -252,6 +252,7 @@ def test_task_get_history(client: Albert, seeded_tasks):
     assert isinstance(task_history.items, list)
 
 
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
 def test_get_and_set_block_rules(
     client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
 ):
