@@ -234,6 +234,7 @@ def prepare_curve_input_attachment(
                 f"curve-input/{data_template_id}/{column_id}/{uuid.uuid4().hex[:10]}{suffix}"
             )
 
+    upload_content_type = "text/csv" if "csv" in normalized_extensions else None
     resolved_attachment_id = AttachmentId(
         resolve_attachment(
             attachment_collection=attachment_collection,
@@ -243,6 +244,7 @@ def prepare_curve_input_attachment(
             allowed_extensions=normalized_extensions,
             note_text=None,
             upload_key=upload_key,
+            content_type=upload_content_type,
         )
     )
 
