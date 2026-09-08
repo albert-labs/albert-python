@@ -1,4 +1,7 @@
-from pydantic import Field
+from enum import Enum
+from typing import Any
+
+from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 
@@ -40,3 +43,122 @@ class IntervalCombinationItem(BaseAlbertModel):
 
     interval_row_key: str | None = Field(default=None, alias="intervalRowKey")
     """Legacy ROW-chain key (e.g. ``ROW3XROW7``). Serialized as ``intervalRowKey``."""
+
+
+class RuleOperator(str, Enum):
+    """Comparison operator used to evaluate a rule condition against a parameter value.
+
+    Note: Distinct from `parameter_groups.Operator` (which uses ``neq`` and has
+    ``between``) and `targets.ComparisonOperator` (which lacks ``ne`` and has
+    ``in_set``). Defined resource-specifically per AGENTS.md exact-match rule.
+    """
+
+    GT = "gt"
+    LT = "lt"
+    EQ = "eq"
+    GTE = "gte"
+    LTE = "lte"
+    NE = "ne"
+
+
+class OverrideAction(str, Enum):
+    """Action to apply for a combination override."""
+
+    SKIP = "skip"
+    UNSKIP = "unskip"
+
+
+class RuleCondition(BaseAlbertModel):
+    """A single condition within an exclusion rule.
+
+    References a parameter group or data template, a parameter, a parameter row,
+    and a comparison operator and threshold value.
+    """
+
+    parameter_group_id: str = Field(alias="prgId")
+    """Parameter group or data template ID (format ``PRG...`` or ``DAT...``)."""
+
+    parameter_id: str = Field(alias="prmId")
+    """Parameter ID (format ``PRM...``)."""
+
+    row_id: str | None = Field(default=None, alias="rowId")
+    """Parameter row ID within the workflow (format ``ROW...``)."""
+
+    operator: RuleOperator
+    """Comparison operator used to evaluate this condition."""
+
+    value: str | float | int
+    """Threshold value to compare against."""
+
+    unit_id: str | None = Field(default=None, alias="unitId")
+    """Unit ID for the threshold value (format ``UNI...``)."""
+
+    name: str | None = None
+    """Display name of the parameter."""
+
+
+class ExclusionRule(BaseAlbertModel):
+    """An exclusion rule composed of one or more conditions.
+
+    All conditions within a rule must match (AND) for the rule to trigger.
+    A combination is excluded if any rule matches (OR).
+    """
+
+    id: str | None = None
+    """Server-assigned rule ID (UUID). Assigned when persisted."""
+
+    name: str | None = None
+    """Human-readable label for the rule."""
+
+    conditions: list[RuleCondition] = Field(default_factory=list)
+    """List of conditions that must all be satisfied for this rule to trigger."""
+
+
+class CombinationOverride(BaseAlbertModel):
+    """A manual skip or unskip override for a specific combination condition.
+
+    Keyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),
+    which can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+    """
+
+    id: str | None = None
+    """Server-assigned override ID (UUID). Assigned when persisted."""
+
+    key: str
+    """Compound key identifying the parameter-row pair(s) being overridden."""
+
+    action: OverrideAction
+    """Action to apply (``OverrideAction.SKIP`` or ``OverrideAction.UNSKIP``)."""
+
+    is_manual: bool | None = Field(default=None, alias="isManual")
+    """Whether the override was manually added."""
+
+
+class BlockRules(BaseAlbertModel):
+    """Combination rules and overrides for a task block.
+
+    Returned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
+    and [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
+    """
+
+    task_id: str = Field(alias="taskId")
+    """The task ID (format ``TAS...``)."""
+
+    block_id: str = Field(alias="blockId")
+    """The block ID (format ``BLK...``)."""
+
+    rules: list[ExclusionRule] = Field(default_factory=list)
+    """Combination rules configured on this block."""
+
+    overrides: list[CombinationOverride] = Field(default_factory=list)
+    """Combination overrides configured on this block."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unwrap_rules(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            rules = data.get("rules")
+            if isinstance(rules, dict) and "items" in rules:
+                data = dict(data)
+                data["rules"] = rules["items"]
+        return data

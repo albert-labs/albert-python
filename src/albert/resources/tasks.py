@@ -17,6 +17,7 @@ from albert.core.shared.types import (
 )
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_templates import DataTemplate
+from albert.resources.interval_combinations import CombinationOverride, ExclusionRule
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.tagged_base import BaseTaggedResource
@@ -313,6 +314,12 @@ class Block(BaseAlbertModel):
 
     job_state: str | None = Field(default=None, alias="jobState", exclude=True)
     """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
+
+    rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
+    """Combination exclusion rules for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during `create_with_combinations`. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+
+    overrides: list[CombinationOverride] | None = Field(default=None, exclude=True)
+    """Combination overrides for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during `create_with_combinations`. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.

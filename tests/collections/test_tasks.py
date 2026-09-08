@@ -1,6 +1,14 @@
 import pytest
 
 from albert import Albert
+from albert.resources.interval_combinations import (
+    BlockRules,
+    CombinationOverride,
+    ExclusionRule,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
@@ -242,3 +250,73 @@ def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workf
 def test_task_get_history(client: Albert, seeded_tasks):
     task_history = client.tasks.get_history(id=seeded_tasks[0].id)
     assert isinstance(task_history.items, list)
+
+
+def test_get_and_set_block_rules(
+    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+):
+    """Test getting and setting block combination rules and overrides."""
+    task = next(x for x in seeded_tasks if isinstance(x, BatchTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        # Initially empty
+        initial = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert isinstance(initial, BlockRules)
+        assert initial.rules == []
+        assert initial.overrides == []
+
+        # Set rules and overrides
+        rule = ExclusionRule(
+            name="Test Exclusion Rule",
+            conditions=[
+                RuleCondition(
+                    parameter_group_id="PRG1",
+                    parameter_id="PRM1",
+                    operator=RuleOperator.GT,
+                    value=50,
+                )
+            ],
+        )
+        override = CombinationOverride(
+            key="PRG1#PRM1#ROW1",
+            action=OverrideAction.SKIP,
+        )
+        updated = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[rule],
+            overrides=[override],
+        )
+        assert isinstance(updated, BlockRules)
+        assert len(updated.rules) == 1
+        assert updated.rules[0].name == "Test Exclusion Rule"
+        assert len(updated.rules[0].conditions) == 1
+        assert updated.rules[0].conditions[0].operator == RuleOperator.GT
+        assert len(updated.overrides) == 1
+        assert updated.overrides[0].action == OverrideAction.SKIP
+
+        # Fetch again to verify persistence
+        fetched = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert len(fetched.rules) == 1
+        assert fetched.rules[0].name == "Test Exclusion Rule"
+        assert len(fetched.overrides) == 1
+        assert fetched.overrides[0].action == OverrideAction.SKIP
+
+        # Clear rules and overrides
+        cleared = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[],
+            overrides=[],
+        )
+        assert cleared.rules == []
+        assert cleared.overrides == []
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)

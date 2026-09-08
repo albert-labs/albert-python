@@ -42,7 +42,16 @@ class IntervalParameter(BaseAlbertModel):
     """The value of this interval. A string for Normal parameters (e.g. ``"25"``), or an object with an ``id`` for Special parameters."""
 
     interval_unit: str | None = Field(default=None)
-    """The unit name for this interval value, if any (e.g. ``"C"``). See Also --------"""
+    """The unit name for this interval value, if any (e.g. ``"C"``)."""
+
+    parameter_group_id: str | None = Field(default=None)
+    """The parameter group or data template ID (format ``PRG...`` or ``DAT...``)."""
+
+    parameter_id: str | None = Field(default=None)
+    """The parameter ID (format ``PRM...``)."""
+
+    parameter_short_name: str | None = Field(default=None)
+    """The short name of the intervalized parameter."""
 
 
 class Interval(BaseAlbertModel):
@@ -423,13 +432,17 @@ class Workflow(BaseResource):
         for parameter_group_setpoint in self.parameter_group_setpoints:
             for parameter_setpoint in parameter_group_setpoint.parameter_setpoints:
                 if parameter_setpoint.intervals is not None:
+                    param_name = parameter_setpoint.name or parameter_setpoint.short_name
                     for interval in parameter_setpoint.intervals:
                         self._interval_parameters.append(
                             IntervalParameter(
-                                interval_param_name=parameter_setpoint.name,
+                                interval_param_name=param_name,
                                 interval_id=interval.row_id,
                                 interval_value=interval.value,
                                 interval_unit=interval.unit.name if interval.unit else None,
+                                parameter_group_id=parameter_group_setpoint.id,
+                                parameter_id=parameter_setpoint.parameter_id,
+                                parameter_short_name=parameter_setpoint.short_name,
                             )
                         )
         return self
@@ -485,10 +498,27 @@ class Workflow(BaseResource):
         for param_name, param_value in parameter_values.items():
             matching_interval = None
             for workflow_interval in self._interval_parameters:
-                if workflow_interval.interval_param_name.lower() == param_name.lower() and (
-                    param_value == workflow_interval.interval_value
-                    or str(param_value) == workflow_interval.interval_value
-                ):
+                name_match = (
+                    workflow_interval.interval_param_name
+                    and workflow_interval.interval_param_name.lower() == param_name.lower()
+                ) or (
+                    workflow_interval.parameter_short_name
+                    and workflow_interval.parameter_short_name.lower() == param_name.lower()
+                )
+                if not name_match:
+                    continue
+
+                val = workflow_interval.interval_value
+                val_match = False
+                if param_value == val or str(param_value) == str(val):
+                    val_match = True
+                elif isinstance(val, dict):
+                    if param_value in (val.get("id"), val.get("name")):
+                        val_match = True
+                elif hasattr(val, "id") and param_value == val.id:
+                    val_match = True
+
+                if val_match:
                     matching_interval = workflow_interval
                     break
 
@@ -504,6 +534,94 @@ class Workflow(BaseResource):
             )
 
         return interval_id
+
+    def get_override_key(self, parameter_values: dict[str, Any]) -> str:
+        """Build the compound override key for a set of parameter values.
+
+        Matches each given parameter name and value against the workflow's intervalized
+        parameters and assembles the compound key in the format
+        ``"{groupId}#{paramId}#{intervalRowId}-..."``.
+
+        This key is used with [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
+        to skip or unskip specific combinations on a block.
+
+        Matching on value is case-insensitive to type: ``25`` and ``"25"`` both match an
+        interval value of ``"25"``. Matching on parameter name checks both the parameter's
+        name and short name (case-insensitive). Segments are ordered in the canonical
+        order that the parameters appear in the workflow.
+
+        !!! example
+            ```python
+            workflow.get_override_key({"Temperature": 25, "Speed": 500})
+            # 'PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9'
+            ```
+
+        Parameters
+        ----------
+        parameter_values : dict[str, Any]
+            Mapping of parameter names to their values. Values may be numbers or strings
+            and must match interval values defined on the workflow.
+
+        Returns
+        -------
+        str
+            The compound override key (e.g. ``"PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9"``).
+
+        Raises
+        ------
+        AlbertException
+            If any parameter value does not match a defined interval in the workflow,
+            or if the workflow has not yet been assigned row IDs by the backend.
+        """
+        matched: list[tuple[int, IntervalParameter]] = []
+
+        for param_name, param_value in parameter_values.items():
+            matching_entry = None
+            for idx, workflow_interval in enumerate(self._interval_parameters):
+                name_match = (
+                    workflow_interval.interval_param_name
+                    and workflow_interval.interval_param_name.lower() == param_name.lower()
+                ) or (
+                    workflow_interval.parameter_short_name
+                    and workflow_interval.parameter_short_name.lower() == param_name.lower()
+                )
+                if not name_match:
+                    continue
+
+                val = workflow_interval.interval_value
+                val_match = False
+                if param_value == val or str(param_value) == str(val):
+                    val_match = True
+                elif isinstance(val, dict):
+                    if param_value in (val.get("id"), val.get("name")):
+                        val_match = True
+                elif hasattr(val, "id") and param_value == val.id:
+                    val_match = True
+
+                if val_match:
+                    matching_entry = (idx, workflow_interval)
+                    break
+
+            if matching_entry is None:
+                raise AlbertException(
+                    f"No matching interval found for parameter '{param_name}' with value '{param_value}'"
+                )
+
+            _, item = matching_entry
+            if not item.interval_id:
+                raise AlbertException(
+                    "Workflow has not been assigned interval row IDs by the backend yet. "
+                    "Save the workflow first before building override keys."
+                )
+
+            matched.append(matching_entry)
+
+        # Canonical ordering: sort by position in workflow sequence
+        matched.sort(key=lambda x: x[0])
+        return "-".join(
+            f"{item.parameter_group_id}#{item.parameter_id}#{item.interval_id}"
+            for _, item in matched
+        )
 
 
 class WorkflowParameterSet(BaseAlbertModel):

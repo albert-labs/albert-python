@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import suppress
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,12 @@ from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.attachments import AttachmentCategory
 from albert.resources.data_templates import ImportMode
-from albert.resources.interval_combinations import IntervalCombinationItem
+from albert.resources.interval_combinations import (
+    BlockRules,
+    CombinationOverride,
+    ExclusionRule,
+    IntervalCombinationItem,
+)
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
@@ -139,6 +145,10 @@ class TaskCollection(BaseCollection):
         Swap the Workflow assigned to a Block.
     get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem]
         Get the child-workflow combinations of a block.
+    get_block_rules(task_id, block_id) -> BlockRules
+        Get combination rules and overrides for a block.
+    set_block_rules(task_id, block_id, rules=None, overrides=None) -> BlockRules
+        Set combination rules and overrides for a block.
     import_results(...) -> BaseTask
         Import measured results into a Property task from a file or attachment.
     get_history(id, ...) -> TaskHistory
@@ -389,6 +399,194 @@ class TaskCollection(BaseCollection):
             session=self.session,
             max_items=max_items,
             deserialize=lambda items: [IntervalCombinationItem(**item) for item in items],
+        )
+
+    @validate_call
+    def get_block_rules(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+    ) -> BlockRules:
+        """Get combination rules and overrides for a task block.
+
+        Returns all rules and overrides configured on the specified block.
+        Saving a rule does not by itself change any combinations until
+        `generate_block_combinations` runs.
+
+        !!! example
+            ```python
+            rules_data = client.tasks.get_block_rules(
+                task_id="TASFOR1", block_id="BLK1"
+            )
+            for rule in rules_data.rules:
+                print(rule.name, rule.conditions)
+            for override in rules_data.overrides:
+                print(override.key, override.action)
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block whose rules to retrieve (format ``BLK...``).
+
+        Returns
+        -------
+        BlockRules
+            The rules and overrides for the block.
+        """
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        response = self.session.get(url)
+        data = response.json()
+
+        all_rules = list(data.get("rules", {}).get("items", []))
+        last_key = data.get("rules", {}).get("lastKey")
+        while last_key:
+            next_resp = self.session.get(url, params={"startKey": last_key})
+            next_data = next_resp.json()
+            rules_obj = next_data.get("rules", {})
+            all_rules.extend(rules_obj.get("items", []))
+            last_key = rules_obj.get("lastKey")
+
+        return BlockRules(
+            task_id=data["taskId"],
+            block_id=data["blockId"],
+            rules=all_rules,
+            overrides=data.get("overrides", []),
+        )
+
+    @validate_call
+    def set_block_rules(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        rules: list[ExclusionRule] | None = None,
+        overrides: list[CombinationOverride] | None = None,
+    ) -> BlockRules:
+        """Set combination rules and overrides for a task block.
+
+        Replaces the rules and/or overrides for the specified block.
+        Saving rules does not by itself change any combinations until
+        `generate_block_combinations` runs.
+
+        Follows the unset-is-not-empty convention: omitting ``rules`` (or leaving
+        it as ``None``) leaves the block's existing rules untouched. Passing
+        ``rules=[]`` clears all rules on the block. The same applies to ``overrides``.
+        At least one of ``rules`` or ``overrides`` must be provided.
+
+        !!! example
+            ```python
+            from albert.resources.interval_combinations import (
+                CombinationOverride,
+                ExclusionRule,
+                OverrideAction,
+                RuleCondition,
+                RuleOperator,
+            )
+
+            client.tasks.set_block_rules(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                rules=[
+                    ExclusionRule(
+                        name="Exclude high temp and high speed",
+                        conditions=[
+                            RuleCondition(
+                                parameter_group_id="PRG247776",
+                                parameter_id="PRM100",
+                                row_id="ROW2",
+                                operator=RuleOperator.GTE,
+                                value="90",
+                                unit_id="UNI1",
+                            ),
+                            RuleCondition(
+                                parameter_group_id="PRG247776",
+                                parameter_id="PRM200",
+                                row_id="ROW5",
+                                operator=RuleOperator.GTE,
+                                value="1500",
+                                unit_id="UNI2",
+                            ),
+                        ],
+                    )
+                ],
+                overrides=[
+                    CombinationOverride(
+                        key="PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9",
+                        action=OverrideAction.SKIP,
+                    ),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        block_id : BlockId
+            The block whose rules to set (format ``BLK...``).
+        rules : list[ExclusionRule], optional
+            Replacement rules for the block. If omitted (``None``), existing rules
+            are left untouched. If an empty list (``[]``), existing rules are cleared.
+        overrides : list[CombinationOverride], optional
+            Replacement overrides for the block. If omitted (``None``), existing
+            overrides are left untouched. If an empty list (``[]``), existing
+            overrides are cleared.
+
+        Returns
+        -------
+        BlockRules
+            The updated rules and overrides for the block.
+
+        Raises
+        ------
+        ValueError
+            If both ``rules`` and ``overrides`` are omitted.
+        """
+        if rules is None and overrides is None:
+            raise ValueError("At least one of 'rules' or 'overrides' must be provided.")
+
+        block_payload: dict[str, Any] = {"blockId": block_id}
+
+        if rules is not None:
+            rules_list = []
+            for r in rules:
+                rule_dict: dict[str, Any] = {
+                    "conditions": [
+                        c.model_dump(by_alias=True, mode="json", exclude_none=True)
+                        for c in r.conditions
+                    ]
+                }
+                if r.name is not None:
+                    rule_dict["name"] = r.name
+                rules_list.append(rule_dict)
+            block_payload["rules"] = rules_list
+
+        if overrides is not None:
+            overrides_list = []
+            for o in overrides:
+                override_dict: dict[str, Any] = {
+                    "key": o.key,
+                    "action": o.action.value if isinstance(o.action, Enum) else o.action,
+                }
+                if o.is_manual is not None:
+                    override_dict["isManual"] = o.is_manual
+                overrides_list.append(override_dict)
+            block_payload["overrides"] = overrides_list
+
+        url = f"{self.base_path}/{task_id}/rules"
+        response = self.session.put(url, json=[block_payload])
+        resp_data = response.json()
+
+        block_data = next((item for item in resp_data if item.get("blockId") == block_id), {})
+        return BlockRules(
+            task_id=task_id,
+            block_id=block_id,
+            rules=block_data.get("rules", []),
+            overrides=block_data.get("overrides", []),
         )
 
     @validate_call
