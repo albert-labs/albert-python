@@ -76,11 +76,13 @@ def test_check_for_interval_data(client: Albert, seeded_tasks, seeded_workflows)
         this_workflow = [x for x in seeded_workflows if x.id in [y.id for y in block.workflow]][0]
         if this_workflow.interval_combinations and len(this_workflow.interval_combinations) > 0:
             for interval in this_workflow.interval_combinations:
-                check = client.property_data.check_block_interval_for_data(
+                checks = client.property_data.check_block_interval_for_data(
                     block_id=block.id, task_id=task.id, interval_id=interval.interval_id
                 )
 
-                assert isinstance(check, CheckPropertyData)
+                assert checks
+                for check in checks:
+                    assert isinstance(check, CheckPropertyData)
 
 
 def test_add_to_inv(client: Albert, seeded_inventory, seeded_data_columns):

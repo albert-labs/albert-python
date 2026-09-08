@@ -157,20 +157,33 @@ def ensure_search_inventory_id(id: str) -> str:
 SearchInventoryId = Annotated[str, AfterValidator(ensure_search_inventory_id)]
 
 
+_ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
+_INTERVAL_BARCODE_LEN = 9
+
+
 def ensure_interval_id(id: str) -> str:
     if not id:
         raise ValueError("IntervalId cannot be empty")
 
-    # Check if it matches ROW# or ROW#XROW# pattern
-    parts = id.upper().split("X")
-    if len(parts) > 2:
-        raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    if id.lower() == "default":
+        return "default"
 
-    for part in parts:
-        if not part.startswith("ROW") or not part[3:].isdigit():
-            raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    # ROW chains and WFL ids follow Albert ID uppercasing. Barcodes are
+    # case-sensitive and must not be folded.
+    upper = id.upper()
+    if _ROW_CHAIN_RE.fullmatch(upper):
+        return upper
 
-    return id.upper()
+    if upper.startswith("WFL"):
+        return upper
+
+    if len(id) == _INTERVAL_BARCODE_LEN:
+        return id
+
+    raise ValueError(
+        f"IntervalId {id} is invalid. Must be a ROW chain (ROW# or ROW#XROW#...), "
+        "a WFL id, a 9-character barcode, or 'default'"
+    )
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]

@@ -37,8 +37,8 @@ class IntervalParameter(BaseAlbertModel):
     interval_id: IntervalId | None = Field(default=None)
     """The row ID of this single interval value (e.g. ``"ROW1"``). These are the building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to form a composite interval ID."""
 
-    interval_value: str | None = Field(default=None)
-    """The value of this interval, as a string (e.g. ``"25"``)."""
+    interval_value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of this interval. A string for Normal parameters (e.g. ``"25"``), or an object with an ``id`` for Special parameters."""
 
     interval_unit: str | None = Field(default=None)
     """The unit name for this interval value, if any (e.g. ``"C"``). See Also --------"""
@@ -51,7 +51,7 @@ class Interval(BaseAlbertModel):
     setpoint), each of those values is represented by an [`Interval`][albert.resources.workflows.Interval]. A list of
     them is placed on the parameter's [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] via its ``intervals``
     field. The workflow then carries the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries,
-    one per interval (or per cartesian product of two intervalized parameters).
+    one per interval (or per cartesian product of intervalized parameters).
 
     !!! example
         ```python
@@ -62,11 +62,11 @@ class Interval(BaseAlbertModel):
         high = Interval(value="60", unit={"id": "UNI9999999"})
         ```"""
 
-    value: str | None = Field(default=None)
-    """The value of this interval. For Special parameters (Equipment, Consumables, Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters this is a plain scalar string (e.g. ``"23"``). Required."""
+    value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of this interval. For Normal parameters this is a plain scalar string (e.g. ``"23"``). For Special parameters (Equipment, Consumables, Templates) this may be an object with an ``id`` (and optional ``name``), matching [`ParameterSetpoint.value`][albert.resources.workflows.ParameterSetpoint.value]. Empty intervals (no value) are allowed. The sibling ``name`` field is independent and is not copied from an object value."""
 
     name: str | None = Field(default=None)
-    """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters."""
+    """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
 
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
     """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
@@ -75,8 +75,6 @@ class Interval(BaseAlbertModel):
 
     @model_validator(mode="after")
     def validate_interval(self) -> Interval:
-        if not self.value:
-            raise ValueError("Interval: 'value' is required.")
         if self.unit and not getattr(self.unit, "id", None):
             raise ValueError("Interval: 'Unit.id' is required.")
         return self
@@ -100,13 +98,15 @@ class IntervalCombination(BaseAlbertModel):
     """One realized condition (interval combination) carried by a workflow.
 
     Returned by the workflow endpoint when at least one parameter in the workflow has
-    been intervalized. A combination is either a single intervalized parameter (interval
-    ID ``ROW#``) or the cartesian product of two intervalized parameters (interval ID
-    ``ROW#XROW#``). Its ``interval_id`` is what you pass to the property_data endpoints
-    to read or write results for that specific condition."""
+    been intervalized. A combination is a single intervalized parameter (interval ID
+    ``ROW#``) or the cartesian product of any number of intervalized parameters
+    (``ROW#XROW#X...``). On tenants with increased intervals the id may also be a child
+    workflow id (``WFL...``) or a case-sensitive barcode. Its ``interval_id`` is what you
+    pass to the property_data endpoints to read or write results for that specific
+    condition."""
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
-    """The interval ID this combination is associated with. It has the form ``ROW#`` for a single interval or ``ROW#XROW#`` for a product of two intervals. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns."""
+    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a 9-character barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
 
     interval_params: str | None = Field(default=None, alias="intervalParams")
     """The parameters participating in the interval."""
@@ -322,9 +322,9 @@ class Workflow(BaseResource):
     groups; it does not need to be created via
     [`create`][albert.collections.workflows.WorkflowCollection.create].
 
-    When one or two parameters are intervalized, the workflow acts as a *parent* that carries
+    When parameters are intervalized, the workflow acts as a *parent* that carries
     the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries. Each combination has an interval ID of
-    the form ``ROW1`` (one intervalized parameter) or ``ROW1XROW2`` (product of two). Use
+    the form ``ROW1`` (one intervalized parameter) or ``ROW1XROW2X...`` (product of several). Use
     [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the interval ID for a condition, then use it with the
     property_data endpoints to read or write that condition's results.
 
@@ -394,7 +394,7 @@ class Workflow(BaseResource):
     """The Albert ID of the workflow (``WFL...``). Set when a workflow is created or retrieved from the platform."""
 
     block_mapping: str | None = Field(default=None, alias="blockMapping")
-    """Read-only / informational. When a Workflow is returned in the context of a block, this is hydrated for convenience. See Also --------"""
+    """Caller-supplied correlation key on workflow bulk create, used to tie each created workflow to a block position (e.g. ``"0"``, ``"1"``). Also hydrated on read when a Workflow is returned in the context of a block."""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)

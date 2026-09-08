@@ -121,7 +121,7 @@ class PropertyDataCollection(BaseCollection):
         Get results across all block/inventory combinations of a task.
     check_for_task_data(task_id) -> list[CheckPropertyData]
         Report which block/interval combinations of a task have data.
-    check_block_interval_for_data(block_id, task_id, interval_id) -> CheckPropertyData
+    check_block_interval_for_data(block_id, task_id, interval_id) -> list[CheckPropertyData]
         Report whether one block interval has data.
     add_properties_to_task(...) -> list[TaskPropertyData]
         Add new result values to a task block.
@@ -413,18 +413,19 @@ class PropertyDataCollection(BaseCollection):
     @validate_call
     def check_block_interval_for_data(
         self, *, block_id: BlockId, task_id: TaskId, interval_id: IntervalId
-    ) -> CheckPropertyData:
+    ) -> list[CheckPropertyData]:
         """Report whether one specific block interval has data.
 
         A single-interval version of [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
+        Returns one entry per inventory/lot combination on that interval.
 
         !!! example
             ```python
-            status = client.property_data.check_block_interval_for_data(
+            statuses = client.property_data.check_block_interval_for_data(
                 block_id="BLK1", task_id="TASFOR1", interval_id="ROW1"
             )
-            status.data_exists
-            # True
+            [s.data_exists for s in statuses]
+            # [True]
             ```
 
         Parameters
@@ -435,12 +436,12 @@ class PropertyDataCollection(BaseCollection):
             The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
             The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
-            or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
+            a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------
-        CheckPropertyData
-            The data status of the given block interval.
+        list[CheckPropertyData]
+            The data status of each inventory/lot combination on the given block interval.
         """
         params = {
             "entity": "block",
@@ -451,7 +452,7 @@ class PropertyDataCollection(BaseCollection):
         }
 
         response = self.session.get(url=self.base_path, params=params)
-        return CheckPropertyData(response.json())
+        return [CheckPropertyData(**x) for x in response.json()]
 
     @validate_call
     def get_all_task_properties(

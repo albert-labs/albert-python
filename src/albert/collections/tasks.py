@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,7 @@ from albert.core.shared.identifiers import (
     remove_id_prefix,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertHTTPError
+from albert.exceptions import AlbertHTTPError, NotFoundError
 from albert.resources.attachments import AttachmentCategory
 from albert.resources.data_templates import ImportMode
 from albert.resources.tasks import (
@@ -588,13 +589,14 @@ class TaskCollection(BaseCollection):
             inventory_id,
             lot_id or "None",
         )
-        property_data_collection.bulk_delete_task_data(
-            task_id=task_id,
-            block_id=block_id,
-            inventory_id=inventory_id,
-            lot_id=lot_id,
-            interval_id=interval,
-        )
+        with suppress(NotFoundError):
+            property_data_collection.bulk_delete_task_data(
+                task_id=task_id,
+                block_id=block_id,
+                inventory_id=inventory_id,
+                lot_id=lot_id,
+                interval_id=interval,
+            )
 
         property_data_collection.add_properties_to_task(
             inventory_id=inventory_id,
