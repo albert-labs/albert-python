@@ -3,6 +3,9 @@ from pydantic import Field
 from albert.core.base import BaseAlbertModel
 
 
+# TODO: GET /tasks/{id}/blocks/{blockId}/combinations also returns
+# parentWorkflowId on the response envelope (not per item). Expose it
+# if that id is not already available from the task/block read path.
 class IntervalCombinationItem(BaseAlbertModel):
     """One child-workflow interval combination on a task block.
 
