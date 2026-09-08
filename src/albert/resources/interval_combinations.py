@@ -87,7 +87,7 @@ class RuleCondition(BaseAlbertModel):
     operator: RuleOperator
     """Comparison operator used to evaluate this condition."""
 
-    value: str | float | int
+    value: str | float | int | None = Field(default=None, alias="value")
     """Threshold value to compare against."""
 
     unit_id: str | None = Field(default=None, alias="unitId")
@@ -162,3 +162,70 @@ class BlockRules(BaseAlbertModel):
                 data = dict(data)
                 data["rules"] = rules["items"]
         return data
+
+
+class CombinationParameter(BaseAlbertModel):
+    """A single parameter within a generated combination parameter group."""
+
+    id: str
+    """Parameter ID (format ``PRM...``)."""
+
+    prg_prm_row_id: str | None = Field(default=None, alias="prgPrmRowId")
+    """The parameter sequence row ID within the group."""
+
+    row_id: str = Field(alias="rowId")
+    """The parameter setpoint row ID from the workflow."""
+
+    category: str = Field(default="Normal")
+    """Category of the parameter (``"Normal"`` or ``"Special"``)."""
+
+    short_name: str | None = Field(default=None, alias="shortName")
+    """Short name for the parameter, used for special parameters."""
+
+    required: bool = Field(default=False)
+    """Whether the parameter is required."""
+
+    interval_row_id: str | None = Field(default=None, alias="intervalRowId")
+    """The interval setpoint row ID (format ``ROW...``), or ``None`` if fixed."""
+
+    name: str
+    """Display name of the parameter."""
+
+    value: Any = Field(default=None)
+    """Realized value for this combination."""
+
+    unit: dict[str, Any] | None = Field(default=None, alias="Unit")
+    """Unit definition for the value, if any."""
+
+    is_interval: bool = Field(default=False, alias="isInterval")
+    """Whether this parameter is intervalized in this combination."""
+
+
+class CombinationParameterGroup(BaseAlbertModel):
+    """A parameter group within a generated combination."""
+
+    id: str
+    """Parameter group ID (format ``PRG...`` or ``DAT...``)."""
+
+    prg_sequence: int | None = Field(default=None, alias="prgSequence")
+    """Position sequence of the parameter group in the workflow."""
+
+    row_id: str = Field(alias="rowId")
+    """The group setpoint row ID on the parent workflow."""
+
+    parameters: list[CombinationParameter] = Field(alias="Parameters")
+    """Parameters in this group for this combination."""
+
+
+class CombinationLeaf(BaseAlbertModel):
+    """One realized combination containing its configured parameter groups."""
+
+    parameter_groups: list[CombinationParameterGroup] = Field(alias="ParameterGroups")
+    """The parameter groups defining this combination."""
+
+
+class IntervalCombinationPayload(BaseAlbertModel):
+    """The combinations payload written to S3 to trigger child workflow generation."""
+
+    combinations: list[CombinationLeaf]
+    """The list of combination definitions."""

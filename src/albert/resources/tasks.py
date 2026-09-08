@@ -315,6 +315,14 @@ class Block(BaseAlbertModel):
     job_state: str | None = Field(default=None, alias="jobState", exclude=True)
     """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
 
+    intervals_start_from: Literal["all", "none"] | None = Field(
+        default=None, alias="intervalsStartFrom"
+    )
+    """Mode controlling combination evaluation on this block's workflow (``"all"`` for exclude mode, ``"none"`` for include mode). Omitted when increased intervals is disabled or when the block has no intervals."""
+
+    combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
+    """Total number of interval combinations for this block. Read-only from task responses."""
+
     rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
     """Combination exclusion rules for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during `create_with_combinations`. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
