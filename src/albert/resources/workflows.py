@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import AliasChoices, Field, PrivateAttr, model_validator
@@ -18,7 +18,14 @@ from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
 from albert.resources._mixins import HydrationMixin
-from albert.resources.interval_combinations import IntervalCombinationItem
+from albert.resources.interval_combinations import (
+    CombinationOverride,
+    ExclusionRule,
+    IntervalCombinationItem,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.units import Unit
@@ -300,6 +307,25 @@ class ParameterGroupSetpoints(BaseAlbertModel):
             object.__setattr__(self, "id", self.parameter_group.id)
 
         return self
+
+
+_RULE_OPERATOR_MAP: dict[str, RuleOperator] = {
+    "=": RuleOperator.EQ,
+    "==": RuleOperator.EQ,
+    "eq": RuleOperator.EQ,
+    "!=": RuleOperator.NE,
+    "<>": RuleOperator.NE,
+    "ne": RuleOperator.NE,
+    "neq": RuleOperator.NE,
+    ">": RuleOperator.GT,
+    "gt": RuleOperator.GT,
+    ">=": RuleOperator.GTE,
+    "gte": RuleOperator.GTE,
+    "<": RuleOperator.LT,
+    "lt": RuleOperator.LT,
+    "<=": RuleOperator.LTE,
+    "lte": RuleOperator.LTE,
+}
 
 
 class Workflow(BaseResource):
@@ -638,6 +664,369 @@ class Workflow(BaseResource):
             f"{item.parameter_group_id}#{item.parameter_id}#{item.interval_id}"
             for _, item in matched
         )
+
+    def build_rule_condition(
+        self,
+        parameter: str,
+        operator: RuleOperator | str,
+        value: str | float | int | None = None,
+        *,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> RuleCondition:
+        """Build a rule condition from a parameter name and value.
+
+        Resolves the parameter's group ID, parameter ID, row ID, and unit ID from
+        this workflow's defined setpoints, avoiding the need to manually lookup
+        internal IDs.
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # Simple numeric condition:
+            cond = workflow.build_rule_condition("Temperature", ">=", 90)
+            cond.parameter_group_id
+            # 'PRG247776'
+            cond.parameter_id
+            # 'PRM100'
+            cond.row_id
+            # 'ROW2'
+            ```
+
+        Parameters
+        ----------
+        parameter : str
+            The name, short name, or parameter ID (case-insensitive) of the parameter.
+        operator : RuleOperator or str
+            The comparison operator. Accepts [`RuleOperator`][albert.resources.interval_combinations.RuleOperator]
+            or string shorthand: ``"="``, ``"=="``, ``"!="``, ``">"``, ``">="``, ``"<"``, ``"<="``.
+        value : str, float, int, optional
+            The threshold value to compare against.
+        unit : str, Unit, optional
+            Optional unit constraint (unit name, symbol, ID, or Unit model). If omitted
+            and the parameter defines a unit, that unit ID is used automatically.
+        group : str, optional
+            Parameter group ID (e.g. ``"PRG..."``) or name to disambiguate if multiple
+            groups in the workflow contain a parameter with the same name.
+
+        Returns
+        -------
+        RuleCondition
+            The fully populated rule condition.
+
+        Raises
+        ------
+        AlbertException
+            If no parameter matches, if multiple parameters match and ``group`` is not
+            specified, or if the workflow has not yet been assigned row IDs.
+        ValueError
+            If an invalid operator string is provided.
+        """
+        # Parse operator
+        if isinstance(operator, RuleOperator):
+            parsed_op = operator
+        elif isinstance(operator, str) and operator.lower() in _RULE_OPERATOR_MAP:
+            parsed_op = _RULE_OPERATOR_MAP[operator.lower()]
+        else:
+            valid = list(_RULE_OPERATOR_MAP.keys())
+            raise ValueError(
+                f"Invalid rule operator {operator!r}. Allowed: {valid} or RuleOperator."
+            )
+
+        # Locate parameter in setpoints
+        matching: list[tuple[ParameterGroupSetpoints, ParameterSetpoint]] = []
+        for pg in self.parameter_group_setpoints or []:
+            if group is not None:
+                group_id_match = pg.id and pg.id.lower() == str(group).lower()
+                group_name_match = (
+                    pg.parameter_group_name
+                    and pg.parameter_group_name.lower() == str(group).lower()
+                )
+                if not (group_id_match or group_name_match):
+                    continue
+
+            for sp in pg.parameter_setpoints or []:
+                name_match = bool(sp.name and sp.name.lower() == parameter.lower())
+                short_name_match = bool(
+                    sp.short_name and sp.short_name.lower() == parameter.lower()
+                )
+                p_id_match = bool(sp.parameter_id and sp.parameter_id.lower() == parameter.lower())
+                if name_match or short_name_match or p_id_match:
+                    matching.append((pg, sp))
+
+        if not matching:
+            msg = f"No parameter matching '{parameter}' found in workflow setpoints"
+            if group:
+                msg += f" for group '{group}'"
+            raise AlbertException(msg + ".")
+
+        if len(matching) > 1:
+            groups_found = [pg.id for pg, _ in matching]
+            raise AlbertException(
+                f"Parameter '{parameter}' is ambiguous (found in multiple parameter groups: {groups_found}). "
+                "Please specify the 'group' argument."
+            )
+
+        matched_pg, matched_sp = matching[0]
+
+        row_id = matched_sp.row_id
+        if not row_id:
+            raise AlbertException(
+                "Workflow has not been assigned row IDs by the platform yet. "
+                "Save the workflow first before building rule conditions."
+            )
+
+        # Resolve unit_id
+        unit_id: str | None = None
+        if unit is not None:
+            if hasattr(unit, "id") and getattr(unit, "id", None):
+                unit_id = str(unit.id)
+            elif isinstance(unit, str):
+                if unit.startswith("UNI"):
+                    unit_id = unit
+                elif matched_sp.unit and (
+                    getattr(matched_sp.unit, "name", None) == unit
+                    or getattr(matched_sp.unit, "symbol", None) == unit
+                    or getattr(matched_sp.unit, "id", None) == unit
+                ):
+                    unit_id = getattr(matched_sp.unit, "id", None)
+                else:
+                    for iv in matched_sp.intervals or []:
+                        if iv.unit and (
+                            iv.unit.name == unit
+                            or getattr(iv.unit, "symbol", None) == unit
+                            or iv.unit.id == unit
+                        ):
+                            unit_id = iv.unit.id
+                            break
+                    if unit_id is None:
+                        unit_id = unit
+        elif matched_sp.unit and getattr(matched_sp.unit, "id", None):
+            unit_id = str(matched_sp.unit.id)
+        else:
+            interval_unit_ids = {
+                iv.unit.id
+                for iv in (matched_sp.intervals or [])
+                if iv.unit and getattr(iv.unit, "id", None)
+            }
+            if len(interval_unit_ids) == 1:
+                unit_id = interval_unit_ids.pop()
+
+        # Resolve value representation for Special parameters
+        value_resolved = value
+        if value is not None:
+            if hasattr(value, "id") and getattr(value, "id", None) is not None:
+                value_resolved = getattr(value, "name", None) or value.id
+            elif isinstance(value, dict):
+                value_resolved = (
+                    value.get("name") or value.get("id") or value.get("value") or str(value)
+                )
+            else:
+                for iv in matched_sp.intervals or []:
+                    if value == iv.value or str(value) == str(iv.value):
+                        break
+                    if isinstance(iv.value, dict) and value in (
+                        iv.value.get("id"),
+                        iv.value.get("name"),
+                    ):
+                        value_resolved = iv.value.get("id") or value
+                        break
+                    if hasattr(iv.value, "id") and value == iv.value.id:
+                        value_resolved = iv.value.id
+                        break
+
+        return RuleCondition(
+            parameter_group_id=matched_pg.id,
+            parameter_id=matched_sp.parameter_id,
+            row_id=row_id,
+            operator=parsed_op,
+            value=value_resolved,
+            unit_id=unit_id,
+            name=matched_sp.name or matched_sp.short_name or parameter,
+        )
+
+    def build_exclusion_rule(
+        self,
+        name: str | None = None,
+        *,
+        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
+        parameter: str | None = None,
+        operator: RuleOperator | str | None = None,
+        value: str | float | int | None = None,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> ExclusionRule:
+        """Build an exclusion rule from conditions or parameter criteria.
+
+        Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule].
+        Supports single-condition rules directly via keyword arguments, or compound
+        rules with multiple conditions (evaluated with AND logic).
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # 1. Single condition rule:
+            rule1 = workflow.build_exclusion_rule(
+                name="Exclude cold temperatures",
+                parameter="Temperature",
+                operator="<",
+                value=15,
+            )
+
+            # 2. Multi-condition rule (AND):
+            rule2 = workflow.build_exclusion_rule(
+                name="Crosslinking risk",
+                conditions=[
+                    ("Temperature", ">=", 90),
+                    ("Speed", ">=", 1500),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        name : str, optional
+            A descriptive label for the exclusion rule.
+        conditions : Sequence[RuleCondition or tuple], optional
+            A sequence of [`RuleCondition`][albert.resources.interval_combinations.RuleCondition]
+            objects or tuples of arguments (e.g. ``(parameter, operator, value)``) to be
+            evaluated together with AND logic.
+        parameter : str, optional
+            Parameter name, short name, or ID for a single-condition rule.
+        operator : RuleOperator or str, optional
+            Comparison operator for a single-condition rule.
+        value : str, float, int, optional
+            Threshold value for a single-condition rule.
+        unit : str, Unit, optional
+            Optional unit for a single-condition rule.
+        group : str, optional
+            Optional parameter group ID or name for disambiguation.
+
+        Returns
+        -------
+        ExclusionRule
+            The constructed exclusion rule containing the resolved conditions.
+
+        Raises
+        ------
+        ValueError
+            If neither ``conditions`` nor both ``parameter`` and ``operator`` are provided.
+        AlbertException
+            If any parameter cannot be resolved on the workflow.
+        """
+        parsed_conditions: list[RuleCondition] = []
+
+        if conditions is not None:
+            for c in conditions:
+                if isinstance(c, RuleCondition):
+                    parsed_conditions.append(c)
+                elif isinstance(c, tuple):
+                    if len(c) == 3:
+                        p, o, v = c
+                        parsed_conditions.append(self.build_rule_condition(p, o, v))
+                    elif len(c) == 4:
+                        p, o, v, u = c
+                        parsed_conditions.append(self.build_rule_condition(p, o, v, unit=u))
+                    elif len(c) == 5:
+                        p, o, v, u, g = c
+                        parsed_conditions.append(
+                            self.build_rule_condition(p, o, v, unit=u, group=g)
+                        )
+                    else:
+                        raise ValueError(f"Condition tuple must have 3 to 5 elements, got: {c}")
+                else:
+                    raise TypeError(f"Expected RuleCondition or tuple, got {type(c).__name__}")
+        elif parameter is not None and operator is not None:
+            parsed_conditions.append(
+                self.build_rule_condition(
+                    parameter=parameter,
+                    operator=operator,
+                    value=value,
+                    unit=unit,
+                    group=group,
+                )
+            )
+        else:
+            raise ValueError("Provide either 'conditions' or both 'parameter' and 'operator'.")
+
+        return ExclusionRule(name=name, conditions=parsed_conditions)
+
+    def build_override(
+        self,
+        parameter_values: dict[str, Any],
+        *,
+        action: OverrideAction | str = OverrideAction.SKIP,
+        is_manual: bool | None = None,
+    ) -> CombinationOverride:
+        """Build a combination override from parameter values.
+
+        Matches parameter values to their canonical compound override key using
+        [`get_override_key`][albert.resources.workflows.Workflow.get_override_key] and
+        returns a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride].
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # Skip a specific combination:
+            skip = workflow.build_override(
+                {"Temperature": 25, "Speed": 500},
+                action="skip",
+            )
+
+            # Force-include a combination (in Include Mode):
+            unskip = workflow.build_override(
+                {"Temperature": 25, "Speed": 500},
+                action="unskip",
+                is_manual=True,
+            )
+            ```
+
+        Parameters
+        ----------
+        parameter_values : dict[str, Any]
+            Mapping of parameter names (or short names) to their target interval values.
+        action : OverrideAction or str, default OverrideAction.SKIP
+            The action to apply (``"skip"`` or ``"unskip"``, or an
+            [`OverrideAction`][albert.resources.interval_combinations.OverrideAction]).
+        is_manual : bool, optional
+            Whether the override was manually added (used in Include Mode).
+
+        Returns
+        -------
+        CombinationOverride
+            The constructed combination override with the resolved compound key.
+
+        Raises
+        ------
+        AlbertException
+            If any parameter value does not match an interval defined on the workflow.
+        ValueError
+            If an invalid action string is provided.
+        """
+        key = self.get_override_key(parameter_values)
+        if isinstance(action, str):
+            try:
+                parsed_action = OverrideAction(action.lower())
+            except ValueError:
+                raise ValueError(
+                    f"Invalid override action '{action}'. Allowed: 'skip', 'unskip', or OverrideAction"
+                ) from None
+        else:
+            parsed_action = action
+
+        return CombinationOverride(key=key, action=parsed_action, is_manual=is_manual)
 
 
 class WorkflowParameterSet(BaseAlbertModel):

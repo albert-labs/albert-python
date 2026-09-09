@@ -11,13 +11,6 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
 !!! example "Create a Property Task with exclusion rules and overrides"
     ```python
     from albert import Albert
-    from albert.resources.interval_combinations import (
-        CombinationOverride,
-        ExclusionRule,
-        OverrideAction,
-        RuleCondition,
-        RuleOperator,
-    )
     from albert.resources.tasks import Block, PropertyTask
 
     client = Albert()
@@ -25,8 +18,18 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     # 1. Fetch an existing workflow containing intervalized parameters
     workflow = client.workflows.get_by_id(id="WFL456")
 
-    # 2. Build a compound override key for a specific combination to skip
-    skip_key = workflow.get_override_key({"Temperature": 100, "Speed": 2000})
+    # 2. Build rules and overrides using human-readable parameter names and values
+    rule = workflow.build_exclusion_rule(
+        name="Exclude high heat with high speed",
+        conditions=[
+            ("Temperature", ">=", 90),
+            ("Speed", ">=", 1500),
+        ],
+    )
+    override = workflow.build_override(
+        {"Temperature": 100, "Speed": 2000},
+        action="skip",
+    )
 
     # 3. Create the task with rules, overrides, and automatic combination generation
     task = client.tasks.create_with_combinations(
@@ -38,33 +41,8 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
                     data_template=[{"id": "DAT100"}],
                     workflow=[{"id": workflow.id}],
                     intervals_start_from="all",
-                    rules=[
-                        ExclusionRule(
-                            name="Exclude high heat with high speed",
-                            conditions=[
-                                RuleCondition(
-                                    parameter_group_id="PRG200",
-                                    parameter_id="PRM101",
-                                    operator=RuleOperator.GTE,
-                                    value="90",
-                                    unit_id="UNI1",
-                                ),
-                                RuleCondition(
-                                    parameter_group_id="PRG200",
-                                    parameter_id="PRM102",
-                                    operator=RuleOperator.GTE,
-                                    value="1500",
-                                    unit_id="UNI2",
-                                ),
-                            ],
-                        )
-                    ],
-                    overrides=[
-                        CombinationOverride(
-                            key=skip_key,
-                            action=OverrideAction.SKIP,
-                        ),
-                    ],
+                    rules=[rule],
+                    overrides=[override],
                 )
             ],
         ),
@@ -76,6 +54,15 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     for combo in client.tasks.get_block_combinations(task_id=task.id, block_id=block_id):
         print(combo.id, combo.name, combo.interval_barcode)
     ```
+
+!!! tip "Value-based helpers for rules and overrides"
+    Rule conditions and combination overrides require workflow-local internal IDs (`parameter_group_id`, `parameter_id`, and `row_id`) that change when workflows are saved or updated.
+    
+    Instead of manually resolving internal IDs, use the helper methods on your [`Workflow`][albert.resources.workflows.Workflow] instance:
+    
+    - [`workflow.build_exclusion_rule`][albert.resources.workflows.Workflow.build_exclusion_rule]: Constructs an [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule] with human-readable conditions (e.g. `conditions=[("Temperature", ">=", 90)]`).
+    - [`workflow.build_rule_condition`][albert.resources.workflows.Workflow.build_rule_condition]: Constructs an individual [`RuleCondition`][albert.resources.interval_combinations.RuleCondition] with resolved group, parameter, and row IDs.
+    - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] directly from a dictionary of parameter names and values (e.g. `workflow.build_override({"Temperature": 100, "Speed": 2000}, action="skip")`).
 
 !!! warning "Property Tasks only"
     Child-workflow interval combinations are exclusively supported on [`PropertyTask`][albert.resources.tasks.PropertyTask]. They cannot be created or evaluated on [`BatchTask`][albert.resources.tasks.BatchTask] or [`GeneralTask`][albert.resources.tasks.GeneralTask].
@@ -126,22 +113,31 @@ In this mode:
 !!! example "Create a Property Task in Include Mode with manual overrides"
     ```python
     from albert import Albert
-    from albert.resources.interval_combinations import (
-        CombinationOverride,
-        ExclusionRule,
-        OverrideAction,
-        RuleCondition,
-        RuleOperator,
-    )
     from albert.resources.tasks import Block, PropertyTask
 
     client = Albert()
 
     workflow = client.workflows.get_by_id(id="WFL456")
 
-    # Pick specific parameter combinations to include manually
-    include_key_1 = workflow.get_override_key({"Temperature": 25, "Speed": 500})
-    include_key_2 = workflow.get_override_key({"Temperature": 50, "Speed": 1000})
+    # 1. Define inclusion rule using workflow helper (low temperatures only)
+    rule = workflow.build_exclusion_rule(
+        name="Include low temperature variants",
+        parameter="Temperature",
+        operator="<",
+        value=40,
+    )
+
+    # 2. Pick specific parameter combinations to include manually via build_override
+    override_1 = workflow.build_override(
+        {"Temperature": 25, "Speed": 500},
+        action="unskip",
+        is_manual=True,
+    )
+    override_2 = workflow.build_override(
+        {"Temperature": 50, "Speed": 1000},
+        action="unskip",
+        is_manual=True,
+    )
 
     task = client.tasks.create_with_combinations(
         task=PropertyTask(
@@ -152,34 +148,8 @@ In this mode:
                     data_template=[{"id": "DAT100"}],
                     workflow=[{"id": workflow.id}],
                     intervals_start_from="none",
-                    # Only include combinations where temperature is under 40 °C
-                    rules=[
-                        ExclusionRule(
-                            name="Include low temperature variants",
-                            conditions=[
-                                RuleCondition(
-                                    parameter_group_id="PRG200",
-                                    parameter_id="PRM101",
-                                    operator=RuleOperator.LT,
-                                    value="40",
-                                    unit_id="UNI1",
-                                ),
-                            ],
-                        )
-                    ],
-                    # Manually add specific combinations outside or within the rule
-                    overrides=[
-                        CombinationOverride(
-                            key=include_key_1,
-                            action=OverrideAction.UNSKIP,
-                            is_manual=True,
-                        ),
-                        CombinationOverride(
-                            key=include_key_2,
-                            action=OverrideAction.UNSKIP,
-                            is_manual=True,
-                        ),
-                    ],
+                    rules=[rule],
+                    overrides=[override_1, override_2],
                 )
             ],
         ),
@@ -200,13 +170,6 @@ You can update rules and overrides on an existing task block at any time. Saving
 !!! example "Update block rules and regenerate combinations"
     ```python
     from albert import Albert
-    from albert.resources.interval_combinations import (
-        CombinationOverride,
-        ExclusionRule,
-        OverrideAction,
-        RuleCondition,
-        RuleOperator,
-    )
 
     client = Albert()
     task_id = "TASFOR1"
@@ -218,24 +181,23 @@ You can update rules and overrides on an existing task block at any time. Saving
     print("Existing overrides count:", len(current_rules.overrides))
 
     # 2. Update the block with new rules (and clear previous overrides)
+    # Fetch the block's current workflow to build rules using parameter names
+    task = client.tasks.get_by_id(id=task_id)
+    block = next(b for b in task.blocks if b.id == block_id)
+    workflow = client.workflows.get_by_id(id=block.workflow[0].id)
+
+    new_rule = workflow.build_exclusion_rule(
+        name="Exclude cold temperatures",
+        parameter="Temperature",
+        operator="<",
+        value=15,
+    )
+
     # Combinations are regenerated automatically on Albert Invent by default
     updated_rules = client.tasks.set_block_rules(
         task_id=task_id,
         block_id=block_id,
-        rules=[
-            ExclusionRule(
-                name="Exclude cold temperatures",
-                conditions=[
-                    RuleCondition(
-                        parameter_group_id="PRG200",
-                        parameter_id="PRM101",
-                        operator=RuleOperator.LT,
-                        value="15",
-                        unit_id="UNI1",
-                    )
-                ],
-            )
-        ],
+        rules=[new_rule],
         overrides=[],  # Passing an empty list clears existing overrides
     )
     print("Regeneration status:", updated_rules.job.state)
