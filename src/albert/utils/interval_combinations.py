@@ -276,21 +276,46 @@ def generate_interval_combinations(
     overrides: list[CombinationOverride] | None = None,
     intervals_start_from: Literal["all", "none"] = "all",
 ) -> IntervalCombinationPayload:
-    """Evaluate combination rules and overrides to generate S3 combination definitions.
+    """Calculate interval combinations from a workflow and evaluate rules and overrides.
 
-    Pure, session-free computation engine matching the frontend StreamUltraEngine:
-    1. Expands parameter intervals into the cartesian product.
-    2. Builds canonical compound override keys.
-    3. Evaluates direct overrides (``skip`` / ``unskip``).
-    4. Evaluates exclusion / inclusion rules depending on ``intervals_start_from``.
-    5. Validates the 2,000 combinations hard cap.
+    Pure, session-free computation engine that calculates the active set of combinations:
+    1. Expands parameter intervals into the full cartesian product.
+    2. Builds canonical compound override keys for each combination.
+    3. Evaluates direct overrides (``skip`` / ``unskip``), taking precedence over rules.
+    4. Evaluates exclusion or inclusion rules depending on ``intervals_start_from``:
+       - ``"all"`` (Exclude Mode): Starts with all combinations included; excludes
+         combinations matching any exclusion rule.
+       - ``"none"`` (Include Mode): Starts with no combinations included; includes
+         combinations matching any inclusion rule.
+    5. Enforces the platform safety cap of 2,000 combinations.
+
+    This client-side computation is used internally by
+    [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+    and [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations],
+    and can also be called directly to simulate or preview combinations locally.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.utils.interval_combinations import generate_interval_combinations
+
+        client = Albert()
+        workflow = client.workflows.get_by_id(id="WFL456")
+        payload = generate_interval_combinations(
+            workflow=workflow,
+            intervals_start_from="all",
+        )
+        len(payload.combinations)
+        # 12
+        ```
 
     Parameters
     ----------
     workflow : Workflow or Sequence[ParameterGroupSetpoints] or list[dict]
         The parent workflow or parameter group setpoints containing intervals.
+        Must already have assigned row IDs.
     rules : list[ExclusionRule], optional
-        The combination exclusion/inclusion rules to evaluate.
+        The combination exclusion or inclusion rules to evaluate.
     overrides : list[CombinationOverride], optional
         The combination overrides (skip/unskip) to apply.
     intervals_start_from : {"all", "none"}, default "all"
@@ -299,7 +324,7 @@ def generate_interval_combinations(
     Returns
     -------
     IntervalCombinationPayload
-        The combinations payload ready for S3 upload.
+        The combinations payload containing the calculated combination leaves.
 
     Raises
     ------
@@ -447,7 +472,7 @@ def generate_interval_combinations(
                 sp_seq = _get_field(sp, "sequence", alias="prgPrmRowId")
                 sp_cat_raw = _get_field(sp, "category", default="Normal")
                 sp_cat = (
-                    p_cat_raw.value
+                    sp_cat_raw.value
                     if isinstance(sp_cat_raw, Enum)
                     else str(sp_cat_raw or "Normal")
                 )

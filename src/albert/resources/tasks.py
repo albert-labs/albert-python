@@ -324,10 +324,10 @@ class Block(BaseAlbertModel):
     """Total number of interval combinations for this block. Read-only from task responses."""
 
     rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
-    """Combination exclusion rules for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during `create_with_combinations`. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+    """Combination exclusion rules for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     overrides: list[CombinationOverride] | None = Field(default=None, exclude=True)
-    """Combination overrides for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during `create_with_combinations`. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+    """Combination overrides for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.

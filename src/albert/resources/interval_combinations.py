@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
+from albert.resources.worker_jobs import WorkerJob
 
 
 # TODO: GET /tasks/{id}/blocks/{blockId}/combinations also returns
@@ -153,6 +156,9 @@ class BlockRules(BaseAlbertModel):
     overrides: list[CombinationOverride] = Field(default_factory=list)
     """Combination overrides configured on this block."""
 
+    job: WorkerJob | None = Field(default=None, exclude=True)
+    """Background worker job when combinations are regenerated during [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]."""
+
     @model_validator(mode="before")
     @classmethod
     def _unwrap_rules(cls, data: Any) -> Any:
@@ -225,7 +231,7 @@ class CombinationLeaf(BaseAlbertModel):
 
 
 class IntervalCombinationPayload(BaseAlbertModel):
-    """The combinations payload written to S3 to trigger child workflow generation."""
+    """Payload containing generated combination definitions for a task block."""
 
     combinations: list[CombinationLeaf]
     """The list of combination definitions."""

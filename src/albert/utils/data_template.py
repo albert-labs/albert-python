@@ -6,11 +6,8 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 from albert.collections.attachments import AttachmentCollection
 from albert.collections.files import FileCollection
-from albert.core.logging import logger
 from albert.core.shared.identifiers import AttachmentId, DataColumnId, DataTemplateId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
@@ -28,7 +25,6 @@ from albert.resources.parameter_groups import (
 )
 from albert.resources.tasks import CsvCurveInput, CsvCurveResponse, TaskMetadata
 from albert.resources.worker_jobs import (
-    WORKER_JOB_PENDING_STATES,
     WorkerJob,
     WorkerJobCreateRequest,
     WorkerJobMetadata,
@@ -42,6 +38,7 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     resolve_attachment,
 )
+from albert.utils.worker_jobs import poll_worker_job
 
 if TYPE_CHECKING:
     from albert.core.session import AlbertSession
@@ -415,35 +412,15 @@ def create_curve_import_job(
     if not job_id:
         raise ValueError("Worker job creation did not return an identifier.")
 
-    class _WorkerJobPending(Exception):
-        """Internal sentinel exception indicating the worker job is still running."""
-
-    @retry(
-        stop=stop_after_attempt(_CURVE_JOB_MAX_ATTEMPTS),
-        wait=wait_exponential(min=_CURVE_JOB_POLL_INTERVAL, max=_CURVE_JOB_MAX_WAIT),
-        reraise=True,
+    worker_job = poll_worker_job(
+        session=session,
+        job_id=job_id,
+        max_attempts=_CURVE_JOB_MAX_ATTEMPTS,
+        poll_interval=_CURVE_JOB_POLL_INTERVAL,
+        max_wait=_CURVE_JOB_MAX_WAIT,
+        raise_on_failure=False,
+        job_description=f"Curve data import for template {data_template_id} column {column_id}",
     )
-    def _poll_worker_job() -> WorkerJob:
-        """Poll a worker job status for completion."""
-        status_response = session.get(f"/api/v3/worker-jobs/{job_id}")
-        current_job = WorkerJob.model_validate(status_response.json())
-        state = current_job.state
-
-        if state in WORKER_JOB_PENDING_STATES:
-            logger.info(
-                "Curve data import in progress for template %s column %s",
-                data_template_id,
-                column_id,
-            )
-            raise _WorkerJobPending()
-        return current_job
-
-    try:
-        worker_job = _poll_worker_job()
-    except _WorkerJobPending as exc:
-        raise TimeoutError(
-            f"Worker job {job_id} did not complete within the retry window."
-        ) from exc
 
     is_success = worker_job.state == WorkerJobState.SUCCESSFUL
     if not is_success:

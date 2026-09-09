@@ -543,7 +543,14 @@ class Workflow(BaseResource):
         ``"{groupId}#{paramId}#{intervalRowId}-..."``.
 
         This key is used with [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
-        to skip or unskip specific combinations on a block.
+        to skip or unskip specific combinations on a block when calling
+        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or
+        creating a task via [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
+
+        The workflow instance must already be saved on the platform so that interval row IDs
+        are assigned. You can obtain a saved workflow from
+        [`client.workflows.get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]
+        or from a fetched task block's workflow.
 
         Matching on value is case-insensitive to type: ``25`` and ``"25"`` both match an
         interval value of ``"25"``. Matching on parameter name checks both the parameter's
@@ -552,15 +559,24 @@ class Workflow(BaseResource):
 
         !!! example
             ```python
-            workflow.get_override_key({"Temperature": 25, "Speed": 500})
+            from albert import Albert
+            from albert.resources.interval_combinations import CombinationOverride, OverrideAction
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+            key = workflow.get_override_key({"Temperature": 25, "Speed": 500})
             # 'PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9'
+
+            # Create an override to skip this specific combination:
+            override = CombinationOverride(key=key, action=OverrideAction.SKIP)
             ```
 
         Parameters
         ----------
         parameter_values : dict[str, Any]
-            Mapping of parameter names to their values. Values may be numbers or strings
-            and must match interval values defined on the workflow.
+            Mapping of parameter names (or short names) to their target interval values.
+            Values may be numbers or strings and must match interval setpoint values
+            defined on the workflow.
 
         Returns
         -------
@@ -571,7 +587,7 @@ class Workflow(BaseResource):
         ------
         AlbertException
             If any parameter value does not match a defined interval in the workflow,
-            or if the workflow has not yet been assigned row IDs by the backend.
+            or if the workflow has not yet been assigned row IDs by the platform.
         """
         matched: list[tuple[int, IntervalParameter]] = []
 
