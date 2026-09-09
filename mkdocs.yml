@@ -243,6 +243,7 @@ nav:
           - Roles: resources/roles.md
           - SDS (🧪 Beta): resources/sds.md
           - Smart Datasets (🧪Beta): resources/smart_datasets.md
+          - Smart Projects (🧪Beta): resources/smart_projects.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md

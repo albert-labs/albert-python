@@ -568,7 +568,7 @@ class InventorySearchItem(BaseAlbertModel, HydrationMixin[InventoryItem]):
     Search returns these partial records for speed; they carry the fields most useful
     for lookups, counts, and display rather than the full item. Produced by
     [`search`][albert.collections.inventory.InventoryCollection.search]. Because it mixes
-    in [`HydrationMixin`][albert.resources._mixins.HydrationMixin], calling ``hydrate()`` on a
+    in `HydrationMixin`, calling ``hydrate()`` on a
     bound instance fetches the corresponding fully populated [`InventoryItem`][albert.resources.inventory.InventoryItem]."""
 
     id: str = Field(alias="albertId")
