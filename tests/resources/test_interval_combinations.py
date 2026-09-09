@@ -391,12 +391,21 @@ def test_workflow_build_exclusion_rule():
     # 3. Multi-condition via RuleCondition instances
     c1 = wf.build_rule_condition("Temp", ">=", 90)
     c2 = wf.build_rule_condition("Speed", ">=", 1500)
-    rule3 = wf.build_exclusion_rule(name="Rule 3", conditions=[c1, c2])
+    rule3 = wf.build_rule(name="Rule 3", conditions=[c1, c2])
     assert len(rule3.conditions) == 2
+
+    # 4. Inclusion rule builder alias
+    rule_inc = wf.build_inclusion_rule(
+        name="Include low temp",
+        conditions=[("Temp", "<", 30)],
+    )
+    assert rule_inc.name == "Include low temp"
+    assert len(rule_inc.conditions) == 1
+    assert rule_inc.conditions[0].operator == RuleOperator.LT
 
     # Error when neither conditions nor parameter/operator provided
     with pytest.raises(ValueError, match="Provide either 'conditions'"):
-        wf.build_exclusion_rule(name="Empty")
+        wf.build_rule(name="Empty")
 
 
 def test_workflow_build_override():

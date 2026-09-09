@@ -117,6 +117,10 @@ class ExclusionRule(BaseAlbertModel):
     """List of conditions that must all be satisfied for this rule to trigger."""
 
 
+Rule = ExclusionRule
+"""Alias for [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule]."""
+
+
 class CombinationOverride(BaseAlbertModel):
     """A manual skip or unskip override for a specific combination condition.
 

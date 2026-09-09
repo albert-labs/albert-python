@@ -849,7 +849,7 @@ class Workflow(BaseResource):
             name=matched_sp.name or matched_sp.short_name or parameter,
         )
 
-    def build_exclusion_rule(
+    def build_rule(
         self,
         name: str | None = None,
         *,
@@ -860,11 +860,13 @@ class Workflow(BaseResource):
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> ExclusionRule:
-        """Build an exclusion rule from conditions or parameter criteria.
+        """Build an exclusion or inclusion rule from conditions or parameter criteria.
 
         Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule].
         Supports single-condition rules directly via keyword arguments, or compound
-        rules with multiple conditions (evaluated with AND logic).
+        rules with multiple conditions (evaluated with AND logic). Depending on the block's
+        ``intervals_start_from`` setting, the rule acts as an exclusion rule (in Exclude Mode
+        ``"all"``) or an inclusion rule (in Include Mode ``"none"``).
 
         !!! example
             ```python
@@ -874,15 +876,13 @@ class Workflow(BaseResource):
             workflow = client.workflows.get_by_id(id="WFL456")
 
             # 1. Single condition rule:
-            rule1 = workflow.build_exclusion_rule(
+            rule1 = workflow.build_rule(
                 name="Exclude cold temperatures",
-                parameter="Temperature",
-                operator="<",
-                value=15,
+                conditions=[("Temperature", "<", 15)],
             )
 
-            # 2. Multi-condition rule (AND):
-            rule2 = workflow.build_exclusion_rule(
+            # 2. Multi-condition rule (AND logic):
+            rule2 = workflow.build_rule(
                 name="Crosslinking risk",
                 conditions=[
                     ("Temperature", ">=", 90),
@@ -894,7 +894,7 @@ class Workflow(BaseResource):
         Parameters
         ----------
         name : str, optional
-            A descriptive label for the exclusion rule.
+            A descriptive label for the rule.
         conditions : Sequence[RuleCondition or tuple], optional
             A sequence of [`RuleCondition`][albert.resources.interval_combinations.RuleCondition]
             objects or tuples of arguments (e.g. ``(parameter, operator, value)``) to be
@@ -913,7 +913,7 @@ class Workflow(BaseResource):
         Returns
         -------
         ExclusionRule
-            The constructed exclusion rule containing the resolved conditions.
+            The constructed rule containing the resolved conditions.
 
         Raises
         ------
@@ -921,6 +921,11 @@ class Workflow(BaseResource):
             If neither ``conditions`` nor both ``parameter`` and ``operator`` are provided.
         AlbertException
             If any parameter cannot be resolved on the workflow.
+
+        See Also
+        --------
+        build_exclusion_rule : Semantic alias for Exclude Mode.
+        build_inclusion_rule : Semantic alias for Include Mode.
         """
         parsed_conditions: list[RuleCondition] = []
 
@@ -958,6 +963,56 @@ class Workflow(BaseResource):
             raise ValueError("Provide either 'conditions' or both 'parameter' and 'operator'.")
 
         return ExclusionRule(name=name, conditions=parsed_conditions)
+
+    def build_exclusion_rule(
+        self,
+        name: str | None = None,
+        *,
+        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
+        parameter: str | None = None,
+        operator: RuleOperator | str | None = None,
+        value: str | float | int | None = None,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> ExclusionRule:
+        """Build an exclusion rule for Exclude Mode.
+
+        Semantic alias for [`build_rule`][albert.resources.workflows.Workflow.build_rule].
+        """
+        return self.build_rule(
+            name=name,
+            conditions=conditions,
+            parameter=parameter,
+            operator=operator,
+            value=value,
+            unit=unit,
+            group=group,
+        )
+
+    def build_inclusion_rule(
+        self,
+        name: str | None = None,
+        *,
+        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
+        parameter: str | None = None,
+        operator: RuleOperator | str | None = None,
+        value: str | float | int | None = None,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> ExclusionRule:
+        """Build an inclusion rule for Include Mode.
+
+        Semantic alias for [`build_rule`][albert.resources.workflows.Workflow.build_rule].
+        """
+        return self.build_rule(
+            name=name,
+            conditions=conditions,
+            parameter=parameter,
+            operator=operator,
+            value=value,
+            unit=unit,
+            group=group,
+        )
 
     def build_override(
         self,
