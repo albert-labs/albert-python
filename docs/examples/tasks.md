@@ -2,6 +2,54 @@
 
 Tasks in Albert Invent are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
 
+## Intervals, Rules, and Overrides Overview
+
+When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert Invent manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
+
+### What are intervals?
+
+An **interval** is a discrete setpoint value assigned to a parameter within a workflow. When multiple parameters define intervals:
+
+- **Cartesian Product**: Albert Invent computes all combinations of values across every intervalized parameter. For example, testing 3 temperatures (25 °C, 60 °C, 90 °C) and 2 stir speeds (500 RPM, 1500 RPM) creates \(3 \times 2 = 6\) experimental combinations.
+- **Child Workflows**: Each combination materializes as an independent child workflow record (`WFL...`) linked to the task block.
+- **Interval Barcodes**: Every combination receives a unique, persistent barcode (e.g. `OhI8ap0HY`) that remains stable across rule updates as long as the parameter setpoints are unchanged.
+
+### Starting modes (`intervals_start_from`)
+
+Each task block specifies an `intervals_start_from` strategy that controls the initial baseline before rules and overrides are applied:
+
+- **Exclude Mode (`"all"`, default)**: Starts with the full Cartesian product (all combinations included). Rules and overrides prune out infeasible, unsafe, or unwanted combinations.
+- **Include Mode (`"none"`)**: Starts with zero combinations (an empty set). Rules and overrides selectively pull in combinations, ideal for sparse screening or targeted Designs of Experiment (DoE).
+
+### What are rules?
+
+**Rules** dynamically evaluate combination variants against criteria defined on parameter values:
+
+- **Conditions**: A condition compares a parameter against a threshold using operators (`=`, `!=`, `>`, `>=`, `<`, `<=`).
+- **AND logic within a rule**: All conditions inside a single rule must match for that rule to trigger.
+- **OR logic across rules**: If *any* rule triggers:
+    - In **Exclude Mode** (`"all"`), the combination is excluded from the task.
+    - In **Include Mode** (`"none"`), the combination is included in the task.
+
+### What are overrides?
+
+**Overrides** target a single, specific combination identified by its exact parameter values (e.g. Temperature = 100 °C and Speed = 2000 RPM):
+
+- `skip`: Explicitly excludes the combination.
+- `unskip`: Explicitly keeps or forces the inclusion of the combination.
+- `is_manual=True`: In Include Mode, designates a manually cherry-picked combination.
+- **Precedence**: Overrides are evaluated first and always take precedence over rules. For example, an `unskip` override guarantees a combination is retained even if an exclusion rule would otherwise drop it.
+
+### Value-based helpers
+
+While platform APIs require workflow-local internal IDs (`parameter_group_id`, `parameter_id`, and `row_id`), the Albert Python SDK provides value-based helpers on [`Workflow`][albert.resources.workflows.Workflow] so you can work entirely with human-readable parameter names and values:
+
+- [`workflow.build_exclusion_rule`][albert.resources.workflows.Workflow.build_exclusion_rule]: Assembles an [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule] from single or compound condition criteria.
+- [`workflow.build_rule_condition`][albert.resources.workflows.Workflow.build_rule_condition]: Resolves parameter name, operator, value, and unit into a [`RuleCondition`][albert.resources.interval_combinations.RuleCondition].
+- [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Generates a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] from a parameter-value dictionary.
+
+---
+
 ## Create an intervalized Property task in Exclude Mode
 
 When testing multiple formulation variants or process conditions, a Property Task can evaluate intervals across workflow parameters (such as temperature, speed, or concentration). Each combination of parameter setpoints materializes as a child workflow variant.
