@@ -7,6 +7,7 @@ from albert import Albert
 from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.teams import Team, TeamMember
 from albert.resources.users import User
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("teams")
 
@@ -65,6 +66,25 @@ def test_get_all(client: Albert, seeded_team: Team):
     by_name = list(client.teams.get_all(name=seeded_team.name, exact_match=True))
     assert len(by_name) == 1
     assert by_name[0].id == seeded_team.id
+
+
+def test_search(client: Albert, seed_prefix: str, seeded_team: Team):
+    """Test search finds the seeded team and hits hydrate to a full Team."""
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.teams.search(text=seed_prefix, max_items=50)
+            if item.id == seeded_team.id
+        ]
+    )
+    assert hits, "Expected seeded team in search results"
+    hit = hits[0]
+    assert hit.id == seeded_team.id
+
+    hydrated = hit.hydrate()
+    assert isinstance(hydrated, Team)
+    assert hydrated.id == hit.id
+    assert hydrated.name == seeded_team.name
 
 
 def test_update(client: Albert, seed_prefix: str, second_user: User):
