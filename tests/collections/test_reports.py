@@ -39,9 +39,10 @@ def test_search_reports(
     hit_ids = {hit.id for hit in hits}
     assert expected.id in hit_ids
 
-    hydrated = next(hit for hit in hits if hit.id == expected.id).hydrate()
-    assert isinstance(hydrated, FullAnalyticalReport)
-    assert hydrated.id == expected.id
+    hit = next(item for item in hits if item.id == expected.id)
+    assert hit.name is not None
+    assert seed_prefix in hit.name
+    assert hit.project_id == expected.project_id
 
 
 @pytest.mark.skip(reason="Report Queries not loaded into testing environment yet")
