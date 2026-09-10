@@ -578,10 +578,13 @@ class Workflow(BaseResource):
         parameters and assembles the compound key in the format
         ``"{groupId}#{paramId}#{intervalRowId}-..."``.
 
-        This key is used with [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
+        This key uniquely identifies an individual combination variant in the Cartesian product
+        space. It is used with [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
         to skip or unskip specific combinations on a block when calling
         [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or
         creating a task via [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
+        Because overrides always take precedence over rules, this enables targeting individual
+        variants regardless of general rule evaluation.
 
         The workflow instance must already be saved on the platform so that interval row IDs
         are assigned. You can obtain a saved workflow from
@@ -854,11 +857,22 @@ class Workflow(BaseResource):
     ) -> ExclusionRule:
         """Build a rule from conditions or parameter criteria (🧪 Beta).
 
-        Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule].
+        Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule]
+        using human-readable parameter names and values rather than internal IDs.
         Supports single-condition rules directly via keyword arguments, or compound
-        rules with multiple conditions (evaluated with AND logic). Depending on the block's
-        ``intervals_start_from`` setting, the rule acts as an exclusion rule (in Exclude Mode
-        ``"all"``) or an inclusion rule (in Include Mode ``"none"``).
+        rules with multiple conditions.
+
+        How Rules Function:
+        - **Conditions**: A condition compares a parameter against a threshold using an
+          operator (``=``, ``!=``, ``>``, ``>=``, ``<``, ``<=``).
+        - **AND logic within a rule**: All conditions specified inside this rule must match
+          for the rule to trigger.
+        - **OR logic across rules**: On a task block, if *any* rule triggers, its outcome applies.
+        - **Starting Baseline (`intervals_start_from`)**:
+          - In Exclude Mode (``"all"``, default): The rule acts as an exclusion rule. Any
+            combination satisfying all conditions is pruned/excluded from the task block.
+          - In Include Mode (``"none"``): The rule acts as an inclusion rule. Combinations
+            satisfying all conditions are kept/included in the task block.
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform
@@ -986,9 +1000,23 @@ class Workflow(BaseResource):
     ) -> CombinationOverride:
         """Build a combination override from parameter values (🧪 Beta).
 
-        Matches parameter values to their canonical compound override key using
-        [`get_override_key`][albert.resources.workflows.Workflow.get_override_key] and
-        returns a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride].
+        Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
+        targeting a single specific combination variant by its exact parameter values,
+        resolving the compound key automatically via
+        [`get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+
+        How Overrides Function:
+        - **Targeted Combinations**: Overrides target a single, specific combination in the
+          Cartesian product space (e.g. Temperature = 25 and Speed = 500).
+        - **Actions**:
+          - ``action="skip"``: Explicitly excludes the combination from the task.
+          - ``action="unskip"``: Explicitly keeps or forces the inclusion of the combination.
+        - **Override Precedence**: Overrides are evaluated first and always take precedence over
+          rules. For example, an ``"unskip"`` override guarantees a combination is retained even
+          if an exclusion rule would otherwise drop it.
+        - **Manual Cherry-Picking (`is_manual=True`)**: In Include Mode (``intervals_start_from="none"``),
+          setting ``is_manual=True`` designates a manually cherry-picked combination from an
+          otherwise empty baseline.
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform

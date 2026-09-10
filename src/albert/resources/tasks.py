@@ -318,16 +318,19 @@ class Block(BaseAlbertModel):
     intervals_start_from: Literal["all", "none"] | None = Field(
         default=None, alias="intervalsStartFrom"
     )
-    """Mode controlling combination evaluation on this block's workflow (``"all"`` for exclude mode, ``"none"`` for include mode). Omitted when increased intervals is disabled or when the block has no intervals."""
+    """Baseline mode controlling combination generation on this block's workflow:
+    - Exclude Mode (``"all"``, default): starts with the full Cartesian product (all combinations included). Rules and overrides prune out unwanted variants.
+    - Include Mode (``"none"``): starts with zero combinations (an empty set). Rules and manual overrides selectively pull in combinations, ideal for sparse screening or DoE.
+    Omitted when increased intervals is disabled or when the block has no intervals."""
 
     combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
     """Total number of interval combinations for this block. Read-only from task responses."""
 
     rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
-    """Combination exclusion rules for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+    """Combination rules for this block. Conditions within a single rule use AND logic, while multiple rules use OR logic (excluding combinations in Exclude Mode, including in Include Mode). Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     overrides: list[CombinationOverride] | None = Field(default=None, exclude=True)
-    """Combination overrides for this block. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+    """Combination overrides targeting specific variants on this block by parameter values. Supports ``skip`` (exclude) or ``unskip`` (include) actions, and always takes precedence over rules. In Include Mode, set ``is_manual=True`` to cherry-pick combinations. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.

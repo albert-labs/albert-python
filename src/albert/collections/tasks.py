@@ -255,10 +255,36 @@ class TaskCollection(BaseCollection):
         """Create a Property task and generate interval combinations across all its blocks (🧪 Beta).
 
         Provides an all-in-one method to create a Property task and materialize
-        combination variants for every block:
+        child-workflow combination variants across every task block.
+
+        Intervals, Modes, Rules, and Overrides:
+        - **Intervals and Cartesian Product**: When workflow parameters define discrete
+          setpoints (intervals), Albert computes the Cartesian product across every
+          intervalized parameter. Each combination materializes as an independent child
+          workflow record linked to the task block with a unique, persistent interval barcode.
+        - **Starting Baseline (`intervals_start_from`)**:
+          - Exclude Mode (``"all"``, default): starts with all possible Cartesian product
+            variants active. Rules and overrides prune out infeasible, unsafe, or unwanted
+            combinations.
+          - Include Mode (``"none"``): starts with zero active combinations (an empty set).
+            Rules and overrides selectively pull in combinations, ideal for sparse screening
+            or targeted Designs of Experiment (DoE).
+        - **Rules (Criteria-Based Filtering)**:
+          Rules dynamically evaluate combination variants against criteria defined on parameter
+          values. All conditions within a single rule must match (AND logic). If any rule on the
+          block triggers (OR logic), the combination is excluded (in Exclude Mode) or included
+          (in Include Mode).
+        - **Overrides (Targeted Setpoint Overrides)**:
+          Overrides target a single, specific combination identified by its exact parameter values:
+          ``action="skip"`` explicitly excludes the variant, while ``action="unskip"`` keeps or
+          forces its inclusion. In Include Mode (``"none"``), set ``is_manual=True`` to designate
+          a manually cherry-picked combination. Overrides are evaluated first and always take
+          precedence over rules.
+
+        Execution Steps:
         1. Automatically saves any unsaved [`Workflow`][albert.resources.workflows.Workflow]
            objects defined on the task blocks, preserving block ordering.
-        2. Sets ``intervals_start_from="all"`` (exclude mode) on any blocks where the
+        2. Sets ``intervals_start_from="all"`` (Exclude Mode) on any blocks where the
            mode is not explicitly configured.
         3. Creates the task and saves any configured block rules ([`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule])
            or overrides ([`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]).
@@ -659,6 +685,11 @@ class TaskCollection(BaseCollection):
         and overrides ([`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride])
         currently configured on the specified block.
 
+        Rules evaluate criteria against parameter setpoints (using AND logic within a
+        rule and OR logic across rules) to prune combinations in Exclude Mode or include
+        combinations in Include Mode. Overrides target specific parameter combinations (with
+        ``skip`` or ``unskip`` actions) and always take precedence over rules.
+
         Use this method to inspect existing rules before updating them with
         [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]
         (which automatically regenerates child-workflow combinations by default).
@@ -757,9 +788,24 @@ class TaskCollection(BaseCollection):
     ) -> BlockRules:
         """Set combination rules and overrides for a task block (🧪 Beta).
 
-        Configures or replaces exclusion rules and overrides on the specified block, and
+        Configures or replaces rules and overrides on the specified block, and
         by default immediately recomputes and regenerates child-workflow combinations on
         Albert Invent.
+
+        Rules, Overrides, and Baseline Modes:
+        - **Rules (Criteria-Based Filtering)**:
+          A rule consists of one or more conditions comparing parameter values against
+          thresholds. All conditions within a rule must match (AND logic). If any rule
+          matches (OR logic across rules):
+          - In Exclude Mode (``intervals_start_from="all"``, default), the combination is excluded.
+          - In Include Mode (``intervals_start_from="none"``), the combination is included.
+        - **Overrides (Targeted Setpoint Overrides)**:
+          Overrides target a specific combination variant by its exact parameter values:
+          - ``action=OverrideAction.SKIP``: explicitly excludes the combination.
+          - ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.
+          - In Include Mode (``"none"``), set ``is_manual=True`` to designate a manually
+            cherry-picked combination.
+          - Overrides are evaluated first and always take precedence over rules.
 
         Follows the unset-is-not-empty convention:
         - Omitting ``rules`` (or leaving it as ``None``) leaves existing rules untouched.
@@ -941,6 +987,17 @@ class TaskCollection(BaseCollection):
         Calculates combination variants from the block's workflow, rules, and overrides,
         then launches a background generation job to materialize the child workflows
         on the platform.
+
+        Combination Generation Lifecycle:
+        - **Cartesian Product**: Evaluates combinations across all intervalized workflow parameters
+          starting from the block's baseline mode (``intervals_start_from="all"`` for Exclude Mode,
+          starting with all combinations; or ``"none"`` for Include Mode, starting with an empty set).
+        - **Rules and Overrides**: Applies rules (AND logic within a rule, OR logic across rules)
+          and overrides (which take precedence over rules) to determine active combinations.
+        - **Child Workflows and Barcodes**: Each active combination materializes as an independent
+          child workflow record linked to the task block. Every combination receives a unique,
+          persistent interval barcode that remains stable across rule updates as long as the
+          parameter setpoints are unchanged.
 
         How to set ``old_workflow_id`` across common caller scenarios:
         - **First-time generation** (or retrying after a failed create job): leave

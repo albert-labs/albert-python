@@ -142,10 +142,18 @@ class RuleCondition(BaseAlbertModel):
 
 
 class ExclusionRule(BaseAlbertModel):
-    """An exclusion rule composed of one or more conditions (🧪 Beta).
+    """A combination rule composed of one or more conditions (🧪 Beta).
 
-    All conditions within a rule must match (AND) for the rule to trigger.
-    A combination is excluded if any rule matches (OR).
+    Rules evaluate combination variants against criteria defined on parameter values:
+    - **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``>``, ``>=``, ``<``, ``<=``).
+    - **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.
+    - **OR logic across rules**: if any rule on the block triggers, its outcome applies.
+    - **Baseline mode behavior (`intervals_start_from`)**:
+      - In Exclude Mode (``"all"``, default), matching combinations are excluded.
+      - In Include Mode (``"none"``), matching combinations are included.
+
+    Use [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct
+    rules from human-readable parameter names and values.
 
     !!! warning "Beta Feature!"
         Increased intervals combination support is currently in beta and behind a platform
@@ -169,10 +177,17 @@ Rule = ExclusionRule
 
 
 class CombinationOverride(BaseAlbertModel):
-    """A manual skip or unskip override for a specific combination condition (🧪 Beta).
+    """A targeted skip or unskip override for a specific combination condition (🧪 Beta).
+
+    Overrides pinpoint an exact combination in the Cartesian product space:
+    - ``action=OverrideAction.SKIP``: explicitly excludes the combination.
+    - ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.
+    - **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).
+    - **Manual cherry-picking (`is_manual=True`)**: in Include Mode (``intervals_start_from="none"``), designates an individual combination cherry-picked into an otherwise empty set.
 
     Keyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),
-    which can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+    which can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]
+    or built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].
 
     !!! warning "Beta Feature!"
         Increased intervals combination support is currently in beta and behind a platform
@@ -196,6 +211,13 @@ class CombinationOverride(BaseAlbertModel):
 
 class BlockRules(BaseAlbertModel):
     """Combination rules and overrides for a task block (🧪 Beta).
+
+    Encapsulates the rules and overrides that govern how interval combinations
+    are evaluated and filtered on a task block:
+    - **Rules** define parameter criteria evaluated with AND logic within each rule and
+      OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).
+    - **Overrides** pinpoint specific combinations for forced inclusion (``unskip``)
+      or exclusion (``skip``) and take precedence over rules.
 
     Returned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
     and [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
