@@ -125,6 +125,22 @@ class Synthesis(BaseAlbertModel):
     """Audit information about the most recent update."""
 
 
+class SynthesisSearchItem(BaseAlbertModel):
+    """Lightweight representation of a synthesis record returned from search.
+
+    Returned by
+    [`search`][albert.collections.synthesis.SynthesisCollection.search],
+    this carries only the ID and display name for fast lookups. Fetch the fully
+    populated [`Synthesis`][albert.resources.synthesis.Synthesis] by ID via
+    [`get_by_id`][albert.collections.synthesis.SynthesisCollection.get_by_id]."""
+
+    id: SynthesisId | None = Field(default=None, alias="albertId")
+    """The Synthesis ID (format ``SYN...``)."""
+
+    name: str | None = None
+    """The human-readable name of the synthesis."""
+
+
 class ReactantValues(BaseAlbertModel):
     """The quantities entered for a single reactant row.
 
