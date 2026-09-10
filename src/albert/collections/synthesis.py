@@ -10,7 +10,12 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import NotebookId, SearchProjectId, SynthesisId
+from albert.core.shared.identifiers import (
+    NotebookId,
+    SearchInventoryId,
+    SearchProjectId,
+    SynthesisId,
+)
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
 from albert.resources.synthesis import (
@@ -212,7 +217,7 @@ class SynthesisCollection(BaseCollection):
         product_name: str | list[str] | None = None,
         product_cas: str | list[str] | None = None,
         project_id: SearchProjectId | list[SearchProjectId] | None = None,
-        inventory_id: InventoryId | list[InventoryId] | None = None,
+        inventory_id: SearchInventoryId | list[SearchInventoryId] | None = None,
         facet_text: str | None = None,
         facet_field: str | None = None,
         contains_field: str | list[str] | None = None,
@@ -265,7 +270,7 @@ class SynthesisCollection(BaseCollection):
             Filter by product CAS number(s).
         project_id : SearchProjectId or list[SearchProjectId], optional
             Filter by Project ID(s) (format ``PRO...``).
-        inventory_id : InventoryId or list[InventoryId], optional
+        inventory_id : SearchInventoryId or list[SearchInventoryId], optional
             Filter by linked Inventory ID(s) (format ``INV...``).
         facet_text : str, optional
             Text to match within a facet search.
