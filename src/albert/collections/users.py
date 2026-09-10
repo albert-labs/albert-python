@@ -66,6 +66,8 @@ class UserCollection(BaseCollection):
         Create a new user account.
     update(user) -> User
         Update an existing user.
+    delete(id) -> None
+        Delete a user by its ID.
     """
 
     _api_version = "v3"
@@ -424,3 +426,24 @@ class UserCollection(BaseCollection):
 
         updated_user = self.get_by_id(id=user.id)
         return updated_user
+
+    @validate_call
+    def delete(self, *, id: UserId) -> None:
+        """Delete a user by its ID.
+
+        !!! example
+            ```python
+            client.users.delete(id="USR12")
+            ```
+
+        Parameters
+        ----------
+        id : UserId
+            The User ID to delete.
+
+        Returns
+        -------
+        None
+        """
+        url = f"{self.base_path}/{id}"
+        self.session.delete(url)
