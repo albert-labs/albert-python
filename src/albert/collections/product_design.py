@@ -7,7 +7,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import InventoryId, ProjectId
+from albert.core.shared.identifiers import InventoryId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.resources.product_design import ProductDesignSearchItem, UnpackedProductDesign
 
@@ -98,7 +98,7 @@ class ProductDesignCollection(BaseCollection):
         self,
         *,
         text: str | None = None,
-        project_id: ProjectId | None = None,
+        project_id: SearchProjectId | None = None,
         tags: str | list[str] | None = None,
         albert_id: str | list[str] | None = None,
         state: str | list[str] | None = None,
@@ -135,7 +135,7 @@ class ProductDesignCollection(BaseCollection):
         ----------
         text : str, optional
             Free-text query matched against formula fields.
-        project_id : ProjectId, optional
+        project_id : SearchProjectId, optional
             Scope the search to a project (format ``PRO...``).
         tags : str or list[str], optional
             Filter by tag name(s).
