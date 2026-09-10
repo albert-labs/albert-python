@@ -177,6 +177,10 @@ def ensure_interval_id(id: str) -> str:
     if upper.startswith("WFL"):
         return upper
 
+    # Platform-generated combination barcodes are 9-character case-sensitive alphanumeric
+    # nanoids (e.g. "OhI8ap0HY", "V1a9Km2xL") that lack an identifying prefix. Matching
+    # solely on length is permissive (accepting any 9-character string), but unavoidable
+    # given barcode unpredictability across tenants while preserving exact case.
     if len(id) == _INTERVAL_BARCODE_LEN:
         return id
 

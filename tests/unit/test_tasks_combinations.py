@@ -1,11 +1,18 @@
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 from pydantic import ValidationError
 
 from albert.collections.tasks import TaskCollection
-from albert.exceptions import CombinationGenerationError
-from albert.resources.interval_combinations import ExclusionRule, RuleCondition, RuleOperator
+from albert.exceptions import AlbertException, CombinationGenerationError
+from albert.resources.interval_combinations import (
+    CombinationOverride,
+    ExclusionRule,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.tasks import BatchTask, Block, PropertyTask
 from albert.resources.worker_jobs import WorkerJob, WorkerJobMetadata, WorkerJobState
 from albert.utils.worker_jobs import poll_worker_job
@@ -392,6 +399,9 @@ def test_create_with_combinations_multi_block_gap_and_rules(monkeypatch):
     res = tasks_collection.create_with_combinations(task=input_task, wait=True)
 
     assert res.id == "TASFOR99"
+    # Verify input_task was not mutated (deep copied)
+    assert input_task.blocks[0].intervals_start_from is None
+    assert input_task.blocks[1].intervals_start_from is None
     # PUT /tasks/{id}/rules was called once
     assert any(
         "/api/v3/tasks/TASFOR99/rules" in call.args[0] for call in session.put.call_args_list
@@ -509,6 +519,8 @@ def test_set_block_rules_automatically_calls_generate_block_combinations():
     tasks_collection.generate_block_combinations = MagicMock(return_value=mock_job)  # type: ignore[method-assign]
 
     rule = ExclusionRule(
+        id="RUL-123",
+        name="Rule 1",
         conditions=[
             RuleCondition(
                 parameter_group_id="PRG1",
@@ -517,18 +529,52 @@ def test_set_block_rules_automatically_calls_generate_block_combinations():
                 operator=RuleOperator.GTE,
                 value="90",
             )
-        ]
+        ],
+    )
+    override = CombinationOverride(
+        id="OVR-456",
+        key="PRG1#PRM1#ROW1",
+        action=OverrideAction.SKIP,
     )
 
     block_rules = tasks_collection.set_block_rules(
         task_id="TASFOR1",
         block_id="BLK1",
         rules=[rule],
+        overrides=[override],
     )
 
-    # Verify rules were saved via PUT
+    # Verify rules were saved via PUT with preserved IDs and model_dump serialization
     session.put.assert_called_once()
     assert "/TASFOR1/rules" in session.put.call_args[0][0]
+    payload = session.put.call_args[1]["json"]
+    assert payload == [
+        {
+            "blockId": "BLK1",
+            "rules": [
+                {
+                    "id": "RUL-123",
+                    "name": "Rule 1",
+                    "conditions": [
+                        {
+                            "prgId": "PRG1",
+                            "prmId": "PRM1",
+                            "rowId": "ROW1",
+                            "operator": "gte",
+                            "value": "90",
+                        }
+                    ],
+                }
+            ],
+            "overrides": [
+                {
+                    "id": "OVR-456",
+                    "key": "PRG1#PRM1#ROW1",
+                    "action": "skip",
+                }
+            ],
+        }
+    ]
 
     # Verify generate_block_combinations was called automatically
     tasks_collection.generate_block_combinations.assert_called_once_with(
@@ -602,3 +648,110 @@ def test_set_block_rules_with_custom_old_workflow_id_and_wait_false():
     )
     assert block_rules.job is mock_job
     assert block_rules.job.albert_id == "JOB666"
+
+
+def test_create_with_combinations_catches_timeout_and_albert_exception(monkeypatch):
+    """Test that TimeoutError and AlbertException in poll are caught and reported as failed blocks."""
+    session = MagicMock()
+    tasks_collection = TaskCollection(session=session)
+
+    input_task = PropertyTask(
+        name="Task with Timeout",
+        parent_id="PRO1",
+        blocks=[
+            Block(data_template=[{"id": "DAT1"}], workflow=[{"id": "WFL1"}]),
+            Block(data_template=[{"id": "DAT2"}], workflow=[{"id": "WFL2"}]),
+        ],
+    )
+
+    created_task_mock = PropertyTask(
+        id="TASFOR101",
+        name="Task with Timeout",
+        parent_id="PRO1",
+        blocks=[
+            Block(id="BLK1", data_template=[{"id": "DAT1"}], workflow=[{"id": "WFL1"}]),
+            Block(id="BLK2", data_template=[{"id": "DAT2"}], workflow=[{"id": "WFL2"}]),
+        ],
+    )
+    tasks_collection.create = MagicMock(return_value=created_task_mock)  # type: ignore[method-assign]
+    tasks_collection.get_by_id = MagicMock(return_value=created_task_mock)  # type: ignore[method-assign]
+
+    job1 = WorkerJob(
+        albert_id="JOB1",
+        job_type="createChildWorkflows",
+        state=WorkerJobState.SUCCESSFUL,
+        metadata={"parentType": "TAS", "albertId": "TASFOR101"},
+    )
+    job2 = WorkerJob(
+        albert_id="JOB2",
+        job_type="createChildWorkflows",
+        state=WorkerJobState.SUCCESSFUL,
+        metadata={"parentType": "TAS", "albertId": "TASFOR101"},
+    )
+    tasks_collection.generate_block_combinations = MagicMock(side_effect=[job1, job2])  # type: ignore[method-assign]
+
+    monkeypatch.setattr("albert.collections.tasks.time.sleep", lambda s: None)
+    monkeypatch.setattr("albert.collections.tasks.time.time", lambda: 100.0)
+
+    # First job raises TimeoutError, second raises AlbertException
+    side_effects = [
+        TimeoutError("timed out waiting for worker job"),
+        AlbertException("job failed"),
+    ]
+    monkeypatch.setattr(
+        "albert.collections.tasks.poll_worker_job", MagicMock(side_effect=side_effects)
+    )
+
+    with pytest.raises(CombinationGenerationError) as exc_info:
+        tasks_collection.create_with_combinations(task=input_task, wait=True)
+
+    err = exc_info.value
+    assert err.task.id == "TASFOR101"
+    assert err.failed_blocks == ["BLK1", "BLK2"]
+    assert err.job_states["BLK1"] == "failed"
+    assert err.job_states["BLK2"] == "failed"
+
+
+def test_create_with_combinations_propagates_network_exception(monkeypatch):
+    """Test that unexpected network exceptions during poll are not swallowed."""
+    session = MagicMock()
+    tasks_collection = TaskCollection(session=session)
+
+    input_task = PropertyTask(
+        name="Task with Network Error",
+        parent_id="PRO1",
+        blocks=[
+            Block(data_template=[{"id": "DAT1"}], workflow=[{"id": "WFL1"}]),
+        ],
+    )
+
+    created_task_mock = PropertyTask(
+        id="TASFOR102",
+        name="Task with Network Error",
+        parent_id="PRO1",
+        blocks=[
+            Block(id="BLK1", data_template=[{"id": "DAT1"}], workflow=[{"id": "WFL1"}]),
+        ],
+    )
+    tasks_collection.create = MagicMock(return_value=created_task_mock)  # type: ignore[method-assign]
+    tasks_collection.get_by_id = MagicMock(return_value=created_task_mock)  # type: ignore[method-assign]
+
+    job1 = WorkerJob(
+        albert_id="JOB1",
+        job_type="createChildWorkflows",
+        state=WorkerJobState.SUCCESSFUL,
+        metadata={"parentType": "TAS", "albertId": "TASFOR102"},
+    )
+    tasks_collection.generate_block_combinations = MagicMock(return_value=job1)  # type: ignore[method-assign]
+
+    monkeypatch.setattr("albert.collections.tasks.time.sleep", lambda s: None)
+    monkeypatch.setattr("albert.collections.tasks.time.time", lambda: 100.0)
+
+    # poll_worker_job raises a connection error
+    monkeypatch.setattr(
+        "albert.collections.tasks.poll_worker_job",
+        MagicMock(side_effect=requests.exceptions.ConnectionError("Connection lost")),
+    )
+
+    with pytest.raises(requests.exceptions.ConnectionError, match="Connection lost"):
+        tasks_collection.create_with_combinations(task=input_task, wait=True)

@@ -284,6 +284,9 @@ def test_interval_accepts_object_value_and_empty():
     empty = Interval.model_validate({})
     assert empty.value is None
 
+    empty_str = Interval(value="")
+    assert empty_str.value == ""
+
     special = Interval.model_validate(
         {"value": {"id": "INVC89189", "name": "C89189 || BUL3"}, "name": "C89189 || BUL3"}
     )

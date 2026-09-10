@@ -4,7 +4,6 @@ import time
 import uuid
 from collections.abc import Iterator
 from contextlib import suppress
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +32,12 @@ from albert.core.shared.identifiers import (
     remove_id_prefix,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertHTTPError, CombinationGenerationError, NotFoundError
+from albert.exceptions import (
+    AlbertException,
+    AlbertHTTPError,
+    CombinationGenerationError,
+    NotFoundError,
+)
 from albert.resources.attachments import AttachmentCategory
 from albert.resources.data_templates import ImportMode
 from albert.resources.interval_combinations import (
@@ -77,6 +81,14 @@ from albert.utils.tasks import (
     resolve_attachment,
 )
 from albert.utils.worker_jobs import poll_worker_job
+
+_BLOCK_COMBINATION_JOB_GAP_SECONDS: float = 10.0
+"""Minimum interval in seconds between kicking off consecutive block combination worker jobs.
+
+Submitting multiple block child-workflow generation jobs concurrently on a newly created task
+can trigger backend database lock contention or worker queue race conditions on the parent task
+record. Pacing consecutive job submissions by 10 seconds allows each job to initialize cleanly.
+"""
 
 
 class _BlockCombinationsPaginator(AlbertPaginator):
@@ -324,6 +336,7 @@ class TaskCollection(BaseCollection):
         if not isinstance(task, PropertyTask):
             raise TypeError("task must be a PropertyTask")
 
+        task = task.model_copy(deep=True)
         workflow_collection = WorkflowCollection(session=self.session)
 
         # 1. Ensure all workflows have an ID (create unsaved workflows if needed)
@@ -336,10 +349,6 @@ class TaskCollection(BaseCollection):
                         w.block_mapping = str(i)
                         created_wfls = workflow_collection.create(workflows=[w])
                         w.id = created_wfls[0].id
-                    elif isinstance(w, dict) and not w.get("id"):
-                        w["blockMapping"] = str(i)
-                        created_wfls = workflow_collection.create(workflows=[Workflow(**w)])
-                        w["id"] = created_wfls[0].id
 
             # 2. Fill intervals_start_from on any block where it is unset
             for block in task.blocks:
@@ -374,15 +383,14 @@ class TaskCollection(BaseCollection):
         if rules_payload:
             self.session.put(f"{self.base_path}/{created_task.id}/rules", json=rules_payload)
 
-        # 5. Sequentially trigger generate_block_combinations for each block with 10s gap
-        min_job_gap_seconds = 10.0
+        # 5. Sequentially trigger generate_block_combinations for each block with paced delay
         jobs: dict[str, WorkerJob] = {}
         last_job_time = 0.0
 
         for i, created_b in enumerate(created_task.blocks):
             if i > 0 and last_job_time > 0:
                 elapsed = time.time() - last_job_time
-                remaining = min_job_gap_seconds - elapsed
+                remaining = _BLOCK_COMBINATION_JOB_GAP_SECONDS - elapsed
                 if remaining > 0:
                     time.sleep(remaining)
 
@@ -410,7 +418,7 @@ class TaskCollection(BaseCollection):
                     job_states[blk_id] = completed_job.state.value
                     if completed_job.state != WorkerJobState.SUCCESSFUL:
                         failed_blocks.append(blk_id)
-                except Exception:
+                except (TimeoutError, AlbertException):
                     failed_blocks.append(blk_id)
                     job_states[blk_id] = "failed"
 
@@ -880,30 +888,14 @@ class TaskCollection(BaseCollection):
         block_payload: dict[str, Any] = {"blockId": block_id}
 
         if rules is not None:
-            rules_list = []
-            for r in rules:
-                rule_dict: dict[str, Any] = {
-                    "conditions": [
-                        c.model_dump(by_alias=True, mode="json", exclude_none=True)
-                        for c in r.conditions
-                    ]
-                }
-                if r.name is not None:
-                    rule_dict["name"] = r.name
-                rules_list.append(rule_dict)
-            block_payload["rules"] = rules_list
+            block_payload["rules"] = [
+                r.model_dump(by_alias=True, mode="json", exclude_none=True) for r in rules
+            ]
 
         if overrides is not None:
-            overrides_list = []
-            for o in overrides:
-                override_dict: dict[str, Any] = {
-                    "key": o.key,
-                    "action": o.action.value if isinstance(o.action, Enum) else o.action,
-                }
-                if o.is_manual is not None:
-                    override_dict["isManual"] = o.is_manual
-                overrides_list.append(override_dict)
-            block_payload["overrides"] = overrides_list
+            block_payload["overrides"] = [
+                o.model_dump(by_alias=True, mode="json", exclude_none=True) for o in overrides
+            ]
 
         url = f"{self.base_path}/{task_id}/rules"
         response = self.session.put(url, json=[block_payload])
@@ -1009,6 +1001,12 @@ class TaskCollection(BaseCollection):
         WorkerJob
             The background worker job representing child workflow generation, with
             fields like ``state`` (e.g. ``"successful"``) and ``albert_id``.
+
+        Notes
+        -----
+        When triggering combination generation across multiple blocks sequentially on the
+        same task, pace consecutive calls by at least 10 seconds to avoid backend task lock
+        contention during worker job initialization.
 
         Raises
         ------

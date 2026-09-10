@@ -482,3 +482,30 @@ def test_workflow_build_override():
     # Invalid action
     with pytest.raises(ValueError, match="Invalid override action"):
         wf.build_override(parameter_values={"Temp": 25, "Speed": 500}, action="invalid")
+
+
+def test_workflow_combinations_deserialization_and_exclusion():
+    """Test that Workflow.combinations deserializes from both aliases and is excluded on dump."""
+    payload1 = {
+        "name": "W1",
+        "Combinations": [{"id": "WFL101", "name": "Combo 1", "intervalBarcode": "OhI8ap0HY"}],
+    }
+    wf1 = Workflow.model_validate(payload1)
+    assert wf1.combinations is not None
+    assert len(wf1.combinations) == 1
+    assert wf1.combinations[0].id == "WFL101"
+    assert wf1.combinations[0].interval_barcode == "OhI8ap0HY"
+
+    # Also validates from singular 'Combination'
+    payload2 = {
+        "name": "W2",
+        "Combination": [{"id": "WFL102", "name": "Combo 2", "intervalBarcode": "V1a9Km2xL"}],
+    }
+    wf2 = Workflow.model_validate(payload2)
+    assert wf2.combinations is not None
+    assert wf2.combinations[0].id == "WFL102"
+
+    # Verifies it is excluded from model_dump
+    dumped1 = wf1.model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert "Combinations" not in dumped1
+    assert "Combination" not in dumped1

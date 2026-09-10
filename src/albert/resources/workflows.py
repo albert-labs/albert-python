@@ -81,7 +81,7 @@ class Interval(BaseAlbertModel):
         ```"""
 
     value: str | dict[str, Any] | EntityLink | None = Field(default=None)
-    """The value of this interval. For Normal parameters this is a plain scalar string (e.g. ``"23"``). For Special parameters (Equipment, Consumables, Templates) this may be an object with an ``id`` (and optional ``name``), matching [`ParameterSetpoint.value`][albert.resources.workflows.ParameterSetpoint.value]. Empty intervals (no value) are allowed. The sibling ``name`` field is independent and is not copied from an object value."""
+    """The value of this interval. For Normal parameters this is a scalar string (e.g. ``"23"``). For Special parameters (Equipment, Consumables, Templates) this may be an object with an ``id`` (and optional ``name``), matching [`ParameterSetpoint.value`][albert.resources.workflows.ParameterSetpoint.value]. Empty or hyphen intervals (represented as ``""`` or ``None``) are permitted on the platform for optional parameters and exclusion matching. The sibling ``name`` field is independent and is not copied from an object value."""
 
     name: str | None = Field(default=None)
     """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
@@ -441,16 +441,15 @@ class Workflow(BaseResource):
     """Number of child-workflow combinations on this workflow when it is a block's FINAL workflow. Always present (including ``0``) on flag-ON reads. The embedded ``combinations`` array is empty at 500 or more; use [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations] to list them."""
 
     # GET /tasks/{id}/blocks/{blockId} spells this Combinations; POST /tasks/multi and
-    # GET /tasks/multi/{id} spell it Combination. Both keys are permanent. Serialize as
-    # Combination so writes and GET-multi match. Prefer get_block_combinations when the
-    # count is 500 or more: the embedded array is then empty.
+    # GET /tasks/multi/{id} spell it Combination. Both keys are permanent. The field is
+    # read-only and excluded from serialization dumps. Prefer get_block_combinations when
+    # the count is 500 or more: the embedded array is then empty.
     combinations: list[IntervalCombinationItem] | None = Field(
         default=None,
         validation_alias=AliasChoices("Combinations", "Combination"),
-        serialization_alias="Combination",
         exclude=True,
     )
-    """Child-workflow combinations embedded on a block's FINAL workflow. Empty at 500 or more combinations. Read ``Combinations`` or ``Combination``; serialized as ``Combination``."""
+    """Child-workflow combinations embedded on a block's FINAL workflow. Read-only; excluded from serialization. Empty at 500 or more combinations."""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)
