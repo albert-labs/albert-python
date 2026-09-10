@@ -1,0 +1,44 @@
+:root {
+  --md-primary-fg-color: #7D19FE;
+  --md-accent-fg-color: #7D19FE;
+}
+
+.md-typeset a:hover,
+.md-nav__link:hover,
+.md-nav--primary .md-nav__link:hover,
+.md-nav--secondary .md-nav__link:hover {
+  color: #0b62fe;
+}
+
+.logo-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto 4rem auto;
+  aspect-ratio: 6 / 1;
+}
+
+.logo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: contain;
+}
+
+.only-dark {
+  display: none;
+}
+
+.only-light {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-dark {
+  display: block;
+}
+
+[data-md-color-scheme="slate"] .only-light {
+  display: none;
+}
