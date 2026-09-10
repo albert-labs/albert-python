@@ -1,5 +1,7 @@
 from pydantic import Field, model_validator
 
+from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import InventoryId
 from albert.core.shared.models.base import BaseSessionResource
 from albert.resources.sheets import Sheet
 
@@ -48,3 +50,47 @@ class Worksheet(BaseSessionResource):
                 for d in s.designs:
                     d._session = self.session
         return self
+
+
+class WorksheetSearchInventoryLine(BaseAlbertModel):
+    """An ingredient row on a formula search hit."""
+
+    id: InventoryId | None = None
+    """The inventory ID of the ingredient (format ``INV...``)."""
+
+    name: str | None = None
+    """The name of the ingredient."""
+
+
+class WorksheetSearchTag(BaseAlbertModel):
+    """A tag on a formula search hit."""
+
+    tag_id: str | None = Field(default=None, alias="tagId")
+    """The ID of the tag (format ``TAG...``)."""
+
+    tag_name: str | None = Field(default=None, alias="tagName")
+    """The name of the tag."""
+
+
+class WorksheetSearchItem(BaseAlbertModel):
+    """A lightweight formula result returned by worksheet search.
+
+    Returned by
+    [`search`][albert.collections.worksheets.WorksheetCollection.search],
+    this is a partially populated view of a Formula inventory item built on a
+    Sheet, optimized for fast lookups. Pass its ``id`` to
+    [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]
+    to obtain the fully populated
+    [`InventoryItem`][albert.resources.inventory.InventoryItem]."""
+
+    id: InventoryId | None = Field(default=None, alias="albertId")
+    """The Formula inventory ID (format ``INV...``)."""
+
+    name: str | None = None
+    """The display name of the formula."""
+
+    inventory: list[WorksheetSearchInventoryLine] | None = None
+    """The ingredient rows on the formula."""
+
+    tags: list[WorksheetSearchTag] | None = None
+    """The tags on the formula."""

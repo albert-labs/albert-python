@@ -67,12 +67,17 @@ def test_project_document_search(
 ):
     """Test document_search returns DocumentSearchItem items for a project."""
     project_id = seeded_projects[0].id
-    documents = list(
-        client.projects.document_search(
-            linked_to=project_id,
-            sort_by="createdAt",
-            max_items=25,
-        )
+    attachment_id = seeded_project_document.id
+    documents = poll_until(
+        lambda: [
+            doc
+            for doc in client.projects.document_search(
+                linked_to=project_id,
+                sort_by="createdAt",
+                max_items=25,
+            )
+            if doc.id == attachment_id
+        ]
     )
     assert documents, "Expected at least one document"
     for doc in documents:
