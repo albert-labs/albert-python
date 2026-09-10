@@ -649,11 +649,12 @@ class TaskPropertyCreate(BaseResource):
         default=None,
         description="The trial number/ row number. Leave blank to create a new row/trial.",
     )
-    data_template: SerializeAsEntityLink[DataTemplate] = Field(
-        ...,
+    data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
+        default=None,
         alias="DataTemplate",
-        description="The data template associated with the task property.",
     )
+    """The data template associated with the task property."""
+
     visible_trial_number: int | None = Field(
         alias="visibleTrialNo",
         default=None,

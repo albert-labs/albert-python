@@ -1025,9 +1025,13 @@ class PropertyDataCollection(BaseCollection):
             json=payload,
             params=params,
         )
-        registered_properties = [
-            TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-        ]
+        response_json = response.json()
+        registered_properties: list[TaskPropertyCreate] = []
+        for prop, item in zip(properties, response_json, strict=False):
+            item_data = dict(item)
+            if "DataTemplate" not in item_data and prop.data_template:
+                item_data["DataTemplate"] = prop.data_template
+            registered_properties.append(TaskPropertyCreate(**item_data))
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
