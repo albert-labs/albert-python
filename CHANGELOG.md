@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.53.0](https://github.com/albert-labs/albert-python/compare/v1.52.0...v1.53.0) (2026-09-10)
+
+
+### Features
+
+* **notebooks:** add search for notebook block content ([#721](https://github.com/albert-labs/albert-python/issues/721)) ([7b5fd67](https://github.com/albert-labs/albert-python/commit/7b5fd67581e72a935e6e9e10a45b5fcd61616489))
+* **product_design:** add search support ([#726](https://github.com/albert-labs/albert-python/issues/726)) ([4a3463f](https://github.com/albert-labs/albert-python/commit/4a3463f84171d6ae309ffca8a0820e8a55c94010))
+* **reports:** add search support ([#723](https://github.com/albert-labs/albert-python/issues/723)) ([b335724](https://github.com/albert-labs/albert-python/commit/b33572420d51a4f35148ee1c10f492515a78fae3))
+* **synthesis:** add search support ([#722](https://github.com/albert-labs/albert-python/issues/722)) ([98df8fa](https://github.com/albert-labs/albert-python/commit/98df8fa027d4d44c0fc92c4ac2ed488e74cd1632))
+* **teams:** add search support ([#725](https://github.com/albert-labs/albert-python/issues/725)) ([dfb1d4a](https://github.com/albert-labs/albert-python/commit/dfb1d4aa21acfa1927db4ec0735c01d4b7f9b7b3))
+* **worksheets:** add search support ([#724](https://github.com/albert-labs/albert-python/issues/724)) ([a4c72a0](https://github.com/albert-labs/albert-python/commit/a4c72a08dab17c0591a42076ac33c1e862dee575))
+
 ## [1.52.0](https://github.com/albert-labs/albert-python/compare/v1.51.0...v1.52.0) (2026-09-09)
 
 
