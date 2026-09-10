@@ -767,9 +767,11 @@ class TaskCollection(BaseCollection):
         are preserved and obsolete combinations are voided. Set ``generate_combinations=False``
         to save rule definitions only without triggering combination regeneration.
 
-        Override keys can be constructed easily using
-        [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]
-        on the block's parent workflow.
+        Rules and overrides can be constructed easily from parameter names and values using
+        [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] and
+        [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override]
+        on the block's parent workflow. Override keys can also be computed directly using
+        [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform

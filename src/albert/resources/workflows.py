@@ -365,6 +365,10 @@ class Workflow(BaseResource):
     [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the interval ID for a condition, then use it with the
     property_data endpoints to read or write that condition's results.
 
+    To construct rules and combination overrides for Property tasks using parameter names
+    and values, use [`build_rule`][albert.resources.workflows.Workflow.build_rule] and
+    [`build_override`][albert.resources.workflows.Workflow.build_override].
+
     !!! example
         ```python
         from albert import Albert

@@ -86,11 +86,17 @@ class OverrideAction(str, Enum):
 
 
 class Condition(NamedTuple):
-    """Specification for a rule condition before resolving workflow-local IDs.
+    """Specification for a rule condition before resolving workflow-local IDs (🧪 Beta).
 
     Used with [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to specify
     criteria using parameter names or short names. Can be instantiated as a named tuple or
     passed as a plain tuple (e.g. ``("Temperature", ">=", 90)``).
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
     """
 
     parameter: str
