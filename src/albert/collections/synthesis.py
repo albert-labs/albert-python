@@ -212,7 +212,7 @@ class SynthesisCollection(BaseCollection):
         product_name: str | list[str] | None = None,
         product_cas: str | list[str] | None = None,
         project_id: SearchProjectId | list[SearchProjectId] | None = None,
-        inventory_id: str | list[str] | None = None,
+        inventory_id: InventoryId | list[InventoryId] | None = None,
         facet_text: str | None = None,
         facet_field: str | None = None,
         contains_field: str | list[str] | None = None,
@@ -265,7 +265,7 @@ class SynthesisCollection(BaseCollection):
             Filter by product CAS number(s).
         project_id : SearchProjectId or list[SearchProjectId], optional
             Filter by Project ID(s) (format ``PRO...``).
-        inventory_id : str or list[str], optional
+        inventory_id : InventoryId or list[InventoryId], optional
             Filter by linked Inventory ID(s) (format ``INV...``).
         facet_text : str, optional
             Text to match within a facet search.
