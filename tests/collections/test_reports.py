@@ -17,18 +17,32 @@ from tests.utils.wait import poll_until
 pytestmark = pytest.mark.xdist_group("tasks")
 
 
+def test_search_reports_project_id_filter(
+    client: Albert,
+    seeded_projects: list[Project],
+):
+    """Test report search accepts project_id scoped as SearchProjectId."""
+    project_id = seeded_projects[0].id
+    hits = list(client.reports.search(project_id=project_id, max_items=5))
+    assert isinstance(hits, list)
+
+
 def test_search_reports(
     client: Albert,
     seed_prefix: str,
     seeded_reports: list[FullAnalyticalReport],
 ):
-    """Test searching reports finds seeded reports and hits hydrate."""
+    """Test searching reports finds seeded reports scoped to their project."""
     expected = seeded_reports[0]
     seeded_ids = {r.id for r in seeded_reports}
     hits = poll_until(
         lambda: [
             hit
-            for hit in client.reports.search(text=seed_prefix, max_items=50)
+            for hit in client.reports.search(
+                text=seed_prefix,
+                project_id=expected.project_id,
+                max_items=50,
+            )
             if hit.id in seeded_ids
         ]
     )

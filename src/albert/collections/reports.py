@@ -7,7 +7,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import ProjectId, ReportId
+from albert.core.shared.identifiers import ReportId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.resources.reports import FullAnalyticalReport, ReportInfo, ReportSearchItem
 
@@ -213,7 +213,7 @@ class ReportCollection(BaseCollection):
         *,
         text: str | None = None,
         created_by: str | None = None,
-        project_id: ProjectId | None = None,
+        project_id: SearchProjectId | None = None,
         facet_text: str | None = None,
         facet_field: str | None = None,
         contains_field: str | list[str] | None = None,
@@ -249,7 +249,7 @@ class ReportCollection(BaseCollection):
             Full-text search query.
         created_by : str, optional
             Filter by creator User ID.
-        project_id : ProjectId, optional
+        project_id : SearchProjectId, optional
             Filter to reports scoped to a project (format ``PRO...``).
         facet_text : str, optional
             Facet text to search for.
