@@ -11,16 +11,21 @@ pytestmark = pytest.mark.xdist_group("projects")
 
 
 def test_synthesis_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Notebook]):
-    """Test search finds a newly created synthesis record and its ID is usable."""
+    """Test search finds a newly created synthesis record scoped to its project."""
+    notebook = seeded_notebooks[0]
     synthesis = client.synthesis.create(
-        parent_id=seeded_notebooks[0].id,
+        parent_id=notebook.id,
         name=f"{seed_prefix} amide coupling",
     )
     try:
         hits = poll_until(
             lambda: [
                 item
-                for item in client.synthesis.search(text=seed_prefix, max_items=50)
+                for item in client.synthesis.search(
+                    text=seed_prefix,
+                    project_id=notebook.parent_id,
+                    max_items=50,
+                )
                 if item.id == synthesis.id
             ]
         )

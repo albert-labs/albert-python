@@ -10,7 +10,7 @@ from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import NotebookId, SynthesisId
+from albert.core.shared.identifiers import NotebookId, SearchProjectId, SynthesisId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
 from albert.resources.synthesis import (
@@ -211,7 +211,7 @@ class SynthesisCollection(BaseCollection):
         reactant_cas: str | list[str] | None = None,
         product_name: str | list[str] | None = None,
         product_cas: str | list[str] | None = None,
-        project_id: str | list[str] | None = None,
+        project_id: SearchProjectId | list[SearchProjectId] | None = None,
         inventory_id: str | list[str] | None = None,
         facet_text: str | None = None,
         facet_field: str | None = None,
@@ -263,7 +263,7 @@ class SynthesisCollection(BaseCollection):
             Filter by product name(s).
         product_cas : str or list[str], optional
             Filter by product CAS number(s).
-        project_id : str or list[str], optional
+        project_id : SearchProjectId or list[SearchProjectId], optional
             Filter by Project ID(s) (format ``PRO...``).
         inventory_id : str or list[str], optional
             Filter by linked Inventory ID(s) (format ``INV...``).
