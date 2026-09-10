@@ -1,9 +1,11 @@
 import pytest
+from pydantic import ValidationError
 
 from albert.exceptions import AlbertException
 from albert.resources.interval_combinations import (
     BlockRules,
     CombinationOverride,
+    Condition,
     ExclusionRule,
     OverrideAction,
     RuleCondition,
@@ -221,6 +223,7 @@ def test_workflow_build_rule_condition():
                 parameter_setpoints=[
                     ParameterSetpoint(
                         parameter_id="PRM100",
+                        name="Temperature",
                         short_name="Temp",
                         row_id="ROW1",
                         unit={"id": "UNI1", "name": "C"},
@@ -244,34 +247,48 @@ def test_workflow_build_rule_condition():
         ],
     )
 
-    cond = wf.build_rule_condition("Temp", ">=", 90)
+    cond = wf.build_rule_condition(parameter="Temp", operator=">=", value=90)
     assert cond.parameter_group_id == "PRG247776"
     assert cond.parameter_id == "PRM100"
     assert cond.row_id == "ROW1"
     assert cond.operator == RuleOperator.GTE
     assert cond.value == 90
     assert cond.unit_id == "UNI1"
-    assert cond.name == "Temp"
+    assert cond.name == "Temperature"
+
+    # Parameter can be specified by full name, short name, or parameter ID (case-insensitive)
+    cond_name = wf.build_rule_condition(parameter="Temperature", operator=">=", value=90)
+    assert cond_name.parameter_id == "PRM100"
+
+    cond_short = wf.build_rule_condition(parameter="temp", operator=">=", value=90)
+    assert cond_short.parameter_id == "PRM100"
+
+    cond_id = wf.build_rule_condition(parameter="prm100", operator=">=", value=90)
+    assert cond_id.parameter_id == "PRM100"
+
+    # Enforces keyword-only arguments via validate_call
+    with pytest.raises((TypeError, ValidationError)):
+        wf.build_rule_condition("Temp", ">=", 90)  # type: ignore[misc]
 
     # Operator string variations
-    assert wf.build_rule_condition("Temp", "=").operator == RuleOperator.EQ
-    assert wf.build_rule_condition("Temp", "==").operator == RuleOperator.EQ
-    assert wf.build_rule_condition("Temp", "!=").operator == RuleOperator.NE
-    assert wf.build_rule_condition("Temp", "<").operator == RuleOperator.LT
-    assert wf.build_rule_condition("Temp", "<=").operator == RuleOperator.LTE
-    assert wf.build_rule_condition("Temp", ">").operator == RuleOperator.GT
+    assert wf.build_rule_condition(parameter="Temp", operator="=").operator == RuleOperator.EQ
+    assert wf.build_rule_condition(parameter="Temp", operator="==").operator == RuleOperator.EQ
+    assert wf.build_rule_condition(parameter="Temp", operator="!=").operator == RuleOperator.NE
+    assert wf.build_rule_condition(parameter="Temp", operator="<").operator == RuleOperator.LT
+    assert wf.build_rule_condition(parameter="Temp", operator="<=").operator == RuleOperator.LTE
+    assert wf.build_rule_condition(parameter="Temp", operator=">").operator == RuleOperator.GT
 
     # Explicit unit override
-    cond_unit = wf.build_rule_condition("Speed", ">", 1000, unit="UNI99")
+    cond_unit = wf.build_rule_condition(parameter="Speed", operator=">", value=1000, unit="UNI99")
     assert cond_unit.unit_id == "UNI99"
 
     # Invalid operator
     with pytest.raises(ValueError, match="Invalid rule operator"):
-        wf.build_rule_condition("Temp", "INVALID_OP")
+        wf.build_rule_condition(parameter="Temp", operator="INVALID_OP")
 
     # Missing parameter
     with pytest.raises(AlbertException, match="No parameter matching 'MissingParam'"):
-        wf.build_rule_condition("MissingParam", "=")
+        wf.build_rule_condition(parameter="MissingParam", operator="=")
 
 
 def test_workflow_build_rule_condition_disambiguation_and_unsaved():
@@ -299,16 +316,18 @@ def test_workflow_build_rule_condition_disambiguation_and_unsaved():
 
     # Ambiguous when group not specified
     with pytest.raises(AlbertException, match="is ambiguous"):
-        wf_multi.build_rule_condition("Viscosity", "=")
+        wf_multi.build_rule_condition(parameter="Viscosity", operator="=")
 
     # Disambiguated by group ID
-    c1 = wf_multi.build_rule_condition("Viscosity", "=", 10, group="PRG1")
+    c1 = wf_multi.build_rule_condition(parameter="Viscosity", operator="=", value=10, group="PRG1")
     assert c1.parameter_group_id == "PRG1"
     assert c1.parameter_id == "PRM10"
     assert c1.row_id == "ROW1"
 
     # Disambiguated by group name
-    c2 = wf_multi.build_rule_condition("Viscosity", "=", 20, group="Group Two")
+    c2 = wf_multi.build_rule_condition(
+        parameter="Viscosity", operator="=", value=20, group="Group Two"
+    )
     assert c2.parameter_group_id == "PRG2"
     assert c2.parameter_id == "PRM20"
     assert c2.row_id == "ROW2"
@@ -326,11 +345,11 @@ def test_workflow_build_rule_condition_disambiguation_and_unsaved():
         ],
     )
     with pytest.raises(AlbertException, match="not been assigned row IDs"):
-        wf_unsaved.build_rule_condition("Temp", "=")
+        wf_unsaved.build_rule_condition(parameter="Temp", operator="=")
 
 
-def test_workflow_build_exclusion_rule():
-    """Test Workflow.build_exclusion_rule handles single and multi-condition rules."""
+def test_workflow_build_rule():
+    """Test Workflow.build_rule handles single condition kwargs, tuples, Condition, and RuleCondition."""
     wf = Workflow(
         name="Screening Workflow",
         parameter_group_setpoints=[
@@ -361,7 +380,7 @@ def test_workflow_build_exclusion_rule():
     )
 
     # 1. Single condition directly via kwargs
-    rule1 = wf.build_exclusion_rule(
+    rule1 = wf.build_rule(
         name="Exclude cold",
         parameter="Temp",
         operator="<",
@@ -374,7 +393,7 @@ def test_workflow_build_exclusion_rule():
     assert rule1.conditions[0].value == 15
 
     # 2. Multi-condition via tuples
-    rule2 = wf.build_exclusion_rule(
+    rule2 = wf.build_rule(
         name="Crosslinking risk",
         conditions=[
             ("Temp", ">=", 90),
@@ -388,20 +407,22 @@ def test_workflow_build_exclusion_rule():
     assert rule2.conditions[1].parameter_id == "PRM200"
     assert rule2.conditions[1].operator == RuleOperator.GTE
 
-    # 3. Multi-condition via RuleCondition instances
-    c1 = wf.build_rule_condition("Temp", ">=", 90)
-    c2 = wf.build_rule_condition("Speed", ">=", 1500)
+    # 3. Multi-condition via Condition NamedTuple
+    rule_named = wf.build_rule(
+        name="Named Condition",
+        conditions=[
+            Condition(parameter="Temp", operator=">=", value=90),
+            Condition(parameter="Speed", operator=">=", value=1500),
+        ],
+    )
+    assert rule_named.name == "Named Condition"
+    assert len(rule_named.conditions) == 2
+
+    # 4. Multi-condition via RuleCondition instances
+    c1 = wf.build_rule_condition(parameter="Temp", operator=">=", value=90)
+    c2 = wf.build_rule_condition(parameter="Speed", operator=">=", value=1500)
     rule3 = wf.build_rule(name="Rule 3", conditions=[c1, c2])
     assert len(rule3.conditions) == 2
-
-    # 4. Inclusion rule builder alias
-    rule_inc = wf.build_inclusion_rule(
-        name="Include low temp",
-        conditions=[("Temp", "<", 30)],
-    )
-    assert rule_inc.name == "Include low temp"
-    assert len(rule_inc.conditions) == 1
-    assert rule_inc.conditions[0].operator == RuleOperator.LT
 
     # Error when neither conditions nor parameter/operator provided
     with pytest.raises(ValueError, match="Provide either 'conditions'"):
@@ -437,16 +458,20 @@ def test_workflow_build_override():
         ],
     )
 
-    # Default action (skip)
-    override_skip = wf.build_override({"Temp": 25, "Speed": 500})
+    # Default action (skip) with keyword-only argument
+    override_skip = wf.build_override(parameter_values={"Temp": 25, "Speed": 500})
     assert isinstance(override_skip, CombinationOverride)
     assert override_skip.key == "PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW8"
     assert override_skip.action == OverrideAction.SKIP
     assert override_skip.is_manual is None
 
+    # Enforces keyword-only arguments via validate_call
+    with pytest.raises((TypeError, ValidationError)):
+        wf.build_override({"Temp": 25, "Speed": 500})  # type: ignore[misc]
+
     # Unskip with is_manual
     override_unskip = wf.build_override(
-        {"Speed": 1500, "Temp": 60},
+        parameter_values={"Speed": 1500, "Temp": 60},
         action="unskip",
         is_manual=True,
     )
@@ -456,4 +481,4 @@ def test_workflow_build_override():
 
     # Invalid action
     with pytest.raises(ValueError, match="Invalid override action"):
-        wf.build_override({"Temp": 25, "Speed": 500}, action="invalid")
+        wf.build_override(parameter_values={"Temp": 25, "Speed": 500}, action="invalid")

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import AliasChoices, Field, PrivateAttr, model_validator
+from pydantic import AliasChoices, Field, PrivateAttr, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass, Status
@@ -20,6 +20,7 @@ from albert.exceptions import AlbertException
 from albert.resources._mixins import HydrationMixin
 from albert.resources.interval_combinations import (
     CombinationOverride,
+    Condition,
     ExclusionRule,
     IntervalCombinationItem,
     OverrideAction,
@@ -562,7 +563,7 @@ class Workflow(BaseResource):
         return interval_id
 
     def get_override_key(self, parameter_values: dict[str, Any]) -> str:
-        """Build the compound override key for a set of parameter values.
+        """Build the compound override key for a set of parameter values (🧪 Beta).
 
         Matches each given parameter name and value against the workflow's intervalized
         parameters and assembles the compound key in the format
@@ -582,6 +583,12 @@ class Workflow(BaseResource):
         interval value of ``"25"``. Matching on parameter name checks both the parameter's
         name and short name (case-insensitive). Segments are ordered in the canonical
         order that the parameters appear in the workflow.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -665,20 +672,27 @@ class Workflow(BaseResource):
             for _, item in matched
         )
 
+    @validate_call
     def build_rule_condition(
         self,
+        *,
         parameter: str,
         operator: RuleOperator | str,
         value: str | float | int | None = None,
-        *,
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> RuleCondition:
-        """Build a rule condition from a parameter name and value.
+        """Build a rule condition from a parameter name, short name, or ID and value (🧪 Beta).
 
         Resolves the parameter's group ID, parameter ID, row ID, and unit ID from
         this workflow's defined setpoints, avoiding the need to manually lookup
         internal IDs.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -688,7 +702,7 @@ class Workflow(BaseResource):
             workflow = client.workflows.get_by_id(id="WFL456")
 
             # Simple numeric condition:
-            cond = workflow.build_rule_condition("Temperature", ">=", 90)
+            cond = workflow.build_rule_condition(parameter="Temperature", operator=">=", value=90)
             cond.parameter_group_id
             # 'PRG247776'
             cond.parameter_id
@@ -849,24 +863,31 @@ class Workflow(BaseResource):
             name=matched_sp.name or matched_sp.short_name or parameter,
         )
 
+    @validate_call
     def build_rule(
         self,
-        name: str | None = None,
         *,
-        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
+        name: str | None = None,
+        conditions: Sequence[RuleCondition | Condition | tuple[Any, ...]] | None = None,
         parameter: str | None = None,
         operator: RuleOperator | str | None = None,
         value: str | float | int | None = None,
         unit: str | Unit | None = None,
         group: str | None = None,
     ) -> ExclusionRule:
-        """Build an exclusion or inclusion rule from conditions or parameter criteria.
+        """Build a rule from conditions or parameter criteria (🧪 Beta).
 
         Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule].
         Supports single-condition rules directly via keyword arguments, or compound
         rules with multiple conditions (evaluated with AND logic). Depending on the block's
         ``intervals_start_from`` setting, the rule acts as an exclusion rule (in Exclude Mode
         ``"all"``) or an inclusion rule (in Include Mode ``"none"``).
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -895,10 +916,11 @@ class Workflow(BaseResource):
         ----------
         name : str, optional
             A descriptive label for the rule.
-        conditions : Sequence[RuleCondition or tuple], optional
+        conditions : Sequence[RuleCondition, Condition, or tuple], optional
             A sequence of [`RuleCondition`][albert.resources.interval_combinations.RuleCondition]
-            objects or tuples of arguments (e.g. ``(parameter, operator, value)``) to be
-            evaluated together with AND logic.
+            objects, [`Condition`][albert.resources.interval_combinations.Condition] named tuples,
+            or tuples of arguments (e.g. ``(parameter, operator, value)``) to be evaluated
+            together with AND logic.
         parameter : str, optional
             Parameter name, short name, or ID for a single-condition rule.
         operator : RuleOperator or str, optional
@@ -921,11 +943,6 @@ class Workflow(BaseResource):
             If neither ``conditions`` nor both ``parameter`` and ``operator`` are provided.
         AlbertException
             If any parameter cannot be resolved on the workflow.
-
-        See Also
-        --------
-        build_exclusion_rule : Semantic alias for Exclude Mode.
-        build_inclusion_rule : Semantic alias for Include Mode.
         """
         parsed_conditions: list[RuleCondition] = []
 
@@ -933,22 +950,40 @@ class Workflow(BaseResource):
             for c in conditions:
                 if isinstance(c, RuleCondition):
                     parsed_conditions.append(c)
+                elif isinstance(c, Condition):
+                    parsed_conditions.append(
+                        self.build_rule_condition(
+                            parameter=c.parameter,
+                            operator=c.operator,
+                            value=c.value,
+                            unit=c.unit,
+                            group=c.group,
+                        )
+                    )
                 elif isinstance(c, tuple):
                     if len(c) == 3:
                         p, o, v = c
-                        parsed_conditions.append(self.build_rule_condition(p, o, v))
+                        parsed_conditions.append(
+                            self.build_rule_condition(parameter=p, operator=o, value=v)
+                        )
                     elif len(c) == 4:
                         p, o, v, u = c
-                        parsed_conditions.append(self.build_rule_condition(p, o, v, unit=u))
+                        parsed_conditions.append(
+                            self.build_rule_condition(parameter=p, operator=o, value=v, unit=u)
+                        )
                     elif len(c) == 5:
                         p, o, v, u, g = c
                         parsed_conditions.append(
-                            self.build_rule_condition(p, o, v, unit=u, group=g)
+                            self.build_rule_condition(
+                                parameter=p, operator=o, value=v, unit=u, group=g
+                            )
                         )
                     else:
                         raise ValueError(f"Condition tuple must have 3 to 5 elements, got: {c}")
                 else:
-                    raise TypeError(f"Expected RuleCondition or tuple, got {type(c).__name__}")
+                    raise TypeError(
+                        f"Expected RuleCondition, Condition, or tuple, got {type(c).__name__}"
+                    )
         elif parameter is not None and operator is not None:
             parsed_conditions.append(
                 self.build_rule_condition(
@@ -964,68 +999,25 @@ class Workflow(BaseResource):
 
         return ExclusionRule(name=name, conditions=parsed_conditions)
 
-    def build_exclusion_rule(
-        self,
-        name: str | None = None,
-        *,
-        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
-        parameter: str | None = None,
-        operator: RuleOperator | str | None = None,
-        value: str | float | int | None = None,
-        unit: str | Unit | None = None,
-        group: str | None = None,
-    ) -> ExclusionRule:
-        """Build an exclusion rule for Exclude Mode.
-
-        Semantic alias for [`build_rule`][albert.resources.workflows.Workflow.build_rule].
-        """
-        return self.build_rule(
-            name=name,
-            conditions=conditions,
-            parameter=parameter,
-            operator=operator,
-            value=value,
-            unit=unit,
-            group=group,
-        )
-
-    def build_inclusion_rule(
-        self,
-        name: str | None = None,
-        *,
-        conditions: Sequence[RuleCondition | tuple[Any, ...]] | None = None,
-        parameter: str | None = None,
-        operator: RuleOperator | str | None = None,
-        value: str | float | int | None = None,
-        unit: str | Unit | None = None,
-        group: str | None = None,
-    ) -> ExclusionRule:
-        """Build an inclusion rule for Include Mode.
-
-        Semantic alias for [`build_rule`][albert.resources.workflows.Workflow.build_rule].
-        """
-        return self.build_rule(
-            name=name,
-            conditions=conditions,
-            parameter=parameter,
-            operator=operator,
-            value=value,
-            unit=unit,
-            group=group,
-        )
-
+    @validate_call
     def build_override(
         self,
-        parameter_values: dict[str, Any],
         *,
+        parameter_values: dict[str, Any],
         action: OverrideAction | str = OverrideAction.SKIP,
         is_manual: bool | None = None,
     ) -> CombinationOverride:
-        """Build a combination override from parameter values.
+        """Build a combination override from parameter values (🧪 Beta).
 
         Matches parameter values to their canonical compound override key using
         [`get_override_key`][albert.resources.workflows.Workflow.get_override_key] and
         returns a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride].
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
 
         !!! example
             ```python
@@ -1036,13 +1028,13 @@ class Workflow(BaseResource):
 
             # Skip a specific combination:
             skip = workflow.build_override(
-                {"Temperature": 25, "Speed": 500},
+                parameter_values={"Temperature": 25, "Speed": 500},
                 action="skip",
             )
 
             # Force-include a combination (in Include Mode):
             unskip = workflow.build_override(
-                {"Temperature": 25, "Speed": 500},
+                parameter_values={"Temperature": 25, "Speed": 500},
                 action="unskip",
                 is_manual=True,
             )

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, NamedTuple
 
 from pydantic import Field, model_validator
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.identifiers import (
+    DataTemplateId,
+    ParameterGroupId,
+    ParameterId,
+    RowId,
+    UnitId,
+)
+from albert.resources.units import Unit
 from albert.resources.worker_jobs import WorkerJob
 
 
@@ -13,12 +21,18 @@ from albert.resources.worker_jobs import WorkerJob
 # parentWorkflowId on the response envelope (not per item). Expose it
 # if that id is not already available from the task/block read path.
 class IntervalCombinationItem(BaseAlbertModel):
-    """One child-workflow interval combination on a task block.
+    """One child-workflow interval combination on a task block (🧪 Beta).
 
     Returned by
     [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
     Use that method rather than any combinations array embedded on a task or block:
     the embedded array is empty once the block has 500 or more combinations.
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
 
     !!! example
         ```python
@@ -71,20 +85,41 @@ class OverrideAction(str, Enum):
     UNSKIP = "unskip"
 
 
+class Condition(NamedTuple):
+    """Specification for a rule condition before resolving workflow-local IDs.
+
+    Used with [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to specify
+    criteria using parameter names or short names. Can be instantiated as a named tuple or
+    passed as a plain tuple (e.g. ``("Temperature", ">=", 90)``).
+    """
+
+    parameter: str
+    operator: RuleOperator | str
+    value: str | float | int | None = None
+    unit: str | Unit | None = None
+    group: str | None = None
+
+
 class RuleCondition(BaseAlbertModel):
-    """A single condition within an exclusion rule.
+    """A single condition within an exclusion rule (🧪 Beta).
 
     References a parameter group or data template, a parameter, a parameter row,
     and a comparison operator and threshold value.
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
     """
 
-    parameter_group_id: str = Field(alias="prgId")
+    parameter_group_id: ParameterGroupId | DataTemplateId | str = Field(alias="prgId")
     """Parameter group or data template ID (format ``PRG...`` or ``DAT...``)."""
 
-    parameter_id: str = Field(alias="prmId")
+    parameter_id: ParameterId = Field(alias="prmId")
     """Parameter ID (format ``PRM...``)."""
 
-    row_id: str | None = Field(default=None, alias="rowId")
+    row_id: RowId | None = Field(default=None, alias="rowId")
     """Parameter row ID within the workflow (format ``ROW...``)."""
 
     operator: RuleOperator
@@ -93,7 +128,7 @@ class RuleCondition(BaseAlbertModel):
     value: str | float | int | None = Field(default=None, alias="value")
     """Threshold value to compare against."""
 
-    unit_id: str | None = Field(default=None, alias="unitId")
+    unit_id: UnitId | None = Field(default=None, alias="unitId")
     """Unit ID for the threshold value (format ``UNI...``)."""
 
     name: str | None = None
@@ -101,10 +136,16 @@ class RuleCondition(BaseAlbertModel):
 
 
 class ExclusionRule(BaseAlbertModel):
-    """An exclusion rule composed of one or more conditions.
+    """An exclusion rule composed of one or more conditions (🧪 Beta).
 
     All conditions within a rule must match (AND) for the rule to trigger.
     A combination is excluded if any rule matches (OR).
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
     """
 
     id: str | None = None
@@ -122,10 +163,16 @@ Rule = ExclusionRule
 
 
 class CombinationOverride(BaseAlbertModel):
-    """A manual skip or unskip override for a specific combination condition.
+    """A manual skip or unskip override for a specific combination condition (🧪 Beta).
 
     Keyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),
     which can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
     """
 
     id: str | None = None
@@ -142,10 +189,16 @@ class CombinationOverride(BaseAlbertModel):
 
 
 class BlockRules(BaseAlbertModel):
-    """Combination rules and overrides for a task block.
+    """Combination rules and overrides for a task block (🧪 Beta).
 
     Returned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]
     and [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
     """
 
     task_id: str = Field(alias="taskId")

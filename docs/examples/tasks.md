@@ -2,7 +2,12 @@
 
 Tasks in Albert Invent are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
 
-## Intervals, Rules, and Overrides Overview
+## Intervals, Rules, and Overrides Overview (🧪 Beta)
+
+!!! warning "Beta Feature!"
+    Increased intervals combination support is currently in beta and behind a platform feature flag.
+    Please do not use in production or without explicit guidance from Albert. This feature currently
+    falls outside of the Albert support contract, but we'd love your feedback!
 
 When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert Invent manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
@@ -45,8 +50,6 @@ Each task block specifies an `intervals_start_from` strategy that controls the i
 While platform APIs require workflow-local internal IDs (`parameter_group_id`, `parameter_id`, and `row_id`), the Albert Python SDK provides value-based helpers on [`Workflow`][albert.resources.workflows.Workflow] so you can work entirely with human-readable parameter names and values:
 
 - [`workflow.build_rule`][albert.resources.workflows.Workflow.build_rule]: Assembles a rule from single or compound condition criteria.
-- [`workflow.build_exclusion_rule`][albert.resources.workflows.Workflow.build_exclusion_rule]: Semantic builder for Exclude Mode rules.
-- [`workflow.build_inclusion_rule`][albert.resources.workflows.Workflow.build_inclusion_rule]: Semantic builder for Include Mode rules.
 - [`workflow.build_rule_condition`][albert.resources.workflows.Workflow.build_rule_condition]: Resolves parameter name, operator, value, and unit into a [`RuleCondition`][albert.resources.interval_combinations.RuleCondition].
 - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Generates a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] from a parameter-value dictionary.
 
@@ -70,7 +73,7 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
 
     # 2. Build rules and overrides using human-readable parameter names and values
     # Rule: Exclude all variants with both high heat and high speed
-    rule = workflow.build_exclusion_rule(
+    rule = workflow.build_rule(
         name="Exclude high heat with high speed",
         conditions=[
             ("Temperature", ">=", 90),
@@ -79,7 +82,7 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     )
     # Override: Skip a specific room-temperature/extreme-speed condition not caught by the general high-heat rule
     override = workflow.build_override(
-        {"Temperature": 25, "Speed": 2000},
+        parameter_values={"Temperature": 25, "Speed": 2000},
         action="skip",
     )
 
@@ -112,11 +115,9 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
     
     Instead of manually resolving internal IDs, use the helper methods on your [`Workflow`][albert.resources.workflows.Workflow] instance:
     
-    - [`workflow.build_rule`][albert.resources.workflows.Workflow.build_rule]: Constructs an [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule] with human-readable conditions using tuples (e.g. `conditions=[("Temperature", ">=", 90)]`) or keyword arguments (`parameter="Temperature", operator=">=", value=90`).
-    - [`workflow.build_exclusion_rule`][albert.resources.workflows.Workflow.build_exclusion_rule]: Semantic builder for Exclude Mode rules.
-    - [`workflow.build_inclusion_rule`][albert.resources.workflows.Workflow.build_inclusion_rule]: Semantic builder for Include Mode rules.
+    - [`workflow.build_rule`][albert.resources.workflows.Workflow.build_rule]: Constructs an [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule] with human-readable conditions using tuples (e.g. `conditions=[("Temperature", ">=", 90)]`), [`Condition`][albert.resources.interval_combinations.Condition] named tuples, or single-condition keyword arguments (`parameter="Temperature", operator=">=", value=90`).
     - [`workflow.build_rule_condition`][albert.resources.workflows.Workflow.build_rule_condition]: Constructs an individual [`RuleCondition`][albert.resources.interval_combinations.RuleCondition] with resolved group, parameter, and row IDs.
-    - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] directly from a dictionary of parameter names and values (e.g. `workflow.build_override({"Temperature": 25, "Speed": 2000}, action="skip")`).
+    - [`workflow.build_override`][albert.resources.workflows.Workflow.build_override]: Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] directly from a dictionary of parameter names and values (e.g. `workflow.build_override(parameter_values={"Temperature": 25, "Speed": 2000}, action="skip")`).
 
 !!! warning "Property Tasks only"
     Child-workflow interval combinations are exclusively supported on [`PropertyTask`][albert.resources.tasks.PropertyTask]. They cannot be created or evaluated on [`BatchTask`][albert.resources.tasks.BatchTask] or [`GeneralTask`][albert.resources.tasks.GeneralTask].
@@ -174,7 +175,7 @@ In this mode:
     workflow = client.workflows.get_by_id(id="WFL456")
 
     # 1. Define inclusion rule using workflow helper (low temperatures only)
-    rule = workflow.build_inclusion_rule(
+    rule = workflow.build_rule(
         name="Include low temperature variants",
         conditions=[
             ("Temperature", "<", 40),
@@ -184,12 +185,12 @@ In this mode:
     # 2. Cherry-pick specific higher-temperature benchmark combinations
     # that would otherwise be omitted by the rule (Temperature < 40)
     override_1 = workflow.build_override(
-        {"Temperature": 60, "Speed": 500},
+        parameter_values={"Temperature": 60, "Speed": 500},
         action="unskip",
         is_manual=True,
     )
     override_2 = workflow.build_override(
-        {"Temperature": 90, "Speed": 1000},
+        parameter_values={"Temperature": 90, "Speed": 1000},
         action="unskip",
         is_manual=True,
     )
@@ -241,7 +242,7 @@ You can update rules and overrides on an existing task block at any time using [
     block = next(b for b in task.blocks if b.id == block_id)
     workflow = client.workflows.get_by_id(id=block.workflow[0].id)
 
-    new_rule = workflow.build_exclusion_rule(
+    new_rule = workflow.build_rule(
         name="Exclude cold temperatures",
         conditions=[
             ("Temperature", "<", 15),

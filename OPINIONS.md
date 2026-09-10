@@ -74,6 +74,33 @@ The SDK convention is `max_items: int | None = None` (unbounded by default).
 Why: `substances_v4.search()` shipped with `max_items=100`, silently capping every
 search at 100 results. Fixed in commit fa639977.
 
+## Public methods — always keyword-only arguments (`*`)
+
+All public methods on collections, resources, and client classes must declare their parameters as keyword-only using a bare `*` after `self` (or `cls`):
+
+```python
+def get_by_id(self, *, id: str) -> Cas: ...
+
+
+def build_rule_condition(
+    self,
+    *,
+    parameter: str,
+    operator: RuleOperator | str,
+    value: str | float | int | None = None,
+    unit: str | Unit | None = None,
+    group: str | None = None,
+) -> RuleCondition: ...
+```
+
+Why:
+- Prevents positional argument bugs at call sites, especially when methods take multiple IDs, strings, or optional flags.
+- Preserves backwards compatibility: new optional parameters can be added or existing parameters reordered without breaking caller code.
+- Self-documenting call sites: `client.tasks.get_by_id(id="TAS123")` makes intent explicit compared to `client.tasks.get_by_id("TAS123")`.
+- Integrates cleanly with Pydantic's `@validate_call`, providing clear validation error messages when arguments are passed incorrectly.
+
+Never expose positional arguments on public collection or resource methods. Private helpers (`_`-prefixed), standard dunder methods (`__init__`, `__getitem__`, etc.), or standard Python protocol implementations are the only exceptions.
+
 ## Resource & search model naming
 
 - When a search endpoint returns a different shape than the main resource, name the

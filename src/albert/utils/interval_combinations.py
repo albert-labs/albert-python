@@ -276,7 +276,7 @@ def generate_interval_combinations(
     overrides: list[CombinationOverride] | None = None,
     intervals_start_from: Literal["all", "none"] = "all",
 ) -> IntervalCombinationPayload:
-    """Calculate interval combinations from a workflow and evaluate rules and overrides.
+    """Calculate interval combinations from a workflow and evaluate rules and overrides (🧪 Beta).
 
     Pure, session-free computation engine that calculates the active set of combinations:
     1. Expands parameter intervals into the full cartesian product.
@@ -293,6 +293,12 @@ def generate_interval_combinations(
     [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
     and [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations],
     and can also be called directly to simulate or preview combinations locally.
+
+    !!! warning "Beta Feature!"
+        Increased intervals combination support is currently in beta and behind a platform
+        feature flag. Please do not use in production or without explicit guidance from
+        Albert. You might otherwise have a bad experience. This feature currently falls
+        outside of the Albert support contract, but we'd love your feedback!
 
     !!! example
         ```python
