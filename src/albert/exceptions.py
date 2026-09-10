@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 import contextlib
 from collections.abc import AsyncIterator, Iterator
-from typing import Any
+from typing import TYPE_CHECKING
 
 import httpx
 import requests
 
 from albert.core.logging import logger
+
+if TYPE_CHECKING:
+    from albert.resources.tasks import PropertyTask
 
 
 class AlbertException(Exception):
@@ -18,7 +23,7 @@ class AlbertAuthError(AlbertException):
     """Raised when authentication fails (e.g., bad credentials, expired token)."""
 
 
-def _restore_albert_http_error(cls: type, message: str) -> "AlbertHTTPError":
+def _restore_albert_http_error(cls: type, message: str) -> AlbertHTTPError:
     """Reconstruct an AlbertHTTPError from a pickled message string.
 
     Python's default exception pickling stores args and calls __init__(*args)
@@ -195,11 +200,15 @@ class CombinationGenerationError(AlbertException):
         ```
     """
 
+    task: PropertyTask | None
+    failed_blocks: list[str]
+    job_states: dict[str, str]
+
     def __init__(
         self,
         message: str,
         *,
-        task: Any = None,
+        task: PropertyTask | None = None,
         failed_blocks: list[str] | None = None,
         job_states: dict[str, str] | None = None,
     ):

@@ -147,17 +147,21 @@ def test_workflow_get_override_key():
         ],
     )
 
-    # Normal order
-    key1 = wf.get_override_key({"Temp": 25, "Speed": 500})
+    # Normal order (keyword-only parameter_values)
+    key1 = wf.get_override_key(parameter_values={"Temp": 25, "Speed": 500})
     assert key1 == "PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW8"
 
+    # Enforces keyword-only call via validate_call
+    with pytest.raises((TypeError, ValidationError)):
+        wf.get_override_key({"Temp": 25, "Speed": 500})  # type: ignore[misc]
+
     # Inverted caller arg order -> same canonical order in key
-    key2 = wf.get_override_key({"Speed": 1500, "Temp": 60})
+    key2 = wf.get_override_key(parameter_values={"Speed": 1500, "Temp": 60})
     assert key2 == "PRG247776#PRM100#ROW5-PRG247776#PRM200#ROW9"
 
     # Missing interval raises AlbertException
     with pytest.raises(AlbertException, match="No matching interval found"):
-        wf.get_override_key({"Temp": 999})
+        wf.get_override_key(parameter_values={"Temp": 999})
 
 
 def test_workflow_get_override_key_unassigned_row_id():
@@ -180,7 +184,7 @@ def test_workflow_get_override_key_unassigned_row_id():
         ],
     )
     with pytest.raises(AlbertException, match="not been assigned interval row IDs"):
-        wf.get_override_key({"Temp": 25})
+        wf.get_override_key(parameter_values={"Temp": 25})
 
 
 def test_block_rules_and_overrides_excluded_from_dump():

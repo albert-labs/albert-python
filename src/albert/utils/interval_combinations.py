@@ -142,7 +142,7 @@ def condition_matches_param(
 
     Implements the exact matching semantics from the frontend engine:
     - row ID must match if condition specifies a row ID.
-    - If condition does not specify row ID, parameter ID and group ID are checked.
+    - If condition does not specify row ID, parameter ID is checked.
     - Unit mismatch trivially satisfies ``ne`` (different unit means not equal).
     - Unit mismatch fails all other comparison operators.
     - Ordered comparisons (``gt``, ``gte``, ``lt``, ``lte``) require both sides to be numeric.

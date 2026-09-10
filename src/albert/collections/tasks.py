@@ -660,10 +660,8 @@ class TaskCollection(BaseCollection):
         currently configured on the specified block.
 
         Use this method to inspect existing rules before updating them with
-        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].
-        Note that modifying rules on a block does not change its generated combinations
-        until [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
-        is run.
+        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]
+        (which automatically regenerates child-workflow combinations by default).
 
         !!! warning "Beta Feature!"
             Increased intervals combination support is currently in beta and behind a platform

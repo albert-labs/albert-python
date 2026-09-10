@@ -477,6 +477,35 @@ class Workflow(BaseResource):
                         )
         return self
 
+    def _find_interval_parameter(
+        self, param_name: str, param_value: Any
+    ) -> tuple[int, IntervalParameter] | None:
+        """Find an interval parameter entry matching the given name and value."""
+        for idx, workflow_interval in enumerate(self._interval_parameters):
+            name_match = (
+                workflow_interval.interval_param_name
+                and workflow_interval.interval_param_name.lower() == param_name.lower()
+            ) or (
+                workflow_interval.parameter_short_name
+                and workflow_interval.parameter_short_name.lower() == param_name.lower()
+            )
+            if not name_match:
+                continue
+
+            val = workflow_interval.interval_value
+            val_match = False
+            if param_value == val or str(param_value) == str(val):
+                val_match = True
+            elif isinstance(val, dict):
+                if param_value in (val.get("id"), val.get("name")):
+                    val_match = True
+            elif hasattr(val, "id") and param_value == val.id:
+                val_match = True
+
+            if val_match:
+                return idx, workflow_interval
+        return None
+
     def get_interval_id(self, parameter_values: dict[str, Any]) -> str:
         """Build the composite interval ID for a set of parameter values.
 
@@ -526,37 +555,13 @@ class Workflow(BaseResource):
         """
         interval_id = ""
         for param_name, param_value in parameter_values.items():
-            matching_interval = None
-            for workflow_interval in self._interval_parameters:
-                name_match = (
-                    workflow_interval.interval_param_name
-                    and workflow_interval.interval_param_name.lower() == param_name.lower()
-                ) or (
-                    workflow_interval.parameter_short_name
-                    and workflow_interval.parameter_short_name.lower() == param_name.lower()
-                )
-                if not name_match:
-                    continue
-
-                val = workflow_interval.interval_value
-                val_match = False
-                if param_value == val or str(param_value) == str(val):
-                    val_match = True
-                elif isinstance(val, dict):
-                    if param_value in (val.get("id"), val.get("name")):
-                        val_match = True
-                elif hasattr(val, "id") and param_value == val.id:
-                    val_match = True
-
-                if val_match:
-                    matching_interval = workflow_interval
-                    break
-
-            if matching_interval is None:
+            matching_entry = self._find_interval_parameter(param_name, param_value)
+            if matching_entry is None:
                 raise AlbertException(
                     f"No matching interval found for parameter '{param_name}' with value '{param_value}'"
                 )
 
+            _, matching_interval = matching_entry
             interval_id += (
                 f"X{matching_interval.interval_id}"
                 if interval_id != ""
@@ -565,7 +570,8 @@ class Workflow(BaseResource):
 
         return interval_id
 
-    def get_override_key(self, parameter_values: dict[str, Any]) -> str:
+    @validate_call
+    def get_override_key(self, *, parameter_values: dict[str, Any]) -> str:
         """Build the compound override key for a set of parameter values (🧪 Beta).
 
         Matches each given parameter name and value against the workflow's intervalized
@@ -600,7 +606,7 @@ class Workflow(BaseResource):
 
             client = Albert()
             workflow = client.workflows.get_by_id(id="WFL456")
-            key = workflow.get_override_key({"Temperature": 25, "Speed": 500})
+            key = workflow.get_override_key(parameter_values={"Temperature": 25, "Speed": 500})
             # 'PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9'
 
             # Create an override to skip this specific combination:
@@ -628,32 +634,7 @@ class Workflow(BaseResource):
         matched: list[tuple[int, IntervalParameter]] = []
 
         for param_name, param_value in parameter_values.items():
-            matching_entry = None
-            for idx, workflow_interval in enumerate(self._interval_parameters):
-                name_match = (
-                    workflow_interval.interval_param_name
-                    and workflow_interval.interval_param_name.lower() == param_name.lower()
-                ) or (
-                    workflow_interval.parameter_short_name
-                    and workflow_interval.parameter_short_name.lower() == param_name.lower()
-                )
-                if not name_match:
-                    continue
-
-                val = workflow_interval.interval_value
-                val_match = False
-                if param_value == val or str(param_value) == str(val):
-                    val_match = True
-                elif isinstance(val, dict):
-                    if param_value in (val.get("id"), val.get("name")):
-                        val_match = True
-                elif hasattr(val, "id") and param_value == val.id:
-                    val_match = True
-
-                if val_match:
-                    matching_entry = (idx, workflow_interval)
-                    break
-
+            matching_entry = self._find_interval_parameter(param_name, param_value)
             if matching_entry is None:
                 raise AlbertException(
                     f"No matching interval found for parameter '{param_name}' with value '{param_value}'"
@@ -836,25 +817,18 @@ class Workflow(BaseResource):
         # Resolve value representation for Special parameters
         value_resolved = value
         if value is not None:
-            if hasattr(value, "id") and getattr(value, "id", None) is not None:
-                value_resolved = getattr(value, "name", None) or value.id
-            elif isinstance(value, dict):
-                value_resolved = (
-                    value.get("name") or value.get("id") or value.get("value") or str(value)
-                )
-            else:
-                for iv in matched_sp.intervals or []:
-                    if value == iv.value or str(value) == str(iv.value):
-                        break
-                    if isinstance(iv.value, dict) and value in (
-                        iv.value.get("id"),
-                        iv.value.get("name"),
-                    ):
-                        value_resolved = iv.value.get("id") or value
-                        break
-                    if hasattr(iv.value, "id") and value == iv.value.id:
-                        value_resolved = iv.value.id
-                        break
+            for iv in matched_sp.intervals or []:
+                if value == iv.value or str(value) == str(iv.value):
+                    break
+                if isinstance(iv.value, dict) and value in (
+                    iv.value.get("id"),
+                    iv.value.get("name"),
+                ):
+                    value_resolved = iv.value.get("id") or value
+                    break
+                if hasattr(iv.value, "id") and value == iv.value.id:
+                    value_resolved = iv.value.id
+                    break
 
         return RuleCondition(
             parameter_group_id=matched_pg.id,
@@ -1065,7 +1039,7 @@ class Workflow(BaseResource):
         ValueError
             If an invalid action string is provided.
         """
-        key = self.get_override_key(parameter_values)
+        key = self.get_override_key(parameter_values=parameter_values)
         if isinstance(action, str):
             try:
                 parsed_action = OverrideAction(action.lower())
