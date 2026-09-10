@@ -15,6 +15,7 @@ from albert.resources.notebooks import (
 )
 from albert.resources.projects import Project
 from tests.seeding import generate_notebook_block_seeds, generate_notebook_seeds
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 
@@ -25,7 +26,7 @@ def seeded_notebook(
 ) -> Iterator[Notebook]:
     notebook = generate_notebook_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects)[0]
     seeded = client.notebooks.create(notebook=notebook)
-    seeded.blocks = generate_notebook_block_seeds()
+    seeded.blocks = generate_notebook_block_seeds(seed_prefix=seed_prefix)
     yield client.notebooks.update_block_content(notebook=seeded)
     client.notebooks.delete(id=seeded.id)
 
@@ -105,6 +106,23 @@ def test_update_block_content_raises_exception(client: Albert, seeded_notebook: 
     notebook.blocks.extend([header_block1, header_block2])
     with pytest.raises(AlbertException, match="You have Notebook blocks with duplicate ids"):
         client.notebooks.update_block_content(notebook=notebook)
+
+
+def test_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Notebook]):
+    """Test search finds seeded notebook block content scoped to the seed project."""
+    nb = seeded_notebooks[0]
+    seeded_ids = {n.id for n in seeded_notebooks}
+    hits = poll_until(
+        lambda: [
+            hit
+            for hit in client.notebooks.search(
+                text=seed_prefix, project_id=nb.parent_id, max_items=50
+            )
+            if hit.notebook_id in seeded_ids and hit.block_id
+        ]
+    )
+    assert hits, "Expected at least one notebook search hit"
+    assert any(hit.notebook_id == nb.id for hit in hits)
 
 
 def test_get_block_by_id(client: Albert, seeded_notebooks: list[Notebook]):

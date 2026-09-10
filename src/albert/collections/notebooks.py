@@ -1,5 +1,7 @@
 import mimetypes
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from pydantic import TypeAdapter, validate_call
 
@@ -7,8 +9,16 @@ from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.synthesis import SynthesisCollection
 from albert.core.base import BaseAlbertModel
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import NotebookId, ProjectId, SynthesisId, TaskId
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import (
+    NotebookId,
+    ProjectId,
+    SearchProjectId,
+    SynthesisId,
+    TaskId,
+)
 from albert.exceptions import AlbertException
 from albert.resources.files import FileNamespace
 from albert.resources.notebooks import (
@@ -19,6 +29,7 @@ from albert.resources.notebooks import (
     NotebookBlock,
     NotebookCopyInfo,
     NotebookCopyType,
+    NotebookSearchItem,
     PutBlockDatum,
     PutBlockPayload,
     PutOperation,
@@ -72,6 +83,8 @@ class NotebookCollection(BaseCollection):
     -------
     get_by_id(id) -> Notebook
         Get a single notebook by its ID.
+    search(...) -> Iterator[NotebookSearchItem]
+        Search notebook block content across projects.
     list_by_parent_id(parent_id) -> list[Notebook]
         List the notebooks attached to a given parent (project or task).
     create(notebook) -> Notebook
@@ -140,6 +153,9 @@ class NotebookCollection(BaseCollection):
                 print(notebook.id, notebook.name)
             ```
 
+        To find notebooks by their block content instead of by parent, use
+        [`search`][albert.collections.notebooks.NotebookCollection.search].
+
         Parameters
         ----------
         parent_id : ProjectId or TaskId
@@ -156,6 +172,69 @@ class NotebookCollection(BaseCollection):
         response = self.session.get(f"{self.base_path}/{parent_id}/search")
         # return
         return [self.get_by_id(id=x["id"]) for x in response.json()["Items"]]
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        project_id: SearchProjectId | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[NotebookSearchItem]:
+        """Search for notebook block content matching the given filters.
+
+        Each result is a [`NotebookSearchItem`][albert.resources.notebooks.NotebookSearchItem]
+        representing a single matching content block, not a full notebook. Use
+        [`get_by_id`][albert.collections.notebooks.NotebookCollection.get_by_id] or
+        [`get_block_by_id`][albert.collections.notebooks.NotebookCollection.get_block_by_id]
+        to retrieve full notebook content. Results are returned as a lazily
+        paginated iterator.
+
+        !!! example
+            ```python
+            hits = client.notebooks.search(text="recrystallization", max_items=10)
+            first = next(iter(hits))
+            first.notebook_id
+            # 'NTB123'
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text search term matched against block content.
+        project_id : SearchProjectId, optional
+            Scope the search to notebooks in the given project (format ``PRO...``).
+            The ``PRO`` prefix is stripped before the request is sent.
+        sort_by : str, optional
+            Field to sort on.
+        order : OrderBy, optional
+            Sort direction for ``sort_by``.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+
+        Returns
+        -------
+        Iterator[NotebookSearchItem]
+            A lazily paginated iterator of block-level search hits.
+        """
+        params: dict[str, Any] = {
+            "text": text,
+            "projectId": project_id,
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [NotebookSearchItem.model_validate(x) for x in items],
+        )
 
     def create(self, *, notebook: Notebook) -> Notebook:
         """Find or create a Notebook for the provided notebook.

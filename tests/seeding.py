@@ -1506,12 +1506,13 @@ def generate_workflow_seeds(
     ]
 
 
-def generate_notebook_block_seeds() -> list[NotebookBlock]:
+def generate_notebook_block_seeds(*, seed_prefix: str = "") -> list[NotebookBlock]:
+    paragraph_text = f"{seed_prefix} I am a paragraph block.".strip()
     return [
         HeaderBlock(content=HeaderContent(level=1, text="I am a header1 block.")),
         HeaderBlock(content=HeaderContent(level=2, text="I am a header2 block.")),
         HeaderBlock(content=HeaderContent(level=3, text="I am a header3 block.")),
-        ParagraphBlock(content=ParagraphContent(text="I am a paragraph block.")),
+        ParagraphBlock(content=ParagraphContent(text=paragraph_text)),
         TableBlock(
             content=TableContent(
                 content=[
