@@ -5,11 +5,19 @@ import pytest
 from albert import Albert
 from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.data_columns import DataColumn
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import (
+    Axis,
+    CurveDataEntityLink,
+    DataColumnValue,
+    DataTemplate,
+    ImportMode,
+)
+from albert.resources.parameter_groups import DataType, ValueValidation
 from albert.resources.property_data import (
     BulkPropertyData,
     BulkPropertyDataColumn,
     CheckPropertyData,
+    CurvePropertyValue,
     InventoryDataColumn,
     InventoryPropertyData,
     InventoryPropertyDataCreate,
@@ -566,5 +574,174 @@ def test_update_or_create_task_property_calculation_evaluation(
             with suppress(NotFoundError):
                 client.data_templates.delete(id=calc_dt_id)
         for dc_id in calc_dc_ids:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=dc_id)
+
+
+def test_mixed_scalar_and_curve_task_property_upload(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory,
+    seeded_lots,
+    seeded_locations,
+    seeded_projects,
+    seeded_workflows,
+):
+    """Test uploading mixed scalar and curve properties in a single call (issue #672)."""
+    task_id = None
+    dt_id = None
+    dc_ids = []
+
+    try:
+        dc_stress = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - curve stress")
+        )
+        dc_strain = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - curve strain")
+        )
+        dc_curve = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - tensile curve")
+        )
+        dc_scalar = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - scalar temp")
+        )
+        dc_ids = [dc_stress.id, dc_strain.id, dc_curve.id, dc_scalar.id]
+
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - mixed curve dt",
+                description="Template for testing mixed scalar and curve property upload.",
+                data_column_values=[
+                    DataColumnValue(
+                        data_column=dc_stress,
+                    ),
+                    DataColumnValue(
+                        data_column=dc_strain,
+                    ),
+                    DataColumnValue(
+                        data_column=dc_scalar,
+                    ),
+                    DataColumnValue(
+                        data_column=dc_curve,
+                    ),
+                ],
+            )
+        )
+        dt_id = dt.id
+        dt_curve_col = next(c for c in dt.data_column_values if c.data_column_id == dc_curve.id)
+        dt_curve_col.validation = [ValueValidation(datatype=DataType.CURVE)]
+        dt_curve_col.curve_data = [
+            CurveDataEntityLink(
+                id=dc_stress.id,
+                name=dc_stress.name,
+                axis=Axis.X,
+            ),
+            CurveDataEntityLink(
+                id=dc_strain.id,
+                name=dc_strain.name,
+                axis=Axis.Y,
+            ),
+        ]
+        dt = client.data_templates.update(data_template=dt)
+        sequence_by_id = {col.data_column_id: col.sequence for col in dt.data_column_values}
+        seq_scalar = sequence_by_id[dc_scalar.id]
+        seq_curve = sequence_by_id[dc_curve.id]
+
+        lot = next(
+            (l for l in seeded_lots if l.inventory_id == seeded_inventory[0].id),
+            None,
+        )
+        workflow = seeded_workflows[0]
+
+        task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - mixed curve task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[
+                    TaskInventoryInformation(
+                        inventory_id=seeded_inventory[0].id,
+                        lot_id=lot.id if lot else None,
+                    )
+                ],
+                parent_id=seeded_inventory[0].id,
+                location=seeded_locations[0],
+                project=seeded_projects[0],
+                blocks=[
+                    Block(
+                        workflow=[workflow],
+                        data_template=[dt],
+                    )
+                ],
+            )
+        )
+        task_id = task.id
+        task = client.tasks.get_by_id(id=task_id)
+        block_id = task.blocks[0].id
+        block = client.property_data.get_task_block_properties(
+            inventory_id=seeded_inventory[0].id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+        )
+        interval_id = block.data[0].interval_combination
+
+        payload = [
+            TaskPropertyCreate(
+                interval_combination=interval_id,
+                data_column=TaskDataColumn(
+                    data_column_id=dc_scalar.id,
+                    column_sequence=seq_scalar,
+                ),
+                value="25.5",
+                data_template=dt,
+            ),
+            TaskPropertyCreate(
+                interval_combination=interval_id,
+                data_column=TaskDataColumn(
+                    data_column_id=dc_curve.id,
+                    column_sequence=seq_curve,
+                ),
+                value=CurvePropertyValue(
+                    file_path="tests/data/curve_test.csv",
+                    field_mapping={"Stress": dc_stress.name, "Strain": dc_strain.name},
+                    mode=ImportMode.CSV,
+                ),
+                data_template=dt,
+            ),
+        ]
+
+        result = client.property_data.add_properties_to_task(
+            inventory_id=seeded_inventory[0].id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot.id if lot else None,
+            properties=payload,
+            return_scope="block",
+        )
+
+        assert len(result) > 0
+        matching_trial = result[0].data[0].trials[-1]
+        scalar_col = next(c for c in matching_trial.data_columns if c.id == dc_scalar.id)
+        assert scalar_col.property_data is not None
+        assert scalar_col.property_data.value == "25.5"
+
+        curve_col = next(c for c in matching_trial.data_columns if c.id == dc_curve.id)
+        assert curve_col.property_data is not None
+        assert curve_col.property_data.value == "curve_test.csv"
+        assert curve_col.property_data.value_type == "curve"
+        assert curve_col.property_data.storage_key is not None
+        assert curve_col.property_data.job is not None
+        assert curve_col.property_data.job.get("state") == "successful"
+        # Clean up created task early so subsequent tests have a clean slate
+        client.tasks.delete(id=task_id)
+        task_id = None
+    finally:
+        if task_id:
+            with suppress(NotFoundError):
+                client.tasks.delete(id=task_id)
+        if dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt_id)
+        for dc_id in dc_ids:
             with suppress(NotFoundError):
                 client.data_columns.delete(id=dc_id)
