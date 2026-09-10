@@ -5,6 +5,7 @@ from pydantic import AliasChoices, Field
 
 from albert.core.shared.identifiers import ProjectId, ReportId
 from albert.core.shared.models.base import BaseAlbertModel, BaseResource
+from albert.resources._mixins import HydrationMixin
 
 ReportItem = dict[str, Any] | list[dict[str, Any]] | None
 
@@ -216,3 +217,65 @@ class FullAnalyticalReport(BaseResource):
         if not self.report:
             raise ValueError("Report data is not available")
         return pd.DataFrame(self.report)
+
+
+class ReportSearchItem(BaseAlbertModel, HydrationMixin["FullAnalyticalReport"]):
+    """A lightweight (partial) report returned by report search.
+
+    Returned by [`search`][albert.collections.reports.ReportCollection.search],
+    this carries only summary fields for fast listing. Use ``hydrate()`` to obtain
+    the fully populated [`FullAnalyticalReport`][albert.resources.reports.FullAnalyticalReport]."""
+
+    id: ReportId | None = Field(default=None, alias="albertId")
+    """The Albert Report ID (format ``REP...``)."""
+
+    name: str | None = Field(default=None)
+    """The report's display name."""
+
+    report_type: str | None = Field(default=None, alias="reportType")
+    """The human-readable name of the report type."""
+
+    report_type_id: str | None = Field(default=None, alias="reportTypeId")
+    """The report type ID (e.g. ``"RET42"``)."""
+
+    project_id: ProjectId | None = Field(default=None, alias="projectId")
+    """The Project the report is scoped to, if any (format ``PRO...``)."""
+
+    linked_to: str | None = Field(default=None, alias="linkedTo")
+    """The ID of the entity the report is linked to, if any."""
+
+    created_by: str | None = Field(default=None, alias="createdBy")
+    """The ID of the user who created the report."""
+
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The display name of the user who created the report."""
+
+    updated_by_name: str | None = Field(default=None, alias="updatedByName")
+    """The display name of the user who last updated the report."""
+
+    created_at: str | None = Field(default=None, alias="createdAt")
+    """Timestamp when the report was created (ISO 8601)."""
+
+    updated_at: str | None = Field(default=None, alias="updatedAt")
+    """Timestamp when the report was last updated (ISO 8601)."""
+
+    def hydrate(self) -> "FullAnalyticalReport":
+        """Fetch the fully populated report for this search result.
+
+        Returns
+        -------
+        FullAnalyticalReport
+            The fully populated report, including configuration and data.
+
+        Raises
+        ------
+        RuntimeError
+            If no collection is bound to this search result.
+        ValueError
+            If this search result has no ``id``.
+        """
+        if not self._collection or not hasattr(self._collection, "get_full_report"):
+            raise RuntimeError("No collection is bound to this resource.")
+        if self.id is None:
+            raise ValueError("Resource must have a non-null `id` to hydrate.")
+        return self._collection.get_full_report(report_id=self.id)

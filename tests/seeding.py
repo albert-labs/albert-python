@@ -73,6 +73,7 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.report_templates import ReportTemplate, ReportTemplateCategory
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
@@ -1782,8 +1783,40 @@ def generate_btinsight_seed(
     )
 
 
+def pick_report_type_id(templates: list[ReportTemplate]) -> str:
+    """Pick a report type ID from the available templates for report seeding.
+
+    Parameters
+    ----------
+    templates : list[ReportTemplate]
+        Report templates returned by ``client.report_templates.get_all()``.
+
+    Returns
+    -------
+    str
+        A report type ID suitable for ``FullAnalyticalReport.report_type_id``.
+
+    Raises
+    ------
+    ValueError
+        If no templates with IDs are available.
+    """
+    for template in templates:
+        if template.id and template.category == ReportTemplateCategory.REPORTS:
+            return template.id
+
+    for template in templates:
+        if template.id:
+            return template.id
+
+    raise ValueError("No report templates with IDs are available for seeding")
+
+
 def generate_report_seeds(
-    seed_prefix: str, seeded_projects: list[Project]
+    seed_prefix: str,
+    seeded_projects: list[Project],
+    *,
+    report_type_id: str,
 ) -> list[FullAnalyticalReport]:
     """
     Generates a list of FullAnalyticalReport seed objects for testing.
@@ -1794,6 +1827,8 @@ def generate_report_seeds(
         Prefix to use for generating unique names.
     seeded_projects : list[Project]
         List of seeded Project objects to reference in reports.
+    report_type_id : str
+        Report type ID from an available report template (e.g. ``"RET42"``).
 
     Returns
     -------
@@ -1805,7 +1840,7 @@ def generate_report_seeds(
     return [
         # Basic analytical report
         FullAnalyticalReport(
-            report_type_id="ALB#RET42",
+            report_type_id=report_type_id,
             name=f"{seed_prefix} - Basic Analytical Report",
             description=f"{seed_prefix} - A basic analytical report for testing",
             input_data={"project": project_ids},

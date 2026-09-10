@@ -47,6 +47,7 @@ from albert.resources.notes import Note
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter
 from albert.resources.projects import Project
+from albert.resources.report_templates import ReportTemplate
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.roles import Role
 from albert.resources.sheets import Component, Sheet
@@ -93,6 +94,7 @@ from tests.seeding import (
     generate_task_seeds,
     generate_unit_seeds,
     generate_workflow_seeds,
+    pick_report_type_id,
 )
 from tests.utils.fake_session import FakeAlbertSession
 
@@ -1023,15 +1025,27 @@ def seeded_btinsight(
 
 
 @pytest.fixture(scope="session")
+def report_templates(client: Albert) -> list[ReportTemplate]:
+    """Fetch all report templates available in the test environment."""
+    return client.report_templates.get_all()
+
+
+@pytest.fixture(scope="session")
 def seeded_reports(
     client: Albert,
     seed_prefix: str,
     seeded_projects: list[Project],
+    report_templates: list[ReportTemplate],
 ) -> Iterator[list[FullAnalyticalReport]]:
     """Create seeded reports for testing."""
+    report_type_id = pick_report_type_id(report_templates)
     seeded = _pmap(
         lambda report: client.reports.create_report(report=report),
-        generate_report_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects),
+        generate_report_seeds(
+            seed_prefix=seed_prefix,
+            seeded_projects=seeded_projects,
+            report_type_id=report_type_id,
+        ),
     )
 
     yield seeded

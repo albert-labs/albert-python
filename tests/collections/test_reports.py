@@ -12,8 +12,37 @@ from albert.resources.reports import (
     FullAnalyticalReport,
 )
 from albert.resources.tasks import BaseTask
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
+
+
+def test_search_reports(
+    client: Albert,
+    seed_prefix: str,
+    seeded_reports: list[FullAnalyticalReport],
+):
+    """Test searching reports finds seeded reports scoped to their project."""
+    expected = seeded_reports[0]
+    seeded_ids = {r.id for r in seeded_reports}
+    hits = poll_until(
+        lambda: [
+            hit
+            for hit in client.reports.search(
+                text=seed_prefix,
+                project_id=expected.project_id,
+                max_items=50,
+            )
+            if hit.id in seeded_ids
+        ]
+    )
+    hit_ids = {hit.id for hit in hits}
+    assert expected.id in hit_ids
+
+    hit = next(item for item in hits if item.id == expected.id)
+    assert hit.name is not None
+    assert seed_prefix in hit.name
+    assert hit.project_id == expected.project_id
 
 
 @pytest.mark.skip(reason="Report Queries not loaded into testing environment yet")
