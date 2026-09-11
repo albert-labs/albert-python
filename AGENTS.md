@@ -3,7 +3,8 @@
 Single source of truth for coding-agent guidance in this repo.
 
 **Read `OPINIONS.md` before changing anything it covers** — patch/update logic,
-pagination, resource naming, deprecations, releases, and testing edge cases.
+pagination, resource naming, keyword-only arguments on public methods, deprecations,
+releases, and testing edge cases.
 `AGENTS.md` states what to do; `OPINIONS.md` explains the traps.
 
 ## Project Basics
@@ -31,6 +32,10 @@ pagination, resource naming, deprecations, releases, and testing edge cases.
 - **Validate at boundaries only.** Trust internal code and type hints. Only validate user input and external API responses.
 - Collections inherit from `BaseCollection` and accept an `AlbertSession`.
 - Public collection methods use `@validate_call` for runtime validation.
+- **Always use keyword-only arguments (`*`) for public methods.** Place `*` immediately
+  after `self` (or `cls`) on all public collection, resource, and client methods
+  (e.g. `def get_by_id(self, *, id: str) -> Cas:`). Never expose positional parameters on
+  public APIs. See `OPINIONS.md` for rationale.
 - Resources use `BaseAlbertModel`/`BaseResource` with Pydantic `Field` and aliases.
 - **Field documentation lives on attribute docstrings**, not in class-level ``Attributes`` sections.
   ``BaseAlbertModel`` sets ``use_attribute_docstrings=True``, so Pydantic emits them as

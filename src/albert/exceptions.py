@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import contextlib
 from collections.abc import AsyncIterator, Iterator
+from typing import TYPE_CHECKING
 
 import httpx
 import requests
 
 from albert.core.logging import logger
+
+if TYPE_CHECKING:
+    from albert.resources.tasks import PropertyTask
 
 
 class AlbertException(Exception):
@@ -17,7 +23,7 @@ class AlbertAuthError(AlbertException):
     """Raised when authentication fails (e.g., bad credentials, expired token)."""
 
 
-def _restore_albert_http_error(cls: type, message: str) -> "AlbertHTTPError":
+def _restore_albert_http_error(cls: type, message: str) -> AlbertHTTPError:
     """Reconstruct an AlbertHTTPError from a pickled message string.
 
     Python's default exception pickling stores args and calls __init__(*args)
@@ -152,3 +158,61 @@ def handle_http_errors() -> Iterator[None]:
         # TODO: Enable debug logging via requests directly
         logger.debug("Albert HTTP Error %s", albert_error)
         raise albert_error from e
+
+
+class CombinationGenerationError(AlbertException):
+    """Raised when background combination generation fails for one or more task blocks.
+
+    Raised by [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+    when ``wait=True`` and combination generation does not complete successfully on all blocks.
+
+    Because the task itself has already been created on the platform, this exception
+    carries the created task instance and details about which blocks failed. This allows
+    callers to inspect the task state and retry generation for only the failed blocks
+    using [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
+
+    Attributes
+    ----------
+    task : PropertyTask or None
+        The created Property task, re-fetched from the platform.
+    failed_blocks : list[str]
+        List of block IDs (format ``BLK...``) whose combination generation failed.
+    job_states : dict[str, str]
+        Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.exceptions import CombinationGenerationError
+        from albert.resources.tasks import Block, PropertyTask
+
+        client = Albert()
+        try:
+            task = client.tasks.create_with_combinations(task=prop_task)
+        except CombinationGenerationError as err:
+            print(f"Task {err.task.id} was created, but some blocks failed combination generation.")
+            for block_id in err.failed_blocks:
+                # Retry generation on the failed block:
+                client.tasks.generate_block_combinations(
+                    task_id=err.task.id,
+                    block_id=block_id,
+                )
+        ```
+    """
+
+    task: PropertyTask | None
+    failed_blocks: list[str]
+    job_states: dict[str, str]
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        task: PropertyTask | None = None,
+        failed_blocks: list[str] | None = None,
+        job_states: dict[str, str] | None = None,
+    ):
+        super().__init__(message)
+        self.task = task
+        self.failed_blocks = failed_blocks or []
+        self.job_states = job_states or {}

@@ -435,7 +435,7 @@ class PropertyDataCollection(BaseCollection):
             The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
             The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
-            or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
+            a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------
@@ -451,7 +451,7 @@ class PropertyDataCollection(BaseCollection):
         }
 
         response = self.session.get(url=self.base_path, params=params)
-        return CheckPropertyData(response.json())
+        return CheckPropertyData(**response.json()[0])
 
     @validate_call
     def get_all_task_properties(
