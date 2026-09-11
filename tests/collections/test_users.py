@@ -90,3 +90,17 @@ def test_hydrate_user(client: Albert):
 
     if not hydrated_any:
         pytest.skip("No search hits could be hydrated (stale index IDs)")
+
+
+def test_user_delete_non_existent(client: Albert):
+    """Test deleting a non-existent user raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        client.users.delete(id="USR999999999")
+
+
+def test_user_delete_invalid_id(client: Albert):
+    """Test deleting with invalid ID format raises ValidationError."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        client.users.delete(id="INVALID_ID")
