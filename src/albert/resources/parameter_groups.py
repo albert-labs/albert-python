@@ -218,7 +218,7 @@ class ParameterValue(BaseAlbertModel):
     category: ParameterCategory | None = Field(default=None)
     """The category of the parameter (``Normal`` or ``Special``). Populated from ``parameter`` when one is provided. When only ``id`` is given, the parameter-group create API rejects the payload (``400 "Category mismatch ... Category undefined expected"``), so set ``category`` explicitly (``ParameterCategory.NORMAL`` for ordinary parameters) or pass the full ``parameter`` object."""
 
-    special_type: SpecialParameterType | None = Field(default=None)
+    special_type: SpecialParameterType | None = Field(alias="specialType", default=None)
     """The specific entity type for a ``Special`` parameter. ``None`` for ``Normal`` parameters. The platform does not validate this field on create the way it validates ``category``, so omitting it does not cause a 400."""
 
     short_name: str | None = Field(alias="shortName", default=None)

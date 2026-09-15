@@ -96,7 +96,7 @@ class TargetParameter(BaseAlbertModel):
     category: ParameterCategory
     """The category of the parameter."""
 
-    special_type: SpecialParameterType | None = Field(default=None)
+    special_type: SpecialParameterType | None = Field(alias="specialType", default=None)
     """The specific entity type for a ``Special`` parameter. ``None`` for ``Normal`` parameters."""
 
     unit_id: UnitId | None = Field(default=None, alias="unitId")
