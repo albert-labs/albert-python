@@ -6,6 +6,34 @@ from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem
 
 
+class SpecialParameterType(str, Enum):
+    """The specific entity type referenced by a Special
+    [`Parameter`][albert.resources.parameters.Parameter].
+
+    Not returned by the platform parameter API (use Zeus reports RET48/RET52 to
+    read the subtype from experiment data). Writable on
+    [`ParameterValue`][albert.resources.parameter_groups.ParameterValue] and
+    [`TargetParameter`][albert.resources.targets.TargetParameter].
+
+    Each member implies an id-namespace for the value column in experiment reports
+    (RET48/RET52): ``RAW_MATERIALS`` values carry ``INVA...`` ids, ``CONSUMABLES``
+    carry ``INVB...`` ids, and ``EQUIPMENT`` carry ``INVC...`` ids.
+
+    Attributes
+    ----------
+    RAW_MATERIALS : str
+        A raw material entity. Values appear as ``INVA...`` ids in report columns.
+    CONSUMABLES : str
+        A consumable entity. Values appear as ``INVB...`` ids in report columns.
+    EQUIPMENT : str
+        An equipment entity. Values appear as ``INVC...`` ids in report columns.
+    """
+
+    RAW_MATERIALS = "RawMaterials"
+    CONSUMABLES = "Consumables"
+    EQUIPMENT = "Equipment"
+
+
 class ParameterCategory(str, Enum):
     """Whether a [`Parameter`][albert.resources.parameters.Parameter]'s value is a plain scalar or an entity reference.
 
