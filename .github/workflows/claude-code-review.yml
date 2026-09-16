@@ -30,7 +30,7 @@ jobs:
         uses: anthropics/claude-code-action@37b464ce72700f7b2c5ff8d2db7fa7b15df792f5
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_bots: "release-catalyst"
+          allowed_bots: "release-catalyst,claude"
           claude_args: '--model claude-opus-4-8 --allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
           prompt: |
             REPO: ${{ github.repository }}
