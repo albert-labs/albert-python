@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.55.0](https://github.com/albert-labs/albert-python/compare/v1.54.0...v1.55.0) (2026-09-16)
+
+
+### Features
+
+* **parameters:** add SpecialParameterType enum and special_type field to ParameterValue and TargetParameter ([#735](https://github.com/albert-labs/albert-python/issues/735)) ([c479fbe](https://github.com/albert-labs/albert-python/commit/c479fbe356a4197c1f8b112018acfe7bd51ecaf4))
+
 ## [1.54.0](https://github.com/albert-labs/albert-python/compare/v1.53.0...v1.54.0) (2026-09-16)
 
 
