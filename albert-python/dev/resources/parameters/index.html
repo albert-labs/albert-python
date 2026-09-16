@@ -3996,6 +3996,56 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SpecialParameterType
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SpecialParameterType">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.RAW_MATERIALS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RAW_MATERIALS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.CONSUMABLES" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CONSUMABLES
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.EQUIPMENT" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EQUIPMENT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.parameters.ParameterCategory" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5282,6 +5332,56 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SpecialParameterType
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SpecialParameterType">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.RAW_MATERIALS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RAW_MATERIALS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.CONSUMABLES" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CONSUMABLES
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.EQUIPMENT" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EQUIPMENT
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#albert.resources.parameters.ParameterCategory" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5520,6 +5620,166 @@
 
 
 
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="albert.resources.parameters.SpecialParameterType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">SpecialParameterType</span>
+
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, <code><a class="autorefs autorefs-external" title="enum.Enum" href="https://docs.python.org/3/library/enum.html#enum.Enum">Enum</a></code></p>
+
+
+
+        <p>The specific entity type referenced by a Special
+<a class="autorefs autorefs-internal" href="#albert.resources.parameters.Parameter"><code>Parameter</code></a>.</p>
+<p>Not returned by the platform parameter API (use Zeus reports RET48/RET52 to
+read the subtype from experiment data). Writable on
+<a class="autorefs autorefs-internal" href="../parameter_groups/#albert.resources.parameter_groups.ParameterValue"><code>ParameterValue</code></a> and
+<a class="autorefs autorefs-internal" href="../targets/#albert.resources.targets.TargetParameter"><code>TargetParameter</code></a>.</p>
+<p>Each member implies an id-namespace for the value column in experiment reports
+(RET48/RET52): <code>RAW_MATERIALS</code> values carry <code>INVA...</code> ids, <code>CONSUMABLES</code>
+carry <code>INVB...</code> ids, and <code>EQUIPMENT</code> carry <code>INVC...</code> ids.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.parameters.SpecialParameterType.RAW_MATERIALS">RAW_MATERIALS</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A raw material entity. Values appear as <code>INVA...</code> ids in report columns.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.parameters.SpecialParameterType.CONSUMABLES">CONSUMABLES</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A consumable entity. Values appear as <code>INVB...</code> ids in report columns.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.parameters.SpecialParameterType.EQUIPMENT">EQUIPMENT</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An equipment entity. Values appear as <code>INVC...</code> ids in report columns.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.parameters.SpecialParameterType.RAW_MATERIALS" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">RAW_MATERIALS</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">RAW_MATERIALS</span> <span class="o">=</span> <span class="s1">'RawMaterials'</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.parameters.SpecialParameterType.CONSUMABLES" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">CONSUMABLES</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">CONSUMABLES</span> <span class="o">=</span> <span class="s1">'Consumables'</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.parameters.SpecialParameterType.EQUIPMENT" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">EQUIPMENT</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">EQUIPMENT</span> <span class="o">=</span> <span class="s1">'Equipment'</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 <div class="doc doc-object doc-class">
 
