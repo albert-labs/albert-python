@@ -15,6 +15,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.base import BaseResource
 from albert.resources.parameter_groups import ParameterCategory
+from albert.resources.parameters import SpecialParameterType
 
 
 class ComparisonOperator(str, Enum):
@@ -94,6 +95,9 @@ class TargetParameter(BaseAlbertModel):
 
     category: ParameterCategory
     """The category of the parameter."""
+
+    special_type: SpecialParameterType | None = Field(alias="specialType", default=None)
+    """The specific entity type for a ``Special`` parameter. ``None`` for ``Normal`` parameters."""
 
     unit_id: UnitId | None = Field(default=None, alias="unitId")
     """The unit ID (format ``UNI...``) for this parameter's value."""
