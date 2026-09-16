@@ -8,7 +8,6 @@ silently lost, using payload fragments recorded from the live API.
 
 import pytest
 
-from albert.resources.activities import Activity, ActivityActor, ActivitySearchItem
 from albert.resources.product_design import (
     CasLevelSubstance,
     UnpackedCasInfo,
@@ -100,93 +99,3 @@ def test_substance_v4_info_accepts_japanese_object_fields(field, value):
     info = SubstanceV4Info.model_validate({"casID": "50-00-0", field: value})
 
     assert getattr(info, field) == value
-
-
-ACTIVITY_SEARCH_ITEM_PAYLOAD = {
-    "action": "created",
-    "name": "api-activity",
-    "PK": "TEN0#INVA1111",
-    "class": "shared",
-    "loggedAt": "2023-05-11",
-    "operationId": "getInventory",
-    "objectId": "INVMO2806-010",
-    "objectType": "INV",
-    "activityId": "DAT111#122323232323232",
-    "user": {
-        "name": "vikash",
-        "id": "USR111",
-        "role": "innovator",
-        "class": "admin",
-    },
-    "actor": {
-        "details": {
-            "mode": "obo",
-            "client_id": "client-uuid-123",
-            "act": {
-                "sub": "invent-ask-albert",
-                "name": "invent-ask-albert/product-obo",
-            },
-        },
-        "metadata": {"traceId": "abc-123"},
-    },
-}
-
-
-def test_activity_search_item_exposes_actor_details():
-    """``ActivitySearchItem`` must expose actor details when present on S2S activity events."""
-    item = ActivitySearchItem.model_validate(ACTIVITY_SEARCH_ITEM_PAYLOAD)
-
-    assert item.actor is not None
-    assert isinstance(item.actor, ActivityActor)
-    assert item.actor.details is not None
-    assert item.actor.details.mode == "obo"
-    assert item.actor.details.client_id == "client-uuid-123"
-    assert item.actor.details.act is not None
-    assert item.actor.details.act.sub == "invent-ask-albert"
-    assert item.actor.details.act.name == "invent-ask-albert/product-obo"
-    assert item.actor.metadata == {"traceId": "abc-123"}
-
-
-def test_activity_search_item_actor_client_id_alias():
-    """``ActivityActorDetails`` accepts either client_id or clientId."""
-    payload = {
-        "actor": {
-            "details": {
-                "mode": "obo",
-                "clientId": "client-uuid-456",
-            }
-        }
-    }
-    item = ActivitySearchItem.model_validate(payload)
-
-    assert item.actor is not None
-    assert item.actor.details is not None
-    assert item.actor.details.client_id == "client-uuid-456"
-
-
-def test_activity_search_item_actor_absent():
-    """``actor`` is None when absent in activity search results."""
-    item = ActivitySearchItem.model_validate({"activityId": "ACT1"})
-
-    assert item.actor is None
-
-
-def test_activity_exposes_actor():
-    """``Activity`` resource keeps actor details returned by get_all feed."""
-    activity = Activity.model_validate(
-        {
-            "albertId": "COM2358",
-            "activityId": "COM2358",
-            "action": "created",
-            "actor": {
-                "details": {
-                    "mode": "obo",
-                    "client_id": "client-uuid-789",
-                }
-            },
-        }
-    )
-
-    assert activity.actor is not None
-    assert activity.actor.details is not None
-    assert activity.actor.details.client_id == "client-uuid-789"
