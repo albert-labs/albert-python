@@ -299,7 +299,19 @@ class ChatMessage(BaseResource):
     """Structured record of a plan approval or change request the user submitted with this message (present on user rows that acted on a plan card)."""
 
     permission_action: dict[str, Any] | None = Field(default=None, alias="permissionAction")
-    """Structured record of a permission decision the user submitted with this message (present on user rows that responded to a permission card; an allow_session row is the durable session grant). See Also --------"""
+    """Structured record of a permission decision the user submitted with this message (present on user rows that responded to a permission card; an allow_session row is the durable session grant). Superseded by ``permission_actions`` where the client submits every decision as one batch; kept for older clients."""
+
+    permission_actions: list[dict[str, Any]] | None = Field(
+        default=None, alias="permissionActions"
+    )
+    """Every permission decision the user submitted with this message, as one batch.
+
+    Present on user rows that answered one or more permission cards. Each entry has the
+    same shape as ``permission_action`` and may carry a ``permissionKey`` of the form
+    ``"<group>.<write|delete>"``, which scopes an ``allow_session`` grant to that group
+    and action type rather than to all writes. When a row carries both fields, the list
+    is authoritative.
+    """
 
 
 class ChatFolder(BaseResource):
