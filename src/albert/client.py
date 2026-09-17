@@ -124,6 +124,7 @@ class Albert:
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: dict[str, str] | None = None,
         session: AlbertSession | None = None,
     ):
         if auth_manager and base_url and base_url != auth_manager.base_url:
@@ -141,6 +142,7 @@ class Albert:
             auth_manager=auth_manager,
             retries=retries,
             timeout=timeout,
+            headers=headers,
         )
 
     @classmethod
@@ -150,9 +152,10 @@ class Albert:
         base_url: str | None,
         token: str,
         timeout: float | tuple[float, float] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using a static token for authentication."""
-        return cls(base_url=base_url, token=token, timeout=timeout)
+        return cls(base_url=base_url, token=token, timeout=timeout, headers=headers)
 
     @classmethod
     def from_sso(
@@ -164,12 +167,13 @@ class Albert:
         tenant_id: str | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using interactive OAuth2 SSO login."""
         resolved_base_url = base_url or default_albert_base_url()
         oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
         oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
-        return cls(auth_manager=oauth, retries=retries, timeout=timeout)
+        return cls(auth_manager=oauth, retries=retries, timeout=timeout, headers=headers)
 
     @classmethod
     def from_client_credentials(
@@ -180,6 +184,7 @@ class Albert:
         client_secret: str,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
         resolved_base_url = base_url or default_albert_base_url()
@@ -188,7 +193,7 @@ class Albert:
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
         )
-        return cls(auth_manager=creds, retries=retries, timeout=timeout)
+        return cls(auth_manager=creds, retries=retries, timeout=timeout, headers=headers)
 
     @property
     def projects(self) -> ProjectCollection:
@@ -465,6 +470,7 @@ class AsyncAlbert:
         base_url: str | None = None,
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        headers: dict[str, str] | None = None,
         session: AsyncAlbertSession | None = None,
     ):
         if session is not None:
@@ -484,10 +490,17 @@ class AsyncAlbert:
             base_url=resolved_base_url,
             token=token or os.getenv("ALBERT_TOKEN"),
             auth_manager=auth_manager,
+            headers=headers,
         )
 
     @classmethod
-    def from_token(cls, *, base_url: str | None = None, token: str) -> AsyncAlbert:
+    def from_token(
+        cls,
+        *,
+        base_url: str | None = None,
+        token: str,
+        headers: dict[str, str] | None = None,
+    ) -> AsyncAlbert:
         """
         Create an AsyncAlbert client using a static token for authentication.
 
@@ -498,13 +511,15 @@ class AsyncAlbert:
             environment variable or "https://app.albertinvent.com".
         token : str
             A static JWT token used for all requests.
+        headers : dict[str, str] | None, optional
+            Extra headers applied to every request the client makes.
 
         Returns
         -------
         AsyncAlbert
             A configured async client authenticated with the given token.
         """
-        return cls(base_url=base_url, token=token)
+        return cls(base_url=base_url, token=token, headers=headers)
 
     @classmethod
     def from_client_credentials(
@@ -513,6 +528,7 @@ class AsyncAlbert:
         base_url: str | None = None,
         client_id: str,
         client_secret: str,
+        headers: dict[str, str] | None = None,
     ) -> AsyncAlbert:
         """
         Create an AsyncAlbert client using client credentials authentication.
@@ -526,6 +542,8 @@ class AsyncAlbert:
             The OAuth2 client ID.
         client_secret : str
             The OAuth2 client secret.
+        headers : dict[str, str] | None, optional
+            Extra headers applied to every request the client makes.
 
         Returns
         -------
@@ -538,7 +556,7 @@ class AsyncAlbert:
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
         )
-        return cls(auth_manager=creds)
+        return cls(auth_manager=creds, headers=headers)
 
     @property
     def chat_sessions(self) -> ChatSessionCollection:

@@ -24,6 +24,12 @@ class AsyncAlbertSession:
         A static JWT token. Ignored when ``auth_manager`` is provided.
     auth_manager : AlbertClientCredentials | AlbertSSOClient | None, optional
         An authentication manager for OAuth2 token refresh. Overrides ``token``.
+    headers : dict[str, str] | None, optional
+        Extra headers applied to every request made through this session, for
+        example a caller-supplied correlation or audit header. Merged over the
+        session defaults, so a key given here wins over ``Content-Type``,
+        ``Accept``, and ``User-Agent``. ``Authorization`` is set per request
+        from the session's own credentials and cannot be overridden here.
     """
 
     def __init__(
@@ -32,6 +38,7 @@ class AsyncAlbertSession:
         base_url: str,
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        headers: dict[str, str] | None = None,
     ):
         if token is None and auth_manager is None:
             raise ValueError("Either `token` or `auth_manager` must be specified.")
@@ -44,6 +51,7 @@ class AsyncAlbertSession:
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": f"albert-SDK V.{albert.__version__}",
+                **(headers or {}),
             },
         )
 

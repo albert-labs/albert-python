@@ -33,6 +33,12 @@ class AlbertSession(requests.Session):
         When ``None`` (the default), requests have no timeout and can block
         indefinitely. A per-call ``timeout`` passed to a request always takes
         precedence.
+    headers : dict[str, str] | None, optional
+        Extra headers applied to every request made through this session, for
+        example a caller-supplied correlation or audit header. Merged over the
+        session defaults, so a key given here wins over ``Content-Type``,
+        ``Accept``, and ``User-Agent``. ``Authorization`` is set per request
+        from the session's own credentials and cannot be overridden here.
     """
 
     def __init__(
@@ -43,6 +49,7 @@ class AlbertSession(requests.Session):
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: dict[str, str] | None = None,
     ):
         super().__init__()
         self.base_url = base_url
@@ -54,6 +61,8 @@ class AlbertSession(requests.Session):
                 "User-Agent": f"albert-SDK V.{albert.__version__}",
             }
         )
+        if headers:
+            self.headers.update(headers)
 
         if token is None and auth_manager is None:
             raise ValueError("Either `token` or `auth_manager` must be specified.")
