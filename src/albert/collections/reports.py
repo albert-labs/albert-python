@@ -106,7 +106,8 @@ class ReportCollection(BaseCollection):
             The category of the report (e.g. ``"datascience"`` or ``"analytics"``).
         report_type_id : str
             The report type ID identifying which report to run (e.g. ``"RET51"``
-            or the fully qualified ``"ALB#RET51"``).
+            or the fully qualified ``"ALB#RET51"``). Fully qualified IDs are
+            normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. project IDs, inventory IDs, or unique IDs). Optional.
@@ -116,6 +117,8 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
         """
+        # Fully qualified IDs (``ALB#RET51``) would truncate the URL path at ``#``.
+        report_type_id = report_type_id.rsplit("#", 1)[-1]
         path = f"{self.base_path}/{category}/{report_type_id}"
 
         params = {}
