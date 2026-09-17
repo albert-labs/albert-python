@@ -62,6 +62,8 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+(cd "${ROOT_DIR}" && uv build --wheel 1>&2)
+
 ZIP_PATH="$(
   "${ROOT_DIR}/.circleci/scripts/build-lambda-layer.sh" \
     --version "${SDK_VERSION}" \
@@ -73,7 +75,7 @@ echo "Built zip: ${ZIP_PATH}"
 
 "${ROOT_DIR}/.circleci/scripts/publish-lambda-layer.sh" \
   --zip "${ZIP_PATH}" \
-  --region "${REGION}" \
+  --regions "${REGION}" \
   --runtime "${RUNTIME}" \
   --arch "${ARCH}" \
   --sdk-version "${SDK_VERSION}" \

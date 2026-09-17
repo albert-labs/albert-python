@@ -6,6 +6,8 @@ usage() {
 Usage: .circleci/scripts/build-lambda-layer.sh --version <sdk_version> --runtime <3.12> --arch <x86_64|arm64>
 
 Builds an AWS Lambda layer zip for the Albert SDK using a Lambda base image.
+Installs the SDK from the wheel in dist/ (run `uv build --wheel` first) so the
+layer matches this checkout; --version must match the wheel's version.
 Outputs the zip path on success.
 EOF
 }
@@ -80,6 +82,18 @@ trap cleanup EXIT
 
 mkdir -p "$OUT_DIR"
 
+# Locate the wheel built from this checkout (uv build --wheel).
+shopt -s nullglob
+WHEELS=("${ROOT_DIR}"/dist/albert-"${SDK_VERSION}"-*.whl)
+shopt -u nullglob
+if [[ ${#WHEELS[@]} -ne 1 ]]; then
+  echo "Expected exactly one dist/albert-${SDK_VERSION}-*.whl (run 'uv build --wheel' first), found ${#WHEELS[@]}." >&2
+  exit 1
+fi
+WHEEL_NAME="$(basename "${WHEELS[0]}")"
+mkdir -p "${TMP_DIR}/wheel"
+cp "${WHEELS[0]}" "${TMP_DIR}/wheel/"
+
 IMAGE="public.ecr.aws/lambda/python:${RUNTIME}"
 PLATFORM="linux/amd64"
 ARCH_SUFFIX="x86_64"
@@ -88,7 +102,7 @@ if [[ "$ARCH" == "arm64" ]]; then
   ARCH_SUFFIX="arm64"
 fi
 
-ZIP_NAME="albert-layer-${SDK_VERSION}-py${RUNTIME}-${ARCH_SUFFIX}.zip"
+ZIP_NAME="albert-python-${SDK_VERSION}-py${RUNTIME}-${ARCH_SUFFIX}.zip"
 ZIP_PATH="${OUT_DIR}/${ZIP_NAME}"
 
 # Install packages inside the Lambda image (only step that needs Docker)
@@ -102,8 +116,8 @@ docker run \
   "${IMAGE}" \
   -c "
     set -euo pipefail
-    python -m pip install --no-cache-dir --only-binary numpy,pandas albert==${SDK_VERSION} -t /work/python 1>&2
-    PYTHONPATH=/work/python python -c 'import albert' 1>&2
+    python -m pip install --no-cache-dir --only-binary numpy,pandas /work/wheel/${WHEEL_NAME} -t /work/python 1>&2
+    PYTHONPATH=/work/python python -c 'import albert; assert albert.__version__ == \"${SDK_VERSION}\", albert.__version__; print(\"albert\", albert.__version__)' 1>&2
   " 1>&2
 
 # Cleanup and zip on the host — no dependency on tools inside the Lambda image
