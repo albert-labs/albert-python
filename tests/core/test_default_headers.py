@@ -1,9 +1,8 @@
-"""Caller-supplied default headers on the sync and async sessions.
+"""Test caller-supplied default headers on the sync and async sessions.
 
-The motivating case is audit metadata: Ask Albert stamps turn context onto
-every platform call so an activity record can be traced back to the
-conversation that produced it. Before this seam existed, the only way to do
-that was to mutate the private ``AsyncAlbertSession._client``.
+The motivating case is a correlation or audit header that must ride every
+request a client makes. Before this seam existed, the only way to set one on
+the async client was to mutate the private ``AsyncAlbertSession._client``.
 """
 
 import httpx
@@ -92,3 +91,25 @@ async def test_authorization_cannot_be_overridden_by_default_headers():
     await session.get("/api/v3/projects")
 
     assert seen[0]["Authorization"] == "Bearer real-token"
+
+
+def test_async_session_replaces_a_default_header_case_insensitively():
+    """Test that a lowercase override replaces the default instead of joining it.
+
+    httpx sends same-name headers comma-joined, so a plain dict merge would put
+    both ``Content-Type`` and ``content-type`` on the client and the value would
+    arrive as "application/json, text/plain".
+    """
+    session = AsyncAlbertSession(
+        base_url=_BASE_URL, token="tok", headers={"content-type": "text/plain"}
+    )
+
+    assert session._client.headers["Content-Type"] == "text/plain"
+    assert session._client.headers.get_list("content-type") == ["text/plain"]
+
+
+def test_sync_session_accepts_any_mapping():
+    """Test that a non-dict mapping is accepted without an explicit cast."""
+    session = AlbertSession(base_url=_BASE_URL, token="tok", headers=httpx.Headers(_METADATA))
+
+    assert session.headers["x-s2s-metadata"] == '{"chatId":"SES4515"}'
