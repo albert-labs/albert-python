@@ -6,18 +6,15 @@ parameters:
   lambda_layer:
     type: boolean
     default: false
-  lambda_sdk_version:
-    type: string
-    default: ""
   lambda_runtimes:
     type: string
-    default: "3.10,3.11,3.12"
+    default: "3.11,3.12,3.13,3.14"
   lambda_archs:
     type: string
     default: "x86_64,arm64"
-  lambda_region:
+  lambda_regions:
     type: string
-    default: "us-east-1"
+    default: "us-west-2"
   lambda_account_id:
     type: string
     default: ""
@@ -169,24 +166,28 @@ jobs:
           command: |
             set -euo pipefail
 
-            if [[ -z "<< pipeline.parameters.lambda_sdk_version >>" ]]; then
-              echo "lambda_sdk_version is required when triggering lambda_layer workflow."
-              exit 1
-            fi
-
             if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]] && \
               ! [[ "<< pipeline.parameters.lambda_account_id >>" =~ ^[0-9]{12}$ ]]; then
               echo "lambda_account_id must be a 12-digit AWS account ID."
               exit 1
             fi
+
+            # The layer is built from this checkout, so the pipeline must run on a release tag.
+            # The SDK version is taken from that tag.
+            if [[ -z "${CIRCLE_TAG:-}" ]]; then
+              echo "Trigger this pipeline on a release tag (e.g. v1.19.0); got no tag."
+              exit 1
+            fi
+            python scripts/validate_release_tag.py --tag "${CIRCLE_TAG}"
+            echo "export LAMBDA_SDK_VERSION=${CIRCLE_TAG#v}" >> "$BASH_ENV"
       - run:
           name: Generate continuation config
           command: |
             python .circleci/scripts/generate_lambda_matrix.py \
               --runtimes   "<< pipeline.parameters.lambda_runtimes >>" \
               --archs      "<< pipeline.parameters.lambda_archs >>" \
-              --sdk-version "<< pipeline.parameters.lambda_sdk_version >>" \
-              --region     "<< pipeline.parameters.lambda_region >>" \
+              --sdk-version "${LAMBDA_SDK_VERSION}" \
+              --regions    "<< pipeline.parameters.lambda_regions >>" \
               --account-id "<< pipeline.parameters.lambda_account_id >>" \
               --output     /tmp/lambda_continuation.yml
       - continuation/continue:

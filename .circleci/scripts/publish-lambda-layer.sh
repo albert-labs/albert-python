@@ -3,15 +3,16 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: .circleci/scripts/publish-lambda-layer.sh --zip <path> --region <aws_region> --runtime <3.12> --arch <x86_64|arm64> --sdk-version <x.y.z> [--account-id <aws_account_id>] [--no-public]
+Usage: .circleci/scripts/publish-lambda-layer.sh --zip <path> --regions <region[,region...]> --runtime <3.12> --arch <x86_64|arm64> --sdk-version <x.y.z> [--account-id <aws_account_id>] [--no-public]
 
-Publishes a Lambda layer version from a local zip file using direct upload.
+Publishes a Lambda layer version from a local zip file using direct upload, once per region.
+Skips publishing in a region that already has a layer version for this SDK version.
 Fails if the zip exceeds 50 MB.
 EOF
 }
 
 ZIP_PATH=""
-REGION=""
+REGIONS=""
 RUNTIME=""
 ARCH=""
 SDK_VERSION=""
@@ -24,8 +25,8 @@ while [[ $# -gt 0 ]]; do
       ZIP_PATH="$2"
       shift 2
       ;;
-    --region)
-      REGION="$2"
+    --regions)
+      REGIONS="$2"
       shift 2
       ;;
     --runtime)
@@ -60,7 +61,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$ZIP_PATH" || -z "$REGION" || -z "$RUNTIME" || -z "$ARCH" || -z "$SDK_VERSION" ]]; then
+if [[ -z "$ZIP_PATH" || -z "$REGIONS" || -z "$RUNTIME" || -z "$ARCH" || -z "$SDK_VERSION" ]]; then
   echo "Missing required arguments." >&2
   usage
   exit 1
@@ -118,45 +119,70 @@ GIT_SHA="${GIT_SHA:-unknown}"
 BUILD_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 RUNTIME_NO_DOT="${RUNTIME//./}"
-LAYER_NAME="albert-python-sdk-py${RUNTIME_NO_DOT}-${ARCH}"
-DESCRIPTION="Albert SDK v${SDK_VERSION} | ${ARCH} | ${BUILD_DATE} | sha=${GIT_SHA}"
+LAYER_NAME="albert-python-py${RUNTIME_NO_DOT}-${ARCH}"
+# The prefix is what the idempotency check matches on; keep it stable.
+DESCRIPTION_PREFIX="albert-python ${SDK_VERSION} |"
+DESCRIPTION="${DESCRIPTION_PREFIX} python${RUNTIME} | ${ARCH} | ${BUILD_DATE} | sha=${GIT_SHA}"
 
-PUBLISH_OUTPUT=""
-PUBLISH_OUTPUT="$(
-  aws lambda publish-layer-version \
-    --region "${REGION}" \
-    --layer-name "${LAYER_NAME}" \
-    --description "${DESCRIPTION}" \
-    --compatible-runtimes "python${RUNTIME}" \
-    --compatible-architectures "${ARCH}" \
-    --zip-file "fileb://${ZIP_PATH}" \
-    --query '[LayerVersionArn,Version]' \
-    --output text
-)"
+IFS=',' read -ra REGION_LIST <<<"${REGIONS}"
 
-read -r LAYER_ARN LAYER_VERSION <<<"${PUBLISH_OUTPUT}"
+for REGION in "${REGION_LIST[@]}"; do
+  REGION="${REGION// /}"
+  [[ -z "$REGION" ]] && continue
+  echo "== ${REGION}: ${LAYER_NAME}"
 
-if [[ -z "${LAYER_ARN:-}" || -z "${LAYER_VERSION:-}" ]]; then
-  echo "Failed to publish layer or parse publish response." >&2
-  exit 1
-fi
+  # Idempotent: if a layer version for this SDK version already exists, reuse it.
+  EXISTING_ARN="$(
+    aws lambda list-layer-versions \
+      --region "${REGION}" \
+      --layer-name "${LAYER_NAME}" \
+      --query "LayerVersions[?starts_with(Description, '${DESCRIPTION_PREFIX}')].LayerVersionArn | [0]" \
+      --output text
+  )"
 
-if [[ "$MAKE_PUBLIC" == "1" ]]; then
-  PRINCIPAL='*'
-  STATEMENT_ID='public-access'
-  if [[ -n "$ACCOUNT_ID" ]]; then
-    PRINCIPAL="$ACCOUNT_ID"
-    STATEMENT_ID="allow-account-${ACCOUNT_ID}"
+  if [[ -n "${EXISTING_ARN}" && "${EXISTING_ARN}" != "None" ]]; then
+    LAYER_ARN="${EXISTING_ARN}"
+    LAYER_VERSION="${LAYER_ARN##*:}"
+    echo "Layer version ${LAYER_VERSION} already contains albert-python ${SDK_VERSION}; skipping publish."
+  else
+    PUBLISH_OUTPUT="$(
+      aws lambda publish-layer-version \
+        --region "${REGION}" \
+        --layer-name "${LAYER_NAME}" \
+        --description "${DESCRIPTION}" \
+        --compatible-runtimes "python${RUNTIME}" \
+        --compatible-architectures "${ARCH}" \
+        --zip-file "fileb://${ZIP_PATH}" \
+        --query '[LayerVersionArn,Version]' \
+        --output text
+    )"
+
+    read -r LAYER_ARN LAYER_VERSION <<<"${PUBLISH_OUTPUT}"
+
+    if [[ -z "${LAYER_ARN:-}" || -z "${LAYER_VERSION:-}" ]]; then
+      echo "Failed to publish layer or parse publish response." >&2
+      exit 1
+    fi
+
+    if [[ "$MAKE_PUBLIC" == "1" ]]; then
+      PRINCIPAL='*'
+      STATEMENT_ID='public-access'
+      if [[ -n "$ACCOUNT_ID" ]]; then
+        PRINCIPAL="$ACCOUNT_ID"
+        STATEMENT_ID="allow-account-${ACCOUNT_ID}"
+      fi
+
+      aws lambda add-layer-version-permission \
+        --region "${REGION}" \
+        --layer-name "${LAYER_NAME}" \
+        --version-number "${LAYER_VERSION}" \
+        --statement-id "${STATEMENT_ID}" \
+        --action lambda:GetLayerVersion \
+        --principal "${PRINCIPAL}"
+    fi
+
+    echo "Published layer version ${LAYER_VERSION}"
   fi
 
-  aws lambda add-layer-version-permission \
-    --region "${REGION}" \
-    --layer-name "${LAYER_NAME}" \
-    --version-number "${LAYER_VERSION}" \
-    --statement-id "${STATEMENT_ID}" \
-    --action lambda:GetLayerVersion \
-    --principal "${PRINCIPAL}"
-fi
-
-echo "Published layer version ${LAYER_VERSION}"
-echo "Layer ARN: ${LAYER_ARN}"
+  echo "Layer ARN: ${LAYER_ARN}"
+done

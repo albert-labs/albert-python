@@ -15,13 +15,13 @@ def job_name(runtime: str, arch: str) -> str:
     return f"lambda_layer_{runtime_slug}_{arch}"
 
 
-def build_job(runtime: str, arch: str, sdk_version: str, region: str, account_id: str) -> dict:
-    zip_path = f"dist/lambda/albert-layer-{sdk_version}-py{runtime}-{arch}.zip"
+def build_job(runtime: str, arch: str, sdk_version: str, regions: str, account_id: str) -> dict:
+    zip_path = f"dist/lambda/albert-python-{sdk_version}-py{runtime}-{arch}.zip"
 
     publish_cmd_parts = [
         ".circleci/scripts/publish-lambda-layer.sh",
         f'  --zip        "{zip_path}"',
-        f'  --region     "{region}"',
+        f'  --regions    "{regions}"',
         f'  --runtime    "{runtime}"',
         f'  --arch       "{arch}"',
         f'  --sdk-version "{sdk_version}"',
@@ -45,6 +45,18 @@ def build_job(runtime: str, arch: str, sdk_version: str, region: str, account_id
             }
         },
         "aws-cli/setup",
+        {
+            "run": {
+                "name": "Install uv",
+                "command": "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            }
+        },
+        {
+            "run": {
+                "name": "Build wheel from checkout",
+                "command": "uv build --wheel",
+            }
+        },
         {
             "run": {
                 "name": f"Build lambda layer zip (py{runtime}, {arch})",
@@ -79,7 +91,7 @@ def generate(
     runtimes: list[str],
     archs: list[str],
     sdk_version: str,
-    region: str,
+    regions: str,
     account_id: str,
 ) -> str:
     lines: list[str] = [
@@ -91,18 +103,15 @@ def generate(
         "  lambda_layer:",
         "    type: boolean",
         "    default: false",
-        "  lambda_sdk_version:",
-        "    type: string",
-        "    default: \"\"",
         "  lambda_runtimes:",
         "    type: string",
-        "    default: \"3.10,3.11,3.12\"",
+        "    default: \"3.11,3.12,3.13,3.14\"",
         "  lambda_archs:",
         "    type: string",
         "    default: \"x86_64,arm64\"",
-        "  lambda_region:",
+        "  lambda_regions:",
         "    type: string",
-        "    default: \"us-east-1\"",
+        "    default: \"us-west-2\"",
         "  lambda_account_id:",
         "    type: string",
         "    default: \"\"",
@@ -118,7 +127,7 @@ def generate(
     for runtime in runtimes:
         for arch in archs:
             name = job_name(runtime, arch)
-            job = build_job(runtime, arch, sdk_version, region, account_id)
+            job = build_job(runtime, arch, sdk_version, regions, account_id)
             lines.append(f"  {name}:")
             lines.extend(_render_job(job))
             lines.append("")
@@ -187,7 +196,7 @@ def main() -> None:
     parser.add_argument("--runtimes", required=True)
     parser.add_argument("--archs", required=True)
     parser.add_argument("--sdk-version", required=True)
-    parser.add_argument("--region", required=True)
+    parser.add_argument("--regions", required=True, help="Comma-separated AWS regions")
     parser.add_argument("--account-id", default="")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
@@ -204,7 +213,12 @@ def main() -> None:
         print("--runtimes must not be empty.", file=sys.stderr)
         sys.exit(1)
 
-    config = generate(runtimes, archs, args.sdk_version, args.region, args.account_id)
+    regions = ",".join(r.strip() for r in args.regions.split(",") if r.strip())
+    if not regions:
+        print("--regions must not be empty.", file=sys.stderr)
+        sys.exit(1)
+
+    config = generate(runtimes, archs, args.sdk_version, regions, args.account_id)
 
     with open(args.output, "w") as f:
         f.write(config)
