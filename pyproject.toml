@@ -31,7 +31,9 @@ dev = [
     "pytest>=8.3.2",
     "pytest-dotenv>=0.5.2",
     "jupyter>=1.1.1",
-    "ruff>=0.8.1",
+    # uv.lock is gitignored, so CI resolves ruff fresh on every run. Bound the minor so a
+    # ruff release does not change formatting rules (0.16 started formatting Markdown code blocks).
+    "ruff>=0.14.7,<0.15",
     "mkdocs>=1.5.3",
     "mkdocs-material>=9.5.10",
     "mkdocstrings>=0.29.1",
