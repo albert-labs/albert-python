@@ -168,14 +168,20 @@ jobs:
               exit 1
             fi
 
-            # The layer is built from this checkout, so the pipeline must run on a release tag.
-            # The SDK version is taken from that tag.
-            if [[ -z "${CIRCLE_TAG:-}" ]]; then
-              echo "Trigger this pipeline on a release tag (e.g. v1.19.0); got no tag."
-              exit 1
+            # The layer is built from this checkout, so the SDK version is read from the
+            # package itself. When triggered on a release tag, the tag must agree with it.
+            if [[ -n "${CIRCLE_TAG:-}" ]]; then
+              python scripts/validate_release_tag.py --tag "${CIRCLE_TAG}"
             fi
-            python scripts/validate_release_tag.py --tag "${CIRCLE_TAG}"
-            echo "export LAMBDA_SDK_VERSION=${CIRCLE_TAG#v}" >> "$BASH_ENV"
+            SDK_VERSION="$(python -c '
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, "scripts")
+            from validate_release_tag import extract_version
+            print(extract_version(Path("src/albert/__init__.py").read_text()))
+            ')"
+            echo "Building lambda layers for albert ${SDK_VERSION} from ${CIRCLE_TAG:-branch ${CIRCLE_BRANCH:-unknown}}"
+            echo "export LAMBDA_SDK_VERSION=${SDK_VERSION}" >> "$BASH_ENV"
       - run:
           name: Generate continuation config
           command: |
