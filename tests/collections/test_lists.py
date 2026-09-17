@@ -1,6 +1,10 @@
+import pytest
+
 from albert import Albert
 from albert.resources.custom_fields import CustomField, FieldType
 from albert.resources.lists import ListItem
+
+pytestmark = pytest.mark.xdist_group("lists")
 
 
 def assert_valid_list_items(list_items: list[ListItem]):
@@ -45,9 +49,19 @@ def test_get_matching_id(client: Albert, static_lists: list[ListItem]):
 
 
 def test_update(client: Albert, static_lists: list[ListItem], seed_prefix: str):
-    updated_li = static_lists[-1]
-    new_name = f"{seed_prefix} new name"
-    updated_li.name = new_name
-    updated_list_item = client.lists.update(list_item=updated_li)
-    assert updated_list_item.name == new_name
-    assert updated_list_item.id == static_lists[-1].id
+    """Test updating a list item's name."""
+    source = static_lists[-1]
+    created = client.lists.create(
+        list_item=ListItem(
+            name=f"{seed_prefix} update target",
+            category=source.category,
+            list_type=source.list_type,
+        )
+    )
+    try:
+        created.name = f"{seed_prefix} new name"
+        updated_list_item = client.lists.update(list_item=created)
+        assert updated_list_item.name == f"{seed_prefix} new name"
+        assert updated_list_item.id == created.id
+    finally:
+        client.lists.delete(id=created.id)

@@ -28,8 +28,7 @@ If you run into any issues, please open a [GitHub issue](https://github.com/albe
 
     # v1.0.0 SSO helper opens a browser for authentication
     client = Albert.from_sso(
-        email="yourname@albertinvent.com",
-        base_url="https://app.albertinvent.com"
+        email="yourname@albertinvent.com", base_url="https://app.albertinvent.com"
     )
     ```
 
@@ -43,9 +42,7 @@ If you run into any issues, please open a [GitHub issue](https://github.com/albe
 
     # v1.0.0: use from_client_credentials helper
     client = Albert.from_client_credentials(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        base_url="https://app.albertinvent.com"
+        client_id=CLIENT_ID, client_secret=CLIENT_SECRET, base_url="https://app.albertinvent.com"
     )
     ```
 
@@ -58,15 +55,12 @@ If you run into any issues, please open a [GitHub issue](https://github.com/albe
     # client = Albert(token="MY_STATIC_TOKEN")
 
     # v1.0.0: use from_token helper or still pass token
-    client = Albert.from_token(
-        base_url="https://app.albertinvent.com",
-        token="MY_STATIC_TOKEN"
-    )
+    client = Albert.from_token(base_url="https://app.albertinvent.com", token="MY_STATIC_TOKEN")
     ```
 
 *For advanced scenarios, you can still construct an auth manager manually and pass it to* `Albert(auth_manager=...)`.
 
-For complete details, see the [Authentication Guide](./authentication.md).
+For complete details, see the [Authentication Guide](../authentication.md).
 
 ---
 

@@ -1,8 +1,10 @@
+import re
 from typing import Annotated
 
 from pydantic import AfterValidator
 
 _ALBERT_PREFIXES = {
+    "AttributeId": "ATR",
     "AttachmentId": "ATT",
     "BlockId": "BLK",
     "BTInsightId": "INS",
@@ -15,8 +17,10 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
+    "LabelTemplateId": "TMP",
     "LinkId": "LNK",
     "LotId": "LOT",
     "NotebookId": "NTB",
@@ -29,9 +33,12 @@ _ALBERT_PREFIXES = {
     "RuleId": "RUL",
     "SynthesisId": "SYN",
     "TagId": "TAG",
+    "SmartDatasetId": "SDT",
+    "TargetId": "TAR",
     "TaskId": "TAS",
     "StorageLocationId": "STL",
     "UnitId": "UNI",
+    "TeamId": "TEM",
     "UserId": "USR",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
@@ -78,6 +85,13 @@ def _ensure_albert_id(id: str, id_type: str) -> str:
         raise ValueError(f"{id_type} {id} has invalid prefix. Expected: {prefix}")
 
     return f"{prefix}{id.upper()}"
+
+
+def ensure_attribute_id(id: str) -> str:
+    return _ensure_albert_id(id, "AttributeId")
+
+
+AttributeId = Annotated[str, AfterValidator(ensure_attribute_id)]
 
 
 def ensure_attachment_id(id: str) -> str:
@@ -227,6 +241,13 @@ def ensure_data_column_id(id: str) -> str:
 DataColumnId = Annotated[str, AfterValidator(ensure_data_column_id)]
 
 
+def ensure_document_id(id: str) -> str:
+    return _ensure_albert_id(id, "DocumentId")
+
+
+DocumentId = Annotated[str, AfterValidator(ensure_document_id)]
+
+
 def ensure_datatemplate_id(id: str) -> str:
     if id and id.upper().startswith("DT"):
         id = f"DAT{id[2:]}"  # Replace DT with DAT
@@ -267,6 +288,13 @@ def ensure_project_search_id(id: str) -> str:
 SearchProjectId = Annotated[str, AfterValidator(ensure_project_search_id)]
 
 
+def ensure_label_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "LabelTemplateId")
+
+
+LabelTemplateId = Annotated[str, AfterValidator(ensure_label_template_id)]
+
+
 def ensure_link_id(id: str) -> str:
     return _ensure_albert_id(id, "LinkId")
 
@@ -274,7 +302,15 @@ def ensure_link_id(id: str) -> str:
 LinkId = Annotated[str, AfterValidator(ensure_link_id)]
 
 
+_LOT_DISPLAY_ID_RE = re.compile(r"^(B?)(\d+)-(\d+)$", re.IGNORECASE)
+
+
 def ensure_lot_id(id: str) -> str:
+    if id:
+        match = _LOT_DISPLAY_ID_RE.match(id.strip())
+        if match:
+            batch_prefix, _, lot_num = match.groups()
+            return f"LOT{batch_prefix.upper()}{lot_num}"
     return _ensure_albert_id(id, "LotId")
 
 
@@ -307,6 +343,13 @@ def ensure_tag_id(id: str) -> str:
 
 
 TagId = Annotated[str, AfterValidator(ensure_tag_id)]
+
+
+def ensure_team_id(id: str) -> str:
+    return _ensure_albert_id(id, "TeamId")
+
+
+TeamId = Annotated[str, AfterValidator(ensure_team_id)]
 
 
 def ensure_worksheet_id(id: str) -> str:
@@ -349,6 +392,20 @@ def ensure_report_id(id: str) -> str:
 
 
 ReportId = Annotated[str, AfterValidator(ensure_report_id)]
+
+
+def ensure_smart_dataset_id(id: str) -> str:
+    return _ensure_albert_id(id, "SmartDatasetId")
+
+
+SmartDatasetId = Annotated[str, AfterValidator(ensure_smart_dataset_id)]
+
+
+def ensure_target_id(id: str) -> str:
+    return _ensure_albert_id(id, "TargetId")
+
+
+TargetId = Annotated[str, AfterValidator(ensure_target_id)]
 
 
 def remove_id_prefix(id: str, id_type: str) -> str:

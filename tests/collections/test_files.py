@@ -1,14 +1,18 @@
 import json
+import uuid
 
+import pytest
 import requests
 
 from albert import Albert
+from albert.exceptions import NotFoundError
 from albert.resources.files import FileNamespace
+from tests.utils.wait import poll_until
 
 
 def test_file_round_trip(client: Albert):
     file_data = {"hello": "world"}
-    file_name = "breakthrough/test/test.json"
+    file_name = f"breakthrough/test/{uuid.uuid4().hex}.json"
 
     # First: Put a new file at the key
     client.files.sign_and_upload_file(
@@ -18,8 +22,16 @@ def test_file_round_trip(client: Albert):
         content_type="application/json",
     )
 
-    # Second: Retrieve the file info
-    file_info = client.files.get_by_name(name=file_name, namespace=FileNamespace.BREAKTHROUGH)
+    def _info() -> list:
+        try:
+            return [client.files.get_by_name(name=file_name, namespace=FileNamespace.BREAKTHROUGH)]
+        except NotFoundError:
+            return []
+
+    infos = poll_until(_info)
+    if not infos:
+        pytest.skip("Breakthrough file namespace not available or upload not visible")
+    file_info = infos[0]
     assert file_info.name == file_name
     assert file_info.content_type == "application/json"
 

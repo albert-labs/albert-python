@@ -12,7 +12,7 @@ on:
           - main
           - next
   push:
-    branches: [main]
+    branches: [main, next]
 
 permissions:
   contents: write
@@ -22,9 +22,31 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_SECRET }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+      - name: Set config file
+        id: config
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
+        run: |
+          if [ "$TARGET_BRANCH" = "next" ]; then
+            echo "file=release-please-config-next.json" >> "$GITHUB_OUTPUT"
+            echo "versioning_strategy=prerelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=release-please-config.json" >> "$GITHUB_OUTPUT"
+            echo "versioning_strategy=default" >> "$GITHUB_OUTPUT"
+          fi
       - uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           release-type: python
-          package-name: albert
           target-branch: ${{ inputs.target_branch || github.ref_name }}
+          config-file: ${{ steps.config.outputs.file }}
+          versioning-strategy: ${{ steps.config.outputs.versioning_strategy }}

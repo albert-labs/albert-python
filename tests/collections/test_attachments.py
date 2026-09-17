@@ -2,12 +2,17 @@ from contextlib import suppress
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from albert import Albert
-from albert.resources.attachments import Attachment, AttachmentCategory
+from albert.resources.attachments import Attachment, AttachmentCategory, AttachmentMetadata
 from albert.resources.files import FileInfo
+from albert.resources.hazards import HazardStatement, HazardSymbol
 from albert.resources.inventory import InventoryItem
 from albert.resources.notes import Note
 from albert.resources.projects import Project
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def test_attach_file_to_note(
@@ -98,6 +103,60 @@ def test_upload_and_attach_sds_to_inventory_item(
         client.attachments.delete(id=attachment.id)
 
 
+def test_attachment_update(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    """Update an SDS attachment and verify multiple writable fields persist."""
+    created_attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
+        inventory_id=seeded_inventory[0].id,
+        file_sds=Path("tests/data/SDS_HCL.pdf"),
+        revision_date=date(2024, 12, 1),
+        storage_class="10-13",
+        un_number="N/A",
+    )
+    try:
+        current_attachment = client.attachments.get_by_id(id=created_attachment.id)
+        current_attachment.revision_date = date(2024, 12, 2)
+        if not isinstance(current_attachment.metadata, AttachmentMetadata):
+            current_attachment.metadata = AttachmentMetadata.model_validate(
+                current_attachment.metadata or {}
+            )
+        current_attachment.name = "updated-sds.pdf"
+        current_attachment.metadata.jurisdiction_code = "BR"
+        current_attachment.metadata.language_code = "ES"
+        current_attachment.metadata.storage_class = "10"
+        current_attachment.metadata.wgk = "2"
+        current_attachment.metadata.description = "Updated SDS description"
+        current_attachment.metadata.hazard_statement = [
+            HazardStatement(id="H206 - Desensitized explosives - Category 1", name=None),
+            HazardStatement(id="H207 - Desensitized explosives - Category 2", name=None),
+        ]
+        current_attachment.metadata.symbols = [
+            HazardSymbol(id="GHS07", name="Exclamation Mark", status="From Model")
+        ]
+
+        updated = client.attachments.update(attachment=current_attachment)
+
+        assert updated.name == "updated-sds.pdf"
+        assert updated.revision_date == date(2024, 12, 2)
+        updated_metadata = (updated.metadata or AttachmentMetadata()).model_dump(
+            by_alias=True, mode="json", exclude_none=True
+        )
+        assert updated_metadata.get("storageClass") == "10"
+        assert updated_metadata.get("jurisdictionCode") == "BR"
+        assert updated_metadata.get("languageCode") == "ES"
+        assert updated_metadata.get("wgk") == "2"
+        assert updated_metadata.get("description") == "Updated SDS description"
+        assert {
+            "H206 - Desensitized explosives - Category 1",
+            "H207 - Desensitized explosives - Category 2",
+        }.issubset({x["id"] for x in updated_metadata.get("hazardStatement", [])})
+        assert {"GHS07"}.issubset({x["id"] for x in updated_metadata.get("Symbols", [])})
+    finally:
+        client.attachments.delete(id=created_attachment.id)
+
+
 def test_upload_and_attach_document_to_project(
     client: Albert,
     seeded_projects: list[Project],
@@ -109,5 +168,25 @@ def test_upload_and_attach_document_to_project(
     )
     try:
         assert isinstance(attachment, Attachment)
+    finally:
+        client.attachments.delete(id=attachment.id)
+
+
+def test_upload_and_attach_document_to_inventory_item(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test uploading a generic document and attaching it to an inventory item."""
+    attachment = client.attachments.upload_and_attach_document_to_inventory_item(
+        inventory_id=seeded_inventory[0].id,
+        file_path=Path("tests/data/SDS_HCL.pdf"),
+        category=AttachmentCategory.COA,
+        revision_date=date(2024, 12, 1),
+        description="Test CoA attachment",
+    )
+    try:
+        assert isinstance(attachment, Attachment)
+        assert attachment.category == AttachmentCategory.COA
+        assert attachment.revision_date == date(2024, 12, 1)
     finally:
         client.attachments.delete(id=attachment.id)

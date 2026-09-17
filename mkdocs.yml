@@ -74,6 +74,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - autorefs
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -105,7 +106,6 @@ plugins:
           inventories:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
-            - url: https://typing-extensions.readthedocs.io/en/latest/objects.inv
           rendering:
             show_docstring_attributes: true
   - mike:
@@ -122,17 +122,27 @@ nav:
       - Authentication: authentication.md
       - Concepts: concepts.md
       - Configuration: configuration.md
-      - Migration Guide: migration.md
+      - Migration Guides:
+          - Overview: migration/index.md
+          - Alpha → v1.0: migration/alpha-to-v1.md
+          - Substances v3 → v4 (🧪Beta): migration/substances-v4.md
+          - Specs → Attributes (🧪 Beta): migration/specs-to-attributes.md
       - Contributing: CONTRIBUTING.md
   - SDK Reference:
       - Clients:
           - Albert Client: albert.md
+          - AsyncAlbert Client: async_albert.md
       - Authentication:
           - Albert Client Credentials: credentials.md
           - Albert SSO Client: sso.md
+      - Core Models:
+          - Base Models: core/models.md
+          - Patch Models: core/patch.md
+          - Tagged Resource: core/tagged_base.md
       - Collections:
           - Activities: collections/activities.md
           - Attachments: collections/attachments.md
+          - Attributes (🧪 Beta): collections/attributes.md
           - Batch Data: collections/batch_data.md
           - Base: collections/base.md
           - Breakthrough:
@@ -140,15 +150,22 @@ nav:
               - Breakthrough Insights: collections/btinsight.md
               - Breakthrough Model: collections/btmodel.md
           - Cas: collections/cas.md
+          - Chat (🧪Beta):
+              - Chat Flags (🧪Beta): collections/chat_flags.md
+              - Chat Folders (🧪Beta): collections/chat_folders.md
+              - Chat Messages (🧪Beta): collections/chat_messages.md
+              - Chat Sessions (🧪Beta): collections/chat_sessions.md
           - Companies: collections/companies.md
           - Custom Fields: collections/custom_fields.md
           - Custom Templates: collections/custom_templates.md
           - Data Columns: collections/data_columns.md
           - Data Templates: collections/data_templates.md
-          - Entity Types (🧪Beta): collections/entity_types.md
+          - Design Runs (🧪Beta): collections/design_runs.md
+          - Entity Types: collections/entity_types.md
           - Files: collections/files.md
           - Hazards: collections/hazards.md
           - Inventory: collections/inventory.md
+          - Label Templates: collections/label_templates.md
           - Links: collections/links.md
           - Lists: collections/lists.md
           - Locations: collections/locations.md
@@ -157,17 +174,24 @@ nav:
           - Notes: collections/notes.md
           - Parameter Groups: collections/parameter_groups.md
           - Parameters: collections/parameters.md
+          - PDF Generator: collections/pdf_generator.md
           - Pricings: collections/pricings.md
           - Product Design: collections/product_design.md
           - Projects: collections/projects.md
           - Property Data: collections/property_data.md
+          - Report Templates: collections/report_templates.md
           - Reports: collections/reports.md
           - Roles: collections/roles.md
+          - SDS (🧪 Beta): collections/sds.md
+          - Smart Datasets (🧪Beta): collections/smart_datasets.md
           - Storage Classes: collections/storage_classes.md
           - Storage Locations: collections/storage_locations.md
           - Substances: collections/substances.md
+          - Substances V4 (🧪 Beta): collections/substances_v4.md
           - Synthesis: collections/synthesis.md
           - Tags: collections/tags.md
+          - Targets (🧪Beta): collections/targets.md
+          - Teams: collections/teams.md
           - Tasks: collections/tasks.md
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
@@ -177,6 +201,7 @@ nav:
       - Resources:
           - Activities: resources/activities.md
           - Attachments: resources/attachments.md
+          - Attributes (🧪 Beta): resources/attributes.md
           - ACL: resources/acls.md
           - Batch Data: resources/batch_data.md
           - Breakthrough:
@@ -184,16 +209,21 @@ nav:
               - Breakthrough Insights: resources/btinsight.md
               - Breakthrough Model: resources/btmodel.md
           - Cas: resources/cas.md
+          - Chats (🧪Beta): resources/chats.md
           - Companies: resources/companies.md
           - Custom Fields: resources/custom_fields.md
           - Custom Templates: resources/custom_templates.md
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
-          - Entity Types (🧪Beta): resources/entity_types.md
+          - Design: resources/design.md
+          - Documents: resources/documents.md
+          - Entity Types: resources/entity_types.md
+          - Enums: resources/enums.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Label Templates: resources/label_templates.md
           - Links: resources/links.md
           - Lists: resources/lists.md
           - Locations: resources/locations.md
@@ -202,17 +232,24 @@ nav:
           - Notes: resources/notes.md
           - Parameter Groups: resources/parameter_groups.md
           - Parameters: resources/parameters.md
+          - PDF Generator: resources/pdf_generator.md
           - Pricings: resources/pricings.md
           - Product Design: resources/product_design.md
           - Projects: resources/projects.md
           - Property Data: resources/property_data.md
+          - Report Templates: resources/report_templates.md
           - Reports: resources/reports.md
           - Roles: resources/roles.md
+          - SDS (🧪 Beta): resources/sds.md
+          - Smart Datasets (🧪Beta): resources/smart_datasets.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md
+          - Substances V4: resources/substances_v4.md
           - Synthesis: resources/synthesis.md
           - Tags: resources/tags.md
+          - Targets (🧪Beta): resources/targets.md
+          - Teams: resources/teams.md
           - Tasks: resources/tasks.md
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md
@@ -224,10 +261,14 @@ nav:
   - Examples:
       - Data Templates: examples/data_templates.md
       - Inventory: examples/inventory.md
+      - Label Templates: examples/label_templates.md
       - Notebooks: examples/notebook.md
+      - Parameter Groups: examples/parameter_groups.md
       - Property Data: examples/property_data.md
       - Projects: examples/projects.md
+      - SDS (🧪 Beta): examples/sds.md
       - Tasks: examples/tasks.md
+      - Teams: examples/teams.md
 
 validation:
   omitted_files: warn

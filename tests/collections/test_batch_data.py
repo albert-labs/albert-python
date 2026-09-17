@@ -10,6 +10,8 @@ from albert.resources.batch_data import (
 )
 from albert.resources.tasks import BaseTask, BatchTask
 
+pytestmark = pytest.mark.xdist_group("tasks")
+
 
 def test_get_by_id(client: Albert, seeded_tasks: list[BaseTask]):
     batch_task = [t for t in seeded_tasks if isinstance(t, BatchTask)][0]

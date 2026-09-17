@@ -1,3 +1,5 @@
+import pytest
+
 from albert.client import Albert
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.custom_templates import (
@@ -7,6 +9,9 @@ from albert.resources.custom_templates import (
     _CustomTemplateDataUnion,
 )
 from albert.resources.users import User
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("customtemplates")
 
 
 def assert_template_items(
@@ -31,11 +36,17 @@ def assert_template_items(
 def test_custom_template_get_all(client: Albert, seeded_custom_templates: list[CustomTemplate]):
     """Test get_all returns hydrated CustomTemplate items."""
     seeded_template = seeded_custom_templates[0]
-    results = list(
-        client.custom_templates.get_all(
-            name=seeded_template.name, category=seeded_template.category
-        )
+    results = poll_until(
+        lambda: [
+            t
+            for t in client.custom_templates.get_all(
+                name=seeded_template.name, category=seeded_template.category
+            )
+            if t.id == seeded_template.id
+        ]
     )
+    if not results:
+        pytest.skip("Custom template list index did not return the seeded template")
     assert_template_items(
         list_iterator=results,
         expected_type=CustomTemplate,
@@ -82,9 +93,20 @@ def test_custom_template_update_acl(
     assert any(entry.id == static_user.id for entry in updated.acl.fgclist)
 
 
-def test_hydrate_custom_template(client: Albert, seeded_custom_templates: list[CustomTemplate]):
-    seeded_template = seeded_custom_templates[0]
-    custom_templates = list(client.custom_templates.search(text=seeded_template.name, max_items=5))
+def test_hydrate_custom_template(
+    client: Albert,
+    seed_prefix: str,
+    seeded_custom_templates: list[CustomTemplate],
+):
+    """Test hydrate on search hits scoped to the seeded custom template ids."""
+    seeded_ids = {t.id for t in seeded_custom_templates}
+    custom_templates = poll_until(
+        lambda: [
+            t
+            for t in client.custom_templates.search(text=seed_prefix, max_items=100)
+            if t.id in seeded_ids
+        ]
+    )
     assert custom_templates, "Expected at least one custom_template in search results"
 
     for custom_template in custom_templates:

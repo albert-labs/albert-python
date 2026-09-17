@@ -15,6 +15,9 @@ from albert.resources.notebooks import (
 )
 from albert.resources.projects import Project
 from tests.seeding import generate_notebook_block_seeds, generate_notebook_seeds
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 
 @pytest.fixture(scope="function")
@@ -23,7 +26,7 @@ def seeded_notebook(
 ) -> Iterator[Notebook]:
     notebook = generate_notebook_seeds(seed_prefix=seed_prefix, seeded_projects=seeded_projects)[0]
     seeded = client.notebooks.create(notebook=notebook)
-    seeded.blocks = generate_notebook_block_seeds()
+    seeded.blocks = generate_notebook_block_seeds(seed_prefix=seed_prefix)
     yield client.notebooks.update_block_content(notebook=seeded)
     client.notebooks.delete(id=seeded.id)
 
@@ -63,6 +66,18 @@ def test_update_block_content_with_reorder(client: Albert, seeded_notebook: Note
         assert updated.content == existing.content
 
 
+def test_append_blocks(client: Albert, seeded_notebook: Notebook):
+    """Test appending blocks preserves existing blocks."""
+    existing_ids = [b.id for b in seeded_notebook.blocks]
+    new_block = ParagraphBlock(content=ParagraphContent(text="Appended block."))
+
+    updated_notebook = client.notebooks.append_blocks(id=seeded_notebook.id, blocks=[new_block])
+
+    updated_ids = [b.id for b in updated_notebook.blocks]
+    assert updated_ids[: len(existing_ids)] == existing_ids
+    assert updated_notebook.blocks[-1].content.text == "Appended block."
+
+
 def test_update_block_content_with_empty_text(client: Albert, seeded_notebook: Notebook):
     # Ensure we can enter blocks with None Fields
     header_block = HeaderBlock(content=HeaderContent(level=1, text=None))
@@ -91,6 +106,23 @@ def test_update_block_content_raises_exception(client: Albert, seeded_notebook: 
     notebook.blocks.extend([header_block1, header_block2])
     with pytest.raises(AlbertException, match="You have Notebook blocks with duplicate ids"):
         client.notebooks.update_block_content(notebook=notebook)
+
+
+def test_search(client: Albert, seed_prefix: str, seeded_notebooks: list[Notebook]):
+    """Test search finds seeded notebook block content scoped to the seed project."""
+    nb = seeded_notebooks[0]
+    seeded_ids = {n.id for n in seeded_notebooks}
+    hits = poll_until(
+        lambda: [
+            hit
+            for hit in client.notebooks.search(
+                text=seed_prefix, project_id=nb.parent_id, max_items=50
+            )
+            if hit.notebook_id in seeded_ids and hit.block_id
+        ]
+    )
+    assert hits, "Expected at least one notebook search hit"
+    assert any(hit.notebook_id == nb.id for hit in hits)
 
 
 def test_get_block_by_id(client: Albert, seeded_notebooks: list[Notebook]):
