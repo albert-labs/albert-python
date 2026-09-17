@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '[.tool_input.file_path, (.tool_input.new_string // .tool_input.content // \"\")] | @tsv' | { IFS=$'\\t' read -r f body; case \"$f\" in *.env|*.env.*) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Editing .env files is blocked (secrets).\"}}'; exit 0;; esac; case \"$f\" in */__init__.py|__init__.py|*/pyproject.toml|pyproject.toml) if printf '%s' \"$body\" | grep -Eq '(__version__|^version)[[:space:]]*='; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Version is owned by release-please; do not bump manually.\"}}'; fi;; esac; }"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; case \"$f\" in *.py) uv run ruff format \"$f\" && uv run ruff check --fix \"$f\";; esac; } 2>/dev/null || true",
+            "statusMessage": "ruff format + fix"
+          }
+        ]
+      }
+    ]
+  }
+}

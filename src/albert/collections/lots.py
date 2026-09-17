@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import validate_call
 
@@ -20,14 +20,72 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.utils import ensure_list
 from albert.resources.inventory import InventoryCategory
-from albert.resources.lots import Lot, LotAdjustmentAction, LotSearchItem
+from albert.resources.lots import InventoryOnHandFilter, Lot, LotAdjustmentAction, LotSearchItem
 
 # 14 decimal places for inventory on hand delta calculations
 DECIMAL_DELTA_QUANTIZE = Decimal("0.00000000000000")
 
 
 class LotCollection(BaseCollection):
-    """LotCollection is a collection class for managing Lot entities in the Albert platform."""
+    """Manage Lots in the Albert platform.
+
+    A Lot is a specific physical batch or quantity of an Inventory Item, for
+    example a received shipment or a produced amount. Each lot tracks
+    lot-specific details such as how much is currently on hand, where it is
+    stored, its cost, and who owns it. Every lot belongs to exactly one
+    Inventory Item (its parent), referenced by the parent Inventory ID
+    (format ``INV...``); a lot's own ID has the format ``LOT...``.
+
+    Lots are referenced throughout property data: a ``lot_id`` scopes results to
+    a specific physical batch. Some lots are produced by a Task and carry a
+    ``task_id`` linking them back to that Task.
+
+    Inventory Items themselves are managed through the Inventory collection
+    ([`InventoryCollection`][albert.collections.inventory.InventoryCollection]).
+
+    This collection is accessed as ``client.lots``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        # Look up all lots of a given inventory item
+        lots = client.lots.get_all(parent_id="INVA9999999")
+        for lot in lots:
+            print(lot.id, lot.inventory_on_hand)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for lot requests.
+
+    Methods
+    -------
+    create(lots) -> list[Lot]
+        Create one or more new lots.
+    get_by_id(id) -> Lot
+        Get a single lot by its ID.
+    get_by_ids(ids) -> list[Lot]
+        Get many lots by their IDs.
+    search(...) -> Iterator[LotSearchItem]
+        Fast, lightweight search returning partial lots (best for lookups/counts).
+    get_all(...) -> Iterator[Lot]
+        Return fully populated lots matching the given filters.
+    adjust(lot_id, action, quantity=None, description=None) -> Lot
+        Adjust a lot's inventory on hand (add, subtract, set, or zero).
+    transfer(lot_id, quantity, storage_location_id, owner=None) -> Lot
+        Move some or all of a lot's quantity to another storage location.
+    update(lot) -> Lot
+        Update an existing lot.
+    delete(id) -> None
+        Delete a lot by its ID.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -41,32 +99,92 @@ class LotCollection(BaseCollection):
         "status",
         "pack_size",
         "barcode_id",
+        "external_barcode_id",
+        "owner",
+        "workflow_id",
     }
 
     def __init__(self, *, session: AlbertSession):
-        """A collection for interacting with Lots in Albert.
+        """Initialize a LotCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            An Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LotCollection._api_version}/lots"
 
     def create(self, *, lots: list[Lot]) -> list[Lot]:
-        """Create new lots.
+        """Create one or more new lots.
+
+        Use this to register physical batches against an existing Inventory Item
+        (each lot's ``inventory_id`` must point at its parent item). Both regular
+        lots and Task-produced lots can be created here.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.core.shared.models.base import EntityLink
+            from albert.resources.lots import Lot
+            client = Albert()
+            new_lot = Lot(
+                inventory_id="INVA9999999",
+                storage_location=EntityLink(id="STL9999999"),
+                initial_quantity=10.0,
+                inventory_on_hand=10.0,
+                cost=50.0,
+                manufacturer_lot_number="MLN-001",
+            )
+            created = client.lots.create(lots=[new_lot])
+            created[0].id
+            # 'LOTA1'
+            ```
 
         Parameters
         ----------
         lots : list[Lot]
-            A list of Lot entities to create.
+            The lots to create. Each lot requires ``inventory_id`` (the parent
+            Inventory ID). For a regular lot (no ``task_id``), ``storage_location``,
+            ``initial_quantity``, and ``inventory_on_hand`` are required
+            (``inventory_on_hand`` is usually the same as ``initial_quantity``).
+            When the parent Inventory Item is ``RawMaterials``, ``cost`` and
+            ``manufacturer_lot_number`` are also required. For a task lot (with a
+            ``task_id``, batch / ``Formulas`` path), ``location`` is required
+            instead of ``storage_location``.
 
         Returns
         -------
         list[Lot]
-            A list of created Lot entities.
+            The created lots, each populated with its assigned Lot ID.
+
+        Raises
+        ------
+        ValueError
+            If a regular lot is missing ``storage_location`` or
+            ``initial_quantity``, or a task lot is missing ``location``.
+
+        Notes
+        -----
+        The SDK validates ``storage_location``, ``initial_quantity``, and
+        ``location`` (task lots) before POST. ``cost`` and
+        ``manufacturer_lot_number`` are enforced by the API for ``RawMaterials``
+        parents but are not yet checked in the SDK. See field docstrings on
+        [`Lot`][albert.resources.lots.Lot] for the full create matrix.
+
+        If the API reports a partial success (some lots failed to create), a
+        warning is logged and only the successfully created lots are returned.
         """
+        for lot in lots:
+            if lot.task_id is None:
+                if lot.storage_location is None:
+                    raise ValueError("storage_location is required when creating a non-task lot.")
+                if lot.initial_quantity is None:
+                    raise ValueError("initial_quantity is required when creating a non-task lot.")
+            else:
+                if lot.location is None:
+                    raise ValueError("location is required when creating a task lot.")
+
         payload = [lot.model_dump(by_alias=True, exclude_none=True, mode="json") for lot in lots]
         response = self.session.post(self.base_path, json=payload)
         data = response.json()
@@ -84,17 +202,29 @@ class LotCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: LotId) -> Lot:
-        """Get a lot by its ID.
+        """Get a single, fully populated lot by its ID.
+
+        To retrieve many lots at once, use [`get_by_ids`][albert.collections.lots.LotCollection.get_by_ids]. To find lots
+        without knowing their IDs, use [`search`][albert.collections.lots.LotCollection.search] or [`get_all`][albert.collections.lots.LotCollection.get_all].
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            lot = client.lots.get_by_id(id="LOTA1")
+            lot.inventory_on_hand
+            # 10.0
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the lot to get.
+        id : LotId
+            The Lot ID to retrieve (format ``LOT...``).
 
         Returns
         -------
         Lot
-            The lot with the provided ID.
+            The fully populated lot.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -102,17 +232,27 @@ class LotCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[LotId]) -> list[Lot]:
-        """Get a list of lots by their IDs.
+        """Get many fully populated lots by their IDs.
+
+        Use this instead of repeated [`get_by_id`][albert.collections.lots.LotCollection.get_by_id] calls when you already
+        have several Lot IDs to fetch.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            lots = client.lots.get_by_ids(ids=["LOTA1", "LOTA2"])
+            ```
 
         Parameters
         ----------
-        ids : list[str]
-            A list of lot IDs to get.
+        ids : list[LotId]
+            The Lot IDs to retrieve (format ``LOT...``).
 
         Returns
         -------
         list[Lot]
-            A list of lots with the provided IDs.
+            The lots matching the provided IDs.
         """
         url = f"{self.base_path}/ids"
         response = self.session.get(url, params={"id": ids})
@@ -122,10 +262,21 @@ class LotCollection(BaseCollection):
     def delete(self, *, id: LotId) -> None:
         """Delete a lot by its ID.
 
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            client.lots.delete(id="LOTA1")
+            ```
+
         Parameters
         ----------
-        id : str
-            The ID of the lot to delete.
+        id : LotId
+            The Lot ID to delete (format ``LOT...``).
+
+        Returns
+        -------
+        None
         """
         url = f"{self.base_path}?id={id}"
         self.session.delete(url)
@@ -144,60 +295,111 @@ class LotCollection(BaseCollection):
         search_field: str | list[str] | None = None,
         source_field: str | list[str] | None = None,
         additional_field: str | list[str] | None = None,
+        contains_field: list[str] | None = None,
+        contains_text: list[str] | None = None,
+        created_by: list[str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        inventory: list[str] | None = None,
+        location: list[str] | None = None,
+        storage_location: list[str] | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        owner: list[str] | None = None,
+        status: list[str] | None = None,
+        to_expiration_date: str | None = None,
         is_drop_down: bool | None = None,
         order_by: OrderBy = OrderBy.DESCENDING,
         sort_by: str | None = None,
         offset: int | None = None,
         max_items: int | None = None,
     ) -> Iterator[LotSearchItem]:
-        """
-        Search for Lot records matching the provided filters.
+        """Search for lots matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        This is the fast way to look up lots or count matches. It returns partial
+        (unhydrated) lots ([`LotSearchItem`][albert.resources.lots.LotSearchItem]) rather
+        than full ones, so it is well suited to lookups. When you need every field
+        of each lot, use [`get_all`][albert.collections.lots.LotCollection.get_all] instead, or hydrate individual results.
+
+        All filters are optional and combined together (AND). With no filters, all
+        lots are returned.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            # Find lots of a given inventory item that are running low
+            for lot in client.lots.search(inventory_id="INVA9999999", max_items=50):
+                print(lot.id, lot.parent_name)
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Free-text query matched against lot fields.
+            Free-text query matched against lot fields. Truncated to 50 characters.
         inventory_id : InventoryId or list[InventoryId], optional
-            Filter by parent inventory IDs.
+            Filter by parent Inventory ID(s) (format ``INV...``).
         location_id : str or list[str], optional
-            Filter by specific location IDs.
+            Filter by location ID(s).
         storage_location_id : str or list[str], optional
-            Filter by storage location IDs.
+            Filter by storage location ID(s) (format ``STL...``).
         task_id : TaskId or list[TaskId], optional
-            Filter by source task IDs.
+            Filter by the source Task ID(s) that produced the lots.
         category : InventoryCategory or list[str], optional
-            Filter by parent inventory categories.
+            Filter by the parent inventory category (e.g. ``RawMaterials``).
         external_barcode_id : str or list[str], optional
-            Filter by external barcode IDs.
+            Filter by external barcode ID(s).
         search_field : str or list[str], optional
-            Restrict the fields the `text` query searches.
+            Restrict which fields the ``text`` query searches.
         source_field : str or list[str], optional
             Restrict which fields are returned in the response.
         additional_field : str or list[str], optional
             Request additional columns from the search index.
+        contains_field : list[str], optional
+            Fields to search inside.
+        contains_text : list[str], optional
+            Values to search for within ``contains_field``.
+        created_by : list[str], optional
+            Filter by creator display name(s) or UserId(s).
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to search for.
+        inventory : list[str], optional
+            Filter by parent inventory name(s).
+        location : list[str], optional
+            Filter by location name(s).
+        storage_location : list[str], optional
+            Filter by storage location name(s).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        owner : list[str], optional
+            Filter by lot owner display name(s) or UserId(s).
+        status : list[str], optional
+            Filter by lot status values.
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (ISO 8601).
         is_drop_down : bool, optional
-            Use dropdown sanitization for the search text when True.
+            Apply dropdown sanitization to the search text when True.
         order_by : OrderBy, optional
-            Sort order for the results, default DESCENDING.
+            Sort direction for the results. Defaults to ``OrderBy.DESCENDING``.
         sort_by : str, optional
             Attribute to sort by.
-        offset : int, optional
-            Pagination offset to start from.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of lots to return in total. If None, returns all
+            matching lots.
 
         Returns
         -------
         Iterator[LotSearchItem]
-            An iterator of matching partial (unhydrated) lot entities.
+            An iterator over matching partial (unhydrated) lots.
         """
 
         search_text = text if (text is None or len(text) < 50) else text[:50]
 
-        params = {
+        params: dict[str, Any] = {
             "offset": offset,
             "order": order_by,
             "text": search_text,
@@ -213,17 +415,39 @@ class LotCollection(BaseCollection):
             "sourceField": ensure_list(source_field),
             "additionalField": ensure_list(additional_field),
         }
-        params = {key: value for key, value in params.items() if value is not None}
+
+        post_only_params: dict[str, Any] = {
+            "containsField": contains_field,
+            "containsText": contains_text,
+            "createdBy": created_by,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "inventory": inventory,
+            "location": location,
+            "storageLocation": storage_location,
+            "owner": owner,
+            "status": status,
+            "toExpirationDate": to_expiration_date,
+        }
+
+        deserialize = lambda items: [
+            LotSearchItem(**item)._bind_collection(self) for item in items
+        ]
+
+        payload: dict[str, Any] = {**params, **post_only_params}
+        if metadata_filters is not None:
+            payload["metadataFilters"] = {"metadata": metadata_filters}
+        if custom_fields is not None:
+            payload["customFields"] = {"metadata": custom_fields}
 
         return AlbertPaginator(
             mode=PaginationMode.OFFSET,
             path=f"{self.base_path}/search",
             session=self.session,
-            params=params,
             max_items=max_items,
-            deserialize=lambda items: [
-                LotSearchItem(**item)._bind_collection(self) for item in items
-            ],
+            deserialize=deserialize,
+            method="POST",
+            json=payload,
         )
 
     @validate_call
@@ -234,43 +458,64 @@ class LotCollection(BaseCollection):
         inventory_id: InventoryId | None = None,
         barcode_id: str | None = None,
         parent_id_category: str | None = None,
-        inventory_on_hand: str | None = None,
+        inventory_on_hand: InventoryOnHandFilter | None = None,
         location_id: str | None = None,
         exact_match: bool = False,
         begins_with: bool = False,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Lot]:
-        """
-        Get all Lot entities with optional filters.
+        """Get fully populated lots matching the given filters.
+
+        Same purpose as [`search`][albert.collections.lots.LotCollection.search], but returns fully populated
+        [`Lot`][albert.resources.lots.Lot] objects (every field populated), which
+        is slower. Use [`search`][albert.collections.lots.LotCollection.search] when a lightweight result is enough.
+
+        All filters are optional and combined together (AND). A common use is
+        passing ``parent_id`` to list every lot of one Inventory Item.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            # List only lots of an item that still have stock
+            from albert.resources.lots import InventoryOnHandFilter
+            for lot in client.lots.get_all(
+                parent_id="INVA9999999", inventory_on_hand=InventoryOnHandFilter.GT_ZERO
+            ):
+                print(lot.id, lot.inventory_on_hand)
+            ```
 
         Parameters
         ----------
-        parent_id : str, optional
-            Fetch lots for the given parentId (inventory).
-        inventory_id : str, optional
-            Fetch lots for the given inventoryId.
+        parent_id : InventoryId, optional
+            Fetch lots whose parent is this Inventory ID (format ``INV...``).
+        inventory_id : InventoryId, optional
+            Fetch lots for the given inventory ID.
         barcode_id : str, optional
-            Fetch lots for the given barcodeId.
+            Fetch lots with the given barcode ID.
         parent_id_category : str, optional
-            Filter by parentIdCategory (e.g., RawMaterials, Consumables).
-        inventory_on_hand : str, optional
-            Filter by inventoryOnHand (lteZero, gtZero, eqZero).
+            Filter by the parent inventory category (e.g. ``RawMaterials``,
+            ``Consumables``).
+        inventory_on_hand : InventoryOnHandFilter, optional
+            Filter by inventory on hand relative to zero. Requires ``parent_id``,
+            ``barcode_id``, or ``parent_id_category``.
         location_id : str, optional
-            Filter by locationId.
+            Filter by location ID.
         exact_match : bool, optional
-            Whether to match barcodeId exactly. Default is False.
+            Match ``barcode_id`` exactly. Defaults to False.
         begins_with : bool, optional
-            Whether to match barcodeId as prefix. Default is False.
+            Match ``barcode_id`` as a prefix. Defaults to False.
         start_key : str, optional
-            The pagination key to continue listing from.
+            Pagination key to continue listing from.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of lots to return in total. If None, returns all
+            matching lots.
 
         Returns
         -------
         Iterator[Lot]
-            An iterator of Lot entities matching the filters.
+            An iterator over the fully populated lots matching the filters.
         """
         params = {
             "parentId": parent_id,
@@ -294,7 +539,7 @@ class LotCollection(BaseCollection):
         )
 
     def _generate_lots_patch_payload(self, *, existing: Lot, updated: Lot) -> PatchPayload:
-        """Generate a patch payload for a lot, handling inventory_on_hand separately."""
+        """Generate patch request data for a lot, handling inventory_on_hand separately."""
         patch_data = super()._generate_patch_payload(
             existing=existing, updated=updated, generate_metadata_diff=True
         )
@@ -325,6 +570,33 @@ class LotCollection(BaseCollection):
                 datum.new_value = datum.new_value.id if datum.new_value else None
                 datum.old_value = datum.old_value.id if datum.old_value else None
 
+        # Owner is a list of users, but the API expects a single user ID string
+        for datum in patch_data.data:
+            if datum.attribute == "Owner":
+                if datum.new_value and len(datum.new_value) > 1:
+                    raise ValueError("A lot can only have one owner.")
+                datum.new_value = datum.new_value[0].id if datum.new_value else None
+                datum.old_value = datum.old_value[0].id if datum.old_value else None
+
+        # Drop no-op owner updates where old and new values are identical after ID extraction
+        patch_data.data = [
+            d
+            for d in patch_data.data
+            if not (d.attribute == "Owner" and d.old_value == d.new_value)
+        ]
+
+        # workflowId only supports UPDATE (set-once); the base diff emits ADD when unset.
+        patch_data.data = [
+            PatchDatum(
+                operation=PatchOperation.UPDATE,
+                attribute="workflowId",
+                new_value=d.new_value,
+            )
+            if d.attribute in {"workflowId", "WorkflowId"} and d.operation == PatchOperation.ADD
+            else d
+            for d in patch_data.data
+        ]
+
         return patch_data
 
     @staticmethod
@@ -346,23 +618,53 @@ class LotCollection(BaseCollection):
         quantity: float | None = None,
         description: str | None = None,
     ) -> Lot:
-        """Adjust inventory lot.
+        """Adjust a lot's inventory on hand.
+
+        Use this to change how much of a lot is currently in stock, for example
+        to record consumption, restocking, or a physical recount. To move
+        quantity to a different storage location instead, use [`transfer`][albert.collections.lots.LotCollection.transfer].
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.lots import LotAdjustmentAction
+            client = Albert()
+            # Record that 2.5 units were consumed
+            lot = client.lots.adjust(
+                lot_id="LOTA1",
+                action=LotAdjustmentAction.SUBTRACT,
+                quantity=2.5,
+                description="Used in experiment",
+            )
+            ```
 
         Parameters
         ----------
         lot_id : LotId
-            The lot to adjust.
+            The lot to adjust (format ``LOT...``).
         action : LotAdjustmentAction
-            Adjustment action to apply (ADD, SUBTRACT, SET, ZERO).
-        quantity : float | None, optional
-            Adjustment quantity. Required for ADD/SUBTRACT/SET and disallowed for ZERO.
-        description : str | None, optional
-            Optional description for the adjustment.
+            How to apply ``quantity`` to the current inventory on hand:
+
+            - ``ADD``: increase on hand by ``quantity``.
+            - ``SUBTRACT``: decrease on hand by ``quantity``.
+            - ``SET``: set on hand to exactly ``quantity``.
+            - ``ZERO``: set on hand to zero (no ``quantity``).
+        quantity : float, optional
+            The amount to apply. Required and must be greater than zero for
+            ``ADD``, ``SUBTRACT``, and ``SET``; must be omitted for ``ZERO``.
+        description : str, optional
+            Free-text note recorded with the adjustment.
 
         Returns
         -------
         Lot
-            The refreshed lot after adjustment.
+            The refreshed lot after the adjustment.
+
+        Raises
+        ------
+        ValueError
+            If ``quantity`` is supplied for ``ZERO``, or missing/non-positive for
+            ``ADD``, ``SUBTRACT``, or ``SET``.
         """
         if action == LotAdjustmentAction.ZERO and quantity is not None:
             raise ValueError("quantity must be omitted for ZERO action.")
@@ -383,21 +685,22 @@ class LotCollection(BaseCollection):
         else:
             delta = -current
 
-        patch_payload = PatchPayload(
-            data=[
-                PatchDatum(
-                    operation=PatchOperation.UPDATE,
-                    attribute="inventoryOnHand",
-                    old_value=str(existing_lot.inventory_on_hand),
-                    new_value=self._format_inventory_delta(delta),
-                )
-            ]
-        )
-        payload = patch_payload.model_dump(mode="json", by_alias=True)
-        if description is not None:
-            payload["notes"] = description
+        if delta != 0:
+            patch_payload = PatchPayload(
+                data=[
+                    PatchDatum(
+                        operation=PatchOperation.UPDATE,
+                        attribute="inventoryOnHand",
+                        old_value=str(existing_lot.inventory_on_hand),
+                        new_value=self._format_inventory_delta(delta),
+                    )
+                ]
+            )
+            payload = patch_payload.model_dump(mode="json", by_alias=True)
+            if description is not None:
+                payload["notes"] = description
 
-        self.session.patch(f"{self.base_path}/{lot_id}", json=payload)
+            self.session.patch(f"{self.base_path}/{lot_id}", json=payload)
         return self.get_by_id(id=lot_id)
 
     @validate_call
@@ -409,43 +712,73 @@ class LotCollection(BaseCollection):
         storage_location_id: StorageLocationId,
         owner: UserId | None = None,
     ) -> Lot:
-        """Transfer inventory lot to another location.
+        """Transfer some or all of a lot's quantity to another storage location.
+
+        Use this to physically relocate stock. Transferring ``"ALL"`` simply
+        moves the source lot to the new storage location. Transferring a partial
+        amount splits the source lot: the requested quantity is removed from the
+        source and a new lot is created at the destination.
+
+        To change how much is in stock (rather than where it is), use
+        [`adjust`][albert.collections.lots.LotCollection.adjust].
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            # Split 5 units off into a different storage location
+            new_lot = client.lots.transfer(
+                lot_id="LOTA1",
+                quantity=5.0,
+                storage_location_id="STLA2",
+            )
+            ```
 
         Parameters
         ----------
         lot_id : LotId
-            The source lot to transfer.
-        quantity : float | Literal["ALL"]
-            Quantity to transfer from the source lot, or "ALL" to transfer the full current
-            inventory on hand.
+            The source lot to transfer from (format ``LOT...``).
+        quantity : float or Literal["ALL"]
+            The amount to transfer, or ``"ALL"`` to move the full current
+            inventory on hand. A numeric quantity must be greater than zero.
         storage_location_id : StorageLocationId
-            Destination storage location ID.
-        owner : UserId | None, optional
-            User ID of the Owner for the new lot. Defaults to the current user.
+            Destination storage location ID (format ``STL...``).
+        owner : UserId, optional
+            User ID (format ``USR...``) to own the destination lot. Defaults to
+            the current user.
 
         Returns
         -------
         Lot
-            The updated source lot for "ALL" transfers, otherwise the lot created by split.
+            The updated source lot for an ``"ALL"`` transfer; otherwise the new
+            lot created by the split.
+
+        Raises
+        ------
+        ValueError
+            If a numeric ``quantity`` is not greater than zero, or the current
+            user cannot be resolved when ``owner`` is omitted.
         """
         if quantity == "ALL":
             source_lot = self.get_by_id(id=lot_id)
-            patch_payload = PatchPayload(
-                data=[
-                    PatchDatum(
-                        operation=PatchOperation.UPDATE,
-                        attribute="storageLocation",
-                        old_value=source_lot.storage_location.id
-                        if source_lot.storage_location
-                        else None,
-                        new_value=storage_location_id,
-                    )
-                ]
+            current_location_id = (
+                source_lot.storage_location.id if source_lot.storage_location else None
             )
-            self.session.patch(
-                f"{self.base_path}/{lot_id}",
-                json=patch_payload.model_dump(mode="json", by_alias=True),
-            )
+            if current_location_id != storage_location_id:
+                patch_payload = PatchPayload(
+                    data=[
+                        PatchDatum(
+                            operation=PatchOperation.UPDATE,
+                            attribute="storageLocation",
+                            old_value=current_location_id,
+                            new_value=storage_location_id,
+                        )
+                    ]
+                )
+                self.session.patch(
+                    f"{self.base_path}/{lot_id}",
+                    json=patch_payload.model_dump(mode="json", by_alias=True),
+                )
             return self.get_by_id(id=lot_id)
 
         transfer_quantity = quantity
@@ -468,17 +801,42 @@ class LotCollection(BaseCollection):
         return Lot(**response.json())
 
     def update(self, *, lot: Lot) -> Lot:
-        """Update a lot.
+        """Update an existing lot.
+
+        Fetch the lot (e.g. with [`get_by_id`][albert.collections.lots.LotCollection.get_by_id]), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied. The lot is matched by its ``id``.
+
+        For quantity changes, prefer [`adjust`][albert.collections.lots.LotCollection.adjust]; for relocations, prefer
+        [`transfer`][albert.collections.lots.LotCollection.transfer]. Both handle the inventory-on-hand bookkeeping for you.
+
+        !!! example
+            ```python
+            from albert import Albert
+            client = Albert()
+            lot = client.lots.get_by_id(id="LOTA1")
+            lot.cost = 42.0
+            updated = client.lots.update(lot=lot)
+            ```
 
         Parameters
         ----------
         lot : Lot
-            The updated lot object.
+            The lot carrying the desired changes. Its ``id`` identifies the lot to
+            update.
 
         Returns
         -------
         Lot
-            The updated Lot entity as returned by the server.
+            The refreshed lot after the update.
+
+        Notes
+        -----
+        The following fields can be updated: ``barcode_id``, ``cost``,
+        ``expiration_date``, ``external_barcode_id``, ``initial_quantity``,
+        ``inventory_on_hand``, ``manufacturer_lot_number``, ``metadata``,
+        ``owner``, ``pack_size``, ``status``, ``storage_location``,
+        ``workflow_id``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

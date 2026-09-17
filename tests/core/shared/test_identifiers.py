@@ -69,6 +69,24 @@ def test_ensure_id_functions(
         ensure_func(None)
 
 
+def test_ensure_lot_id_display_format():
+    # Test non-batch display format: {lot_number}-{lot_id} → LOT{lot_id}
+    assert ensure_lot_id("100000-3") == "LOT3"
+    assert ensure_lot_id("100000-71193") == "LOT71193"
+
+    # Test batch display format: B{lot_number}-{lot_id} → LOTB{lot_id}
+    assert ensure_lot_id("B187513-88954") == "LOTB88954"
+    assert ensure_lot_id("B187509-88950") == "LOTB88950"
+
+    # Lowercase b prefix is also accepted
+    assert ensure_lot_id("b187513-88954") == "LOTB88954"
+
+    # Standard format still works unchanged
+    assert ensure_lot_id("LOT3") == "LOT3"
+    assert ensure_lot_id("LOTB88954") == "LOTB88954"
+    assert ensure_lot_id("lot3") == "LOT3"
+
+
 def test_ensure_interval_id():
     assert ensure_interval_id("ROW123") == "ROW123"
     assert ensure_interval_id("ROW123XROW456") == "ROW123XROW456"

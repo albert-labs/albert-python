@@ -118,7 +118,10 @@ class AlbertClientCredentials(BaseAlbertModel, AuthManager):
     def get_access_token(self) -> str:
         """Return a valid access token, refreshing it if needed."""
         if self._requires_refresh():
-            self._request_access_token()
+            with self._refresh_lock:
+                # Double-checked: another thread may have refreshed while we waited
+                if self._requires_refresh():
+                    self._request_access_token()
         return self._token_info.access_token
 
 

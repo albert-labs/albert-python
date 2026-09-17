@@ -67,7 +67,7 @@ ipython_config.py
 __pypackages__/
 
 # Environments
-.env
+.env*
 .venv
 env/
 venv/
@@ -89,3 +89,7 @@ site/
 
 # IDE
 .vscode/launch.json
+
+# Claude Code
+.claude/*
+!.claude/settings.json

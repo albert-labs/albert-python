@@ -10,15 +10,10 @@ from albert.resources.tags import Tag
 
 class BaseTaggedResource(BaseResource):
     """
-    BaseTaggedResource is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
-
-    Attributes
-    ----------
-    tags : List[Tag | str] | None
-        A list of Tag objects or strings representing tags.
-    """
+    BaseTaggedResource is a Pydantic model that includes functionality for handling tags as either Tag objects or strings."""
 
     tags: list[SerializeAsEntityLink[Tag]] | None = Field(None, alias="Tags")
+    """A list of Tag objects or strings representing tags."""
 
     @model_validator(mode="before")  # must happen before to keep type validation
     @classmethod
@@ -28,6 +23,8 @@ class BaseTaggedResource(BaseResource):
         tags = data.get("tags")
         if not tags:
             tags = data.get("Tags")
+        if not tags and isinstance(data.get("Data"), dict):
+            tags = data["Data"].get("tags") or data["Data"].get("Tags")
         if tags:
             new_tags = []
             for t in tags:
@@ -36,6 +33,12 @@ class BaseTaggedResource(BaseResource):
                 elif isinstance(t, str):
                     new_tags.append(Tag.from_string(t))
                 elif isinstance(t, dict):
+                    if "id" in t and not (t.get("name") or t.get("tagName") or t.get("tag")):
+                        raise ValueError(
+                            "Tag references by dict require the tag's name alongside its id "
+                            "(e.g. {'id': 'TAG…', 'name': 'AAMA'}): the platform requires both "
+                            "on write. Resolve the pair via client.tags.get_or_create first."
+                        )
                     new_tags.append(Tag(**t))
                 else:
                     # We do not expect this else to be hit because tags should only be Tag or str
