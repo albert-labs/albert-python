@@ -43,12 +43,11 @@ def test_async_session_applies_default_headers():
 
 
 def test_client_constructors_pass_headers_through():
-    assert Albert.from_token(
-        base_url=_BASE_URL, token="tok", headers=_METADATA
-    ).session.headers["x-s2s-metadata"]
-    assert AsyncAlbert.from_token(
-        base_url=_BASE_URL, token="tok", headers=_METADATA
-    ).session._client.headers["x-s2s-metadata"]
+    sync_client = Albert.from_token(base_url=_BASE_URL, token="tok", headers=_METADATA)
+    async_client = AsyncAlbert.from_token(base_url=_BASE_URL, token="tok", headers=_METADATA)
+
+    assert sync_client.session.headers["x-s2s-metadata"] == '{"chatId":"SES4515"}'
+    assert async_client.session._client.headers["x-s2s-metadata"] == '{"chatId":"SES4515"}'
 
 
 @pytest.mark.asyncio
