@@ -17,6 +17,7 @@ from albert.core.shared.types import (
 )
 from albert.resources._mixins import HydrationMixin
 from albert.resources.data_templates import DataTemplate
+from albert.resources.interval_combinations import CombinationOverride, ExclusionRule
 from albert.resources.locations import Location
 from albert.resources.projects import Project
 from albert.resources.tagged_base import BaseTaggedResource
@@ -307,6 +308,29 @@ class Block(BaseAlbertModel):
         alias="parameterQuantityUsed", default=None, exclude=True
     )
     """Read-only internal mapping of parameter quantities consumed by the block."""
+
+    job_id: str | None = Field(default=None, alias="jobId", exclude=True)
+    """The worker job generating this block's child workflows, when one has been posted (format ``JOB...``). Serialized as ``jobId``."""
+
+    job_state: str | None = Field(default=None, alias="jobState", exclude=True)
+    """State of the worker job in [`job_id`][albert.resources.tasks.Block.job_id], or ``None`` when no job is associated. Serialized as ``jobState``."""
+
+    intervals_start_from: Literal["all", "none"] | None = Field(
+        default=None, alias="intervalsStartFrom"
+    )
+    """Baseline mode controlling combination generation on this block's workflow:
+    - Exclude Mode (``"all"``, default): starts with the full Cartesian product (all combinations included). Rules and overrides prune out unwanted variants.
+    - Include Mode (``"none"``): starts with zero combinations (an empty set). Rules and manual overrides selectively pull in combinations, ideal for sparse screening or DoE.
+    Omitted when increased intervals is disabled or when the block has no intervals."""
+
+    combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
+    """Total number of interval combinations for this block. Read-only from task responses."""
+
+    rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
+    """Combination rules for this block. Conditions within a single rule use AND logic, while multiple rules use OR logic (excluding combinations in Exclude Mode, including in Include Mode). Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
+
+    overrides: list[CombinationOverride] | None = Field(default=None, exclude=True)
+    """Combination overrides targeting specific variants on this block by parameter values. Supports ``skip`` (exclude) or ``unskip`` (include) actions, and always takes precedence over rules. In Include Mode, set ``is_manual=True`` to cherry-pick combinations. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     def model_dump(self, *args, **kwargs):
         # Use default serialization with customized field output.

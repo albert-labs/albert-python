@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import time
+import uuid
 from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+import requests
 from pydantic import validate_call
 from requests.exceptions import RetryError
 
@@ -11,6 +15,7 @@ from albert.collections.attachments import AttachmentCollection
 from albert.collections.base import BaseCollection
 from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.property_data import PropertyDataCollection
+from albert.collections.workflows import WorkflowCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
@@ -27,12 +32,24 @@ from albert.core.shared.identifiers import (
     remove_id_prefix,
 )
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertHTTPError
+from albert.exceptions import (
+    AlbertException,
+    AlbertHTTPError,
+    CombinationGenerationError,
+    NotFoundError,
+)
 from albert.resources.attachments import AttachmentCategory
 from albert.resources.data_templates import ImportMode
+from albert.resources.interval_combinations import (
+    BlockRules,
+    CombinationOverride,
+    ExclusionRule,
+    IntervalCombinationItem,
+)
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
+    Block,
     CsvTableInput,
     CsvTableResponseItem,
     GeneralTask,
@@ -44,6 +61,14 @@ from albert.resources.tasks import (
     TaskPatchPayload,
     TaskSearchItem,
 )
+from albert.resources.worker_jobs import (
+    WorkerJob,
+    WorkerJobCreateRequest,
+    WorkerJobMetadata,
+    WorkerJobState,
+)
+from albert.resources.workflows import Workflow
+from albert.utils.interval_combinations import generate_interval_combinations
 from albert.utils.tasks import (
     CSV_EXTENSIONS,
     build_property_payload,
@@ -55,6 +80,27 @@ from albert.utils.tasks import (
     map_csv_headers_to_columns,
     resolve_attachment,
 )
+from albert.utils.worker_jobs import poll_worker_job
+
+_BLOCK_COMBINATION_JOB_GAP_SECONDS: float = 10.0
+"""Minimum interval in seconds between kicking off consecutive block combination worker jobs.
+
+Submitting multiple block child-workflow generation jobs concurrently on a newly created task
+can trigger backend database lock contention or worker queue race conditions on the parent task
+record. Pacing consecutive job submissions by 10 seconds allows each job to initialize cleanly.
+"""
+
+
+class _BlockCombinationsPaginator(AlbertPaginator):
+    """KEY-mode paginator for GET /tasks/{id}/blocks/{blockId}/combinations.
+
+    The envelope lists items under ``combinations``, not ``Items``. ``lastKey`` is
+    omitted when exhausted; a page may under-return because of DynamoDB's 1MB cap,
+    so completion is inferred from ``lastKey``, not page size.
+    """
+
+    def _response_items(self, data: dict[str, Any]) -> list:
+        return data.get("combinations") or []
 
 
 class TaskCollection(BaseCollection):
@@ -107,6 +153,8 @@ class TaskCollection(BaseCollection):
     -------
     create(task) -> BaseTask
         Create a PropertyTask, BatchTask, or GeneralTask.
+    create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
+        Create a Property task and orchestrate combination generation across all its blocks.
     get_by_id(id) -> BaseTask
         Get a single fully populated task by its ID.
     search(...) -> Iterator[TaskSearchItem]
@@ -123,6 +171,14 @@ class TaskCollection(BaseCollection):
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
         Swap the Workflow assigned to a Block.
+    get_block_combinations(task_id, block_id, max_items=None) -> Iterator[IntervalCombinationItem] (🧪 Beta)
+        Get the child-workflow combinations of a block.
+    get_block_rules(task_id, block_id) -> BlockRules (🧪 Beta)
+        Get combination rules and overrides for a block.
+    set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, wait=True) -> BlockRules (🧪 Beta)
+        Set combination rules and overrides for a block, automatically regenerating combinations.
+    generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
+        Generate child-workflow interval combinations for a task block.
     import_results(...) -> BaseTask
         Import measured results into a Property task from a file or attachment.
     get_history(id, ...) -> TaskHistory
@@ -188,6 +244,229 @@ class TaskCollection(BaseCollection):
         response = self.session.post(url=url, json=payload)
         task_data = response.json()[0]
         return TaskAdapter.validate_python(task_data)
+
+    @validate_call
+    def create_with_combinations(
+        self,
+        *,
+        task: PropertyTask,
+        wait: bool = True,
+    ) -> PropertyTask:
+        """Create a Property task and generate interval combinations across all its blocks (🧪 Beta).
+
+        Provides an all-in-one method to create a Property task and materialize
+        child-workflow combination variants across every task block.
+
+        Intervals, Modes, Rules, and Overrides:
+        - **Intervals and Cartesian Product**: When workflow parameters define discrete
+          setpoints (intervals), Albert computes the Cartesian product across every
+          intervalized parameter. Each combination materializes as an independent child
+          workflow record linked to the task block with a unique, persistent interval barcode.
+        - **Starting Baseline (`intervals_start_from`)**:
+          - Exclude Mode (``"all"``, default): starts with all possible Cartesian product
+            variants active. Rules and overrides prune out infeasible, unsafe, or unwanted
+            combinations.
+          - Include Mode (``"none"``): starts with zero active combinations (an empty set).
+            Rules and overrides selectively pull in combinations, ideal for sparse screening
+            or targeted Designs of Experiment (DoE).
+        - **Rules (Criteria-Based Filtering)**:
+          Rules dynamically evaluate combination variants against criteria defined on parameter
+          values. All conditions within a single rule must match (AND logic). If any rule on the
+          block triggers (OR logic), the combination is excluded (in Exclude Mode) or included
+          (in Include Mode).
+        - **Overrides (Targeted Setpoint Overrides)**:
+          Overrides target a single, specific combination identified by its exact parameter values:
+          ``action="skip"`` explicitly excludes the variant, while ``action="unskip"`` keeps or
+          forces its inclusion. In Include Mode (``"none"``), set ``is_manual=True`` to designate
+          a manually cherry-picked combination. Overrides are evaluated first and always take
+          precedence over rules.
+
+        Execution Steps:
+        1. Automatically saves any unsaved [`Workflow`][albert.resources.workflows.Workflow]
+           objects defined on the task blocks, preserving block ordering.
+        2. Sets ``intervals_start_from="all"`` (Exclude Mode) on any blocks where the
+           mode is not explicitly configured.
+        3. Creates the task and saves any configured block rules ([`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule])
+           or overrides ([`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]).
+        4. Sequentially triggers combination generation for each block, pacing requests
+           to ensure steady platform processing.
+        5. If ``wait=True`` (the default), waits for combination generation to complete across
+           all blocks and returns the refreshed task with combination details populated.
+           If ``wait=False``, returns immediately after launching generation, leaving
+           job tracking identifiers on each block.
+
+        To view the generated combinations after creation, use
+        [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
+        To update rules or regenerate combinations on an existing task later, use
+        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] and
+        [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.tasks import Block, PropertyTask
+
+            client = Albert()
+            task = client.tasks.create_with_combinations(
+                task=PropertyTask(
+                    name="Viscosity screen",
+                    parent_id="PROA123",
+                    blocks=[
+                        Block(
+                            data_template=[{"id": "DAT123"}],
+                            workflow=[{"id": "WFL456"}],
+                        ),
+                    ],
+                ),
+                wait=True,
+            )
+            task.id
+            # 'TASFOR1'
+            ```
+
+        Parameters
+        ----------
+        task : PropertyTask
+            The Property task definition to create, containing one or more
+            [`Block`][albert.resources.tasks.Block] instances. Each block must have a
+            data template and a workflow (either an existing workflow ID or a new
+            [`Workflow`][albert.resources.workflows.Workflow] object), plus optional rules
+            and overrides.
+        wait : bool, default True
+            Whether to wait for combination generation to complete across all blocks.
+            If False, returns immediately after submitting generation jobs.
+
+        Returns
+        -------
+        PropertyTask
+            The created Property task. If ``wait=True``, returns the re-fetched task with
+            combinations populated. If ``wait=False``, returns the task with job identifiers
+            assigned on each block.
+
+        Raises
+        ------
+        TypeError
+            If ``task`` is not a ``PropertyTask``.
+        CombinationGenerationError
+            If ``wait=True`` and combination generation fails on one or more blocks.
+            The exception carries the created task (``err.task``) and failed block IDs
+            (``err.failed_blocks``) so callers can inspect or retry specific blocks using
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
+        """
+        if not isinstance(task, PropertyTask):
+            raise TypeError("task must be a PropertyTask")
+
+        task = task.model_copy(deep=True)
+        workflow_collection = WorkflowCollection(session=self.session)
+
+        # 1. Ensure all workflows have an ID (create unsaved workflows if needed)
+        if task.blocks:
+            for i, block in enumerate(task.blocks):
+                if not block.workflow:
+                    continue
+                for w in block.workflow:
+                    if isinstance(w, Workflow) and not w.id:
+                        w.block_mapping = str(i)
+                        created_wfls = workflow_collection.create(workflows=[w])
+                        w.id = created_wfls[0].id
+
+            # 2. Fill intervals_start_from on any block where it is unset
+            for block in task.blocks:
+                if block.intervals_start_from is None:
+                    block.intervals_start_from = "all"
+
+        # 3. Create the task via standard create
+        created_task = self.create(task=task)
+        if not isinstance(created_task, PropertyTask):
+            raise TypeError(f"Created task {created_task.id} is not a PropertyTask")
+
+        if not created_task.blocks:
+            return created_task
+
+        # 4. Persist rules and overrides if specified on any block
+        rules_payload = []
+        for orig_b, created_b in zip(task.blocks, created_task.blocks, strict=False):
+            if orig_b.rules or orig_b.overrides:
+                rules_payload.append(
+                    {
+                        "blockId": created_b.id,
+                        "rules": [
+                            r.model_dump(by_alias=True, mode="json", exclude_none=True)
+                            for r in (orig_b.rules or [])
+                        ],
+                        "overrides": [
+                            o.model_dump(by_alias=True, mode="json", exclude_none=True)
+                            for o in (orig_b.overrides or [])
+                        ],
+                    }
+                )
+        if rules_payload:
+            self.session.put(f"{self.base_path}/{created_task.id}/rules", json=rules_payload)
+
+        # 5. Sequentially trigger generate_block_combinations for each block with paced delay
+        jobs: dict[str, WorkerJob] = {}
+        last_job_time = 0.0
+
+        for i, created_b in enumerate(created_task.blocks):
+            if i > 0 and last_job_time > 0:
+                elapsed = time.time() - last_job_time
+                remaining = _BLOCK_COMBINATION_JOB_GAP_SECONDS - elapsed
+                if remaining > 0:
+                    time.sleep(remaining)
+
+            job = self.generate_block_combinations(
+                task_id=created_task.id,
+                block_id=created_b.id,
+                old_workflow_id=None,
+                wait=False,
+            )
+            last_job_time = time.time()
+            jobs[created_b.id] = job
+
+        # 6. Handle wait semantics
+        if wait:
+            failed_blocks: list[str] = []
+            job_states: dict[str, str] = {}
+            for blk_id, job in jobs.items():
+                try:
+                    completed_job = poll_worker_job(
+                        session=self.session,
+                        job_id=job.albert_id,
+                        raise_on_failure=False,
+                        job_description=f"Create child workflows for task {created_task.id} block {blk_id}",
+                    )
+                    job_states[blk_id] = completed_job.state.value
+                    if completed_job.state != WorkerJobState.SUCCESSFUL:
+                        failed_blocks.append(blk_id)
+                except (TimeoutError, AlbertException):
+                    failed_blocks.append(blk_id)
+                    job_states[blk_id] = "failed"
+
+            if failed_blocks:
+                refetched = self.get_by_id(id=created_task.id)
+                raise CombinationGenerationError(
+                    f"Combination generation failed for blocks: {', '.join(failed_blocks)}",
+                    task=refetched,
+                    failed_blocks=failed_blocks,
+                    job_states=job_states,
+                )
+
+            refetched = self.get_by_id(id=created_task.id)
+            if not isinstance(refetched, PropertyTask):
+                raise TypeError(f"Refetched task {refetched.id} is not a PropertyTask")
+            return refetched
+
+        for blk in created_task.blocks:
+            if blk.id in jobs:
+                blk.job_id = jobs[blk.id].albert_id
+                blk.job_state = jobs[blk.id].state.value
+        return created_task
 
     @validate_call
     def add_block(
@@ -327,6 +606,568 @@ class TaskCollection(BaseCollection):
             }
         ]
         self.session.patch(url=url, json=patch)
+
+    @validate_call
+    def get_block_combinations(
+        self, *, task_id: TaskId, block_id: BlockId, max_items: int | None = None
+    ) -> Iterator[IntervalCombinationItem]:
+        """Get the child-workflow interval combinations of a task block (🧪 Beta).
+
+        Retrieves the combinations generated for a task block by
+        [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+        or [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
+
+        Always use this method rather than reading combinations directly from the task
+        or block record: for blocks with 500 or more combinations, embedded combination
+        lists on the block are truncated or omitted.
+
+        Results are returned as a lazily paginated iterator. Do not infer the end
+        of results from page size: a page can under-return while more combinations
+        remain.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            combos = client.tasks.get_block_combinations(
+                task_id="TASFOR1", block_id="BLK1"
+            )
+            [(c.id, c.interval_barcode) for c in combos]
+            # [('WFL999', 'OhI8ap0HY')]
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``), obtained
+            from [`create`][albert.collections.tasks.TaskCollection.create],
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
+            or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
+        block_id : BlockId
+            The block ID whose combinations to list (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        max_items : int, optional
+            Maximum number of combinations to return. If None, iterates over all
+            combinations.
+
+        Returns
+        -------
+        Iterator[IntervalCombinationItem]
+            A lazily paginated iterator of combinations. After iteration,
+            ``has_more`` is True when ``max_items`` stopped the iterator and more
+            combinations remain.
+        """
+        return _BlockCombinationsPaginator(
+            mode=PaginationMode.KEY,
+            path=f"{self.base_path}/{task_id}/blocks/{block_id}/combinations",
+            session=self.session,
+            max_items=max_items,
+            deserialize=lambda items: [IntervalCombinationItem(**item) for item in items],
+        )
+
+    @validate_call
+    def get_block_rules(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+    ) -> BlockRules:
+        """Get combination rules and overrides for a task block (🧪 Beta).
+
+        Returns the rules ([`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule])
+        and overrides ([`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride])
+        currently configured on the specified block.
+
+        Rules evaluate criteria against parameter setpoints (using AND logic within a
+        rule and OR logic across rules) to prune combinations in Exclude Mode or include
+        combinations in Include Mode. Overrides target specific parameter combinations (with
+        ``skip`` or ``unskip`` actions) and always take precedence over rules.
+
+        Use this method to inspect existing rules before updating them with
+        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]
+        (which automatically regenerates child-workflow combinations by default).
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            rules_data = client.tasks.get_block_rules(
+                task_id="TASFOR1", block_id="BLK1"
+            )
+            for rule in rules_data.rules:
+                print(rule.name, rule.conditions)
+            for override in rules_data.overrides:
+                print(override.key, override.action)
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``), obtained
+            from [`create`][albert.collections.tasks.TaskCollection.create],
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
+            or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
+        block_id : BlockId
+            The block ID whose rules to retrieve (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+
+        Returns
+        -------
+        BlockRules
+            The rules and overrides configured on the block.
+        """
+        url = f"{self.base_path}/{task_id}/blocks/{block_id}/rules"
+        response = self.session.get(url)
+        data = response.json()
+
+        all_rules = list(data.get("rules", {}).get("items", []))
+        last_key = data.get("rules", {}).get("lastKey")
+        while last_key:
+            next_resp = self.session.get(url, params={"startKey": last_key})
+            next_data = next_resp.json()
+            rules_obj = next_data.get("rules", {})
+            all_rules.extend(rules_obj.get("items", []))
+            last_key = rules_obj.get("lastKey")
+
+        return BlockRules(
+            task_id=data["taskId"],
+            block_id=data["blockId"],
+            rules=all_rules,
+            overrides=data.get("overrides", []),
+        )
+
+    @staticmethod
+    def _get_block_current_workflow_id(block: Block) -> str | None:
+        """Resolve the active/final workflow ID for a block."""
+        new_workflow_id: str | None = None
+        unset_category_ids: list[str] = []
+        for w in block.workflow or []:
+            if getattr(w, "name", None) == "No Parameter Group" and len(block.workflow) > 1:
+                continue
+            category = getattr(w, "category", None)
+            if category == "FINAL":
+                return w.id
+            if category == "INITIAL":
+                continue
+            if category is None:
+                unset_category_ids.append(w.id)
+            else:
+                new_workflow_id = w.id
+        if new_workflow_id is None and unset_category_ids:
+            # Before the worker assigns categories, FINAL is conventionally first on the block.
+            return unset_category_ids[0]
+        if new_workflow_id is None and block.workflow:
+            return block.workflow[0].id
+        return new_workflow_id
+
+    @validate_call
+    def set_block_rules(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        rules: list[ExclusionRule] | None = None,
+        overrides: list[CombinationOverride] | None = None,
+        generate_combinations: bool = True,
+        old_workflow_id: WorkflowId | None = None,
+        wait: bool = True,
+    ) -> BlockRules:
+        """Set combination rules and overrides for a task block (🧪 Beta).
+
+        Configures or replaces rules and overrides on the specified block, and
+        by default immediately recomputes and regenerates child-workflow combinations on
+        Albert Invent.
+
+        Rules, Overrides, and Baseline Modes:
+        - **Rules (Criteria-Based Filtering)**:
+          A rule consists of one or more conditions comparing parameter values against
+          thresholds. All conditions within a rule must match (AND logic). If any rule
+          matches (OR logic across rules):
+          - In Exclude Mode (``intervals_start_from="all"``, default), the combination is excluded.
+          - In Include Mode (``intervals_start_from="none"``), the combination is included.
+        - **Overrides (Targeted Setpoint Overrides)**:
+          Overrides target a specific combination variant by its exact parameter values:
+          - ``action=OverrideAction.SKIP``: explicitly excludes the combination.
+          - ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.
+          - In Include Mode (``"none"``), set ``is_manual=True`` to designate a manually
+            cherry-picked combination.
+          - Overrides are evaluated first and always take precedence over rules.
+
+        Follows the unset-is-not-empty convention:
+        - Omitting ``rules`` (or leaving it as ``None``) leaves existing rules untouched.
+        - Passing an empty list (``rules=[]``) clears all rules on the block.
+        - The same convention applies to ``overrides``.
+        - At least one of ``rules`` or ``overrides`` must be provided.
+
+        When ``generate_combinations=True`` (the default), the method persists the rules and
+        immediately triggers [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations],
+        passing the block's current workflow as ``old_workflow_id`` so that unchanged barcodes
+        are preserved and obsolete combinations are voided. Set ``generate_combinations=False``
+        to save rule definitions only without triggering combination regeneration.
+
+        Rules and overrides can be constructed easily from parameter names and values using
+        [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] and
+        [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override]
+        on the block's parent workflow. Override keys can also be computed directly using
+        [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import (
+                CombinationOverride,
+                ExclusionRule,
+                OverrideAction,
+                RuleCondition,
+                RuleOperator,
+            )
+
+            client = Albert()
+            block_rules = client.tasks.set_block_rules(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                rules=[
+                    ExclusionRule(
+                        name="Exclude high temp and high speed",
+                        conditions=[
+                            RuleCondition(
+                                parameter_group_id="PRG247776",
+                                parameter_id="PRM100",
+                                row_id="ROW2",
+                                operator=RuleOperator.GTE,
+                                value="90",
+                                unit_id="UNI1",
+                            ),
+                            RuleCondition(
+                                parameter_group_id="PRG247776",
+                                parameter_id="PRM200",
+                                row_id="ROW5",
+                                operator=RuleOperator.GTE,
+                                value="1500",
+                                unit_id="UNI2",
+                            ),
+                        ],
+                    )
+                ],
+                overrides=[
+                    CombinationOverride(
+                        key="PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9",
+                        action=OverrideAction.SKIP,
+                    ),
+                ],
+            )
+            # Combinations are regenerated automatically:
+            print(block_rules.job.state)
+            # 'successful'
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``), obtained
+            from [`create`][albert.collections.tasks.TaskCollection.create],
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
+            or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
+        block_id : BlockId
+            The block ID whose rules to set (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        rules : list[ExclusionRule], optional
+            Replacement rules for the block. If omitted (``None``), existing rules
+            are left untouched. If an empty list (``[]``), existing rules are cleared.
+        overrides : list[CombinationOverride], optional
+            Replacement overrides for the block. If omitted (``None``), existing
+            overrides are left untouched. If an empty list (``[]``), existing
+            overrides are cleared. Override keys can be generated via
+            [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+        generate_combinations : bool, default True
+            Whether to automatically regenerate child-workflow combinations after saving
+            rules. Defaults to True.
+        old_workflow_id : WorkflowId, optional
+            Prior workflow ID to pass to the generation job for barcode preservation
+            and voiding obsolete combinations. Defaults to the block's current workflow ID.
+        wait : bool, default True
+            Whether to wait for the background generation worker job to finish when
+            ``generate_combinations=True``. If False, returns immediately after submitting
+            the job.
+
+        Returns
+        -------
+        BlockRules
+            The updated rules and overrides for the block. If ``generate_combinations=True``,
+            the [`job`][albert.resources.interval_combinations.BlockRules.job] attribute contains
+            the completed (or in-progress) background worker job.
+
+        Raises
+        ------
+        ValueError
+            If both ``rules`` and ``overrides`` are omitted, or if the block is not found.
+        TypeError
+            If the task is not a PropertyTask.
+        AlbertException
+            If combination generation fails or exceeds platform caps.
+        """
+        if rules is None and overrides is None:
+            raise ValueError("At least one of 'rules' or 'overrides' must be provided.")
+
+        block_payload: dict[str, Any] = {"blockId": block_id}
+
+        if rules is not None:
+            block_payload["rules"] = [
+                r.model_dump(by_alias=True, mode="json", exclude_none=True) for r in rules
+            ]
+
+        if overrides is not None:
+            block_payload["overrides"] = [
+                o.model_dump(by_alias=True, mode="json", exclude_none=True) for o in overrides
+            ]
+
+        url = f"{self.base_path}/{task_id}/rules"
+        response = self.session.put(url, json=[block_payload])
+        resp_data = response.json()
+
+        block_data = next((item for item in resp_data if item.get("blockId") == block_id), {})
+        block_rules = BlockRules(
+            task_id=task_id,
+            block_id=block_id,
+            rules=block_data.get("rules", []),
+            overrides=block_data.get("overrides", []),
+        )
+
+        if generate_combinations:
+            target_old_workflow_id = old_workflow_id
+            if target_old_workflow_id is None:
+                task = self.get_by_id(id=task_id)
+                if not isinstance(task, PropertyTask):
+                    raise TypeError(f"Task {task_id} must be a PropertyTask")
+                target_block = next((b for b in task.blocks if b.id == block_id), None)
+                if target_block is None:
+                    raise ValueError(f"Block {block_id} not found on task {task_id}")
+                target_old_workflow_id = self._get_block_current_workflow_id(target_block)
+
+            block_rules.job = self.generate_block_combinations(
+                task_id=task_id,
+                block_id=block_id,
+                old_workflow_id=target_old_workflow_id,
+                wait=wait,
+            )
+
+        return block_rules
+
+    @validate_call
+    def generate_block_combinations(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId,
+        old_workflow_id: WorkflowId | None = None,
+        wait: bool = True,
+    ) -> WorkerJob:
+        """Generate child-workflow interval combinations for a task block (🧪 Beta).
+
+        Calculates combination variants from the block's workflow, rules, and overrides,
+        then launches a background generation job to materialize the child workflows
+        on the platform.
+
+        Combination Generation Lifecycle:
+        - **Cartesian Product**: Evaluates combinations across all intervalized workflow parameters
+          starting from the block's baseline mode (``intervals_start_from="all"`` for Exclude Mode,
+          starting with all combinations; or ``"none"`` for Include Mode, starting with an empty set).
+        - **Rules and Overrides**: Applies rules (AND logic within a rule, OR logic across rules)
+          and overrides (which take precedence over rules) to determine active combinations.
+        - **Child Workflows and Barcodes**: Each active combination materializes as an independent
+          child workflow record linked to the task block. Every combination receives a unique,
+          persistent interval barcode that remains stable across rule updates as long as the
+          parameter setpoints are unchanged.
+
+        How to set ``old_workflow_id`` across common caller scenarios:
+        - **First-time generation** (or retrying after a failed create job): leave
+          ``old_workflow_id=None`` (the default).
+        - **Regenerating after updating rules**: pass the block's current workflow ID
+          (e.g. from ``block.workflow[0].id``).
+        - **Regenerating after swapping a workflow**: pass the previous workflow ID
+          that was replaced (the one passed to
+          [`update_block_workflow`][albert.collections.tasks.TaskCollection.update_block_workflow]).
+
+        Once generation finishes, retrieve the resulting combinations using
+        [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations].
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            job = client.tasks.generate_block_combinations(
+                task_id="TASFOR1",
+                block_id="BLK1",
+                wait=True,
+            )
+            job.state
+            # 'successful'
+
+            combos = list(client.tasks.get_block_combinations(task_id="TASFOR1", block_id="BLK1"))
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Property task ID containing the block (format ``TAS...``), obtained
+            from [`create`][albert.collections.tasks.TaskCollection.create],
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations],
+            or [`get_by_id`][albert.collections.tasks.TaskCollection.get_by_id].
+        block_id : BlockId
+            The block ID whose combinations to generate (format ``BLK...``), obtained
+            from ``task.blocks[i].id`` on a fetched task.
+        old_workflow_id : WorkflowId, optional
+            The ID of the workflow being replaced or re-evaluated (format ``WFL...``).
+            Leave None for first-time generation or create retries. Pass the block's
+            current workflow ID when re-evaluating rules on an existing block.
+        wait : bool, default True
+            Whether to wait until background generation reaches a terminal state.
+            If False, returns immediately after the generation job is submitted.
+
+        Returns
+        -------
+        WorkerJob
+            The background worker job representing child workflow generation, with
+            fields like ``state`` (e.g. ``"successful"``) and ``albert_id``.
+
+        Notes
+        -----
+        When triggering combination generation across multiple blocks sequentially on the
+        same task, pace consecutive calls by at least 10 seconds to avoid backend task lock
+        contention during worker job initialization.
+
+        Raises
+        ------
+        ValueError
+            If the block is not found or has no assigned workflow.
+        TypeError
+            If the task is not a PropertyTask.
+        AlbertException
+            If the generated combinations exceed the platform cap of 2,000, or if
+            ``wait=True`` and the background generation job fails.
+        """
+        task = self.get_by_id(id=task_id)
+        if not isinstance(task, PropertyTask):
+            raise TypeError(f"Task {task_id} must be a PropertyTask")
+
+        target_block = next((b for b in task.blocks if b.id == block_id), None)
+        if target_block is None:
+            raise ValueError(f"Block {block_id} not found on task {task_id}")
+
+        new_workflow_id = self._get_block_current_workflow_id(target_block)
+        if not new_workflow_id:
+            raise ValueError(f"No workflow found for block {block_id} on task {task_id}")
+
+        # Fetch the full parent workflow with setpoints and intervals
+        wfl_response = self.session.get(f"/api/v3/workflows/{new_workflow_id}")
+        parent_workflow = Workflow.model_validate(wfl_response.json())
+
+        # Fetch block rules and overrides
+        block_rules = self.get_block_rules(task_id=task_id, block_id=block_id)
+        start_from = target_block.intervals_start_from or "all"
+
+        # Check if the parent workflow has any intervalized parameters
+        has_interval_params = any(
+            any(
+                bool(getattr(sp, "intervals", None))
+                for sp in getattr(g, "parameter_setpoints", [])
+            )
+            for g in (parent_workflow.parameter_group_setpoints or [])
+        )
+
+        s3_url: str | None = None
+        if has_interval_params:
+            combinations_payload = generate_interval_combinations(
+                workflow=parent_workflow,
+                rules=block_rules.rules,
+                overrides=block_rules.overrides,
+                intervals_start_from=start_from,
+            )
+
+            if combinations_payload.combinations:
+                file_key = (
+                    f"intervalcombinations/{task_id}/{block_id}/{uuid.uuid4().hex[:10]}.json"
+                )
+                sign_payload = {
+                    "files": [
+                        {
+                            "name": file_key,
+                            "namespace": "result",
+                            "contentType": "application/json",
+                        }
+                    ]
+                }
+                sign_resp = self.session.post("/api/v3/files/sign", json=sign_payload)
+                signed_url = sign_resp.json()[0]["URL"]
+
+                payload_bytes = combinations_payload.model_dump_json(
+                    by_alias=True, exclude_none=True
+                ).encode("utf-8")
+                s3_resp = requests.put(
+                    signed_url,
+                    data=payload_bytes,
+                    headers={"Content-Type": "application/json"},
+                )
+                s3_resp.raise_for_status()
+                s3_url = file_key
+
+        worker_metadata = WorkerJobMetadata(
+            parent_type="TAS",
+            albert_id=task_id,
+            block_id=block_id,
+            new_workflow_id=new_workflow_id,
+            old_workflow_id=old_workflow_id,
+            s3_url=s3_url,
+        )
+        worker_req = WorkerJobCreateRequest(
+            job_type="createChildWorkflows",
+            metadata=worker_metadata,
+        )
+        job_resp = self.session.post(
+            "/api/v3/worker-jobs",
+            json=worker_req.model_dump(by_alias=True, mode="json", exclude_none=True),
+        )
+        resp_data = job_resp.json()
+        if isinstance(resp_data, list):
+            resp_data = resp_data[0]
+        job = WorkerJob.model_validate(resp_data)
+
+        if wait:
+            job = poll_worker_job(
+                session=self.session,
+                job_id=job.albert_id,
+                raise_on_failure=True,
+                job_description=f"Create child workflows for task {task_id} block {block_id}",
+            )
+
+        return job
 
     @validate_call
     def remove_block(self, *, task_id: TaskId, block_id: BlockId) -> None:
@@ -588,13 +1429,14 @@ class TaskCollection(BaseCollection):
             inventory_id,
             lot_id or "None",
         )
-        property_data_collection.bulk_delete_task_data(
-            task_id=task_id,
-            block_id=block_id,
-            inventory_id=inventory_id,
-            lot_id=lot_id,
-            interval_id=interval,
-        )
+        with suppress(NotFoundError):
+            property_data_collection.bulk_delete_task_data(
+                task_id=task_id,
+                block_id=block_id,
+                inventory_id=inventory_id,
+                lot_id=lot_id,
+                interval_id=interval,
+            )
 
         property_data_collection.add_properties_to_task(
             inventory_id=inventory_id,
