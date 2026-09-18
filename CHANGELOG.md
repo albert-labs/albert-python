@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.56.0](https://github.com/albert-labs/albert-python/compare/v1.55.0...v1.56.0) (2026-09-18)
+
+
+### Features
+
+* **client:** support caller-supplied default headers on both sessions ([#740](https://github.com/albert-labs/albert-python/issues/740)) ([27998f6](https://github.com/albert-labs/albert-python/commit/27998f674d7eb3104504ccb40b707ba4ac0f1d06))
+
+
+### Bug Fixes
+
+* **activities:** expose actor details in activity search and feed items ([#738](https://github.com/albert-labs/albert-python/issues/738)) ([7356d1c](https://github.com/albert-labs/albert-python/commit/7356d1c1dce9fbf1d445593ece1394e9277caa4e))
+
 ## [1.55.0](https://github.com/albert-labs/albert-python/compare/v1.54.0...v1.55.0) (2026-09-16)
 
 
