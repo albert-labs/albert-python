@@ -1,6 +1,7 @@
 from enum import Enum
+from typing import Any
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -80,6 +81,43 @@ class ActivitySearchItemUser(BaseAlbertModel):
     """The user's class value."""
 
 
+class ActivityActorAct(BaseAlbertModel):
+    """Actor delegation identity information for service-to-service calls."""
+
+    sub: str | None = Field(default=None)
+    """Subject identifier of the calling service."""
+
+    name: str | None = Field(default=None)
+    """Display name of the calling service or delegation scope."""
+
+
+class ActivityActorDetails(BaseAlbertModel):
+    """Execution and delegation details of an [`ActivityActor`][albert.resources.activities.ActivityActor]."""
+
+    mode: str | None = Field(default=None)
+    """Authentication or delegation mode (e.g. ``"obo"`` for on-behalf-of)."""
+
+    client_id: str | None = Field(
+        default=None,
+        alias="client_id",
+        validation_alias=AliasChoices("client_id", "clientId"),
+    )
+    """OAuth client ID of the service performing the activity."""
+
+    act: ActivityActorAct | None = Field(default=None)
+    """Delegation details identifying the upstream service."""
+
+
+class ActivityActor(BaseAlbertModel):
+    """Service-to-service actor (sibling to user) on activity events."""
+
+    details: ActivityActorDetails | None = Field(default=None)
+    """Delegation and execution details for the service actor."""
+
+    metadata: dict[str, Any] | None = Field(default=None)
+    """Arbitrary key-value metadata associated with the actor call (e.g. trace ID)."""
+
+
 class ActivitySearchItem(BaseAlbertModel):
     """A lightweight activity record returned by
     [`search`][albert.collections.activities.ActivityCollection.search]."""
@@ -113,6 +151,9 @@ class ActivitySearchItem(BaseAlbertModel):
 
     user: ActivitySearchItemUser | None = Field(default=None)
     """The user who performed the activity."""
+
+    actor: ActivityActor | None = Field(default=None)
+    """The service actor that performed the activity, if logged via service-to-service."""
 
 
 class Activity(BaseResource):
@@ -161,3 +202,6 @@ class Activity(BaseResource):
 
     region: str | None = Field(default=None)
     """The region in which the activity was logged."""
+
+    actor: ActivityActor | None = Field(default=None)
+    """The service actor that performed the activity, if logged via service-to-service."""
