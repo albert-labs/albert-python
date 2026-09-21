@@ -9,11 +9,13 @@ from albert.exceptions import (
     AlbertHTTPError,
     AlbertServerError,
     BadRequestError,
+    CombinationGenerationError,
     ForbiddenError,
     InternalServerError,
     NotFoundError,
     UnauthorizedError,
 )
+from albert.resources.tasks import PropertyTask
 
 
 def _make_not_found_response() -> requests.Response:
@@ -84,3 +86,22 @@ def test_pickle_sets_response_to_none():
         restored = pickle.loads(pickle.dumps(exc))
 
     assert restored.response is None
+
+
+def test_combination_generation_error_attributes():
+    """Test that CombinationGenerationError preserves task, failed_blocks, and job_states."""
+    task = PropertyTask(id="TASFOR123", name="Test Task")
+    failed_blocks = ["BLK2", "BLK3"]
+    job_states = {"BLK1": "successful", "BLK2": "failed", "BLK3": "failed"}
+
+    err = CombinationGenerationError(
+        "Combination generation failed for blocks: BLK2, BLK3",
+        task=task,
+        failed_blocks=failed_blocks,
+        job_states=job_states,
+    )
+
+    assert err.task.id == "TASFOR123"
+    assert err.failed_blocks == ["BLK2", "BLK3"]
+    assert err.job_states == job_states
+    assert "Combination generation failed" in str(err)

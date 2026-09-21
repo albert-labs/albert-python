@@ -175,7 +175,7 @@ class TaskCollection(BaseCollection):
         Get the child-workflow combinations of a block.
     get_block_rules(task_id, block_id) -> BlockRules (🧪 Beta)
         Get combination rules and overrides for a block.
-    set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, wait=True) -> BlockRules (🧪 Beta)
+    set_block_rules(task_id, block_id, rules=None, overrides=None, generate_combinations=True, old_workflow_id=None, wait=True) -> BlockRules (🧪 Beta)
         Set combination rules and overrides for a block, automatically regenerating combinations.
     generate_block_combinations(task_id, block_id, old_workflow_id=None, wait=True) -> WorkerJob (🧪 Beta)
         Generate child-workflow interval combinations for a task block.
@@ -1060,8 +1060,7 @@ class TaskCollection(BaseCollection):
         Notes
         -----
         When triggering combination generation across multiple blocks sequentially on the
-        same task, pace consecutive calls by at least 10 seconds to avoid backend task lock
-        contention during worker job initialization.
+        same task, pace consecutive calls by at least 10 seconds between blocks.
 
         Raises
         ------
