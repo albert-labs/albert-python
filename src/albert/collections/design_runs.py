@@ -193,7 +193,7 @@ class DesignRunCollection(BaseCollection):
         populated ``violations`` is a normal result and is not raised as an exception.
 
         Pre-check failures (e.g. dataset not ``READY``, objective out of scope, invalid
-        settings) are raised as [`AlbertClientError`][albert.exceptions.AlbertClientError],
+        settings) are raised as `AlbertClientError`,
         the same class of failure as calling
         [`create_optimization`][albert.collections.design_runs.DesignRunCollection.create_optimization]
         with a bad configuration.
@@ -219,7 +219,7 @@ class DesignRunCollection(BaseCollection):
         AlbertClientError
             Pre-check failures (invalid configuration before validation can run).
         AlbertHTTPError
-            Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
+            Other request failures.
         """
         body = OptimizationDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
@@ -246,7 +246,7 @@ class DesignRunCollection(BaseCollection):
         populated ``violations`` is a normal result and is not raised as an exception.
 
         Pre-check failures (e.g. dataset not ``READY``, invalid settings) are raised as
-        [`AlbertClientError`][albert.exceptions.AlbertClientError], the same class of
+        `AlbertClientError`, the same class of
         failure as calling
         [`create_doe`][albert.collections.design_runs.DesignRunCollection.create_doe]
         with a bad configuration.
@@ -272,7 +272,7 @@ class DesignRunCollection(BaseCollection):
         AlbertClientError
             Pre-check failures (invalid configuration before validation can run).
         AlbertHTTPError
-            Other request failures. See [`AlbertHTTPError`][albert.exceptions.AlbertHTTPError].
+            Other request failures.
         """
         body = DOEDesignRunRequest(
             smart_dataset_id=smart_dataset_id,
