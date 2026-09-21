@@ -23,7 +23,10 @@ from albert.core.shared.identifiers import (
     ensure_storage_location_id,
     ensure_tag_id,
     ensure_task_id,
+    ensure_unit_family_id,
+    ensure_unit_family_v4_id,
     ensure_unit_id,
+    ensure_unit_v4_id,
     ensure_workflow_id,
     ensure_worksheet_id,
 )
@@ -48,6 +51,7 @@ from albert.resources.workflows import Interval, IntervalCombination
         (ensure_parameter_id, "PRM", "", "ParameterId cannot be empty"),
         (ensure_paramter_group_id, "PRG", "", "ParameterGroupId cannot be empty"),
         (ensure_unit_id, "UNI", "", "UnitId cannot be empty"),
+        (ensure_unit_family_id, "UNF", "", "UnitFamilyId cannot be empty"),
         (ensure_workflow_id, "WFL", "", "WorkflowId cannot be empty"),
         (ensure_worksheet_id, "WKS", "", "WorksheetId cannot be empty"),
     ],
@@ -297,6 +301,33 @@ def test_interval_accepts_object_value_and_empty():
 def test_interval_combination_accepts_three_segment_id():
     combo = IntervalCombination.model_validate({"interval": "ROW3XROW8XROW13"})
     assert combo.interval_id == "ROW3XROW8XROW13"
+
+
+_UUID = "3643d5a5-32c1-43c3-9f3e-aea810d21fc9"
+
+
+@pytest.mark.parametrize(
+    "ensure_func,prefix,error_msg",
+    [
+        (ensure_unit_v4_id, "UNI", "UnitId cannot be empty"),
+        (ensure_unit_family_v4_id, "UNF", "UnitFamilyId cannot be empty"),
+    ],
+)
+def test_ensure_v4_id_accepts_uuid_or_legacy_id(
+    ensure_func: Callable[[str], str], prefix: str, error_msg: str
+):
+    """v4 master-data IDs are UUIDs or legacy prefixed IDs; UUID case is preserved."""
+    assert ensure_func(_UUID) == _UUID
+    assert ensure_func(_UUID.upper()) == _UUID.upper()
+    assert ensure_func(f"{prefix}{_UUID}") == f"{prefix}{_UUID}"
+    assert ensure_func(f"{prefix.lower()}{_UUID}") == f"{prefix}{_UUID}"
+    assert ensure_func("123") == f"{prefix}123"
+    assert ensure_func(f"{prefix.lower()}123") == f"{prefix}123"
+
+    with pytest.raises(ValueError, match=error_msg):
+        ensure_func("")
+    with pytest.raises(ValueError, match="invalid prefix"):
+        ensure_func("TAG123")
 
 
 def test_worker_job_metadata_preserves_child_workflow_fields():
