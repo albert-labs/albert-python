@@ -219,6 +219,102 @@ In this mode:
 !!! note "The `is_manual` flag"
     Setting `is_manual=True` on a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride] is only valid when `intervals_start_from="none"`. It designates an override as an explicit manual addition to an otherwise empty set of combinations.
 
+## Create parent workflow with intervals and add specific combinations
+
+A very common workflow is creating a new parent workflow with intervalized parameters and immediately provisioning a Property Task that runs an explicit list of target combinations (such as a targeted DoE or sparse matrix), without defining any general rules.
+
+In this workflow:
+1. Define and create the parent [`Workflow`][albert.resources.workflows.Workflow] with [`Interval`][albert.resources.workflows.Interval] setpoints across the parameters you want to vary.
+2. Define the list of specific parameter combinations to evaluate.
+3. Convert each combination into a manual override (`action="unskip"`, `is_manual=True`) using [`workflow.build_override`][albert.resources.workflows.Workflow.build_override] on the returned workflow.
+4. Create the [`PropertyTask`][albert.resources.tasks.PropertyTask] in Include Mode (`intervals_start_from="none"`) with overrides only (no rules required).
+
+!!! example "Create a parent workflow with intervals and add a list of specific combinations"
+    ```python
+    from albert import Albert
+    from albert.resources.tasks import Block, PropertyTask
+    from albert.resources.workflows import (
+        Interval,
+        ParameterGroupSetpoints,
+        ParameterSetpoint,
+        Workflow,
+    )
+
+    client = Albert()
+
+    # 1. Define and create the parent workflow with intervalized parameters
+    parent_workflow = Workflow(
+        name="Viscosity Screening Matrix",
+        parameter_group_setpoints=[
+            ParameterGroupSetpoints(
+                id="PRG123",
+                parameter_setpoints=[
+                    ParameterSetpoint(
+                        parameter_id="PRM100",
+                        intervals=[
+                            Interval(value="25"),
+                            Interval(value="60"),
+                            Interval(value="90"),
+                        ],
+                    ),
+                    ParameterSetpoint(
+                        parameter_id="PRM200",
+                        intervals=[
+                            Interval(value="500"),
+                            Interval(value="1000"),
+                            Interval(value="1500"),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+    # create() returns the saved workflow with backend-assigned interval row IDs
+    created = client.workflows.create(workflows=[parent_workflow])
+    workflow = created[0]
+
+    # 2. Define the specific list of combinations to evaluate
+    combos_to_add = [
+        {"Temperature": 25, "Speed": 500},
+        {"Temperature": 60, "Speed": 1000},
+        {"Temperature": 90, "Speed": 1500},
+    ]
+
+    # 3. Build overrides for each combination
+    # In Include Mode (intervals_start_from="none"), action="unskip" and is_manual=True
+    # selectively add combinations to an otherwise empty baseline
+    overrides = [
+        workflow.build_override(
+            parameter_values=combo,
+            action="unskip",
+            is_manual=True,
+        )
+        for combo in combos_to_add
+    ]
+
+    # 4. Create the task with overrides only (no rules needed)
+    task = client.tasks.create_with_combinations(
+        task=PropertyTask(
+            name="Targeted Viscosity Screen",
+            parent_id="PRO123",
+            blocks=[
+                Block(
+                    data_template=[{"id": "DAT100"}],
+                    workflow=[{"id": workflow.id}],
+                    intervals_start_from="none",
+                    overrides=overrides,
+                )
+            ],
+        ),
+        wait=True,
+    )
+
+    # 5. Iterate over the materialized combinations
+    block_id = task.blocks[0].id
+    for combo in client.tasks.get_block_combinations(task_id=task.id, block_id=block_id):
+        print(combo.id, combo.name, combo.interval_barcode)
+    ```
+
 ## Modify rules and regenerate combinations on an existing task
 
 You can update rules and overrides on an existing task block at any time using [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert Invent.
