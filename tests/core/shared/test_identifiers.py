@@ -27,6 +27,8 @@ from albert.core.shared.identifiers import (
     ensure_workflow_id,
     ensure_worksheet_id,
 )
+from albert.resources.worker_jobs import WorkerJobMetadata
+from albert.resources.workflows import Interval, IntervalCombination
 
 
 @pytest.mark.parametrize(
@@ -90,6 +92,12 @@ def test_ensure_lot_id_display_format():
 def test_ensure_interval_id():
     assert ensure_interval_id("ROW123") == "ROW123"
     assert ensure_interval_id("ROW123XROW456") == "ROW123XROW456"
+    assert ensure_interval_id("ROW123XROW456XROW789") == "ROW123XROW456XROW789"
+    assert ensure_interval_id("row123") == "ROW123"
+    assert ensure_interval_id("default") == "default"
+    assert ensure_interval_id("WFL375962") == "WFL375962"
+    assert ensure_interval_id("V1a9Km2xL") == "V1a9Km2xL"
+
     with pytest.raises(ValueError, match="IntervalId cannot be empty"):
         ensure_interval_id("")
 
@@ -97,20 +105,14 @@ def test_ensure_interval_id():
 
     assert ensure_row_id("row123Xrow456") == "ROW123XROW456"
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
-        ensure_interval_id("ROW123XROW456XROW789")
-
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="Must be a ROW chain"):
         ensure_interval_id("123")
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="Must be a ROW chain"):
         ensure_interval_id("123X456")
 
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
+    with pytest.raises(ValueError, match="Must be a ROW chain"):
         ensure_interval_id("ROW123XROW456X")
-
-    with pytest.raises(ValueError, match="Must be in format ROW# or ROW#XROW#"):
-        ensure_interval_id("ROW123XROW456XROW789")
 
 
 @pytest.mark.parametrize(
@@ -276,3 +278,42 @@ def test_validate_call_with_return_types():
         return inventory_id
 
     assert return_func("A123") == "INVA123"
+
+
+def test_interval_accepts_object_value_and_empty():
+    empty = Interval.model_validate({})
+    assert empty.value is None
+
+    empty_str = Interval(value="")
+    assert empty_str.value == ""
+
+    special = Interval.model_validate(
+        {"value": {"id": "INVC89189", "name": "C89189 || BUL3"}, "name": "C89189 || BUL3"}
+    )
+    assert special.value == {"id": "INVC89189", "name": "C89189 || BUL3"}
+    assert special.name == "C89189 || BUL3"
+
+
+def test_interval_combination_accepts_three_segment_id():
+    combo = IntervalCombination.model_validate({"interval": "ROW3XROW8XROW13"})
+    assert combo.interval_id == "ROW3XROW8XROW13"
+
+
+def test_worker_job_metadata_preserves_child_workflow_fields():
+    metadata = WorkerJobMetadata.model_validate(
+        {
+            "albertId": "TASFOR361819",
+            "parentType": "TAS",
+            "blockId": "BLK1",
+            "s3Url": "intervalcombinations/TASFOR361819/BLK1/ufo-ExDhXV.json",
+            "newWorkflowId": "WFL383358",
+            "oldWorkflowId": "WFL375193",
+        }
+    )
+    dumped = metadata.model_dump(by_alias=True, exclude_none=True)
+    assert dumped["albertId"] == "TASFOR361819"
+    assert dumped["blockId"] == "BLK1"
+    assert dumped["s3Url"] == "intervalcombinations/TASFOR361819/BLK1/ufo-ExDhXV.json"
+    assert dumped["newWorkflowId"] == "WFL383358"
+    assert dumped["oldWorkflowId"] == "WFL375193"
+    assert dumped["parentType"] == "TAS"
