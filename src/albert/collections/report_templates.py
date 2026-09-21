@@ -76,13 +76,16 @@ class ReportTemplateCollection(BaseCollection):
         Parameters
         ----------
         id : str
-            The ID of the report template to retrieve.
+            The ID of the report template to retrieve. Fully qualified IDs
+            (``ALB#RET40``) are normalized to the bare form automatically.
 
         Returns
         -------
         ReportTemplate
             The fully populated report template.
         """
+        # Fully qualified IDs (``ALB#RET40``) would truncate the URL path at ``#``.
+        id = id.rsplit("#", 1)[-1]
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return ReportTemplate(**response.json())

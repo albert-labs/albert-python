@@ -106,7 +106,8 @@ class ReportCollection(BaseCollection):
             The category of the report (e.g. ``"datascience"`` or ``"analytics"``).
         report_type_id : str
             The report type ID identifying which report to run (e.g. ``"RET51"``
-            or the fully qualified ``"ALB#RET51"``).
+            or the fully qualified ``"ALB#RET51"``). Fully qualified IDs are
+            normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. project IDs, inventory IDs, or unique IDs). Optional.
@@ -116,6 +117,8 @@ class ReportCollection(BaseCollection):
         ReportInfo
             The report type metadata and computed result items.
         """
+        # Fully qualified IDs (``ALB#RET51``) would truncate the URL path at ``#``.
+        report_type_id = report_type_id.rsplit("#", 1)[-1]
         path = f"{self.base_path}/{category}/{report_type_id}"
 
         params = {}
@@ -149,7 +152,8 @@ class ReportCollection(BaseCollection):
         ----------
         report_type_id : str
             The report type ID identifying which analytics report to run
-            (e.g. ``"RET22"``).
+            (e.g. ``"RET22"`` or the fully qualified ``"ALB#RET22"``). Fully qualified
+            IDs are normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. inventory IDs). Optional.
@@ -191,7 +195,8 @@ class ReportCollection(BaseCollection):
         ----------
         report_type_id : str
             The report type ID identifying which datascience report to run
-            (e.g. ``"RET51"``).
+            (e.g. ``"RET51"`` or the fully qualified ``"ALB#RET51"``). Fully qualified
+            IDs are normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. project IDs and unique IDs). Optional.
@@ -353,7 +358,7 @@ class ReportCollection(BaseCollection):
             from albert.resources.reports import FullAnalyticalReport
 
             new_report = FullAnalyticalReport(
-                report_type_id="ALB#RET22",
+                report_type_id="RET22",
                 name="My New Report",
                 description="A test report",
             )
