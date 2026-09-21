@@ -99,6 +99,7 @@ class LotCollection(BaseCollection):
         "status",
         "pack_size",
         "barcode_id",
+        "external_barcode_id",
         "owner",
         "workflow_id",
     }
@@ -832,9 +833,10 @@ class LotCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``barcode_id``, ``cost``,
-        ``expiration_date``, ``initial_quantity``, ``inventory_on_hand``,
-        ``manufacturer_lot_number``, ``metadata``, ``owner``, ``pack_size``,
-        ``status``, ``storage_location``, ``workflow_id``.
+        ``expiration_date``, ``external_barcode_id``, ``initial_quantity``,
+        ``inventory_on_hand``, ``manufacturer_lot_number``, ``metadata``,
+        ``owner``, ``pack_size``, ``status``, ``storage_location``,
+        ``workflow_id``.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

@@ -119,8 +119,13 @@ def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[D
     name = seeded_data_templates[0].name
     expected_id = seeded_data_templates[0].id
 
-    result = client.data_templates.get_by_name(name=name)
-    assert result is not None
+    results = poll_until(
+        lambda: (
+            [found] if (found := client.data_templates.get_by_name(name=name)) is not None else []
+        )
+    )
+    assert results, "Expected get_by_name to find seeded data template"
+    result = results[0]
     assert result.name == name
     assert result.id == expected_id
 

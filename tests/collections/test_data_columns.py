@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 from albert import Albert
@@ -32,14 +30,14 @@ def test_data_column_get_all_with_filters(client: Albert, seeded_data_columns: l
     """Test get_all filters by name with and without exact match."""
     name = seeded_data_columns[0].name
 
-    # Poll briefly: the search index can lag behind seeding under parallel load
-    deadline = time.monotonic() + 15
-    while True:
-        results = list(client.data_columns.get_all(name=name, exact_match=False, max_items=10))
-        if any(name.lower() in dc.name.lower() for dc in results) or time.monotonic() > deadline:
-            break
-        time.sleep(1)
-    assert any(name.lower() in dc.name.lower() for dc in results)
+    results = poll_until(
+        lambda: [
+            dc
+            for dc in client.data_columns.get_all(name=name, exact_match=False, max_items=10)
+            if name.lower() in dc.name.lower()
+        ]
+    )
+    assert results, "Expected seeded data column in filtered get_all results"
     assert_valid_data_column_items(results)
 
     no_match = list(
@@ -66,6 +64,27 @@ def test_data_column_get_all_by_ids(client: Albert, seeded_data_columns: list[Da
     assert results, "Expected get_all(ids=...) to return seeded data columns"
     assert {x.id for x in results} <= id_set
     assert_valid_data_column_items(results)
+
+
+def test_data_column_search(
+    client: Albert, seed_prefix: str, seeded_data_columns: list[DataColumn]
+):
+    """Test search finds seeded data columns and hits hydrate to full DataColumn."""
+    seeded_ids = {dc.id for dc in seeded_data_columns}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.data_columns.search(text=seed_prefix, max_items=50)
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected seeded data columns in search results"
+    hit = hits[0]
+    assert hit.id in seeded_ids
+
+    hydrated = hit.hydrate()
+    assert isinstance(hydrated, DataColumn)
+    assert hydrated.id == hit.id
 
 
 def test_get_by_name(client: Albert, seeded_data_columns: list[DataColumn]):

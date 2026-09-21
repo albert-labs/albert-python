@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import quote, urlencode, urljoin
 
@@ -33,6 +34,14 @@ class AlbertSession(requests.Session):
         When ``None`` (the default), requests have no timeout and can block
         indefinitely. A per-call ``timeout`` passed to a request always takes
         precedence.
+    headers : Mapping[str, str], optional
+        Extra headers applied to every request made through this session, for
+        example a caller-supplied correlation or audit header. Merged over the
+        session defaults, matching header names case-insensitively, so a key
+        given here replaces ``Content-Type``, ``Accept``, or ``User-Agent``
+        rather than being sent alongside it. ``Authorization`` is set per
+        request from the session's own credentials and cannot be overridden
+        here.
     """
 
     def __init__(
@@ -43,6 +52,7 @@ class AlbertSession(requests.Session):
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
     ):
         super().__init__()
         self.base_url = base_url
@@ -54,6 +64,8 @@ class AlbertSession(requests.Session):
                 "User-Agent": f"albert-SDK V.{albert.__version__}",
             }
         )
+        if headers:
+            self.headers.update(headers)
 
         if token is None and auth_manager is None:
             raise ValueError("Either `token` or `auth_manager` must be specified.")
@@ -84,9 +96,10 @@ class AlbertSession(requests.Session):
 
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
         # Send auth via per-request headers: mutating self.headers is not safe when
-        # the session is shared across threads.
-        headers = {"Authorization": f"Bearer {self._access_token}"}
-        headers.update(kwargs.pop("headers", None) or {})
+        # the session is shared across threads. Applied last so neither a
+        # per-request header nor a session default can displace it.
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers["Authorization"] = f"Bearer {self._access_token}"
         kwargs["headers"] = headers
         kwargs.setdefault("timeout", self._timeout)
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path

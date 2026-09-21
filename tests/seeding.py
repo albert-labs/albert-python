@@ -73,6 +73,7 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.report_templates import ReportTemplate, ReportTemplateCategory
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
@@ -1506,12 +1507,13 @@ def generate_workflow_seeds(
     ]
 
 
-def generate_notebook_block_seeds() -> list[NotebookBlock]:
+def generate_notebook_block_seeds(*, seed_prefix: str = "") -> list[NotebookBlock]:
+    paragraph_text = f"{seed_prefix} I am a paragraph block.".strip()
     return [
         HeaderBlock(content=HeaderContent(level=1, text="I am a header1 block.")),
         HeaderBlock(content=HeaderContent(level=2, text="I am a header2 block.")),
         HeaderBlock(content=HeaderContent(level=3, text="I am a header3 block.")),
-        ParagraphBlock(content=ParagraphContent(text="I am a paragraph block.")),
+        ParagraphBlock(content=ParagraphContent(text=paragraph_text)),
         TableBlock(
             content=TableContent(
                 content=[
@@ -1781,8 +1783,40 @@ def generate_btinsight_seed(
     )
 
 
+def pick_report_type_id(templates: list[ReportTemplate]) -> str:
+    """Pick a report type ID from the available templates for report seeding.
+
+    Parameters
+    ----------
+    templates : list[ReportTemplate]
+        Report templates returned by ``client.report_templates.get_all()``.
+
+    Returns
+    -------
+    str
+        A report type ID suitable for ``FullAnalyticalReport.report_type_id``.
+
+    Raises
+    ------
+    ValueError
+        If no templates with IDs are available.
+    """
+    for template in templates:
+        if template.id and template.category == ReportTemplateCategory.REPORTS:
+            return template.id
+
+    for template in templates:
+        if template.id:
+            return template.id
+
+    raise ValueError("No report templates with IDs are available for seeding")
+
+
 def generate_report_seeds(
-    seed_prefix: str, seeded_projects: list[Project]
+    seed_prefix: str,
+    seeded_projects: list[Project],
+    *,
+    report_type_id: str,
 ) -> list[FullAnalyticalReport]:
     """
     Generates a list of FullAnalyticalReport seed objects for testing.
@@ -1793,6 +1827,8 @@ def generate_report_seeds(
         Prefix to use for generating unique names.
     seeded_projects : list[Project]
         List of seeded Project objects to reference in reports.
+    report_type_id : str
+        Report type ID from an available report template (e.g. ``"RET42"``).
 
     Returns
     -------
@@ -1804,7 +1840,7 @@ def generate_report_seeds(
     return [
         # Basic analytical report
         FullAnalyticalReport(
-            report_type_id="ALB#RET42",
+            report_type_id=report_type_id,
             name=f"{seed_prefix} - Basic Analytical Report",
             description=f"{seed_prefix} - A basic analytical report for testing",
             input_data={"project": project_ids},

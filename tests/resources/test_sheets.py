@@ -1,9 +1,11 @@
 import json
+from contextlib import suppress
 
 import pandas as pd
 import pytest
 
-from albert.exceptions import AlbertException
+from albert import Albert
+from albert.exceptions import AlbertException, BadRequestError, NotFoundError
 from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import (
     Cell,
@@ -454,6 +456,156 @@ def test_add_parameter_group_row(
         f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
         json=[{"rowId": row.row_id}],
     )
+
+
+def test_add_task_row(
+    client: Albert,
+    seed_prefix: str,
+    seeded_locations,
+    seeded_inventory,
+    seeded_data_templates,
+    seeded_workflows,
+):
+    """Test linking a property task into a sheet's Results section as a TAS row."""
+    from albert.core.shared.models.base import EntityLink
+    from albert.resources.projects import Project
+    from albert.resources.tasks import (
+        Block,
+        PropertyTask,
+        TaskCategory,
+        TaskInventoryInformation,
+    )
+
+    # Isolated project: TAS rows cannot be removed from a sheet, so the shared
+    # seeded sheet must not be used.
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - add_task_row",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+        )
+    )
+    task = None
+    try:
+        worksheet = client.worksheets.setup_worksheet(project_id=project.id, add_sheet=True)
+        sheet = worksheet.sheets[0]
+
+        column = sheet.add_formulation(
+            formulation_name=f"{seed_prefix} - add_task_row formula",
+            components=[Component(inventory_id=seeded_inventory[0].id, amount=100.0)],
+        )
+
+        task = client.tasks.create(
+            task=PropertyTask(
+                name=f"{seed_prefix} - add_task_row task",
+                category=TaskCategory.PROPERTY,
+                inventory_information=[TaskInventoryInformation(inventory_id=column.inventory_id)],
+                parent_id=project.id,
+                location=seeded_locations[0],
+                blocks=[
+                    Block(
+                        workflow=[seeded_workflows[0]],
+                        data_template=[seeded_data_templates[0]],
+                    )
+                ],
+            )
+        )
+
+        row = sheet.add_task_row(task_id=task.id)
+        assert isinstance(row, Row)
+        assert row.type == CellType.TAS
+        assert row.row_id.startswith("ROW")
+        assert row.inventory_id == task.id
+
+        sheet.grid = None
+        result_row_ids = {r.row_id for r in sheet.result_design.rows}
+        assert row.row_id in result_row_ids
+    finally:
+        if task is not None:
+            with suppress(NotFoundError, BadRequestError):
+                client.tasks.delete(id=task.id)
+        with suppress(NotFoundError, BadRequestError):
+            client.projects.delete(id=project.id)
+
+
+def _column_ids(sheet: Sheet) -> list[str]:
+    return [col.column_id for col in sheet.columns]
+
+
+def test_reorder_columns_basic(seeded_sheet: Sheet):
+    """Test reordering newly added blank columns and restoring the original order."""
+    seeded_sheet.grid = None
+    col_a = seeded_sheet.add_blank_column(name="reorder test A")
+    col_b = seeded_sheet.add_blank_column(name="reorder test B")
+    col_c = seeded_sheet.add_blank_column(name="reorder test C")
+    original_order = _column_ids(seeded_sheet)
+    try:
+        assert original_order[-3:] == [col_a.column_id, col_b.column_id, col_c.column_id]
+        desired = original_order[:-3] + [
+            col_c.column_id,
+            col_b.column_id,
+            col_a.column_id,
+        ]
+        seeded_sheet.reorder_columns(column_ids=desired)
+        assert _column_ids(seeded_sheet) == desired
+
+        seeded_sheet.reorder_columns(column_ids=original_order)
+        assert _column_ids(seeded_sheet) == original_order
+    finally:
+        for col in (col_a, col_b, col_c):
+            seeded_sheet.delete_column(column_id=col.column_id)
+        seeded_sheet.grid = None
+
+
+def test_reorder_columns_noop(seeded_sheet: Sheet):
+    """Test that passing the current order is a no-op."""
+    seeded_sheet.grid = None
+    current = _column_ids(seeded_sheet)
+    seeded_sheet.reorder_columns(column_ids=current)
+    assert _column_ids(seeded_sheet) == current
+
+
+def test_reorder_columns_validation(seeded_sheet: Sheet):
+    """Test reorder_columns rejects invalid column ID lists."""
+    seeded_sheet.grid = None
+    current = _column_ids(seeded_sheet)
+
+    with pytest.raises(AlbertException, match="must not contain duplicates"):
+        seeded_sheet.reorder_columns(column_ids=[current[0], current[0]])
+
+    with pytest.raises(AlbertException, match="Unknown column ID"):
+        seeded_sheet.reorder_columns(column_ids=[*current, "COL999999999"])
+
+    with pytest.raises(AlbertException, match="must include every column"):
+        seeded_sheet.reorder_columns(column_ids=current[:-1])
+
+    with pytest.raises(AlbertException, match="must include at least one"):
+        seeded_sheet.reorder_columns(column_ids=[])
+
+
+def test_reorder_columns_with_pinned_column(seeded_sheet: Sheet):
+    """Test reordering column sequence when a left-pinned column is present."""
+    seeded_sheet.grid = None
+    col_a = seeded_sheet.add_blank_column(name="reorder pin A")
+    col_b = seeded_sheet.add_blank_column(name="reorder pin B")
+    col_c = seeded_sheet.add_blank_column(name="reorder pin C")
+    original_order = _column_ids(seeded_sheet)
+    try:
+        seeded_sheet.pin_columns(col_ids=[col_a.column_id], side="left")
+        seeded_sheet.grid = None
+
+        desired = original_order[:-3] + [
+            col_a.column_id,
+            col_c.column_id,
+            col_b.column_id,
+        ]
+        seeded_sheet.reorder_columns(column_ids=desired)
+        assert _column_ids(seeded_sheet) == desired
+    finally:
+        seeded_sheet.reorder_columns(column_ids=original_order)
+        seeded_sheet.unpin_columns(col_ids=[col_a.column_id])
+        for col in (col_a, col_b, col_c):
+            seeded_sheet.delete_column(column_id=col.column_id)
+        seeded_sheet.grid = None
 
 
 ########################## CELLS ##########################

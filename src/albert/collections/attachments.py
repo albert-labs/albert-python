@@ -471,6 +471,7 @@ class AttachmentCollection(BaseCollection):
         note_text: str = "",
         file_name: str = "",
         upload_key: str | None = None,
+        content_type: str | None = None,
     ) -> Note:
         """Uploads a file and attaches it to a new note. A user can be tagged in the note_text string by using f-string and the User.to_note_mention() method.
         This allows for easy tagging and referencing of users within notes. example: f"Hello {tagged_user.to_note_mention()}!"
@@ -500,6 +501,9 @@ class AttachmentCollection(BaseCollection):
         upload_key : str | None, optional
             Override the storage key used when signing and uploading the file.
             Defaults to ``{parent_id}/{note_id}/{file_name}``.
+        content_type : str | None, optional
+            Explicit MIME type for the upload. When omitted, inferred from
+            ``file_name`` or ``upload_key``; defaults to ``application/octet-stream``.
 
         Returns
         -------
@@ -521,9 +525,12 @@ class AttachmentCollection(BaseCollection):
         else:
             attachment_name = file_name
             upload_name = f"{parent_id}/{registered_note.id}/{file_name}"
-        file_type = mimetypes.guess_type(attachment_name or upload_name)[0]
-        if file_type is None:
-            file_type = "application/octet-stream"
+        if content_type is None:
+            file_type = mimetypes.guess_type(attachment_name or upload_name)[0]
+            if file_type is None:
+                file_type = "application/octet-stream"
+        else:
+            file_type = content_type
         file_collection = self._get_file_collection()
 
         file_collection.sign_and_upload_file(

@@ -9,7 +9,7 @@ from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MetadataPreservingIterator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
-from albert.core.shared.identifiers import DataColumnId, DataTemplateId, UserId
+from albert.core.shared.identifiers import DataColumnId, DataTemplateId, DocumentId, UserId
 from albert.core.shared.models.patch import (
     GeneralPatchDatum,
     GeneralPatchPayload,
@@ -26,6 +26,7 @@ from albert.resources.data_templates import (
     ImageExample,
     ParameterValue,
 )
+from albert.resources.documents import DocumentState, DocumentVersion
 from albert.resources.parameter_groups import DataType, EnumValidationValue, ValueValidation
 from albert.utils._patch import (
     build_acl_patch_payload,
@@ -123,6 +124,8 @@ class DataTemplateCollection(BaseCollection):
         Set the example row for a curve data column (shown on the details page).
     set_image_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for an image data column (shown on the details page).
+    get_document_version_history(document_id) -> list[DocumentVersion]
+        Get the version history for a document attached to a data template.
     """
 
     _api_version = "v3"
@@ -1016,3 +1019,55 @@ class DataTemplateCollection(BaseCollection):
             json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         return self.get_by_id(id=data_template_id)
+
+    @validate_call
+    def get_document_version_history(
+        self,
+        *,
+        document_id: DocumentId,
+        doc_version: int | None = None,
+        state: DocumentState | None = None,
+    ) -> list[DocumentVersion]:
+        """Get the version history for a document attached to a data template.
+
+        Each data template may have one or more documents associated with it.
+        Retrieve the document IDs from
+        [`DataTemplate.documents`][albert.resources.data_templates.DataTemplate.documents]
+        after fetching the template with
+        [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id].
+
+        !!! example
+            ```python
+            dt = client.data_templates.get_by_id(id="DAT8967")
+            for doc in dt.documents:
+                versions = client.data_templates.get_document_version_history(
+                    document_id=doc.id
+                )
+                for v in versions:
+                    print(v.doc_version, v.state, v.created.at)
+            ```
+
+        Parameters
+        ----------
+        document_id : str
+            The document ID (format ``DOC...``). Obtain this from
+            ``DataTemplate.documents[i].id`` after calling
+            [`get_by_id`][albert.collections.data_templates.DataTemplateCollection.get_by_id].
+        doc_version : int, optional
+            Return only this specific version number. Requires ``document_id``.
+        state : DocumentState, optional
+            Filter by document state (``draft``, ``published``, or ``archived``).
+
+        Returns
+        -------
+        list[DocumentVersion]
+            Matching versions of the document, each representing a snapshot at a
+            point in time. See [`DocumentVersion`][albert.resources.documents.DocumentVersion].
+        """
+        params: dict = {"documentId": document_id}
+        if doc_version is not None:
+            params["docVersion"] = doc_version
+        if state is not None:
+            params["state"] = state
+        response = self.session.get("/api/v3/documents", params=params)
+        return [DocumentVersion(**item) for item in response.json().get("Items", [])]

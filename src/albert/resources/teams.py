@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import TeamId, UserId
 from albert.core.shared.models.base import BaseResource
+from albert.resources._mixins import HydrationMixin
 
 TeamRole = Literal["TeamOwner", "TeamViewer"]
 
@@ -68,3 +69,36 @@ class Team(BaseResource):
                 if user["id"] in role_map and "fgc" not in user:
                     user["fgc"] = role_map[user["id"]]
         return data
+
+
+class TeamSearchItem(BaseAlbertModel, HydrationMixin[Team]):
+    """Lightweight representation of a Team returned from search.
+
+    Returned by
+    [`search`][albert.collections.teams.TeamCollection.search],
+    this carries only summary fields for fast listing. Call ``hydrate()`` (or fetch
+    by ``id`` via
+    [`get_by_id`][albert.collections.teams.TeamCollection.get_by_id])
+    to obtain the fully populated
+    [`Team`][albert.resources.teams.Team]."""
+
+    id: TeamId | None = Field(default=None, alias="albertId")
+    """The Albert Team ID (format ``TEM...``)."""
+
+    name: str | None = None
+    """The display name of the team."""
+
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The display name of the user who created the team."""
+
+    updated_by_name: str | None = Field(default=None, alias="updatedByName")
+    """The display name of the user who last updated the team."""
+
+    created_at: str | None = Field(default=None, alias="createdAt")
+    """ISO 8601 timestamp of when the team was created."""
+
+    updated_at: str | None = Field(default=None, alias="updatedAt")
+    """ISO 8601 timestamp of when the team was last updated."""
+
+    members: list[TeamMember] | None = Field(default=None, alias="user")
+    """The members of the team. Roles may be absent on search hits."""

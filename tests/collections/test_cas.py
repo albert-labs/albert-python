@@ -11,7 +11,13 @@ from albert.resources.cas import Cas
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
 from albert.resources.lists import ListItem
 
-pytestmark = pytest.mark.xdist_group("projects")
+pytestmark = [
+    pytest.mark.xdist_group("projects"),
+    pytest.mark.skip(
+        reason="CAS collection is deprecated in favor of Substance v4; "
+        "the testing tenant has migrated to substance_v4."
+    ),
+]
 
 
 def _cas_list_metadata_items(

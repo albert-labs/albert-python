@@ -61,6 +61,98 @@ def test_sds_request_dump_strips_inv_prefix():
     assert "name" not in payload
 
 
+def test_sds_request_optional_fields_serialize_to_aliases():
+    """Test the optional generate fields dump to their exact wire aliases."""
+    sds = SDSRequest(
+        **_identity_kwargs(),
+        intended_use="coatings",
+        use="industrial",
+        physical_form="liquid",
+        waste_code="080410",
+        flammability="flammable",
+        burning_test_result="positive",
+        plm_number="PLM-1",
+        ufi_identifier="UFI-1",
+        viscosity_input="thin",
+        particle_characteristics="fine",
+        ph_input="neutral",
+        melting_point_range="0-10",
+        boiling_point_range="90-110",
+        vapor_pressure="low",
+        vapor_density="high",
+        water_solubility="miscible",
+        auto_ignition_temp="300",
+        decomposition_temp="250",
+        evaporation_rate="slow",
+        explosive_limits_lower="1",
+        explosive_limits_upper="10",
+        odor_threshold="low",
+        partition_coefficient="2.5",
+    )
+    payload = sds.model_dump(by_alias=True, mode="json", exclude_none=True)
+    assert payload["intendedUse"] == "coatings"
+    assert payload["use"] == "industrial"
+    assert payload["physicalForm"] == "liquid"
+    assert payload["wasteCode"] == "080410"
+    assert payload["flammability"] == "flammable"
+    assert payload["burningTestResult"] == "positive"
+    assert payload["plmNumber"] == "PLM-1"
+    assert payload["ufiIdentifier"] == "UFI-1"
+    assert payload["viscosityInput"] == "thin"
+    assert payload["particleCharacteristics"] == "fine"
+    assert payload["pHInput"] == "neutral"
+    assert payload["meltingPointRange"] == "0-10"
+    assert payload["boilingPointRange"] == "90-110"
+    assert payload["vaporPressure"] == "low"
+    assert payload["vaporDensity"] == "high"
+    assert payload["waterSolubility"] == "miscible"
+    assert payload["autoIgnitionTemp"] == "300"
+    assert payload["decompositionTemp"] == "250"
+    assert payload["evaporationRate"] == "slow"
+    assert payload["explosiveLimitsLower"] == "1"
+    assert payload["explosiveLimitsUpper"] == "10"
+    assert payload["odorThreshold"] == "low"
+    assert payload["partitionCoefficient"] == "2.5"
+
+
+def test_sds_request_omits_unset_optional_fields():
+    """Test unset optional generate fields are excluded from the dump."""
+    sds = SDSRequest(**_identity_kwargs())
+    payload = sds.model_dump(by_alias=True, mode="json", exclude_none=True)
+    for alias in (
+        "intendedUse",
+        "use",
+        "physicalForm",
+        "wasteCode",
+        "flammability",
+        "burningTestResult",
+        "plmNumber",
+        "ufiIdentifier",
+        "viscosityInput",
+        "particleCharacteristics",
+        "pHInput",
+        "meltingPointRange",
+        "boilingPointRange",
+        "vaporPressure",
+        "vaporDensity",
+        "waterSolubility",
+        "autoIgnitionTemp",
+        "decompositionTemp",
+        "evaporationRate",
+        "explosiveLimitsLower",
+        "explosiveLimitsUpper",
+        "odorThreshold",
+        "partitionCoefficient",
+    ):
+        assert alias not in payload
+
+
+def test_sds_request_enforces_backend_max_length():
+    """Test fields with a backend maxLength of 100 fail fast client-side."""
+    with pytest.raises(ValidationError):
+        SDSRequest(**_identity_kwargs(), plm_number="x" * 101)
+
+
 def test_require_formula_inventory_rejects_raw_materials():
     """Test SDS generate rejects non-formula inventory items."""
     item = InventoryItem(name="ethanol", category=InventoryCategory.RAW_MATERIALS)

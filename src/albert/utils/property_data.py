@@ -270,6 +270,7 @@ def resolve_task_property_payload(
     properties: list[TaskPropertyCreate],
 ) -> list[dict]:
     """Build POST payloads for task properties, resolving image/curve values."""
+    has_curve = any(isinstance(prop.value, CurvePropertyValue) for prop in properties)
     payload = []
     for prop in properties:
         prop_payload = prop.model_dump(exclude_none=True, by_alias=True, mode="json")
@@ -287,7 +288,10 @@ def resolve_task_property_payload(
                 prop=prop,
                 curve_value=prop.value,
             )
-            # For curve property data, remove DataTemplate from payload as it's not needed
+        # When any curve property is in the batch, the backend evaluates the array
+        # against CurveData (which has additionalProperties: false and does not define DataTemplate).
+        # DataTemplate must therefore be stripped from every item in the batch.
+        if has_curve:
             prop_payload.pop("DataTemplate", None)
         payload.append(prop_payload)
     return payload

@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
@@ -7,10 +8,18 @@ from albert.collections.data_templates import DataTemplateCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
+from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import WorkflowId
+from albert.core.utils import ensure_list
 from albert.resources.parameter_groups import DataType, ParameterValue
-from albert.resources.workflows import ParameterSetpoint, Workflow
+from albert.resources.workflows import (
+    ParameterSetpoint,
+    Workflow,
+    WorkflowParameterSet,
+    WorkflowSearchItem,
+)
+
+_SEARCH_PAGE_SIZE = 100  # maximum page size accepted by the workflow search endpoint
 
 
 class WorkflowCollection(BaseCollection):
@@ -89,6 +98,8 @@ class WorkflowCollection(BaseCollection):
         Get multiple workflows by their IDs in batches.
     get_all(max_items=None) -> Iterator[Workflow]
         Iterate over all workflows (rarely needed in production).
+    search(...) -> Iterator[WorkflowSearchItem]
+        Search for workflows matching the given filters.
     """
 
     _api_version = "v3"
@@ -361,4 +372,144 @@ class WorkflowCollection(BaseCollection):
             session=self.session,
             deserialize=deserialize,
             max_items=max_items,
+        )
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        status: Status | list[Status] | None = None,
+        created_by: str | list[str] | None = None,
+        ids: WorkflowId | list[WorkflowId] | None = None,
+        data_templates: str | list[str] | None = None,
+        data_template_ids: str | list[str] | None = None,
+        parameter_groups: str | list[str] | None = None,
+        parameter_group_ids: str | list[str] | None = None,
+        parameters: str | list[str] | None = None,
+        unit: str | list[str] | None = None,
+        parameter_set: list[WorkflowParameterSet] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        search_field: list[str] | None = None,
+        source_field: list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        sort_by: str | None = None,
+        order_by: OrderBy = OrderBy.DESCENDING,
+        max_items: int | None = None,
+    ) -> Iterator[WorkflowSearchItem]:
+        """Search for workflows matching the given filters.
+
+        This is the fast path: it returns partial (unhydrated)
+        [`WorkflowSearchItem`][albert.resources.workflows.WorkflowSearchItem] hits and is
+        best for lookups, counts, and pulling IDs. To retrieve fully populated
+        workflows, use [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]
+        or call `hydrate()` on a hit. Results are returned lazily as an iterator
+        that pages through the API on demand.
+
+        !!! example
+            ```python
+            for item in client.workflows.search(text="Tensile", max_items=10):
+                print(item.id, item.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query.
+        status : Status or list[Status], optional
+            Filter by workflow status.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        ids : WorkflowId or list[WorkflowId], optional
+            Filter by workflow ID(s) (format ``WFL...``).
+        data_templates : str or list[str], optional
+            Filter by data template name(s).
+        data_template_ids : str or list[str], optional
+            Filter by data template ID(s) (format ``DAT...``).
+        parameter_groups : str or list[str], optional
+            Filter by parameter group name(s).
+        parameter_group_ids : str or list[str], optional
+            Filter by parameter group ID(s) (format ``PRG...``).
+        parameters : str or list[str], optional
+            Filter by parameter name(s). Supports inline range syntax such as
+            ``name(value)``, ``name(>n)``, ``name(<n)``, or ``name(min-max)``.
+        unit : str or list[str], optional
+            Filter by unit name(s).
+        parameter_set : list[WorkflowParameterSet], optional
+            Filter by parameter constraints that bind a name, value range, and unit.
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        search_field : list[str], optional
+            Restrict which fields the text query searches.
+        source_field : list[str], optional
+            Restrict which fields are returned in search results.
+        from_created_at : str, optional
+            Only include workflows created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include workflows created on or before this date (ISO 8601).
+        sort_by : str, optional
+            Attribute to sort results by.
+        order_by : OrderBy, optional
+            The order in which to sort results. Default is ``DESCENDING``.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matching items.
+
+        Returns
+        -------
+        Iterator[WorkflowSearchItem]
+            A lazy iterator of matching partial workflows. Call
+            `hydrate()` on an item to fetch its full
+            [`Workflow`][albert.resources.workflows.Workflow].
+        """
+        payload: dict[str, Any] = {
+            "order": order_by,
+            "text": text,
+            "status": ensure_list(status),
+            "createdBy": ensure_list(created_by),
+            "albertId": ensure_list(ids),
+            "dataTemplates": ensure_list(data_templates),
+            "dataTemplateIds": ensure_list(data_template_ids),
+            "parameterGroups": ensure_list(parameter_groups),
+            "parameterGroupIds": ensure_list(parameter_group_ids),
+            "parameters": ensure_list(parameters),
+            "unit": ensure_list(unit),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "searchField": ensure_list(search_field),
+            "sourceField": ensure_list(source_field),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "sortBy": sort_by,
+            "limit": _SEARCH_PAGE_SIZE,
+        }
+        if parameter_set is not None:
+            payload["parameterSet"] = [
+                item.model_dump(by_alias=True, mode="json", exclude_none=True)
+                for item in parameter_set
+            ]
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            method="POST",
+            json=payload,
+            max_items=max_items,
+            deserialize=lambda items: [
+                WorkflowSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
         )

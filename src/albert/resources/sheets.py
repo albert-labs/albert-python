@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId
+from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException, AlbertHTTPError
@@ -706,6 +706,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add an application row.
     add_parameter_group_row(parameter_group_id, ...) -> Row
         Add a parameter group (PRG) row to Process Design.
+    add_task_row(task_id, ...) -> Row
+        Link a task into the Results section as a task (TAS) row.
     add_blank_column(name, ...) -> Column
         Add a blank column.
     add_lookup_column(name, ...) -> Column
@@ -730,6 +732,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Show a hidden column.
     set_columns_width(col_ids, width) -> None
         Set the display width of columns.
+    reorder_columns(column_ids) -> None
+        Reorder all columns left to right by column ID.
     delete_column(column_id) -> None
         Delete a column.
     delete_row(row_id, design_id) -> None
@@ -1274,7 +1278,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position : dict, optional
             Where to insert the new columns, as a dict with ``reference_id`` (a
             column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
-            omitted, the platform chooses the default placement.
+            omitted, inserts ``RIGHT_OF`` the last product-design column, matching
+            [`add_blank_column`][albert.resources.sheets.Sheet.add_blank_column] and
+            other ``add_*_column`` helpers.
 
         Returns
         -------
@@ -1288,15 +1294,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
             formulation_names if isinstance(formulation_names, list) else [formulation_names]
         )
 
+        if starting_position is None:
+            starting_position = {
+                "reference_id": (
+                    self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                ),
+                "position": ColumnPosition.RIGHT_OF.value,
+            }
+
         payload = []
         for formulation_name in formulation_names:
-            entry = {"type": "INV", "name": formulation_name}
-            # When no position is given, omit referenceId/position so the platform
-            # applies its default placement. Sending a null (or stale) referenceId
-            # leaves the new column out of the sheet sequence, hiding it on refresh.
-            if starting_position is not None:
-                entry["referenceId"] = starting_position["reference_id"]
-                entry["position"] = starting_position["position"]
+            entry = {
+                "type": "INV",
+                "name": formulation_name,
+                "referenceId": starting_position["reference_id"],
+                "position": starting_position["position"],
+            }
             payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
@@ -1640,6 +1653,94 @@ class Sheet(BaseSessionResource):  # noqa:F811
             design=design_obj,
             sheet=self,
             name=data.get("labelName") or data.get("name"),
+            inventory_id=data.get("id"),
+        )
+
+    @validate_call
+    def add_task_row(
+        self,
+        *,
+        task_id: TaskId,
+        name: str | None = None,
+        reference_id: str | None = None,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Link a task into this sheet's Results section as a task (TAS) row.
+
+        Creating a task does not place it in the worksheet's Results grid — the
+        platform only adds the TAS row when the task is created from the worksheet
+        UI. Call this after creating a property task programmatically so the task
+        (and its results) shows up in the sheet.
+
+        !!! example
+            ```python
+            row = sheet.add_task_row(task_id="TASPT9999999")
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Task ID to link (format ``TAS...``).
+        name : str, optional
+            The display name of the row. Defaults to the task's current name,
+            read from the platform.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to the first Results
+            row when one exists. Omit (or leave ``None``) when the Results
+            section has no rows.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``. Ignored when the Results section has no rows
+            and ``reference_id`` is omitted.
+
+        Returns
+        -------
+        Row
+            The created task row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Results section, or the response has no rows.
+        """
+        design_obj = self.result_design
+        if design_obj is None:
+            raise AlbertException("Sheet has no Results section; cannot add a task row")
+        if name is None:
+            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            name = task.get("name") or task_id
+        payload_item: dict[str, str] = {
+            "type": CellType.TAS.value,
+            "id": task_id,
+            "name": name,
+        }
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
+
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload_item]
+        )
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding task '{task_id}' to Results design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.TAS.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("name") or name,
             inventory_id=data.get("id"),
         )
 
@@ -2126,6 +2227,97 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "datacolumnName": data_column_name,
             },
         )
+
+    def _move_column(
+        self,
+        *,
+        source_id: str,
+        reference_id: str,
+        position: ColumnPosition,
+    ) -> None:
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "sequence",
+                    "sourceId": source_id,
+                    "referenceId": reference_id,
+                    "position": (
+                        position.value if isinstance(position, ColumnPosition) else position
+                    ),
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+
+    @validate_call
+    def reorder_columns(self, *, column_ids: list[str]) -> None:
+        """Reorder all columns on this sheet from left to right.
+
+        Provide every column ID on the sheet exactly once, in the desired display
+        order. The first ID is placed at the left edge; the last at the right.
+
+        !!! example
+            ```python
+            column_ids = [col.column_id for col in sheet.columns]
+            column_ids = [column_ids[2], column_ids[0], column_ids[1], *column_ids[3:]]
+            sheet.reorder_columns(column_ids=column_ids)
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            Column IDs in the desired left-to-right order. Must include every column
+            on the sheet exactly once.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertException
+            If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
+            any column on the sheet.
+        """
+        if not column_ids:
+            raise AlbertException("column_ids must include at least one column ID.")
+
+        current_ids = [col.column_id for col in self.columns]
+        current_set = set(current_ids)
+        if len(column_ids) != len(set(column_ids)):
+            raise AlbertException("column_ids must not contain duplicates.")
+
+        unknown = set(column_ids) - current_set
+        if unknown:
+            raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
+
+        missing = current_set - set(column_ids)
+        if missing:
+            raise AlbertException(
+                "column_ids must include every column on the sheet; "
+                f"missing: {', '.join(sorted(missing))}"
+            )
+
+        if column_ids == current_ids:
+            return
+
+        order = list(current_ids)
+        for i, target_id in enumerate(column_ids):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            reference_id = order[i]
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            self._move_column(
+                source_id=target_id,
+                reference_id=reference_id,
+                position=position,
+            )
+            order.pop(j)
+            order.insert(i, target_id)
+
+        self.grid = None
 
     @validate_call
     def pin_columns(

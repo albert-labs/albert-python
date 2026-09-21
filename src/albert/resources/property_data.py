@@ -387,7 +387,7 @@ class BulkPropertyData(BaseAlbertModel):
 
     A simple tabular structure: one [`BulkPropertyDataColumn`][albert.resources.property_data.BulkPropertyDataColumn] per data column,
     each holding that column's values in row order. Construct it directly, or from a
-    [`DataFrame`][albert.resources.property_data.pandas.DataFrame] with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
+    `pandas.DataFrame` with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
     [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
 
     !!! example
@@ -649,11 +649,12 @@ class TaskPropertyCreate(BaseResource):
         default=None,
         description="The trial number/ row number. Leave blank to create a new row/trial.",
     )
-    data_template: SerializeAsEntityLink[DataTemplate] = Field(
-        ...,
+    data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
+        default=None,
         alias="DataTemplate",
-        description="The data template associated with the task property.",
     )
+    """The data template associated with the task property."""
+
     visible_trial_number: int | None = Field(
         alias="visibleTrialNo",
         default=None,

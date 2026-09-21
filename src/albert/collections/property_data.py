@@ -435,7 +435,7 @@ class PropertyDataCollection(BaseCollection):
             The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
             The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
-            or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
+            a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------
@@ -451,7 +451,7 @@ class PropertyDataCollection(BaseCollection):
         }
 
         response = self.session.get(url=self.base_path, params=params)
-        return CheckPropertyData(response.json())
+        return CheckPropertyData(**response.json()[0])
 
     @validate_call
     def get_all_task_properties(
@@ -1025,9 +1025,13 @@ class PropertyDataCollection(BaseCollection):
             json=payload,
             params=params,
         )
-        registered_properties = [
-            TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-        ]
+        response_json = response.json()
+        registered_properties: list[TaskPropertyCreate] = []
+        for prop, item in zip(properties, response_json, strict=False):
+            item_data = dict(item)
+            if "DataTemplate" not in item_data and prop.data_template:
+                item_data["DataTemplate"] = prop.data_template
+            registered_properties.append(TaskPropertyCreate(**item_data))
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
