@@ -17,7 +17,14 @@ class SpecialParameterType(str, Enum):
 
     Each member implies an id-namespace for the value column in experiment reports
     (RET48/RET52): ``RAW_MATERIALS`` values carry ``INVA...`` ids, ``CONSUMABLES``
-    carry ``INVB...`` ids, and ``EQUIPMENT`` carry ``INVC...`` ids.
+    carry ``INVB...`` ids, ``EQUIPMENT`` carry ``INVC...`` ids, and ``FORMULAS``
+    carry ``INVMO...`` ids.
+
+    Mirrors [`InventoryCategory`][albert.resources.inventory.InventoryCategory],
+    the canonical "kind of material" an
+    [`InventoryItem`][albert.resources.inventory.InventoryItem] belongs to. A
+    Special parameter's value is always a reference to an `InventoryItem`, so its
+    subtype is one of that enum's members.
 
     Attributes
     ----------
@@ -27,11 +34,15 @@ class SpecialParameterType(str, Enum):
         A consumable entity. Values appear as ``INVB...`` ids in report columns.
     EQUIPMENT : str
         An equipment entity. Values appear as ``INVC...`` ids in report columns.
+    FORMULAS : str
+        A formula entity (a mixture designed through a Worksheet). Values appear
+        as ``INVMO...`` ids in report columns.
     """
 
     RAW_MATERIALS = "RawMaterials"
     CONSUMABLES = "Consumables"
     EQUIPMENT = "Equipment"
+    FORMULAS = "Formulas"
 
 
 class ParameterCategory(str, Enum):
