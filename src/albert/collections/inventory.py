@@ -306,7 +306,8 @@ class InventoryCollection(BaseCollection):
         inventory_item : InventoryItem
             The item to create. ``name`` and ``category`` are required. For raw
             materials, set ``company`` to the manufacturing Company and ``cas`` to
-            the relevant CAS numbers.
+            the relevant CAS numbers. Volume items (``unit_category="volume"``)
+            require a positive ``density`` at creation.
         avoid_duplicates : bool, optional
             When True (default), if an item with the same name and company already
             exists, that existing item is returned instead of creating a duplicate.
@@ -1750,6 +1751,8 @@ class InventoryCollection(BaseCollection):
         The following fields can be updated: ``alias``, ``description``,
         ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
         ``unit_category``.
+        Note that ``unit_category`` cannot be changed to or from ``volume``,
+        and ``density`` is fixed at creation.
         On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
         ``cas_category``, ``inventory_function``.
         ``substance_id`` can be set when adding a new CAS entry; it is not
