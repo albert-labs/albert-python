@@ -56,7 +56,9 @@ from albert.collections.targets import TargetCollection
 from albert.collections.tasks import TaskCollection
 from albert.collections.teams import TeamCollection
 from albert.collections.un_numbers import UnNumberCollection
+from albert.collections.unit_families_v4 import UnitFamilyV4Collection
 from albert.collections.units import UnitCollection
+from albert.collections.units_v4 import UnitV4Collection
 from albert.collections.users import UserCollection
 from albert.collections.workflows import WorkflowCollection
 from albert.collections.worksheets import WorksheetCollection
@@ -247,6 +249,14 @@ class Albert:
     @property
     def units(self) -> UnitCollection:
         return UnitCollection(session=self.session)
+
+    @property
+    def units_v4(self) -> UnitV4Collection:
+        return UnitV4Collection(session=self.session)
+
+    @property
+    def unit_families_v4(self) -> UnitFamilyV4Collection:
+        return UnitFamilyV4Collection(session=self.session)
 
     @property
     def cas_numbers(self) -> CasCollection:
