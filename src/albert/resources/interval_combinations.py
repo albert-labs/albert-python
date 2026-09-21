@@ -126,7 +126,7 @@ class RuleCondition(BaseAlbertModel):
     """Parameter ID (format ``PRM...``)."""
 
     row_id: RowId | None = Field(default=None, alias="rowId")
-    """Parameter row ID within the workflow (format ``ROW...``)."""
+    """Parameter row ID within the workflow (format ``ROW...``). Required to distinguish parameters because a single Parameter ID can be repeated within a parameter group."""
 
     operator: RuleOperator
     """Comparison operator used to evaluate this condition."""
