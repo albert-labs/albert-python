@@ -4068,6 +4068,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.FORMULAS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FORMULAS
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5432,6 +5443,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#albert.resources.parameters.SpecialParameterType.FORMULAS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FORMULAS
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -5702,7 +5724,13 @@ read the subtype from experiment data). Writable on
 <a class="autorefs autorefs-internal" href="../targets/#albert.resources.targets.TargetParameter"><code>TargetParameter</code></a>.</p>
 <p>Each member implies an id-namespace for the value column in experiment reports
 (RET48/RET52): <code>RAW_MATERIALS</code> values carry <code>INVA...</code> ids, <code>CONSUMABLES</code>
-carry <code>INVB...</code> ids, and <code>EQUIPMENT</code> carry <code>INVC...</code> ids.</p>
+carry <code>INVB...</code> ids, <code>EQUIPMENT</code> carry <code>INVC...</code> ids, and <code>FORMULAS</code>
+carry <code>INVMO...</code> ids.</p>
+<p>Mirrors <a class="autorefs autorefs-internal" href="../inventory/#albert.resources.inventory.InventoryCategory"><code>InventoryCategory</code></a>,
+the canonical "kind of material" an
+<a class="autorefs autorefs-internal" href="../inventory/#albert.resources.inventory.InventoryItem"><code>InventoryItem</code></a> belongs to. A
+Special parameter's value is always a reference to an <code>InventoryItem</code>, so its
+subtype is one of that enum's members.</p>
 
 
 <p><span class="doc-section-title">Attributes:</span></p>
@@ -5745,6 +5773,18 @@ carry <code>INVB...</code> ids, and <code>EQUIPMENT</code> carry <code>INVC...</
             <td>
               <div class="doc-md-description">
                 <p>An equipment entity. Values appear as <code>INVC...</code> ids in report columns.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" href="#albert.resources.parameters.SpecialParameterType.FORMULAS">FORMULAS</a></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A formula entity (a mixture designed through a Worksheet). Values appear
+as <code>INVMO...</code> ids in report columns.</p>
               </div>
             </td>
           </tr>
@@ -5818,6 +5858,24 @@ carry <code>INVB...</code> ids, and <code>EQUIPMENT</code> carry <code>INVC...</
 
 </h4>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">EQUIPMENT</span> <span class="o">=</span> <span class="s1">'Equipment'</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="albert.resources.parameters.SpecialParameterType.FORMULAS" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">FORMULAS</span>
+
+
+</h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">FORMULAS</span> <span class="o">=</span> <span class="s1">'Formulas'</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
