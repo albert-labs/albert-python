@@ -152,7 +152,8 @@ class ReportCollection(BaseCollection):
         ----------
         report_type_id : str
             The report type ID identifying which analytics report to run
-            (e.g. ``"RET22"``).
+            (e.g. ``"RET22"`` or the fully qualified ``"ALB#RET22"``). Fully qualified
+            IDs are normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. inventory IDs). Optional.
@@ -194,7 +195,8 @@ class ReportCollection(BaseCollection):
         ----------
         report_type_id : str
             The report type ID identifying which datascience report to run
-            (e.g. ``"RET51"``).
+            (e.g. ``"RET51"`` or the fully qualified ``"ALB#RET51"``). Fully qualified
+            IDs are normalized to the bare form automatically.
         input_data : dict[str, Any] | None
             Input describing what to run the report over, keyed by field name
             (e.g. project IDs and unique IDs). Optional.
@@ -356,7 +358,7 @@ class ReportCollection(BaseCollection):
             from albert.resources.reports import FullAnalyticalReport
 
             new_report = FullAnalyticalReport(
-                report_type_id="ALB#RET22",
+                report_type_id="RET22",
                 name="My New Report",
                 description="A test report",
             )

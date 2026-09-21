@@ -126,7 +126,7 @@ class FullAnalyticalReport(BaseResource):
         from albert.resources.reports import FullAnalyticalReport
 
         report = FullAnalyticalReport(
-            report_type_id="ALB#RET22",
+            report_type_id="RET22",
             name="My New Report",
             description="A test report",
         )
