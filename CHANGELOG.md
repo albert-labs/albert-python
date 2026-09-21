@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.57.1](https://github.com/albert-labs/albert-python/compare/v1.57.0...v1.57.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* add missing FORMULAS member to SpecialParameterType (ML-1611) ([#747](https://github.com/albert-labs/albert-python/issues/747)) ([3b4559f](https://github.com/albert-labs/albert-python/commit/3b4559ff0cc0dfce5406dc370c270ee0645d1e9a))
+
 ## [1.57.0](https://github.com/albert-labs/albert-python/compare/v1.56.0...v1.57.0) (2026-09-21)
 
 
