@@ -15,87 +15,113 @@ from albert.resources.tags import Tag
 
 
 class TagCollection(BaseCollection):
-    """
-    TagCollection is a collection class for managing Tag entities in the Albert platform.
+    """Manage Tags in the Albert platform.
+
+    A Tag is a freeform text label used to categorize and connect entities across
+    the platform, such as inventory items, companies, and tasks. Tags are shared:
+    the same tag can be applied to many entities, which makes them useful for
+    grouping and filtering related records.
+
+    Because tags are identified by their text, the common pattern is to find an
+    existing tag or create it on demand via [`get_or_create`][albert.collections.tags.TagCollection.get_or_create]. Tags are
+    referenced by their Tag ID (format ``TAG...``, e.g. ``"TAG1"``).
+
+    This collection is accessed as ``client.tags``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        tag = client.tags.get_or_create(tag="high-priority")
+        print(tag.id, tag.tag)
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for tag API requests.
+        The base API route for tag requests.
 
     Methods
     -------
-    get_all(limit=50, order_by=OrderBy.DESCENDING, name=None, exact_match=True)
-        Lists tag entities with optional filters.
-    exists(tag, exact_match=True) -> bool
-        Checks if a tag exists by its name.
     create(tag) -> Tag
-        Creates a new tag entity.
+        Create a new tag.
     get_or_create(tag) -> Tag
-        Retrieves a tag by name or creates it if it does not exist.
-    get_by_id(tag_id) -> Tag
-        Retrieves a tag by its ID.
-    get_by_ids(tag_ids) -> list[Tag]
-        Retrieve a list of tags by their IDs.
-    get_by_name(name, exact_match=True) -> Tag
-        Retrieves a tag by its name.
-    delete(tag_id) -> bool
-        Deletes a tag by its ID.
-    rename(old_name, new_name) -> Optional[Tag]
-        Renames an existing tag entity.
+        Return the existing tag matching the name, or create it.
+    get_by_id(id) -> Tag
+        Get a single tag by its ID.
+    get_by_ids(ids) -> list[Tag]
+        Get many tags by their IDs.
+    get_by_name(name, exact_match=True) -> Tag | None
+        Get a tag by name, or None if not found.
+    get_all(...) -> Iterator[Tag]
+        Iterate over tags with optional filters.
+    rename(old_name, new_name) -> Tag
+        Rename an existing tag.
+    delete(id) -> None
+        Delete a tag by its ID.
+    exists(tag, exact_match=True) -> bool
+        Check whether a tag with the given name exists.
     """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the TagCollection with the provided session.
+        """Initialize a TagCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TagCollection._api_version}/tags"
 
     def exists(self, *, tag: str, exact_match: bool = True) -> bool:
-        """
-        Checks if a tag exists by its name.
+        """Check whether a tag with the given name exists.
+
+        !!! example
+            ```python
+            if client.tags.exists(tag="high-priority"):
+                print("tag already defined")
+            ```
 
         Parameters
         ----------
         tag : str
-            The name of the tag to check.
+            The tag name to check.
         exact_match : bool, optional
             Whether to match the name exactly, by default True.
 
         Returns
         -------
         bool
-            True if the tag exists, False otherwise.
+            True if a matching tag exists, False otherwise.
         """
 
         return self.get_by_name(name=tag, exact_match=exact_match) is not None
 
     def create(self, *, tag: str | Tag) -> Tag:
-        """
-        Creates a new tag entity.
+        """Create a new tag.
+
+        !!! example
+            ```python
+            tag = client.tags.create(tag="experimental")
+            ```
 
         Parameters
         ----------
-        tag : Union[str, Tag]
-            The tag name or Tag entity to create.
+        tag : str or Tag
+            The tag to create, given either as a plain name or a [`Tag`][albert.resources.tags.Tag].
 
         Returns
         -------
         Tag
-            The created Tag entity.
+            The newly created tag, including its assigned Tag ID.
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
@@ -106,18 +132,27 @@ class TagCollection(BaseCollection):
         return tag
 
     def get_or_create(self, *, tag: str | Tag) -> Tag:
-        """
-        Retrieves a Tag by its name or creates it if it does not exist.
+        """Return the existing tag matching the given name, or create it.
+
+        Looks for an existing tag with the same name (exact match). If one is
+        found it is returned unchanged; otherwise a new tag is created. This is
+        the recommended way to reference a tag, since tags are shared by name.
+
+        !!! example
+            ```python
+            tag = client.tags.get_or_create(tag="high-priority")
+            ```
 
         Parameters
         ----------
-        tag : Union[str, Tag]
-            The tag name or Tag entity to retrieve or create.
+        tag : str or Tag
+            The tag to find or create, given either as a plain name or a
+            [`Tag`][albert.resources.tags.Tag].
 
         Returns
         -------
         Tag
-            The existing or newly created Tag entity.
+            The existing or newly created tag.
         """
         if isinstance(tag, str):
             tag = Tag(tag=tag)
@@ -129,18 +164,22 @@ class TagCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: TagId) -> Tag:
-        """
-        Get a tag by its ID.
+        """Get a single tag by its ID.
+
+        !!! example
+            ```python
+            tag = client.tags.get_by_id(id="TAG1")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the tag to get.
+        id : TagId
+            The Tag ID to retrieve (format ``TAG...``).
 
         Returns
         -------
         Tag
-            The Tag entity.
+            The fully populated tag.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -148,18 +187,24 @@ class TagCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[TagId]) -> list[Tag]:
-        """
-        Retrieve tags by their IDs.
+        """Get many tags by their IDs.
+
+        IDs are fetched in batches, so arbitrarily long lists are supported.
+
+        !!! example
+            ```python
+            tags = client.tags.get_by_ids(ids=["TAG1", "TAG2"])
+            ```
 
         Parameters
         ----------
         ids : list[TagId]
-            The tag IDs to fetch.
+            The Tag IDs to retrieve.
 
         Returns
         -------
         list[Tag]
-            The tags matching the provided IDs.
+            The matching tags. Tags not found are omitted.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
@@ -170,33 +215,41 @@ class TagCollection(BaseCollection):
         ]
 
     def get_by_name(self, *, name: str, exact_match: bool = True) -> Tag | None:
-        """
-        Retrieves a tag by its name or None if not found.
+        """Get a tag by its name.
+
+        !!! example
+            ```python
+            tag = client.tags.get_by_name(name="high-priority")
+            ```
 
         Parameters
         ----------
         name : str
-            The name of the tag to retrieve.
+            The tag name to retrieve.
         exact_match : bool, optional
             Whether to match the name exactly, by default True.
 
         Returns
         -------
-        Tag
-            The Tag entity if found, None otherwise.
+        Tag or None
+            The matching tag, or None if no tag with that name exists.
         """
         found = self.get_all(name=name, exact_match=exact_match, max_items=1)
         return next(found, None)
 
     @validate_call
     def delete(self, *, id: TagId) -> None:
-        """
-        Deletes a tag by its ID.
+        """Delete a tag by its ID.
+
+        !!! example
+            ```python
+            client.tags.delete(id="TAG1")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the tag to delete.
+        id : TagId
+            The Tag ID to delete.
 
         Returns
         -------
@@ -206,20 +259,32 @@ class TagCollection(BaseCollection):
         self.session.delete(url)
 
     def rename(self, *, old_name: str, new_name: str) -> Tag:
-        """
-        Renames an existing tag entity.
+        """Rename an existing tag.
+
+        The tag is looked up by its current name and updated in place, so every
+        entity carrying the tag reflects the new name.
+
+        !!! example
+            ```python
+            tag = client.tags.rename(old_name="high-priority", new_name="urgent")
+            ```
 
         Parameters
         ----------
         old_name : str
             The current name of the tag.
         new_name : str
-            The new name of the tag.
+            The new name to give the tag.
 
         Returns
         -------
         Tag
-            The renamed Tag.
+            The renamed tag.
+
+        Raises
+        ------
+        AlbertException
+            If no tag with ``old_name`` is found.
         """
         found_tag = self.get_by_name(name=old_name, exact_match=True)
         if not found_tag:
@@ -252,26 +317,35 @@ class TagCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Tag]:
-        """
-        Get all Tag entities with optional filters.
+        """Iterate over tags, with optional filters.
+
+        Results are fetched page by page as you iterate, so this scales to large
+        result sets without loading everything at once.
+
+        !!! example
+            ```python
+            for tag in client.tags.get_all(max_items=100):
+                print(tag.tag)
+            ```
 
         Parameters
         ----------
         order_by : OrderBy, optional
-            The order by which to sort the results. Default is DESCENDING.
+            Sort direction for results. Defaults to ``OrderBy.DESCENDING``.
         name : str or list[str], optional
             Filter tags by one or more names.
         exact_match : bool, optional
-            Whether to match the name(s) exactly. Default is True.
+            Whether to match the name(s) exactly. Defaults to True.
         start_key : str, optional
-            The pagination key to start from.
+            Pagination key to resume iteration from a previous position.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of tags to return in total. If None, iterates over all
+            matching tags.
 
         Returns
         -------
         Iterator[Tag]
-            An iterator of Tag entities matching the filters.
+            An iterator over the matching tags.
         """
         params = {
             "orderBy": order_by,

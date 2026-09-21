@@ -17,8 +17,10 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
+    "LabelTemplateId": "TMP",
     "LinkId": "LNK",
     "LotId": "LOT",
     "NotebookId": "NTB",
@@ -155,20 +157,37 @@ def ensure_search_inventory_id(id: str) -> str:
 SearchInventoryId = Annotated[str, AfterValidator(ensure_search_inventory_id)]
 
 
+_ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
+_INTERVAL_BARCODE_LEN = 9
+
+
 def ensure_interval_id(id: str) -> str:
     if not id:
         raise ValueError("IntervalId cannot be empty")
 
-    # Check if it matches ROW# or ROW#XROW# pattern
-    parts = id.upper().split("X")
-    if len(parts) > 2:
-        raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    if id.lower() == "default":
+        return "default"
 
-    for part in parts:
-        if not part.startswith("ROW") or not part[3:].isdigit():
-            raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    # ROW chains and WFL ids follow Albert ID uppercasing. Barcodes are
+    # case-sensitive and must not be folded.
+    upper = id.upper()
+    if _ROW_CHAIN_RE.fullmatch(upper):
+        return upper
 
-    return id.upper()
+    if upper.startswith("WFL"):
+        return upper
+
+    # Platform-generated combination barcodes are 9-character case-sensitive alphanumeric
+    # nanoids (e.g. "OhI8ap0HY", "V1a9Km2xL") that lack an identifying prefix. Matching
+    # solely on length is permissive (accepting any 9-character string), but unavoidable
+    # given barcode unpredictability across tenants while preserving exact case.
+    if len(id) == _INTERVAL_BARCODE_LEN:
+        return id
+
+    raise ValueError(
+        f"IntervalId {id} is invalid. Must be a ROW chain (ROW# or ROW#XROW#...), "
+        "a WFL id, a 9-character barcode, or 'default'"
+    )
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]
@@ -239,6 +258,13 @@ def ensure_data_column_id(id: str) -> str:
 DataColumnId = Annotated[str, AfterValidator(ensure_data_column_id)]
 
 
+def ensure_document_id(id: str) -> str:
+    return _ensure_albert_id(id, "DocumentId")
+
+
+DocumentId = Annotated[str, AfterValidator(ensure_document_id)]
+
+
 def ensure_datatemplate_id(id: str) -> str:
     if id and id.upper().startswith("DT"):
         id = f"DAT{id[2:]}"  # Replace DT with DAT
@@ -277,6 +303,13 @@ def ensure_project_search_id(id: str) -> str:
 
 
 SearchProjectId = Annotated[str, AfterValidator(ensure_project_search_id)]
+
+
+def ensure_label_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "LabelTemplateId")
+
+
+LabelTemplateId = Annotated[str, AfterValidator(ensure_label_template_id)]
 
 
 def ensure_link_id(id: str) -> str:

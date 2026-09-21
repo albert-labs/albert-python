@@ -10,7 +10,10 @@ from albert.resources.substance_v4 import (
     SubstanceV4Identifier,
     SubstanceV4Info,
     SubstanceV4Response,
+    SubstanceV4SearchItem,
 )
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 CAS_IDS = [
     "134180-76-0",
@@ -19,6 +22,14 @@ CAS_IDS = [
     "1330-20-7",
     "7732-18-5",
 ]
+
+WATER_CAS = "7732-18-5"
+
+
+def _search_item_key(
+    item: SubstanceV4SearchItem,
+) -> tuple[str | None, str | None, str | None]:
+    return (item.substance_id, item.cas_id, item.classification_type)
 
 
 def test_get_by_ids(client: Albert):
@@ -97,12 +108,52 @@ def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]
     )
 
 
-# TODO: search tests disabled — backend pagination bug causes duplicates and
-# inconsistent page sizes. Re-enable once the backend fixes startKey/limit behaviour.
-# Ticket filed with backend team.
+def test_search_requires_at_least_one_filter(client: Albert):
+    """Test that search raises when no filter is provided."""
+    with pytest.raises(ValueError):
+        list(client.substances_v4.search())
 
-# def test_search_by_search_key(client: Albert): ...
-# def test_search_by_cas(client: Albert): ...
-# def test_search_by_name(client: Albert): ...
-# def test_search_max_items(client: Albert): ...
-# def test_search_with_start_key(client: Albert): ...
+
+def test_search_filters(client: Albert):
+    """Test search_key, cas, and name filters return expected records."""
+    by_key = list(client.substances_v4.search(search_key=WATER_CAS, max_items=20))
+    assert by_key
+    assert all(isinstance(r, SubstanceV4SearchItem) for r in by_key)
+    assert any(r.cas_id == WATER_CAS for r in by_key)
+
+    by_cas = list(client.substances_v4.search(cas=WATER_CAS, max_items=20))
+    assert by_cas
+    assert all(r.cas_id == WATER_CAS for r in by_cas)
+
+    by_name = list(client.substances_v4.search(name="water", max_items=20))
+    assert by_name
+    assert all(isinstance(r, SubstanceV4SearchItem) for r in by_name)
+    assert any(r.cas_id == WATER_CAS for r in by_name)
+
+
+# Remove xfail when https://github.com/MoleculeEngineering/api-substance-v4/issues/57 is fixed.
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "api-substance-v4 search pagination intermittently returns duplicate items across "
+        "pages (MoleculeEngineering/api-substance-v4#57)."
+    ),
+)
+def test_search_pagination(client: Albert):
+    """Test max_items cap, start_key resume, multi-page uniqueness, and has_more."""
+    capped_pag = client.substances_v4.search(search_key="water", max_items=5)
+    capped = list(capped_pag)
+    assert len(capped) == 5
+    assert capped_pag.has_more is True
+    assert capped_pag.total is not None
+    assert capped_pag.total > len(capped)
+
+    results = list(client.substances_v4.search(search_key="water", max_items=45))
+    keys = [_search_item_key(r) for r in results]
+    assert len(keys) == len(set(keys))
+
+    if len(results) >= 20:
+        first_page_keys = {_search_item_key(r) for r in results[:20]}
+        resumed = list(client.substances_v4.search(search_key="water", start_key=20, max_items=20))
+        assert resumed
+        assert not first_page_keys & {_search_item_key(r) for r in resumed}

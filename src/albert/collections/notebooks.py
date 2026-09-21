@@ -1,5 +1,7 @@
 import mimetypes
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from pydantic import TypeAdapter, validate_call
 
@@ -7,8 +9,16 @@ from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
 from albert.collections.synthesis import SynthesisCollection
 from albert.core.base import BaseAlbertModel
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import NotebookId, ProjectId, SynthesisId, TaskId
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import (
+    NotebookId,
+    ProjectId,
+    SearchProjectId,
+    SynthesisId,
+    TaskId,
+)
 from albert.exceptions import AlbertException
 from albert.resources.files import FileNamespace
 from albert.resources.notebooks import (
@@ -19,6 +29,7 @@ from albert.resources.notebooks import (
     NotebookBlock,
     NotebookCopyInfo,
     NotebookCopyType,
+    NotebookSearchItem,
     PutBlockDatum,
     PutBlockPayload,
     PutOperation,
@@ -33,51 +44,75 @@ class _KetcherUpdateAction(BaseAlbertModel):
 
 
 class NotebookCollection(BaseCollection):
-    """NotebookCollection manages Notebook entities in the Albert platform.
+    """Manage Notebooks in the Albert platform.
+
+    A Notebook is an electronic lab notebook (ELN): an ordered document made up
+    of content blocks (paragraphs, headers, checklists, tables, images, file
+    attachments, and Ketcher chemical drawings). Each Notebook is attached to a
+    parent entity, which is a Project, a Task, or a custom template, and is
+    referenced by its Notebook ID (format ``NTB...``, e.g. ``"NTB123"``).
+
+    Notebook content is edited block-by-block rather than by overwriting the whole
+    document. Create an empty Notebook with [`create`][albert.collections.notebooks.NotebookCollection.create], then add or change
+    blocks with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks]. The
+    [`update`][albert.collections.notebooks.NotebookCollection.update] method changes only the Notebook name.
+
+    This collection is accessed as ``client.notebooks``.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        notebook = client.notebooks.get_by_id(id="NTB123")
+        for block in notebook.blocks:
+            print(block.id, block.type)
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for notebook API requests.
+        The base API route for notebook requests.
 
     Methods
     -------
     get_by_id(id) -> Notebook
-        Retrieves a notebook by its ID.
+        Get a single notebook by its ID.
+    search(...) -> Iterator[NotebookSearchItem]
+        Search notebook block content across projects.
     list_by_parent_id(parent_id) -> list[Notebook]
-        Lists notebooks for a given parent (task or project).
+        List the notebooks attached to a given parent (project or task).
     create(notebook) -> Notebook
-        Creates or returns a notebook.
+        Find or create an (empty) notebook for the given parent.
     delete(id) -> None
-        Deletes a notebook by its ID.
+        Delete a notebook by its ID.
     update(notebook) -> Notebook
-        Updates a notebook's name.
+        Update a notebook's name.
     update_block_content(notebook) -> Notebook
-        Updates the block content of a notebook.
+        Replace the notebook's block content with the blocks on the object.
     append_blocks(id, blocks) -> Notebook
-        Appends blocks to a notebook, preserving existing blocks.
+        Append blocks to the end of a notebook, preserving existing blocks.
     get_block_by_id(notebook_id, block_id) -> NotebookBlock
-        Retrieves a notebook block by its ID.
+        Get a single block from a notebook by block ID.
     copy(notebook_copy_info, type) -> Notebook
-        Copies a notebook into a specified parent.
+        Copy a notebook into a specified parent.
     """
 
     _api_version = "v3"
     _updatable_attributes = {"name"}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the NotebookCollection with the provided session.
+        """Initialize a NotebookCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{NotebookCollection._api_version}/notebooks"
@@ -86,35 +121,51 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: NotebookId) -> Notebook:
-        """Retrieve a Notebook by its ID.
+        """Get a single Notebook by its ID.
+
+        !!! example
+            ```python
+            notebook = client.notebooks.get_by_id(id="NTB123")
+            print(notebook.name)
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the Notebook to retrieve.
+        id : NotebookId
+            The Notebook ID to retrieve (format ``NTB...``).
 
         Returns
         -------
         Notebook
-            The Notebook object.
+            The fully populated notebook.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Notebook(**response.json())
 
     @validate_call
     def list_by_parent_id(self, *, parent_id: ProjectId | TaskId) -> list[Notebook]:
-        """Retrieve a Notebook by parent ID.
+        """List the Notebooks attached to a given parent entity.
+
+        !!! example
+            ```python
+            notebooks = client.notebooks.list_by_parent_id(parent_id="PRO123")
+            for notebook in notebooks:
+                print(notebook.id, notebook.name)
+            ```
+
+        To find notebooks by their block content instead of by parent, use
+        [`search`][albert.collections.notebooks.NotebookCollection.search].
 
         Parameters
         ----------
-        parent_id : str
-            The ID of the parent ID, e.g. task or project.
+        parent_id : ProjectId or TaskId
+            The ID of the parent entity whose notebooks should be listed
+            (a Project ID, format ``PRO...``, or a Task ID, format ``TAS...``).
 
         Returns
         -------
         list[Notebook]
-            list of notebook references.
-
+            The fully populated notebooks attached to the parent.
         """
 
         # search
@@ -122,19 +173,104 @@ class NotebookCollection(BaseCollection):
         # return
         return [self.get_by_id(id=x["id"]) for x in response.json()["Items"]]
 
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        project_id: SearchProjectId | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[NotebookSearchItem]:
+        """Search for notebook block content matching the given filters.
+
+        Each result is a [`NotebookSearchItem`][albert.resources.notebooks.NotebookSearchItem]
+        representing a single matching content block, not a full notebook. Use
+        [`get_by_id`][albert.collections.notebooks.NotebookCollection.get_by_id] or
+        [`get_block_by_id`][albert.collections.notebooks.NotebookCollection.get_block_by_id]
+        to retrieve full notebook content. Results are returned as a lazily
+        paginated iterator.
+
+        !!! example
+            ```python
+            hits = client.notebooks.search(text="recrystallization", max_items=10)
+            first = next(iter(hits))
+            first.notebook_id
+            # 'NTB123'
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text search term matched against block content.
+        project_id : SearchProjectId, optional
+            Scope the search to notebooks in the given project (format ``PRO...``).
+            The ``PRO`` prefix is stripped before the request is sent.
+        sort_by : str, optional
+            Field to sort on.
+        order : OrderBy, optional
+            Sort direction for ``sort_by``.
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+
+        Returns
+        -------
+        Iterator[NotebookSearchItem]
+            A lazily paginated iterator of block-level search hits.
+        """
+        params: dict[str, Any] = {
+            "text": text,
+            "projectId": project_id,
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [NotebookSearchItem.model_validate(x) for x in items],
+        )
+
     def create(self, *, notebook: Notebook) -> Notebook:
-        """Create or return notebook for the provided notebook.
-        This endpoint automatically tries to find an existing notebook with the same parameter setpoints, and will either return the existing notebook or create a new one.
+        """Find or create a Notebook for the provided notebook.
+
+        The endpoint first tries to find an existing notebook for the same parent
+        with matching properties; if one is found it is returned, otherwise a new
+        notebook is created.
+
+        The notebook must be created empty: the ``blocks`` field must be empty.
+        Add content afterward with [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] or
+        [`append_blocks`][albert.collections.notebooks.NotebookCollection.append_blocks].
+
+        !!! example
+            ```python
+            from albert.resources.notebooks import Notebook
+
+            notebook = client.notebooks.create(
+                notebook=Notebook(name="Trial 1 log", parent_id="PRO123")
+            )
+            ```
 
         Parameters
         ----------
         notebook : Notebook
-            A list of Notebook entities to find or create.
+            The notebook to find or create. Must have a ``parent_id`` and no
+            pre-filled ``blocks``.
 
         Returns
         -------
         Notebook
-            A list of created or found Notebook entities.
+            The found or newly created notebook.
+
+        Raises
+        ------
+        AlbertException
+            If the notebook has pre-filled blocks.
         """
         if notebook.blocks:
             # This check keeps a user from corrupting the Notebook data.
@@ -153,13 +289,17 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: NotebookId) -> None:
-        """
-        Deletes a notebook by its ID.
+        """Delete a Notebook by its ID.
+
+        !!! example
+            ```python
+            client.notebooks.delete(id="NTB123")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the notebook to delete.
+        id : NotebookId
+            The Notebook ID to delete (format ``NTB...``).
 
         Returns
         -------
@@ -168,17 +308,27 @@ class NotebookCollection(BaseCollection):
         self.session.delete(f"{self.base_path}/{id}")
 
     def update(self, *, notebook: Notebook) -> Notebook:
-        """Update a notebook.
+        """Update a Notebook's name.
+
+        This method changes only the notebook name; it does not modify block
+        content. Use [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content] to change the blocks.
+
+        !!! example
+            ```python
+            notebook = client.notebooks.get_by_id(id="NTB123")
+            notebook.name = "Revised trial log"
+            notebook = client.notebooks.update(notebook=notebook)
+            ```
 
         Parameters
         ----------
         notebook : Notebook
-            The updated notebook object.
+            The notebook carrying the desired name. It must have an ``id``.
 
         Returns
         -------
         Notebook
-            The updated notebook object as returned by the server.
+            The updated notebook.
 
         Notes
         -----
@@ -193,36 +343,53 @@ class NotebookCollection(BaseCollection):
         return self.get_by_id(id=notebook.id)
 
     def update_block_content(self, *, notebook: Notebook) -> Notebook:
-        """
-        Updates the block content of a Notebook. This does not update the notebook name (use .update for that).
-        If a block in the Notebook does not already exist on Albert, it will be created.
-        *Note: The order of the Blocks in your Notebook matter and will be used in the updated Notebook!*
+        """Replace a Notebook's block content with the blocks on the object.
+
+        The notebook's ``blocks`` list is treated as the desired final state: the
+        order of the blocks is preserved, any block not already on Albert is
+        created, and any existing block that is no longer present is deleted. This
+        does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).
+
+        When writing @-mention chips (``<span data-albertid="..." data-type="...">``
+        spans) into block text, also create the backing mention links — saving the
+        HTML does not register them, and without a link the chip does not resolve
+        in the UI. Create one link per mentioned entity with
+        [`create`][albert.collections.links.LinksCollection.create]
+        (``category="mention"``, parent = the notebook, child = the mentioned
+        entity), then re-read the notebook and confirm its ``links`` list them.
 
         !!! warning
-        Updating existing Ketcher blocks is not supported. To change a Ketcher block, delete it and
-        create a new one instead.
+            Updating existing Ketcher blocks is not supported. To change a Ketcher
+            block, delete it and create a new one instead.
 
-
-        Parameters
-        ----------
-        notebook : Notebook
-            The updated notebook object.
-
-        Returns
-        -------
-        Notebook
-            The updated notebook object as returned by the server.
-
-        Examples
-        --------
-        !!! example "Add a Ketcher block from SMILES"
+        !!! example
             ```python
+            # Add a Ketcher block from SMILES
+            from albert.resources.notebooks import KetcherBlock, KetcherContent
+
             notebook = client.notebooks.get_by_id(id="NTB123")
             notebook.blocks.append(
                 KetcherBlock(content=KetcherContent(smiles="CCO"))
             )
             notebook = client.notebooks.update_block_content(notebook=notebook)
             ```
+
+        Parameters
+        ----------
+        notebook : Notebook
+            The notebook whose ``blocks`` describe the desired content. It must
+            have an ``id``.
+
+        Returns
+        -------
+        Notebook
+            The updated notebook.
+
+        Raises
+        ------
+        AlbertException
+            If the notebook has no ``id``, if two blocks share the same id, or if
+            an existing block's type is changed in place.
         """
         if notebook.id is None:
             raise AlbertException("Notebook id is required to update block content.")
@@ -245,22 +412,13 @@ class NotebookCollection(BaseCollection):
     def append_blocks(self, *, id: NotebookId, blocks: list[NotebookBlock]) -> Notebook:
         """Append blocks to the end of a Notebook, preserving existing blocks.
 
-        Parameters
-        ----------
-        id : str
-            The ID of the Notebook to append to.
-        blocks : list[NotebookBlock]
-            The blocks to append to the end of the Notebook.
+        This is a convenience wrapper around [`update_block_content`][albert.collections.notebooks.NotebookCollection.update_block_content]: it
+        fetches the current notebook, adds the given blocks after the existing
+        ones, and saves.
 
-        Returns
-        -------
-        Notebook
-            The updated Notebook.
-
-        Examples
-        --------
-        !!! example "Append a paragraph block"
+        !!! example
             ```python
+            # Append a paragraph block
             from albert.resources.notebooks import ParagraphBlock, ParagraphContent
 
             notebook = client.notebooks.append_blocks(
@@ -268,6 +426,18 @@ class NotebookCollection(BaseCollection):
                 blocks=[ParagraphBlock(content=ParagraphContent(text="Hello"))],
             )
             ```
+
+        Parameters
+        ----------
+        id : NotebookId
+            The Notebook ID to append to (format ``NTB...``).
+        blocks : list[NotebookBlock]
+            The blocks to append to the end of the notebook.
+
+        Returns
+        -------
+        Notebook
+            The updated notebook.
         """
         notebook = self.get_by_id(id=id)
         notebook.blocks.extend(blocks)
@@ -275,19 +445,27 @@ class NotebookCollection(BaseCollection):
 
     @validate_call
     def get_block_by_id(self, *, notebook_id: NotebookId, block_id: str) -> NotebookBlock:
-        """Retrieve a Notebook Block by its ID.
+        """Get a single block from a Notebook by block ID.
+
+        !!! example
+            ```python
+            block = client.notebooks.get_block_by_id(
+                notebook_id="NTB123", block_id="abc-123"
+            )
+            ```
 
         Parameters
         ----------
-        notebook_id : str
-            The ID of the Notebook to which the Block belongs.
+        notebook_id : NotebookId
+            The Notebook ID the block belongs to (format ``NTB...``).
         block_id : str
-            The ID of the Notebook Block to retrieve.
+            The ID of the block to retrieve.
 
         Returns
         -------
         NotebookBlock
-            The NotebookBlock object.
+            The requested block, typed according to its block type (e.g.
+            [`ParagraphBlock`][albert.resources.notebooks.ParagraphBlock]).
         """
         response = self.session.get(f"{self.base_path}/{notebook_id}/blocks/{block_id}")
         return TypeAdapter(NotebookBlock).validate_python(response.json())
@@ -419,19 +597,30 @@ class NotebookCollection(BaseCollection):
         )
 
     def copy(self, *, notebook_copy_info: NotebookCopyInfo, type: NotebookCopyType) -> Notebook:
-        """Create a copy of a Notebook into a specified parent
+        """Copy a Notebook into a specified parent.
+
+        !!! example
+            ```python
+            from albert.resources.notebooks import NotebookCopyInfo, NotebookCopyType
+
+            copy = client.notebooks.copy(
+                notebook_copy_info=NotebookCopyInfo(id="NTB123", parent_id="PRO456"),
+                type=NotebookCopyType.PROJECT,
+            )
+            ```
 
         Parameters
         ----------
         notebook_copy_info : NotebookCopyInfo
-            The copy information for the Notebook copy
+            Describes the source notebook and the destination parent for the copy.
         type : NotebookCopyType
-            Differentiate whether copy is for templates, task, project or restoreTemplate
+            The kind of copy to perform (e.g. into a template, task, or project,
+            or restoring a template).
 
         Returns
         -------
         Notebook
-            The result of the copied Notebook.
+            The newly created copy.
         """
         response = self.session.post(
             url=f"{self.base_path}/copy",

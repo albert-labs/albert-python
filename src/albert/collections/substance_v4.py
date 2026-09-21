@@ -22,7 +22,7 @@ _SEARCH_PAGE_SIZE = 20  # maximum page size accepted by the v4 search endpoint
 
 
 class SubstanceV4SearchPaginator(AlbertPaginator):
-    """Paginator for substance v4 search using integer offset pagination."""
+    """Paginator for substance v4 search using self-managed integer offset pagination."""
 
     def __init__(
         self,
@@ -33,8 +33,7 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
         max_items: int | None = None,
     ):
         params = dict(params or {})
-        self._offset = int(params.get("startKey", 0))
-        params["startKey"] = self._offset
+        params["startKey"] = self._offset = int(params.get("startKey", 0))
         params["limit"] = _SEARCH_PAGE_SIZE
         super().__init__(
             path=path,
@@ -45,28 +44,41 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
             max_items=max_items,
         )
 
-    def _create_iterator(self) -> Iterator[SubstanceV4SearchItem]:
-        """Yield paginated search items."""
-        yielded = 0
-        while True:
-            response = self._request()
-            items = response.json().get("substances", [])
+    def _record_total(self, data: dict[str, Any]) -> None:
+        pagination = data.get("pagination") or {}
+        raw = pagination.get("total")
+        if raw is None:
+            return
+        try:
+            self._total = int(raw)
+        except (TypeError, ValueError):
+            return
 
-            if not items:
-                return
+    def _response_items(self, data: dict[str, Any]) -> list:
+        return data.get("substances") or []
 
-            for item in self.deserialize(items):
-                yield item
-                yielded += 1
-                if self.max_items is not None and yielded >= self.max_items:
-                    return
+    def _update_params(self, *, data: dict[str, Any], count: int) -> bool:
+        pagination = data.get("pagination") or {}
+        last_key = pagination.get("lastKey")
+        if last_key is not None:
+            self._last_key = str(last_key)
 
-            self._offset += len(items)
-            self.params["startKey"] = self._offset
+        if count == 0:
+            return False
+
+        # The API omits pagination.lastKey on the final page.
+        if "lastKey" not in pagination:
+            return False
+
+        self._offset += count
+        self.params["startKey"] = self._offset
+        return True
 
 
 class SubstanceV4Collection(BaseCollection):
-    """SubstanceV4Collection manages substance entities in the Albert platform (🧪Beta).
+    """Manage substances in the Albert platform (🧪 Beta).
+
+    This collection is accessed as ``client.substances_v4``.
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
@@ -75,30 +87,37 @@ class SubstanceV4Collection(BaseCollection):
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for substance API requests.
+        The base API route for substance requests.
 
     Methods
     -------
     get_by_ids(...) -> SubstanceV4Response
-        Retrieves substances by CAS IDs, substance IDs, or external IDs.
+        Get substances by CAS IDs, substance IDs, or external IDs.
     get_by_id(...) -> SubstanceV4Info | None
-        Retrieves a single substance by CAS ID, substance ID, or external ID.
+        Get a single substance by CAS ID, substance ID, or external ID.
     search(...) -> Iterator[SubstanceV4SearchItem]
-        Searches substances by keyword or advanced filters.
+        Search for substances matching the given filters.
     create(substance) -> SubstanceV4CreateResult
-        Creates a new substance record.
+        Create a new substance record.
     update_metadata(id, ...) -> None
-        Updates metadata fields on a substance.
+        Update metadata fields on a substance.
     """
 
     _api_version = "v4"
 
     def __init__(self, *, session: AlbertSession):
+        """Initialize a SubstanceV4Collection.
+
+        Parameters
+        ----------
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
+        """
         super().__init__(session=session)
         self.base_path = f"/api/{SubstanceV4Collection._api_version}/substances"
 
@@ -114,7 +133,7 @@ class SubstanceV4Collection(BaseCollection):
         language: str | None = None,
         classification_type: str | None = None,
     ) -> SubstanceV4Response:
-        """Retrieve substances by their identifiers.
+        """Get substances by their identifiers.
 
         At least one of ``cas_ids``, ``sub_ids``, or ``external_ids`` must be provided.
 
@@ -147,7 +166,7 @@ class SubstanceV4Collection(BaseCollection):
         Returns
         -------
         SubstanceV4Response
-            The matching substances and any per-substance retrieval errors.
+            The matching substances and any per-substance errors.
         """
         if not any([cas_ids, sub_ids, external_ids]):
             raise ValueError("At least one of cas_ids, sub_ids, or external_ids must be provided.")
@@ -181,7 +200,7 @@ class SubstanceV4Collection(BaseCollection):
         language: str | None = None,
         classification_type: str | None = None,
     ) -> SubstanceV4Info | None:
-        """Retrieve a single substance by its identifier.
+        """Get a single substance by its identifier.
 
         Provide exactly one of ``cas_id``, ``sub_id``, or ``external_id``.
 
@@ -214,7 +233,7 @@ class SubstanceV4Collection(BaseCollection):
         Returns
         -------
         SubstanceV4Info | None
-            The matching substance, or ``None`` if not found.
+            The fully populated substance, or ``None`` if not found.
         """
         provided = sum([cas_id is not None, sub_id is not None, external_id is not None])
         if provided != 1:
@@ -241,27 +260,36 @@ class SubstanceV4Collection(BaseCollection):
         cas: str | None = None,
         ec: str | None = None,
         name: str | None = None,
+        inciname: str | None = None,
+        cas_ids: str | None = None,
         region: str = "global",
         classification_type: str | None = None,
+        catch_errors: bool | None = None,
+        language: str | None = None,
+        fetch_structures: bool | None = None,
         start_key: int = 0,
-        max_items: int = 100,
+        max_items: int | None = None,
     ) -> Iterator[SubstanceV4SearchItem]:
         """Search for substances by keyword or advanced filters.
 
-        At least one of ``search_key``, ``cas``, ``ec``, or ``name`` must be provided.
-        If both ``search_key`` and advanced filters are provided, the advanced filters
-        take precedence.
+        At least one of ``search_key``, ``cas``, ``ec``, ``name``, ``inciname``, or
+        ``cas_ids`` must be provided.
 
         Parameters
         ----------
         search_key : str | None
-            Free-text search term.
+            Free-text search term. When provided, takes precedence over ``cas``, ``ec``,
+            ``name``, and ``inciname``.
         cas : str | None
             Filter by CAS identifier.
         ec : str | None
             Filter by EC identifier.
         name : str | None
             Filter by substance name.
+        inciname : str | None
+            Filter by INCI name identifier.
+        cas_ids : str | None
+            Comma-separated CAS IDs to filter by (for example ``"7732-18-5,50-00-0"``).
         region : str, optional
             Region for hazard data. Common values: ``"global"``, ``"EU"``, ``"US"``,
             ``"UK"``. Defaults to ``"global"``.
@@ -270,32 +298,57 @@ class SubstanceV4Collection(BaseCollection):
             ``"NOTIFIED"``, ``"SELF_CLASSIFIED"``; or their display labels
             ``"Harmonised C&L"``, ``"Notified C&L"``, ``"Self Classified"``,
             by default None.
+        catch_errors : bool | None, optional
+            When ``False``, substances with incomplete hazard data are still
+            returned alongside any per-substance errors. When ``True`` or omitted,
+            the request fails if any substance has incomplete hazard data.
+            Does not affect whether not-found identifiers are included in the
+            results. By default ``None``.
+        language : str | None, optional
+            BCP-47 language code for name translation (e.g. ``"EN"``, ``"DE"``,
+            ``"FR"``), by default None.
+        fetch_structures : bool | None, optional
+            When ``True``, each result includes linked structure identifiers and
+            chemical identity fields. By default ``None``.
         start_key : int, optional
             Offset to resume pagination from, by default 0.
         max_items : int, optional
-            Maximum number of items to yield, by default 100.
+            Maximum number of items to yield. Defaults to ``None`` (all results).
 
         Yields
         ------
         SubstanceV4SearchItem
             Matching substance search records.
         """
-        if not any([search_key, cas, ec, name]):
-            raise ValueError("At least one of search_key, cas, ec, or name must be provided.")
+        if not any([search_key, cas, ec, name, inciname, cas_ids]):
+            raise ValueError(
+                "At least one of search_key, cas, ec, name, inciname, or cas_ids must be provided."
+            )
 
         params: dict = {"region": region, "startKey": start_key}
         if search_key:
             params["searchKey"] = search_key
-        if cas:
-            params["cas"] = cas
-        if ec:
-            params["ec"] = ec
-        if name:
-            params["name"] = name
+        if cas_ids:
+            params["casIDs"] = cas_ids
+        if not search_key:
+            if cas:
+                params["cas"] = cas
+            if ec:
+                params["ec"] = ec
+            if name:
+                params["name"] = name
+            if inciname:
+                params["inciname"] = inciname
         if classification_type:
             params["classificationType"] = classification_type
+        if catch_errors is not None:
+            params["catchErrors"] = catch_errors
+        if language:
+            params["language"] = language
+        if fetch_structures is not None:
+            params["fetchStructures"] = fetch_structures
 
-        yield from SubstanceV4SearchPaginator(
+        return SubstanceV4SearchPaginator(
             path=f"{self.base_path}/search",
             session=self.session,
             params=params,
@@ -335,8 +388,17 @@ class SubstanceV4Collection(BaseCollection):
     ) -> None:
         """Update metadata fields on a substance.
 
-        Only the keyword arguments you pass are updated — all others are left unchanged.
-        The current state is fetched automatically.
+        Only the keyword arguments you pass are updated; omitted arguments are left
+        unchanged.
+
+        !!! example
+            ```python
+            client.substances_v4.update_metadata(
+                id="SUB123",
+                notes="new notes",
+                metadata={"solubility": "5 mg/mL"},
+            )
+            ```
 
         Parameters
         ----------
@@ -360,46 +422,19 @@ class SubstanceV4Collection(BaseCollection):
 
             Value types by field kind:
 
-            - **String / number fields** — pass the value directly (``"5 mg/mL"``, ``42``).
-            - **Single-select fields** — pass an ``EntityLink``; use
-              ``client.lists.get_matching_item()`` to look up the ID.
-            - **Multi-select fields** — pass a list of ``EntityLink`` objects; only the
+            - **String / number fields**: pass the value directly (``"5 mg/mL"``, ``42``).
+            - **Single-select fields**: pass an ``EntityLink``; use
+              [`get_matching_item`][albert.collections.lists.ListsCollection.get_matching_item]
+              to look up the ID.
+            - **Multi-select fields**: pass a list of ``EntityLink`` objects; only the
               changed items are sent.
-            - **Delete a field** — pass ``None`` as the value (works for all field types).
+            - **Delete a field**: pass ``None`` as the value (works for all field types).
 
         Notes
         -----
         The following fields can be updated: ``notes``, ``description``, ``cas_smiles``,
         ``inchi_key``, ``iupac_name``, ``cactus_status``, and any custom metadata fields
         configured for the tenant.
-
-        Examples
-        --------
-        Update a scalar field and a custom string field:
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                notes="new notes",
-                metadata={"solubility": "5 mg/mL"},
-            )
-
-        Set a single-select custom field:
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                metadata={"cmr_eu": EntityLink(id="LST1253")},
-            )
-
-        Update a multi-select custom field (becomes exactly this set):
-
-            client.substances_v4.update_metadata(
-                id="SUB123",
-                metadata={"amide_category": [EntityLink(id="LST1256"), EntityLink(id="LST1257")]},
-            )
-
-        Delete a custom field:
-
-            client.substances_v4.update_metadata(id="SUB123", metadata={"old_key": None})
         """
         scalar_kwargs = {
             "notes": notes,

@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from contextlib import suppress
+from uuid import uuid4
 
 import pytest
 
@@ -8,6 +9,8 @@ from albert.exceptions import NotFoundError
 from albert.resources.lots import Lot, LotAdjustmentAction
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 @pytest.fixture(scope="function")
@@ -38,8 +41,10 @@ def assert_valid_lot_items(returned_list: list[Lot]):
 
 def test_lot_get_all_basic(client: Albert, seeded_lots):
     """Test basic usage of lots.get_all()."""
-    results = list(client.lots.get_all(max_items=10))
+    parent_id = seeded_lots[0].inventory_id
+    results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
+    assert any(lot.id == seeded_lots[0].id for lot in results)
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):
@@ -76,6 +81,7 @@ def test_update(
     )
     lot.storage_location = new_storage_location
     lot.owner = [second_user]
+    lot.external_barcode_id = str(uuid4())
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
@@ -83,6 +89,7 @@ def test_update(
     assert updated_lot.storage_location.id == new_storage_location.id
     assert updated_lot.owner is not None
     assert any(o.id == second_user.id for o in updated_lot.owner)
+    assert updated_lot.external_barcode_id == lot.external_barcode_id
 
 
 def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
@@ -103,6 +110,19 @@ def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_l
     refetched = client.lots.get_by_id(id=seeded_lot.id)
     assert refetched.pack_size == "NEW-PACK"
     assert refetched.manufacturer_lot_number == "PRESERVE-ME"
+
+
+def test_update_workflow_id(client: Albert, seeded_lot: Lot):
+    """Test assigning workflow_id to a lot via update."""
+    assert seeded_lot.workflow_id is None
+
+    # WFL1 is the built-in "No Parameter Group" workflow present on every tenant.
+    lot = seeded_lot.model_copy(update={"workflow_id": "WFL1"})
+    updated_lot = client.lots.update(lot=lot)
+    assert updated_lot.workflow_id == "WFL1"
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.workflow_id == "WFL1"
 
 
 def test_adjust_add(client: Albert, seeded_lot: Lot):

@@ -47,3 +47,118 @@ def test_chat_message_omits_page_context_when_unset():
 
     assert "pageContext" not in message.model_dump(by_alias=True, exclude_none=True)
     assert message.page_context is None
+
+
+def test_chat_message_permission_action_wire_alias_round_trip():
+    """Test permission_action serializes to and parses from its camelCase wire alias."""
+    permission_action = {
+        "permissionId": "prm_test",
+        "action": "allow_session",
+        "comment": "Allowed for this session",
+    }
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="Allowed for this session.",
+        permission_action=permission_action,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_none=True)
+    assert dumped["permissionAction"] == permission_action
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "Allowed for this session.",
+            "permissionAction": permission_action,
+        }
+    )
+    assert restored.permission_action == permission_action
+
+
+def test_chat_message_permission_actions_wire_alias_round_trip():
+    """Test permission_actions serializes to and parses from its camelCase wire alias."""
+    permission_actions = [
+        {
+            "permissionId": "prm_one",
+            "action": "allow_once",
+            "permissionKey": "inventory.write",
+        },
+        {
+            "permissionId": "prm_two",
+            "action": "allow_always",
+            "permissionKey": "projects.delete",
+        },
+    ]
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="Permission response.",
+        permission_actions=permission_actions,
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_none=True)
+    assert dumped["permissionActions"] == permission_actions
+
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "Permission response.",
+            "permissionActions": permission_actions,
+        }
+    )
+    assert restored.permission_actions == permission_actions
+
+
+def test_chat_message_omits_permission_actions_when_unset():
+    """Test rows that answered no permission card carry neither permission field."""
+    message = ChatMessage(
+        component_type=ChatComponentType.TEXT,
+        user_type=ChatUserType.USER,
+        role=ChatRole.USER,
+        content="Just a message.",
+    )
+
+    dumped = message.model_dump(by_alias=True, exclude_none=True)
+    assert "permissionActions" not in dumped
+    assert "permissionAction" not in dumped
+
+
+def test_chat_message_accepts_both_permission_fields():
+    """Test the legacy single action and the batch can ride the same row."""
+    message = ChatMessage.model_validate(
+        {
+            "componentType": "text",
+            "userType": "user",
+            "role": "user",
+            "Content": "Permission response.",
+            "permissionAction": {"permissionId": "prm_one", "action": "allow_once"},
+            "permissionActions": [{"permissionId": "prm_one", "action": "allow_once"}],
+        }
+    )
+
+    assert message.permission_action == {"permissionId": "prm_one", "action": "allow_once"}
+    assert message.permission_actions == [{"permissionId": "prm_one", "action": "allow_once"}]
+
+
+def test_chat_message_parses_permission_request_component_type():
+    """Test the permission_request component type parses to its enum member."""
+    restored = ChatMessage.model_validate(
+        {
+            "componentType": "permission_request",
+            "userType": "system",
+            "role": "assistant",
+            "Content": {
+                "permission_id": "prm_test",
+                "status": "pending",
+                "operation": "project_create",
+            },
+        }
+    )
+    assert restored.component_type is ChatComponentType.PERMISSION_REQUEST

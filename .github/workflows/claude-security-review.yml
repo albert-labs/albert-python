@@ -2,7 +2,7 @@ name: Claude Security Review
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
@@ -36,6 +36,7 @@ jobs:
           claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude-model: claude-opus-4-8
           claudecode-timeout: 10
+          custom-security-scan-instructions: .github/security-review-injection-defense.txt
 
       - name: Classify security findings by severity
         id: classify

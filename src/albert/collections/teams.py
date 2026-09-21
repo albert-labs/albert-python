@@ -1,41 +1,62 @@
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.enums import PaginationMode
+from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import TeamId, UserId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertException
-from albert.resources.teams import Team, TeamMember
+from albert.resources.teams import Team, TeamMember, TeamSearchItem
 from albert.resources.users import User
 
 
 class TeamCollection(BaseCollection):
-    """TeamCollection manages Team entities in the Albert platform.
+    """Manage Teams in the Albert platform.
+
+    A Team is a named group of users
+    ([`User`][albert.resources.users.User]). Each member holds a team role
+    (owner or viewer) that governs their rights within the team. Teams are used
+    to share access: entity ACLs and Task assignments can reference a whole team
+    rather than individual users. A team is identified by its Team ID (format
+    ``TEM...``, e.g. ``"TEM1"``).
+
+    This collection is accessed as ``client.teams``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        team = client.teams.create(name="Coatings R&D")
+        for member in team.members or []:
+            print(member.id, member.role)
+        ```
 
     Parameters
     ----------
     session : AlbertSession
-        The Albert session instance.
+        The authenticated Albert session used for API calls.
 
     Attributes
     ----------
     base_path : str
-        The base URL for team API requests.
+        The base API route for team requests.
 
     Methods
     -------
+    search(...) -> Iterator[TeamSearchItem]
+        Search teams with free text and filters, returning partial items.
     get_all(name, exact_match, created_by, updated_by, user_id, max_items) -> Iterator[Team]
         Lists all teams with optional filters.
     get_by_id(id) -> Team
-        Retrieves a team by its ID.
+        Get a team by its ID.
     create(name, members) -> Team
-        Creates a new team, optionally with initial members.
+        Create a new team, optionally with initial members.
     update(team) -> Team
-        Updates a team's name and membership.
+        Update a team's name and membership.
     delete(id) -> None
         Deletes a team by its ID.
     add_users(id, members) -> Team
@@ -47,12 +68,12 @@ class TeamCollection(BaseCollection):
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """Initialize the TeamCollection.
+        """Initialize a TeamCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{TeamCollection._api_version}/teams"
@@ -62,6 +83,86 @@ class TeamCollection(BaseCollection):
         if isinstance(user, User):
             return user.id
         return user
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        status: str | None = None,
+        team_id: str | list[str] | None = None,
+        search_field: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        additional_field: str | list[str] | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[TeamSearchItem]:
+        """Search for teams matching the given filters.
+
+        Returns partial (unhydrated)
+        [`TeamSearchItem`][albert.resources.teams.TeamSearchItem] entities, best for
+        free-text lookups and pulling IDs. Results are returned lazily as an
+        iterator that pages through matches on demand. Call ``hydrate()`` on an item
+        to fetch its full [`Team`][albert.resources.teams.Team]. For exact name
+        listing, use [`get_all`][albert.collections.teams.TeamCollection.get_all].
+
+        !!! example
+            ```python
+            for item in client.teams.search(text="Coatings", max_items=10):
+                print(item.id, item.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against team fields.
+        status : str, optional
+            Filter by team status.
+        team_id : str or list[str], optional
+            Filter by Team ID(s) (format ``TEM...``).
+        search_field : str or list[str], optional
+            Restrict which indexed fields the free-text query searches.
+        source_field : str or list[str], optional
+            Restrict which fields are returned on each search hit.
+        additional_field : str or list[str], optional
+            Additional fields to include on each search hit.
+        sort_by : str, optional
+            Attribute to sort results by.
+        order : OrderBy, optional
+            The order in which to sort results (``asc`` or ``desc``).
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matching items.
+
+        Returns
+        -------
+        Iterator[TeamSearchItem]
+            A lazy iterator of matching partial teams. Call ``hydrate()`` on an
+            item to fetch its full [`Team`][albert.resources.teams.Team].
+        """
+        payload: dict[str, Any] = {
+            "text": text,
+            "status": status,
+            "teamId": ensure_list(team_id),
+            "searchField": ensure_list(search_field),
+            "sourceField": ensure_list(source_field),
+            "additionalField": ensure_list(additional_field),
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            method="POST",
+            json=payload,
+            max_items=max_items,
+            deserialize=lambda items: [
+                TeamSearchItem.model_validate(x)._bind_collection(self) for x in items
+            ],
+        )
 
     def get_all(
         self,
@@ -74,6 +175,15 @@ class TeamCollection(BaseCollection):
         max_items: int | None = None,
     ) -> Iterator[Team]:
         """List all teams with optional filters.
+
+        Best for exact name listing. For free-text search, use
+        [`search`][albert.collections.teams.TeamCollection.search].
+
+        !!! example
+            ```python
+            for team in client.teams.get_all(name="Coatings", exact_match=False):
+                print(team.id, team.name)
+            ```
 
         Parameters
         ----------
@@ -117,7 +227,14 @@ class TeamCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: TeamId) -> Team:
-        """Retrieve a team by its ID.
+        """Get a team by its ID.
+
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name
+            # 'Coatings R&D'
+            ```
 
         Parameters
         ----------
@@ -127,7 +244,7 @@ class TeamCollection(BaseCollection):
         Returns
         -------
         Team
-            The Team entity.
+            The fully populated team.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -142,17 +259,30 @@ class TeamCollection(BaseCollection):
     ) -> Team:
         """Create a new team, optionally with initial members.
 
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            team = client.teams.create(
+                name="Coatings R&D",
+                members=[TeamMember(id="USR12", role="TeamOwner")],
+            )
+            team.id
+            # 'TEM1'
+            ```
+
         Parameters
         ----------
         name : str
             The name of the team.
         members : list[TeamMember], optional
-            Members to add to the team on creation, each with an ID and role.
+            Members to add to the team on creation, each with a User ID and a
+            team role. Members default to the ``TeamViewer`` role when none is
+            given.
 
         Returns
         -------
         Team
-            The created Team.
+            The created Team, populated with its assigned Team ID.
         """
         payload: dict = {"name": name}
         if members:
@@ -166,6 +296,13 @@ class TeamCollection(BaseCollection):
     def update(self, *, team: Team) -> Team:
         """Update a team's name and membership.
 
+        !!! example
+            ```python
+            team = client.teams.get_by_id(id="TEM1")
+            team.name = "Coatings & Adhesives R&D"
+            updated = client.teams.update(team=team)
+            ```
+
         Parameters
         ----------
         team : Team
@@ -177,6 +314,13 @@ class TeamCollection(BaseCollection):
         -------
         Team
             The updated Team.
+
+        Notes
+        -----
+        The following can be updated: the team ``name``, its membership (adding
+        or removing [`TeamMember`][albert.resources.teams.TeamMember] entries), and
+        each member's ``role``. Setting ``members`` to an empty list removes all
+        members; leaving it as ``None`` leaves membership unchanged.
         """
         current = self.get_by_id(id=team.id)
         url = f"{self.base_path}/{team.id}"
@@ -193,7 +337,7 @@ class TeamCollection(BaseCollection):
                 }
             )
 
-        # Member diff — None means "no change", empty list means "remove all"
+        # Member diff: None means "no change", empty list means "remove all"
         if team.members is not None:
             current_ids = {m.id for m in current.members or []}
             updated_ids = {m.id for m in team.members}
@@ -251,6 +395,11 @@ class TeamCollection(BaseCollection):
     def delete(self, *, id: TeamId) -> None:
         """Delete a team by its ID.
 
+        !!! example
+            ```python
+            client.teams.delete(id="TEM1")
+            ```
+
         Parameters
         ----------
         id : TeamId
@@ -272,17 +421,27 @@ class TeamCollection(BaseCollection):
     ) -> Team:
         """Add users to a team.
 
+        !!! example
+            ```python
+            from albert.resources.teams import TeamMember
+            client.teams.add_users(
+                id="TEM1",
+                members=[TeamMember(id="USR34", role="TeamViewer")],
+            )
+            ```
+
         Parameters
         ----------
         id : TeamId
             The ID of the team.
         members : list[TeamMember]
-            The members to add, each with an ID and role.
+            The members to add, each with a User ID and a team role. Members
+            default to the ``TeamViewer`` role when none is given.
 
         Raises
         ------
         AlbertException
-            If any of the provided users is already a member. Use ``update``
+            If any of the provided users is already a member. Use [`update`][albert.collections.teams.TeamCollection.update]
             to change an existing member's role.
 
         Returns
@@ -322,6 +481,11 @@ class TeamCollection(BaseCollection):
         users: list[User | UserId],
     ) -> Team:
         """Remove users from a team.
+
+        !!! example
+            ```python
+            client.teams.remove_users(id="TEM1", users=["USR34"])
+            ```
 
         Parameters
         ----------
