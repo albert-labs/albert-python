@@ -44,7 +44,7 @@ class IntervalParameter(BaseAlbertModel):
     """The name of the intervalized parameter (e.g. ``"Temperature"``)."""
 
     interval_id: IntervalId | None = Field(default=None)
-    """The row ID of this single interval value (e.g. ``"ROW1"``). These are the building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to form a composite interval ID."""
+    """The row ID of this single interval value (e.g. ``"ROW1"``). Parameters can be repeated within a Parameter Group, so the Parameter ID is not unique enough to identify which parameter is being varied. So, these key become the building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to form a composite interval ID."""
 
     interval_value: str | dict[str, Any] | EntityLink | None = Field(default=None)
     """The value of this interval. A string for Normal parameters (e.g. ``"25"``), or an object with an ``id`` for Special parameters."""
