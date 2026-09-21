@@ -3984,6 +3984,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../resources/interval_combinations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interval Combinations (🧪 Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../resources/label_templates/" class="md-nav__link">
         
   
@@ -4516,6 +4544,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../resources/smart_projects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Smart Projects (🧪Beta)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../resources/storage_classes/" class="md-nav__link">
         
   
@@ -4893,10 +4949,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_54" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_56" >
         
           
-          <label class="md-nav__link" for="__nav_2_5_54" id="__nav_2_5_54_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_5_56" id="__nav_2_5_56_label" tabindex="0">
             
   
   
@@ -4914,8 +4970,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_54_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_5_54">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_56_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_56">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -7178,7 +7234,7 @@ the easiest way to discover the interval IDs present on a task.</p>
             <td>
               <div class="doc-md-description">
                 <p>The interval combination to check (e.g. <code>"ROW1"</code>, <code>"ROW1XROW2"</code>,
-or <code>"default"</code>). See <a class="autorefs autorefs-internal" href="#albert.collections.property_data.PropertyDataCollection.check_for_task_data"><code>check_for_task_data</code></a> to list interval IDs.</p>
+a child workflow id, a barcode, or <code>"default"</code>). See <a class="autorefs autorefs-internal" href="#albert.collections.property_data.PropertyDataCollection.check_for_task_data"><code>check_for_task_data</code></a> to list interval IDs.</p>
               </div>
             </td>
             <td>
@@ -7280,7 +7336,7 @@ or <code>"default"</code>). See <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-435"><a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">        The task the block belongs to (format ``TAS...``).</span>
 </span><span id="__span-0-436"><a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">    interval_id : IntervalId</span>
 </span><span id="__span-0-437"><a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">        The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,</span>
-</span><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">        or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.</span>
+</span><span id="__span-0-438"><a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">        a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.</span>
 </span><span id="__span-0-439"><a id="__codelineno-0-439" name="__codelineno-0-439"></a>
 </span><span id="__span-0-440"><a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">    Returns</span>
 </span><span id="__span-0-441"><a id="__codelineno-0-441" name="__codelineno-0-441"></a><span class="sd">    -------</span>
@@ -7296,7 +7352,7 @@ or <code>"default"</code>). See <a class="autorefs autorefs-internal" href="#alb
 </span><span id="__span-0-451"><a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="p">}</span>
 </span><span id="__span-0-452"><a id="__codelineno-0-452" name="__codelineno-0-452"></a>
 </span><span id="__span-0-453"><a id="__codelineno-0-453" name="__codelineno-0-453"></a>    <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
-</span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="k">return</span> <span class="n">CheckPropertyData</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+</span><span id="__span-0-454"><a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="k">return</span> <span class="n">CheckPropertyData</span><span class="p">(</span><span class="o">**</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
