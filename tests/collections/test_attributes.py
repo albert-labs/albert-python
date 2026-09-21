@@ -12,6 +12,7 @@ from albert.resources.attributes import (
     AttributeSearchItem,
     AttributeValue,
     AttributeValuesResponse,
+    AttributeValuesResponseItem,
     ValidationItem,
 )
 from albert.resources.data_columns import DataColumn
@@ -339,3 +340,49 @@ def test_attribute_clear_values(
 
     results = list(client.attributes.get_values(parent_id=inventory.id))
     assert all(len(r.attributes) == 0 for r in results)
+
+
+def test_attribute_value_locked_at_creation_round_trip():
+    """Test dump and parse round-trip of locked_at_creation on AttributeValue and AttributeValuesResponseItem."""
+    val = AttributeValue(
+        attribute_id="ATR123",
+        reference_value=1.05,
+        locked_at_creation=True,
+    )
+    dumped = val.model_dump(by_alias=True, exclude_none=True, mode="json")
+    assert dumped["lockedAtCreation"] is True
+
+    parsed = AttributeValue.model_validate(dumped)
+    assert parsed.locked_at_creation is True
+
+    raw_item = {
+        "albertId": "ATR123",
+        "referenceValue": 1.05,
+        "lockedAtCreation": True,
+        "attributeDefinition": {
+            "name": "Density",
+            "fullName": "Density (g/mL)",
+            "datacolumn": {"id": "DTC123", "name": "Density"},
+            "category": "Property",
+            "workflow": {"id": "WFL123"},
+            "validation": [],
+            "prmCount": 0,
+        },
+    }
+    resp_item = AttributeValuesResponseItem.model_validate(raw_item)
+    assert resp_item.locked_at_creation is True
+    dumped_resp = resp_item.model_dump(by_alias=True, exclude_none=True, mode="json")
+    assert dumped_resp["lockedAtCreation"] is True
+
+
+def test_volume_inventory_density_attribute_value_locked(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+):
+    """Test get_values on a seeded volume inventory item contains an attribute with locked_at_creation=True."""
+    volume_item = seeded_inventory[4]
+    results = list(client.attributes.get_values(parent_id=volume_item.id))
+    assert len(results) >= 1
+    all_attrs = [a for r in results for a in r.attributes]
+    locked_attrs = [a for a in all_attrs if a.locked_at_creation is True]
+    assert len(locked_attrs) >= 1
