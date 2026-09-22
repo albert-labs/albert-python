@@ -387,7 +387,7 @@ class BulkPropertyData(BaseAlbertModel):
 
     A simple tabular structure: one [`BulkPropertyDataColumn`][albert.resources.property_data.BulkPropertyDataColumn] per data column,
     each holding that column's values in row order. Construct it directly, or from a
-    [`DataFrame`][albert.resources.property_data.pandas.DataFrame] with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
+    `pandas.DataFrame` with [`from_dataframe`][albert.resources.property_data.BulkPropertyData.from_dataframe], then pass it to
     [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties].
 
     !!! example
