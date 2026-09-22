@@ -3,11 +3,18 @@
 
 One job is emitted per (runtime, arch) combination. x86_64 jobs run on the
 default machine executor; arm64 jobs add resource_class: arm.medium.
+
+Each matrix job writes the ARNs it published to a manifest in the workspace.
+A final job, which requires every matrix job, merges those manifests into a
+Markdown table, stores it as an artifact, and records it in the GitHub release
+notes when the pipeline runs on a release tag.
 """
 import argparse
 import sys
 
 VALID_ARCHS = {"x86_64", "arm64"}
+MANIFEST_DIR = "/tmp/lambda-layers"
+RELEASE_NOTES_JOB = "lambda_layer_release_notes"
 
 
 def job_name(runtime: str, arch: str) -> str:
@@ -17,6 +24,7 @@ def job_name(runtime: str, arch: str) -> str:
 
 def build_job(runtime: str, arch: str, sdk_version: str, regions: str, account_id: str) -> dict:
     zip_path = f"dist/lambda/albert-python-{sdk_version}-py{runtime}-{arch}.zip"
+    manifest_name = f"{job_name(runtime, arch)}.tsv"
 
     publish_cmd_parts = [
         ".circleci/scripts/publish-lambda-layer.sh",
@@ -25,6 +33,7 @@ def build_job(runtime: str, arch: str, sdk_version: str, regions: str, account_i
         f'  --runtime    "{runtime}"',
         f'  --arch       "{arch}"',
         f'  --sdk-version "{sdk_version}"',
+        f'  --manifest   "{MANIFEST_DIR}/{manifest_name}"',
     ]
     if account_id:
         publish_cmd_parts.append(f'  --account-id "{account_id}"')
@@ -83,8 +92,38 @@ def build_job(runtime: str, arch: str, sdk_version: str, regions: str, account_i
                 ),
             }
         },
+        {"persist_to_workspace": {"root": MANIFEST_DIR, "paths": [manifest_name]}},
     ]
     return job
+
+
+def build_release_notes_job(sdk_version: str) -> dict:
+    return {
+        "docker": [{"image": "cimg/python:3.12"}],
+        "steps": [
+            "checkout",
+            {"attach_workspace": {"at": MANIFEST_DIR}},
+            {
+                "run": {
+                    "name": "Record layer ARNs in release notes",
+                    "command": (
+                        "set -euo pipefail\n"
+                        "python .circleci/scripts/lambda_layer_release_notes.py \\\n"
+                        f'  --manifest-dir "{MANIFEST_DIR}" \\\n'
+                        f'  --sdk-version  "{sdk_version}" \\\n'
+                        f'  --output       "{MANIFEST_DIR}/lambda-layers.md" \\\n'
+                        '  --tag          "${CIRCLE_TAG:-}"'
+                    ),
+                }
+            },
+            {
+                "store_artifacts": {
+                    "path": f"{MANIFEST_DIR}/lambda-layers.md",
+                    "destination": "lambda-layer/lambda-layers.md",
+                }
+            },
+        ],
+    }
 
 
 def generate(
@@ -133,6 +172,10 @@ def generate(
             lines.append("")
             workflow_jobs.append(name)
 
+    lines.append(f"  {RELEASE_NOTES_JOB}:")
+    lines.extend(_render_job(build_release_notes_job(sdk_version)))
+    lines.append("")
+
     lines += [
         "workflows:",
         "  lambda_layer_publish_all:",
@@ -141,6 +184,11 @@ def generate(
     for name in workflow_jobs:
         lines.append(f"      - {name}:")
         lines.append("          context: dev")
+    lines.append(f"      - {RELEASE_NOTES_JOB}:")
+    lines.append("          context: dev")
+    lines.append("          requires:")
+    for name in workflow_jobs:
+        lines.append(f"            - {name}")
 
     return "\n".join(lines) + "\n"
 
@@ -172,7 +220,11 @@ def _render_job(job: dict, indent: int = 4) -> list[str]:
                             lines.append(f"{pad}    {k}:")
                         if isinstance(v, dict):
                             for dk, dv in v.items():
-                                if "\n" in str(dv):
+                                if isinstance(dv, list):
+                                    lines.append(f"{pad}      {dk}:")
+                                    for dl in dv:
+                                        lines.append(f"{pad}        - {dl}")
+                                elif "\n" in str(dv):
                                     lines.append(f"{pad}      {dk}: |")
                                     for dl in str(dv).splitlines():
                                         lines.append(f"{pad}        {dl}")

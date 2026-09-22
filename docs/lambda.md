@@ -39,7 +39,7 @@ aws lambda get-layer-version-by-arn \
 albert-python 1.19.0 | python3.12 | x86_64 | 2026-09-17T14:02:00Z | sha=abc1234
 ```
 
-The ARNs for each release are listed in the [GitHub release notes](https://github.com/albert-labs/albert-python/releases). Pin your function to a specific layer version ARN and upgrade deliberately, the same way you would pin a package version.
+Every [GitHub release](https://github.com/albert-labs/albert-python/releases) ends with a **Lambda layers** table listing the layer version ARN published for each runtime, architecture, and region. Pin your function to a specific layer version ARN and upgrade deliberately, the same way you would pin a package version.
 
 ## Attaching the layer
 

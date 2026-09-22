@@ -241,6 +241,19 @@ workflows:
               only: /^v.+$/
             branches:
               ignore: /.*/
+      # Lambda layers are built from this checkout and published for every release
+      # tag. This continues the pipeline into the generated matrix config; the ad hoc
+      # lambda_layer_matrix workflow above remains for manual runs on a branch.
+      - lambda_layer_setup:
+          name: Publish Lambda Layers
+          context: dev
+          requires:
+            - Publish to PyPI
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/
       - deploy_docs:
           name: Deploy Docs on Github Release
           mode: release

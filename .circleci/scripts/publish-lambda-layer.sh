@@ -3,11 +3,14 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: .circleci/scripts/publish-lambda-layer.sh --zip <path> --regions <region[,region...]> --runtime <3.12> --arch <x86_64|arm64> --sdk-version <x.y.z> [--account-id <aws_account_id>] [--no-public]
+Usage: .circleci/scripts/publish-lambda-layer.sh --zip <path> --regions <region[,region...]> --runtime <3.12> --arch <x86_64|arm64> --sdk-version <x.y.z> [--account-id <aws_account_id>] [--no-public] [--manifest <path>]
 
 Publishes a Lambda layer version from a local zip file using direct upload, once per region.
 Skips publishing in a region that already has a layer version for this SDK version.
 Fails if the zip exceeds 50 MB.
+
+--manifest appends one tab-separated line per region to <path>:
+  <region> <runtime> <arch> <layer_arn> <published|reused>
 EOF
 }
 
@@ -18,6 +21,7 @@ ARCH=""
 SDK_VERSION=""
 MAKE_PUBLIC="1"
 ACCOUNT_ID=""
+MANIFEST_PATH=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,6 +52,10 @@ while [[ $# -gt 0 ]]; do
     --no-public)
       MAKE_PUBLIC="0"
       shift
+      ;;
+    --manifest)
+      MANIFEST_PATH="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -124,7 +132,50 @@ LAYER_NAME="albert-python-py${RUNTIME_NO_DOT}-${ARCH}"
 DESCRIPTION_PREFIX="albert-python ${SDK_VERSION} |"
 DESCRIPTION="${DESCRIPTION_PREFIX} python${RUNTIME} | ${ARCH} | ${BUILD_DATE} | sha=${GIT_SHA}"
 
+# Walks every page of list-layer-versions (the API returns at most 50 per call)
+# and prints the ARN of the first version whose description carries this SDK
+# version, or nothing if none exists. Newest versions are returned first.
+find_existing_layer_arn() {
+  local region="$1"
+  local marker="" page="" arn="" next=""
+  local -a marker_args=()
+
+  while :; do
+    marker_args=()
+    if [[ -n "${marker}" ]]; then
+      marker_args=(--marker "${marker}")
+    fi
+    # errexit does not apply inside command substitutions, so check explicitly:
+    # a failed lookup must abort rather than fall through to a publish.
+    if ! page="$(
+      aws lambda list-layer-versions \
+        --region "${region}" \
+        --layer-name "${LAYER_NAME}" \
+        --no-paginate \
+        ${marker_args[@]+"${marker_args[@]}"} \
+        --query "[LayerVersions[?starts_with(Description, '${DESCRIPTION_PREFIX}')].LayerVersionArn | [0], NextMarker]" \
+        --output text
+    )"; then
+      echo "Failed to list versions of ${LAYER_NAME} in ${region}." >&2
+      return 1
+    fi
+    IFS=$'\t' read -r arn next <<<"${page}"
+    if [[ -n "${arn}" && "${arn}" != "None" ]]; then
+      echo "${arn}"
+      return 0
+    fi
+    if [[ -z "${next}" || "${next}" == "None" ]]; then
+      return 0
+    fi
+    marker="${next}"
+  done
+}
+
 IFS=',' read -ra REGION_LIST <<<"${REGIONS}"
+
+if [[ -n "${MANIFEST_PATH}" ]]; then
+  mkdir -p "$(dirname "${MANIFEST_PATH}")"
+fi
 
 for REGION in "${REGION_LIST[@]}"; do
   REGION="${REGION// /}"
@@ -132,17 +183,13 @@ for REGION in "${REGION_LIST[@]}"; do
   echo "== ${REGION}: ${LAYER_NAME}"
 
   # Idempotent: if a layer version for this SDK version already exists, reuse it.
-  EXISTING_ARN="$(
-    aws lambda list-layer-versions \
-      --region "${REGION}" \
-      --layer-name "${LAYER_NAME}" \
-      --query "LayerVersions[?starts_with(Description, '${DESCRIPTION_PREFIX}')].LayerVersionArn | [0]" \
-      --output text
-  )"
+  EXISTING_ARN="$(find_existing_layer_arn "${REGION}")"
+  STATUS="published"
 
-  if [[ -n "${EXISTING_ARN}" && "${EXISTING_ARN}" != "None" ]]; then
+  if [[ -n "${EXISTING_ARN}" ]]; then
     LAYER_ARN="${EXISTING_ARN}"
     LAYER_VERSION="${LAYER_ARN##*:}"
+    STATUS="reused"
     echo "Layer version ${LAYER_VERSION} already contains albert-python ${SDK_VERSION}; skipping publish."
   else
     PUBLISH_OUTPUT="$(
@@ -185,4 +232,9 @@ for REGION in "${REGION_LIST[@]}"; do
   fi
 
   echo "Layer ARN: ${LAYER_ARN}"
+
+  if [[ -n "${MANIFEST_PATH}" ]]; then
+    printf '%s\t%s\t%s\t%s\t%s\n' \
+      "${REGION}" "${RUNTIME}" "${ARCH}" "${LAYER_ARN}" "${STATUS}" >>"${MANIFEST_PATH}"
+  fi
 done
