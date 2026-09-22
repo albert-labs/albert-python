@@ -24,7 +24,7 @@ from albert.core.shared.identifiers import (
 )
 from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list
-from albert.exceptions import NotFoundError
+from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
@@ -39,7 +39,9 @@ from albert.resources.property_data import (
     ReturnScope,
     TaskPropertyCreate,
     TaskPropertyData,
+    TaskPropertyRecord,
 )
+from albert.resources.workflows import Workflow
 from albert.utils import property_data as property_data_utils
 
 
@@ -119,6 +121,8 @@ class PropertyDataCollection(BaseCollection):
         Get the results in one task block for one inventory item.
     get_all_task_properties(task_id, with_data_only=False) -> list[TaskPropertyData]
         Get results across all block/inventory combinations of a task.
+    get_task_property_records(task_id, with_data_only=True) -> list[TaskPropertyRecord]
+        Get a task's results as flat rows, with their parameter setpoints attached.
     check_for_task_data(task_id) -> list[CheckPropertyData]
         Report which block/interval combinations of a task have data.
     check_block_interval_for_data(block_id, task_id, interval_id) -> CheckPropertyData
@@ -483,22 +487,128 @@ class PropertyDataCollection(BaseCollection):
         Returns
         -------
         list[TaskPropertyData]
-            Results for each block/inventory/lot combination on the task.
+            Results for each block/inventory/lot combination on the task. Each entry
+            carries every interval recorded for that combination.
         """
+        # check_for_task_data reports one entry per interval, but a block/inventory/lot
+        # combination is read in full (all of its intervals) in a single request. Collapse
+        # the intervals first, or every combination is fetched once per interval and the
+        # identical result is returned that many times.
+        combos: dict[tuple[str, str, str | None], bool] = {}
+        for combo_info in self.check_for_task_data(task_id=task_id):
+            key = (combo_info.block_id, combo_info.inventory_id, combo_info.lot_id)
+            combos[key] = combos.get(key, False) or bool(combo_info.data_exists)
+
         all_info = []
-        task_data_info = self.check_for_task_data(task_id=task_id)
-        for combo_info in task_data_info:
-            if with_data_only and not combo_info.data_exists:
+        for (block_id, inventory_id, lot_id), data_exists in combos.items():
+            if with_data_only and not data_exists:
                 continue
             all_info.append(
                 self.get_task_block_properties(
-                    inventory_id=combo_info.inventory_id,
+                    inventory_id=inventory_id,
                     task_id=task_id,
-                    block_id=combo_info.block_id,
-                    lot_id=combo_info.lot_id,
+                    block_id=block_id,
+                    lot_id=lot_id,
                 )
             )
         return all_info
+
+    @validate_call
+    def get_task_property_records(
+        self, *, task_id: TaskId, with_data_only: bool = True
+    ) -> list[TaskPropertyRecord]:
+        """Get a task's recorded results as flat rows, with their parameter setpoints.
+
+        Returns one record per measured value, already associated with the inventory
+        item, lot, interval, trial and data column it belongs to, and with the parameter
+        setpoints for that interval resolved and attached. Use this instead of walking
+        [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties]
+        and correlating workflows by hand.
+
+        Setpoints cannot be resolved for tenants running the increased-intervals beta,
+        where results are addressed by child workflow ID rather than by interval row.
+        Those records still carry their values and
+        ``interval_combination``, but ``parameter_setpoints`` is empty.
+
+        !!! example
+            ```python
+            records = client.property_data.get_task_property_records(task_id="TASFOR1")
+            records[0].data_column_name, records[0].value, records[0].parameter_setpoints
+            # ('Combing Force', '17.77', {'Condition': 'Wet'})
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to read results from (format ``TAS...``).
+        with_data_only : bool, optional
+            When True, skip block/inventory combinations with no recorded data.
+            Defaults to True.
+
+        Returns
+        -------
+        list[TaskPropertyRecord]
+            One record per measured value, in block, interval, trial, column order.
+
+        See Also
+        --------
+        TaskPropertyRecord.to_dataframe : Render the records as a table.
+        """
+        blocks = self.get_all_task_properties(task_id=task_id, with_data_only=with_data_only)
+        if not blocks:
+            return []
+
+        task = property_data_utils.get_task_from_id(session=self.session, id=task_id)
+        block_workflows = property_data_utils.map_block_final_workflows(task=task)
+
+        workflow_cache: dict[str, Workflow] = {}
+        setpoint_cache: dict[str, dict[str, dict[str, str]]] = {}
+
+        records: list[TaskPropertyRecord] = []
+        for block in blocks:
+            workflow_link = block_workflows.get(block.block_id)
+            workflow_id = getattr(workflow_link, "id", None)
+            workflow_name = getattr(workflow_link, "name", None)
+
+            interval_map: dict[str, dict[str, str]] = {}
+            if workflow_id:
+                if workflow_id not in setpoint_cache:
+                    # A block's workflow carries its interval combinations but not the
+                    # setpoint values, so the full workflow is needed to name them.
+                    with suppress(AlbertException):
+                        workflow_cache[workflow_id] = self._get_workflow(workflow_id=workflow_id)
+                    workflow = workflow_cache.get(workflow_id)
+                    setpoint_cache[workflow_id] = (
+                        property_data_utils.build_interval_setpoint_map(workflow=workflow)
+                        if workflow is not None
+                        else {}
+                    )
+                    if workflow is not None and workflow.name:
+                        workflow_name = workflow.name
+                interval_map = setpoint_cache[workflow_id]
+                workflow_name = getattr(workflow_cache.get(workflow_id), "name", workflow_name)
+
+            descriptions = {
+                c.id: c.name for c in (getattr(workflow_link, "combinations", None) or []) if c.id
+            }
+
+            records.extend(
+                property_data_utils.flatten_task_property_data(
+                    block=block,
+                    task_id=task_id,
+                    workflow_id=workflow_id,
+                    workflow_name=workflow_name,
+                    interval_setpoints=interval_map,
+                    interval_descriptions=descriptions,
+                )
+            )
+        return records
+
+    def _get_workflow(self, *, workflow_id: str) -> Workflow:
+        """Fetch a fully populated workflow, whose setpoints name each interval."""
+        from albert.collections.workflows import WorkflowCollection
+
+        return WorkflowCollection(session=self.session).get_by_id(id=workflow_id)
 
     @validate_call
     def update_property_on_task(
