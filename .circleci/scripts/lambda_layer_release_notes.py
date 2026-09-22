@@ -155,11 +155,12 @@ def main() -> None:
         print("Not a release tag pipeline; leaving GitHub release notes untouched.")
         return
 
-    token = os.environ.get("GITHUB_TOKEN", "")
+    # GITHUB_TOKEN_ALBERT_PYTHON is the repo token in the CircleCI "dev" context.
+    token = os.environ.get("GITHUB_TOKEN_ALBERT_PYTHON") or os.environ.get("GITHUB_TOKEN", "")
     if not token:
         raise SystemExit(
-            "GITHUB_TOKEN is not set. The layers above were published, but their ARNs could not be "
-            "written to the GitHub release. Add a token with contents:write to the CircleCI context."
+            "GITHUB_TOKEN_ALBERT_PYTHON is not set. The layers above were published, but their "
+            "ARNs could not be written to the GitHub release. Check the CircleCI dev context."
         )
 
     repo = args.repo or "/".join(
