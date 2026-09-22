@@ -119,9 +119,9 @@ class PropertyDataCollection(BaseCollection):
         Update a property-data value on an inventory item.
     get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
         Get the results in one task block for one inventory item.
-    get_all_task_properties(task_id, with_data_only=False) -> list[TaskPropertyData]
+    get_all_task_properties(task_id, with_data_only=False, inventory_id=None, lot_id=None) -> list[TaskPropertyData]
         Get results across all block/inventory combinations of a task.
-    get_task_property_records(task_id, with_data_only=True) -> list[TaskPropertyRecord]
+    get_task_property_records(task_id, with_data_only=True, inventory_id=None, lot_id=None) -> list[TaskPropertyRecord]
         Get a task's results as flat rows, with their parameter setpoints attached.
     check_for_task_data(task_id) -> list[CheckPropertyData]
         Report which block/interval combinations of a task have data.
@@ -459,13 +459,22 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def get_all_task_properties(
-        self, *, task_id: TaskId, with_data_only: bool = False
+        self,
+        *,
+        task_id: TaskId,
+        with_data_only: bool = False,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
     ) -> list[TaskPropertyData]:
         """Get recorded results across all block/inventory combinations of a task.
 
         Sweeps every block/inventory/lot combination on the task and returns its
         results. For a single known combination, [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
         is more direct.
+
+        Narrow the sweep with ``inventory_id`` and ``lot_id`` when only part of the
+        task is of interest. Combinations that do not match are never requested, so
+        filtering is faster than discarding results afterwards.
 
         !!! example
             ```python
@@ -474,6 +483,11 @@ class PropertyDataCollection(BaseCollection):
             )
             [b.block_id for b in blocks]
             # ['BLK1', 'BLK2']
+
+            # Just one material on the task
+            blocks = client.property_data.get_all_task_properties(
+                task_id="TASFOR1", inventory_id="INVA9999999"
+            )
             ```
 
         Parameters
@@ -483,12 +497,20 @@ class PropertyDataCollection(BaseCollection):
         with_data_only : bool, optional
             When True, skip combinations that have no recorded data. Defaults to
             False (every combination is returned).
+        inventory_id : InventoryId, optional
+            Only return results for this inventory item (format ``INV...``).
+            Defaults to None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return results for this lot (format ``LOT...``). May be given on its
+            own, since a lot belongs to a single inventory item. Defaults to None
+            (every lot).
 
         Returns
         -------
         list[TaskPropertyData]
             Results for each block/inventory/lot combination on the task. Each entry
-            carries every interval recorded for that combination.
+            carries every interval recorded for that combination. Empty when the
+            filters match no combination.
         """
         # check_for_task_data reports one entry per interval, but a block/inventory/lot
         # combination is read in full (all of its intervals) in a single request. Collapse
@@ -496,26 +518,35 @@ class PropertyDataCollection(BaseCollection):
         # identical result is returned that many times.
         combos: dict[tuple[str, str, str | None], bool] = {}
         for combo_info in self.check_for_task_data(task_id=task_id):
+            if inventory_id is not None and combo_info.inventory_id != inventory_id:
+                continue
+            if lot_id is not None and combo_info.lot_id != lot_id:
+                continue
             key = (combo_info.block_id, combo_info.inventory_id, combo_info.lot_id)
             combos[key] = combos.get(key, False) or bool(combo_info.data_exists)
 
         all_info = []
-        for (block_id, inventory_id, lot_id), data_exists in combos.items():
+        for (block_id, combo_inventory_id, combo_lot_id), data_exists in combos.items():
             if with_data_only and not data_exists:
                 continue
             all_info.append(
                 self.get_task_block_properties(
-                    inventory_id=inventory_id,
+                    inventory_id=combo_inventory_id,
                     task_id=task_id,
                     block_id=block_id,
-                    lot_id=lot_id,
+                    lot_id=combo_lot_id,
                 )
             )
         return all_info
 
     @validate_call
     def get_task_property_records(
-        self, *, task_id: TaskId, with_data_only: bool = True
+        self,
+        *,
+        task_id: TaskId,
+        with_data_only: bool = True,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
     ) -> list[TaskPropertyRecord]:
         """Get a task's recorded results as flat rows, with their parameter setpoints.
 
@@ -530,11 +561,20 @@ class PropertyDataCollection(BaseCollection):
         Those records still carry their values and
         ``interval_combination``, but ``parameter_setpoints`` is empty.
 
+        Narrow the read with ``inventory_id`` and ``lot_id`` when only part of the task
+        is of interest. Combinations that do not match are never requested, so
+        filtering is faster than discarding records afterwards.
+
         !!! example
             ```python
             records = client.property_data.get_task_property_records(task_id="TASFOR1")
             records[0].data_column_name, records[0].value, records[0].parameter_setpoints
             # ('Combing Force', '17.77', {'Condition': 'Wet'})
+
+            # Just one material on the task
+            records = client.property_data.get_task_property_records(
+                task_id="TASFOR1", inventory_id="INVA9999999"
+            )
             ```
 
         Parameters
@@ -544,17 +584,30 @@ class PropertyDataCollection(BaseCollection):
         with_data_only : bool, optional
             When True, skip block/inventory combinations with no recorded data.
             Defaults to True.
+        inventory_id : InventoryId, optional
+            Only return records for this inventory item (format ``INV...``).
+            Defaults to None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return records for this lot (format ``LOT...``). May be given on its
+            own, since a lot belongs to a single inventory item. Defaults to None
+            (every lot).
 
         Returns
         -------
         list[TaskPropertyRecord]
             One record per measured value, in block, interval, trial, column order.
+            Empty when the filters match no combination.
 
         See Also
         --------
         TaskPropertyRecord.to_dataframe : Render the records as a table.
         """
-        blocks = self.get_all_task_properties(task_id=task_id, with_data_only=with_data_only)
+        blocks = self.get_all_task_properties(
+            task_id=task_id,
+            with_data_only=with_data_only,
+            inventory_id=inventory_id,
+            lot_id=lot_id,
+        )
         if not blocks:
             return []
 

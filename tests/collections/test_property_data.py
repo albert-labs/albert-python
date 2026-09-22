@@ -794,3 +794,33 @@ def test_get_task_property_records(
     frame = TaskPropertyRecord.to_dataframe(records=records)
     assert len(frame) == len(records)
     assert "value" in frame.columns
+
+
+def test_get_task_property_records_filters_by_inventory(
+    client: Albert,
+    seeded_tasks: list[BaseTask],
+):
+    """Test the inventory filter returns the matching subset and nothing else."""
+    prop_task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+
+    all_records = client.property_data.get_task_property_records(
+        task_id=prop_task.id, with_data_only=False
+    )
+    assert all_records != []
+    target = all_records[0].inventory_id
+
+    filtered = client.property_data.get_task_property_records(
+        task_id=prop_task.id, with_data_only=False, inventory_id=target
+    )
+    assert filtered != []
+    assert {r.inventory_id for r in filtered} == {target}
+    assert [r.model_dump() for r in filtered] == [
+        r.model_dump() for r in all_records if r.inventory_id == target
+    ]
+
+    assert (
+        client.property_data.get_task_property_records(
+            task_id=prop_task.id, with_data_only=False, inventory_id="INVNOTREAL999"
+        )
+        == []
+    )
