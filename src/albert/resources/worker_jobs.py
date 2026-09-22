@@ -54,6 +54,21 @@ class WorkerJobMetadata(BaseAlbertModel):
     s3_output_key: str | None = Field(default=None, alias="s3OutputKey")
     """The S3 key for the job's output file."""
 
+    albert_id: str | None = Field(default=None, alias="albertId")
+    """The parent Albert ID this job operates on (e.g. a task id for ``createChildWorkflows``). Distinct from [`WorkerJob.albert_id`][albert.resources.worker_jobs.WorkerJob.albert_id], which is the job's own id."""
+
+    block_id: str | None = Field(default=None, alias="blockId")
+    """The block this job is associated with (format ``BLK...``)."""
+
+    s3_url: str | None = Field(default=None, alias="s3Url")
+    """The S3 object key for an uploaded combinations file. Omitted when the job has no file."""
+
+    new_workflow_id: str | None = Field(default=None, alias="newWorkflowId")
+    """The workflow id assigned to the block after this job."""
+
+    old_workflow_id: str | None = Field(default=None, alias="oldWorkflowId")
+    """The workflow id being replaced. Omitted on first-time generation; equal to ``new_workflow_id`` on a rules-only regenerate."""
+
 
 class WorkerJobCreateRequest(BaseAlbertModel):
     """Request payload for creating a new worker job."""

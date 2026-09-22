@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.57.1](https://github.com/albert-labs/albert-python/compare/v1.57.0...v1.57.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* add missing FORMULAS member to SpecialParameterType (ML-1611) ([#747](https://github.com/albert-labs/albert-python/issues/747)) ([3b4559f](https://github.com/albert-labs/albert-python/commit/3b4559ff0cc0dfce5406dc370c270ee0645d1e9a))
+
+## [1.57.0](https://github.com/albert-labs/albert-python/compare/v1.56.0...v1.57.0) (2026-09-21)
+
+
+### Features
+
+* **intervals:** support increased intervals ([#728](https://github.com/albert-labs/albert-python/issues/728)) ([658096f](https://github.com/albert-labs/albert-python/commit/658096f01bb80dcc645d0a9ad56edcbe46871b72))
+
+
+### Bug Fixes
+
+* **reports:** strip ALB# qualifier from report IDs in URL paths ([#741](https://github.com/albert-labs/albert-python/issues/741)) ([eb0437c](https://github.com/albert-labs/albert-python/commit/eb0437c3deefc9246cd2ecdbf4e05045b0cb6da3))
+
+## [1.56.0](https://github.com/albert-labs/albert-python/compare/v1.55.0...v1.56.0) (2026-09-18)
+
+
+### Features
+
+* **client:** support caller-supplied default headers on both sessions ([#740](https://github.com/albert-labs/albert-python/issues/740)) ([27998f6](https://github.com/albert-labs/albert-python/commit/27998f674d7eb3104504ccb40b707ba4ac0f1d06))
+
+
+### Bug Fixes
+
+* **activities:** expose actor details in activity search and feed items ([#738](https://github.com/albert-labs/albert-python/issues/738)) ([7356d1c](https://github.com/albert-labs/albert-python/commit/7356d1c1dce9fbf1d445593ece1394e9277caa4e))
+
 ## [1.55.0](https://github.com/albert-labs/albert-python/compare/v1.54.0...v1.55.0) (2026-09-16)
 
 
