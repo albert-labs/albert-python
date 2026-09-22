@@ -1,6 +1,6 @@
 # Parameter Groups
 
-Parameter Groups in Albert Invent define reusable sets of parameters that can be attached to inventory items, projects, and other entities to capture structured measurements or attributes.
+Parameter Groups in Albert define reusable sets of parameters that can be attached to inventory items, projects, and other entities to capture structured measurements or attributes.
 
 ## Add a parameter with dropdown (ENUM) validation
 

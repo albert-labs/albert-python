@@ -1,6 +1,6 @@
 # Tasks
 
-Tasks in Albert Invent are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
+Tasks in Albert are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.
 
 ## Intervals, Rules, and Overrides Overview (🧪 Beta)
 
@@ -9,13 +9,13 @@ Tasks in Albert Invent are a way to manage and track your daily work and collabo
     Please do not use in production or without explicit guidance from Albert. This feature currently
     falls outside of the Albert support contract, but we'd love your feedback!
 
-When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert Invent manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
+When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
 ### What are intervals?
 
 An **interval** is a discrete setpoint value assigned to a parameter within a workflow. When multiple parameters define intervals:
 
-- **Cartesian Product**: Albert Invent computes all combinations of values across every intervalized parameter. For example, testing 3 temperatures (25 °C, 60 °C, 90 °C) and 2 stir speeds (500 RPM, 1500 RPM) creates \(3 \times 2 = 6\) experimental combinations.
+- **Cartesian Product**: Albert computes all combinations of values across every intervalized parameter. For example, testing 3 temperatures (25 °C, 60 °C, 90 °C) and 2 stir speeds (500 RPM, 1500 RPM) creates \(3 \times 2 = 6\) experimental combinations.
 - **Child Workflows**: Each combination materializes as an independent child workflow record (`WFL...`) linked to the task block.
 - **Interval Barcodes**: Every combination receives a unique, persistent barcode (e.g. `OhI8ap0HY`) that remains stable across rule updates as long as the parameter setpoints are unchanged.
 
@@ -162,6 +162,7 @@ In **Exclude Mode** (`intervals_start_from="all"`, the default), combination gen
 In **Include Mode** (`intervals_start_from="none"`), combination generation starts with *zero* active combinations. This mode is ideal for sparse designs of experiment (DoE) or targeted screening where you only want specific combinations evaluated.
 
 In this mode:
+
 - Rules act as **inclusion rules**: only combinations satisfying rule conditions are kept.
 - Overrides with `action=OverrideAction.UNSKIP` and `is_manual=True` allow you to cherry-pick individual combinations into the task.
 
@@ -224,6 +225,7 @@ In this mode:
 A very common workflow is creating a new parent workflow with intervalized parameters and immediately provisioning a Property Task that runs an explicit list of target combinations (such as a targeted DoE or sparse matrix), without defining any general rules.
 
 In this workflow:
+
 1. Define and create the parent [`Workflow`][albert.resources.workflows.Workflow] with [`Interval`][albert.resources.workflows.Interval] setpoints across the parameters you want to vary.
 2. Define the list of specific parameter combinations to evaluate.
 3. Convert each combination into a manual override (`action="unskip"`, `is_manual=True`) using [`workflow.build_override`][albert.resources.workflows.Workflow.build_override] on the returned workflow.
@@ -317,7 +319,7 @@ In this workflow:
 
 ## Modify rules and regenerate combinations on an existing task
 
-You can update rules and overrides on an existing task block at any time using [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert Invent.
+You can update rules and overrides on an existing task block at any time using [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules]. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert.
 
 !!! example "Update block rules and regenerate combinations"
     ```python
@@ -345,7 +347,7 @@ You can update rules and overrides on an existing task block at any time using [
         ],
     )
 
-    # Combinations are regenerated automatically on Albert Invent by default
+    # Combinations are regenerated automatically on Albert by default
     updated_rules = client.tasks.set_block_rules(
         task_id=task_id,
         block_id=block_id,

@@ -1,6 +1,6 @@
 # Data Templates
 
-Data Templates in Albert Invent define how results are captured and structured. They are used to capture clean, structured data about your experiments, such as flexural testing results, tensile testing results, etc.
+Data Templates in Albert define how results are captured and structured. They are used to capture clean, structured data about your experiments, such as flexural testing results, tensile testing results, etc.
 
 ## Add numeric data column
 

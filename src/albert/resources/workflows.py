@@ -863,6 +863,7 @@ class Workflow(BaseResource):
         rules with multiple conditions.
 
         How Rules Function:
+
         - **Conditions**: A condition compares a parameter against a threshold using an
           operator (``=``, ``!=``, ``>``, ``>=``, ``<``, ``<=``).
         - **AND logic within a rule**: All conditions specified inside this rule must match
@@ -1006,6 +1007,7 @@ class Workflow(BaseResource):
         [`get_override_key`][albert.resources.workflows.Workflow.get_override_key].
 
         How Overrides Function:
+
         - **Targeted Combinations**: Overrides target a single, specific combination in the
           Cartesian product space (e.g. Temperature = 25 and Speed = 500).
         - **Actions**:

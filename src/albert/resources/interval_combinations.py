@@ -145,6 +145,7 @@ class ExclusionRule(BaseAlbertModel):
     """A combination rule composed of one or more conditions (🧪 Beta).
 
     Rules evaluate combination variants against criteria defined on parameter values:
+
     - **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``>``, ``>=``, ``<``, ``<=``).
     - **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.
     - **OR logic across rules**: if any rule on the block triggers, its outcome applies.
@@ -180,6 +181,7 @@ class CombinationOverride(BaseAlbertModel):
     """A targeted skip or unskip override for a specific combination condition (🧪 Beta).
 
     Overrides pinpoint an exact combination in the Cartesian product space:
+
     - ``action=OverrideAction.SKIP``: explicitly excludes the combination.
     - ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.
     - **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).
@@ -214,6 +216,7 @@ class BlockRules(BaseAlbertModel):
 
     Encapsulates the rules and overrides that govern how interval combinations
     are evaluated and filtered on a task block:
+
     - **Rules** define parameter criteria evaluated with AND logic within each rule and
       OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).
     - **Overrides** pinpoint specific combinations for forced inclusion (``unskip``)
