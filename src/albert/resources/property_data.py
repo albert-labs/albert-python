@@ -225,7 +225,7 @@ class TaskData(BaseAlbertModel):
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
-    finial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
+    final_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
     """The workflow at task completion. Serialized as ``FinalWorkflow``."""
 
     data_template: SerializeAsEntityLink[DataTemplate] = Field(alias="Datatemplate")
@@ -349,7 +349,7 @@ class TaskPropertyData(BaseResource):
     )
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
-    finial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
+    final_workflow: SerializeAsEntityLink[Workflow] | None = Field(
         default=None, alias="FinalWorkflow"
     )
     """The workflow at task completion. Serialized as ``FinalWorkflow``."""
