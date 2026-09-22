@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Literal
 
 from pydantic import Field
 
@@ -11,7 +12,17 @@ from albert.resources.locations import Location
 
 
 class LeadTimeUnit(str, Enum):
-    """The unit of measure for the provided lead time."""
+    """The unit of measure for a pricing's lead time.
+
+    Attributes
+    ----------
+    DAYS : str
+        Lead time expressed in days.
+    WEEKS : str
+        Lead time expressed in weeks.
+    MONTHS : str
+        Lead time expressed in months.
+    """
 
     DAYS = "Days"
     WEEKS = "Weeks"
@@ -19,68 +30,101 @@ class LeadTimeUnit(str, Enum):
 
 
 class Pricing(BaseResource):
-    """A Price of a given InventoryItem at a given Location.
+    """A price entry for an Inventory Item at a given company and location.
 
-    Attributes
-    ----------
-    id : str | None
-        The Albert ID of the pricing. Set when the pricing is retrieved from Albert.
-    inventory_id : str
-        The Albert ID of the inventory item.
-    company : Company
-        The company that the pricing belongs to.
-    location : Location
-        The location that the pricing belongs to.
-    description : str | None
-        The description of the pricing. Optional.
-    pack_size : str | None
-        The pack size of the pricing. Optional. Used to calculate the cost per unit.
-    price : float
-        The price of the pricing IN CURRENCY/ KG or CURRENCY/L! Must do the conversion! Depends on InventoryItem's unit of measure.
-    currency : str
-        The currency of the pricing. Defaults to `USD`.
-    fob : str | None
-        The FOB of the pricing. Optional.
-    lead_time : int | None
-        The lead time of the pricing. Optional.
-    lead_time_unit : LeadTimeUnit | None
-        The unit of measure for the provided lead time. Optional.
-    expiration_date : str | None
-        The expiration date of the pricing. YYYY-MM-DD format.
-    """
+    A pricing records the cost of a material
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) from a particular
+    company, at a particular location. A single item can have many pricings.
+    Create pricings with
+    [`create`][albert.collections.pricings.PricingCollection.create].
+
+    !!! example
+        ```python
+        from albert.resources.pricings import Pricing
+        from albert.resources.companies import Company
+        from albert.resources.locations import Location
+
+        pricing = Pricing(
+            inventory_id="INVA9999999",
+            company=Company(name="Acme Chemicals"),
+            location=Location(name="Pittsburgh"),
+            price=12.50,
+        )
+        ```"""
 
     id: str | None = Field(default=None, alias="albertId")
-    inventory_id: str | None = Field(default=None, alias="parentId")
-    company: SerializeAsEntityLink[Company] = Field(alias="Company")
-    location: SerializeAsEntityLink[Location] = Field(alias="Location")
-    description: str | None = Field(default=None)
-    pack_size: str | None = Field(default=None, alias="packSize")
-    price: float = Field(ge=0, le=9999999999)
-    currency: str = Field(default="USD", alias="currency")
-    fob: str | None = Field(default=None)
-    lead_time: int | None = Field(default=None, alias="leadTime")
-    lead_time_unit: LeadTimeUnit | None = Field(default=None, alias="leadTimeUnit")
-    expiration_date: str | None = Field(default=None, alias="expirationDate")
+    """The Albert ID of the pricing. Set when the pricing is retrieved from Albert."""
 
-    # Read-only fields
-    default: int | None = Field(default=None, exclude=True, frozen=True)
+    inventory_id: str | None = Field(default=None, alias="parentId")
+    """The Inventory ID of the item this pricing is for (format ``INV...``)."""
+
+    company: SerializeAsEntityLink[Company] = Field(alias="Company")
+    """The company the price is quoted from."""
+
+    location: SerializeAsEntityLink[Location] = Field(alias="Location")
+    """The location the price applies to."""
+
+    description: str | None = Field(default=None)
+    """Free-text description of the pricing."""
+
+    pack_size: str | None = Field(default=None, alias="packSize")
+    """The pack size the price is quoted for. Used to derive cost per unit."""
+
+    price: float = Field(ge=0, le=9999999999)
+    """The price, expressed per kilogram or per liter (currency/kg or currency/L) depending on the item's unit of measure. Convert to that basis before setting."""
+
+    currency: str = Field(default="USD", alias="currency")
+    """The currency code for ``price``. Defaults to ``"USD"``."""
+
+    fob: str | None = Field(default=None)
+    """The FOB (free-on-board) shipping term for the pricing."""
+
+    lead_time: int | None = Field(default=None, alias="leadTime")
+    """The lead time value, in the unit given by ``lead_time_unit``."""
+
+    lead_time_unit: LeadTimeUnit | None = Field(default=None, alias="leadTimeUnit")
+    """The unit of measure for ``lead_time``."""
+
+    expiration_date: str | None = Field(default=None, alias="expirationDate")
+    """The date the pricing expires, in ``YYYY-MM-DD`` format."""
+
+    default: Literal[0, 1] | None = Field(default=None)
+    """Whether this pricing is the default for its inventory item.
+
+    ``0``: not the default pricing. ``1``: the default pricing for the item
+    (only one pricing per item should be default). Cannot be set on create; use
+    [`update`][albert.collections.pricings.PricingCollection.update].
+    """
+
+    @staticmethod
+    def _default_patch_value(value: Literal[0, 1] | None) -> str | None:
+        return None if value is None else str(value)
 
 
 class InventoryPricings(BaseAlbertModel):
-    """Pricings for a given InventoryItem.
+    """The pricings belonging to a single Inventory Item.
 
-    Attributes
-    ----------
-    inventory_id : Inventory
-        The inventory ID the pricings belong to.
-    pricings : list[Pricing]
-        The list of pricings.
-    """
+    Returned by
+    [`get_by_inventory_ids`][albert.collections.pricings.PricingCollection.get_by_inventory_ids]
+    to group each item's pricings under its inventory ID."""
 
     inventory_id: InventoryId = Field(..., alias="id")
+    """The Inventory ID the pricings belong to (format ``INV...``)."""
+
     pricings: list[Pricing]
+    """The pricings for that item."""
 
 
 class PricingBy(str, Enum):
+    """A dimension to group or filter pricings by.
+
+    Attributes
+    ----------
+    LOCATION : str
+        Group or filter pricings by location.
+    COMPANY : str
+        Group or filter pricings by company.
+    """
+
     LOCATION = "Location"
     COMPANY = "Company"

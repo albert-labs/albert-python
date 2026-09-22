@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import AliasChoices, Field, PrivateAttr, model_validator
+from pydantic import AliasChoices, Field, PrivateAttr, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.enums import SecurityClass, Status
 from albert.core.shared.identifiers import (
     DataTemplateId,
     IntervalId,
@@ -16,61 +17,82 @@ from albert.core.shared.identifiers import (
 from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.types import SerializeAsEntityLink
 from albert.exceptions import AlbertException
+from albert.resources._mixins import HydrationMixin
+from albert.resources.interval_combinations import (
+    CombinationOverride,
+    Condition,
+    ExclusionRule,
+    IntervalCombinationItem,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.parameters import Parameter, ParameterCategory
 from albert.resources.units import Unit
 
 
 class IntervalParameter(BaseAlbertModel):
-    """
-    A class representing the interval parameter of a workflow.
-    This is not a platform entity, but a helper class to make parsing
-    the interval_combinations easier.
+    """A single intervalized parameter value flattened out of a workflow's interval data.
 
-    Attributes
-    ----------
-    interval_param_name : str
-        The name of the interval parameter.
-    interval_id : IntervalId
-        The id of the interval parameter.
-    interval_value : str
-        The value of the interval parameter.
-    interval_unit : str
-        The unit of the interval parameter.
-    """
+    This is not a platform entity. It is an internal helper that
+    [`Workflow`][albert.resources.workflows.Workflow] builds (one per interval value of each intervalized parameter)
+    so that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] can look up the row ID that matches a
+    given parameter name and value. You do not normally construct this yourself."""
 
     interval_param_name: str | None = Field(default=None)
+    """The name of the intervalized parameter (e.g. ``"Temperature"``)."""
+
     interval_id: IntervalId | None = Field(default=None)
-    interval_value: str | None = Field(default=None)
+    """The row ID of this single interval value (e.g. ``"ROW1"``). Parameters can be repeated within a Parameter Group, so the Parameter ID is not unique enough to identify which parameter is being varied. So, these key become the building blocks that [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] joins with ``X`` to form a composite interval ID."""
+
+    interval_value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of this interval. A string for Normal parameters (e.g. ``"25"``), or an object with an ``id`` for Special parameters."""
+
     interval_unit: str | None = Field(default=None)
+    """The unit name for this interval value, if any (e.g. ``"C"``)."""
+
+    parameter_group_id: str | None = Field(default=None)
+    """The parameter group or data template ID (format ``PRG...`` or ``DAT...``)."""
+
+    parameter_id: str | None = Field(default=None)
+    """The parameter ID (format ``PRM...``)."""
+
+    parameter_short_name: str | None = Field(default=None)
+    """The short name of the intervalized parameter."""
 
 
 class Interval(BaseAlbertModel):
-    """A Pydantic class representing an interval.
+    """One value that an intervalized parameter is varied across.
 
-    Attributes
-    ----------
-    value : str
-        The value of the interval setpoint. For Special parameters (Equipment, Consumables,
-        Templates) this is the entity ID (e.g. ``"INVC191778"``). For Normal parameters this
-        is a plain scalar string (e.g. ``"23"``).
-    name : str | None
-        The display name of the interval value. Populated for Special parameters (e.g.
-        ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters.
-    unit : Unit
-        The unit of the related value.
+    When a parameter is "intervalized" (tested at several values rather than a single
+    setpoint), each of those values is represented by an [`Interval`][albert.resources.workflows.Interval]. A list of
+    them is placed on the parameter's [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] via its ``intervals``
+    field. The workflow then carries the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries,
+    one per interval (or per cartesian product of intervalized parameters).
 
-    """
+    !!! example
+        ```python
+        from albert.resources.workflows import Interval
 
-    value: str | None = Field(default=None)
+        # A Normal parameter varied across two temperatures.
+        low = Interval(value="25", unit={"id": "UNI9999999"})
+        high = Interval(value="60", unit={"id": "UNI9999999"})
+        ```"""
+
+    value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of this interval. For Normal parameters this is a scalar string (e.g. ``"23"``). For Special parameters (Equipment, Consumables, Templates) this may be an object with an ``id`` (and optional ``name``), matching [`ParameterSetpoint.value`][albert.resources.workflows.ParameterSetpoint.value]. Empty or hyphen intervals (represented as ``""`` or ``None``) are permitted on the platform for optional parameters and exclusion matching. The sibling ``name`` field is independent and is not copied from an object value."""
+
     name: str | None = Field(default=None)
+    """The display name of the interval value. Populated for Special parameters (e.g. ``"Pipette 0.01 -0.1 ml (10 - 100 μl)"``). ``None`` for Normal parameters. Not auto-filled from an object ``value``."""
+
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of ``value``, where applicable. If given, the unit must have an ``id``. See Also --------"""
+
     row_id: RowId | None = Field(default=None, alias="rowId", exclude=True)
 
     @model_validator(mode="after")
     def validate_interval(self) -> Interval:
-        if not self.value:
-            raise ValueError("Interval: 'value' is required.")
         if self.unit and not getattr(self.unit, "id", None):
             raise ValueError("Interval: 'Unit.id' is required.")
         return self
@@ -79,85 +101,101 @@ class Interval(BaseAlbertModel):
 class IntervalDetail(BaseAlbertModel):
     """A single parameter's contribution to an interval combination.
 
-    Attributes
-    ----------
-    name : str
-        The parameter name (e.g. ``"Equipment"``).
-    value : str
-        The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``).
-    """
+    This appears inside [`IntervalCombination`][albert.resources.workflows.IntervalCombination] (as its ``interval_details``) to
+    break a combination down into the individual parameters that make it up. It is
+    read from the workflow endpoint; you do not construct it directly."""
 
     name: str
+    """The parameter name (e.g. ``"Equipment"``)."""
+
     value: str
+    """The display value for this interval (e.g. ``"C191778 || Pipette 0.01 -0.1 ml"``). See Also --------"""
 
 
 class IntervalCombination(BaseAlbertModel):
-    """A class representing the interval combinations of on a workflow.
-    This is returned by the workflow endpoint when at least one parameter
-    in the workflow has been intervalized.
+    """One realized condition (interval combination) carried by a workflow.
 
-    Interval Combinations can be single intervalized parameters or cartesian prodcuts of
-    two intervalized parameters.
-
-    Attributes
-    ----------
-    interval_id: IntervalId | None
-        forign key reference to the interval id
-        this combination is associated with
-        It will have the form ROW# or ROW#XROW# depending on
-        if it is a single interval or a product of two intervals
-    interval_params: str | None
-        The parameters participating in the interval.
-    interval_string: str | None
-        The string representation of the interval combination
-        This will have the form "[Parameter Name]: [Parameter Value] [Parameter Unit]"
-        for each parameter in the interval combination
-    interval_details : list[IntervalDetail] | None
-        Per-parameter breakdown of the interval combination. Each entry has ``name``
-        (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``)
-    """
+    Returned by the workflow endpoint when at least one parameter in the workflow has
+    been intervalized. A combination is a single intervalized parameter (interval ID
+    ``ROW#``) or the cartesian product of any number of intervalized parameters
+    (``ROW#XROW#X...``). On tenants with increased intervals the id may also be a child
+    workflow id (``WFL...``) or a case-sensitive barcode. Its ``interval_id`` is what you
+    pass to the property_data endpoints to read or write results for that specific
+    condition."""
 
     interval_id: IntervalId | None = Field(default=None, alias="interval")
+    """The interval ID this combination is associated with. A ``ROW#`` chain of any length, a child workflow id (``WFL...``), a 9-character barcode, or ``"default"``. This is the same value [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] returns for ROW-chain combinations."""
+
     interval_params: str | None = Field(default=None, alias="intervalParams")
+    """The parameters participating in the interval."""
+
     interval_string: str | None = Field(default=None, alias="intervalString")
+    """A human-readable representation of the combination, of the form ``"[Parameter Name]: [Parameter Value] [Parameter Unit]"`` for each parameter."""
+
     interval_details: list[IntervalDetail] | None = Field(default=None, alias="intervalDetails")
+    """Per-parameter breakdown of the combination. Each entry has ``name`` (parameter name) and ``value`` (display string, e.g. ``"C191778 || Pipette ..."``). See Also --------"""
 
 
 class ParameterSetpoint(BaseAlbertModel):
-    """A Pydantic class representing the setpoint or intervals of a parameter to use.
-    For a single value, provide the value and unit. For multiple values, provide intervals.
-    a parameter or parameter_id must be provided.
+    """The fixed value (or set of interval values) for one parameter within a workflow.
 
-    Attributes
-    ----------
-    parameter : Parameter
-        The parameter to set the setpoint on. Provide either a parameter or a parameter_id.
-    parameter_id : ParameterId
-        The id of the parameter. Provide either a parameter or a parameter_id.
-    value : str | EntityLink
-        The value of the setpoint. If the parameter is a InventoryItem, provide the EntityLink of the InventoryItem.
-    unit : Unit
-        The unit of the setpoint.
-    intervals : list[Interval]
-        The intervals of the setpoint. Either the intervals or value + unit
-    category : ParameterCategory
-        The category of the parameter. Special for InventoryItem (then use name to specify "Equipment", "Consumeable", etc), normal for all others
-    short_name : str
-        The short / display name of the parameter. Required if value is a dictionary.
-    row_id : RowId
-        The id of the parameter with respect to the interval row id.
-    """
+    A setpoint pins a single parameter to a condition. Provide either a single ``value``
+    (plus ``unit`` where applicable) for a fixed setpoint, or a list of ``intervals`` to
+    intervalize the parameter across several values. You must identify the parameter by
+    passing either a full ``parameter`` object or its ``parameter_id``. Setpoints are
+    grouped under a [`ParameterGroupSetpoints`][albert.resources.workflows.ParameterGroupSetpoints], which is in turn placed on a
+    [`Workflow`][albert.resources.workflows.Workflow].
+
+    Normal parameters take exactly one of ``value`` or ``intervals``. Special parameters
+    (Equipment, Consumables, Templates) take an entity ID as their value.
+
+    !!! example
+        ```python
+        from albert.resources.workflows import ParameterSetpoint, Interval
+
+        # A single fixed setpoint identified by parameter ID.
+        temp = ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp")
+
+        # The same parameter intervalized across two values.
+        temp_varied = ParameterSetpoint(
+            parameter_id="PRM9999999",
+            short_name="Temp",
+            intervals=[
+                Interval(value="25", unit={"id": "UNI9999999"}),
+                Interval(value="60", unit={"id": "UNI9999999"}),
+            ],
+        )
+        ```"""
 
     parameter: Parameter | None = Field(exclude=True, default=None)
+    """The parameter to set. Provide either ``parameter`` or ``parameter_id``. If both are given they must refer to the same parameter."""
+
     value: str | dict[str, Any] | EntityLink | None = Field(default=None)
+    """The value of the setpoint. For a Special parameter (an inventory item), provide the item's [`EntityLink`][albert.core.shared.models.base.EntityLink] (or a mapping with an ``id``). Mutually exclusive with ``intervals`` for Normal parameters."""
+
     unit: SerializeAsEntityLink[Unit] | None = Field(default=None, alias="Unit")
+    """The unit of ``value``, where applicable."""
+
     parameter_id: ParameterId | None = Field(alias="id", default=None)
+    """The ID of the parameter (e.g. ``"PRM9999999"``). Provide either ``parameter`` or ``parameter_id``."""
+
     intervals: list[Interval] | None = Field(default=None, alias="Intervals")
+    """The interval values when the parameter is intervalized. Provide either ``intervals`` or ``value`` (plus ``unit``), not both."""
+
     category: ParameterCategory | None = Field(default=None)
+    """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
+
     short_name: str | None = Field(default=None, alias="shortName")
+    """The short / display name of the parameter. Required if ``value`` is a mapping."""
+
     name: str | None = Field(default=None, exclude=True)
+    """The parameter name. Auto-filled from ``parameter`` when one is provided."""
+
     row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    """Read-only. The row ID of this parameter with respect to its interval row."""
+
     sequence: str | None = Field(default=None, alias="prgPrmRowId")
+    """Ordering key; needed because a Parameter Group can be repeated within a workflow. Not required when writing (PUT). See Also --------"""
 
     @model_validator(mode="after")
     def validate_shape(self) -> ParameterSetpoint:
@@ -211,29 +249,48 @@ class ParameterSetpoint(BaseAlbertModel):
 
 
 class ParameterGroupSetpoints(BaseAlbertModel):
-    """A class that represents the setpoints on a parameter group.
+    """All parameter setpoints belonging to one Data Template or Parameter Group.
 
+    A workflow is organized by group: each [`ParameterGroupSetpoints`][albert.resources.workflows.ParameterGroupSetpoints] names one
+    Data Template or Parameter Group (by ``id`` or by a full ``parameter_group`` object)
+    and carries the [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint] list for the parameters in it. A
+    [`Workflow`][albert.resources.workflows.Workflow] holds one of these per group. Both the order of setpoints within a
+    group and the order of groups within the workflow are part of what makes a workflow
+    unique, so preserve the order you intend.
 
-    Attributes
-    ----------
-    parameter_group : ParameterGroup
-        The parameter group to set the setpoints on. Provide either a parameter_group or a paramerter_group_id
-    parameter_group_id : ParameterGroupId
-        The id of the parameter group.  Provide either a parameter_group or a paramerter_group_id
-    parameter_group_name : str
-        The name of the parameter group. This is a read-only field.
-    parameter_setpoints : list[ParameterSetpoint]
-        The setpoints to apply to the parameter group.
-    """
+    !!! example
+        ```python
+        from albert.resources.workflows import (
+            ParameterGroupSetpoints,
+            ParameterSetpoint,
+        )
+
+        group = ParameterGroupSetpoints(
+            id="PRG9999999",
+            parameter_setpoints=[
+                ParameterSetpoint(parameter_id="PRM9999999", value="25", short_name="Temp"),
+            ],
+        )
+        ```"""
 
     parameter_group: ParameterGroup | None = Field(exclude=True, default=None)
+    """The parameter group to set setpoints on. Provide either ``parameter_group`` or ``id``. If both are given they must refer to the same group."""
+
     id: ParameterGroupId | DataTemplateId | None = Field(default=None, alias="id")
+    """The ID of the parameter group (``PRG...``) or Data Template (``DAT...``). Provide either ``id`` or ``parameter_group``. Auto-filled from ``parameter_group`` when one is provided."""
+
     parameter_group_name: str = Field(default="Pre-linked Parameters", alias="name", exclude=True)
+    """Read-only display name of the group (defaults to ``"Pre-linked Parameters"``)."""
+
     parameter_setpoints: list[ParameterSetpoint] = Field(default_factory=list, alias="Parameters")
+    """The setpoints to apply to this group's parameters."""
 
     # READ ONLY
     row_id: RowId | None = Field(default=None, alias="rowId", frozen=True, exclude=True)
+    """Read-only. The group's interval row ID."""
+
     sequence: int | None = Field(default=None, alias="prgSequence", frozen=True, exclude=True)
+    """Ordering key; needed because a Parameter Group can be repeated within a workflow. Not required when writing (PUT). See Also --------"""
 
     @model_validator(mode="after")
     def validate_identifiers(self):
@@ -253,36 +310,146 @@ class ParameterGroupSetpoints(BaseAlbertModel):
         return self
 
 
+_RULE_OPERATOR_MAP: dict[str, RuleOperator] = {
+    "=": RuleOperator.EQ,
+    "==": RuleOperator.EQ,
+    "eq": RuleOperator.EQ,
+    "!=": RuleOperator.NE,
+    "<>": RuleOperator.NE,
+    "ne": RuleOperator.NE,
+    "neq": RuleOperator.NE,
+    ">": RuleOperator.GT,
+    "gt": RuleOperator.GT,
+    ">=": RuleOperator.GTE,
+    "gte": RuleOperator.GTE,
+    "<": RuleOperator.LT,
+    "lt": RuleOperator.LT,
+    "<=": RuleOperator.LTE,
+    "lte": RuleOperator.LTE,
+}
+
+
 class Workflow(BaseResource):
-    """A Pydantic Class representing a workflow in Albert.
+    """A specific set of parameter setpoints: the independent variables of a test.
 
-    Workflows are combinations of Data Templates and Parameter groups and their associated setpoints.
+    A workflow (WFL) captures only the *independent variables* of a test, the parameters and
+    the setpoints (a value, plus a unit where applicable) they are fixed to. It is built from
+    one or more groupings of parameters, where each grouping is either a Data Template that
+    has pre-linked parameters or a Parameter Group. A single workflow can combine several
+    groupings, for example one Data Template's pre-linked parameters together with a couple of
+    Parameter Groups, each contributing its own parameter setpoints. Because a Data Template
+    can carry pre-linked parameters, it is used here exactly like a Parameter Group: purely to
+    describe a set of parameters and their setpoints.
 
-    Attributes
-    ----------
-    name : str
-        The name of the workflow.
-    parameter_group_setpoints : list[ParameterGroupSetpoints]
-        The setpoints to apply to the parameter groups in the workflow.
-    id : str | None
-        The AlbertID of the workflow. This is set when a workflow is retrived from the platform.
-    """
+    A workflow does NOT include a Data Template's Data Columns (also called Results). Those are
+    the *dependent variables*, and they are recorded only in Property Data
+    ([`TaskPropertyData`][albert.resources.property_data.TaskPropertyData]). In short: the Workflow holds
+    the independent variables; Property Data holds the dependent variables (the measured
+    results).
+
+    A workflow is uniquely identified by its full setpoint configuration: the value and
+    unit of every setpoint, the order of parameters within each Data Template / Parameter
+    Group, and the order of those groups within the workflow. For this reason workflows are
+    *found-or-created* rather than blindly created: build the object you want and pass it to
+    [`create`][albert.collections.workflows.WorkflowCollection.create], which returns the
+    existing match or makes a new one. IDs look like ``WFL...``.
+
+    Every tenant includes a built-in workflow ``WFL1`` ("No Parameter Group") with no
+    parameter groups or setpoints. Use it when a task or block does not involve parameter
+    groups; it does not need to be created via
+    [`create`][albert.collections.workflows.WorkflowCollection.create].
+
+    When parameters are intervalized, the workflow acts as a *parent* that carries
+    the resulting [`IntervalCombination`][albert.resources.workflows.IntervalCombination] entries. Each combination has an interval ID of
+    the form ``ROW1`` (one intervalized parameter) or ``ROW1XROW2X...`` (product of several). Use
+    [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id] to build the interval ID for a condition, then use it with the
+    property_data endpoints to read or write that condition's results.
+
+    To construct rules and combination overrides for Property tasks using parameter names
+    and values, use [`build_rule`][albert.resources.workflows.Workflow.build_rule] and
+    [`build_override`][albert.resources.workflows.Workflow.build_override].
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.workflows import (
+            Workflow,
+            ParameterGroupSetpoints,
+            ParameterSetpoint,
+        )
+
+        client = Albert()
+        # One workflow combining a Data Template's pre-linked parameters with two
+        # Parameter Groups. Each grouping is keyed by its DAT... or PRG... id.
+        workflow = Workflow(
+            name="Tensile test at 23C, 50% RH",
+            parameter_group_setpoints=[
+                # Pre-linked parameters on a Data Template (used just like a PRG here)
+                ParameterGroupSetpoints(
+                    id="DAT9999999",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM9999999", value="23", short_name="Temperature"),
+                        ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                    ],
+                ),
+                # A Parameter Group describing sample prep
+                ParameterGroupSetpoints(
+                    id="PRG9999999",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
+                    ],
+                ),
+                # A second Parameter Group (e.g. the mixing step)
+                ParameterGroupSetpoints(
+                    id="PRG2",
+                    parameter_setpoints=[
+                        ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                    ],
+                ),
+            ],
+        )
+        created = client.workflows.create(workflows=[workflow])
+        created[0].id
+        # 'WFL1'
+        ```"""
 
     name: str
+    """The name of the workflow."""
     # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
     parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
         alias="ParameterGroups", default_factory=list
     )
+    """The setpoints to apply, organized one entry per Data Template / Parameter Group. The order of these entries is part of the workflow's identity."""
+
     interval_combinations: list[IntervalCombination] | None = Field(
         default=None, alias="IntervalCombinations"
     )
+    """The realized conditions when parameters are intervalized. Populated by the platform; present when the workflow is retrieved, not something you set when building one."""
+
     id: str | None = Field(
         alias="albertId",
         default=None,
         validation_alias=AliasChoices("albertId", "existingAlbertId"),
         exclude=True,
     )
+    """The Albert ID of the workflow (``WFL...``). Set when a workflow is created or retrieved from the platform."""
+
     block_mapping: str | None = Field(default=None, alias="blockMapping")
+    """Caller-supplied correlation key on workflow bulk create, used to tie each created workflow to a block position (e.g. ``"0"``, ``"1"``). Also hydrated on read when a Workflow is returned in the context of a block."""
+
+    combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
+    """Number of child-workflow combinations on this workflow when it is a block's FINAL workflow. Always present (including ``0``) on flag-ON reads. The embedded ``combinations`` array is empty at 500 or more; use [`get_block_combinations`][albert.collections.tasks.TaskCollection.get_block_combinations] to list them."""
+
+    # GET /tasks/{id}/blocks/{blockId} spells this Combinations; POST /tasks/multi and
+    # GET /tasks/multi/{id} spell it Combination. Both keys are permanent. The field is
+    # read-only and excluded from serialization dumps. Prefer get_block_combinations when
+    # the count is 500 or more: the embedded array is then empty.
+    combinations: list[IntervalCombinationItem] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("Combinations", "Combination"),
+        exclude=True,
+    )
+    """Child-workflow combinations embedded on a block's FINAL workflow. Read-only; excluded from serialization. Empty at 500 or more combinations."""
 
     # post init fields
     _interval_parameters: list[IntervalParameter] = PrivateAttr(default_factory=list)
@@ -295,69 +462,106 @@ class Workflow(BaseResource):
         for parameter_group_setpoint in self.parameter_group_setpoints:
             for parameter_setpoint in parameter_group_setpoint.parameter_setpoints:
                 if parameter_setpoint.intervals is not None:
+                    param_name = parameter_setpoint.name or parameter_setpoint.short_name
                     for interval in parameter_setpoint.intervals:
                         self._interval_parameters.append(
                             IntervalParameter(
-                                interval_param_name=parameter_setpoint.name,
+                                interval_param_name=param_name,
                                 interval_id=interval.row_id,
                                 interval_value=interval.value,
                                 interval_unit=interval.unit.name if interval.unit else None,
+                                parameter_group_id=parameter_group_setpoint.id,
+                                parameter_id=parameter_setpoint.parameter_id,
+                                parameter_short_name=parameter_setpoint.short_name,
                             )
                         )
         return self
 
-    def get_interval_id(self, parameter_values: dict[str, Any]) -> str:
-        """Get the interval ID for a set of parameter values.
+    def _find_interval_parameter(
+        self, param_name: str, param_value: Any
+    ) -> tuple[int, IntervalParameter] | None:
+        """Find an interval parameter entry matching the given name and value."""
+        for idx, workflow_interval in enumerate(self._interval_parameters):
+            name_match = (
+                workflow_interval.interval_param_name
+                and workflow_interval.interval_param_name.lower() == param_name.lower()
+            ) or (
+                workflow_interval.parameter_short_name
+                and workflow_interval.parameter_short_name.lower() == param_name.lower()
+            )
+            if not name_match:
+                continue
 
-        This method matches parameter values to intervals defined in the workflow and constructs
-        a composite interval ID. For multiple parameters, the interval IDs are joined with 'X'.
+            val = workflow_interval.interval_value
+            val_match = False
+            if param_value == val or str(param_value) == str(val):
+                val_match = True
+            elif isinstance(val, dict):
+                if param_value in (val.get("id"), val.get("name")):
+                    val_match = True
+            elif hasattr(val, "id") and param_value == val.id:
+                val_match = True
+
+            if val_match:
+                return idx, workflow_interval
+        return None
+
+    def get_interval_id(self, parameter_values: dict[str, Any]) -> str:
+        """Build the composite interval ID for a set of parameter values.
+
+        Matches each given parameter name and value against the workflow's intervalized
+        parameters and assembles the corresponding interval ID. This is the ID you pass to
+        the property_data endpoints to read or write results for that specific condition.
+        For a single intervalized parameter the result is one row ID (``ROW1``); for two,
+        the row IDs are joined with ``X`` (``ROW1XROW2``). Matching on value is
+        case-insensitive to type: ``25`` and ``"25"`` both match an interval value of
+        ``"25"``.
+
+        !!! example
+            ```python
+            # Single intervalized parameter
+            workflow.get_interval_id({"Temperature": 25})
+            # 'ROW1'
+
+            # Two intervalized parameters (cartesian product)
+            workflow.get_interval_id({"Temperature": 25, "Time": 60})
+            # 'ROW1XROW2'
+
+            # A value that matches no interval raises AlbertException
+            workflow.get_interval_id({"Temperature": 999})
+            # AlbertException: No matching interval found for parameter 'Temperature' ...
+            ```
 
         Parameters
         ----------
         parameter_values : dict[str, Any]
-            Dictionary mapping parameter names to their values. Values can be numbers or strings
-            that match the interval values defined in the workflow.
+            Mapping of parameter names to their values. Values may be numbers or strings
+            and must match interval values defined on the workflow.
 
         Returns
         -------
         str
-            The composite interval ID string. For a single parameter this is just the interval ID.
-            For multiple parameters, interval IDs are joined with 'X' (e.g. "ROW1XROW2").
+            The composite interval ID. A single interval ID for one parameter, or several
+            joined with ``X`` for multiple (e.g. ``"ROW1XROW2"``).
 
         Raises
         ------
-        ValueError
+        AlbertException
             If any parameter value does not match a defined interval in the workflow.
 
-        Examples
+        See Also
         --------
-        >>> workflow = Workflow(...)
-        >>> # Single parameter
-        >>> workflow.get_interval_id({"Temperature": 25})
-        'ROW1'
-        >>> # Multiple parameters
-        >>> workflow.get_interval_id({"Temperature": 25, "Time": 60})
-        'ROW1XROW2'
-        >>> # Non-matching value raises error
-        >>> workflow.get_interval_id({"Temperature": 999})
-        AlbertException: No matching interval found for parameter 'Temperature' with value '999'
+        IntervalCombination : The conditions whose interval IDs this method reproduces.
         """
         interval_id = ""
         for param_name, param_value in parameter_values.items():
-            matching_interval = None
-            for workflow_interval in self._interval_parameters:
-                if workflow_interval.interval_param_name.lower() == param_name.lower() and (
-                    param_value == workflow_interval.interval_value
-                    or str(param_value) == workflow_interval.interval_value
-                ):
-                    matching_interval = workflow_interval
-                    break
-
-            if matching_interval is None:
+            matching_entry = self._find_interval_parameter(param_name, param_value)
+            if matching_entry is None:
                 raise AlbertException(
                     f"No matching interval found for parameter '{param_name}' with value '{param_value}'"
                 )
 
+            _, matching_interval = matching_entry
             interval_id += (
                 f"X{matching_interval.interval_id}"
                 if interval_id != ""
@@ -365,3 +569,606 @@ class Workflow(BaseResource):
             )
 
         return interval_id
+
+    @validate_call
+    def get_override_key(self, *, parameter_values: dict[str, Any]) -> str:
+        """Build the compound override key for a set of parameter values (🧪 Beta).
+
+        Matches each given parameter name and value against the workflow's intervalized
+        parameters and assembles the compound key in the format
+        ``"{groupId}#{paramId}#{intervalRowId}-..."``.
+
+        This key uniquely identifies an individual combination variant in the Cartesian product
+        space. It is used with [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
+        to skip or unskip specific combinations on a block when calling
+        [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or
+        creating a task via [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
+        Because overrides always take precedence over rules, this enables targeting individual
+        variants regardless of general rule evaluation.
+
+        The workflow instance must already be saved on the platform so that interval row IDs
+        are assigned. You can obtain a saved workflow from
+        [`client.workflows.get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id]
+        or from a fetched task block's workflow.
+
+        Matching on value is case-insensitive to type: ``25`` and ``"25"`` both match an
+        interval value of ``"25"``. Matching on parameter name checks both the parameter's
+        name and short name (case-insensitive). Segments are ordered in the canonical
+        order that the parameters appear in the workflow.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.interval_combinations import CombinationOverride, OverrideAction
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+            key = workflow.get_override_key(parameter_values={"Temperature": 25, "Speed": 500})
+            # 'PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9'
+
+            # Create an override to skip this specific combination:
+            override = CombinationOverride(key=key, action=OverrideAction.SKIP)
+            ```
+
+        Parameters
+        ----------
+        parameter_values : dict[str, Any]
+            Mapping of parameter names (or short names) to their target interval values.
+            Values may be numbers or strings and must match interval setpoint values
+            defined on the workflow.
+
+        Returns
+        -------
+        str
+            The compound override key (e.g. ``"PRG247776#PRM100#ROW4-PRG247776#PRM200#ROW9"``).
+
+        Raises
+        ------
+        AlbertException
+            If any parameter value does not match a defined interval in the workflow,
+            or if the workflow has not yet been assigned row IDs by the platform.
+        """
+        matched: list[tuple[int, IntervalParameter]] = []
+
+        for param_name, param_value in parameter_values.items():
+            matching_entry = self._find_interval_parameter(param_name, param_value)
+            if matching_entry is None:
+                raise AlbertException(
+                    f"No matching interval found for parameter '{param_name}' with value '{param_value}'"
+                )
+
+            _, item = matching_entry
+            if not item.interval_id:
+                raise AlbertException(
+                    "Workflow has not been assigned interval row IDs by the backend yet. "
+                    "Save the workflow first before building override keys."
+                )
+
+            matched.append(matching_entry)
+
+        # Canonical ordering: sort by position in workflow sequence
+        matched.sort(key=lambda x: x[0])
+        return "-".join(
+            f"{item.parameter_group_id}#{item.parameter_id}#{item.interval_id}"
+            for _, item in matched
+        )
+
+    @validate_call
+    def build_rule_condition(
+        self,
+        *,
+        parameter: str,
+        operator: RuleOperator | str,
+        value: str | float | int | None = None,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> RuleCondition:
+        """Build a rule condition from a parameter name, short name, or ID and value (🧪 Beta).
+
+        Resolves the parameter's group ID, parameter ID, row ID, and unit ID from
+        this workflow's defined setpoints, avoiding the need to manually lookup
+        internal IDs.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # Simple numeric condition:
+            cond = workflow.build_rule_condition(parameter="Temperature", operator=">=", value=90)
+            cond.parameter_group_id
+            # 'PRG247776'
+            cond.parameter_id
+            # 'PRM100'
+            cond.row_id
+            # 'ROW2'
+            ```
+
+        Parameters
+        ----------
+        parameter : str
+            The name, short name, or parameter ID (case-insensitive) of the parameter.
+        operator : RuleOperator or str
+            The comparison operator. Accepts [`RuleOperator`][albert.resources.interval_combinations.RuleOperator]
+            or string shorthand: ``"="``, ``"=="``, ``"!="``, ``">"``, ``">="``, ``"<"``, ``"<="``.
+        value : str, float, int, optional
+            The threshold value to compare against.
+        unit : str, Unit, optional
+            Optional unit constraint (unit name, symbol, ID, or Unit model). If omitted
+            and the parameter defines a unit, that unit ID is used automatically.
+        group : str, optional
+            Parameter group ID (e.g. ``"PRG..."``) or name to disambiguate if multiple
+            groups in the workflow contain a parameter with the same name.
+
+        Returns
+        -------
+        RuleCondition
+            The fully populated rule condition.
+
+        Raises
+        ------
+        AlbertException
+            If no parameter matches, if multiple parameters match and ``group`` is not
+            specified, or if the workflow has not yet been assigned row IDs.
+        ValueError
+            If an invalid operator string is provided.
+        """
+        # Parse operator
+        if isinstance(operator, RuleOperator):
+            parsed_op = operator
+        elif isinstance(operator, str) and operator.lower() in _RULE_OPERATOR_MAP:
+            parsed_op = _RULE_OPERATOR_MAP[operator.lower()]
+        else:
+            valid = list(_RULE_OPERATOR_MAP.keys())
+            raise ValueError(
+                f"Invalid rule operator {operator!r}. Allowed: {valid} or RuleOperator."
+            )
+
+        # Locate parameter in setpoints
+        matching: list[tuple[ParameterGroupSetpoints, ParameterSetpoint]] = []
+        for pg in self.parameter_group_setpoints or []:
+            if group is not None:
+                group_id_match = pg.id and pg.id.lower() == str(group).lower()
+                group_name_match = (
+                    pg.parameter_group_name
+                    and pg.parameter_group_name.lower() == str(group).lower()
+                )
+                if not (group_id_match or group_name_match):
+                    continue
+
+            for sp in pg.parameter_setpoints or []:
+                name_match = bool(sp.name and sp.name.lower() == parameter.lower())
+                short_name_match = bool(
+                    sp.short_name and sp.short_name.lower() == parameter.lower()
+                )
+                p_id_match = bool(sp.parameter_id and sp.parameter_id.lower() == parameter.lower())
+                if name_match or short_name_match or p_id_match:
+                    matching.append((pg, sp))
+
+        if not matching:
+            msg = f"No parameter matching '{parameter}' found in workflow setpoints"
+            if group:
+                msg += f" for group '{group}'"
+            raise AlbertException(msg + ".")
+
+        if len(matching) > 1:
+            groups_found = [pg.id for pg, _ in matching]
+            raise AlbertException(
+                f"Parameter '{parameter}' is ambiguous (found in multiple parameter groups: {groups_found}). "
+                "Please specify the 'group' argument."
+            )
+
+        matched_pg, matched_sp = matching[0]
+
+        row_id = matched_sp.row_id
+        if not row_id:
+            raise AlbertException(
+                "Workflow has not been assigned row IDs by the platform yet. "
+                "Save the workflow first before building rule conditions."
+            )
+
+        # Resolve unit_id
+        unit_id: str | None = None
+        if unit is not None:
+            if hasattr(unit, "id") and getattr(unit, "id", None):
+                unit_id = str(unit.id)
+            elif isinstance(unit, str):
+                if unit.startswith("UNI"):
+                    unit_id = unit
+                elif matched_sp.unit and (
+                    getattr(matched_sp.unit, "name", None) == unit
+                    or getattr(matched_sp.unit, "symbol", None) == unit
+                    or getattr(matched_sp.unit, "id", None) == unit
+                ):
+                    unit_id = getattr(matched_sp.unit, "id", None)
+                else:
+                    for iv in matched_sp.intervals or []:
+                        if iv.unit and (
+                            iv.unit.name == unit
+                            or getattr(iv.unit, "symbol", None) == unit
+                            or iv.unit.id == unit
+                        ):
+                            unit_id = iv.unit.id
+                            break
+                    if unit_id is None:
+                        unit_id = unit
+        elif matched_sp.unit and getattr(matched_sp.unit, "id", None):
+            unit_id = str(matched_sp.unit.id)
+        else:
+            interval_unit_ids = {
+                iv.unit.id
+                for iv in (matched_sp.intervals or [])
+                if iv.unit and getattr(iv.unit, "id", None)
+            }
+            if len(interval_unit_ids) == 1:
+                unit_id = interval_unit_ids.pop()
+
+        # Resolve value representation for Special parameters
+        value_resolved = value
+        if value is not None:
+            for iv in matched_sp.intervals or []:
+                if value == iv.value or str(value) == str(iv.value):
+                    break
+                if isinstance(iv.value, dict) and value in (
+                    iv.value.get("id"),
+                    iv.value.get("name"),
+                ):
+                    value_resolved = iv.value.get("id") or value
+                    break
+                if hasattr(iv.value, "id") and value == iv.value.id:
+                    value_resolved = iv.value.id
+                    break
+
+        return RuleCondition(
+            parameter_group_id=matched_pg.id,
+            parameter_id=matched_sp.parameter_id,
+            row_id=row_id,
+            operator=parsed_op,
+            value=value_resolved,
+            unit_id=unit_id,
+            name=matched_sp.name or matched_sp.short_name or parameter,
+        )
+
+    @validate_call
+    def build_rule(
+        self,
+        *,
+        name: str | None = None,
+        conditions: Sequence[RuleCondition | Condition | tuple[Any, ...]] | None = None,
+        parameter: str | None = None,
+        operator: RuleOperator | str | None = None,
+        value: str | float | int | None = None,
+        unit: str | Unit | None = None,
+        group: str | None = None,
+    ) -> ExclusionRule:
+        """Build a rule from conditions or parameter criteria (🧪 Beta).
+
+        Convenience builder that constructs a named [`ExclusionRule`][albert.resources.interval_combinations.ExclusionRule]
+        using human-readable parameter names and values rather than internal IDs.
+        Supports single-condition rules directly via keyword arguments, or compound
+        rules with multiple conditions.
+
+        How Rules Function:
+        - **Conditions**: A condition compares a parameter against a threshold using an
+          operator (``=``, ``!=``, ``>``, ``>=``, ``<``, ``<=``).
+        - **AND logic within a rule**: All conditions specified inside this rule must match
+          for the rule to trigger.
+        - **OR logic across rules**: On a task block, if *any* rule triggers, its outcome applies.
+        - **Starting Baseline (`intervals_start_from`)**:
+          - In Exclude Mode (``"all"``, default): The rule acts as an exclusion rule. Any
+            combination satisfying all conditions is pruned/excluded from the task block.
+          - In Include Mode (``"none"``): The rule acts as an inclusion rule. Combinations
+            satisfying all conditions are kept/included in the task block.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # 1. Single condition rule:
+            rule1 = workflow.build_rule(
+                name="Exclude cold temperatures",
+                conditions=[("Temperature", "<", 15)],
+            )
+
+            # 2. Multi-condition rule (AND logic):
+            rule2 = workflow.build_rule(
+                name="Crosslinking risk",
+                conditions=[
+                    ("Temperature", ">=", 90),
+                    ("Speed", ">=", 1500),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        name : str, optional
+            A descriptive label for the rule.
+        conditions : Sequence[RuleCondition, Condition, or tuple], optional
+            A sequence of [`RuleCondition`][albert.resources.interval_combinations.RuleCondition]
+            objects, [`Condition`][albert.resources.interval_combinations.Condition] named tuples,
+            or tuples of arguments (e.g. ``(parameter, operator, value)``) to be evaluated
+            together with AND logic.
+        parameter : str, optional
+            Parameter name, short name, or ID for a single-condition rule.
+        operator : RuleOperator or str, optional
+            Comparison operator for a single-condition rule.
+        value : str, float, int, optional
+            Threshold value for a single-condition rule.
+        unit : str, Unit, optional
+            Optional unit for a single-condition rule.
+        group : str, optional
+            Optional parameter group ID or name for disambiguation.
+
+        Returns
+        -------
+        ExclusionRule
+            The constructed rule containing the resolved conditions.
+
+        Raises
+        ------
+        ValueError
+            If neither ``conditions`` nor both ``parameter`` and ``operator`` are provided.
+        AlbertException
+            If any parameter cannot be resolved on the workflow.
+        """
+        parsed_conditions: list[RuleCondition] = []
+
+        if conditions is not None:
+            for c in conditions:
+                if isinstance(c, RuleCondition):
+                    parsed_conditions.append(c)
+                elif isinstance(c, Condition):
+                    parsed_conditions.append(
+                        self.build_rule_condition(
+                            parameter=c.parameter,
+                            operator=c.operator,
+                            value=c.value,
+                            unit=c.unit,
+                            group=c.group,
+                        )
+                    )
+                elif isinstance(c, tuple):
+                    if len(c) == 3:
+                        p, o, v = c
+                        parsed_conditions.append(
+                            self.build_rule_condition(parameter=p, operator=o, value=v)
+                        )
+                    elif len(c) == 4:
+                        p, o, v, u = c
+                        parsed_conditions.append(
+                            self.build_rule_condition(parameter=p, operator=o, value=v, unit=u)
+                        )
+                    elif len(c) == 5:
+                        p, o, v, u, g = c
+                        parsed_conditions.append(
+                            self.build_rule_condition(
+                                parameter=p, operator=o, value=v, unit=u, group=g
+                            )
+                        )
+                    else:
+                        raise ValueError(f"Condition tuple must have 3 to 5 elements, got: {c}")
+                else:
+                    raise TypeError(
+                        f"Expected RuleCondition, Condition, or tuple, got {type(c).__name__}"
+                    )
+        elif parameter is not None and operator is not None:
+            parsed_conditions.append(
+                self.build_rule_condition(
+                    parameter=parameter,
+                    operator=operator,
+                    value=value,
+                    unit=unit,
+                    group=group,
+                )
+            )
+        else:
+            raise ValueError("Provide either 'conditions' or both 'parameter' and 'operator'.")
+
+        return ExclusionRule(name=name, conditions=parsed_conditions)
+
+    @validate_call
+    def build_override(
+        self,
+        *,
+        parameter_values: dict[str, Any],
+        action: OverrideAction | str = OverrideAction.SKIP,
+        is_manual: bool | None = None,
+    ) -> CombinationOverride:
+        """Build a combination override from parameter values (🧪 Beta).
+
+        Constructs a [`CombinationOverride`][albert.resources.interval_combinations.CombinationOverride]
+        targeting a single specific combination variant by its exact parameter values,
+        resolving the compound key automatically via
+        [`get_override_key`][albert.resources.workflows.Workflow.get_override_key].
+
+        How Overrides Function:
+        - **Targeted Combinations**: Overrides target a single, specific combination in the
+          Cartesian product space (e.g. Temperature = 25 and Speed = 500).
+        - **Actions**:
+          - ``action="skip"``: Explicitly excludes the combination from the task.
+          - ``action="unskip"``: Explicitly keeps or forces the inclusion of the combination.
+        - **Override Precedence**: Overrides are evaluated first and always take precedence over
+          rules. For example, an ``"unskip"`` override guarantees a combination is retained even
+          if an exclusion rule would otherwise drop it.
+        - **Manual Cherry-Picking (`is_manual=True`)**: In Include Mode (``intervals_start_from="none"``),
+          setting ``is_manual=True`` designates a manually cherry-picked combination from an
+          otherwise empty baseline.
+
+        !!! warning "Beta Feature!"
+            Increased intervals combination support is currently in beta and behind a platform
+            feature flag. Please do not use in production or without explicit guidance from
+            Albert. You might otherwise have a bad experience. This feature currently falls
+            outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from albert import Albert
+
+            client = Albert()
+            workflow = client.workflows.get_by_id(id="WFL456")
+
+            # Skip a specific combination:
+            skip = workflow.build_override(
+                parameter_values={"Temperature": 25, "Speed": 500},
+                action="skip",
+            )
+
+            # Force-include a combination (in Include Mode):
+            unskip = workflow.build_override(
+                parameter_values={"Temperature": 25, "Speed": 500},
+                action="unskip",
+                is_manual=True,
+            )
+            ```
+
+        Parameters
+        ----------
+        parameter_values : dict[str, Any]
+            Mapping of parameter names (or short names) to their target interval values.
+        action : OverrideAction or str, default OverrideAction.SKIP
+            The action to apply (``"skip"`` or ``"unskip"``, or an
+            [`OverrideAction`][albert.resources.interval_combinations.OverrideAction]).
+        is_manual : bool, optional
+            Whether the override was manually added (used in Include Mode).
+
+        Returns
+        -------
+        CombinationOverride
+            The constructed combination override with the resolved compound key.
+
+        Raises
+        ------
+        AlbertException
+            If any parameter value does not match an interval defined on the workflow.
+        ValueError
+            If an invalid action string is provided.
+        """
+        key = self.get_override_key(parameter_values=parameter_values)
+        if isinstance(action, str):
+            try:
+                parsed_action = OverrideAction(action.lower())
+            except ValueError:
+                raise ValueError(
+                    f"Invalid override action '{action}'. Allowed: 'skip', 'unskip', or OverrideAction"
+                ) from None
+        else:
+            parsed_action = action
+
+        return CombinationOverride(key=key, action=parsed_action, is_manual=is_manual)
+
+
+class WorkflowParameterSet(BaseAlbertModel):
+    """One parameter constraint for workflow search filtering."""
+
+    parameter: str | None = None
+    """Parameter name for filtering. Optional inline range syntax: ``name``, ``name(value)``, ``name(>n)``, ``name(<n)``, or ``name(min-max)``."""
+
+    parameter_short_name: str | None = Field(default=None, alias="parameterShortName")
+    """The short name of the parameter."""
+
+    min: float | None = None
+    """Lower bound on the parameter value."""
+
+    max: float | None = None
+    """Upper bound on the parameter value."""
+
+    unit: str | None = None
+    """The unit name for the parameter value."""
+
+    unit_id: str | None = Field(default=None, alias="unitId")
+    """The unit ID (format ``UNI...``)."""
+
+    parameter_group: str | None = None
+    """The parameter group ID (format ``PRG...``)."""
+
+    parameter_group_name: str | None = Field(default=None, alias="parameterGroupName")
+    """The name of the parameter group."""
+
+    data_template_name: str | None = Field(default=None, alias="dataTemplateName")
+    """The name of the data template."""
+
+    category: ParameterCategory | None = None
+    """The category of the parameter: ``SPECIAL`` for an inventory item (Equipment, Consumable, Template), ``NORMAL`` for everything else."""
+
+
+class WorkflowSearchItemGroup(BaseAlbertModel):
+    """A lightweight data template or parameter group reference in a workflow search hit."""
+
+    id: str | None = None
+    """The Albert ID of the group. ``None`` when omitted from the search hit."""
+
+    name: str | None = None
+    """The display name of the group."""
+
+
+class WorkflowSearchItem(BaseAlbertModel, HydrationMixin[Workflow]):
+    """Lightweight workflow search hit.
+
+    Returned by [`search`][albert.collections.workflows.WorkflowCollection.search].
+    Call `hydrate()` to fetch the full
+    [`Workflow`][albert.resources.workflows.Workflow].
+    """
+
+    id: str = Field(alias="albertId", validation_alias=AliasChoices("albertId", "id"))
+    """The Albert ID of the workflow (format ``WFL...``)."""
+
+    name: str
+    """The name of the workflow."""
+
+    status: Status | None = None
+    """The lifecycle status of the workflow."""
+
+    created_by: str | None = Field(default=None, alias="createdBy")
+    """The ID of the user who created the workflow."""
+
+    created_by_name: str | None = Field(default=None, alias="createdByName")
+    """The display name of the user who created the workflow."""
+
+    created_at: str | None = Field(default=None, alias="createdAt")
+    """ISO 8601 timestamp of when the workflow was created."""
+
+    resource_class: SecurityClass | None = Field(default=None, alias="resourceClass")
+    """The security class of the workflow."""
+
+    data_template_ids: list[str] | None = Field(default=None, alias="dataTemplateIds")
+    """IDs of data templates linked to the workflow."""
+
+    parameter_group_ids: list[str] | None = Field(default=None, alias="parameterGroupIds")
+    """IDs of parameter groups linked to the workflow."""
+
+    parameter_ids: list[str] | None = Field(default=None, alias="parameterIds")
+    """IDs of parameters linked to the workflow."""
+
+    data_templates: list[WorkflowSearchItemGroup] | None = Field(
+        default=None, alias="dataTemplates"
+    )
+    """Data templates linked to the workflow."""
+
+    parameter_groups: list[WorkflowSearchItemGroup] | None = Field(
+        default=None, alias="parameterGroups"
+    )
+    """Parameter groups linked to the workflow."""

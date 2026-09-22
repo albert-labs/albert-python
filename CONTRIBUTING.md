@@ -91,41 +91,129 @@ This keeps commit history readable and enables changelog automation.
 
 ### Using Numpy-Style Docstrings
 
-All **public methods and classes** in this repository should follow the **Numpy-style docstring format**. This ensures consistency and compatibility with `mkdocstrings` for automated documentation generation.
+All **public methods and classes** in this repository should follow the **Numpy-style docstring format**. Docs are generated from these docstrings with `mkdocstrings`, so a few formatting rules matter for the site to render correctly. Getting them right up front avoids tedious repo-wide clean-up later.
 
 #### Example
 
 ```python
-class Cas:
-    """
-    Represents a CAS entity.
+class CasCollection(BaseCollection):
+    """Manage CAS entries in the Albert platform.
 
-    Attributes
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
+    Parameters
     ----------
-    number : str
-        The CAS number.
-    name : str, optional
-        The name of the CAS.
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Methods
+    -------
+    get_by_id(id) -> Cas
+        Get a single CAS by its ID.
+    create(cas) -> Cas
+        Create a new CAS.
     """
 
-    def from_string(cls, *, number: str) -> "Cas":
-        """
-        Creates a Cas object from a string.
+    def get_by_id(self, *, id: str) -> Cas:
+        """Get a single CAS by its ID.
+
+        !!! example
+            ```python
+            cas = client.cas.get_by_id(id="CAS1")
+            cas.number
+            # '7732-18-5'
+            ```
 
         Parameters
         ----------
-        number : str
-            The CAS number.
+        id : str
+            The CAS ID.
 
         Returns
         -------
         Cas
-            The Cas object created from the string.
+            The fully populated CAS. See [`Cas`][albert.resources.cas.Cas].
         """
-        return cls(number=number)
+        ...
 ```
 
-When contributing new classes or methods, ensure *all public members* have properly formatted Numpy-style docstrings.
+Ensure *all public members* have properly formatted Numpy-style docstrings.
+
+#### Cross-references: use autorefs, not Sphinx roles
+
+`mkdocstrings` does **not** understand Sphinx roles — `:class:`, `:meth:`, `:attr:` render as literal text on the docs site. Link with autorefs syntax instead:
+
+```text
+[`DisplayName`][fully.qualified.path]
+```
+
+- The display text is the short name in backticks; the target is the fully-qualified dotted path.
+- Fully qualify every target, even a sibling method in the same class, e.g.
+  `` [`get_all`][albert.collections.cas.CasCollection.get_all] ``.
+- The `autorefs` plugin (bundled with `mkdocstrings`) is enabled in `mkdocs.yml`. A target only resolves if that class/method is rendered on a docs page — if you reference something in an undocumented module, add a page for it (see [Adding New Classes](#adding-new-classes)) or don't link it.
+
+#### Examples: use `!!! example` admonitions, placed before `Parameters`
+
+Use `!!! example` admonitions -- they render as a styled purple box. Placement is critical:
+
+**Always place `!!! example` in the description block, before the first numpy section.** Every numpy section (`Parameters`, `Attributes`, `Methods`, `Returns`, `Notes`, `Raises`) renders its content as a table. Any markdown placed after the last entry of a section -- including admonitions -- is absorbed into that section and rendered as a stray table row.
+
+**Method docstrings** -- place before `Parameters`:
+
+```python
+def get_by_id(self, *, id: str) -> Cas:
+    """Get a single CAS by its ID.
+
+    !!! example
+        ```python
+        from albert import Albert
+
+        client = Albert()
+        cas = client.cas.get_by_id(id="CAS1")
+        cas.number
+        # '7732-18-5'
+        ```
+
+    Parameters
+    ----------
+    id : str
+        The CAS ID.
+
+    Returns
+    -------
+    Cas
+        The fully populated CAS. See [`Cas`][albert.resources.cas.Cas].
+    """
+```
+
+**Class docstrings** (collections and resources alike) -- place before `Parameters` or `Attributes`, whichever comes first. Do not place after `Methods` or `Attributes` -- those render as tables too.
+
+**Do not** wrap examples in `Examples\n--------` -- it adds a redundant "Examples:" label above the box.
+**Do not** use a bare ` ```python ` fence inside an `Examples` numpy section -- it loses the box styling entirely.
+
+- Instantiate the client zero-arg: `client = Albert()`. Show it once in the class-level example and reuse `client` afterward.
+- Async collections use `async with AsyncAlbert() as client:` and `await`.
+- Show returned values as `# comment` lines.
+
+#### Wording conventions
+
+Keep wording consistent across the SDK:
+
+- Imperative mood: **Get** (reads), **Create**, **Update**, **Delete**, **Search** — not `Retrieve`/`Fetch`/`Register`/`Gets`.
+- Class opener: `Manage <Entity> in the Albert platform.` (read-only collections use `Access <Entity> …`).
+- `__init__`: `Initialize a/an <CollectionClass>.`
+- Refer to identifiers as "by its ID"; use "fully populated" (not "fully hydrated").
+- Describe **what** from the caller's perspective — never internal details (diffing, patching, HTTP, "returned by the API").
+- No em dashes (`—`); use commas, colons, or parentheses.
+- Beta features use the `(🧪 Beta)` badge (with a space).
 
 ### Adding New Classes
 
@@ -141,6 +229,8 @@ To add coverage for a new microservice, you can add a page by doing the followin
     ```
 
  2. In `mkdocs.yml` add a link to the `nav` section (Alphabetically Sorted) following the existing pattern.
+
+> **Note:** a class is only a valid autorefs cross-reference target once it is rendered on a docs page, so add pages for modules you link to. A package directory must contain an `__init__.py` for `mkdocstrings` to collect it (implicit namespace packages are not collectable).
 
 ### Testing Documentation Locally
 

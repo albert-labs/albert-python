@@ -7,43 +7,85 @@ from albert.resources.report_templates import (
 
 
 class ReportTemplateCollection(BaseCollection):
-    """ReportTemplateCollection is a collection class for managing ReportTemplate entities in the Albert platform.
+    """Manage Report Templates in the Albert platform.
 
-    This collection provides methods to retrieve and list report templates.
-    Report templates define the structure and configuration for generating reports in Albert.
+    A Report Template defines a reusable report configuration: the report type it
+    is based on, its available filters, and its default column, chart, and
+    metadata state. Templates are the catalog of report types that can be run via
+    [`ReportCollection`][albert.collections.reports.ReportCollection]. Each template belongs
+    to a [`ReportTemplateCategory`][albert.resources.report_templates.ReportTemplateCategory]
+    (``analytics``, ``datascience``, or ``reports``).
 
+    This collection is read-only: it retrieves and lists existing templates.
 
+    This collection is accessed as ``client.report_templates``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.report_templates import ReportTemplateCategory
+
+        client = Albert()
+        templates = client.report_templates.get_all(
+            category=ReportTemplateCategory.ANALYTICS
+        )
+        for template in templates:
+            print(template.id, template.name)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for report template requests.
+
+    Methods
+    -------
+    get_by_id(id) -> ReportTemplate
+        Get a single report template by its ID.
+    get_all(category=None) -> list[ReportTemplate]
+        List all report templates, optionally filtered by category.
     """
 
     _api_version = "v3"
     _updatable_attributes = {}
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initialize the ReportTemplateCollection with the provided session.
+        """Initialize a ReportTemplateCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{ReportTemplateCollection._api_version}/reporttemplates"
 
     def get_by_id(self, *, id: str) -> ReportTemplate:
-        """
-        Retrieve a report template by its ID.
+        """Get a single report template by its ID.
+
+        !!! example
+            ```python
+            template = client.report_templates.get_by_id(id="...")
+            ```
 
         Parameters
         ----------
         id : str
-            The ID of the report template to retrieve.
+            The ID of the report template to retrieve. Fully qualified IDs
+            (``ALB#RET40``) are normalized to the bare form automatically.
 
         Returns
         -------
         ReportTemplate
-            The report template with the given ID.
+            The fully populated report template.
         """
+        # Fully qualified IDs (``ALB#RET40``) would truncate the URL path at ``#``.
+        id = id.rsplit("#", 1)[-1]
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
         return ReportTemplate(**response.json())
@@ -53,18 +95,27 @@ class ReportTemplateCollection(BaseCollection):
         *,
         category: ReportTemplateCategory | None = None,
     ) -> list[ReportTemplate]:
-        """
-        Retrieve all report templates with optional filtering.
+        """List all report templates, optionally filtered by category.
+
+        !!! example
+            ```python
+            from albert.resources.report_templates import ReportTemplateCategory
+
+            templates = client.report_templates.get_all(
+                category=ReportTemplateCategory.DATASCIENCE
+            )
+            ```
 
         Parameters
         ----------
         category : ReportTemplateCategory | None, optional
-            Filter by report template category, by default None
+            Restrict the results to a single template category. If omitted, all
+            categories are returned.
 
-        Yields
-        ------
-        ReportTemplate
-            Report template objects.
+        Returns
+        -------
+        list[ReportTemplate]
+            The matching report templates.
         """
         params = {}
         if category:

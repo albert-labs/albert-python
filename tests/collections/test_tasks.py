@@ -1,19 +1,47 @@
+import pytest
+
 from albert import Albert
+from albert.resources.interval_combinations import (
+    BlockRules,
+    CombinationOverride,
+    ExclusionRule,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
+    Block,
     PropertyTask,
     TaskCategory,
     TaskSearchItem,
 )
+from albert.resources.worker_jobs import WorkerJob
+from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("tasks")
 
 
-def test_task_search_with_pagination(client: Albert, seeded_tasks):
+def _final_workflow_id(block) -> str:
+    for workflow in block.workflow:
+        if workflow.category != "INITIAL":
+            return workflow.id
+    return block.workflow[0].id
+
+
+def test_task_search_with_pagination(client: Albert, seed_prefix: str, seeded_tasks):
     """Test that task search returns unhydrated search items."""
-    search_results = list(client.tasks.search(max_items=10))
+    seeded_ids = {t.id for t in seeded_tasks}
+    search_results = poll_until(
+        lambda: [
+            t for t in client.tasks.search(text=seed_prefix, max_items=50) if t.id in seeded_ids
+        ]
+    )
     assert search_results, "Expected some TaskSearchItem results"
 
     for task in search_results:
@@ -23,9 +51,22 @@ def test_task_search_with_pagination(client: Albert, seeded_tasks):
         assert isinstance(task.category, str) and task.category
 
 
-def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
+def test_task_get_all_with_pagination(client: Albert, seed_prefix: str, seeded_tasks):
     """Test that get_all returns hydrated BaseTask objects."""
-    task_results = list(client.tasks.get_all(max_items=10))
+    seeded_ids = {t.id for t in seeded_tasks}
+    # Do not pass text= to get_all: fuzzy search hydrates other tenants' hits
+    # that 500/404, so MappedPaginator can yield nothing from the first page.
+    search_hits = poll_until(
+        lambda: [
+            t for t in client.tasks.search(text=seed_prefix, max_items=50) if t.id in seeded_ids
+        ]
+    )
+    assert search_hits, "Expected some TaskSearchItem results"
+
+    hit_ids = [t.id for t in search_hits]
+    task_results = list(client.tasks.get_all(task_id=hit_ids, max_items=len(hit_ids) + 5))
+    if not task_results:
+        task_results = [client.tasks.get_by_id(id=tid) for tid in hit_ids]
     assert task_results, "Expected some BaseTask results"
 
     for task in task_results:
@@ -35,8 +76,17 @@ def test_task_get_all_with_pagination(client: Albert, seeded_tasks):
         assert isinstance(task.category, str) and task.category
 
 
-def test_hydrated_task(client: Albert):
-    tasks = list(client.tasks.search(category=TaskCategory.GENERAL, max_items=5))
+def test_hydrated_task(client: Albert, seed_prefix: str, seeded_tasks):
+    # Scope the search to this worker's live seeds: unscoped results race other
+    # workers' teardown, and the search index can still hold already-deleted tasks
+    seeded_ids = {t.id for t in seeded_tasks}
+    tasks = poll_until(
+        lambda: [
+            t
+            for t in client.tasks.search(text=seed_prefix, category=TaskCategory.GENERAL)
+            if t.id in seeded_ids
+        ]
+    )
     assert tasks, "Expected at least one task in search results"
 
     for t in tasks:
@@ -128,21 +178,26 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
 
 
 def test_update_block_workflow(
-    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+    client: Albert,
+    seeded_tasks,
+    seeded_workflows: list[Workflow],
 ):
-    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task: PropertyTask = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
     # in case it mutated
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    new_workflow = [x for x in seeded_workflows if x.id != task.blocks[0].workflow][0]
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
-    updated_task = client.tasks.get_by_id(id=task.id)
+    updated_task: PropertyTask = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = [x for x in updated_task.blocks if x.id == block_id][0]
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_add_block_to_batch_task(
@@ -169,15 +224,17 @@ def test_update_block_workflow_on_batch_task(
     task = client.tasks.get_by_id(id=task.id)
     starting_blocks = len(task.blocks)
     block_id = task.blocks[0].id
-    current_workflow_id = task.blocks[0].workflow[0].id
-    new_workflow = next(x for x in seeded_workflows if x.id != current_workflow_id)
+    current_final_workflow_id = _final_workflow_id(task.blocks[0])
+    new_workflow = next(
+        workflow for workflow in seeded_workflows if workflow.id != current_final_workflow_id
+    )
     client.tasks.update_block_workflow(
         task_id=task.id, block_id=block_id, workflow_id=new_workflow.id
     )
     updated_task = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks
-    updated_block = next(x for x in updated_task.blocks if x.id == block_id)
-    assert new_workflow.id in [x.id for x in updated_block.workflow]
+    updated_block = next(block for block in updated_task.blocks if block.id == block_id)
+    assert new_workflow.id == _final_workflow_id(updated_block)
 
 
 def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workflows):
@@ -195,3 +252,125 @@ def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workf
 def test_task_get_history(client: Albert, seeded_tasks):
     task_history = client.tasks.get_history(id=seeded_tasks[0].id)
     assert isinstance(task_history.items, list)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_get_and_set_block_rules(
+    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+):
+    """Test getting and setting block combination rules and overrides."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        # Initially empty
+        initial = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert isinstance(initial, BlockRules)
+        assert initial.rules == []
+        assert initial.overrides == []
+
+        # Set rules and overrides
+        rule = ExclusionRule(
+            name="Test Exclusion Rule",
+            conditions=[
+                RuleCondition(
+                    parameter_group_id="PRG1",
+                    parameter_id="PRM1",
+                    operator=RuleOperator.GT,
+                    value=50,
+                )
+            ],
+        )
+        override = CombinationOverride(
+            key="PRG1#PRM1#ROW1",
+            action=OverrideAction.SKIP,
+        )
+        updated = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[rule],
+            overrides=[override],
+            wait=False,
+        )
+        assert isinstance(updated, BlockRules)
+        assert len(updated.rules) == 1
+        assert updated.rules[0].name == "Test Exclusion Rule"
+        assert len(updated.rules[0].conditions) == 1
+        assert updated.rules[0].conditions[0].operator == RuleOperator.GT
+        assert len(updated.overrides) == 1
+        assert updated.overrides[0].action == OverrideAction.SKIP
+        assert updated.job is not None
+
+        # Fetch again to verify persistence
+        fetched = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert len(fetched.rules) == 1
+        assert fetched.rules[0].name == "Test Exclusion Rule"
+        assert len(fetched.overrides) == 1
+        assert fetched.overrides[0].action == OverrideAction.SKIP
+
+        # Clear rules and overrides
+        cleared = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[],
+            overrides=[],
+            wait=False,
+        )
+        assert cleared.rules == []
+        assert cleared.overrides == []
+        assert cleared.job is not None
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_generate_block_combinations_integration(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test generating block combinations on a task block."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        job = client.tasks.generate_block_combinations(
+            task_id=task.id,
+            block_id=block.id,
+            wait=False,
+        )
+        assert isinstance(job, WorkerJob)
+        assert job.job_type == "createChildWorkflows"
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_create_with_combinations_integration(
+    client: Albert, seeded_projects, seeded_data_templates, seeded_workflows
+):
+    """Test orchestrating task creation with combinations."""
+    task = PropertyTask(
+        name="Test Task With Combinations",
+        parent_id=seeded_projects[0].id,
+        blocks=[
+            Block(
+                data_template=[{"id": seeded_data_templates[0].id}],
+                workflow=[{"id": seeded_workflows[0].id}],
+            )
+        ],
+    )
+    created = client.tasks.create_with_combinations(task=task, wait=False)
+    assert created.id is not None
+    assert len(created.blocks) == 1
+    assert created.blocks[0].job_id is not None

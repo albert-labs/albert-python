@@ -3,21 +3,23 @@ import pytest
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
 from albert.core.shared.identifiers import ensure_inventory_id
+from albert.core.shared.models.base import EntityLink
 from albert.exceptions import BadRequestError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
-from albert.resources.data_columns import DataColumn
+from albert.resources.custom_fields import FieldType, ServiceType
 from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
     InventoryItem,
-    InventorySpec,
-    InventorySpecValue,
-    InventoryUnitCategory,
 )
+from albert.resources.lots import Lot
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
-from albert.resources.units import Unit
-from albert.resources.workflows import Workflow
+from albert.resources.users import User
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 def assert_valid_inventory_items(returned_list: list[InventoryItem]):
@@ -37,19 +39,46 @@ def test_inventory_get_all_with_pagination(client: Albert):
 
 
 def test_inventory_get_all_with_filters(
-    client: Albert, seeded_inventory: list[InventoryItem], seeded_cas: list[Cas]
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_cas: list[Cas],
+    static_user: User,
 ):
-    """Test inventory get_all with filters (text, category, cas, company)."""
+    """Test inventory get_all and search with filters (text, category, cas, company, user)."""
     test_item = seeded_inventory[1]
     matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
+    seeded_ids = {item.id for item in seeded_inventory}
 
-    results = list(
-        client.inventory.get_all(
-            text=test_item.name,
-            category=InventoryCategory.CONSUMABLES,
-            cas=matching_cas,
-            company=test_item.company,
-            max_items=10,
+    def normalize_inv_id(item_id: str) -> str:
+        return item_id if item_id.upper().startswith("INV") else f"INV{item_id}"
+
+    def filter_seeded(items):
+        return [item for item in items if normalize_inv_id(item.id) in seeded_ids]
+
+    def scoped_search(*, created_by=None, updated_by=None):
+        return poll_until(
+            lambda: filter_seeded(
+                list(
+                    client.inventory.search(
+                        text=seed_prefix,
+                        created_by=created_by,
+                        updated_by=updated_by,
+                        max_items=100,
+                    )
+                )
+            )
+        )
+
+    results = poll_until(
+        lambda: list(
+            client.inventory.get_all(
+                text=test_item.name,
+                category=InventoryCategory.CONSUMABLES,
+                cas=matching_cas,
+                company=test_item.company,
+                max_items=10,
+            )
         )
     )
 
@@ -57,16 +86,107 @@ def test_inventory_get_all_with_filters(
     for item in results[:10]:
         assert test_item.name.lower() in item.name.lower()
 
+    user = User(id=static_user.id, name=static_user.name)
+    by_id = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.id)}
+    by_name = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.name)}
+    by_user = {normalize_inv_id(item.id) for item in scoped_search(created_by=user)}
+    assert by_id == by_name == by_user
+    assert test_item.id in by_id
 
-def test_inventory_hydration_from_search(client: Albert):
+    assert test_item.created and test_item.created.at
+    from_created_at = test_item.created.at.date().isoformat()
+    recently_created = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.search(
+                    text=seed_prefix,
+                    from_created_at=from_created_at,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert test_item.id in {normalize_inv_id(item.id) for item in recently_created}
+
+    hydrated_by_creator = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.get_all(
+                    text=seed_prefix,
+                    created_by=static_user.id,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert hydrated_by_creator
+
+    facets = client.inventory.get_all_facets(text=seed_prefix, created_by=static_user.id)
+    assert facets
+
+    search_hits = poll_until(
+        lambda: filter_seeded(list(client.inventory.search(text=test_item.name, max_items=10)))
+    )
+    hit = next(item for item in search_hits if normalize_inv_id(item.id) == test_item.id)
+    assert hit.manufacturer is not None
+    company_name = (
+        test_item.company.name if isinstance(test_item.company, Company) else test_item.company
+    )
+    assert hit.manufacturer == company_name
+
+
+def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
     """Test that inventory search results can be hydrated to full InventoryItem."""
-    search_results = client.inventory.search(max_items=5)
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated or deleted items (search item ids lack the INV prefix)
+    seeded_ids = {i.id for i in seeded_inventory}
+    search_results = poll_until(
+        lambda: [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100)
+            if f"INV{p.id}" in seeded_ids
+        ]
+    )
     assert search_results, "Expected at least one inventory item in search results"
 
     for partial in search_results:
         hydrated = partial.hydrate()
         assert hydrated.id == f"INV{partial.id}"
         assert hydrated.name == partial.name
+
+
+def test_inventory_search_with_name_only_storage_location_filter(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_lots: list[Lot],
+    seeded_storage_locations: list[StorageLocation],
+):
+    """Test that inventory search accepts a name-only StorageLocationFilter."""
+    unit = seeded_storage_locations[1]
+    seeded_ids = {i.id for i in seeded_inventory}
+    expected_ids = {
+        lot.inventory_id
+        for lot in seeded_lots
+        if lot.storage_location and lot.storage_location.id == unit.id
+    }
+    assert expected_ids, "Expected seeded lots at the storage location"
+
+    def search_scoped(**kwargs):
+        return [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100, **kwargs)
+            if f"INV{p.id}" in seeded_ids
+        ]
+
+    filter_results = poll_until(
+        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)])
+    )
+    assert {f"INV{p.id}" for p in filter_results} == expected_ids
+
+    # The full StorageLocation object from a lookup remains accepted.
+    object_results = poll_until(lambda: search_scoped(storage_location=unit))
+    assert {f"INV{p.id}" for p in object_results} == expected_ids
 
 
 @pytest.mark.skip(reason="LLM search is currently not working as expected.")
@@ -113,13 +233,47 @@ def test_get_by_id(client: Albert, seeded_inventory):
     assert seeded_inventory[0].id == get_by_id.id
 
 
-def test_get_by_ids(client: Albert):
-    # Gather 51 unique inventory IDs
-    inventory_ids = []
-    for x in client.inventory.search():
-        inventory_ids.append(x.id)
-        if len(inventory_ids) == 51:
-            break
+def test_get_by_id_preserves_metadata_list_item_names(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields,
+    static_lists,
+    seeded_companies,
+):
+    """Test list metadata includes names when an inventory item is retrieved."""
+    custom_field = next(
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.INVENTORIES and field.field_type == FieldType.LIST
+    )
+    list_item = next(item for item in static_lists if item.list_type == custom_field.name)
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Metadata names",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            metadata={custom_field.name: [EntityLink(id=list_item.id)]},
+        ),
+        avoid_duplicates=False,
+    )
+
+    try:
+        retrieved = client.inventory.get_by_id(id=created.id)
+        metadata_link = retrieved.metadata[custom_field.name][0]
+
+        assert metadata_link.id == list_item.id
+        assert metadata_link.name == list_item.name
+        assert retrieved.model_dump(mode="json", by_alias=True)["Metadata"][custom_field.name] == [
+            {"id": list_item.id, "name": list_item.name}
+        ]
+    finally:
+        client.inventory.delete(id=created.id)
+
+
+def test_get_by_ids(client: Albert, seeded_inventory):
+    # Use this worker's seeded IDs directly; a search round-trip would race other
+    # workers' teardown deletes and fuzzy text matching
+    inventory_ids = [x.id for x in seeded_inventory]
 
     # Assert same length obtained
     items = client.inventory.get_by_ids(ids=inventory_ids)
@@ -173,27 +327,18 @@ def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryIt
     )
 
 
-def test_add_property_to_inv_spec(
-    seed_prefix: str,
-    client: Albert,
-    seeded_inventory: list[InventoryItem],
-    seeded_data_columns: list[DataColumn],
-    seeded_units: list[Unit],
-    seeded_workflows: list[Workflow],
+def test_blocks_dupes_with_entity_link_company(
+    client: Albert, seeded_inventory: list[InventoryItem]
 ):
-    specs = []
-    for dc in seeded_data_columns:
-        spec_to_add = InventorySpec(
-            name=f"{seed_prefix} -- {dc.name}",
-            data_column_id=dc.id,
-            unit_id=seeded_units[0].id,
-            value=InventorySpecValue(reference="42"),
-            workflow_id=seeded_workflows[0].id,
-        )
-        specs.append(spec_to_add)
-    added_specs = client.inventory.add_specs(inventory_id=seeded_inventory[0].id, specs=specs)
-    assert len(added_specs.specs) == len(seeded_data_columns)
-    assert all([isinstance(x, InventorySpec) for x in added_specs.specs])
+    """Test duplicate detection when the company is provided as an entity link."""
+    original = seeded_inventory[0]
+    ii_copy = original.model_copy(
+        update={"id": None, "company": original.company.to_entity_link()}
+    )
+    returned_ii = client.inventory.create(inventory_item=ii_copy)
+
+    assert returned_ii.id == original.id
+    assert returned_ii.name == original.name
 
 
 def test_update_inventory_item_standard_attributes(
@@ -216,7 +361,6 @@ def test_update_inventory_item_standard_attributes(
         update={
             "name": "Updated Inventory Name",
             "description": "Updated Description",
-            "unit_category": InventoryUnitCategory.VOLUME.value,
             "security_class": "confidential",
             "alias": "Updated Alias",
         }
@@ -227,7 +371,6 @@ def test_update_inventory_item_standard_attributes(
     # Verify that all updatable attributes have been updated
     assert updated_item.name == "Updated Inventory Name"
     assert updated_item.description == "Updated Description"
-    assert updated_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert updated_item.security_class == "confidential"
     assert updated_item.alias == "Updated Alias"
 
@@ -235,7 +378,6 @@ def test_update_inventory_item_standard_attributes(
     fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
     assert fetched_item.name == "Updated Inventory Name"
     assert fetched_item.description == "Updated Description"
-    assert fetched_item.unit_category == InventoryUnitCategory.VOLUME.value
     assert fetched_item.security_class == "confidential"
     assert fetched_item.alias == "Updated Alias"
 

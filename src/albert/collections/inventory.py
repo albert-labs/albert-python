@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterator
+from typing import Any
 
 from pydantic import TypeAdapter, validate_call
 from typing_extensions import deprecated
@@ -30,13 +31,88 @@ from albert.resources.inventory import (
     MergeInventory,
 )
 from albert.resources.locations import Location
-from albert.resources.storage_locations import StorageLocation
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
 
 
 class InventoryCollection(BaseCollection):
-    """InventoryCollection is a collection class for managing Inventory Item entities in the Albert platform."""
+    """Manage Inventory Items in the Albert platform.
+
+    An Inventory Item is a catalog entry for a physical or formulated material
+    tracked in Albert. Every item belongs to one of four categories:
+
+    - ``RawMaterials``: purchased substances used as ingredients (e.g. a solvent
+      or pigment), typically linked to a manufacturing Company and one or more
+      CAS numbers.
+    - ``Consumables``: supplies consumed during lab work (e.g. gloves, vials).
+    - ``Equipment``: instruments and apparatus.
+    - ``Formulas``: mixtures designed in Albert. Formulas are created through the
+      Worksheet collection ([`WorksheetCollection`][albert.collections.worksheets.WorksheetCollection]),
+      not here; [`create`][albert.collections.inventory.InventoryCollection.create] rejects Formula items.
+
+    Inventory Items are referenced throughout the platform by their Inventory ID
+    (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
+    Worksheets, Tasks, and Property Data all point back to.
+
+    This collection is accessed as ``client.inventory``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.inventory import InventoryCategory
+        client = Albert()
+        # Find raw materials mentioning "titanium dioxide"
+        items = client.inventory.get_all(
+            text="titanium dioxide",
+            category=InventoryCategory.RAW_MATERIALS,
+            max_items=25,
+        )
+        for item in items:
+            print(item.id, item.name)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for inventory requests.
+
+    Methods
+    -------
+    create(inventory_item, avoid_duplicates=True) -> InventoryItem
+        Create a new inventory item (raw material, consumable, or equipment).
+    get_by_id(id) -> InventoryItem
+        Get a single fully populated item by its ID.
+    get_by_ids(ids) -> list[InventoryItem]
+        Get many items by their IDs in batches.
+    search(...) -> Iterator[InventorySearchItem]
+        Fast, lightweight search returning partial items (best for lookups/counts).
+    get_all(...) -> Iterator[InventoryItem]
+        Same filters as search, but returns fully populated items (slower).
+    update(inventory_item) -> InventoryItem
+        Update an existing item.
+    delete(id) -> None
+        Delete an item by its ID.
+    merge(parent_id, child_id, modules=None) -> None
+        Merge duplicate item(s) into a single parent item.
+    exists(inventory_item) -> bool
+        Check whether an item with the same name and company already exists.
+    get_match_or_none(inventory_item) -> InventoryItem | None
+        Return the existing item matching name + company, or None.
+    add_specs(inventory_id, specs) -> InventorySpecList
+        Attach inventory reference specs to an item (deprecated; prefer client.attributes).
+    get_specs(ids) -> list[InventorySpecList]
+        Get inventory reference specs for items (deprecated; prefer client.attributes).
+    get_all_facets(...) -> list[FacetItem]
+        Get facet groups (aggregated filter counts) for a query.
+    get_facet_by_name(name, ...) -> list[FacetItem]
+        Get a single named facet group for a query.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {
@@ -50,13 +126,12 @@ class InventoryCollection(BaseCollection):
     }
 
     def __init__(self, *, session: AlbertSession):
-        """
-        InventoryCollection is a collection class for managing inventory items.
+        """Initialize an InventoryCollection.
 
         Parameters
         ----------
-        session : Albert
-            The Albert session instance.
+        session : AlbertSession
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
@@ -69,17 +144,26 @@ class InventoryCollection(BaseCollection):
         child_id: InventoryId | list[InventoryId],
         modules: list[InventoryMergeModule] | None = None,
     ) -> None:
-        """
-        Merge one or multiple child inventory into a parent inventory item.
+        """Merge one or more duplicate inventory items into a single parent item.
+
+        Use this to consolidate duplicates: the child item(s) are folded into the
+        parent, and their data (as selected by ``modules``) is carried over. The
+        child items are removed as standalone entries.
+
+        !!! example
+            ```python
+            client.inventory.merge(parent_id="INVA9999999", child_id=["INVA9999998", "INVA9999997"])
+            ```
 
         Parameters
         ----------
         parent_id : InventoryId
-            The ID of the parent inventory item.
-        child_id : InventoryId | list[InventoryId]
-            The ID(s) of the child inventory item(s).
+            The item to keep. All merged data ends up here.
+        child_id : InventoryId or list[InventoryId]
+            The duplicate item(s) to merge into the parent. At least one is required.
         modules : list[InventoryMergeModule], optional
-            The merge modules to include. Defaults to all modules.
+            Which categories of data to carry over from the children (e.g. pricing,
+            notes). Defaults to all modules.
 
         Returns
         -------
@@ -108,48 +192,81 @@ class InventoryCollection(BaseCollection):
         self.session.post(url, json=payload.model_dump(mode="json", by_alias=True))
 
     def exists(self, *, inventory_item: InventoryItem) -> bool:
-        """
-        Check if an inventory item exists.
+        """Check whether a matching inventory item already exists.
+
+        A match is determined by name and company, the same way [`create`][albert.collections.inventory.InventoryCollection.create]
+        detects duplicates. Useful before creating an item to avoid duplicates.
+
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            candidate = InventoryItem(
+                name="Acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            client.inventory.exists(inventory_item=candidate)
+            # True
+            ```
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to check.
+            The item to look for. Its ``name`` and ``company`` are used to match.
 
         Returns
         -------
         bool
-            True if the inventory item exists, False otherwise.
+            True if a matching item exists, False otherwise.
         """
         hit = self.get_match_or_none(inventory_item=inventory_item)
         return bool(hit)
 
     def get_match_or_none(self, *, inventory_item: InventoryItem) -> InventoryItem | None:
-        """
-        Get a matching inventory item by name and company, or return None if not found.
+        """Return the existing item matching name and company, or None.
+
+        Like [`exists`][albert.collections.inventory.InventoryCollection.exists], but returns the matched item itself so you can reuse
+        its ID instead of creating a duplicate.
+
+        !!! example
+            ```python
+            existing = client.inventory.get_match_or_none(inventory_item=candidate)
+            existing.id if existing else "no match"
+            # 'INVA9999999'
+            ```
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to match.
+            The item to match. Its ``name`` and ``company`` are used to match.
 
         Returns
         -------
         InventoryItem or None
-            The matching inventory item, or None if no match is found.
+            The matching item, or None if no match is found.
         """
-        inv_company = (
-            inventory_item.company.name
-            if isinstance(inventory_item.company, Company)
-            else inventory_item.company
-        )
+        company = inventory_item.company
+        company_id = company.id if company is not None else None
+        company_name = company.name if company is not None else None
 
         hits = self.get_all(
-            text=inventory_item.name, company=[inventory_item.company], max_items=100
+            text=inventory_item.name,
+            company=[company] if isinstance(company, Company) else None,
+            max_items=100,
         )
 
         for inv in hits:
-            if inv and inv.name == inventory_item.name and inv.company.name == inv_company:
+            if inv.name != inventory_item.name:
+                continue
+            inv_company = inv.company
+            # Prefer matching on company id; fall back to name when the id is
+            # unavailable (e.g. an unsaved Company passed without an id).
+            if company_id is not None:
+                matched = inv_company is not None and inv_company.id == company_id
+            else:
+                matched = (inv_company.name if inv_company else None) == company_name
+            if matched:
                 return inv
         return None
 
@@ -159,20 +276,51 @@ class InventoryCollection(BaseCollection):
         inventory_item: InventoryItem,
         avoid_duplicates: bool = True,
     ) -> InventoryItem:
-        """
-        Create a new inventory item.
+        """Create a new inventory item.
+
+        Use this to add a raw material, consumable, or equipment item to the
+        catalog. Formula items are not supported here; build those through the
+        Worksheet collection.
+
+        Any tags or company on the item that do not yet exist in Albert are
+        created automatically before the item is registered (see
+        [`CompanyCollection`][albert.collections.companies.CompanyCollection] and
+        [`TagCollection`][albert.collections.tags.TagCollection]).
+
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryItem, InventoryCategory
+            from albert.resources.companies import Company
+            item = InventoryItem(
+                name="Titanium Dioxide",
+                category=InventoryCategory.RAW_MATERIALS,
+                company=Company(name="Acme Chemicals"),
+            )
+            created = client.inventory.create(inventory_item=item)
+            created.id
+            # 'INVA9999999'
+            ```
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The inventory item to create.
+            The item to create. ``name`` and ``category`` are required. For raw
+            materials, set ``company`` to the manufacturing Company and ``cas`` to
+            the relevant CAS numbers.
         avoid_duplicates : bool, optional
-            Whether to avoid creating duplicate items (default is True).
+            When True (default), if an item with the same name and company already
+            exists, that existing item is returned instead of creating a duplicate.
+            Set to False to force creation.
 
         Returns
         -------
         InventoryItem
-            The created inventory item.
+            The newly created item, populated with its assigned Inventory ID.
+
+        Raises
+        ------
+        NotImplementedError
+            If ``inventory_item.category`` is ``Formulas``.
         """
         category = (
             inventory_item.category
@@ -212,18 +360,27 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: InventoryId) -> InventoryItem:
-        """
-        Retrieve an inventory item by its ID.
+        """Get a single, fully populated inventory item by its ID.
+
+        For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
+        without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
+
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA9999999")
+            item.name
+            # 'Titanium Dioxide'
+            ```
 
         Parameters
         ----------
         id : InventoryId
-            The ID of the inventory item.
+            The Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``).
 
         Returns
         -------
         InventoryItem
-            The retrieved inventory item.
+            The fully populated item.
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
@@ -231,18 +388,27 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
-        """
-        Retrieve a set of inventory items by their IDs.
+        """Get multiple fully populated inventory items by their IDs.
+
+        Requests are automatically split into batches, so arbitrarily long ID
+        lists are supported. Items not found are omitted from the result.
+
+        !!! example
+            ```python
+            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])
+            [i.name for i in items]
+            # ['Titanium Dioxide', 'Acetone']
+            ```
 
         Parameters
         ----------
         ids : list[InventoryId]
-            The list of IDs of the inventory items.
+            The Inventory IDs to retrieve (format ``INV...``).
 
         Returns
         -------
         list[InventoryItem]
-            The retrieved inventory items.
+            The matching items. Order is not guaranteed to match the input.
         """
         batch_size = 250
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
@@ -258,17 +424,37 @@ class InventoryCollection(BaseCollection):
     )
     @validate_call
     def get_specs(self, *, ids: list[InventoryId]) -> list[InventorySpecList]:
-        """Get the specs for a list of inventory items.
+        """Get the legacy inventory reference specs attached to inventory items.
+
+        Each [`InventorySpecList`][albert.resources.inventory.InventorySpecList]
+        holds that item's declared reference properties (definition and value
+        together). This is **not** Property Data: for measured task results or
+        custom property-data values, use
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection].
+        Requests are automatically batched.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids]
+            (``client.attributes``). Specs are removed in SDK 2.0. See the Specs →
+            Attributes migration guide.
+
+        !!! example
+            ```python
+            spec_lists = client.inventory.get_specs(ids=["INVA9999999"])
+            for spec in spec_lists[0].specs:
+                print(spec.name, spec.value.reference if spec.value else None)
+            ```
 
         Parameters
         ----------
         ids : list[InventoryId]
-            List of Inventory IDs to get the specs for.
+            The Inventory IDs to fetch specs for (format ``INV...``).
 
         Returns
         -------
         list[InventorySpecList]
-            A list of InventorySpecList entities, each containing the specs for an inventory item.
+            One entry per item, each holding that item's specs.
         """
         url = f"{self.base_path}/specs"
         batches = [ids[i : i + 250] for i in range(0, len(ids), 250)]
@@ -290,24 +476,55 @@ class InventoryCollection(BaseCollection):
         inventory_id: InventoryId,
         specs: InventorySpec | list[InventorySpec],
     ) -> InventorySpecList:
-        """Add inventory specs to the inventory item.
+        """Attach legacy inventory reference specs to an inventory item.
 
-        An `InventorySpec` is a property that was not directly measured via a task,
-        but is a generic property of that inventory item.
+        Each [`InventorySpec`][albert.resources.inventory.InventorySpec] both
+        defines a property (``name``, ``data_column_id``) and assigns its expected
+        [`InventorySpecValue`][albert.resources.inventory.InventorySpecValue] on
+        this item. Use Specs for inventory **reference** properties (e.g. a
+        supplier-stated density that worksheets look up). For experimentally
+        measured results, use Tasks and
+        [`PropertyDataCollection`][albert.collections.property_data.PropertyDataCollection]
+        instead. A spec may optionally name conditions via a workflow.
+
+        !!! warning "Deprecated"
+            Prefer
+            [`add_values`][albert.collections.attributes.AttributeCollection.add_values]
+            (``client.attributes``) after creating shared attribute definitions.
+            Specs are removed in SDK 2.0. See the Specs → Attributes migration guide.
+
+        !!! warning
+            This call replaces the item's complete spec set; it is not an
+            append. Always pass every spec the item should carry in one call: a
+            follow-up call with a subset can drop previously attached specs. A
+            ``500 Duplicate reference name`` error means spec rows with those
+            names already exist on the item (even when ``get_specs`` shows
+            none); do not blindly retry, call ``get_specs`` first and
+            reconcile. There is no Specs API to remove individual values.
+
+        !!! example
+            ```python
+            from albert.resources.inventory import InventorySpec, InventorySpecValue
+            spec = InventorySpec(
+                name="Density",
+                data_column_id="DAC9999999",
+                value=InventorySpecValue(min="1.1", max="1.3"),
+            )
+            client.inventory.add_specs(inventory_id="INVA9999999", specs=spec)
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The Albert ID of the inventory item to add the specs to
-        specs : list[InventorySpec]
-            List of InventorySpec entities to add to the inventory item,
-            which described the value and, optionally,
-            the conditions associated with the value (via workflow).
+            The item to attach the specs to (format ``INV...``).
+        specs : InventorySpec or list[InventorySpec]
+            The full set of reference specs the item should carry. Each embeds
+            the property definition and value (and optionally workflow conditions).
 
         Returns
         -------
         InventorySpecList
-            The list of InventorySpecs attached to the InventoryItem.
+            The full set of specs now attached to the item.
         """
         if isinstance(specs, InventorySpec):
             specs = [specs]
@@ -319,13 +536,20 @@ class InventoryCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: InventoryId) -> None:
-        """
-        Delete an inventory item by its ID.
+        """Delete an inventory item by its ID.
+
+        This permanently removes the item. To consolidate duplicates while
+        preserving data, use [`merge`][albert.collections.inventory.InventoryCollection.merge] instead.
+
+        !!! example
+            ```python
+            client.inventory.delete(id="INVA9999999")
+            ```
 
         Parameters
         ----------
         id : InventoryId
-            The ID of the inventory item.
+            The Inventory ID to delete (format ``INV...``).
 
         Returns
         -------
@@ -346,14 +570,53 @@ class InventoryCollection(BaseCollection):
         order: OrderBy | None = None,
         sort_by: str | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: SearchProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         offset: int | None = None,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
     ):
         if isinstance(cas, Cas):
             cas = [cas]
@@ -363,12 +626,29 @@ class InventoryCollection(BaseCollection):
             company = [company]
         if isinstance(lot_owner, User):
             lot_owner = [lot_owner]
-        if isinstance(created_by, User):
-            created_by = [created_by]
         if isinstance(location, Location):
             location = [location]
-        if isinstance(storage_location, StorageLocation):
+        if isinstance(storage_location, StorageLocation | StorageLocationFilter):
             storage_location = [storage_location]
+
+        def _resolve_user_values(
+            value: list[User] | User | str | list[str] | None,
+        ) -> list[str] | None:
+            if value is None:
+                return None
+            wire: list[str] = []
+            for item in ensure_list(value) or []:
+                if isinstance(item, str):
+                    if item:
+                        wire.append(item)
+                else:
+                    resolved = item.name or item.id
+                    if resolved:
+                        wire.append(resolved)
+            return wire or None
+
+        created_by_values = _resolve_user_values(created_by)
+        lot_created_by_values = _resolve_user_values(lot_created_by)
 
         params = {
             "text": text,
@@ -383,14 +663,120 @@ class InventoryCollection(BaseCollection):
                 [c.name for c in storage_location] if storage_location is not None else None
             ),
             "lotOwner": [c.name for c in lot_owner] if lot_owner is not None else None,
-            "createdBy": [c.name for c in created_by] if created_by is not None else None,
+            "createdBy": created_by_values,
             "sheetId": sheet_id,
             "projectId": project_id,
             "offset": offset,
             "fromCreatedAt": from_created_at if from_created_at is not None else None,
+            "toCreatedAt": to_created_at if to_created_at is not None else None,
+            "updatedBy": ensure_list(updated_by),
+            "fromUpdatedAt": from_updated_at if from_updated_at is not None else None,
+            "toUpdatedAt": to_updated_at if to_updated_at is not None else None,
+            "albertId": ensure_list(albert_id),
+            "attributeId": ensure_list(attribute_id),
+            "casSmile": ensure_list(cas_smile),
+            "collaboratorPopUp": collaborator_pop_up,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "createdById": ensure_list(created_by_id),
+            "details": details,
+            "dropDownText": drop_down_text,
+            "dropDownTextProp": drop_down_text_prop,
+            "dupDetection": dup_detection,
+            "facetField": facet_field,
+            "facetText": facet_text,
+            "fromExpirationDate": from_expiration_date,
+            "fromLotCreatedAt": from_lot_created_at,
+            "fromOnHand": from_on_hand,
+            "gsloGroup": ensure_list(gslo_group),
+            "idh": ensure_list(idh),
+            "isPopUp": is_pop_up,
+            "lotCreatedBy": lot_created_by_values,
+            "materialCategory": ensure_list(material_category),
+            "packSize": ensure_list(pack_size),
+            "pictogramName": ensure_list(pictogram_name),
+            "result": ensure_list(result),
+            "rsn": ensure_list(rsn),
+            "sourceField": ensure_list(source_field),
+            "status": ensure_list(status),
+            "subCategory": ensure_list(sub_category),
+            "synthesisProductCreated": ensure_list(synthesis_product_created),
+            "toExpirationDate": to_expiration_date,
+            "toLotCreatedAt": to_lot_created_at,
+            "toOnHand": to_on_hand,
         }
 
         return params
+
+    def _paginate_inventory_search(
+        self,
+        *,
+        deserialize,
+        query_params: dict[str, Any],
+        match_all_conditions: bool,
+        max_items: int | None,
+        metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
+    ) -> AlbertPaginator:
+        # TODO(SDK-90): always POST inventory search once POST SearchInventory accepts attributeId.
+        uses_post = any(
+            value is not None
+            for value in (
+                metadata_filters,
+                custom_fields,
+                additional_field,
+                project_facets,
+                composite_search,
+            )
+        )
+        if uses_post:
+            if match_all_conditions:
+                raise ValueError(
+                    "match_all_conditions cannot be used with POST-only search filters "
+                    "(metadata_filters, custom_fields, additional_field, project_facets, "
+                    "composite_search)."
+                )
+            if query_params.get("attributeId") is not None:
+                raise ValueError(
+                    "attribute_id cannot be used with POST-only search filters "
+                    "(metadata_filters, custom_fields, additional_field, project_facets, "
+                    "composite_search)."
+                )
+            payload: dict[str, Any] = dict(query_params)
+            if metadata_filters is not None:
+                payload["metadataFilters"] = {"metadata": metadata_filters}
+            if custom_fields is not None:
+                payload["customFields"] = {"metadata": custom_fields}
+            if additional_field is not None:
+                payload["additionalField"] = ensure_list(additional_field)
+            if project_facets is not None:
+                payload["projectFacets"] = project_facets
+            if composite_search is not None:
+                payload["compositeSearch"] = composite_search
+            return AlbertPaginator(
+                mode=PaginationMode.OFFSET,
+                path=f"{self.base_path}/search",
+                session=self.session,
+                max_items=max_items,
+                deserialize=deserialize,
+                method="POST",
+                json=payload,
+            )
+
+        path = (
+            f"{self.base_path}/llmsearch" if match_all_conditions else f"{self.base_path}/search"
+        )
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=path,
+            params=query_params,
+            session=self.session,
+            max_items=max_items,
+            deserialize=deserialize,
+        )
 
     @validate_call
     def get_all_facets(
@@ -401,48 +787,67 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
-        """
-        Get available facets for inventory items based on the provided filters.
+        """Get the facets available for an inventory search.
+
+        Facets are the grouped, counted filter options for a query, like the
+        refinement sidebar of a search UI (e.g. how many matching items fall under
+        each category, company, or tag). Use them to build progressive filtering
+        or to summarize a result set without fetching every item. To pull a single
+        named facet, use [`get_facet_by_name`][albert.collections.inventory.InventoryCollection.get_facet_by_name].
+
+        !!! example
+            ```python
+            facets = client.inventory.get_all_facets(text="titanium dioxide")
+            [f.name for f in facets]
+            # ['Category', 'Company', 'Tags', ...]
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
-        cas : list[Cas] | Cas | None, optional
-            Filter by CAS values.
-        category : list[InventoryCategory] | InventoryCategory | None, optional
-            Filter by inventory category.
-        company : list[Company] | Company | None, optional
-            Filter by company.
-        location : list[Location] | Location | None, optional
+            Free-text query matched against item name and related fields.
+        cas : Cas or list[Cas], optional
+            Filter by CAS number(s).
+        category : InventoryCategory or list[InventoryCategory], optional
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
+        company : Company or list[Company], optional
+            Filter by manufacturing Company.
+        location : Location or list[Location], optional
             Filter by location.
-        storage_location : list[StorageLocation] | StorageLocation | None, optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
-        project_id : ProjectId | None, optional
+        project_id : ProjectId, optional
             Filter by project.
-        sheet_id : WorksheetId | None, optional
+        sheet_id : WorksheetId, optional
             Filter by worksheet.
-        created_by : list[User] | User | None, optional
-            Filter by creator.
-        lot_owner : list[User] | User | None, optional
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
+        lot_owner : User or list[User], optional
             Filter by lot owner.
-        tags : list[str] | None, optional
-            Filter by tags.
+        tags : list[str], optional
+            Filter by tag name(s).
         match_all_conditions : bool, optional
-            If ``True``, only return results that satisfy all applied filters.
+            If True, only count items that satisfy every applied filter (AND logic).
+            Default False.
 
         Returns
         -------
         list[FacetItem]
-            Facet groups available for the provided query filters.
+            The facet groups available for the query.
         """
 
         params = self._prepare_parameters(
@@ -478,23 +883,35 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
     ) -> list[FacetItem]:
-        """
-        Returns a specific facet by its name with all the filters applied to the search.
-        This can be used for example to fetch all remaining tags as part of an iterative
-        refinement of a search.
+        """Return one or more named facets for an inventory search.
+
+        A convenience wrapper over [`get_all_facets`][albert.collections.inventory.InventoryCollection.get_all_facets] that keeps only the
+        facet group(s) you name. Useful for iterative search refinement, e.g.
+        fetching the remaining ``Tags`` facet after other filters are applied.
+
+        !!! example
+            ```python
+            tags = client.inventory.get_facet_by_name("Tags", text="acetone")
+            tags[0].name
+            # 'Tags'
+            ```
 
         Parameters
         ----------
-        name : str | list[str]
-            Facet name or names to return.
+        name : str or list[str]
+            The facet group name(s) to return (e.g. ``"Tags"``, ``"Company"``).
+            Matching is case-insensitive.
         text : str, optional
             Search text for full-text matching.
         cas : list[Cas] | Cas | None, optional
@@ -505,25 +922,28 @@ class InventoryCollection(BaseCollection):
             Filter by company.
         location : list[Location] | Location | None, optional
             Filter by location.
-        storage_location : list[StorageLocation] | StorageLocation | None, optional
+        storage_location : list[StorageLocation | StorageLocationFilter] | StorageLocation | StorageLocationFilter | None, optional
             Filter by storage location.
         project_id : ProjectId | None, optional
             Filter by project.
         sheet_id : WorksheetId | None, optional
             Filter by worksheet.
-        created_by : list[User] | User | None, optional
-            Filter by creator.
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : list[User] | User | None, optional
             Filter by lot owner.
         tags : list[str] | None, optional
             Filter by tags.
         match_all_conditions : bool, optional
-            If ``True``, only return results that satisfy all applied filters.
+            If True, only count items that satisfy every applied filter (AND logic).
+            Default False.
 
         Returns
         -------
         list[FacetItem]
-            Matching facet groups for the provided facet name filter.
+            The facet group(s) matching ``name``.
         """
         name = ensure_list(name) or []
 
@@ -557,10 +977,13 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -569,54 +992,204 @@ class InventoryCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
     ) -> Iterator[InventorySearchItem]:
-        """
-        Search for Inventory items matching the provided criteria.
+        """Search for inventory items matching the given filters.
 
-        ⚠️ This method returns partial (unhydrated) entities to optimize performance.
-        To retrieve fully detailed entities, use :meth:`get_all` instead.
+        Returns lightweight, partially populated results and is the fastest way to
+        look items up (best for name lookups, counts, or feeding IDs into another
+        call). Fields such as full CAS breakdowns and metadata are omitted; when
+        you need complete items, use [`get_all`][albert.collections.inventory.InventoryCollection.get_all] with the same filters, or pass
+        the resulting IDs to [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids].
+
+        Filters are combined with OR logic by default (an item matches if it
+        satisfies any filter); set ``match_all_conditions=True`` to require every
+        filter to match. Results are returned as a lazily paginated iterator, so
+        iterating fetches additional pages on demand.
+
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            hits = client.inventory.search(
+                text="acetone",
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=10,
+            )
+            first = next(iter(hits))
+            first.name
+            # 'Acetone'
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
+            Free-text query matched against item name, alias, and related fields.
+            Only the first 50 characters are used.
         cas : Cas or list[Cas], optional
-            Filter by CAS numbers.
+            Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
-            Filter by item category.
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
         company : Company or list[Company], optional
-            Filter by associated company.
+            Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
-            Filter by project ID (formulas).
+            Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
-            Filter by creator(s).
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
             Filter by tag name(s).
         match_all_conditions : bool, optional
-            Whether to match all filters (AND logic). Default is False.
+            Require every filter to match (AND logic). Default False (OR logic).
         order : OrderBy, optional
-            Sort order. Default is DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
-            Field to sort results by. Default is None.
+            Field to sort by. Default None (server default order).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Offset for pagination. Default is 0.
-        from_created_at: str | None
-            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+        from_created_at : str, optional
+            Only include items created on or after this date, formatted as
+            ``YYYY-MM-DD``.
+        to_created_at : str, optional
+            Only include items created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        albert_id : str or list[str], optional
+            Filter by Albert ID(s).
+        attribute_id : str or list[str], optional
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
+        cas_smile : str or list[str], optional
+            Filter by CAS SMILES string(s).
+        collaborator_pop_up : bool, optional
+            Apply collaborator popup search behavior.
+        contains_field : str or list[str], optional
+            Field(s) for contains-style filtering.
+        contains_text : str or list[str], optional
+            Text value(s) paired with ``contains_field``.
+        created_by_id : str or list[str], optional
+            Filter by creator UserId(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
+        drop_down_text : str, optional
+            Dropdown search text.
+        drop_down_text_prop : str, optional
+            Dropdown search property name.
+        dup_detection : bool, optional
+            Enable duplicate-detection text sanitization.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to match.
+        from_expiration_date : str, optional
+            Only include lots expiring on or after this date (``YYYY-MM-DD``).
+        from_lot_created_at : str, optional
+            Only include lots created on or after this date (``YYYY-MM-DD``).
+        from_on_hand : str, optional
+            Minimum on-hand quantity filter.
+        gslo_group : str or list[str], optional
+            Filter by GSLO group(s).
+        idh : str or list[str], optional
+            Filter by IDH value(s).
+        is_pop_up : bool, optional
+            Apply popup search behavior.
+        lot_created_by : User, list[User], str, or list[str], optional
+            Filter by lot creator. Accepts display name(s), UserId(s), or
+            [`User`][albert.resources.users.User] object(s).
+        material_category : str or list[str], optional
+            Filter by material category.
+        pack_size : str or list[str], optional
+            Filter by pack size.
+        pictogram_name : str or list[str], optional
+            Filter by pictogram name(s).
+        result : str or list[str], optional
+            Filter by result value(s).
+        rsn : str or list[str], optional
+            Filter by RSN value(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in search results.
+        status : str or list[str], optional
+            Filter by status value(s).
+        sub_category : str or list[str], optional
+            Filter by sub-category.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (``YYYY-MM-DD``).
+        to_lot_created_at : str, optional
+            Only include lots created on or before this date (``YYYY-MM-DD``).
+        to_on_hand : str, optional
+            Maximum on-hand quantity filter.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        project_facets : dict[str, Any], optional
+            Project facet filters.
+        composite_search : dict[str, Any], optional
+            Composite search specification.
 
         Returns
         -------
         Iterator[InventorySearchItem]
-            An iterator over partial (unhydrated) InventorySearchItem results.
+            A lazily paginated iterator of partially populated search results.
         """
 
         def deserialize(items: list[dict]):
@@ -640,17 +1213,54 @@ class InventoryCollection(BaseCollection):
             tags=tags,
             offset=offset,
             from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
+            albert_id=albert_id,
+            attribute_id=attribute_id,
+            cas_smile=cas_smile,
+            collaborator_pop_up=collaborator_pop_up,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            created_by_id=created_by_id,
+            details=details,
+            drop_down_text=drop_down_text,
+            drop_down_text_prop=drop_down_text_prop,
+            dup_detection=dup_detection,
+            facet_field=facet_field,
+            facet_text=facet_text,
+            from_expiration_date=from_expiration_date,
+            from_lot_created_at=from_lot_created_at,
+            from_on_hand=from_on_hand,
+            gslo_group=gslo_group,
+            idh=idh,
+            is_pop_up=is_pop_up,
+            lot_created_by=lot_created_by,
+            material_category=material_category,
+            pack_size=pack_size,
+            pictogram_name=pictogram_name,
+            result=result,
+            rsn=rsn,
+            source_field=source_field,
+            status=status,
+            sub_category=sub_category,
+            synthesis_product_created=synthesis_product_created,
+            to_expiration_date=to_expiration_date,
+            to_lot_created_at=to_lot_created_at,
+            to_on_hand=to_on_hand,
         )
 
-        return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
-            else f"{self.base_path}/search",
-            params=query_params,
-            session=self.session,
-            max_items=max_items,
+        return self._paginate_inventory_search(
             deserialize=deserialize,
+            query_params=query_params,
+            match_all_conditions=match_all_conditions,
+            max_items=max_items,
+            metadata_filters=metadata_filters,
+            custom_fields=custom_fields,
+            additional_field=additional_field,
+            project_facets=project_facets,
+            composite_search=composite_search,
         )
 
     @validate_call
@@ -662,10 +1272,13 @@ class InventoryCollection(BaseCollection):
         category: list[InventoryCategory] | InventoryCategory | None = None,
         company: list[Company] | Company | None = None,
         location: list[Location] | Location | None = None,
-        storage_location: list[StorageLocation] | StorageLocation | None = None,
+        storage_location: list[StorageLocation | StorageLocationFilter]
+        | StorageLocation
+        | StorageLocationFilter
+        | None = None,
         project_id: ProjectId | None = None,
         sheet_id: WorksheetId | None = None,
-        created_by: list[User] | User | None = None,
+        created_by: list[User] | User | str | list[str] | None = None,
         lot_owner: list[User] | User | None = None,
         tags: list[str] | None = None,
         match_all_conditions: bool = False,
@@ -674,54 +1287,199 @@ class InventoryCollection(BaseCollection):
         max_items: int | None = None,
         offset: int | None = 0,
         from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        updated_by: str | list[str] | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        albert_id: str | list[str] | None = None,
+        attribute_id: str | list[str] | None = None,
+        cas_smile: str | list[str] | None = None,
+        collaborator_pop_up: bool | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        created_by_id: str | list[str] | None = None,
+        details: bool | None = None,
+        drop_down_text: str | None = None,
+        drop_down_text_prop: str | None = None,
+        dup_detection: bool | None = None,
+        facet_field: str | None = None,
+        facet_text: str | None = None,
+        from_expiration_date: str | None = None,
+        from_lot_created_at: str | None = None,
+        from_on_hand: str | None = None,
+        gslo_group: str | list[str] | None = None,
+        idh: str | list[str] | None = None,
+        is_pop_up: bool | None = None,
+        lot_created_by: list[User] | User | str | list[str] | None = None,
+        material_category: str | list[str] | None = None,
+        pack_size: str | list[str] | None = None,
+        pictogram_name: str | list[str] | None = None,
+        result: str | list[str] | None = None,
+        rsn: str | list[str] | None = None,
+        source_field: str | list[str] | None = None,
+        status: str | list[str] | None = None,
+        sub_category: str | list[str] | None = None,
+        synthesis_product_created: str | list[str] | None = None,
+        to_expiration_date: str | None = None,
+        to_lot_created_at: str | None = None,
+        to_on_hand: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        additional_field: str | list[str] | None = None,
+        project_facets: dict[str, Any] | None = None,
+        composite_search: dict[str, Any] | None = None,
     ) -> Iterator[InventoryItem]:
-        """
-        Retrieve fully hydrated InventoryItem entities with optional filters.
+        """Get fully populated inventory items matching the given filters.
 
-        This method returns complete entity data using `get_by_ids`.
-        Use `search()` for faster retrieval when you only need lightweight, partial (unhydrated) entities.
+        Accepts the same filters as [`search`][albert.collections.inventory.InventoryCollection.search] but returns complete
+        ``InventoryItem`` entities rather than lightweight search results. This is
+        slower because it fetches full detail for every match, so prefer
+        [`search`][albert.collections.inventory.InventoryCollection.search] when you only need names, IDs, or counts.
+
+        Filters are combined with OR logic by default; set
+        ``match_all_conditions=True`` to require every filter to match. Results are
+        returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            from albert.resources.inventory import InventoryCategory
+            for item in client.inventory.get_all(
+                category=InventoryCategory.RAW_MATERIALS,
+                max_items=50,
+            ):
+                print(item.id, item.name)
+            ```
 
         Parameters
         ----------
         text : str, optional
-            Search text for full-text matching.
+            Free-text query matched against item name, alias, and related fields.
+            Only the first 50 characters are used.
         cas : Cas or list[Cas], optional
-            Filter by CAS numbers.
+            Filter by CAS number(s).
         category : InventoryCategory or list[InventoryCategory], optional
-            Filter by item category.
+            Filter by category: ``RawMaterials``, ``Consumables``, ``Equipment``,
+            or ``Formulas``.
         company : Company or list[Company], optional
-            Filter by associated company.
+            Filter by manufacturing Company.
         location : Location or list[Location], optional
             Filter by location.
-        storage_location : StorageLocation or list[StorageLocation], optional
+        storage_location : StorageLocation or StorageLocationFilter or list[StorageLocation | StorageLocationFilter], optional
             Filter by storage location.
         project_id : str, optional
-            Filter by project ID (formulas).
+            Filter by the project a formula belongs to (Formula items only).
         sheet_id : str, optional
             Filter by worksheet ID.
-        created_by : User or list[User], optional
-            Filter by creator(s).
+        created_by : User, list[User], str, or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``), or [`User`][albert.resources.users.User]
+            object(s).
         lot_owner : User or list[User], optional
             Filter by lot owner(s).
         tags : list[str], optional
             Filter by tag name(s).
         match_all_conditions : bool, optional
-            Whether to match all filters (AND logic). Default is False.
+            Require every filter to match (AND logic). Default False (OR logic).
         order : OrderBy, optional
-            Sort order. Default is DESCENDING.
+            Sort direction. Default ``OrderBy.DESCENDING``.
         sort_by : str, optional
-            Field to sort results by. Default is None.
+            Field to sort by. Default None (server default order).
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
-        offset : int, optional
-            Offset for pagination. Default is 0.
-        from_created_at: str | None
-            Date after which the inventory has been created including that date. Specify in %Y-%m-%d format, i.e., YYYY-MM-DD.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+        from_created_at : str, optional
+            Only include items created on or after this date, formatted as
+            ``YYYY-MM-DD``.
+        to_created_at : str, optional
+            Only include items created on or before this date, formatted as
+            ``YYYY-MM-DD``.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the item. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_updated_at : str, optional
+            Only include items updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include items updated on or before this date (ISO 8601).
+        metadata_filters : dict[str, Any], optional
+            Filter by custom field (metadata) values.
+        albert_id : str or list[str], optional
+            Filter by Albert ID(s).
+        attribute_id : str or list[str], optional
+            Filter by attribute ID(s). Cannot be combined with ``metadata_filters``, ``custom_fields``, ``additional_field``, ``project_facets``, or ``composite_search``.
+        cas_smile : str or list[str], optional
+            Filter by CAS SMILES string(s).
+        collaborator_pop_up : bool, optional
+            Apply collaborator popup search behavior.
+        contains_field : str or list[str], optional
+            Field(s) for contains-style filtering.
+        contains_text : str or list[str], optional
+            Text value(s) paired with ``contains_field``.
+        created_by_id : str or list[str], optional
+            Filter by creator UserId(s).
+        details : bool, optional
+            Invoke custom logic for the worksheet details view.
+        drop_down_text : str, optional
+            Dropdown search text.
+        drop_down_text_prop : str, optional
+            Dropdown search property name.
+        dup_detection : bool, optional
+            Enable duplicate-detection text sanitization.
+        facet_field : str, optional
+            Facet field to filter on.
+        facet_text : str, optional
+            Facet text to match.
+        from_expiration_date : str, optional
+            Only include lots expiring on or after this date (``YYYY-MM-DD``).
+        from_lot_created_at : str, optional
+            Only include lots created on or after this date (``YYYY-MM-DD``).
+        from_on_hand : str, optional
+            Minimum on-hand quantity filter.
+        gslo_group : str or list[str], optional
+            Filter by GSLO group(s).
+        idh : str or list[str], optional
+            Filter by IDH value(s).
+        is_pop_up : bool, optional
+            Apply popup search behavior.
+        lot_created_by : User, list[User], str, or list[str], optional
+            Filter by lot creator. Accepts display name(s), UserId(s), or
+            [`User`][albert.resources.users.User] object(s).
+        material_category : str or list[str], optional
+            Filter by material category.
+        pack_size : str or list[str], optional
+            Filter by pack size.
+        pictogram_name : str or list[str], optional
+            Filter by pictogram name(s).
+        result : str or list[str], optional
+            Filter by result value(s).
+        rsn : str or list[str], optional
+            Filter by RSN value(s).
+        source_field : str or list[str], optional
+            Restrict which fields are returned in search results.
+        status : str or list[str], optional
+            Filter by status value(s).
+        sub_category : str or list[str], optional
+            Filter by sub-category.
+        synthesis_product_created : str or list[str], optional
+            Filter by synthesis product creation value(s).
+        to_expiration_date : str, optional
+            Only include lots expiring on or before this date (``YYYY-MM-DD``).
+        to_lot_created_at : str, optional
+            Only include lots created on or before this date (``YYYY-MM-DD``).
+        to_on_hand : str, optional
+            Maximum on-hand quantity filter.
+        custom_fields : dict[str, Any], optional
+            Filter by custom field values.
+        additional_field : str or list[str], optional
+            Request additional columns from the search index.
+        project_facets : dict[str, Any], optional
+            Project facet filters.
+        composite_search : dict[str, Any], optional
+            Composite search specification.
 
         Returns
         -------
         Iterator[InventoryItem]
-            An iterator over fully hydrated InventoryItem entities.
+            A lazily paginated iterator of fully populated items.
         """
 
         def deserialize(items: list[dict]) -> list[InventoryItem]:
@@ -745,17 +1503,54 @@ class InventoryCollection(BaseCollection):
             tags=tags,
             offset=offset,
             from_created_at=from_created_at,
+            to_created_at=to_created_at,
+            updated_by=updated_by,
+            from_updated_at=from_updated_at,
+            to_updated_at=to_updated_at,
+            albert_id=albert_id,
+            attribute_id=attribute_id,
+            cas_smile=cas_smile,
+            collaborator_pop_up=collaborator_pop_up,
+            contains_field=contains_field,
+            contains_text=contains_text,
+            created_by_id=created_by_id,
+            details=details,
+            drop_down_text=drop_down_text,
+            drop_down_text_prop=drop_down_text_prop,
+            dup_detection=dup_detection,
+            facet_field=facet_field,
+            facet_text=facet_text,
+            from_expiration_date=from_expiration_date,
+            from_lot_created_at=from_lot_created_at,
+            from_on_hand=from_on_hand,
+            gslo_group=gslo_group,
+            idh=idh,
+            is_pop_up=is_pop_up,
+            lot_created_by=lot_created_by,
+            material_category=material_category,
+            pack_size=pack_size,
+            pictogram_name=pictogram_name,
+            result=result,
+            rsn=rsn,
+            source_field=source_field,
+            status=status,
+            sub_category=sub_category,
+            synthesis_product_created=synthesis_product_created,
+            to_expiration_date=to_expiration_date,
+            to_lot_created_at=to_lot_created_at,
+            to_on_hand=to_on_hand,
         )
 
-        return AlbertPaginator(
-            mode=PaginationMode.OFFSET,
-            path=f"{self.base_path}/llmsearch"
-            if match_all_conditions
-            else f"{self.base_path}/search",
-            params=query_params,
-            session=self.session,
-            max_items=max_items,
+        return self._paginate_inventory_search(
             deserialize=deserialize,
+            query_params=query_params,
+            match_all_conditions=match_all_conditions,
+            max_items=max_items,
+            metadata_filters=metadata_filters,
+            custom_fields=custom_fields,
+            additional_field=additional_field,
+            project_facets=project_facets,
+            composite_search=composite_search,
         )
 
     def _generate_inventory_patch_payload(
@@ -925,24 +1720,40 @@ class InventoryCollection(BaseCollection):
         return patch_data
 
     def update(self, *, inventory_item: InventoryItem) -> InventoryItem:
-        """
-        Update an inventory item.
+        """Update an existing inventory item.
+
+        Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields
+        on the returned object, then pass it here. Only the fields listed in Notes
+        are applied; changes to other fields are ignored.
+
+        !!! example
+            ```python
+            item = client.inventory.get_by_id(id="INVA9999999")
+            item.description = "Updated description"
+            updated = client.inventory.update(inventory_item=item)
+            updated.description
+            # 'Updated description'
+            ```
 
         Parameters
         ----------
         inventory_item : InventoryItem
-            The updated inventory item object.
+            The item to update. Must have a valid ``id``.
 
         Returns
         -------
         InventoryItem
-            The updated inventory item retrieved from the server.
+            The updated item.
 
         Notes
         -----
-        The following fields can be updated: ``alias``, ``description``, ``is_formula_override``, ``metadata``, ``name``, ``security_class``, ``unit_category``.
-        On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``, ``cas_category``, ``inventory_function``.
-        ``substance_id`` can be set when adding a new CAS entry; it is not patchable on existing entries.
+        The following fields can be updated: ``alias``, ``description``,
+        ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
+        ``unit_category``.
+        On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
+        ``cas_category``, ``inventory_function``.
+        ``substance_id`` can be set when adding a new CAS entry; it is not
+        patchable on existing entries.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=inventory_item.id)

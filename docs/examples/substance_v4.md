@@ -94,7 +94,7 @@ Use `update_metadata` to change specific fields on a tenant substance. Only the 
         metadata={
             "solubility": "10 mg/mL",
             "cmr_eu": EntityLink(id="LST1253"),
-            "old_field": None,          # deletes this custom field
+            "old_field": None,  # deletes this custom field
         },
     )
     ```

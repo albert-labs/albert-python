@@ -5,7 +5,50 @@ from albert.resources.notes import Note
 
 
 class NotesCollection(BaseCollection):
-    """NotesCollection is a collection class for managing Note entities in the Albert platform."""
+    """Manage Notes in the Albert platform.
+
+    A Note is a free-text comment attached to another entity (its "parent"),
+    such as a Task, Project, or Inventory Item. Notes are commonly used to record
+    observations, discussion, or context alongside an entity. Users can be
+    mentioned inside a note's text via [`to_note_mention`][albert.resources.users.User.to_note_mention],
+    and files can be attached to a note through the
+    [`AttachmentCollection`][albert.collections.attachments.AttachmentCollection].
+
+    This collection is accessed as ``client.notes``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        note = client.notes.create(
+            note=Note(parent_id="TASA1", note="Reviewed the results.")
+        )
+        print(note.id)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for note requests.
+
+    Methods
+    -------
+    create(note) -> Note
+        Create a new note attached to a parent entity.
+    get_by_id(id) -> Note
+        Get a single note by its ID.
+    update(note) -> Note
+        Update an existing note.
+    delete(id) -> None
+        Delete a note by its ID.
+    get_by_parent_id(parent_id, order_by=OrderBy.DESCENDING) -> list[Note]
+        List all notes attached to a given parent entity.
+    """
 
     _updatable_attributes = {"note", "parent_id"}
     _api_version = "v3"
@@ -15,18 +58,27 @@ class NotesCollection(BaseCollection):
         self.base_path = f"/api/{NotesCollection._api_version}/notes"
 
     def create(self, *, note: Note) -> Note:
-        """
-        Creates a new note.
+        """Create a new note.
+
+        !!! example
+            ```python
+            from albert.resources.notes import Note
+            note = client.notes.create(
+                note=Note(parent_id="TASA1", note="Kicked off the experiment.")
+            )
+            print(note.id)
+            ```
 
         Parameters
         ----------
-        note : str
-            The note content.
+        note : Note
+            The note to create. Requires ``parent_id`` (the entity the note is
+            attached to) and ``note`` (the text content).
 
         Returns
         -------
         Note
-            The created note.
+            The created note, populated with its assigned ID.
         """
         response = self.session.post(
             self.base_path, json=note.model_dump(by_alias=True, exclude_unset=True, mode="json")
@@ -34,8 +86,14 @@ class NotesCollection(BaseCollection):
         return Note(**response.json())
 
     def get_by_id(self, *, id: str) -> Note:
-        """
-        Retrieves a note by its ID.
+        """Get a note by its ID.
+
+        !!! example
+            ```python
+            note = client.notes.get_by_id(id="...")
+            note.note
+            # 'Reviewed the results.'
+            ```
 
         Parameters
         ----------
@@ -45,23 +103,33 @@ class NotesCollection(BaseCollection):
         Returns
         -------
         Note
-            The note if found, None otherwise.
+            The fully populated note.
         """
         response = self.session.get(f"{self.base_path}/{id}")
         return Note(**response.json())
 
     def update(self, *, note: Note) -> Note:
-        """Updates a note.
+        """Update a note.
+
+        Fetch a note (e.g. via [`get_by_id`][albert.collections.notes.NotesCollection.get_by_id]), modify its
+        fields, then pass it here. The note is matched by its ``id``.
+
+        !!! example
+            ```python
+            note = client.notes.get_by_id(id="...")
+            note.note = "Updated comment."
+            updated = client.notes.update(note=note)
+            ```
 
         Parameters
         ----------
         note : Note
-            The note to update. The note must have an ID.
+            The note with updated fields. Must include ``id``.
 
         Returns
         -------
         Note
-            The updated note as returned by the server.
+            The updated note, re-fetched from Albert.
 
         Notes
         -----
@@ -77,8 +145,12 @@ class NotesCollection(BaseCollection):
         return self.get_by_id(id=note.id)
 
     def delete(self, *, id: str) -> None:
-        """
-        Deletes a note by its ID.
+        """Delete a note by its ID.
+
+        !!! example
+            ```python
+            client.notes.delete(id="...")
+            ```
 
         Parameters
         ----------
@@ -97,20 +169,27 @@ class NotesCollection(BaseCollection):
         parent_id: str,
         order_by: OrderBy = OrderBy.DESCENDING,
     ) -> list[Note]:
-        """
-        Get all notes by their parent ID.
+        """List all notes attached to a parent entity.
+
+        !!! example
+            ```python
+            notes = client.notes.get_by_parent_id(parent_id="TASA1")
+            for note in notes:
+                print(note.note)
+            ```
 
         Parameters
         ----------
         parent_id : str
-            The parent ID of the notes to list.
+            The ID of the parent entity whose notes should be listed (e.g. a Task
+            ID such as ``"TASA1"``). Must include the full entity prefix.
         order_by : OrderBy, optional
-            The order to list notes in. Default is DESCENDING.
+            The order to return notes in. Defaults to ``OrderBy.DESCENDING``.
 
         Returns
         -------
         list[Note]
-            A list of Note entities.
+            The notes attached to the parent entity.
         """
         params = {
             "parentId": parent_id,

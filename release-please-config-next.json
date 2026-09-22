@@ -4,7 +4,7 @@
   "versioning-strategy": "prerelease",
   "prerelease-type": "beta",
   "include-component-in-tag": false,
-  "last-release-sha": "4bf2f50e4992da48b1391ec3356920a45bf62d9f",
+  "last-release-sha": "d6ed317786c545d2f07c75b0827c0492ab481f5d",
   "packages": {
     ".": {
       "version-file": "src/albert/__init__.py",

@@ -18,6 +18,7 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
+from albert.utils.data_template import ensure_data_column_validation
 
 
 def _parameter_unit_patches(
@@ -816,6 +817,7 @@ def create_data_columns_with_enums(
     pending: dict[str, list[EnumValidationValue]] = {}
     payloads: list[dict] = []
     for col in data_columns:
+        ensure_data_column_validation(col)
         d = col.model_dump(mode="json", by_alias=True, exclude_none=True)
         if (
             col.data_column_id is not None

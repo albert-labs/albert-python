@@ -14,6 +14,8 @@ from albert.resources.smart_datasets import (
 from albert.resources.targets import Target
 from tests.seeding import generate_smart_dataset_seed
 
+pytestmark = pytest.mark.xdist_group("datatemplates")
+
 ignore_in_ten0 = pytest.mark.xfail(
     reason="No DWH available in TEN0 test environment.",
     strict=False,
