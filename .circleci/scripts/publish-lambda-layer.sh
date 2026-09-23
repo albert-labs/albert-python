@@ -171,6 +171,36 @@ find_existing_layer_arn() {
   done
 }
 
+# Grants lambda:GetLayerVersion on one layer version to everyone, or to --account-id
+# when set. Permissions are per version. An existing statement counts as success.
+grant_layer_access() {
+  local region="$1" version="$2"
+  local principal='*' statement_id='public-access' err=""
+
+  if [[ -n "$ACCOUNT_ID" ]]; then
+    principal="$ACCOUNT_ID"
+    statement_id="allow-account-${ACCOUNT_ID}"
+  fi
+
+  if err="$(
+    aws lambda add-layer-version-permission \
+      --region "${region}" \
+      --layer-name "${LAYER_NAME}" \
+      --version-number "${version}" \
+      --statement-id "${statement_id}" \
+      --action lambda:GetLayerVersion \
+      --principal "${principal}" \
+      --output text 2>&1 >/dev/null
+  )"; then
+    echo "Granted lambda:GetLayerVersion on version ${version} to ${principal}."
+  elif [[ "${err}" == *ResourceConflictException* ]]; then
+    echo "Permission '${statement_id}' already present on version ${version}."
+  else
+    echo "Failed to grant access on ${LAYER_NAME}:${version} in ${region}: ${err}" >&2
+    return 1
+  fi
+}
+
 IFS=',' read -ra REGION_LIST <<<"${REGIONS}"
 
 if [[ -n "${MANIFEST_PATH}" ]]; then
@@ -211,24 +241,12 @@ for REGION in "${REGION_LIST[@]}"; do
       exit 1
     fi
 
-    if [[ "$MAKE_PUBLIC" == "1" ]]; then
-      PRINCIPAL='*'
-      STATEMENT_ID='public-access'
-      if [[ -n "$ACCOUNT_ID" ]]; then
-        PRINCIPAL="$ACCOUNT_ID"
-        STATEMENT_ID="allow-account-${ACCOUNT_ID}"
-      fi
-
-      aws lambda add-layer-version-permission \
-        --region "${REGION}" \
-        --layer-name "${LAYER_NAME}" \
-        --version-number "${LAYER_VERSION}" \
-        --statement-id "${STATEMENT_ID}" \
-        --action lambda:GetLayerVersion \
-        --principal "${PRINCIPAL}"
-    fi
-
     echo "Published layer version ${LAYER_VERSION}"
+  fi
+
+  # Runs for reused versions too, so a version left private by an earlier run is repaired.
+  if [[ "$MAKE_PUBLIC" == "1" ]]; then
+    grant_layer_access "${REGION}" "${LAYER_VERSION}"
   fi
 
   echo "Layer ARN: ${LAYER_ARN}"
