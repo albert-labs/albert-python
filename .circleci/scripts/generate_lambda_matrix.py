@@ -9,6 +9,7 @@ A final job, which requires every matrix job, merges those manifests into a
 Markdown table, stores it as an artifact, and records it in the GitHub release
 notes when the pipeline runs on a release tag.
 """
+
 import argparse
 import sys
 
@@ -144,16 +145,16 @@ def generate(
         "    default: false",
         "  lambda_runtimes:",
         "    type: string",
-        "    default: \"3.11,3.12,3.13,3.14\"",
+        '    default: "3.11,3.12,3.13,3.14"',
         "  lambda_archs:",
         "    type: string",
-        "    default: \"x86_64,arm64\"",
+        '    default: "x86_64,arm64"',
         "  lambda_regions:",
         "    type: string",
-        "    default: \"us-west-2\"",
+        '    default: "us-west-2"',
         "  lambda_account_id:",
         "    type: string",
-        "    default: \"\"",
+        '    default: ""',
         "",
         "orbs:",
         "  aws-cli: circleci/aws-cli@4.0",
@@ -211,14 +212,10 @@ def _render_job(job: dict, indent: int = 4) -> list[str]:
                 if isinstance(item, str):
                     lines.append(f"{pad}  - {item}")
                 elif isinstance(item, dict):
-                    first = True
-                    for k, v in item.items():
-                        if first:
-                            lines.append(f"{pad}  - {k}:")
-                            first = False
-                        else:
-                            lines.append(f"{pad}    {k}:")
+                    for i, (k, v) in enumerate(item.items()):
+                        lead = f"{pad}  - " if i == 0 else f"{pad}    "
                         if isinstance(v, dict):
+                            lines.append(f"{lead}{k}:")
                             for dk, dv in v.items():
                                 if isinstance(dv, list):
                                     lines.append(f"{pad}      {dk}:")
@@ -232,11 +229,11 @@ def _render_job(job: dict, indent: int = 4) -> list[str]:
                                     lines.append(f"{pad}      {dk}: {dv}")
                         elif isinstance(v, str):
                             if "\n" in v:
-                                lines.append(f"{pad}    {k}: |")
+                                lines.append(f"{lead}{k}: |")
                                 for vl in v.splitlines():
                                     lines.append(f"{pad}      {vl}")
                             else:
-                                lines.append(f"{pad}    {k}: {v}")
+                                lines.append(f"{lead}{k}: {v}")
         else:
             lines.append(f"{pad}{key}: {value}")
 
@@ -258,7 +255,9 @@ def main() -> None:
 
     invalid = [a for a in archs if a not in VALID_ARCHS]
     if invalid:
-        print(f"Invalid arch(es): {invalid}. Must be one of {sorted(VALID_ARCHS)}.", file=sys.stderr)
+        print(
+            f"Invalid arch(es): {invalid}. Must be one of {sorted(VALID_ARCHS)}.", file=sys.stderr
+        )
         sys.exit(1)
 
     if not runtimes:
@@ -275,7 +274,9 @@ def main() -> None:
     with open(args.output, "w") as f:
         f.write(config)
 
-    print(f"Generated continuation config with {len(runtimes) * len(archs)} job(s) -> {args.output}")
+    print(
+        f"Generated continuation config with {len(runtimes) * len(archs)} job(s) -> {args.output}"
+    )
     for r in runtimes:
         for a in archs:
             print(f"  {job_name(r, a)}")
