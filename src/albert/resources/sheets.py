@@ -1403,6 +1403,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             sheet=self,
         )
 
+    @validate_call
     def add_blank_rows(
         self,
         *,
@@ -2187,7 +2188,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         names: list[str],
-        type: str = "BLK",
+        type: Literal["BLK", "LKP", "FNC"] = "BLK",
         reference_id: str | None = None,
         position: ColumnPosition = ColumnPosition.RIGHT_OF,
     ) -> list[Column]:
@@ -2706,6 +2707,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
         self.grid = None
 
+    # NOTE: @validate_call cannot be used here because Column is defined after Sheet in this module, causing a NameError during Pydantic schema generation.
     def rename_columns(self, *, columns: list[Column]) -> None:
         """Rename multiple columns in a single call.
 
@@ -2768,8 +2770,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
 
+    @validate_call
     def delete_columns(self, *, column_ids: list[str]) -> None:
         """Delete multiple columns from this sheet in a single call.
+
+        Note: The platform only allows deleting blank (BLK) columns.
 
         !!! example
             ```python
@@ -2779,7 +2784,8 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Parameters
         ----------
         column_ids : list[str]
-            The IDs of the columns to delete.
+            The IDs of the columns to delete. Only blank (BLK) columns can be
+            deleted.
 
         Returns
         -------
@@ -2818,6 +2824,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
 
+    @validate_call
     def delete_rows(self, *, row_ids: list[str], design_id: str) -> None:
         """Delete multiple rows from a Design section of this sheet in a single call.
 
