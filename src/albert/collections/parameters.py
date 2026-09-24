@@ -127,8 +127,11 @@ class ParameterCollection(BaseCollection):
         Returns
         -------
         list[Parameter]
-            The parameters matching the provided IDs.
+            The parameters matching the provided IDs. Order is not guaranteed
+            to match input IDs, and unknown IDs are omitted.
         """
+        if not ids:
+            return []
         return list(self.get_all(ids=ids))
 
     def create(self, *, parameter: Parameter) -> Parameter:

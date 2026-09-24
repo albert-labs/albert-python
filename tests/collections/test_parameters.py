@@ -52,6 +52,11 @@ def test_get_by_ids(client: Albert, seeded_parameters: list[Parameter]):
     assert {x.id for x in results} == set(ids)
 
 
+def test_get_by_ids_empty(client: Albert):
+    """Test get_by_ids with empty IDs list returns empty list immediately."""
+    assert client.parameters.get_by_ids(ids=[]) == []
+
+
 def test_get_or_create_parameters(caplog, client: Albert, seeded_parameters: list[Parameter]):
     p = seeded_parameters[0].model_copy(update={"id": None})
     returned = client.parameters.get_or_create(parameter=p)
