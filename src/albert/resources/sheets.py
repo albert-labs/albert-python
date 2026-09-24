@@ -1897,18 +1897,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         !!! example
             ```python
-            column = sheet.get_column(column_name="Formulation A")
-            updated, failed = sheet.update_cells(
-                cells=[c.model_copy(update={"value": "12.5"}) for c in column.cells[:2]]
+            # Construct intent-only cells with only the attributes to write:
+            cell = Cell(
+                column_id="COL1",
+                row_id="ROW1",
+                design_id=sheet.product_design.id,
+                value="12.5",
             )
+            sheet.update_cells(cells=[cell])
             ```
 
         Parameters
         ----------
         cells : list[Cell]
-            The cells to update. Every field explicitly set on a cell (directly
-            or via ``model_copy(update=...)``) is written; to change one attribute
-            on grid cells, set only that attribute.
+            The cells to update. Every field explicitly set on a cell is written;
+            construct intent-only ``Cell`` instances with only the attributes to
+            change rather than copying cells from the grid.
 
         Returns
         -------
