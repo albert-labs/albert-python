@@ -47,6 +47,13 @@ def test_storage_location_get_all_with_filters(
     for sl in results_by_location:
         assert sl.location.id in seeded_location_ids
 
+    sample = results_by_location[0]
+    by_id = client.storage_locations.get_by_id(id=sample.id)
+    list_fields = {"id", "name", "location"}
+    assert sample.model_dump(mode="json", include=list_fields) == by_id.model_dump(
+        mode="json", include=list_fields
+    )
+
 
 def test_get_or_create_storage_location(
     caplog, client: Albert, seeded_storage_locations: list[StorageLocation]
