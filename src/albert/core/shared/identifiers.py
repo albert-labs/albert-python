@@ -1,4 +1,5 @@
 import re
+import uuid
 from typing import Annotated
 
 from pydantic import AfterValidator
@@ -38,6 +39,7 @@ _ALBERT_PREFIXES = {
     "TaskId": "TAS",
     "StorageLocationId": "STL",
     "UnitId": "UNI",
+    "UnitFamilyId": "UNF",
     "TeamId": "TEM",
     "UserId": "USR",
     "WorksheetId": "WKS",
@@ -62,6 +64,31 @@ def _validate_coded_id(id: str, id_type: str) -> str:
 def _is_valid_albert_prefix(id: str) -> bool:
     """Check if the id starts with a valid Albert prefix."""
     return any(id.upper().startswith(prefix) for prefix in _ALBERT_PREFIXES.values())
+
+
+def _is_uuid(id: str) -> bool:
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        return False
+    return True
+
+
+def _ensure_uuid_or_albert_id(id: str, id_type: str) -> str:
+    """Accept a UUID unchanged, otherwise apply the prefixed Albert ID rules.
+
+    v4 master-data IDs are either bare UUIDs or carry the legacy prefix in front of
+    a UUID (for example ``UNI<uuid>``). Only the prefix is normalized to upper case;
+    the remainder is preserved so UUID hex digits keep their case.
+    """
+    if not id:
+        raise ValueError(f"{id_type} cannot be empty")
+    if _is_uuid(id):
+        return id
+    prefix = _ALBERT_PREFIXES[id_type]
+    if id[: len(prefix)].upper() == prefix:
+        return prefix + id[len(prefix) :]
+    return _ensure_albert_id(id, id_type)
 
 
 def _ensure_albert_id(id: str, id_type: str) -> str:
@@ -388,6 +415,29 @@ def ensure_unit_id(id: str) -> str:
 
 
 UnitId = Annotated[str, AfterValidator(ensure_unit_id)]
+
+
+def ensure_unit_v4_id(id: str) -> str:
+    return _ensure_uuid_or_albert_id(id, "UnitId")
+
+
+UnitV4Id = Annotated[str, AfterValidator(ensure_unit_v4_id)]
+"""A v4 unit ID: a UUID, or a legacy ``UNI...`` ID (bare IDs are prefixed)."""
+
+
+def ensure_unit_family_id(id: str) -> str:
+    return _ensure_albert_id(id, "UnitFamilyId")
+
+
+UnitFamilyId = Annotated[str, AfterValidator(ensure_unit_family_id)]
+
+
+def ensure_unit_family_v4_id(id: str) -> str:
+    return _ensure_uuid_or_albert_id(id, "UnitFamilyId")
+
+
+UnitFamilyV4Id = Annotated[str, AfterValidator(ensure_unit_family_v4_id)]
+"""A v4 unit family ID: a UUID, or a legacy ``UNF...`` ID (bare IDs are prefixed)."""
 
 
 def ensure_workflow_id(id: str) -> str:
