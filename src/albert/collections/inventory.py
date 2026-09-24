@@ -393,8 +393,8 @@ class InventoryCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:
         """Get multiple fully populated inventory items by their IDs.
 
-        Requests are automatically split into batches, so arbitrarily long ID
-        lists are supported. Items not found are omitted from the result.
+        Arbitrarily long ID lists are supported. Items not found are omitted
+        from the result.
 
         !!! example
             ```python
@@ -413,7 +413,7 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The matching items. Order is not guaranteed to match the input.
         """
-        batch_size = 250
+        batch_size = 300
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
         inventory = []
         for batch in batches:
