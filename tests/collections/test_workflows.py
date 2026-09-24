@@ -41,6 +41,14 @@ def test_create_returns_populated_workflow(client: Albert, seeded_workflows: lis
     assert matched.parameter_group_setpoints
 
 
+def test_create_fallback_for_nameless_matched_workflow(client: Albert):
+    """Test create falls back to get_by_id for matched workflows without parameter groups."""
+    [wf] = client.workflows.create(workflows=[Workflow(name="anything")])
+    assert wf.id == "WFL1"
+    assert wf.name is None or isinstance(wf.name, str)
+    assert wf.parameter_group_setpoints == []
+
+
 def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
     """Test search returns WorkflowSearchItem results with WFL ids."""
     results = list(client.workflows.search(max_items=10))
