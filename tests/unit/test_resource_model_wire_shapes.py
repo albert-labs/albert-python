@@ -4,6 +4,7 @@ Pure model validation: no client, no session, no network.
 """
 
 from albert.resources.data_columns import DataColumn
+from albert.resources.un_numbers import UnNumber
 
 
 def test_data_column_default_reads_wire_key() -> None:
@@ -18,3 +19,14 @@ def test_data_column_default_serializes_as_default() -> None:
     dumped = column.model_dump(by_alias=True, exclude_unset=True, mode="json")
     assert dumped["default"] is True
     assert "defalt" not in dumped
+
+
+def test_un_number_accepts_sparse_record() -> None:
+    """Test sparse UN Number records validate with the fields the API omits left unset."""
+    sparse = UnNumber.model_validate(
+        {"unNumber": "UN1090", "albertId": "UNN1", "storageClassNumber": "3"}
+    )
+    assert sparse.un_number == "UN1090"
+    assert sparse.storage_class_name is None
+    assert sparse.shipping_description is None
+    assert sparse.un_classification is None
