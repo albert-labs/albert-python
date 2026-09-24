@@ -10,6 +10,7 @@ import re
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -763,15 +764,15 @@ def generate_data_patch_payload(*, trial: Trial) -> list[PropertyDataPatchDatum]
     return patch_data
 
 
-def _setpoint_display_value(value: str | dict | EntityLink | None) -> str | None:
+def _setpoint_display_value(value: Any) -> str | None:
     """Reduce a setpoint or interval value to a plain string for tabular output."""
     if value is None:
         return None
-    if isinstance(value, str):
-        return value
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
     if isinstance(value, dict):
-        return value.get("name") or value.get("id")
-    return getattr(value, "name", None) or getattr(value, "id", None)
+        return str(value.get("name") or value.get("id") or value)
+    return getattr(value, "name", None) or getattr(value, "id", None) or str(value)
 
 
 def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, str]]:
@@ -879,6 +880,9 @@ def flatten_task_property_data(
             for column in trial.data_columns:
                 property_data = column.property_data
                 unit = column.unit
+                unit_name = (
+                    unit.get("name") if isinstance(unit, dict) else getattr(unit, "name", None)
+                )
                 records.append(
                     TaskPropertyRecord(
                         task_id=task_id,
@@ -901,7 +905,7 @@ def flatten_task_property_data(
                         if column.value is not None
                         else getattr(property_data, "value", None),
                         numeric_value=column.numeric_value,
-                        unit_name=getattr(unit, "name", None),
+                        unit_name=unit_name,
                         calculation=column.calculation,
                         workflow_id=workflow_id,
                         workflow_name=workflow_name,

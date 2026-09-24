@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
@@ -229,7 +229,10 @@ class TaskData(BaseAlbertModel):
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
-    final_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
+    final_workflow: SerializeAsEntityLink[Workflow] = Field(
+        validation_alias=AliasChoices("FinalWorkflow", "final_workflow", "finial_workflow"),
+        serialization_alias="FinalWorkflow",
+    )
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Carries the interval combinations for the block in its ``combinations`` field, but not the parameter setpoints; use [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] for those."""
 
     @property
@@ -243,6 +246,10 @@ class TaskData(BaseAlbertModel):
             stacklevel=2,
         )
         return self.final_workflow
+
+    @finial_workflow.setter
+    def finial_workflow(self, value: SerializeAsEntityLink[Workflow]) -> None:
+        self.final_workflow = value
 
     data_template: SerializeAsEntityLink[DataTemplate] = Field(alias="Datatemplate")
     """The data template whose columns were measured (format ``DAT...``). Serialized as ``Datatemplate``."""
@@ -366,7 +373,9 @@ class TaskPropertyData(BaseResource):
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
     final_workflow: SerializeAsEntityLink[Workflow] | None = Field(
-        default=None, alias="FinalWorkflow"
+        default=None,
+        validation_alias=AliasChoices("FinalWorkflow", "final_workflow", "finial_workflow"),
+        serialization_alias="FinalWorkflow",
     )
     """The workflow at task completion. Serialized as ``FinalWorkflow``. Commonly ``None`` here: the task-scoped read does not return the workflows. Read them from the task's block, or use [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records] to get the setpoints already resolved."""
 
@@ -381,6 +390,10 @@ class TaskPropertyData(BaseResource):
             stacklevel=2,
         )
         return self.final_workflow
+
+    @finial_workflow.setter
+    def finial_workflow(self, value: SerializeAsEntityLink[Workflow] | None) -> None:
+        self.final_workflow = value
 
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
         default=None, alias="DataTemplate"

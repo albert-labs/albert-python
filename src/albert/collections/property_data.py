@@ -641,9 +641,14 @@ class PropertyDataCollection(BaseCollection):
                 interval_map = setpoint_cache[workflow_id]
                 workflow_name = getattr(workflow_cache.get(workflow_id), "name", workflow_name)
 
-            descriptions = {
-                c.id: c.name for c in (getattr(workflow_link, "combinations", None) or []) if c.id
-            }
+            descriptions: dict[str, str] = {}
+            for c in getattr(workflow_link, "combinations", None) or []:
+                if not c.name:
+                    continue
+                if c.interval_row_key:
+                    descriptions[c.interval_row_key] = c.name
+                if c.id:
+                    descriptions[c.id] = c.name
 
             records.extend(
                 property_data_utils.flatten_task_property_data(
