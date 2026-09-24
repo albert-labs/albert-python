@@ -156,6 +156,8 @@ class StorageLocationsCollection(BaseCollection):
             id = item.get("albertId")
             if not id:
                 return None
+            if "Location" in item:
+                return StorageLocation(**item)
             try:
                 return self.get_by_id(id=id)
             except AlbertHTTPError as e:
