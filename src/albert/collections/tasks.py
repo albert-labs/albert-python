@@ -153,6 +153,8 @@ class TaskCollection(BaseCollection):
     -------
     create(task) -> BaseTask
         Create a PropertyTask, BatchTask, or GeneralTask.
+    create_many(tasks) -> list[BaseTask]
+        Create multiple tasks in a single call.
     create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
         Create a Property task and orchestrate combination generation across all its blocks.
     get_by_id(id) -> BaseTask
@@ -244,6 +246,64 @@ class TaskCollection(BaseCollection):
         response = self.session.post(url=url, json=payload)
         task_data = response.json()[0]
         return TaskAdapter.validate_python(task_data)
+
+    @validate_call
+    def create_many(
+        self, *, tasks: list[PropertyTask | GeneralTask | BatchTask]
+    ) -> list[BaseTask]:
+        """Create multiple tasks in a single call.
+
+        All tasks must share the same category (mixing task types is not
+        supported) and, when set, the same ``parent_id``.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import GeneralTask
+
+            location = next(client.locations.get_all(max_items=1))
+            tasks = client.tasks.create_many(
+                tasks=[
+                    GeneralTask(name="Calibrate balance", location=location),
+                    GeneralTask(name="Clean hood", location=location),
+                ]
+            )
+            [t.id for t in tasks]
+            # ['TASGEN1', 'TASGEN2']
+            ```
+
+        Parameters
+        ----------
+        tasks : list[PropertyTask or GeneralTask or BatchTask]
+            The tasks to create. Must be non-empty and share one category and
+            one ``parent_id``. For General tasks, ``location`` is required.
+
+        Returns
+        -------
+        list[BaseTask]
+            The created tasks, in request order, populated with their assigned
+            Task IDs.
+
+        Raises
+        ------
+        AlbertException
+            If ``tasks`` is empty or if items have conflicting categories or
+            parent IDs.
+        """
+        if not tasks:
+            raise AlbertException("tasks must include at least one task.")
+        categories = {task.category for task in tasks}
+        if len(categories) != 1:
+            raise AlbertException("All tasks in create_many must share the same category.")
+        parent_ids = {task.parent_id for task in tasks}
+        if len(parent_ids) != 1:
+            raise AlbertException("All tasks in create_many must share the same parent_id.")
+        task = tasks[0]
+        payload = [t.model_dump(mode="json", by_alias=True, exclude_none=True) for t in tasks]
+        url = f"{self.base_path}/multi?category={task.category.value}"
+        if task.parent_id is not None:
+            url = f"{url}&parentId={task.parent_id}"
+        response = self.session.post(url=url, json=payload)
+        return [TaskAdapter.validate_python(item) for item in response.json()]
 
     @validate_call
     def create_with_combinations(
