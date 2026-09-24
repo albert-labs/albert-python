@@ -415,7 +415,6 @@ class Workflow(BaseResource):
 
     name: str
     """The name of the workflow."""
-    # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
     parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
         alias="ParameterGroups", default_factory=list
     )

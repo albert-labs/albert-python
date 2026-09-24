@@ -29,6 +29,18 @@ def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
     assert r[0].id == seeded_workflows[0].id
 
 
+def test_create_returns_populated_workflow(client: Albert, seeded_workflows: list[Workflow]):
+    """Test that create returns fully populated matched workflows."""
+    wf = seeded_workflows[0].model_copy()
+    wf.id = None
+    wf.status = None
+
+    [matched] = client.workflows.create(workflows=[wf])
+    assert matched.id == seeded_workflows[0].id
+    assert matched.name
+    assert matched.parameter_group_setpoints
+
+
 def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
     """Test search returns WorkflowSearchItem results with WFL ids."""
     results = list(client.workflows.search(max_items=10))

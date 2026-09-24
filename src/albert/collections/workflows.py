@@ -178,9 +178,9 @@ class WorkflowCollection(BaseCollection):
 
         Notes
         -----
-        Returned workflows carry an empty ``parameter_group_setpoints`` list
-        whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
-        fetch the full setpoints.
+        Returned workflows are fully populated, including their parameter group
+        setpoints. A matched workflow with no parameter groups is re-fetched
+        automatically so a complete Workflow is always returned.
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
@@ -204,8 +204,10 @@ class WorkflowCollection(BaseCollection):
         )
         results = []
         for x in response.json():
-            if "existingAlbertId" in x and "name" not in x:
-                results.append(self.get_by_id(id=x["existingAlbertId"]))
+            if "name" not in x:
+                # The platform omits the name of a matched workflow that has no
+                # parameter groups; fetch the full record instead.
+                results.append(self.get_by_id(id=x.get("existingAlbertId") or x.get("albertId")))
             else:
                 results.append(Workflow(**x))
         return results
