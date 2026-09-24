@@ -168,6 +168,35 @@ def test_update_cells_updates_inventory_values(
             assert float(refreshed.max_value) == pytest.approx(expected["max"], rel=1e-6)
 
 
+def test_update_cells_clear_value(
+    seed_prefix: str,
+    seeded_sheet: Sheet,
+    seeded_inventory,
+):
+    """Test clearing a cell value empties the cell without a grid pre-read."""
+    column = seeded_sheet.add_formulation(
+        formulation_name=f"{seed_prefix} - clear cell",
+        components=[Component(inventory_item=seeded_inventory[0], amount=100.0)],
+        enforce_order=True,
+    )
+    cell = next(c for c in _inventory_cells(column) if c.value not in (None, ""))
+    cleared_cell = Cell(
+        colId=cell.column_id,
+        rowId=cell.row_id,
+        design_id=cell.design_id,
+        type=cell.type,
+        value="",
+    )
+
+    updated, failed = seeded_sheet.update_cells(cells=[cleared_cell])
+
+    assert failed == []
+    assert [(c.row_id, c.column_id) for c in updated] == [(cell.row_id, cell.column_id)]
+    refreshed_column = seeded_sheet.get_column(column_id=column.column_id)
+    refreshed_cell = next(c for c in refreshed_column.cells if c.row_id == cell.row_id)
+    assert refreshed_cell.value in ("", None)
+
+
 def test_get_test_sheet(seeded_sheet: Sheet):
     assert isinstance(seeded_sheet, Sheet)
     seeded_sheet.rename(new_name="test renamed")

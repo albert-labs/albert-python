@@ -933,8 +933,18 @@ class Sheet(BaseSessionResource):  # noqa:F811
         cleared_cells = []
         for cell in column.cells:
             if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL:
-                cell_copy = cell.model_copy(update={"value": "", "calculation": ""})
-                cleared_cells.append(cell_copy)
+                # Build intent-only cells so only the value and calculation are cleared.
+                cleared_cells.append(
+                    Cell(
+                        column_id=cell.column_id,
+                        row_id=cell.row_id,
+                        design_id=cell.design_id,
+                        type=cell.type,
+                        row_type=cell.row_type,
+                        value="",
+                        calculation="",
+                    )
+                )
         self.update_cells(cells=cleared_cells)
 
     def add_formulation(
@@ -1024,19 +1034,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
             value = str(component.amount)
             min_value = str(component.min_value) if component.min_value is not None else None
             max_value = str(component.max_value) if component.max_value is not None else None
-            this_cell = Cell(
-                column_id=column_id,
-                row_id=row_id,
-                value=value,
-                calculation="",
-                type=CellType.INVENTORY,
-                design_id=self.product_design.id,
-                name=formulation_name,
-                inventory_id=col.inventory_id,
-                min_value=min_value,
-                max_value=max_value,
-            )
-            all_cells.append(this_cell)
+            # Only set fields intended for writing; update_cells writes every field
+            # that is explicitly set on a cell.
+            cell_kwargs = {
+                "column_id": column_id,
+                "row_id": row_id,
+                "value": value,
+                "type": CellType.INVENTORY,
+                "design_id": self.product_design.id,
+                "name": formulation_name,
+                "inventory_id": col.inventory_id,
+            }
+            if min_value is not None:
+                cell_kwargs["min_value"] = min_value
+            if max_value is not None:
+                cell_kwargs["max_value"] = max_value
+            all_cells.append(Cell(**cell_kwargs))
 
         new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
 
@@ -1167,24 +1180,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
             if row_id is None:
                 raise AlbertException(f"No row found for inventory ID {item_id}")
 
-            all_cells.append(
-                Cell(
-                    column_id=col_id,
-                    row_id=row_id,
-                    value=str(component.amount),
-                    calculation="",
-                    type=CellType.INVENTORY,
-                    design_id=self.product_design.id,
-                    name=col.name or formulation_name or "",
-                    inventory_id=col.inventory_id,
-                    min_value=str(component.min_value)
-                    if component.min_value is not None
-                    else None,
-                    max_value=str(component.max_value)
-                    if component.max_value is not None
-                    else None,
-                )
-            )
+            cell_kwargs = {
+                "column_id": col_id,
+                "row_id": row_id,
+                "value": str(component.amount),
+                "type": CellType.INVENTORY,
+                "design_id": self.product_design.id,
+                "name": col.name or formulation_name or "",
+                "inventory_id": col.inventory_id,
+            }
+            if component.min_value is not None:
+                cell_kwargs["min_value"] = str(component.min_value)
+            if component.max_value is not None:
+                cell_kwargs["max_value"] = str(component.max_value)
+            all_cells.append(Cell(**cell_kwargs))
 
         self.update_cells(cells=all_cells)
         return self.get_column(column_id=col_id)
@@ -1779,57 +1788,27 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     return value
         return None
 
-    def _generate_attribute_change(
-        self,
-        *,
-        new_value: CellAttributeValue,
-        old_value: CellAttributeValue,
-        api_attribute_name: str,
-    ) -> PatchDatum | None:
-        """Generates a change dictionary for a single attribute."""
-        if new_value == old_value:
-            return None
-
-        if new_value is None or new_value in ("", {}):
-            return PatchDatum(
-                operation="delete",
-                attribute=api_attribute_name,
-                old_value=old_value,
-            )
-        if old_value is None or old_value in ("", {}):
-            return PatchDatum(
-                operation="add",
-                attribute=api_attribute_name,
-                new_value=new_value,
-            )
-        return PatchDatum(
-            operation="update",
-            attribute=api_attribute_name,
-            old_value=old_value,
-            new_value=new_value,
-        )
-
     def _get_cell_changes(self, *, cell: Cell) -> CellChangePayload | None:
-        current_cell = self._get_current_cell(cell=cell)
-        if current_cell is None:
-            # New cell not yet in grid; blank baseline generates "add" operations.
-            current_cell = Cell(
-                column_id=cell.column_id,
-                row_id=cell.row_id,
-                design_id=cell.design_id,
-                type=cell.type,
-            )
+        """Build the write payload for a cell from the fields explicitly set on it.
 
+        Only fields populated on the passed cell (directly or via
+        ``model_copy(update=...)``) are written; omitted fields are left
+        untouched, so no grid read is needed to compute a diff.
+        """
         data: list[PatchDatum] = []
+        fields_set = cell.model_fields_set
+
+        def _is_cleared(value: Any) -> bool:
+            return value is None or value == "" or value == {}
 
         # Handle format change
-        if cell.format != current_cell.format:
-            if cell.format is None or cell.format == {}:
+        if "format" in fields_set:
+            if _is_cleared(cell.format):
                 data.append(
                     PatchDatum(
                         operation="delete",
                         attribute="cellFormat",
-                        old_value=current_cell.format,
+                        old_value=None,
                     )
                 )
             else:
@@ -1837,20 +1816,30 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     PatchDatum(
                         operation="update",
                         attribute="cellFormat",
-                        old_value=current_cell.format,
                         new_value=cell.format,
                     )
                 )
 
         # Handle calculation change
-        if cell.calculation != current_cell.calculation:
-            change = self._generate_attribute_change(
-                new_value=cell.calculation,
-                old_value=current_cell.calculation,
-                api_attribute_name="calculation",
-            )
-            if change:
-                data.append(change)
+        if "calculation" in fields_set:
+            if _is_cleared(cell.calculation):
+                data.append(
+                    PatchDatum(
+                        operation="delete",
+                        attribute="calculation",
+                        old_value=None,
+                    )
+                )
+            else:
+                # "add" upserts a calculation; "update" is a no-op when the cell
+                # has no stored calculation yet.
+                data.append(
+                    PatchDatum(
+                        operation="add",
+                        attribute="calculation",
+                        new_value=cell.calculation,
+                    )
+                )
 
         # Special handling for value, min_value, max_value
         value_attributes = [
@@ -1860,65 +1849,55 @@ class Sheet(BaseSessionResource):  # noqa:F811
         ]
         if cell.calculation is None or cell.calculation == "" or cell.row_type == CellType.TOTAL:
             for attr, api_attr in value_attributes:
-                if not self._compare_cell_attributes(
-                    cell=cell, existing_cell=current_cell, attribute=attr
-                ):
-                    change = self._generate_attribute_change(
-                        new_value=getattr(cell, attr),
-                        old_value=getattr(current_cell, attr),
-                        api_attribute_name=api_attr,
+                if attr not in fields_set:
+                    continue
+                new_value = getattr(cell, attr)
+                if _is_cleared(new_value):
+                    data.append(
+                        PatchDatum(
+                            operation="delete",
+                            attribute=api_attr,
+                            old_value=None,
+                        )
                     )
-                    if change:
-                        data.append(change)
+                else:
+                    # "update" upserts the cell value; no oldValue is required and a
+                    # mismatch would only be logged server-side.
+                    data.append(
+                        PatchDatum(
+                            operation="update",
+                            attribute=api_attr,
+                            new_value=new_value,
+                        )
+                    )
 
         if not data:
             return None
 
         return {"Id": {"rowId": cell.row_id, "colId": cell.column_id}, "data": data}
 
-    def _compare_cell_attributes(self, *, cell: Cell, existing_cell: Cell, attribute: str):
-        """Compares a given attribute of two cells, trying both string and float comparison."""
-        new_value = getattr(cell, attribute)
-        old_value = getattr(existing_cell, attribute)
-        # Check if the strings are exactly equal
-        if new_value == old_value:
-            return True
-
-        # Try to cast both strings to floats and compare
-        try:
-            float1 = float(new_value)
-            float2 = float(old_value)
-            if float1 == float2:
-                return True
-        except (ValueError, TypeError):
-            # One or both strings could not be cast to a float
-            pass
-
-        # Return False if neither comparison returned True
-        return False
-
     def update_cells(self, *, cells: list[Cell]):
         """Write changed cells back to the sheet.
 
-        Compares each cell against the current grid and sends only the changed
-        attributes (value, calculation, formatting, bounds). Higher-level methods
+        Writes the attributes explicitly set on each cell (value, calculation,
+        formatting, bounds); fields left unset are left untouched. Higher-level methods
         such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
         for you; use it directly when editing cells obtained from the grid.
 
         !!! example
             ```python
-            from albert.resources.sheets import CellColor
             column = sheet.get_column(column_name="Formulation A")
-            recolored = [c.model_copy(update={"format": {"bgColor": CellColor.YELLOW.value}})
-                         for c in column.cells]
-            updated, failed = sheet.update_cells(cells=recolored)
+            updated, failed = sheet.update_cells(
+                cells=[c.model_copy(update={"value": "12.5"}) for c in column.cells[:2]]
+            )
             ```
 
         Parameters
         ----------
         cells : list[Cell]
-            The cells to update. Typically copies of existing cells with modified
-            values or formatting.
+            The cells to update. Every field explicitly set on a cell (directly
+            or via ``model_copy(update=...)``) is written; to change one attribute
+            on grid cells, set only that attribute.
 
         Returns
         -------
@@ -2807,8 +2786,16 @@ class Column(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
-            cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
-            new_cells.append(cell_copy)
+            new_cells.append(
+                Cell(
+                    column_id=c.column_id,
+                    row_id=c.row_id,
+                    design_id=c.design_id,
+                    type=c.type,
+                    row_type=c.row_type,
+                    format={"bgColor": color.value},
+                )
+            )
         return self.sheet.update_cells(cells=new_cells)
 
 
@@ -2905,9 +2892,16 @@ class Row(BaseSessionResource):  # noqa:F811
         """
         new_cells = []
         for c in self.cells:
-            cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
-            cell_copy.format = {"bgColor": color.value}
-            new_cells.append(cell_copy)
+            new_cells.append(
+                Cell(
+                    column_id=c.column_id,
+                    row_id=c.row_id,
+                    design_id=c.design_id,
+                    type=c.type,
+                    row_type=c.row_type,
+                    format={"bgColor": color.value},
+                )
+            )
         return self.sheet.update_cells(cells=new_cells)
 
 
