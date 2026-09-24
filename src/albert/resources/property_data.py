@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
+from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.identifiers import (
+    BlockId,
     DataColumnId,
     DataTemplateId,
     InventoryId,
+    LotId,
     ParameterGroupId,
     ParameterId,
     ProjectId,
@@ -225,8 +229,27 @@ class TaskData(BaseAlbertModel):
     initial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="InitialWorkflow")
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
-    finial_workflow: SerializeAsEntityLink[Workflow] = Field(alias="FinalWorkflow")
-    """The workflow at task completion. Serialized as ``FinalWorkflow``."""
+    final_workflow: SerializeAsEntityLink[Workflow] = Field(
+        validation_alias=AliasChoices("FinalWorkflow", "final_workflow", "finial_workflow"),
+        serialization_alias="FinalWorkflow",
+    )
+    """The workflow at task completion. Serialized as ``FinalWorkflow``. Carries the interval combinations for the block in its ``combinations`` field, but not the parameter setpoints; use [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] for those."""
+
+    @property
+    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    def finial_workflow(self) -> SerializeAsEntityLink[Workflow]:
+        """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskData.final_workflow]."""
+        warnings.warn(
+            "`finial_workflow` is a misspelling and will be removed in a future release; "
+            "use `final_workflow` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.final_workflow
+
+    @finial_workflow.setter
+    def finial_workflow(self, value: SerializeAsEntityLink[Workflow]) -> None:
+        self.final_workflow = value
 
     data_template: SerializeAsEntityLink[DataTemplate] = Field(alias="Datatemplate")
     """The data template whose columns were measured (format ``DAT...``). Serialized as ``Datatemplate``."""
@@ -349,10 +372,28 @@ class TaskPropertyData(BaseResource):
     )
     """The workflow at the start of the task. Serialized as ``InitialWorkflow``."""
 
-    finial_workflow: SerializeAsEntityLink[Workflow] | None = Field(
-        default=None, alias="FinalWorkflow"
+    final_workflow: SerializeAsEntityLink[Workflow] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("FinalWorkflow", "final_workflow", "finial_workflow"),
+        serialization_alias="FinalWorkflow",
     )
-    """The workflow at task completion. Serialized as ``FinalWorkflow``."""
+    """The workflow at task completion. Serialized as ``FinalWorkflow``. Commonly ``None`` here: the task-scoped read does not return the workflows. Read them from the task's block, or use [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records] to get the setpoints already resolved."""
+
+    @property
+    @deprecated("`finial_workflow` is a misspelling; use `final_workflow` instead.")
+    def finial_workflow(self) -> SerializeAsEntityLink[Workflow] | None:
+        """Deprecated misspelling of [`final_workflow`][albert.resources.property_data.TaskPropertyData.final_workflow]."""
+        warnings.warn(
+            "`finial_workflow` is a misspelling and will be removed in a future release; "
+            "use `final_workflow` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.final_workflow
+
+    @finial_workflow.setter
+    def finial_workflow(self, value: SerializeAsEntityLink[Workflow] | None) -> None:
+        self.final_workflow = value
 
     data_template: SerializeAsEntityLink[DataTemplate] | None = Field(
         default=None, alias="DataTemplate"
@@ -440,6 +481,126 @@ class BulkPropertyData(BaseAlbertModel):
             )
             columns.append(data_column)
         return BulkPropertyData(columns=columns)
+
+
+class TaskPropertyRecord(BaseAlbertModel):
+    """One measured value on a task, flattened and paired with its parameter setpoints.
+
+    Returned by
+    [`get_task_property_records`][albert.collections.property_data.PropertyDataCollection.get_task_property_records].
+    Each record is a single cell of a task's results: one data column, in one trial, of
+    one interval combination, for one inventory item and lot. The parameter setpoints
+    that define that interval are resolved and attached, so associating a measured
+    result with the conditions it was measured under needs no further calls.
+
+    !!! example
+        ```python
+        records = client.property_data.get_task_property_records(task_id="TASFOR1")
+        records[0].data_column_name, records[0].value, records[0].parameter_setpoints
+        # ('Combing Force', '17.77', {'Condition': 'Wet'})
+
+        # Straight into pandas
+        df = TaskPropertyRecord.to_dataframe(records=records)
+        ```
+    """
+
+    task_id: TaskId
+    """The task the value was measured on (format ``TAS...``)."""
+
+    block_id: BlockId | None = Field(default=None)
+    """The block the value belongs to (format ``BLK...``)."""
+
+    data_template_id: DataTemplateId | None = Field(default=None)
+    """The data template whose columns were measured (format ``DAT...``)."""
+
+    data_template_name: str | None = Field(default=None)
+    """The data template name."""
+
+    inventory_id: InventoryId | None = Field(default=None)
+    """The inventory item the value applies to (format ``INV...``)."""
+
+    lot_id: LotId | None = Field(default=None)
+    """The lot the value applies to, if any (format ``LOT...``)."""
+
+    interval_combination: str | None = Field(default=None)
+    """The interval this value was measured under (e.g. ``"default"``, ``"ROW1"``, ``"ROW1XROW2"``)."""
+
+    interval_description: str | None = Field(default=None)
+    """Human-readable form of the interval (e.g. ``"Condition: Wet"``), when the platform supplies one."""
+
+    parameter_setpoints: dict[str, str] = Field(default_factory=dict)
+    """The parameter setpoints in effect for this value, as name to value (e.g. ``{"Condition": "Wet"}``). Combines the interval's varied parameters with the workflow's fixed ones. Empty when the setpoints could not be resolved."""
+
+    trial_number: int | None = Field(default=None)
+    """The trial (row) number this value was recorded in."""
+
+    visible_trial_number: int | None = Field(default=None)
+    """The relative row number shown to users."""
+
+    void: bool = Field(default=False)
+    """Whether this value has been voided, at either the interval or the trial level."""
+
+    data_column_id: DataColumnId | None = Field(default=None)
+    """The data column measured (format ``DAC...``)."""
+
+    data_column_name: str | None = Field(default=None)
+    """The data column / result name."""
+
+    sequence: str | None = Field(default=None)
+    """Pointer to the specific result column, which stays unique when a data column repeats within a data template."""
+
+    property_data_id: PropertyDataId | None = Field(default=None)
+    """The stored property data record (format ``PTD...``)."""
+
+    value: str | None = Field(default=None)
+    """The stored value, as held in Albert (all values are strings)."""
+
+    numeric_value: float | None = Field(default=None)
+    """The numeric form of the value, when the column is numeric."""
+
+    unit_name: str | None = Field(default=None)
+    """The unit of measure for the value, if any."""
+
+    calculation: str | None = Field(default=None)
+    """The calculation expression behind the value, when the column is calculated (e.g. ``"=COL1-COL2"``)."""
+
+    workflow_id: WorkflowId | None = Field(default=None)
+    """The workflow whose setpoints apply (format ``WFL...``)."""
+
+    workflow_name: str | None = Field(default=None)
+    """The workflow name."""
+
+    @classmethod
+    def to_dataframe(cls, *, records: list[TaskPropertyRecord]) -> pd.DataFrame:
+        """Convert records to a DataFrame, one row per record.
+
+        Each parameter setpoint is expanded into its own column, prefixed with
+        ``setpoint.``, so conditions can be filtered and grouped directly.
+
+        !!! example
+            ```python
+            df = TaskPropertyRecord.to_dataframe(records=records)
+            df.columns
+            # [..., 'value', 'unit_name', 'setpoint.Condition']
+            ```
+
+        Parameters
+        ----------
+        records : list[TaskPropertyRecord]
+            The records to convert.
+
+        Returns
+        -------
+        pd.DataFrame
+            The records as a table. Empty input gives an empty DataFrame.
+        """
+        rows = []
+        for record in records:
+            row = record.model_dump(exclude={"parameter_setpoints"})
+            for name, value in record.parameter_setpoints.items():
+                row[f"setpoint.{name}"] = value
+            rows.append(row)
+        return pd.DataFrame(rows)
 
 
 ########################## Supporting POST Classes ##########################
