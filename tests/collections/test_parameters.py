@@ -44,6 +44,14 @@ def test_get(client: Albert, seeded_parameters: list[Parameter]):
     assert p.name == seeded_parameters[0].name
 
 
+def test_get_by_ids(client: Albert, seeded_parameters: list[Parameter]):
+    """Test get_by_ids returns the parameters matching the provided IDs."""
+    ids = [x.id for x in seeded_parameters]
+    results = client.parameters.get_by_ids(ids=ids)
+    assert len(results) == len(ids)
+    assert {x.id for x in results} == set(ids)
+
+
 def test_get_or_create_parameters(caplog, client: Albert, seeded_parameters: list[Parameter]):
     p = seeded_parameters[0].model_copy(update={"id": None})
     returned = client.parameters.get_or_create(parameter=p)
