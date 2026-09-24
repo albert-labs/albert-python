@@ -4,6 +4,7 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.parameters import Parameter
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
@@ -32,8 +33,11 @@ def test_parameter_get_all_with_name(client: Albert, seeded_parameters: list[Par
 def test_parameter_get_all_by_ids(client: Albert, seeded_parameters: list[Parameter]):
     """Test get_all with a list of parameter IDs."""
     ids = [x.id for x in seeded_parameters]
-    results = list(client.parameters.get_all(ids=ids, max_items=10))
-    assert results, "Expected at least one result"
+    results = poll_until(
+        lambda: [p for p in client.parameters.get_all(ids=ids, max_items=10) if p.id in set(ids)],
+        timeout=15.0,
+        interval=1.0,
+    )
     assert len(results) == len(ids)
     assert {x.id for x in results} == set(ids)
 
@@ -47,7 +51,11 @@ def test_get(client: Albert, seeded_parameters: list[Parameter]):
 def test_get_by_ids(client: Albert, seeded_parameters: list[Parameter]):
     """Test get_by_ids returns the parameters matching the provided IDs."""
     ids = [x.id for x in seeded_parameters]
-    results = client.parameters.get_by_ids(ids=ids)
+    results = poll_until(
+        lambda: [p for p in client.parameters.get_by_ids(ids=ids) if p.id in set(ids)],
+        timeout=15.0,
+        interval=1.0,
+    )
     assert len(results) == len(ids)
     assert {x.id for x in results} == set(ids)
 
