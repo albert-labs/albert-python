@@ -71,12 +71,8 @@ def test_create_custom_template_from_seed(
 
     new_template = CustomTemplate(
         name=seed_prefix,
-        category=seed.category,
-        data=(
-            seed.data.model_copy(update={"name": seed_prefix}, deep=True)
-            if getattr(seed, "data", None) is not None
-            else None
-        ),
+        category=TemplateCategory.GENERAL,
+        data=GeneralData(name=f"{seed_prefix}-general")
     )
 
     created = client.custom_templates.create(custom_template=new_template)
