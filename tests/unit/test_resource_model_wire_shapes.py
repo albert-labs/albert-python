@@ -1,11 +1,13 @@
-"""Offline model tests pinning wire shapes the API actually sends.
+"""Offline tests pinning request/response wire shapes against the API.
 
-Pure model validation: no client, no session, no network.
+Pure validation helpers and model parsing: no client, no session, no network.
 """
 
+from albert.collections.users import UserCollection
 from albert.resources.data_columns import DataColumn
 from albert.resources.roles import Role
 from albert.resources.un_numbers import UnNumber
+from albert.resources.users import UserFilterType
 
 
 def test_data_column_default_reads_wire_key() -> None:
@@ -38,3 +40,17 @@ def test_role_accepts_missing_tenant() -> None:
     role = Role.model_validate({"albertId": "ROL1", "name": "Administrator"})
     assert role.id == "ROL1"
     assert role.tenant is None
+
+
+def test_user_filter_id_keeps_known_prefixes() -> None:
+    """Test role-filtered user listing keeps ROL ids instead of rewriting them to USR."""
+    assert UserCollection._normalize_filter_id("ROL1", type=UserFilterType.ROLE) == "ROL1"
+    assert UserCollection._normalize_filter_id("rol1", type=UserFilterType.ROLE) == "ROL1"
+    assert UserCollection._normalize_filter_id("USR12", type=UserFilterType.ROLE) == "USR12"
+    assert UserCollection._normalize_filter_id("usr12", type=None) == "USR12"
+
+
+def test_user_filter_id_prefixes_bare_ids_by_type() -> None:
+    """Test bare filter ids get the prefix implied by the filter type."""
+    assert UserCollection._normalize_filter_id("12", type=None) == "USR12"
+    assert UserCollection._normalize_filter_id("1", type=UserFilterType.ROLE) == "ROL1"
