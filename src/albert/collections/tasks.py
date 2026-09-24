@@ -1826,9 +1826,6 @@ class TaskCollection(BaseCollection):
             TaskSearchItem(**item)._bind_collection(self) for item in items
         ]
 
-        # TODO(SDK-89): always POST task search once POST SearchTask accepts
-        # updatedBy, fromUpdatedAt, and toUpdatedAt.
-
         if metadata_filters is not None:
             payload: dict[str, Any] = {
                 **params,
@@ -2079,8 +2076,9 @@ class TaskCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``due_date``, ``metadata``, ``name``,
-        ``priority``, ``project``, ``state``.
+        The following fields can be updated: ``assigned_to``, ``due_date``,
+        ``inventory_information``, ``metadata``, ``name``, ``priority``, ``project``,
+        ``state``, ``tags``.
         """
         existing = self.get_by_id(id=task.id)
         patch_payload = generate_adv_patch_payload(
