@@ -22,7 +22,8 @@ def _existing_unit(**overrides) -> UnitV4:
         "synonyms": ["g", "grms"],
         "siUnit": "kg",
         "siValue": "0.001",
-        "unitFamilies": [{"id": "UNF1", "name": "Mass"}],
+        # the units v4 API serializes family refs as familyId/familyName
+        "unitFamilies": [{"familyId": "UNF1", "familyName": "Mass"}],
     }
     data.update(overrides)
     return UnitV4.model_validate(data)
@@ -76,7 +77,10 @@ def test_unit_patch_families_same_set_is_noop():
     """Reordering families without changing membership sends nothing."""
     existing = _existing_unit(
         type="Non-Convertible",
-        unitFamilies=[{"id": "UNF1", "name": "A"}, {"id": "UNF2", "name": "B"}],
+        unitFamilies=[
+            {"familyId": "UNF1", "familyName": "A"},
+            {"familyId": "UNF2", "familyName": "B"},
+        ],
     )
     updated = existing.model_copy()
     updated.unit_families = [UnitFamilyV4Ref(id="UNF2"), UnitFamilyV4Ref(id="UNF1")]
@@ -93,6 +97,50 @@ def test_unit_patch_families_on_convertible_raises():
     updated.unit_families = [UnitFamilyV4Ref(id="UNF9")]
 
     with pytest.raises(ValueError, match="non-convertible"):
+        UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
+
+
+def test_unit_patch_legacy_setup_sends_type_and_ref_unit():
+    """Setting a type on a Custom (Legacy) unit performs the setup flow."""
+    existing = _existing_unit(
+        type=None, siUnit=None, siValue=None, unitFamilies=[], origin="Custom (Legacy)"
+    )
+    updated = existing.model_copy()
+    updated.type = UnitV4Type.CONVERTIBLE
+    updated.ref_unit = "g"
+
+    patch = UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
+
+    assert patch == {"type": "Convertible", "refUnit": "g"}
+
+
+def test_unit_patch_legacy_non_convertible_setup_sends_families():
+    """A legacy unit set up as non-convertible may carry family IDs in the same call."""
+    existing = _existing_unit(
+        type=None, siUnit=None, siValue=None, unitFamilies=[], origin="Custom (Legacy)"
+    )
+    updated = existing.model_copy()
+    updated.type = UnitV4Type.NON_CONVERTIBLE
+    updated.unit_families = [UnitFamilyV4Ref(id="UNF1")]
+
+    patch = UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
+
+    assert patch == {"type": "Non-Convertible", "unitFamilies": ["UNF1"]}
+
+
+def test_unit_patch_type_change_after_setup_raises():
+    """The type of a unit that is already set up cannot be changed or cleared."""
+    existing = _existing_unit()
+    updated = existing.model_copy()
+    updated.type = UnitV4Type.NON_CONVERTIBLE
+
+    with pytest.raises(ValueError, match="type"):
+        UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
+
+    updated = existing.model_copy()
+    updated.type = None
+
+    with pytest.raises(ValueError, match="type"):
         UnitV4Collection._generate_merge_patch(existing=existing, updated=updated)
 
 

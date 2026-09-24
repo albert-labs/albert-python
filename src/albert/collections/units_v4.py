@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import validate_call
 
@@ -15,6 +15,7 @@ from albert.resources.units_v4 import (
     UnitV4Origin,
     UnitV4Type,
 )
+from albert.utils.worker_jobs import poll_worker_job
 
 _SEARCH_PAGE_SIZE = 100  # maximum page size accepted by the v4 units search endpoint
 _CREATE_FIELDS = {
@@ -87,7 +88,7 @@ class UnitV4Collection(BaseCollection):
     get_compatible(symbol=..., expression=...) -> UnitV4Compatible
         Get the SI mapping and compatible unit families for a symbol or expression.
     merge(parent_id, child_ids, ...) -> str
-        Merge units into a parent unit as a background job.
+        Merge units into a parent unit as a background job, optionally waiting for completion.
     """
 
     _api_version = "v4.0"
@@ -298,6 +299,17 @@ class UnitV4Collection(BaseCollection):
             updated = client.units_v4.update(unit=unit)
             ```
 
+        !!! example
+            Set up a Custom (Legacy) unit, which has no ``type`` until setup:
+            ```python
+            from albert.resources.units_v4 import UnitV4Type
+
+            legacy = client.units_v4.get_by_id(id="UNI1")
+            legacy.type = UnitV4Type.CONVERTIBLE
+            legacy.ref_unit = "g"
+            updated = client.units_v4.update(unit=legacy)
+            ```
+
         Parameters
         ----------
         unit : UnitV4
@@ -311,9 +323,10 @@ class UnitV4Collection(BaseCollection):
         Raises
         ------
         ValueError
-            If the unit has no ``id``, or if ``unit_families`` is changed on a
+            If the unit has no ``id``, if ``unit_families`` is changed on a
             convertible unit (families of convertible units are derived from the SI
-            mapping and cannot be edited).
+            mapping and cannot be edited), or if ``type`` is changed on a unit that
+            is already set up.
 
         Notes
         -----
@@ -322,6 +335,11 @@ class UnitV4Collection(BaseCollection):
         mapping of a convertible unit (``si_unit``, ``si_value``, ``ref_unit``,
         ``ref_unit_exp``, ``ref_unit_value``) is fixed once created because changing
         it would alter historical measurements.
+
+        A Custom (Legacy) unit has no ``type`` until it is set up. Setting ``type``
+        on such a unit performs the setup instead of a partial update: provide
+        ``ref_unit`` or ``ref_unit_exp`` for a convertible unit, or ``unit_families``
+        for a non-convertible one, in the same call.
         """
         if unit.id is None:
             raise ValueError("The unit must have an id to be updated.")
@@ -351,14 +369,42 @@ class UnitV4Collection(BaseCollection):
             if new_value != getattr(existing, attr):
                 patch[attr] = new_value
 
+        # Custom (Legacy) units carry no type until setup; setting ``type`` runs the
+        # setup flow, which also accepts the SI-mapping fields for convertible units.
+        if "type" in updated.model_fields_set and updated.type != existing.type:
+            if existing.type is not None or updated.type is None:
+                raise ValueError(
+                    "type can only be set when setting up a Custom (Legacy) unit; "
+                    "it cannot be changed or cleared afterwards."
+                )
+            patch["type"] = updated.type.value
+
+        for attr, wire_name in (
+            ("ref_unit", "refUnit"),
+            ("ref_unit_exp", "refUnitExp"),
+            ("ref_unit_value", "refUnitValue"),
+        ):
+            if attr not in updated.model_fields_set:
+                continue
+            new_value = getattr(updated, attr)
+            if new_value != getattr(existing, attr):
+                patch[wire_name] = new_value
+
         if "unit_families" in updated.model_fields_set:
             new_ids = [family.id for family in updated.unit_families or []]
             old_ids = [family.id for family in existing.unit_families or []]
             if sorted(new_ids) != sorted(old_ids):
-                if existing.type is not UnitV4Type.NON_CONVERTIBLE:
+                effective_type = (
+                    updated.type
+                    if "type" in updated.model_fields_set and updated.type is not None
+                    else existing.type
+                )
+                if effective_type is not UnitV4Type.NON_CONVERTIBLE:
                     raise ValueError(
                         "unit_families can only be changed on non-convertible units; "
-                        "families of a convertible unit are derived from its SI mapping."
+                        "families of a convertible unit are derived from its SI mapping. "
+                        "A Custom (Legacy) unit accepts unit_families only as part of "
+                        "its setup (set type in the same call)."
                     )
                 patch["unitFamilies"] = new_ids
         return patch
@@ -469,13 +515,14 @@ class UnitV4Collection(BaseCollection):
         parent_id: UnitV4Id,
         child_ids: list[UnitV4Id],
         webhook_url: str | None = None,
-        webhook_method: str = "POST",
+        webhook_method: Literal["POST", "GET"] = "POST",
+        wait: bool = False,
     ) -> str:
         """Merge units into a parent unit as a background job.
 
         Every reference to a child unit across the tenant is repointed to the parent
-        unit. The merge runs asynchronously; this call returns as soon as the job is
-        accepted.
+        unit. The merge runs asynchronously; by default this call returns as soon as
+        the job is accepted. Pass ``wait=True`` to block until the job completes.
 
         !!! example
             ```python
@@ -490,16 +537,33 @@ class UnitV4Collection(BaseCollection):
             The units to merge into ``parent_id``. At least one is required.
         webhook_url : str, optional
             A URL Albert calls when the job completes.
-        webhook_method : str, optional
+        webhook_method : Literal["POST", "GET"], optional
             HTTP method for the webhook call, ``"POST"`` (default) or ``"GET"``.
+        wait : bool, optional
+            Whether to wait for the merge job to complete before returning, by
+            default False.
 
         Returns
         -------
         str
             The ID of the background merge job.
+
+        Raises
+        ------
+        TimeoutError
+            If ``wait=True`` and the job does not complete within the retry window.
+        AlbertException
+            If ``wait=True`` and the job fails or is cancelled.
         """
         payload: dict[str, Any] = {"parentId": parent_id, "childIds": child_ids}
         if webhook_url is not None:
             payload["webhook"] = {"url": webhook_url, "method": webhook_method}
         response = self.session.post(f"{self.base_path}/merge", json=payload)
-        return response.json()["id"]
+        job_id = response.json()["id"]
+        if wait:
+            poll_worker_job(
+                session=self.session,
+                job_id=job_id,
+                job_description=f"Merge units into {parent_id}",
+            )
+        return job_id
