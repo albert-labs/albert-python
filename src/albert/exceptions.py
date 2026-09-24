@@ -88,6 +88,22 @@ class NotFoundError(AlbertClientError):
     """HTTP Error due to a 404 Not Found response."""
 
 
+class ConflictError(AlbertClientError):
+    """HTTP Error due to a 409 Conflict response."""
+
+
+class PreconditionFailedError(AlbertClientError):
+    """HTTP Error due to a 412 Precondition Failed response."""
+
+
+class UnsupportedMediaTypeError(AlbertClientError):
+    """HTTP Error due to a 415 Unsupported Media Type response."""
+
+
+class PreconditionRequiredError(AlbertClientError):
+    """HTTP Error due to a 428 Precondition Required response."""
+
+
 class AlbertServerError(AlbertHTTPError):
     """HTTP Error due to a server error response."""
 
@@ -110,6 +126,14 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return ForbiddenError
         case 404:
             return NotFoundError
+        case 409:
+            return ConflictError
+        case 412:
+            return PreconditionFailedError
+        case 415:
+            return UnsupportedMediaTypeError
+        case 428:
+            return PreconditionRequiredError
         case 500:
             return InternalServerError
         case 502:
