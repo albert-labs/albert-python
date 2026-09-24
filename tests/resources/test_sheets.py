@@ -191,10 +191,18 @@ def test_crud_empty_column(seeded_sheet: Sheet):
 
 def test_bulk_column_and_row_operations(seeded_sheet: Sheet, seed_prefix: str):
     """Test bulk add/rename/hide/show/lock/delete columns and add/delete rows."""
-    columns = seeded_sheet.add_columns(
-        names=[f"{seed_prefix} bulk col 1", f"{seed_prefix} bulk col 2"]
-    )
+    col_names = [f"{seed_prefix} bulk col 1", f"{seed_prefix} bulk col 2"]
+    columns = seeded_sheet.add_columns(names=col_names)
     assert len(columns) == 2
+    # Verify returned columns match requested order
+    assert [c.name for c in columns] == col_names
+
+    # Verify sheet columns are in left-to-right order on the sheet
+    sheet_col_ids = [c.column_id for c in seeded_sheet.columns]
+    idx1 = sheet_col_ids.index(columns[0].column_id)
+    idx2 = sheet_col_ids.index(columns[1].column_id)
+    assert idx1 < idx2, "Expected columns to be positioned in requested left-to-right order"
+
     try:
         columns[0].name = f"{seed_prefix} bulk col 1 renamed"
         columns[1].name = f"{seed_prefix} bulk col 2 renamed"

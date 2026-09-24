@@ -2226,18 +2226,42 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
             )
         position_value = position.value if isinstance(position, ColumnPosition) else position
+
+        # When inserting RIGHT_OF a reference column in bulk, the backend iteratively
+        # inserts each element immediately right of reference_id, which would reverse
+        # their relative left-to-right order if sent in forward order. Reversing the
+        # payload when position is RIGHT_OF ensures each subsequent column is placed
+        # immediately to the right of the reference column, leaving the batch in the
+        # caller's requested left-to-right order on the sheet.
+        ordered_names = (
+            list(reversed(names))
+            if position_value == ColumnPosition.RIGHT_OF.value
+            else list(names)
+        )
         payload = [
             {"type": type, "name": name, "referenceId": reference_id, "position": position_value}
-            for name in names
+            for name in ordered_names
         ]
         response = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
         self.grid = None
-        columns = []
+        cols_by_id = {}
         for data in response.json():
             data["sheet"] = self
             data["session"] = self.session
-            columns.append(Column(**data))
-        return columns
+            col = Column(**data)
+            cols_by_id[col.column_id] = col
+
+        # Return columns in the requested caller order (matching `names`)
+        ordered_cols = []
+        for name in names:
+            for col in list(cols_by_id.values()):
+                if col.name == name:
+                    ordered_cols.append(col)
+                    cols_by_id.pop(col.column_id)
+                    break
+        # Append any remainder just in case name matching missed anything
+        ordered_cols.extend(cols_by_id.values())
+        return ordered_cols
 
     @validate_call
     def add_lookup_column(
