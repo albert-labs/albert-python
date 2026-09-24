@@ -327,7 +327,7 @@ class WorkflowCollection(BaseCollection):
             The matching workflows.
         """
         url = f"{self.base_path}/ids"
-        batches = [ids[i : i + 100] for i in range(0, len(ids), 100)]
+        batches = [ids[i : i + 300] for i in range(0, len(ids), 300)]
         return [
             Workflow(**item)
             for batch in batches

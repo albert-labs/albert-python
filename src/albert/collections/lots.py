@@ -235,7 +235,8 @@ class LotCollection(BaseCollection):
         """Get many fully populated lots by their IDs.
 
         Use this instead of repeated [`get_by_id`][albert.collections.lots.LotCollection.get_by_id] calls when you already
-        have several Lot IDs to fetch.
+        have several Lot IDs to fetch. IDs are fetched in batches, so arbitrarily
+        long lists are supported.
 
         !!! example
             ```python
@@ -255,8 +256,12 @@ class LotCollection(BaseCollection):
             The lots matching the provided IDs.
         """
         url = f"{self.base_path}/ids"
-        response = self.session.get(url, params={"id": ids})
-        return [Lot(**lot) for lot in response.json()["Items"]]
+        batches = [ids[i : i + 300] for i in range(0, len(ids), 300)]
+        return [
+            Lot(**lot)
+            for batch in batches
+            for lot in self.session.get(url, params={"id": batch}).json()["Items"]
+        ]
 
     @validate_call
     def delete(self, *, id: LotId) -> None:

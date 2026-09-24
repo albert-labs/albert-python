@@ -410,7 +410,7 @@ class InventoryCollection(BaseCollection):
         list[InventoryItem]
             The matching items. Order is not guaranteed to match the input.
         """
-        batch_size = 250
+        batch_size = 300
         batches = [ids[i : i + batch_size] for i in range(0, len(ids), batch_size)]
         inventory = []
         for batch in batches:
