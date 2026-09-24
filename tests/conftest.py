@@ -309,6 +309,23 @@ def second_user(client: Albert, static_user: User) -> User:
 
 
 @pytest.fixture(scope="session")
+def third_user(client: Albert, static_user: User, second_user: User) -> User:
+    """Get a third active user distinct from the static SDK bot and second user."""
+    for user in client.users.search(max_items=50):
+        try:
+            hydrated = client.users.get_by_id(id=user.id)
+        except (NotFoundError, ForbiddenError):
+            # Search indexes can return stale IDs that GET no longer finds.
+            continue
+        if (
+            hydrated.id not in {static_user.id, second_user.id}
+            and hydrated.status == Status.ACTIVE
+        ):
+            return hydrated
+    pytest.skip("No third active user available for team tests")
+
+
+@pytest.fixture(scope="session")
 def seeded_team(client: Albert, seed_prefix: str, static_user: User) -> Iterator[Team]:
     """Create a team with a member for testing and clean up after."""
     team = client.teams.create(
