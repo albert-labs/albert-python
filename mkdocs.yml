@@ -119,6 +119,7 @@ nav:
   - Getting Started:
       - Overview: index.md
       - Installation: installation.md
+      - AWS Lambda Layer: lambda.md
       - Authentication: authentication.md
       - Concepts: concepts.md
       - Configuration: configuration.md
