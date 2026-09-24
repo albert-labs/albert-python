@@ -933,18 +933,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         cleared_cells = []
         for cell in column.cells:
             if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL:
-                # Build intent-only cells so only the value and calculation are cleared.
-                cleared_cells.append(
-                    Cell(
-                        column_id=cell.column_id,
-                        row_id=cell.row_id,
-                        design_id=cell.design_id,
-                        type=cell.type,
-                        row_type=cell.row_type,
-                        value="",
-                        calculation="",
-                    )
-                )
+                # Build intent-only cells so only populated attributes are cleared.
+                # A calculation delete on a cell with no stored calculation is a
+                # server-side no-op, and a batch of only no-ops is rejected.
+                cell_kwargs = {
+                    "column_id": cell.column_id,
+                    "row_id": cell.row_id,
+                    "design_id": cell.design_id,
+                    "type": cell.type,
+                    "row_type": cell.row_type,
+                    "value": "",
+                }
+                if cell.calculation:
+                    cell_kwargs["calculation"] = ""
+                cleared_cells.append(Cell(**cell_kwargs))
         self.update_cells(cells=cleared_cells)
 
     def add_formulation(
@@ -1098,8 +1100,17 @@ class Sheet(BaseSessionResource):  # noqa:F811
                     new_calculation = "=" + "+".join(
                         f"{other_col.column_id}{rid}" for rid in all_ingredient_row_ids
                     )
+                    # Intent-only cell: write just the calculation, not every field
+                    # parsed from the grid.
                     all_cells.append(
-                        other_total_cell.model_copy(update={"calculation": new_calculation})
+                        Cell(
+                            column_id=other_total_cell.column_id,
+                            row_id=other_total_cell.row_id,
+                            design_id=other_total_cell.design_id,
+                            type=other_total_cell.type,
+                            row_type=other_total_cell.row_type,
+                            calculation=new_calculation,
+                        )
                     )
 
         # Send ingredient cells first, then Total cells in a separate call.
