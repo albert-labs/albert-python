@@ -153,6 +153,8 @@ class TaskCollection(BaseCollection):
     -------
     create(task) -> BaseTask
         Create a PropertyTask, BatchTask, or GeneralTask.
+    create_many(tasks) -> list[BaseTask]
+        Create multiple tasks in a single call.
     create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
         Create a Property task and orchestrate combination generation across all its blocks.
     get_by_id(id) -> BaseTask
@@ -167,6 +169,8 @@ class TaskCollection(BaseCollection):
         Delete a task by its ID.
     add_block(task_id, data_template_id, workflow_id) -> None
         Add a Block (Data Template + Workflow) to a Property or Batch task.
+    add_blocks(task_id, blocks) -> None
+        Add multiple Blocks to a task in one call.
     remove_block(task_id, block_id) -> None
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
@@ -246,6 +250,64 @@ class TaskCollection(BaseCollection):
         return TaskAdapter.validate_python(task_data)
 
     @validate_call
+    def create_many(
+        self, *, tasks: list[PropertyTask | GeneralTask | BatchTask]
+    ) -> list[BaseTask]:
+        """Create multiple tasks in a single call.
+
+        All tasks must share the same category (mixing task types is not
+        supported) and, when set, the same ``parent_id``.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import GeneralTask
+
+            location = next(client.locations.get_all(max_items=1))
+            tasks = client.tasks.create_many(
+                tasks=[
+                    GeneralTask(name="Calibrate balance", location=location),
+                    GeneralTask(name="Clean hood", location=location),
+                ]
+            )
+            [t.id for t in tasks]
+            # ['TASGEN1', 'TASGEN2']
+            ```
+
+        Parameters
+        ----------
+        tasks : list[PropertyTask or GeneralTask or BatchTask]
+            The tasks to create. Must be non-empty and share one category and
+            one ``parent_id``. For General tasks, ``location`` is required.
+
+        Returns
+        -------
+        list[BaseTask]
+            The created tasks, in request order, populated with their assigned
+            Task IDs.
+
+        Raises
+        ------
+        AlbertException
+            If ``tasks`` is empty or if items have conflicting categories or
+            parent IDs.
+        """
+        if not tasks:
+            raise AlbertException("tasks must include at least one task.")
+        categories = {task.category for task in tasks}
+        if len(categories) != 1:
+            raise AlbertException("All tasks in create_many must share the same category.")
+        parent_ids = {task.parent_id for task in tasks}
+        if len(parent_ids) != 1:
+            raise AlbertException("All tasks in create_many must share the same parent_id.")
+        task = tasks[0]
+        payload = [t.model_dump(mode="json", by_alias=True, exclude_none=True) for t in tasks]
+        url = f"{self.base_path}/multi?category={task.category.value}"
+        if task.parent_id is not None:
+            url = f"{url}&parentId={task.parent_id}"
+        response = self.session.post(url=url, json=payload)
+        return [TaskAdapter.validate_python(item) for item in response.json()]
+
+    @validate_call
     def create_with_combinations(
         self,
         *,
@@ -258,6 +320,7 @@ class TaskCollection(BaseCollection):
         child-workflow combination variants across every task block.
 
         Intervals, Modes, Rules, and Overrides:
+
         - **Intervals and Cartesian Product**: When workflow parameters define discrete
           setpoints (intervals), Albert computes the Cartesian product across every
           intervalized parameter. Each combination materializes as an independent child
@@ -282,6 +345,7 @@ class TaskCollection(BaseCollection):
           precedence over rules.
 
         Execution Steps:
+
         1. Automatically saves any unsaved [`Workflow`][albert.resources.workflows.Workflow]
            objects defined on the task blocks, preserving block ordering.
         2. Sets ``intervals_start_from="all"`` (Exclude Mode) on any blocks where the
@@ -516,6 +580,71 @@ class TaskCollection(BaseCollection):
                         "operation": "add",
                         "attribute": "Block",
                         "newValue": [{"datId": data_template_id, "Workflow": {"id": workflow_id}}],
+                    }
+                ],
+            }
+        ]
+        self.session.patch(url=url, json=payload)
+
+    @validate_call
+    def add_blocks(self, *, task_id: TaskId, blocks: list[Block]) -> None:
+        """Add multiple Blocks to a Property or Batch task in one call.
+
+        Each Block pairs a Data Template (the results/data columns to capture)
+        with a Workflow (the parameter conditions to run under), exactly as with
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block]; only
+        the block's workflow and data template IDs are used.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import Block
+            client.tasks.add_blocks(
+                task_id="TASFOR1",
+                blocks=[
+                    Block(workflow=[{"id": "WFL1"}], Datatemplate=[{"id": "DAT9999999"}]),
+                    Block(workflow=[{"id": "WFL2"}], Datatemplate=[{"id": "DAT9999998"}]),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to add the blocks to (format ``TAS...``).
+        blocks : list[Block]
+            The blocks to add. Build each with a single Workflow and a single
+            Data Template referenced by ID.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        add_block : Add a single Block to a task.
+        remove_block : Remove a block from a task.
+        """
+        if not blocks:
+            return
+        url = f"{self.base_path}/{task_id}"
+        payload = [
+            {
+                "id": task_id,
+                "data": [
+                    {
+                        "operation": "add",
+                        "attribute": "Block",
+                        "newValue": [
+                            {
+                                "datId": (
+                                    block.data_template[0]
+                                    if isinstance(block.data_template, list)
+                                    else block.data_template
+                                ).id,
+                                "Workflow": {"id": block.workflow[0].id},
+                            }
+                            for block in blocks
+                        ],
                     }
                 ],
             }
@@ -790,9 +919,10 @@ class TaskCollection(BaseCollection):
 
         Configures or replaces rules and overrides on the specified block, and
         by default immediately recomputes and regenerates child-workflow combinations on
-        Albert Invent.
+        Albert.
 
         Rules, Overrides, and Baseline Modes:
+
         - **Rules (Criteria-Based Filtering)**:
           A rule consists of one or more conditions comparing parameter values against
           thresholds. All conditions within a rule must match (AND logic). If any rule
@@ -808,6 +938,7 @@ class TaskCollection(BaseCollection):
           - Overrides are evaluated first and always take precedence over rules.
 
         Follows the unset-is-not-empty convention:
+
         - Omitting ``rules`` (or leaving it as ``None``) leaves existing rules untouched.
         - Passing an empty list (``rules=[]``) clears all rules on the block.
         - The same convention applies to ``overrides``.
@@ -989,6 +1120,7 @@ class TaskCollection(BaseCollection):
         on the platform.
 
         Combination Generation Lifecycle:
+
         - **Cartesian Product**: Evaluates combinations across all intervalized workflow parameters
           starting from the block's baseline mode (``intervals_start_from="all"`` for Exclude Mode,
           starting with all combinations; or ``"none"`` for Include Mode, starting with an empty set).
@@ -1000,6 +1132,7 @@ class TaskCollection(BaseCollection):
           parameter setpoints are unchanged.
 
         How to set ``old_workflow_id`` across common caller scenarios:
+
         - **First-time generation** (or retrying after a failed create job): leave
           ``old_workflow_id=None`` (the default).
         - **Regenerating after updating rules**: pass the block's current workflow ID

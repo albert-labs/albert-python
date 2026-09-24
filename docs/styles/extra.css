@@ -42,3 +42,18 @@
 [data-md-color-scheme="slate"] .only-light {
   display: none;
 }
+
+.lambda-layer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.lambda-layer-filters select {
+  color: inherit;
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  padding: 0.1rem 0.3rem;
+}

@@ -1,10 +1,14 @@
+from contextlib import suppress
+from uuid import uuid4
+
 import pytest
 
 from albert.client import Albert
 from albert.collections.inventory import InventoryCategory
+from albert.core.shared.enums import SecurityClass
 from albert.core.shared.identifiers import ensure_inventory_id
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import BadRequestError
+from albert.exceptions import BadRequestError, NotFoundError
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
 from albert.resources.custom_fields import FieldType, ServiceType
@@ -12,6 +16,7 @@ from albert.resources.facet import FacetItem, FacetValue
 from albert.resources.inventory import (
     CasAmount,
     InventoryItem,
+    InventoryUnitCategory,
 )
 from albert.resources.lots import Lot
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
@@ -382,6 +387,20 @@ def test_update_inventory_item_standard_attributes(
     assert fetched_item.alias == "Updated Alias"
 
 
+def test_update_many_inventory_items(client: Albert, seeded_inventory: list[InventoryItem]):
+    """Test updating multiple inventory items in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        item.model_copy(update={"description": f"update_many description {i}"})
+        for i, item in enumerate(items)
+    ]
+    updated = client.inventory.update_many(inventory_items=to_update)
+    updated_by_id = {item.id: item for item in updated}
+    assert set(updated_by_id) == {item.id for item in items}
+    for i, item in enumerate(items):
+        assert updated_by_id[item.id].description == f"update_many description {i}"
+
+
 def test_update_inventory_item_advanced_attributes(
     client: Albert,
     seeded_inventory: list[InventoryItem],
@@ -523,3 +542,62 @@ def test_inventory_search_with_tags(
         tags = [x.tag for x in m.tags]
 
         assert any(t in tags for t in tags_to_check)
+
+
+def test_create_volume_inventory_item(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test creating a volume-based inventory item reads back density and on-hand volume fields."""
+    volume_item = InventoryItem(
+        name=f"{seed_prefix} - Volume Solvent {uuid4()}",
+        description="Volume test item",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.VOLUME,
+        density=0.85,
+        security_class=SecurityClass.SHARED,
+        company=seeded_companies[0],
+    )
+    created = client.inventory.create(inventory_item=volume_item, avoid_duplicates=False)
+    try:
+        assert created.id is not None
+        assert created.unit_category == InventoryUnitCategory.VOLUME
+        assert created.density is not None
+        assert created.density.value == pytest.approx(0.85)
+        assert created.density.locked_at_creation is True
+        assert created.density.unit_name is not None
+        assert created.inventory_on_hand_l is None
+
+        fetched = client.inventory.get_by_id(id=created.id)
+        assert fetched.density is not None
+        assert fetched.density.value == pytest.approx(0.85)
+        assert fetched.density.locked_at_creation is True
+        assert fetched.density.unit_name is not None
+        assert fetched.inventory_on_hand_l is None
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.inventory.delete(id=created.id)
+
+
+def test_update_rejects_unit_category_change_to_volume(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test backend rejects updating unit_category to volume on an existing mass item."""
+    mass_item = InventoryItem(
+        name=f"{seed_prefix} - Mass Item {uuid4()}",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.MASS,
+        security_class=SecurityClass.SHARED,
+        company=seeded_companies[0],
+    )
+    created = client.inventory.create(inventory_item=mass_item, avoid_duplicates=False)
+    try:
+        created.unit_category = InventoryUnitCategory.VOLUME
+        with pytest.raises(BadRequestError):
+            client.inventory.update(inventory_item=created)
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.inventory.delete(id=created.id)

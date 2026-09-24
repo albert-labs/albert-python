@@ -1,6 +1,9 @@
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertException, BadRequestError, NotFoundError
 from albert.resources.interval_combinations import (
     BlockRules,
     CombinationOverride,
@@ -15,6 +18,7 @@ from albert.resources.tasks import (
     BaseTask,
     BatchTask,
     Block,
+    GeneralTask,
     PropertyTask,
     TaskCategory,
     TaskSearchItem,
@@ -107,6 +111,32 @@ def test_get_by_id(client: Albert, seeded_tasks):
     assert task.name == seeded_tasks[0].name
 
 
+def test_create_many(client: Albert, seed_prefix: str, seeded_locations):
+    """Test creating multiple tasks in a single call."""
+    # POST /tasks/multi requires Location on General tasks (see api-task GeneralTask schema).
+    to_create = [
+        GeneralTask(name=f"{seed_prefix} - create_many 1", location=seeded_locations[0]),
+        GeneralTask(name=f"{seed_prefix} - create_many 2", location=seeded_locations[0]),
+    ]
+    created: list[BaseTask] = []
+    try:
+        created = client.tasks.create_many(tasks=to_create)
+        assert len(created) == len(to_create)
+        assert all(isinstance(t, GeneralTask) for t in created)
+        assert all(t.id is not None for t in created)
+        assert [t.name for t in created] == [t.name for t in to_create]
+    finally:
+        for task in created:
+            with suppress(NotFoundError, BadRequestError):
+                client.tasks.delete(id=task.id)
+
+
+def test_create_many_rejects_mixed_categories(client: Albert):
+    """Test that create_many rejects tasks of mixed categories."""
+    with pytest.raises(AlbertException):
+        client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
+
+
 def test_update(
     client: Albert,
     seeded_tasks,
@@ -175,6 +205,28 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
     )
     updated_task = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks + 1
+
+
+def test_add_blocks(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
+    """Test adding multiple blocks to a task in one call."""
+    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task = client.tasks.get_by_id(id=task.id)
+    starting_blocks = len(task.blocks)
+    client.tasks.add_blocks(
+        task_id=task.id,
+        blocks=[
+            Block(
+                workflow=[{"id": seeded_workflows[0].id}],
+                Datatemplate=[{"id": seeded_data_templates[0].id}],
+            ),
+            Block(
+                workflow=[{"id": seeded_workflows[0].id}],
+                Datatemplate=[{"id": seeded_data_templates[1].id}],
+            ),
+        ],
+    )
+    updated_task = client.tasks.get_by_id(id=task.id)
+    assert len(updated_task.blocks) == starting_blocks + 2
 
 
 def test_update_block_workflow(

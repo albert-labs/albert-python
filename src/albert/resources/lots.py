@@ -8,7 +8,7 @@ from albert.core.shared.identifiers import InventoryId, LotId, WorkflowId
 from albert.core.shared.models.base import BaseResource
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
-from albert.resources.inventory import InventoryCategory
+from albert.resources.inventory import InventoryCategory, InventoryDensity
 from albert.resources.locations import Location
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.users import User
@@ -75,6 +75,24 @@ class InventoryOnHandFilter(str, Enum):
     EQ_ZERO = "eqZero"
 
 
+class LotVolumeUnit(str, Enum):
+    """The volume unit used when entering lot quantities.
+
+    Attributes
+    ----------
+    MILLILITER
+        Milliliters (mL).
+    LITER
+        Liters (L).
+    GALLON
+        Gallons (Gal).
+    """
+
+    MILLILITER = "mL"
+    LITER = "L"
+    GALLON = "Gal"
+
+
 class LotWorkflowLink(BaseAlbertModel):
     """A workflow associated with a lot."""
 
@@ -104,8 +122,11 @@ class Lot(BaseResource):
         ```python
         from albert import Albert
         from albert.core.shared.models.base import EntityLink
-        from albert.resources.lots import Lot
+        from albert.resources.lots import Lot, LotVolumeUnit
+
         client = Albert()
+
+        # Regular mass-based lot
         lot = Lot(
             inventory_id="INVA9999999",
             storage_location=EntityLink(id="STL9999999"),
@@ -115,6 +136,20 @@ class Lot(BaseResource):
             manufacturer_lot_number="MLN-001",
         )
         created = client.lots.create(lots=[lot])
+
+        # Volume-based lot
+        volume_lot = Lot(
+            inventory_id="INVA8888888",
+            storage_location=EntityLink(id="STL9999999"),
+            initial_quantity=100.0,
+            inventory_on_hand=100.0,
+            initial_quantity_l=127.39,
+            entry_unit=LotVolumeUnit.LITER,
+            cost=80.0,
+            cost_l=62.8,
+            manufacturer_lot_number="MLN-002",
+        )
+        created_volume = client.lots.create(lots=[volume_lot])
         ```
 
     Notes
@@ -128,6 +163,11 @@ class Lot(BaseResource):
       ``cost`` and ``manufacturer_lot_number`` are also required.
     - **Task lot** (``task_id`` set, batch / ``Formulas`` path): ``inventory_id``
       and ``location`` (not ``storage_location``).
+    - **Volume lot** (parent item has ``unit_category="volume"``): caller must
+      still provide mass ``initial_quantity`` and ``inventory_on_hand``;
+      ``initial_quantity_l``, ``entry_unit``, ``cost_l``, and ``density`` are
+      optional extensions. Neither the SDK nor the server converts between mass
+      and volume units; callers must ensure mass equals volume multiplied by density.
     """
 
     action: str | None = Field(default=None)
@@ -207,6 +247,41 @@ class Lot(BaseResource):
     editing directly.
     """
 
+    initial_quantity_l: NonNegativeFloat | None = Field(default=None, alias="initialQuantityL")
+    """The initial quantity in litres for a volume-based lot.
+
+    Optional. Only honoured when the parent inventory item has ``unit_category="volume"``.
+    No conversion is performed by the SDK or server; the value must already be in litres.
+    Mass ``initial_quantity`` and ``inventory_on_hand`` are still required.
+    """
+
+    entry_unit: LotVolumeUnit | None = Field(default=None, alias="entryUnit")
+    """The unit in which quantity was entered at creation (mL, L, or Gal).
+
+    Label only; neither the SDK nor the server converts values based on this field.
+    """
+
+    entry_cost_unit: str | None = Field(default=None, alias="entryCostUnit")
+    """The unit in which cost was entered at creation (e.g. ``"$/L"``, ``"$/Gal"``).
+
+    Label only; neither the SDK nor the server converts values based on this field.
+    """
+
+    cost_l: NonNegativeFloat | None = Field(default=None, alias="costL")
+    """The volume-primary cost in $/L for a volume-based lot.
+
+    Optional. Only honoured when the parent inventory item has ``unit_category="volume"``.
+    No conversion is performed by the SDK or server; the value must already be in $/L.
+    Mass ``cost`` ($/kg) is still required.
+    """
+
+    density: InventoryDensity | None = Field(default=None)
+    """The density in g/mL for this lot.
+
+    Optional. When omitted, falls back to the parent inventory item's density.
+    Fixed at creation and cannot be changed afterward.
+    """
+
     owner: list[SerializeAsEntityLink[User]] | None = Field(default=None, alias="Owner")
     """The user(s) who own the lot. A lot may have at most one owner."""
 
@@ -270,6 +345,16 @@ class Lot(BaseResource):
     )
     """The completion date of the Task that produced the lot. Read-only."""
 
+    inventory_on_hand_l: float | None = Field(
+        default=None, alias="inventoryOnHandL", exclude=True, frozen=True
+    )
+    """The quantity currently in stock in litres for volume-based lots. Read-only."""
+
+    supports_l_gal_toggle: bool | None = Field(
+        default=None, alias="supportsLGalToggle", exclude=True, frozen=True
+    )
+    """Whether the UI offers an L / Gal display toggle. Read-only."""
+
     @model_validator(mode="before")
     @classmethod
     def populate_workflow_id_from_workflows(cls, data: Any) -> Any:
@@ -308,6 +393,13 @@ class Lot(BaseResource):
             return False
         return value
 
+    @field_validator("density", mode="before")
+    @classmethod
+    def coerce_density(cls, value: Any) -> Any:
+        if isinstance(value, (int, float, str)) and not isinstance(value, bool):
+            return InventoryDensity(value=value)
+        return value
+
     @staticmethod
     def _format_decimal(value: NonNegativeFloat) -> str:
         formatted = format(value, "f")
@@ -319,9 +411,21 @@ class Lot(BaseResource):
     def serialize_initial_quantity(self, initial_quantity: NonNegativeFloat):
         return self._format_decimal(initial_quantity) if initial_quantity is not None else None
 
+    @field_serializer("initial_quantity_l", return_type=str | None)
+    def serialize_initial_quantity_l(self, initial_quantity_l: NonNegativeFloat | None):
+        return self._format_decimal(initial_quantity_l) if initial_quantity_l is not None else None
+
     @field_serializer("cost", return_type=str | None)
     def serialize_cost(self, cost: NonNegativeFloat):
         return self._format_decimal(cost) if cost is not None else None
+
+    @field_serializer("cost_l", return_type=str | None)
+    def serialize_cost_l(self, cost_l: NonNegativeFloat | None):
+        return self._format_decimal(cost_l) if cost_l is not None else None
+
+    @field_serializer("density", return_type=str | None)
+    def serialize_density(self, density: InventoryDensity | None):
+        return self._format_decimal(density.value) if density is not None else None
 
     @field_serializer("inventory_on_hand", return_type=str)
     def serialize_inventory_on_hand(self, inventory_on_hand: NonNegativeFloat):

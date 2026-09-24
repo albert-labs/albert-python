@@ -12,7 +12,7 @@
 
 ## Overview
 
-Albert Python is the official Albert Invent Software Development Kit (SDK) for Python
+Albert Python is the official Albert Software Development Kit (SDK) for Python
 that provides a comprehensive and easy-to-use interface for interacting with the Albert Platform.
 The SDK allows Python developers to write software that interacts with various platform resources,
 such as inventories, projects, companies, tags, and many more.

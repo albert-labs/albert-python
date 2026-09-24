@@ -319,8 +319,10 @@ class Block(BaseAlbertModel):
         default=None, alias="intervalsStartFrom"
     )
     """Baseline mode controlling combination generation on this block's workflow:
+
     - Exclude Mode (``"all"``, default): starts with the full Cartesian product (all combinations included). Rules and overrides prune out unwanted variants.
     - Include Mode (``"none"``): starts with zero combinations (an empty set). Rules and manual overrides selectively pull in combinations, ideal for sparse screening or DoE.
+
     Omitted when increased intervals is disabled or when the block has no intervals."""
 
     combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)

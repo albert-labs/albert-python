@@ -24,6 +24,7 @@ from albert.resources.property_data import (
     TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
+    TaskPropertyRecord,
 )
 from albert.resources.tasks import (
     BaseTask,
@@ -745,3 +746,81 @@ def test_mixed_scalar_and_curve_task_property_upload(
         for dc_id in dc_ids:
             with suppress(NotFoundError):
                 client.data_columns.delete(id=dc_id)
+
+
+def test_get_all_task_properties_deduplicates_intervals(
+    client: Albert,
+    seeded_tasks: list[BaseTask],
+):
+    """Test each block/inventory/lot combination is returned once, not once per interval."""
+    prop_task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+
+    combos = {
+        (x.block_id, x.inventory_id, x.lot_id)
+        for x in client.property_data.check_for_task_data(task_id=prop_task.id)
+    }
+    results = client.property_data.get_all_task_properties(task_id=prop_task.id)
+
+    returned = [
+        (r.block_id, r.inventory.inventory_id, r.inventory.lot_id)
+        for r in results
+        if r.inventory is not None
+    ]
+    assert len(returned) == len(set(returned))
+    assert set(returned) == combos
+
+
+def test_get_task_property_records(
+    client: Albert,
+    seeded_tasks: list[BaseTask],
+):
+    """Test task results are returned as flat records carrying their setpoints."""
+    prop_task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+
+    records = client.property_data.get_task_property_records(
+        task_id=prop_task.id, with_data_only=False
+    )
+    assert records != []
+    assert all(isinstance(r, TaskPropertyRecord) for r in records)
+    assert all(r.task_id == prop_task.id for r in records)
+    assert all(r.parameter_setpoints is not None for r in records)
+
+    blocks = client.property_data.get_all_task_properties(
+        task_id=prop_task.id, with_data_only=False
+    )
+    expected = sum(len(trial.data_columns) for b in blocks for i in b.data for trial in i.trials)
+    assert len(records) == expected
+
+    frame = TaskPropertyRecord.to_dataframe(records=records)
+    assert len(frame) == len(records)
+    assert "value" in frame.columns
+
+
+def test_get_task_property_records_filters_by_inventory(
+    client: Albert,
+    seeded_tasks: list[BaseTask],
+):
+    """Test the inventory filter returns the matching subset and nothing else."""
+    prop_task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+
+    all_records = client.property_data.get_task_property_records(
+        task_id=prop_task.id, with_data_only=False
+    )
+    assert all_records != []
+    target = all_records[0].inventory_id
+
+    filtered = client.property_data.get_task_property_records(
+        task_id=prop_task.id, with_data_only=False, inventory_id=target
+    )
+    assert filtered != []
+    assert {r.inventory_id for r in filtered} == {target}
+    assert [r.model_dump() for r in filtered] == [
+        r.model_dump() for r in all_records if r.inventory_id == target
+    ]
+
+    assert (
+        client.property_data.get_task_property_records(
+            task_id=prop_task.id, with_data_only=False, inventory_id="INVNOTREAL999"
+        )
+        == []
+    )

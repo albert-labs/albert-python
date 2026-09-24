@@ -208,3 +208,24 @@ def test_delete_project(client: Albert, seeded_locations):
     # Try to fetch the project, should return None or not found
     with pytest.raises(NotFoundError):
         client.projects.get_by_id(id=created_project.id)
+
+
+def test_reactivate_project(client: Albert, seeded_locations, seed_prefix: str):
+    """Test reactivating a soft-deleted project restores access."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Project to Reactivate",
+            locations=[EntityLink(id=seeded_locations[1].id)],
+        )
+    )
+    try:
+        client.projects.delete(id=project.id)
+        with pytest.raises(NotFoundError):
+            client.projects.get_by_id(id=project.id)
+
+        reactivated = client.projects.reactivate(id=project.id)
+        assert reactivated.id == project.id
+        assert reactivated.status == "active"
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)

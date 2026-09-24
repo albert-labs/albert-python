@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
@@ -111,7 +111,8 @@ class InventoryUnitCategory(str, Enum):
     MASS : str
         Measured by mass (e.g. grams, kilograms).
     VOLUME : str
-        Measured by volume (e.g. milliliters, liters).
+        Measured by volume (e.g. milliliters, liters). Supported for RawMaterials
+        and Consumables; requires ``density`` at creation.
     LENGTH : str
         Measured by length (e.g. meters).
     PRESSURE : str
@@ -125,6 +126,40 @@ class InventoryUnitCategory(str, Enum):
     LENGTH = "length"
     PRESSURE = "pressure"
     UNITS = "units"
+
+
+class InventoryDensity(BaseAlbertModel):
+    """The density of an inventory item or lot measured by volume.
+
+    Density is expressed in grams per milliliter (g/mL) and locked at creation.
+    When creating a volume-based item or lot, supply either a bare numeric value
+    (float, int, or string) or an [`InventoryDensity`][albert.resources.inventory.InventoryDensity]
+    instance. Metadata fields (attribute ID, unit ID, unit name, locked flag)
+    are populated by the server and are read-only.
+
+    !!! example
+        ```python
+        from albert.resources.inventory import InventoryDensity
+
+        density = InventoryDensity(value=1.05)
+        ```"""
+
+    value: float
+    """The density value in g/mL."""
+
+    atr_id: str | None = Field(default=None, alias="atrId", exclude=True, frozen=True)
+    """The Albert ID of the density attribute definition. Read-only."""
+
+    unit_id: str | None = Field(default=None, alias="unitId", exclude=True, frozen=True)
+    """The Albert ID of the density measurement unit. Read-only."""
+
+    unit_name: str | None = Field(default=None, alias="unitName", exclude=True, frozen=True)
+    """The display name of the density measurement unit (e.g. ``g/mL``). Read-only."""
+
+    locked_at_creation: bool | None = Field(
+        default=None, alias="lockedAtCreation", exclude=True, frozen=True
+    )
+    """Whether the density was locked when the parent entity was created. Read-only."""
 
 
 class CasAuditFieldsWithEmail(AuditFields):
@@ -281,12 +316,26 @@ class InventoryItem(BaseTaggedResource):
 
     !!! example
         ```python
-        from albert.resources.inventory import InventoryItem, InventoryCategory
+        from albert.resources.inventory import (
+            InventoryCategory,
+            InventoryDensity,
+            InventoryItem,
+            InventoryUnitCategory,
+        )
 
+        # Mass-based inventory item
         item = InventoryItem(
             name="Titanium Dioxide",
             category=InventoryCategory.RAW_MATERIALS,
             company="Acme Chemicals",
+        )
+
+        # Volume-based inventory item
+        volume_item = InventoryItem(
+            name="Isopropyl Alcohol",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=InventoryDensity(value=0.785),
         )
         ```"""
 
@@ -304,6 +353,9 @@ class InventoryItem(BaseTaggedResource):
 
     unit_category: InventoryUnitCategory | None = Field(default=None, alias="unitCategory")
     """The dimension the item is measured in (mass, volume, length, pressure, or units). If not supplied, it defaults from ``category``: mass for raw materials and formulas, units for equipment and consumables."""
+
+    density: InventoryDensity | None = Field(default=None)
+    """The density in g/mL for volume-based inventory items. Required at creation when ``unit_category`` is volume. Locked at creation and cannot be changed."""
 
     security_class: SecurityClass | None = Field(default=None, alias="class")
     """The access/security class of the item (e.g. confidential, shared, restricted)."""
@@ -335,6 +387,11 @@ class InventoryItem(BaseTaggedResource):
     # Read-only fields
     inventory_on_hand: float = Field(default=0.0, alias="onHand", exclude=True, frozen=True)
     """Total amount currently on hand across all lots. Read-only."""
+
+    inventory_on_hand_l: float | None = Field(
+        default=None, alias="onHandL", exclude=True, frozen=True
+    )
+    """Total amount currently on hand across all lots in litres for volume-based items. Read-only."""
 
     task_config: list[dict] | None = Field(
         default=None, alias="TaskConfig", exclude=True, frozen=True
@@ -369,6 +426,17 @@ class InventoryItem(BaseTaggedResource):
             value = None
         return value
 
+    @field_validator("density", mode="before")
+    @classmethod
+    def coerce_density(cls, value: Any) -> Any:
+        if isinstance(value, (int, float, str)) and not isinstance(value, bool):
+            return InventoryDensity(value=value)
+        return value
+
+    @field_serializer("density")
+    def serialize_density(self, density: InventoryDensity | None) -> float | None:
+        return density.value if density is not None else None
+
     @model_validator(mode="after")
     def set_unit_category(self) -> InventoryItem:
         """Set unit category from category if not defined."""
@@ -385,6 +453,19 @@ class InventoryItem(BaseTaggedResource):
         if self.category == InventoryCategory.FORMULAS and not self.project_id and not self.id:
             # Some legacy on platform formulas don't have a project_id so check if its already on platform
             raise ValueError("A project_id must be supplied for all formulas.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_volume_density(self) -> InventoryItem:
+        """Ensure volume items have a positive density at creation."""
+        if (
+            self.id is None
+            and self.unit_category == InventoryUnitCategory.VOLUME
+            and (self.density is None or self.density.value <= 0)
+        ):
+            raise ValueError(
+                "Density must be provided and greater than 0 when unit_category is volume."
+            )
         return self
 
 
