@@ -189,6 +189,35 @@ def test_crud_empty_column(seeded_sheet: Sheet):
     seeded_sheet.delete_column(column_id=new_col.column_id)
 
 
+def test_bulk_column_and_row_operations(seeded_sheet: Sheet, seed_prefix: str):
+    """Test bulk add/rename/hide/show/lock/delete columns and add/delete rows."""
+    columns = seeded_sheet.add_columns(
+        names=[f"{seed_prefix} bulk col 1", f"{seed_prefix} bulk col 2"]
+    )
+    assert len(columns) == 2
+    try:
+        columns[0].name = f"{seed_prefix} bulk col 1 renamed"
+        columns[1].name = f"{seed_prefix} bulk col 2 renamed"
+        seeded_sheet.rename_columns(columns=columns)
+        renamed = [seeded_sheet.get_column(column_id=c.column_id).name for c in columns]
+        assert renamed == [c.name for c in columns]
+
+        seeded_sheet.hide_columns(column_ids=[c.column_id for c in columns])
+        seeded_sheet.show_columns(column_ids=[c.column_id for c in columns])
+        seeded_sheet.lock_columns(column_ids=[c.column_id for c in columns])
+        seeded_sheet.lock_columns(column_ids=[c.column_id for c in columns], locked=False)
+
+        rows = seeded_sheet.add_blank_rows(
+            row_names=[f"{seed_prefix} bulk row 1", f"{seed_prefix} bulk row 2"]
+        )
+        assert len(rows) == 2
+        seeded_sheet.delete_rows(
+            row_ids=[r.row_id for r in rows], design_id=seeded_sheet.product_design.id
+        )
+    finally:
+        seeded_sheet.delete_columns(column_ids=[c.column_id for c in columns])
+
+
 def test_formulation_column_names_use_display_name(
     seeded_sheet: Sheet, seeded_products: list[InventoryItem]
 ):
