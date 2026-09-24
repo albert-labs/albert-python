@@ -253,7 +253,8 @@ class LotCollection(BaseCollection):
         Returns
         -------
         list[Lot]
-            The lots matching the provided IDs.
+            The lots matching the provided IDs. Order is not guaranteed to match
+            the input list.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 300] for i in range(0, len(ids), 300)]
