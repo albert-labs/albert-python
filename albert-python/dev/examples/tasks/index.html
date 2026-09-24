@@ -457,6 +457,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../lambda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Lambda Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../authentication/" class="md-nav__link">
         
   
@@ -554,10 +582,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7" >
         
           
-          <label class="md-nav__link" for="__nav_1_6" id="__nav_1_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_7" id="__nav_1_7_label" tabindex="0">
             
   
   
@@ -575,8 +603,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -5454,7 +5482,7 @@
 
 
 <h1 id="tasks">Tasks</h1>
-<p>Tasks in Albert Invent are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.</p>
+<p>Tasks in Albert are a way to manage and track your daily work and collaborate with colleagues. There are three types of tasks: Batch Tasks, Property Tasks, and General Tasks.</p>
 <h2 id="intervals-rules-and-overrides-overview-beta">Intervals, Rules, and Overrides Overview (🧪 Beta)</h2>
 <div class="admonition warning">
 <p class="admonition-title">Beta Feature!</p>
@@ -5462,11 +5490,11 @@
 Please do not use in production or without explicit guidance from Albert. This feature currently
 falls outside of the Albert support contract, but we'd love your feedback!</p>
 </div>
-<p>When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> blocks, Albert Invent manages this matrix of conditions through <strong>intervals</strong>, <strong>rules</strong>, and <strong>combination overrides</strong>.</p>
+<p>When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> blocks, Albert manages this matrix of conditions through <strong>intervals</strong>, <strong>rules</strong>, and <strong>combination overrides</strong>.</p>
 <h3 id="what-are-intervals">What are intervals?</h3>
 <p>An <strong>interval</strong> is a discrete setpoint value assigned to a parameter within a workflow. When multiple parameters define intervals:</p>
 <ul>
-<li><strong>Cartesian Product</strong>: Albert Invent computes all combinations of values across every intervalized parameter. For example, testing 3 temperatures (25 °C, 60 °C, 90 °C) and 2 stir speeds (500 RPM, 1500 RPM) creates (3 \times 2 = 6) experimental combinations.</li>
+<li><strong>Cartesian Product</strong>: Albert computes all combinations of values across every intervalized parameter. For example, testing 3 temperatures (25 °C, 60 °C, 90 °C) and 2 stir speeds (500 RPM, 1500 RPM) creates (3 \times 2 = 6) experimental combinations.</li>
 <li><strong>Child Workflows</strong>: Each combination materializes as an independent child workflow record (<code>WFL...</code>) linked to the task block.</li>
 <li><strong>Interval Barcodes</strong>: Every combination receives a unique, persistent barcode (e.g. <code>OhI8ap0HY</code>) that remains stable across rule updates as long as the parameter setpoints are unchanged.</li>
 </ul>
@@ -5609,9 +5637,11 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 </div>
 <h2 id="create-an-intervalized-property-task-in-include-mode">Create an intervalized Property task in Include Mode</h2>
 <p>In <strong>Include Mode</strong> (<code>intervals_start_from="none"</code>), combination generation starts with <em>zero</em> active combinations. This mode is ideal for sparse designs of experiment (DoE) or targeted screening where you only want specific combinations evaluated.</p>
-<p>In this mode:
-- Rules act as <strong>inclusion rules</strong>: only combinations satisfying rule conditions are kept.
-- Overrides with <code>action=OverrideAction.UNSKIP</code> and <code>is_manual=True</code> allow you to cherry-pick individual combinations into the task.</p>
+<p>In this mode:</p>
+<ul>
+<li>Rules act as <strong>inclusion rules</strong>: only combinations satisfying rule conditions are kept.</li>
+<li>Overrides with <code>action=OverrideAction.UNSKIP</code> and <code>is_manual=True</code> allow you to cherry-pick individual combinations into the task.</li>
+</ul>
 <div class="admonition example">
 <p class="admonition-title">Create a Property Task in Include Mode with manual overrides</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
@@ -5669,11 +5699,13 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 </div>
 <h2 id="create-parent-workflow-with-intervals-and-add-specific-combinations">Create parent workflow with intervals and add specific combinations</h2>
 <p>A very common workflow is creating a new parent workflow with intervalized parameters and immediately provisioning a Property Task that runs an explicit list of target combinations (such as a targeted DoE or sparse matrix), without defining any general rules.</p>
-<p>In this workflow:
-1. Define and create the parent <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Workflow"><code>Workflow</code></a> with <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Interval"><code>Interval</code></a> setpoints across the parameters you want to vary.
-2. Define the list of specific parameter combinations to evaluate.
-3. Convert each combination into a manual override (<code>action="unskip"</code>, <code>is_manual=True</code>) using <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Workflow.build_override"><code>workflow.build_override</code></a> on the returned workflow.
-4. Create the <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> in Include Mode (<code>intervals_start_from="none"</code>) with overrides only (no rules required).</p>
+<p>In this workflow:</p>
+<ol>
+<li>Define and create the parent <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Workflow"><code>Workflow</code></a> with <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Interval"><code>Interval</code></a> setpoints across the parameters you want to vary.</li>
+<li>Define the list of specific parameter combinations to evaluate.</li>
+<li>Convert each combination into a manual override (<code>action="unskip"</code>, <code>is_manual=True</code>) using <a class="autorefs autorefs-internal" href="../../resources/workflows/#albert.resources.workflows.Workflow.build_override"><code>workflow.build_override</code></a> on the returned workflow.</li>
+<li>Create the <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> in Include Mode (<code>intervals_start_from="none"</code>) with overrides only (no rules required).</li>
+</ol>
 <div class="admonition example">
 <p class="admonition-title">Create a parent workflow with intervals and add a list of specific combinations</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
@@ -5761,7 +5793,7 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 </span></code></pre></div>
 </div>
 <h2 id="modify-rules-and-regenerate-combinations-on-an-existing-task">Modify rules and regenerate combinations on an existing task</h2>
-<p>You can update rules and overrides on an existing task block at any time using <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.set_block_rules"><code>set_block_rules</code></a>. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert Invent.</p>
+<p>You can update rules and overrides on an existing task block at any time using <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.set_block_rules"><code>set_block_rules</code></a>. By default, the SDK automatically recalculates the Cartesian product and regenerates child-workflow combinations on Albert.</p>
 <div class="admonition example">
 <p class="admonition-title">Update block rules and regenerate combinations</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">albert</span><span class="w"> </span><span class="kn">import</span> <span class="n">Albert</span>
@@ -5788,7 +5820,7 @@ falls outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="p">],</span>
 </span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="p">)</span>
 </span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>
-</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="c1"># Combinations are regenerated automatically on Albert Invent by default</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="c1"># Combinations are regenerated automatically on Albert by default</span>
 </span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="n">updated_rules</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">tasks</span><span class="o">.</span><span class="n">set_block_rules</span><span class="p">(</span>
 </span><span id="__span-4-27"><a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>    <span class="n">task_id</span><span class="o">=</span><span class="n">task_id</span><span class="p">,</span>
 </span><span id="__span-4-28"><a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a>    <span class="n">block_id</span><span class="o">=</span><span class="n">block_id</span><span class="p">,</span>

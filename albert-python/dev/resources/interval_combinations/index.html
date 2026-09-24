@@ -459,6 +459,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../lambda/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Lambda Layer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../authentication/" class="md-nav__link">
         
   
@@ -556,10 +584,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7" >
         
           
-          <label class="md-nav__link" for="__nav_1_6" id="__nav_1_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_1_7" id="__nav_1_7_label" tabindex="0">
             
   
   
@@ -577,8 +605,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -8118,13 +8146,15 @@ outside of the Albert support contract, but we'd love your feedback!</p>
               Bases: <code><span title="albert.core.base.BaseAlbertModel">BaseAlbertModel</span></code></p>
 
         <p>A combination rule composed of one or more conditions (🧪 Beta).</p>
-<p>Rules evaluate combination variants against criteria defined on parameter values:
-- <strong>Conditions</strong>: compare a parameter against a threshold using an operator (<code>=</code>, <code>!=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>).
-- <strong>AND logic within a rule</strong>: all conditions inside a single rule must match for the rule to trigger.
-- <strong>OR logic across rules</strong>: if any rule on the block triggers, its outcome applies.
-- <strong>Baseline mode behavior (<code>intervals_start_from</code>)</strong>:
-  - In Exclude Mode (<code>"all"</code>, default), matching combinations are excluded.
-  - In Include Mode (<code>"none"</code>), matching combinations are included.</p>
+<p>Rules evaluate combination variants against criteria defined on parameter values:</p>
+<ul>
+<li><strong>Conditions</strong>: compare a parameter against a threshold using an operator (<code>=</code>, <code>!=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>).</li>
+<li><strong>AND logic within a rule</strong>: all conditions inside a single rule must match for the rule to trigger.</li>
+<li><strong>OR logic across rules</strong>: if any rule on the block triggers, its outcome applies.</li>
+<li><strong>Baseline mode behavior (<code>intervals_start_from</code>)</strong>:</li>
+<li>In Exclude Mode (<code>"all"</code>, default), matching combinations are excluded.</li>
+<li>In Include Mode (<code>"none"</code>), matching combinations are included.</li>
+</ul>
 <p>Use <a class="autorefs autorefs-internal" href="../workflows/#albert.resources.workflows.Workflow.build_rule"><code>Workflow.build_rule</code></a> to construct
 rules from human-readable parameter names and values.</p>
 <div class="admonition warning">
@@ -8236,7 +8266,7 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A combination rule composed of one or more conditions (\ud83e\uddea Beta).\n\nRules evaluate combination variants against criteria defined on parameter values:\n- **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``&gt;``, ``&gt;=``, ``&lt;``, ``&lt;=``).\n- **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.\n- **OR logic across rules**: if any rule on the block triggers, its outcome applies.\n- **Baseline mode behavior (`intervals_start_from`)**:\n  - In Exclude Mode (``\"all\"``, default), matching combinations are excluded.\n  - In Include Mode (``\"none\"``), matching combinations are included.\n\nUse [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct\nrules from human-readable parameter names and values.\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
+</span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A combination rule composed of one or more conditions (\ud83e\uddea Beta).\n\nRules evaluate combination variants against criteria defined on parameter values:\n\n- **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``&gt;``, ``&gt;=``, ``&lt;``, ``&lt;=``).\n- **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.\n- **OR logic across rules**: if any rule on the block triggers, its outcome applies.\n- **Baseline mode behavior (`intervals_start_from`)**:\n  - In Exclude Mode (``\"all\"``, default), matching combinations are excluded.\n  - In Include Mode (``\"none\"``), matching combinations are included.\n\nUse [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct\nrules from human-readable parameter names and values.\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
 </span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a><span class="w">    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -8394,11 +8424,13 @@ outside of the Albert support contract, but we'd love your feedback!</p>
               Bases: <code><span title="albert.core.base.BaseAlbertModel">BaseAlbertModel</span></code></p>
 
         <p>A targeted skip or unskip override for a specific combination condition (🧪 Beta).</p>
-<p>Overrides pinpoint an exact combination in the Cartesian product space:
-- <code>action=OverrideAction.SKIP</code>: explicitly excludes the combination.
-- <code>action=OverrideAction.UNSKIP</code>: explicitly keeps or forces inclusion of the combination.
-- <strong>Precedence</strong>: overrides are evaluated first and always take precedence over rules (e.g. an <code>unskip</code> override guarantees a combination is retained even if an exclusion rule matches).
-- <strong>Manual cherry-picking (<code>is_manual=True</code>)</strong>: in Include Mode (<code>intervals_start_from="none"</code>), designates an individual combination cherry-picked into an otherwise empty set.</p>
+<p>Overrides pinpoint an exact combination in the Cartesian product space:</p>
+<ul>
+<li><code>action=OverrideAction.SKIP</code>: explicitly excludes the combination.</li>
+<li><code>action=OverrideAction.UNSKIP</code>: explicitly keeps or forces inclusion of the combination.</li>
+<li><strong>Precedence</strong>: overrides are evaluated first and always take precedence over rules (e.g. an <code>unskip</code> override guarantees a combination is retained even if an exclusion rule matches).</li>
+<li><strong>Manual cherry-picking (<code>is_manual=True</code>)</strong>: in Include Mode (<code>intervals_start_from="none"</code>), designates an individual combination cherry-picked into an otherwise empty set.</li>
+</ul>
 <p>Keyed by the compound override key (format <code>{groupId}#{paramId}#{rowId}-...</code>),
 which can be generated using <a class="autorefs autorefs-internal" href="../workflows/#albert.resources.workflows.Workflow.get_override_key"><code>Workflow.get_override_key</code></a>
 or built directly via <a class="autorefs autorefs-internal" href="../workflows/#albert.resources.workflows.Workflow.build_override"><code>Workflow.build_override</code></a>.</p>
@@ -8423,7 +8455,7 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A targeted skip or unskip override for a specific combination condition (\ud83e\uddea Beta).\n\nOverrides pinpoint an exact combination in the Cartesian product space:\n- ``action=OverrideAction.SKIP``: explicitly excludes the combination.\n- ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.\n- **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).\n- **Manual cherry-picking (`is_manual=True`)**: in Include Mode (``intervals_start_from=\"none\"``), designates an individual combination cherry-picked into an otherwise empty set.\n\nKeyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),\nwhich can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]\nor built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A targeted skip or unskip override for a specific combination condition (\ud83e\uddea Beta).\n\nOverrides pinpoint an exact combination in the Cartesian product space:\n\n- ``action=OverrideAction.SKIP``: explicitly excludes the combination.\n- ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.\n- **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).\n- **Manual cherry-picking (`is_manual=True`)**: in Include Mode (``intervals_start_from=\"none\"``), designates an individual combination cherry-picked into an otherwise empty set.\n\nKeyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),\nwhich can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]\nor built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">      </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -8611,11 +8643,13 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 
         <p>Combination rules and overrides for a task block (🧪 Beta).</p>
 <p>Encapsulates the rules and overrides that govern how interval combinations
-are evaluated and filtered on a task block:
-- <strong>Rules</strong> define parameter criteria evaluated with AND logic within each rule and
-  OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).
-- <strong>Overrides</strong> pinpoint specific combinations for forced inclusion (<code>unskip</code>)
-  or exclusion (<code>skip</code>) and take precedence over rules.</p>
+are evaluated and filtered on a task block:</p>
+<ul>
+<li><strong>Rules</strong> define parameter criteria evaluated with AND logic within each rule and
+  OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).</li>
+<li><strong>Overrides</strong> pinpoint specific combinations for forced inclusion (<code>unskip</code>)
+  or exclusion (<code>skip</code>) and take precedence over rules.</li>
+</ul>
 <p>Returned by <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.get_block_rules"><code>get_block_rules</code></a>
 and <a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.set_block_rules"><code>set_block_rules</code></a>.</p>
 <div class="admonition warning">
@@ -8667,7 +8701,7 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">    </span><span class="nt">"CombinationOverride"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A targeted skip or unskip override for a specific combination condition (\ud83e\uddea Beta).\n\nOverrides pinpoint an exact combination in the Cartesian product space:\n- ``action=OverrideAction.SKIP``: explicitly excludes the combination.\n- ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.\n- **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).\n- **Manual cherry-picking (`is_manual=True`)**: in Include Mode (``intervals_start_from=\"none\"``), designates an individual combination cherry-picked into an otherwise empty set.\n\nKeyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),\nwhich can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]\nor built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A targeted skip or unskip override for a specific combination condition (\ud83e\uddea Beta).\n\nOverrides pinpoint an exact combination in the Cartesian product space:\n\n- ``action=OverrideAction.SKIP``: explicitly excludes the combination.\n- ``action=OverrideAction.UNSKIP``: explicitly keeps or forces inclusion of the combination.\n- **Precedence**: overrides are evaluated first and always take precedence over rules (e.g. an ``unskip`` override guarantees a combination is retained even if an exclusion rule matches).\n- **Manual cherry-picking (`is_manual=True`)**: in Include Mode (``intervals_start_from=\"none\"``), designates an individual combination cherry-picked into an otherwise empty set.\n\nKeyed by the compound override key (format ``{groupId}#{paramId}#{rowId}-...``),\nwhich can be generated using [`Workflow.get_override_key`][albert.resources.workflows.Workflow.get_override_key]\nor built directly via [`Workflow.build_override`][albert.resources.workflows.Workflow.build_override].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -8713,7 +8747,7 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a><span class="w">    </span><span class="nt">"ExclusionRule"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A combination rule composed of one or more conditions (\ud83e\uddea Beta).\n\nRules evaluate combination variants against criteria defined on parameter values:\n- **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``&gt;``, ``&gt;=``, ``&lt;``, ``&lt;=``).\n- **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.\n- **OR logic across rules**: if any rule on the block triggers, its outcome applies.\n- **Baseline mode behavior (`intervals_start_from`)**:\n  - In Exclude Mode (``\"all\"``, default), matching combinations are excluded.\n  - In Include Mode (``\"none\"``), matching combinations are included.\n\nUse [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct\nrules from human-readable parameter names and values.\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
+</span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A combination rule composed of one or more conditions (\ud83e\uddea Beta).\n\nRules evaluate combination variants against criteria defined on parameter values:\n\n- **Conditions**: compare a parameter against a threshold using an operator (``=``, ``!=``, ``&gt;``, ``&gt;=``, ``&lt;``, ``&lt;=``).\n- **AND logic within a rule**: all conditions inside a single rule must match for the rule to trigger.\n- **OR logic across rules**: if any rule on the block triggers, its outcome applies.\n- **Baseline mode behavior (`intervals_start_from`)**:\n  - In Exclude Mode (``\"all\"``, default), matching combinations are excluded.\n  - In Include Mode (``\"none\"``), matching combinations are included.\n\nUse [`Workflow.build_rule`][albert.resources.workflows.Workflow.build_rule] to construct\nrules from human-readable parameter names and values.\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
 </span><span id="__span-0-88"><a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a><span class="w">      </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-89"><a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a><span class="w">        </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-90"><a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a><span class="w">          </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -9190,7 +9224,7 @@ outside of the Albert support contract, but we'd love your feedback!</p>
 </span><span id="__span-0-561"><a id="__codelineno-0-561" name="__codelineno-0-561" href="#__codelineno-0-561"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span>
 </span><span id="__span-0-562"><a id="__codelineno-0-562" name="__codelineno-0-562" href="#__codelineno-0-562"></a><span class="w">    </span><span class="p">}</span>
 </span><span id="__span-0-563"><a id="__codelineno-0-563" name="__codelineno-0-563" href="#__codelineno-0-563"></a><span class="w">  </span><span class="p">},</span>
-</span><span id="__span-0-564"><a id="__codelineno-0-564" name="__codelineno-0-564" href="#__codelineno-0-564"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Combination rules and overrides for a task block (\ud83e\uddea Beta).\n\nEncapsulates the rules and overrides that govern how interval combinations\nare evaluated and filtered on a task block:\n- **Rules** define parameter criteria evaluated with AND logic within each rule and\n  OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).\n- **Overrides** pinpoint specific combinations for forced inclusion (``unskip``)\n  or exclusion (``skip``) and take precedence over rules.\n\nReturned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]\nand [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
+</span><span id="__span-0-564"><a id="__codelineno-0-564" name="__codelineno-0-564" href="#__codelineno-0-564"></a><span class="w">  </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Combination rules and overrides for a task block (\ud83e\uddea Beta).\n\nEncapsulates the rules and overrides that govern how interval combinations\nare evaluated and filtered on a task block:\n\n- **Rules** define parameter criteria evaluated with AND logic within each rule and\n  OR logic across rules (excluding matches in Exclude Mode, including in Include Mode).\n- **Overrides** pinpoint specific combinations for forced inclusion (``unskip``)\n  or exclusion (``skip``) and take precedence over rules.\n\nReturned by [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules]\nand [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules].\n\n!!! warning \"Beta Feature!\"\n    Increased intervals combination support is currently in beta and behind a platform\n    feature flag. Please do not use in production or without explicit guidance from\n    Albert. You might otherwise have a bad experience. This feature currently falls\n    outside of the Albert support contract, but we'd love your feedback!"</span><span class="p">,</span>
 </span><span id="__span-0-565"><a id="__codelineno-0-565" name="__codelineno-0-565" href="#__codelineno-0-565"></a><span class="w">  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-566"><a id="__codelineno-0-566" name="__codelineno-0-566" href="#__codelineno-0-566"></a><span class="w">    </span><span class="nt">"taskId"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-567"><a id="__codelineno-0-567" name="__codelineno-0-567" href="#__codelineno-0-567"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The task ID (format ``TAS...``)."</span><span class="p">,</span>
