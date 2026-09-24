@@ -339,8 +339,10 @@ class ParameterGroup(BaseTaggedResource):
     verified: bool = Field(default=False, exclude=True, frozen=True)
     """Whether the group has been verified (an approval/governance state). Read-only."""
 
-    documents: list[EntityLink] = Field(default_factory=list, exclude=True, frozen=True)
-    """Documents (e.g. SOPs) associated with the Parameter Group. See Also --------"""
+    documents: list[EntityLink] = Field(
+        default_factory=list, alias="Documents", exclude=True, frozen=True
+    )
+    """Documents (e.g. SOPs) associated with the group. Read-only. Deserialized from ``Documents``."""
 
     @field_validator("metadata", mode="before")
     @classmethod
