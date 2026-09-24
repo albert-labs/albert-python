@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import validate_call
 
@@ -15,6 +15,7 @@ from albert.resources.units_v4 import (
     UnitV4Origin,
     UnitV4Type,
 )
+from albert.utils.worker_jobs import poll_worker_job
 
 _SEARCH_PAGE_SIZE = 100  # maximum page size accepted by the v4 units search endpoint
 _CREATE_FIELDS = {
@@ -87,7 +88,7 @@ class UnitV4Collection(BaseCollection):
     get_compatible(symbol=..., expression=...) -> UnitV4Compatible
         Get the SI mapping and compatible unit families for a symbol or expression.
     merge(parent_id, child_ids, ...) -> str
-        Merge units into a parent unit as a background job.
+        Merge units into a parent unit as a background job, optionally waiting for completion.
     """
 
     _api_version = "v4.0"
@@ -514,13 +515,14 @@ class UnitV4Collection(BaseCollection):
         parent_id: UnitV4Id,
         child_ids: list[UnitV4Id],
         webhook_url: str | None = None,
-        webhook_method: str = "POST",
+        webhook_method: Literal["POST", "GET"] = "POST",
+        wait: bool = False,
     ) -> str:
         """Merge units into a parent unit as a background job.
 
         Every reference to a child unit across the tenant is repointed to the parent
-        unit. The merge runs asynchronously; this call returns as soon as the job is
-        accepted.
+        unit. The merge runs asynchronously; by default this call returns as soon as
+        the job is accepted. Pass ``wait=True`` to block until the job completes.
 
         !!! example
             ```python
@@ -535,16 +537,33 @@ class UnitV4Collection(BaseCollection):
             The units to merge into ``parent_id``. At least one is required.
         webhook_url : str, optional
             A URL Albert calls when the job completes.
-        webhook_method : str, optional
+        webhook_method : Literal["POST", "GET"], optional
             HTTP method for the webhook call, ``"POST"`` (default) or ``"GET"``.
+        wait : bool, optional
+            Whether to wait for the merge job to complete before returning, by
+            default False.
 
         Returns
         -------
         str
             The ID of the background merge job.
+
+        Raises
+        ------
+        TimeoutError
+            If ``wait=True`` and the job does not complete within the retry window.
+        AlbertException
+            If ``wait=True`` and the job fails or is cancelled.
         """
         payload: dict[str, Any] = {"parentId": parent_id, "childIds": child_ids}
         if webhook_url is not None:
             payload["webhook"] = {"url": webhook_url, "method": webhook_method}
         response = self.session.post(f"{self.base_path}/merge", json=payload)
-        return response.json()["id"]
+        job_id = response.json()["id"]
+        if wait:
+            poll_worker_job(
+                session=self.session,
+                job_id=job_id,
+                job_description=f"Merge units into {parent_id}",
+            )
+        return job_id
