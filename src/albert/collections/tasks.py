@@ -165,7 +165,7 @@ class TaskCollection(BaseCollection):
         Same filters as search, but returns fully populated tasks.
     update(task) -> BaseTask
         Update an existing task.
-    delete(id) -> None
+    delete(id, delay=None) -> None
         Delete a task by its ID.
     add_block(task_id, data_template_id, workflow_id) -> None
         Add a Block (Data Template + Workflow) to a Property or Batch task.
@@ -1581,7 +1581,7 @@ class TaskCollection(BaseCollection):
         return self.get_by_id(id=task_id)
 
     @validate_call
-    def delete(self, *, id: TaskId) -> None:
+    def delete(self, *, id: TaskId, delay: int | None = None) -> None:
         """Delete a task by its ID.
 
         Deleting a task also removes any results recorded against its blocks.
@@ -1595,13 +1595,17 @@ class TaskCollection(BaseCollection):
         ----------
         id : TaskId
             The task to delete (format ``TAS...``).
+        delay : int, optional
+            Time in milliseconds the platform waits before running post-delete
+            synchronization of dependent records. Omit for no delay.
 
         Returns
         -------
         None
         """
         url = f"{self.base_path}/{id}"
-        self.session.delete(url)
+        params = {"delay": delay} if delay is not None else None
+        self.session.delete(url, params=params)
 
     @validate_call
     def get_by_id(self, *, id: TaskId) -> BaseTask:
