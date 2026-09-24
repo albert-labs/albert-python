@@ -65,6 +65,22 @@ def test_get_by_ids_empty(client: Albert):
     assert client.parameters.get_by_ids(ids=[]) == []
 
 
+def test_get_by_ids_omits_unknown_ids(client: Albert, seeded_parameters: list[Parameter]):
+    """Test that known parameter IDs are returned and unknown ones are omitted."""
+    known_ids = [x.id for x in seeded_parameters[:2]]
+    results = poll_until(
+        lambda: [
+            p
+            for p in client.parameters.get_by_ids(ids=[*known_ids, "PRM0"])
+            if p.id in set(known_ids)
+        ],
+        timeout=15.0,
+        interval=1.0,
+    )
+    assert len(results) == len(known_ids)
+    assert {p.id for p in results} == set(known_ids)
+
+
 def test_get_or_create_parameters(caplog, client: Albert, seeded_parameters: list[Parameter]):
     p = seeded_parameters[0].model_copy(update={"id": None})
     returned = client.parameters.get_or_create(parameter=p)

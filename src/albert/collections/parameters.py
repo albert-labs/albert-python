@@ -56,7 +56,7 @@ class ParameterCollection(BaseCollection):
     get_by_id(id) -> Parameter
         Get a single parameter by its ID.
     get_by_ids(ids) -> list[Parameter]
-        Get many parameters by their IDs in batches.
+        Get many parameters by their IDs.
     get_all(...) -> Iterator[Parameter]
         Search for parameters by name or ID.
     update(parameter) -> Parameter
@@ -110,8 +110,7 @@ class ParameterCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[ParameterId]) -> list[Parameter]:
         """Get many parameters by their IDs.
 
-        Requests are automatically split into batches, so arbitrarily long ID
-        lists are supported. Use this instead of repeated
+        Arbitrarily long ID lists are supported. Use this instead of repeated
         [`get_by_id`][albert.collections.parameters.ParameterCollection.get_by_id]
         calls when you already have several Parameter IDs to fetch. To find
         parameters without knowing their IDs, use [`get_all`][albert.collections.parameters.ParameterCollection.get_all].
