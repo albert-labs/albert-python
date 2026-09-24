@@ -247,6 +247,7 @@ class TaskCollection(BaseCollection):
         task_data = response.json()[0]
         return TaskAdapter.validate_python(task_data)
 
+    @validate_call
     def create_many(
         self, *, tasks: list[PropertyTask | GeneralTask | BatchTask]
     ) -> list[BaseTask]:
@@ -258,10 +259,12 @@ class TaskCollection(BaseCollection):
         !!! example
             ```python
             from albert.resources.tasks import GeneralTask
+
+            location = next(client.locations.get_all(max_items=1))
             tasks = client.tasks.create_many(
                 tasks=[
-                    GeneralTask(name="Calibrate balance"),
-                    GeneralTask(name="Clean hood"),
+                    GeneralTask(name="Calibrate balance", location=location),
+                    GeneralTask(name="Clean hood", location=location),
                 ]
             )
             [t.id for t in tasks]
@@ -272,13 +275,20 @@ class TaskCollection(BaseCollection):
         ----------
         tasks : list[PropertyTask or GeneralTask or BatchTask]
             The tasks to create. Must be non-empty and share one category and
-            one ``parent_id``.
+            one ``parent_id``. For General tasks, ``location`` is required by
+            the bulk endpoint.
 
         Returns
         -------
         list[BaseTask]
             The created tasks, in request order, populated with their assigned
             Task IDs.
+
+        Raises
+        ------
+        AlbertException
+            If ``tasks`` is empty or if items have conflicting categories or
+            parent IDs.
         """
         if not tasks:
             raise AlbertException("tasks must include at least one task.")
