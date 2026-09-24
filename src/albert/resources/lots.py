@@ -192,7 +192,8 @@ class Lot(BaseResource):
     workflow_id: WorkflowId | None = Field(default=None, alias="workflowId")
     """The Albert ID of the workflow associated with this lot (format ``WFL...``).
 
-    Can be set via [`update`][albert.collections.lots.LotCollection.update].
+    Ignored when creating a lot. Can be set via
+    [`update`][albert.collections.lots.LotCollection.update].
     """
 
     workflows: list[LotWorkflowLink] | None = Field(
@@ -295,7 +296,12 @@ class Lot(BaseResource):
     """Custom field values for the lot. Allowed keys and values are defined by the Custom Fields configuration."""
 
     notes: str | None = Field(default=None)
-    """Free-text notes on the lot."""
+    """Free-text notes on the lot.
+
+    Not saved when creating a lot; manage lot notes through the Notes collection
+    ([`NotesCollection`][albert.collections.notes.NotesCollection], accessed as
+    ``client.notes``).
+    """
     # because quarantined is an allowed Lot status, we need to extend the normal status
 
     # API-returned fields (read-only)

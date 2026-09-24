@@ -175,6 +175,11 @@ class LotCollection(BaseCollection):
         litres are not automatically derived from mass or density. See field
         docstrings on [`Lot`][albert.resources.lots.Lot] for the full create matrix.
 
+        ``notes`` and ``workflow_id`` are not saved on create. Assign a workflow
+        after creation via [`update`][albert.collections.lots.LotCollection.update];
+        lot notes are managed through the Notes collection
+        ([`NotesCollection`][albert.collections.notes.NotesCollection]).
+
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
         """
@@ -876,6 +881,10 @@ class LotCollection(BaseCollection):
         ``workflow_id``.
         ``density``, ``initial_quantity_l``, and ``inventory_on_hand_l`` are
         fixed at creation and cannot be updated.
+
+        Clearing a field (setting it to ``None``) is only supported for
+        ``expiration_date``, ``pack_size``, ``external_barcode_id``, and
+        individual ``metadata`` keys; clearing any other field is rejected.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)
