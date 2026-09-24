@@ -105,8 +105,10 @@ class UnitV4(BaseResource):
     description: str | None = None
     """A description of the unit."""
 
-    type: UnitV4Type
-    """Whether the unit is convertible (has an SI mapping) or non-convertible."""
+    type: UnitV4Type | None = None
+    """Whether the unit is convertible (has an SI mapping) or non-convertible. Required on
+    create; absent on Custom (Legacy) units until they are set up via
+    [`update`][albert.collections.units_v4.UnitV4Collection.update]."""
 
     symbol: str
     """The unit symbol (for example ``"g"``). Unique within the tenant."""

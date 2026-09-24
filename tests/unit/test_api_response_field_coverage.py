@@ -245,6 +245,23 @@ def test_unit_family_v4_ref_accepts_both_wire_spellings():
     assert by_family.model_dump(by_alias=True, mode="json") == {"id": "UNF1", "name": "Mass"}
 
 
+def test_unit_v4_legacy_record_without_type_validates():
+    """Custom (Legacy) units carry no ``type`` until they are set up."""
+    unit = UnitV4.model_validate(
+        {
+            "id": "UNI1",
+            "name": "Legacy Batch",
+            "symbol": "lbatch",
+            "status": "active",
+            "origin": "Custom (Legacy)",
+            "created": _AUDIT,
+        }
+    )
+
+    assert unit.type is None
+    assert unit.origin is UnitV4Origin.CUSTOM_LEGACY
+
+
 def test_unit_family_v4_keeps_full_record():
     """Every documented field on a unit family survives validation."""
     family = UnitFamilyV4.model_validate(UNIT_FAMILY_V4_PAYLOAD)
