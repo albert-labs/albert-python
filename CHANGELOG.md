@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.58.0](https://github.com/albert-labs/albert-python/compare/v1.57.1...v1.58.0) (2026-09-24)
+
+
+### Features
+
+* **inventory:** add update_many for bulk inventory updates ([#762](https://github.com/albert-labs/albert-python/issues/762)) ([813338e](https://github.com/albert-labs/albert-python/commit/813338efcbf8d664963d5f962722b637d3743a22))
+* **inventory:** add volume-based ingredients and lots support ([#746](https://github.com/albert-labs/albert-python/issues/746)) ([4303120](https://github.com/albert-labs/albert-python/commit/43031200d1077a702858ff124fda1b18db192709))
+* **parameters:** add get_by_ids for bulk parameter fetch ([#767](https://github.com/albert-labs/albert-python/issues/767)) ([f9d41e4](https://github.com/albert-labs/albert-python/commit/f9d41e4674c1d1046f4c7b4259a870d8f7146e40))
+* **projects:** add reactivate method for soft-deleted projects ([#758](https://github.com/albert-labs/albert-python/issues/758)) ([80f5166](https://github.com/albert-labs/albert-python/commit/80f5166bf44dab73f57afaca168c5f4338fc7d4b))
+* **sheets:** add bulk column and row operations ([#763](https://github.com/albert-labs/albert-python/issues/763)) ([d5b1497](https://github.com/albert-labs/albert-python/commit/d5b149799f6f67def4215c9dd6206a375c5deb70))
+* **tasks:** add add_blocks for bulk block attachment ([#761](https://github.com/albert-labs/albert-python/issues/761)) ([20fc104](https://github.com/albert-labs/albert-python/commit/20fc10405a071cbde5a9a5bab640334478f7962b))
+* **tasks:** add create_many for bulk task creation ([#760](https://github.com/albert-labs/albert-python/issues/760)) ([24fe631](https://github.com/albert-labs/albert-python/commit/24fe631450f50fddb5aba1b429433093f97b4e35))
+
+
+### Bug Fixes
+
+* **collections:** align get_by_ids chunk sizes with endpoint limits ([#766](https://github.com/albert-labs/albert-python/issues/766)) ([6517804](https://github.com/albert-labs/albert-python/commit/6517804238e3536dee92300976a4e1ebb0cf1a23))
+* property data ([#756](https://github.com/albert-labs/albert-python/issues/756)) ([9bb004f](https://github.com/albert-labs/albert-python/commit/9bb004f767d66da3a0b32e199727171624751b30))
+* **storage_locations:** construct get_all rows directly when hydrated ([#768](https://github.com/albert-labs/albert-python/issues/768)) ([642bfdb](https://github.com/albert-labs/albert-python/commit/642bfdbe7477a5142e1ca7b77c698c2da46d982b))
+* **workflows:** construct create() results directly from response ([#765](https://github.com/albert-labs/albert-python/issues/765)) ([925b444](https://github.com/albert-labs/albert-python/commit/925b4440119e4f04597196a5a97ef05146dcf8fa))
+
+
+### Documentation
+
+* document the release-please release process in CONTRIBUTING ([#770](https://github.com/albert-labs/albert-python/issues/770)) ([14c2030](https://github.com/albert-labs/albert-python/commit/14c2030e2cefd198d706918ae2198f37b19a42db))
+* replace Albert Invent with Albert and fix list rendering ([#752](https://github.com/albert-labs/albert-python/issues/752)) ([c0b9a6a](https://github.com/albert-labs/albert-python/commit/c0b9a6a96a39e38f43a10639498f16c0bad29fbb))
+* **workflows:** clarify sequence fields are read-only on create ([#673](https://github.com/albert-labs/albert-python/issues/673)) ([6559311](https://github.com/albert-labs/albert-python/commit/6559311e98b9aa9f6a51dd4ecdf6075b16af7dda))
+
 ## [1.57.1](https://github.com/albert-labs/albert-python/compare/v1.57.0...v1.57.1) (2026-09-21)
 
 
