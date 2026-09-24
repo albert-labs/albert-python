@@ -156,7 +156,7 @@ class StorageLocationsCollection(BaseCollection):
             id = item.get("albertId")
             if not id:
                 return None
-            if "Location" in item:
+            if item.get("Location"):
                 return StorageLocation(**item)
             try:
                 return self.get_by_id(id=id)
