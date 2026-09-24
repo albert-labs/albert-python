@@ -1787,6 +1787,7 @@ class InventoryCollection(BaseCollection):
             batch_patch_payload = {"data": batch_patch_changes}
             self.session.patch(url, json=batch_patch_payload)
 
+    @validate_call
     def update_many(self, *, inventory_items: list[InventoryItem]) -> list[InventoryItem]:
         """Update multiple inventory items.
 
@@ -1811,12 +1812,14 @@ class InventoryCollection(BaseCollection):
         Returns
         -------
         list[InventoryItem]
-            The updated items, in the order returned by the platform.
+            The updated items. Order is not guaranteed to match the input list.
 
         Notes
         -----
         The same fields can be updated as with
         [`update`][albert.collections.inventory.InventoryCollection.update].
+        Updates are applied sequentially per item; if an error occurs mid-batch,
+        earlier updates are not rolled back.
         """
         if not inventory_items:
             return []
