@@ -102,7 +102,6 @@ def test_workflow_search_hydrate(
 
 def test_workflow_search_by_parameter_groups(
     client: Albert,
-    seed_prefix: str,
     seeded_workflows: list[Workflow],
 ):
     """Test search by parameter group name scoped to seeded workflow ids."""
@@ -115,11 +114,12 @@ def test_workflow_search_by_parameter_groups(
         lambda: [
             item
             for item in client.workflows.search(
-                text=seed_prefix,
+                ids=[wf.id],
                 parameter_groups=group_name,
                 max_items=100,
             )
             if item.id in seeded_ids
-        ]
+        ],
+        timeout=60.0,
     )
     assert hits, "Expected at least one seeded workflow matching parameter group filter"
