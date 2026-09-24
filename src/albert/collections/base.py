@@ -19,6 +19,13 @@ class BaseCollection:
     # Class property specifying updatable attributes
     _updatable_attributes = {}
 
+    # Updatable attributes that must never emit a `delete` patch op when set to None.
+    # Some APIs reject delete ops on required fields with a 400 (e.g. company `name`),
+    # so a collection lists those attributes here and the delete op is skipped instead
+    # of sending a request the API will reject. Treat as immutable: subclasses replace
+    # the set rather than mutating it in place.
+    _non_deletable_attributes: set[str] = set()
+
     def __init__(self, *, session: AlbertSession):
         self.session = session
 
@@ -217,12 +224,16 @@ class BaseCollection:
                         )
                     )
                 if new_value is None and old_value is not None:
-                    # Delete the attribute
-                    data.append(
-                        PatchDatum(
-                            attribute=alias, operation=PatchOperation.DELETE, old_value=old_value
+                    # Delete the attribute, unless the collection marks it as
+                    # non-deletable (the API would reject the delete op with a 400).
+                    if attribute not in self._non_deletable_attributes:
+                        data.append(
+                            PatchDatum(
+                                attribute=alias,
+                                operation=PatchOperation.DELETE,
+                                old_value=old_value,
+                            )
                         )
-                    )
                 elif old_value is not None and new_value != old_value:
                     # Update existing attribute
                     old_value = str(old_value) if stringify_values else old_value

@@ -71,6 +71,9 @@ class CompanyCollection(BaseCollection):
     """
 
     _updatable_attributes = {"name"}
+    # The companies API rejects a delete op on `name` with a 400: a company cannot
+    # exist without a name, so setting it to None must not emit a delete.
+    _non_deletable_attributes = {"name"}
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
@@ -444,7 +447,8 @@ class CompanyCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``name``.
+        The following fields can be updated: ``name``. The ``name`` cannot be cleared:
+        setting it to ``None`` is ignored because a company cannot exist without a name.
         """
         # Fetch the current object state from the server or database
         current_object = self.get_by_id(id=company.id)
