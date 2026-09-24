@@ -134,7 +134,7 @@ UNIT_V4_CONVERTIBLE_PAYLOAD = {
     "refUnitValue": "0.00220462",
     "status": "active",
     "origin": "Custom",
-    "unitFamilies": [{"id": "UNF1", "name": "Mass"}],
+    "unitFamilies": [{"familyId": "UNF1", "familyName": "Mass"}],
     "created": _AUDIT,
     "updated": _AUDIT,
 }
@@ -182,7 +182,7 @@ def test_unit_v4_accepts_non_convertible_and_search_shapes():
             "symbol": "batch",
             "status": "active",
             "origin": "Custom (Legacy)",
-            "unitFamilies": [{"id": "UNF3", "name": "Count"}],
+            "unitFamilies": [{"familyId": "UNF3", "familyName": "Count"}],
             "created": _AUDIT,
         }
     )
@@ -226,13 +226,40 @@ def test_unit_v4_lookup_and_compatible_shapes():
             "siUnit": "kg",
             "siValue": "0.001",
             "refUnitValue": "1000",
-            "unitFamilies": [{"id": "UNF1", "name": "Mass"}],
+            "unitFamilies": [{"familyId": "UNF1", "familyName": "Mass"}],
             "dimension": "Mass",
         }
     )
     assert compatible.ref_unit_value == "1000"
     assert compatible.dimension == "Mass"
     assert compatible.unit_families[0].name == "Mass"
+
+
+def test_unit_family_v4_ref_accepts_both_wire_spellings():
+    """Units endpoints send ``familyId``/``familyName``; the ``id``/``name`` spelling
+    stays accepted, and serialization keeps the ``id``/``name`` keys."""
+    by_id = UnitFamilyV4Ref.model_validate({"id": "UNF1", "name": "Mass"})
+    by_family = UnitFamilyV4Ref.model_validate({"familyId": "UNF1", "familyName": "Mass"})
+
+    assert by_id == by_family == UnitFamilyV4Ref(id="UNF1", name="Mass")
+    assert by_family.model_dump(by_alias=True, mode="json") == {"id": "UNF1", "name": "Mass"}
+
+
+def test_unit_v4_legacy_record_without_type_validates():
+    """Custom (Legacy) units carry no ``type`` until they are set up."""
+    unit = UnitV4.model_validate(
+        {
+            "id": "UNI1",
+            "name": "Legacy Batch",
+            "symbol": "lbatch",
+            "status": "active",
+            "origin": "Custom (Legacy)",
+            "created": _AUDIT,
+        }
+    )
+
+    assert unit.type is None
+    assert unit.origin is UnitV4Origin.CUSTOM_LEGACY
 
 
 def test_unit_family_v4_keeps_full_record():

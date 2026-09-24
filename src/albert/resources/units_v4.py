@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -49,12 +49,12 @@ class UnitFamilyV4Ref(BaseAlbertModel):
         family = UnitFamilyV4Ref(id="UNF1")
         ```"""
 
-    id: str
-    """The unit family ID."""
+    id: str = Field(validation_alias=AliasChoices("id", "familyId"))
+    """The unit family ID. Units endpoints return it as ``familyId``; both keys are accepted."""
 
-    name: str | None = None
-    """The unit family name. Populated on records returned from Albert; optional when
-    referencing a family by ID on create."""
+    name: str | None = Field(default=None, validation_alias=AliasChoices("name", "familyName"))
+    """The unit family name. Populated on records returned from Albert (as ``familyName``);
+    optional when referencing a family by ID on create."""
 
 
 class UnitV4Ref(BaseAlbertModel):
@@ -105,8 +105,10 @@ class UnitV4(BaseResource):
     description: str | None = None
     """A description of the unit."""
 
-    type: UnitV4Type
-    """Whether the unit is convertible (has an SI mapping) or non-convertible."""
+    type: UnitV4Type | None = None
+    """Whether the unit is convertible (has an SI mapping) or non-convertible. Required on
+    create; absent on Custom (Legacy) units until they are set up via
+    [`update`][albert.collections.units_v4.UnitV4Collection.update]."""
 
     symbol: str
     """The unit symbol (for example ``"g"``). Unique within the tenant."""
