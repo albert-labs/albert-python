@@ -10,7 +10,7 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import WorkflowId
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, unpack_bulk_created_items
 from albert.exceptions import AlbertException
 from albert.resources.parameter_groups import DataType, ParameterValue
 from albert.resources.workflows import (
@@ -177,6 +177,13 @@ class WorkflowCollection(BaseCollection):
         list[Workflow]
             The created or matched workflows, in the same order as the input.
 
+        Raises
+        ------
+        AlbertPartialError
+            If only some of the workflows could be created or matched. The error
+            carries the succeeded (``created_items``) and failed (``failed_items``)
+            items.
+
         Notes
         -----
         When a group is identified by ``id``, the SDK resolves setpoint ``sequence`` row
@@ -209,7 +216,7 @@ class WorkflowCollection(BaseCollection):
             ],
         )
         results = []
-        for x in response.json():
+        for x in unpack_bulk_created_items(response):
             if "name" not in x:
                 # The platform omits the name of a matched workflow that has no
                 # parameter groups; fetch the full record instead.

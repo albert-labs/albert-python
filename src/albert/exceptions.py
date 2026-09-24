@@ -160,6 +160,36 @@ def handle_http_errors() -> Iterator[None]:
         raise albert_error from e
 
 
+class AlbertPartialError(AlbertException):
+    """Raised when a bulk operation partially succeeds (HTTP 206) with failed items.
+
+    Some bulk endpoints answer a request where only some items succeeded with a
+    partial-success response carrying the created items and per-item failure details.
+    This error surfaces those failures instead of letting them pass silently.
+
+    Attributes
+    ----------
+    created_items : list[dict]
+        The items the operation completed successfully.
+    failed_items : list[dict]
+        The per-item failure details reported for the items that did not succeed.
+    """
+
+    created_items: list[dict]
+    failed_items: list[dict]
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        created_items: list[dict] | None = None,
+        failed_items: list[dict] | None = None,
+    ):
+        super().__init__(message)
+        self.created_items = created_items or []
+        self.failed_items = failed_items or []
+
+
 class CombinationGenerationError(AlbertException):
     """Raised when background combination generation fails for one or more task blocks.
 
