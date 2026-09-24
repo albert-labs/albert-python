@@ -6,8 +6,10 @@ from albert.resources.cas import Cas
 from albert.resources.inventory import (
     CasAmount,
     InventoryCategory,
+    InventoryDensity,
     InventoryItem,
     InventoryMinimum,
+    InventoryUnitCategory,
 )
 
 pytestmark = pytest.mark.xdist_group("inventory")
@@ -84,3 +86,54 @@ def test_inventory_metadata_preserves_named_links_and_supports_id_only_links():
         "named": [{"id": "LST1", "name": "United States"}],
         "id_only": [{"id": "LST2"}],
     }
+
+
+def test_inventory_volume_density_coercion_and_serialization():
+    item = InventoryItem(
+        name="Test Volume Item",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.VOLUME,
+        density=0.785,
+    )
+    assert isinstance(item.density, InventoryDensity)
+    assert item.density.value == 0.785
+
+    dumped = item.model_dump(by_alias=True, exclude_none=True, mode="json")
+    assert dumped["density"] == 0.785
+    assert isinstance(dumped["density"], (int, float))
+
+
+def test_inventory_volume_density_validation():
+    with pytest.raises(ValidationError):
+        InventoryItem(
+            name="Test Volume Item",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+        )
+
+    with pytest.raises(ValidationError):
+        InventoryItem(
+            name="Test Volume Item",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=0,
+        )
+
+    with pytest.raises(ValidationError):
+        InventoryItem(
+            name="Test Volume Item",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=-0.5,
+        )
+
+
+def test_inventory_volume_get_deserialization_without_density():
+    item = InventoryItem(
+        name="Existing Volume Item",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.VOLUME,
+        albertId="INVA12345",
+    )
+    assert item.id == "INVA12345"
+    assert item.density is None

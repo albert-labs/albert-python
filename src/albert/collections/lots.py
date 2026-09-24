@@ -96,6 +96,7 @@ class LotCollection(BaseCollection):
         "initial_quantity",
         "inventory_on_hand",
         "cost",
+        "cost_l",
         "status",
         "pack_size",
         "barcode_id",
@@ -169,8 +170,10 @@ class LotCollection(BaseCollection):
         The SDK validates ``storage_location``, ``initial_quantity``, and
         ``location`` (task lots) before POST. ``cost`` and
         ``manufacturer_lot_number`` are enforced by the API for ``RawMaterials``
-        parents but are not yet checked in the SDK. See field docstrings on
-        [`Lot`][albert.resources.lots.Lot] for the full create matrix.
+        parents but are not yet checked in the SDK. For volume-based lots,
+        callers must still supply mass ``initial_quantity`` and ``inventory_on_hand``;
+        litres are not automatically derived from mass or density. See field
+        docstrings on [`Lot`][albert.resources.lots.Lot] for the full create matrix.
 
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
@@ -562,6 +565,25 @@ class LotCollection(BaseCollection):
                 )
             )
 
+        # costL must be serialized as a formatted decimal string and uses update operation
+        for datum in patch_data.data:
+            if datum.attribute == "costL":
+                datum.operation = PatchOperation.UPDATE
+                if datum.old_value is None:
+                    datum.old_value = "0"
+                else:
+                    datum.old_value = (
+                        Lot._format_decimal(datum.old_value)
+                        if isinstance(datum.old_value, (int, float))
+                        else str(datum.old_value)
+                    )
+                if datum.new_value is not None:
+                    datum.new_value = (
+                        Lot._format_decimal(datum.new_value)
+                        if isinstance(datum.new_value, (int, float))
+                        else str(datum.new_value)
+                    )
+
         # Handle StorageLocation field name differences
         # API expects only the ID for the new and old values
         for datum in patch_data.data:
@@ -659,6 +681,12 @@ class LotCollection(BaseCollection):
         -------
         Lot
             The refreshed lot after the adjustment.
+
+        Notes
+        -----
+        For volume-based lots, ``quantity`` is always expressed in mass units.
+        The server automatically recalculates ``inventory_on_hand_l`` using the
+        lot's locked density.
 
         Raises
         ------
@@ -833,10 +861,12 @@ class LotCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``barcode_id``, ``cost``,
-        ``expiration_date``, ``external_barcode_id``, ``initial_quantity``,
-        ``inventory_on_hand``, ``manufacturer_lot_number``, ``metadata``,
-        ``owner``, ``pack_size``, ``status``, ``storage_location``,
+        ``cost_l``, ``expiration_date``, ``external_barcode_id``,
+        ``initial_quantity``, ``inventory_on_hand``, ``manufacturer_lot_number``,
+        ``metadata``, ``owner``, ``pack_size``, ``status``, ``storage_location``,
         ``workflow_id``.
+        ``density``, ``initial_quantity_l``, and ``inventory_on_hand_l`` are
+        fixed at creation and cannot be updated.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

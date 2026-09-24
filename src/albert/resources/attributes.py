@@ -220,6 +220,9 @@ class AttributeValue(BaseAlbertModel):
     range: AttributeValueRange | None = None
     """Optional numeric min/max bounds alongside ``reference_value``."""
 
+    locked_at_creation: bool | None = Field(default=None, alias="lockedAtCreation")
+    """Whether this value was locked when the parent entity was created and cannot be changed."""
+
 
 class AttributeDefinition(BaseAlbertModel):
     """Read-only attribute metadata embedded in a values response.
@@ -267,6 +270,9 @@ class AttributeValuesResponseItem(BaseAlbertModel):
 
     range: AttributeValueRange | None = None
     """Optional numeric min/max bounds."""
+
+    locked_at_creation: bool | None = Field(default=None, alias="lockedAtCreation")
+    """Whether this value was locked when the parent entity was created and cannot be changed."""
 
 
 class AttributeValuesResponse(BaseAlbertModel):
