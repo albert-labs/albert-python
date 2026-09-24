@@ -1016,17 +1016,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How It Works
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#manually-triggering-a-docs-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1055,6 +1044,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Creating a Release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prereleases-from-the-next-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prereleases from the next branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5662,17 +5679,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How It Works
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#manually-triggering-a-docs-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5701,6 +5707,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Creating a Release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prereleases-from-the-next-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prereleases from the next branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5759,7 +5793,9 @@
 <p>Your contribution could ship in days or weeks -- welcome aboard! 🚀</p>
 <h2 id="dynamic-versioning">Dynamic Versioning</h2>
 <p>The package version is defined in the <code>src/albert/__init__.py</code> file
-and read dynamically when building distributions.</p>
+and read dynamically when building distributions. The version is
+maintained by release-please (see <a href="#creating-a-release">Creating a Release</a>);
+do not bump it manually in your PRs.</p>
 <h2 id="code-style">Code Style</h2>
 <p>This project uses <a href="https://docs.astral.sh/ruff/">ruff</a> for both formatting and linting.
 Formatting and linting rules are enforced in the CI process.</p>
@@ -5939,41 +5975,39 @@ automatic fomatting and import sorting on-save using the
 <li>No missing or broken sections exist.</li>
 </ul>
 <h3 id="deploying-documentation">Deploying Documentation</h3>
-<p>The documentation is automatically built and deployed to GitHub Pages when a pull request is merged into main.</p>
-<h4 id="how-it-works">How It Works</h4>
+<p>Documentation is versioned with <a href="https://github.com/jimporter/mike">mike</a> and deployed automatically by CircleCI:</p>
 <ol>
-<li>A PR is merged into main.</li>
-<li>
-<p>CircleCI runs the deploy_docs job, which:</p>
-<ul>
-<li>Builds the latest version of the documentation using mkdocs build --clean.</li>
-<li>Pushes the built docs to the gh-pages branch.</li>
-<li>GitHub Pages automatically serves the latest docs</li>
+<li><strong>On every merge into <code>main</code></strong>, the <code>deploy_docs</code> job (mode <code>dev</code>) builds the docs and runs <code>mike deploy --update-aliases dev</code>, publishing the bleeding-edge docs under the <code>dev</code> alias.</li>
+<li><strong>On every release tag</strong>, the <code>deploy_docs</code> job (mode <code>release</code>) runs <code>mike deploy --update-aliases &lt;version&gt; latest</code>, publishing versioned docs and pointing <code>latest</code> at the new release.</li>
+</ol>
+<p>Both push to the <code>gh-pages</code> branch, which GitHub Pages serves.</p>
+<h4 id="manually-triggering-a-docs-deployment">Manually Triggering a Docs Deployment</h4>
+<p>If needed, a maintainer can re-deploy the dev docs from a local checkout:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>main
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>git<span class="w"> </span>pull<span class="w"> </span>origin<span class="w"> </span>main
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>uv<span class="w"> </span>sync
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w"> </span>gh-pages:gh-pages
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>uv<span class="w"> </span>run<span class="w"> </span>mike<span class="w"> </span>deploy<span class="w"> </span>--push<span class="w"> </span>--update-aliases<span class="w"> </span>dev
+</span></code></pre></div>
+<p>Do not push the <code>gh-pages</code> branch directly; always deploy through <code>mike</code> so the versioned site structure is preserved.</p>
+<h2 id="creating-a-release">Creating a Release</h2>
+<p>Releases are automated with <a href="https://github.com/googleapis/release-please">release-please</a>. There is no manual version bumping and no manual "Draft a new release" step.</p>
+<h3 id="how-it-works">How it works</h3>
+<ol>
+<li><strong>Merge PRs with Conventional Commit titles.</strong> The PR Title GitHub Action enforces the format, and release-please uses it to classify changes: <code>feat:</code> is a minor bump, <code>fix:</code> is a patch bump, and <code>feat!:</code> / a breaking-change marker is a major bump. This is why the format in <a href="#commit-guidelines">Commit Guidelines</a> matters.</li>
+<li><strong>release-please maintains a release PR.</strong> On every push to <code>main</code>, the <code>release-please</code> GitHub Action (<code>.github/workflows/release-please.yml</code>, running as the <code>release-catalyst</code> bot) opens or updates a PR titled <code>chore(main): release X.Y.Z</code>. The PR bumps <code>__version__</code> in <code>src/albert/__init__.py</code>, updates <code>.release-please-manifest.json</code>, and generates the new <code>CHANGELOG.md</code> section from the merged commit titles. The workflow can also be triggered manually from the Actions tab.</li>
+<li><strong>A maintainer merges the release PR.</strong> release-please then creates the <code>vX.Y.Z</code> git tag and publishes the GitHub Release with generated notes. Nothing else is edited by hand.</li>
+<li><strong>The tag triggers the CircleCI <code>release</code> workflow</strong> (<code>.circleci/config.yml</code>), which:<ul>
+<li>Validates the tag matches <code>__version__</code> in <code>src/albert/__init__.py</code> (<code>scripts/validate_release_tag.py</code>)</li>
+<li>Builds and publishes the package to PyPI</li>
+<li>Publishes the public AWS Lambda layers across the runtime/architecture/region matrix and appends their ARNs to the GitHub Release (see <code>docs/lambda.md</code>)</li>
+<li>Deploys the versioned documentation with <code>mike deploy &lt;version&gt; latest</code> (see <a href="#deploying-documentation">Deploying Documentation</a>)</li>
 </ul>
 </li>
 </ol>
-<h4 id="manually-triggering-a-docs-deployment">Manually Triggering a Docs Deployment</h4>
-<p>If needed, you can manually re-deploy the docs by running:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>main
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>git<span class="w"> </span>pull<span class="w"> </span>origin<span class="w"> </span>main
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>uv<span class="w"> </span>run<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--clean
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>gh-pages
-</span></code></pre></div>
-<h2 id="creating-a-release">Creating a Release</h2>
-<ol>
-<li>Ensure the version in <code>src/albert/__init__.py</code> is updated to the desired release version</li>
-<li>Go to the <strong>Releases</strong> section of the repository</li>
-<li>Click <strong>"Draft a new release"</strong></li>
-<li>Create a new tag matching the version in <code>__init__.py</code> (e.g., if <code>__init__.py</code> has <code>__version__ = "0.3.0"</code>, use tag <code>v0.3.0</code>)</li>
-<li>Click <strong>"Generate release notes"</strong> and review/edit as needed</li>
-<li>Publish the release</li>
-</ol>
-<p>The release will automatically trigger the CircleCI workflow to:</p>
-<ul>
-<li>Build and publish the package to PyPI</li>
-<li>Build and deploy the documentation</li>
-</ul>
-<p>Note: Only designated Albert team members have permissions to create releases.</p>
+<h3 id="prereleases-from-the-next-branch">Prereleases from the <code>next</code> branch</h3>
+<p>The <code>next</code> branch has its own release-please configuration (<code>release-please-config-next.json</code>) that cuts beta prereleases (e.g. <code>v1.35.0-beta0</code>) using the same flow: merge to <code>next</code>, merge the bot's <code>chore(next): release ...</code> PR, and the tag pipeline publishes the prerelease.</p>
+<p>Note: Only designated Albert team members have permissions to merge release PRs.</p>
 
 
 
