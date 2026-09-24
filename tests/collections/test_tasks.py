@@ -1,6 +1,9 @@
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertException, BadRequestError, NotFoundError
 from albert.resources.interval_combinations import (
     BlockRules,
     CombinationOverride,
@@ -15,6 +18,7 @@ from albert.resources.tasks import (
     BaseTask,
     BatchTask,
     Block,
+    GeneralTask,
     PropertyTask,
     TaskCategory,
     TaskSearchItem,
@@ -105,6 +109,31 @@ def test_get_by_id(client: Albert, seeded_tasks):
     assert isinstance(task, BaseTask)
     assert task.id == seeded_tasks[0].id
     assert task.name == seeded_tasks[0].name
+
+
+def test_create_many(client: Albert, seed_prefix: str):
+    """Test creating multiple tasks in a single call."""
+    to_create = [
+        GeneralTask(name=f"{seed_prefix} - create_many 1"),
+        GeneralTask(name=f"{seed_prefix} - create_many 2"),
+    ]
+    created: list[BaseTask] = []
+    try:
+        created = client.tasks.create_many(tasks=to_create)
+        assert len(created) == len(to_create)
+        assert all(isinstance(t, GeneralTask) for t in created)
+        assert all(t.id is not None for t in created)
+        assert [t.name for t in created] == [t.name for t in to_create]
+    finally:
+        for task in created:
+            with suppress(NotFoundError, BadRequestError):
+                client.tasks.delete(id=task.id)
+
+
+def test_create_many_rejects_mixed_categories(client: Albert):
+    """Test that create_many rejects tasks of mixed categories."""
+    with pytest.raises(AlbertException):
+        client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
 
 
 def test_update(
