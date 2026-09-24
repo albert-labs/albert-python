@@ -275,8 +275,7 @@ class TaskCollection(BaseCollection):
         ----------
         tasks : list[PropertyTask or GeneralTask or BatchTask]
             The tasks to create. Must be non-empty and share one category and
-            one ``parent_id``. For General tasks, ``location`` is required by
-            the bulk endpoint.
+            one ``parent_id``. For General tasks, ``location`` is required.
 
         Returns
         -------
