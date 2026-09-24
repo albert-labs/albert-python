@@ -14,6 +14,8 @@ parameters:
     default: "x86_64,arm64"
   lambda_regions:
     type: string
+    # Keep in sync with DEFAULT_REGIONS in .circleci/scripts/generate_lambda_matrix.py
+    # and the Regions list in docs/lambda.md.
     default: "us-west-2,us-east-1,eu-central-1,eu-west-1"
   lambda_account_id:
     type: string

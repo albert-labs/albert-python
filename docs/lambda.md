@@ -17,17 +17,37 @@ One layer exists per Python runtime and architecture. Pick the one that matches 
 | `albert-python-py314-x86_64` | python3.14 | x86_64 |
 | `albert-python-py314-arm64` | python3.14 | arm64 |
 
-Layers are published in `us-west-2`, `us-east-1`, `eu-central-1`, and `eu-west-1`. Lambda layers are region scoped, so your function must be in the same region as the layer.
+## Regions
 
-Layer ARNs follow this pattern:
+Lambda layers are region scoped: your function must be in the same region as the layer, or AWS reports a permissions error even though the layer is public. Every release is published to these regions by default:
 
-```text
-arn:aws:lambda:us-west-2:<albert-account-id>:layer:albert-python-py312-x86_64:<layer-version>
+- `us-west-2` (US West, Oregon)
+- `us-east-1` (US East, N. Virginia)
+- `eu-central-1` (Europe, Frankfurt)
+- `eu-west-1` (Europe, Ireland)
+
+Need the layer in another region? [Open an issue](https://github.com/albert-labs/albert-python/issues/new?title=Lambda%20layer%20region%20request%3A%20) with the region code and we can add it to this list, so it is published there for every release.
+
+## Available layer versions
+
+AWS does not let other accounts browse or search our layers, so every public layer version is listed here. Filter by SDK version, Python runtime, architecture, and your function's region, then copy the ARN:
+
+<div id="lambda-layer-catalog">
+<p>Loading layer versions. If this does not load, download <a href="https://docs.developer.albertinvent.com/albert-python/lambda-layers.json">lambda-layers.json</a> directly.</p>
+</div>
+
+The same list is published as JSON at [`https://docs.developer.albertinvent.com/albert-python/lambda-layers.json`](https://docs.developer.albertinvent.com/albert-python/lambda-layers.json) for scripts and infrastructure code. Entries are sorted newest SDK version first, so the first match is the latest layer:
+
+```bash
+curl -s https://docs.developer.albertinvent.com/albert-python/lambda-layers.json \
+  | jq -r '[.layers[] | select(.python == "3.12" and .architecture == "x86_64" and .region == "us-west-2")][0].arn'
 ```
+
+Each entry includes `sdk_version`, `python`, `architecture`, `region`, `layer_name`, `layer_version`, `arn`, `created`, and `description`.
 
 ## Versioning
 
-Each SDK release adds a new version to every layer. The layer version number is assigned by AWS and is not the SDK version, so always check the layer description, which records the SDK version it contains:
+Each SDK release adds a new version to every layer. The layer version number is assigned by AWS and is not the SDK version. The table above maps one to the other, and each layer's description also records the SDK version it contains:
 
 ```bash
 aws lambda get-layer-version-by-arn \
@@ -39,7 +59,7 @@ aws lambda get-layer-version-by-arn \
 albert-python 1.19.0 | python3.12 | x86_64 | 2026-09-17T14:02:00Z | sha=abc1234
 ```
 
-Every [GitHub release](https://github.com/albert-labs/albert-python/releases) ends with a **Lambda layers** table listing the layer version ARN published for each runtime, architecture, and region. Pin your function to a specific layer version ARN and upgrade deliberately, the same way you would pin a package version.
+Every [GitHub release](https://github.com/albert-labs/albert-python/releases) also ends with a **Lambda layers** table listing the layer version ARNs published for that release. Pin your function to a specific layer version ARN and upgrade deliberately, the same way you would pin a package version.
 
 ## Attaching the layer
 
