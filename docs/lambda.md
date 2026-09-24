@@ -17,7 +17,7 @@ One layer exists per Python runtime and architecture. Pick the one that matches 
 | `albert-python-py314-x86_64` | python3.14 | x86_64 |
 | `albert-python-py314-arm64` | python3.14 | arm64 |
 
-Layers are currently published in `us-west-2`. Lambda layers are region scoped, so your function must be in the same region as the layer.
+Layers are published in `us-west-2`, `us-east-1`, `eu-central-1`, and `eu-west-1`. Lambda layers are region scoped, so your function must be in the same region as the layer.
 
 Layer ARNs follow this pattern:
 
