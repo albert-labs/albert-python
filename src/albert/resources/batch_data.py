@@ -254,10 +254,10 @@ class BatchData(BaseResource):
     """The Task ID of the owning batch task (format ``TAS...``)."""
 
     size: int | None = Field(default=None)
-    """The number of row entries in the batch data."""
+    """The number of product columns in the batch data."""
 
     last_key: str | None = Field(default=None, alias="lastKey")
-    """Pagination cursor for fetching the next page of rows; pass it back as ``start_key`` to [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id]."""
+    """Pagination cursor for fetching the next page of product columns; pass it back as ``start_key`` to [`get_by_id`][albert.collections.batch_data.BatchDataCollection.get_by_id]."""
 
     product: list[BatchDataColumn] | None = Field(default=None, alias="Product")
     """The product columns, one per batch/product being manufactured."""
