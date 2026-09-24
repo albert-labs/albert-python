@@ -8,6 +8,9 @@ Each matrix job writes the ARNs it published to a manifest in the workspace.
 A final job, which requires every matrix job, merges those manifests into a
 Markdown table, stores it as an artifact, and records it in the GitHub release
 notes when the pipeline runs on a release tag.
+
+Another final job lists every public layer version in AWS and publishes that
+catalog to the docs site, where the AWS Lambda layer page renders it.
 """
 
 import argparse
@@ -16,6 +19,12 @@ import sys
 VALID_ARCHS = {"x86_64", "arm64"}
 MANIFEST_DIR = "/tmp/lambda-layers"
 RELEASE_NOTES_JOB = "lambda_layer_release_notes"
+CATALOG_JOB = "lambda_layer_catalog"
+# Keep in sync with the lambda_regions default in .circleci/config.yml and the
+# Regions list in docs/lambda.md.
+DEFAULT_REGIONS = "us-west-2,us-east-1,eu-central-1,eu-west-1"
+# Same write key the deploy_docs job in .circleci/config.yml uses to push gh-pages.
+DOCS_DEPLOY_KEY_FINGERPRINT = "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
 
 
 def job_name(runtime: str, arch: str) -> str:
@@ -127,6 +136,50 @@ def build_release_notes_job(sdk_version: str) -> dict:
     }
 
 
+def build_catalog_job(regions: str) -> dict:
+    # The catalog is rewritten on every run, so it always covers the release regions
+    # even when this run published to fewer.
+    catalog_regions = list(dict.fromkeys(DEFAULT_REGIONS.split(",") + regions.split(",")))
+    catalog_path = f"{MANIFEST_DIR}/lambda-layers.json"
+    return {
+        "docker": [{"image": "cimg/python:3.12"}],
+        "steps": [
+            "checkout",
+            {"add_ssh_keys": {"fingerprints": [DOCS_DEPLOY_KEY_FINGERPRINT]}},
+            {"run": {"name": "Install boto3", "command": "pip install --quiet boto3"}},
+            {
+                "run": {
+                    "name": "Build Lambda layer catalog",
+                    "command": (
+                        "set -euo pipefail\n"
+                        "python .circleci/scripts/lambda_layer_catalog.py \\\n"
+                        f'  --regions "{",".join(catalog_regions)}" \\\n'
+                        f'  --output  "{catalog_path}"'
+                    ),
+                }
+            },
+            {
+                "store_artifacts": {
+                    "path": catalog_path,
+                    "destination": "lambda-layer/lambda-layers.json",
+                }
+            },
+            {
+                "run": {
+                    "name": "Publish Lambda layer catalog to the docs site",
+                    "command": (
+                        "set -euo pipefail\n"
+                        'git config --global user.name "CircleCI"\n'
+                        'git config --global user.email "circleci@users.noreply.github.com"\n'
+                        ".circleci/scripts/publish-lambda-layer-catalog.sh \\\n"
+                        f'  --file "{catalog_path}"'
+                    ),
+                }
+            },
+        ],
+    }
+
+
 def generate(
     runtimes: list[str],
     archs: list[str],
@@ -151,7 +204,7 @@ def generate(
         '    default: "x86_64,arm64"',
         "  lambda_regions:",
         "    type: string",
-        '    default: "us-west-2,us-east-1,eu-central-1,eu-west-1"',
+        f'    default: "{DEFAULT_REGIONS}"',
         "  lambda_account_id:",
         "    type: string",
         '    default: ""',
@@ -177,6 +230,10 @@ def generate(
     lines.extend(_render_job(build_release_notes_job(sdk_version)))
     lines.append("")
 
+    lines.append(f"  {CATALOG_JOB}:")
+    lines.extend(_render_job(build_catalog_job(regions)))
+    lines.append("")
+
     lines += [
         "workflows:",
         "  lambda_layer_publish_all:",
@@ -185,11 +242,12 @@ def generate(
     for name in workflow_jobs:
         lines.append(f"      - {name}:")
         lines.append("          context: dev")
-    lines.append(f"      - {RELEASE_NOTES_JOB}:")
-    lines.append("          context: dev")
-    lines.append("          requires:")
-    for name in workflow_jobs:
-        lines.append(f"            - {name}")
+    for final_job in (RELEASE_NOTES_JOB, CATALOG_JOB):
+        lines.append(f"      - {final_job}:")
+        lines.append("          context: dev")
+        lines.append("          requires:")
+        for name in workflow_jobs:
+            lines.append(f"            - {name}")
 
     return "\n".join(lines) + "\n"
 
