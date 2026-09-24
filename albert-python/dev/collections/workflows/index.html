@@ -6205,8 +6205,8 @@ populated <code>parameter_group_setpoints</code> and any interval combinations.<
     <div class="doc doc-contents ">
 
         <p>Get multiple workflows by their IDs.</p>
-<p>Requests are automatically split into batches, so long ID lists are
-supported. Each returned workflow includes its full setpoints.</p>
+<p>Arbitrarily long ID lists are supported. Each returned workflow includes
+its full setpoints. Workflows not found are omitted from the result.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">workflows</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">workflows</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">"WFL1"</span><span class="p">,</span> <span class="s2">"WFL2"</span><span class="p">])</span>
@@ -6262,7 +6262,7 @@ supported. Each returned workflow includes its full setpoints.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The matching workflows.</p>
+                <p>The matching workflows. Order is not guaranteed to match the input.</p>
               </div>
             </td>
           </tr>
@@ -6306,8 +6306,8 @@ supported. Each returned workflow includes its full setpoints.</p>
 </span><span id="__span-0-306"><a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_by_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">WorkflowId</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Workflow</span><span class="p">]:</span>
 </span><span id="__span-0-307"><a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="w">    </span><span class="sd">"""Get multiple workflows by their IDs.</span>
 </span><span id="__span-0-308"><a id="__codelineno-0-308" name="__codelineno-0-308"></a>
-</span><span id="__span-0-309"><a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    Requests are automatically split into batches, so long ID lists are</span>
-</span><span id="__span-0-310"><a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">    supported. Each returned workflow includes its full setpoints.</span>
+</span><span id="__span-0-309"><a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    Arbitrarily long ID lists are supported. Each returned workflow includes</span>
+</span><span id="__span-0-310"><a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">    its full setpoints. Workflows not found are omitted from the result.</span>
 </span><span id="__span-0-311"><a id="__codelineno-0-311" name="__codelineno-0-311"></a>
 </span><span id="__span-0-312"><a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-313"><a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">        ```python</span>
@@ -6324,10 +6324,10 @@ supported. Each returned workflow includes its full setpoints.</p>
 </span><span id="__span-0-324"><a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    Returns</span>
 </span><span id="__span-0-325"><a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">    -------</span>
 </span><span id="__span-0-326"><a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    list[Workflow]</span>
-</span><span id="__span-0-327"><a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">        The matching workflows.</span>
+</span><span id="__span-0-327"><a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">        The matching workflows. Order is not guaranteed to match the input.</span>
 </span><span id="__span-0-328"><a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">    """</span>
 </span><span id="__span-0-329"><a id="__codelineno-0-329" name="__codelineno-0-329"></a>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/ids"</span>
-</span><span id="__span-0-330"><a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="n">batches</span> <span class="o">=</span> <span class="p">[</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">100</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="mi">100</span><span class="p">)]</span>
+</span><span id="__span-0-330"><a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="n">batches</span> <span class="o">=</span> <span class="p">[</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">300</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="mi">300</span><span class="p">)]</span>
 </span><span id="__span-0-331"><a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="k">return</span> <span class="p">[</span>
 </span><span id="__span-0-332"><a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="n">Workflow</span><span class="p">(</span><span class="o">**</span><span class="n">item</span><span class="p">)</span>
 </span><span id="__span-0-333"><a id="__codelineno-0-333" name="__codelineno-0-333"></a>        <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">batches</span>

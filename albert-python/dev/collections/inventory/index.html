@@ -7061,8 +7061,8 @@ without knowing their IDs, use <a class="autorefs autorefs-internal" href="#albe
     <div class="doc doc-contents ">
 
         <p>Get multiple fully populated inventory items by their IDs.</p>
-<p>Requests are automatically split into batches, so arbitrarily long ID
-lists are supported. Items not found are omitted from the result.</p>
+<p>Arbitrarily long ID lists are supported. Items not found are omitted
+from the result.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">items</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">inventory</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">"INVA9999999"</span><span class="p">,</span> <span class="s2">"INVA9999998"</span><span class="p">])</span>
@@ -7162,8 +7162,8 @@ lists are supported. Items not found are omitted from the result.</p>
 </span><span id="__span-0-393"><a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_by_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryId</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
 </span><span id="__span-0-394"><a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="w">    </span><span class="sd">"""Get multiple fully populated inventory items by their IDs.</span>
 </span><span id="__span-0-395"><a id="__codelineno-0-395" name="__codelineno-0-395"></a>
-</span><span id="__span-0-396"><a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">    Requests are automatically split into batches, so arbitrarily long ID</span>
-</span><span id="__span-0-397"><a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">    lists are supported. Items not found are omitted from the result.</span>
+</span><span id="__span-0-396"><a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">    Arbitrarily long ID lists are supported. Items not found are omitted</span>
+</span><span id="__span-0-397"><a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">    from the result.</span>
 </span><span id="__span-0-398"><a id="__codelineno-0-398" name="__codelineno-0-398"></a>
 </span><span id="__span-0-399"><a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="sd">    !!! example</span>
 </span><span id="__span-0-400"><a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">        ```python</span>
@@ -7182,7 +7182,7 @@ lists are supported. Items not found are omitted from the result.</p>
 </span><span id="__span-0-413"><a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">    list[InventoryItem]</span>
 </span><span id="__span-0-414"><a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        The matching items. Order is not guaranteed to match the input.</span>
 </span><span id="__span-0-415"><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">    """</span>
-</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">250</span>
+</span><span id="__span-0-416"><a id="__codelineno-0-416" name="__codelineno-0-416"></a>    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">300</span>
 </span><span id="__span-0-417"><a id="__codelineno-0-417" name="__codelineno-0-417"></a>    <span class="n">batches</span> <span class="o">=</span> <span class="p">[</span><span class="n">ids</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">)]</span>
 </span><span id="__span-0-418"><a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="n">inventory</span> <span class="o">=</span> <span class="p">[]</span>
 </span><span id="__span-0-419"><a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">:</span>
