@@ -63,6 +63,8 @@ class ProjectCollection(BaseCollection):
         Update an existing project.
     delete(id) -> None
         Delete a project by its ID.
+    reactivate(id) -> Project
+        Reactivate a soft-deleted project by its ID.
     search(...) -> Iterator[ProjectSearchItem]
         Fast, lightweight search returning partial projects (best for lookups).
     get_all(...) -> Iterator[Project]
@@ -275,6 +277,35 @@ class ProjectCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+    @validate_call
+    def reactivate(self, *, id: ProjectId) -> Project:
+        """Reactivate a soft-deleted project by its ID.
+
+        Restores a project previously deleted with
+        [`delete`][albert.collections.projects.ProjectCollection.delete]. The project's
+        tasks and worksheets are restored with it.
+
+        !!! example
+            ```python
+            project = client.projects.reactivate(id="PRO123")
+            project.status
+            # 'active'
+            ```
+
+        Parameters
+        ----------
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
+
+        Returns
+        -------
+        Project
+            The reactivated project.
+        """
+        url = f"{self.base_path}/{id}/reactivate"
+        self.session.patch(url)
+        return self.get_by_id(id=id)
 
     @validate_call
     def search(
