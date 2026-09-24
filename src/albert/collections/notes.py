@@ -112,7 +112,8 @@ class NotesCollection(BaseCollection):
         """Update a note.
 
         Fetch a note (e.g. via [`get_by_id`][albert.collections.notes.NotesCollection.get_by_id]), modify its
-        fields, then pass it here. The note is matched by its ``id``.
+        fields, then pass it here. The note is matched by its ``id``. If nothing
+        changed, the existing note is returned unmodified.
 
         !!! example
             ```python
@@ -135,9 +136,12 @@ class NotesCollection(BaseCollection):
         -----
         The following fields can be updated: ``note``, ``parent_id``.
         """
+        existing = self.get_by_id(id=note.id)
         patch = self._generate_patch_payload(
-            existing=self.get_by_id(id=note.id), updated=note, generate_metadata_diff=False
+            existing=existing, updated=note, generate_metadata_diff=False
         )
+        if not patch.data:
+            return existing
         self.session.patch(
             f"{self.base_path}/{note.id}",
             json=patch.model_dump(mode="json", by_alias=True, exclude_unset=True),
