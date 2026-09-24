@@ -25,6 +25,7 @@ def _to_number(val: Any) -> float | None:
 
     Returns None for values that would coerce to NaN or are empty/invalid.
     Specifically matches the JavaScript frontend coercion table:
+
     - "0x10" -> 16.0
     - "1_0" -> None (Python float allows underscores, JS Number() returns NaN)
     - "0b11" -> 3.0
@@ -141,6 +142,7 @@ def condition_matches_param(
     """Evaluate whether a single rule condition matches a combination parameter.
 
     Implements the exact matching semantics from the frontend engine:
+
     - row ID must match if condition specifies a row ID.
     - If condition does not specify row ID, parameter ID is checked.
     - Unit mismatch trivially satisfies ``ne`` (different unit means not equal).
@@ -279,14 +281,17 @@ def generate_interval_combinations(
     """Calculate interval combinations from a workflow and evaluate rules and overrides (🧪 Beta).
 
     Pure, session-free computation engine that calculates the active set of combinations:
+
     1. Expands parameter intervals into the full cartesian product.
     2. Builds canonical compound override keys for each combination.
     3. Evaluates direct overrides (``skip`` / ``unskip``), taking precedence over rules.
     4. Evaluates exclusion or inclusion rules depending on ``intervals_start_from``:
+
        - ``"all"`` (Exclude Mode): Starts with all combinations included; excludes
          combinations matching any exclusion rule.
        - ``"none"`` (Include Mode): Starts with no combinations included; includes
          combinations matching any inclusion rule.
+
     5. Enforces the platform safety cap of 2,000 combinations.
 
     This client-side computation is used internally by

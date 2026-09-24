@@ -318,6 +318,7 @@ class TaskCollection(BaseCollection):
         child-workflow combination variants across every task block.
 
         Intervals, Modes, Rules, and Overrides:
+
         - **Intervals and Cartesian Product**: When workflow parameters define discrete
           setpoints (intervals), Albert computes the Cartesian product across every
           intervalized parameter. Each combination materializes as an independent child
@@ -342,6 +343,7 @@ class TaskCollection(BaseCollection):
           precedence over rules.
 
         Execution Steps:
+
         1. Automatically saves any unsaved [`Workflow`][albert.resources.workflows.Workflow]
            objects defined on the task blocks, preserving block ordering.
         2. Sets ``intervals_start_from="all"`` (Exclude Mode) on any blocks where the
@@ -850,9 +852,10 @@ class TaskCollection(BaseCollection):
 
         Configures or replaces rules and overrides on the specified block, and
         by default immediately recomputes and regenerates child-workflow combinations on
-        Albert Invent.
+        Albert.
 
         Rules, Overrides, and Baseline Modes:
+
         - **Rules (Criteria-Based Filtering)**:
           A rule consists of one or more conditions comparing parameter values against
           thresholds. All conditions within a rule must match (AND logic). If any rule
@@ -868,6 +871,7 @@ class TaskCollection(BaseCollection):
           - Overrides are evaluated first and always take precedence over rules.
 
         Follows the unset-is-not-empty convention:
+
         - Omitting ``rules`` (or leaving it as ``None``) leaves existing rules untouched.
         - Passing an empty list (``rules=[]``) clears all rules on the block.
         - The same convention applies to ``overrides``.
@@ -1049,6 +1053,7 @@ class TaskCollection(BaseCollection):
         on the platform.
 
         Combination Generation Lifecycle:
+
         - **Cartesian Product**: Evaluates combinations across all intervalized workflow parameters
           starting from the block's baseline mode (``intervals_start_from="all"`` for Exclude Mode,
           starting with all combinations; or ``"none"`` for Include Mode, starting with an empty set).
@@ -1060,6 +1065,7 @@ class TaskCollection(BaseCollection):
           parameter setpoints are unchanged.
 
         How to set ``old_workflow_id`` across common caller scenarios:
+
         - **First-time generation** (or retrying after a failed create job): leave
           ``old_workflow_id=None`` (the default).
         - **Regenerating after updating rules**: pass the block's current workflow ID
