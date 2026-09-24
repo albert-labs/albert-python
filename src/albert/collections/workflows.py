@@ -11,6 +11,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import WorkflowId
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertException
 from albert.resources.parameter_groups import DataType, ParameterValue
 from albert.resources.workflows import (
     ParameterSetpoint,
@@ -93,7 +94,7 @@ class WorkflowCollection(BaseCollection):
     create(workflows) -> list[Workflow]
         Find-or-create workflows, deduplicating by parameter setpoints.
     get_by_id(id) -> Workflow
-        Get a single workflow, including its full setpoints.
+        Get a single workflow, including its full setpoints and interval combinations.
     get_by_ids(ids) -> list[Workflow]
         Get multiple workflows by their IDs in batches.
     get_all(max_items=None) -> Iterator[Workflow]
@@ -178,9 +179,9 @@ class WorkflowCollection(BaseCollection):
 
         Notes
         -----
-        Returned workflows carry an empty ``parameter_group_setpoints`` list
-        whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
-        fetch the full setpoints.
+        Returned workflows are fully populated, including their parameter group
+        setpoints. A matched workflow with no parameter groups is re-fetched
+        automatically so a complete Workflow is always returned.
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
@@ -204,8 +205,13 @@ class WorkflowCollection(BaseCollection):
         )
         results = []
         for x in response.json():
-            if "existingAlbertId" in x and "name" not in x:
-                results.append(self.get_by_id(id=x["existingAlbertId"]))
+            if "name" not in x:
+                # The platform omits the name of a matched workflow that has no
+                # parameter groups; fetch the full record instead.
+                target_id = x.get("existingAlbertId") or x.get("albertId")
+                if not target_id:
+                    raise AlbertException(f"Workflow response item missing ID: {x}")
+                results.append(self.get_by_id(id=target_id))
             else:
                 results.append(Workflow(**x))
         return results
@@ -277,16 +283,16 @@ class WorkflowCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: WorkflowId) -> Workflow:
-        """Get a single workflow by its ID, including its full setpoints.
+        """Get a single workflow by its ID, including its full setpoints and interval combinations.
 
-        Unlike the workflows returned by [`create`][albert.collections.workflows.WorkflowCollection.create], this includes the fully
-        populated ``parameter_group_setpoints`` and any interval combinations.
+        Includes the fully populated ``parameter_group_setpoints`` and any interval
+        combinations.
 
         !!! example
             ```python
             wf = client.workflows.get_by_id(id="WFL1")
-            wf.name
-            # 'Cure at 25C'
+            wf.id
+            # 'WFL1'
             ```
 
         Parameters

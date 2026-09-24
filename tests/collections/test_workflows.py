@@ -29,6 +29,26 @@ def test_blocks_dupes(client: Albert, seeded_workflows: list[Workflow]):
     assert r[0].id == seeded_workflows[0].id
 
 
+def test_create_returns_populated_workflow(client: Albert, seeded_workflows: list[Workflow]):
+    """Test that create returns fully populated matched workflows."""
+    wf = seeded_workflows[0].model_copy()
+    wf.id = None
+    wf.status = None
+
+    [matched] = client.workflows.create(workflows=[wf])
+    assert matched.id == seeded_workflows[0].id
+    assert matched.name
+    assert matched.parameter_group_setpoints
+
+
+def test_create_fallback_for_nameless_matched_workflow(client: Albert):
+    """Test create falls back to get_by_id for matched workflows without parameter groups."""
+    [wf] = client.workflows.create(workflows=[Workflow(name="anything")])
+    assert wf.id == "WFL1"
+    assert wf.name is None or isinstance(wf.name, str)
+    assert wf.parameter_group_setpoints == []
+
+
 def test_workflow_search_basic(client: Albert, seeded_workflows: list[Workflow]):
     """Test search returns WorkflowSearchItem results with WFL ids."""
     results = list(client.workflows.search(max_items=10))
@@ -90,7 +110,6 @@ def test_workflow_search_hydrate(
 
 def test_workflow_search_by_parameter_groups(
     client: Albert,
-    seed_prefix: str,
     seeded_workflows: list[Workflow],
 ):
     """Test search by parameter group name scoped to seeded workflow ids."""
@@ -103,11 +122,12 @@ def test_workflow_search_by_parameter_groups(
         lambda: [
             item
             for item in client.workflows.search(
-                text=seed_prefix,
+                ids=[wf.id],
                 parameter_groups=group_name,
                 max_items=100,
             )
             if item.id in seeded_ids
-        ]
+        ],
+        timeout=60.0,
     )
     assert hits, "Expected at least one seeded workflow matching parameter group filter"

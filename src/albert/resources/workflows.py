@@ -413,9 +413,8 @@ class Workflow(BaseResource):
         # 'WFL1'
         ```"""
 
-    name: str
-    """The name of the workflow."""
-    # NOTE: create() (POST /workflows/bulk) does not return ParameterGroups in the response.
+    name: str | None = None
+    """The name of the workflow. Can be omitted on platform built-in workflows without parameter groups (such as `WFL1`)."""
     parameter_group_setpoints: list[ParameterGroupSetpoints] = Field(
         alias="ParameterGroups", default_factory=list
     )
