@@ -562,6 +562,8 @@ class TaskCollection(BaseCollection):
         add_block : Add a single Block to a task.
         remove_block : Remove a block from a task.
         """
+        if not blocks:
+            return
         url = f"{self.base_path}/{task_id}"
         payload = [
             {
