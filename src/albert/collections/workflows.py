@@ -306,8 +306,8 @@ class WorkflowCollection(BaseCollection):
     def get_by_ids(self, *, ids: list[WorkflowId]) -> list[Workflow]:
         """Get multiple workflows by their IDs.
 
-        Requests are automatically split into batches, so long ID lists are
-        supported. Each returned workflow includes its full setpoints.
+        Arbitrarily long ID lists are supported. Each returned workflow includes
+        its full setpoints. Workflows not found are omitted from the result.
 
         !!! example
             ```python
@@ -324,7 +324,7 @@ class WorkflowCollection(BaseCollection):
         Returns
         -------
         list[Workflow]
-            The matching workflows.
+            The matching workflows. Order is not guaranteed to match the input.
         """
         url = f"{self.base_path}/ids"
         batches = [ids[i : i + 300] for i in range(0, len(ids), 300)]

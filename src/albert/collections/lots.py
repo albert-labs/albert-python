@@ -235,8 +235,8 @@ class LotCollection(BaseCollection):
         """Get many fully populated lots by their IDs.
 
         Use this instead of repeated [`get_by_id`][albert.collections.lots.LotCollection.get_by_id] calls when you already
-        have several Lot IDs to fetch. IDs are fetched in batches, so arbitrarily
-        long lists are supported.
+        have several Lot IDs to fetch. Arbitrarily long ID lists are supported.
+        Lots not found are omitted from the result.
 
         !!! example
             ```python
