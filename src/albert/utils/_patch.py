@@ -874,7 +874,7 @@ def generate_parameter_group_patches(
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_parameter_group.parameters,
         updated_parameters=updated_parameter_group.parameters,
-        parameter_attribute_name="parameter",
+        parameter_attribute_name="parameters",
     )
     tag_patches = handle_tags(
         existing_tags=existing_parameter_group.tags,
