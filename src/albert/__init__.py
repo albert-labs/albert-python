@@ -1,7 +1,7 @@
-from albert.client import Albert
+from albert.client import Albert, AsyncAlbert
 from albert.core.auth.credentials import AlbertClientCredentials
 from albert.core.auth.sso import AlbertSSOClient
 
-__all__ = ["Albert", "AlbertClientCredentials", "AlbertSSOClient"]
+__all__ = ["Albert", "AsyncAlbert", "AlbertClientCredentials", "AlbertSSOClient"]
 
-__version__ = "1.7.8"
+__version__ = "1.57.1"

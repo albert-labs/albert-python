@@ -1,8 +1,8 @@
 # Albert Python
 
 <div class="logo-wrapper">
-  <img src="assets/Wordmark_White.png" class="logo only-dark" alt="Albert Logo">
-  <img src="assets/Wordmark_Black.png" class="logo only-light" alt="Albert Logo">
+  <img src="assets/Albert_Wordmark_Mono_RGB_White.svg" class="logo only-dark" alt="Albert Logo">
+  <img src="assets/Albert_Wordmark_RGB_Colour.svg" class="logo only-light" alt="Albert Logo">
 </div>
 
 [![CI](https://img.shields.io/circleci/build/github/albert-labs/albert-python/main?label=CI)](https://app.circleci.com/pipelines/github/albert-labs/albert-python?branch=main)
@@ -12,7 +12,7 @@
 
 ## Overview
 
-Albert Python is the official Albert Invent Software Development Kit (SDK) for Python
+Albert Python is the official Albert Software Development Kit (SDK) for Python
 that provides a comprehensive and easy-to-use interface for interacting with the Albert Platform.
 The SDK allows Python developers to write software that interacts with various platform resources,
 such as inventories, projects, companies, tags, and many more.
@@ -38,10 +38,7 @@ Get all projects:
 from albert import Albert
 
 # Initialize with a static JWT token
-client = Albert.from_token(
-    base_url="https://app.albertinvent.com",
-    token="YOUR_JWT_TOKEN"
-)
+client = Albert.from_token(base_url="https://app.albertinvent.com", token="YOUR_JWT_TOKEN")
 
 for project in client.projects.get_all(max_items=10):
     print(project.name)

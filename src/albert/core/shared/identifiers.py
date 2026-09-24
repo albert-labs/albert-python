@@ -1,8 +1,10 @@
+import re
 from typing import Annotated
 
 from pydantic import AfterValidator
 
 _ALBERT_PREFIXES = {
+    "AttributeId": "ATR",
     "AttachmentId": "ATT",
     "BlockId": "BLK",
     "BTInsightId": "INS",
@@ -15,8 +17,10 @@ _ALBERT_PREFIXES = {
     "CustomTemplateId": "CTP",
     "DataColumnId": "DAC",
     "DataTemplateId": "DAT",
+    "DocumentId": "DOC",
     "EntityTypeId": "ETT",
     "InventoryId": "INV",
+    "LabelTemplateId": "TMP",
     "LinkId": "LNK",
     "LotId": "LOT",
     "NotebookId": "NTB",
@@ -29,8 +33,12 @@ _ALBERT_PREFIXES = {
     "RuleId": "RUL",
     "SynthesisId": "SYN",
     "TagId": "TAG",
+    "SmartDatasetId": "SDT",
+    "TargetId": "TAR",
     "TaskId": "TAS",
+    "StorageLocationId": "STL",
     "UnitId": "UNI",
+    "TeamId": "TEM",
     "UserId": "USR",
     "WorksheetId": "WKS",
     "WorkflowId": "WFL",
@@ -77,6 +85,13 @@ def _ensure_albert_id(id: str, id_type: str) -> str:
         raise ValueError(f"{id_type} {id} has invalid prefix. Expected: {prefix}")
 
     return f"{prefix}{id.upper()}"
+
+
+def ensure_attribute_id(id: str) -> str:
+    return _ensure_albert_id(id, "AttributeId")
+
+
+AttributeId = Annotated[str, AfterValidator(ensure_attribute_id)]
 
 
 def ensure_attachment_id(id: str) -> str:
@@ -142,20 +157,37 @@ def ensure_search_inventory_id(id: str) -> str:
 SearchInventoryId = Annotated[str, AfterValidator(ensure_search_inventory_id)]
 
 
+_ROW_CHAIN_RE = re.compile(r"^ROW\d+(?:XROW\d+)*$")
+_INTERVAL_BARCODE_LEN = 9
+
+
 def ensure_interval_id(id: str) -> str:
     if not id:
         raise ValueError("IntervalId cannot be empty")
 
-    # Check if it matches ROW# or ROW#XROW# pattern
-    parts = id.upper().split("X")
-    if len(parts) > 2:
-        raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    if id.lower() == "default":
+        return "default"
 
-    for part in parts:
-        if not part.startswith("ROW") or not part[3:].isdigit():
-            raise ValueError(f"IntervalId {id} is invalid. Must be in format ROW# or ROW#XROW#")
+    # ROW chains and WFL ids follow Albert ID uppercasing. Barcodes are
+    # case-sensitive and must not be folded.
+    upper = id.upper()
+    if _ROW_CHAIN_RE.fullmatch(upper):
+        return upper
 
-    return id.upper()
+    if upper.startswith("WFL"):
+        return upper
+
+    # Platform-generated combination barcodes are 9-character case-sensitive alphanumeric
+    # nanoids (e.g. "OhI8ap0HY", "V1a9Km2xL") that lack an identifying prefix. Matching
+    # solely on length is permissive (accepting any 9-character string), but unavoidable
+    # given barcode unpredictability across tenants while preserving exact case.
+    if len(id) == _INTERVAL_BARCODE_LEN:
+        return id
+
+    raise ValueError(
+        f"IntervalId {id} is invalid. Must be a ROW chain (ROW# or ROW#XROW#...), "
+        "a WFL id, a 9-character barcode, or 'default'"
+    )
 
 
 IntervalId = Annotated[str, AfterValidator(ensure_interval_id)]
@@ -205,13 +237,6 @@ def ensure_custom_template_id(id: str) -> str:
 CustomTemplateId = Annotated[str, AfterValidator(ensure_custom_template_id)]
 
 
-def ensure_entity_type_id(id: str) -> str:
-    return _ensure_albert_id(id, "EntityType")
-
-
-EntityTypeId = Annotated[str, AfterValidator(ensure_entity_type_id)]
-
-
 def ensure_rule_id(id: str) -> str:
     return _ensure_albert_id(id, "RuleId")
 
@@ -231,6 +256,13 @@ def ensure_data_column_id(id: str) -> str:
 
 
 DataColumnId = Annotated[str, AfterValidator(ensure_data_column_id)]
+
+
+def ensure_document_id(id: str) -> str:
+    return _ensure_albert_id(id, "DocumentId")
+
+
+DocumentId = Annotated[str, AfterValidator(ensure_document_id)]
 
 
 def ensure_datatemplate_id(id: str) -> str:
@@ -273,6 +305,13 @@ def ensure_project_search_id(id: str) -> str:
 SearchProjectId = Annotated[str, AfterValidator(ensure_project_search_id)]
 
 
+def ensure_label_template_id(id: str) -> str:
+    return _ensure_albert_id(id, "LabelTemplateId")
+
+
+LabelTemplateId = Annotated[str, AfterValidator(ensure_label_template_id)]
+
+
 def ensure_link_id(id: str) -> str:
     return _ensure_albert_id(id, "LinkId")
 
@@ -280,7 +319,15 @@ def ensure_link_id(id: str) -> str:
 LinkId = Annotated[str, AfterValidator(ensure_link_id)]
 
 
+_LOT_DISPLAY_ID_RE = re.compile(r"^(B?)(\d+)-(\d+)$", re.IGNORECASE)
+
+
 def ensure_lot_id(id: str) -> str:
+    if id:
+        match = _LOT_DISPLAY_ID_RE.match(id.strip())
+        if match:
+            batch_prefix, _, lot_num = match.groups()
+            return f"LOT{batch_prefix.upper()}{lot_num}"
     return _ensure_albert_id(id, "LotId")
 
 
@@ -301,11 +348,25 @@ def ensure_synthesis_id(id: str) -> str:
 SynthesisId = Annotated[str, AfterValidator(ensure_synthesis_id)]
 
 
+def ensure_storage_location_id(id: str) -> str:
+    return _ensure_albert_id(id, "StorageLocationId")
+
+
+StorageLocationId = Annotated[str, AfterValidator(ensure_storage_location_id)]
+
+
 def ensure_tag_id(id: str) -> str:
     return _ensure_albert_id(id, "TagId")
 
 
 TagId = Annotated[str, AfterValidator(ensure_tag_id)]
+
+
+def ensure_team_id(id: str) -> str:
+    return _ensure_albert_id(id, "TeamId")
+
+
+TeamId = Annotated[str, AfterValidator(ensure_team_id)]
 
 
 def ensure_worksheet_id(id: str) -> str:
@@ -348,6 +409,20 @@ def ensure_report_id(id: str) -> str:
 
 
 ReportId = Annotated[str, AfterValidator(ensure_report_id)]
+
+
+def ensure_smart_dataset_id(id: str) -> str:
+    return _ensure_albert_id(id, "SmartDatasetId")
+
+
+SmartDatasetId = Annotated[str, AfterValidator(ensure_smart_dataset_id)]
+
+
+def ensure_target_id(id: str) -> str:
+    return _ensure_albert_id(id, "TargetId")
+
+
+TargetId = Annotated[str, AfterValidator(ensure_target_id)]
 
 
 def remove_id_prefix(id: str, id_type: str) -> str:

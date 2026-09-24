@@ -1,26 +1,110 @@
 import mimetypes
+import uuid
 from datetime import date
 from pathlib import Path
 from typing import IO
-from urllib.parse import quote
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.files import FileCollection
+from albert.collections.lists import ListsCollection
 from albert.collections.notes import NotesCollection
-from albert.core.shared.identifiers import AttachmentId, InventoryId
+from albert.core.shared.identifiers import (
+    AttachmentId,
+    DataColumnId,
+    DataTemplateId,
+    InventoryId,
+    ProjectId,
+)
+from albert.core.shared.models.base import EntityLinkWithName
+from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
-from albert.resources.attachments import Attachment, AttachmentCategory
+from albert.resources.attachments import (
+    Attachment,
+    AttachmentCategory,
+    AttachmentMetadata,
+)
 from albert.resources.files import FileCategory, FileNamespace
 from albert.resources.hazards import HazardStatement, HazardSymbol
+from albert.resources.lists import ListItemCategory
 from albert.resources.notes import Note
 
 
 class AttachmentCollection(BaseCollection):
-    """AttachmentCollection is a collection class for managing Attachment entities in the Albert platform."""
+    """Manage Attachments in the Albert platform.
+
+    An Attachment links an uploaded file to a parent entity (its ``parent_id``),
+    such as a Task, Project, Inventory Item, or Note. The file itself is stored
+    and uploaded through the [`FileCollection`][albert.collections.files.FileCollection];
+    an Attachment is the record that associates that stored file with an entity.
+    A common pattern is to upload a file and attach it in one step using the
+    ``upload_and_attach_*`` helpers below.
+
+    This collection is accessed as ``client.attachments``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        attachments = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999"])
+        for attachment in attachments.get("INVA9999999", []):
+            print(attachment.name)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for attachment requests.
+
+    Methods
+    -------
+    create(attachment) -> Attachment
+        Create an attachment record for an already-uploaded file.
+    get_by_id(id) -> Attachment
+        Get a single attachment by its ID.
+    get_by_parent_ids(parent_ids, data_column_ids=None) -> dict[str, list[Attachment]]
+        Get attachments grouped by parent entity ID.
+    update(attachment) -> Attachment
+        Update an existing attachment.
+    delete(id) -> None
+        Delete an attachment by its ID.
+    attach_file_to_note(note_id, file_name, file_key, category=FileCategory.OTHER) -> Attachment
+        Attach an already-uploaded file to a note.
+    upload_and_attach_file_as_note(parent_id, file_data, ...) -> Note
+        Upload a file and attach it to a new note on a parent entity.
+    upload_and_attach_sds_to_inventory_item(inventory_id, file_sds, ...) -> Attachment
+        Upload an SDS document and attach it to an inventory item.
+    upload_and_attach_document_to_inventory_item(inventory_id, file_path, category, ...) -> Attachment (🧪 Beta)
+        Upload a document and attach it to an inventory item.
+    upload_and_attach_document_to_project(project_id, file_path) -> Attachment
+        Upload a file and attach it as a document to a project.
+    upload_and_attach_script_to_data_template(data_template_id, file_path, name, extension_names) -> Attachment
+        Upload a script and attach it to a data template.
+    get_jurisdiction_codes() -> dict[str, str]
+        Get available SDS jurisdiction codes.
+    get_language_codes() -> dict[str, str]
+        Get available SDS language codes.
+    """
 
     _api_version: str = "v3"
+    _updatable_attributes = {"name", "revision_date", "parent_id"}
+    _updatable_metadata_attributes = {
+        "Symbols",
+        "unNumber",
+        "storageClass",
+        "hazardStatement",
+        "jurisdictionCode",
+        "languageCode",
+        "wgk",
+        "description",
+        "extensions",
+    }
 
     def __init__(self, *, session):
         super().__init__(session=session)
@@ -32,25 +116,205 @@ class AttachmentCollection(BaseCollection):
     def _get_note_collection(self):
         return NotesCollection(session=self.session)
 
+    def _get_lists_collection(self):
+        return ListsCollection(session=self.session)
+
     @validate_call
     def get_by_id(self, *, id: AttachmentId) -> Attachment:
-        """Retrieves an attachment by its ID.
+        """Get an attachment by its ID.
+
+        !!! example
+            ```python
+            attachment = client.attachments.get_by_id(id="ATT1")
+            attachment.name
+            # 'sds.pdf'
+            ```
 
         Parameters
         ----------
         id : AttachmentId
-            The ID of the attachment to retrieve.
+            The Attachment ID (format ``ATT...``).
 
         Returns
         -------
         Attachment
-            The Attachment object corresponding to the provided ID.
+            The fully populated attachment.
         """
         response = self.session.get(url=f"{self.base_path}/{id}")
         return Attachment(**response.json())
 
-    def get_by_parent_ids(self, *, parent_ids: list[str]) -> dict[str, list[Attachment]]:
-        """Retrieves attachments by their parent IDs.
+    @validate_call
+    def create(self, *, attachment: Attachment) -> Attachment:
+        """Create an attachment record for an already-uploaded file.
+
+        Use this when the underlying file has already been uploaded via the
+        [`FileCollection`][albert.collections.files.FileCollection]; the attachment's
+        ``key`` should match the stored [`name`][albert.resources.files.FileInfo.name].
+        To upload and attach in a single call, use one of the
+        ``upload_and_attach_*`` helpers instead.
+
+        !!! example
+            ```python
+            from albert.resources.attachments import Attachment
+            attachment = client.attachments.create(
+                attachment=Attachment(
+                    parent_id="INVA9999999",
+                    name="datasheet.pdf",
+                    key="INVA9999999/documents/datasheet.pdf",
+                )
+            )
+            ```
+
+        Parameters
+        ----------
+        attachment : Attachment
+            The attachment to create. Requires ``parent_id``, ``name``, and
+            ``key``.
+
+        Returns
+        -------
+        Attachment
+            The created attachment.
+        """
+        payload = attachment.model_dump(by_alias=True, exclude_unset=True, mode="json")
+        response = self.session.post(self.base_path, json=payload)
+        return Attachment(**response.json())
+
+    @validate_call
+    def update(self, *, attachment: Attachment) -> Attachment:
+        """Update an attachment.
+
+        !!! example
+            ```python
+            attachment = client.attachments.get_by_id(id="ATT1")
+            attachment.name = "renamed.pdf"
+            updated = client.attachments.update(attachment=attachment)
+            ```
+
+        Parameters
+        ----------
+        attachment : Attachment
+            The attachment with updated fields. Must include ``id``.
+
+        Returns
+        -------
+        Attachment
+            The updated Attachment.
+
+        Notes
+        -----
+        The following fields can be updated: ``name``, ``parent_id``, ``revision_date``.
+        Metadata fields such as hazard symbols, hazard statements, storage class,
+        UN number, jurisdiction code, and language code can also be updated.
+        """
+        if attachment.id is None:
+            raise ValueError("Attachment ID is required for update.")
+
+        existing_attachment = self.get_by_id(id=attachment.id)
+        payload = self._generate_attachment_patch_payload(
+            existing=existing_attachment, updated=attachment
+        )
+        if len(payload.data) == 0:
+            return existing_attachment
+
+        # The API rejects more than one operation on the same list attribute
+        # (e.g. Symbols) in a single request, so each such op is sent separately.
+        list_attrs = {
+            d.attribute
+            for d in payload.data
+            if isinstance(d.old_value, list) or isinstance(d.new_value, list)
+        }
+        scalar_data = [d for d in payload.data if d.attribute not in list_attrs]
+        list_data = [d for d in payload.data if d.attribute in list_attrs]
+        batches = [scalar_data] if scalar_data else []
+        batches.extend([d] for d in list_data)
+        for batch in batches:
+            self.session.patch(
+                f"{self.base_path}/{attachment.id}",
+                json=PatchPayload(data=batch).model_dump(by_alias=True, mode="json"),
+            )
+        return self.get_by_id(id=attachment.id)
+
+    def _generate_attachment_patch_payload(
+        self, *, existing: Attachment, updated: Attachment
+    ) -> PatchPayload:
+        # Diff top-level fields (name, revision_date, parent_id)
+        patch_data: list[PatchDatum] = list(
+            self._generate_patch_payload(
+                existing=existing,
+                updated=updated,
+                generate_metadata_diff=False,
+            ).data
+        )
+
+        if "metadata" not in updated.model_fields_set:
+            return PatchPayload(data=patch_data)
+
+        existing_meta = existing.metadata or AttachmentMetadata()
+        updated_meta = updated.metadata or AttachmentMetadata()
+
+        existing_dump = existing_meta.model_dump(by_alias=True, mode="json")
+        updated_dump = updated_meta.model_dump(by_alias=True, mode="json")
+
+        for attribute in self._updatable_metadata_attributes:
+            old_value = existing_dump.get(attribute)
+            new_value = updated_dump.get(attribute)
+
+            if isinstance(old_value, list) or isinstance(new_value, list):
+                # Diff list fields item-by-item using id. The Symbols field requires
+                # the patch value wrapped as [{"id": ...}].
+                old_ids = [x["id"] for x in (old_value or [])]
+                new_ids = [x["id"] for x in (new_value or [])]
+                for item_id in old_ids:
+                    if item_id not in new_ids:
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.DELETE,
+                                old_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
+                            )
+                        )
+                for item_id in new_ids:
+                    if item_id not in old_ids:
+                        patch_data.append(
+                            PatchDatum(
+                                attribute=attribute,
+                                operation=PatchOperation.ADD,
+                                new_value=[{"id": item_id}] if attribute == "Symbols" else item_id,
+                            )
+                        )
+            else:
+                # Diff scalar fields
+                if old_value is None and new_value is not None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute, operation=PatchOperation.ADD, new_value=new_value
+                        )
+                    )
+                elif old_value is not None and new_value is None:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.DELETE,
+                            old_value=old_value,
+                        )
+                    )
+                elif old_value is not None and new_value != old_value:
+                    patch_data.append(
+                        PatchDatum(
+                            attribute=attribute,
+                            operation=PatchOperation.UPDATE,
+                            old_value=old_value,
+                            new_value=new_value,
+                        )
+                    )
+
+        return PatchPayload(data=patch_data)
+
+    def get_by_parent_ids(
+        self, *, parent_ids: list[str], data_column_ids: list[DataColumnId] | None = None
+    ) -> dict[str, list[Attachment]]:
+        """Get attachments by their parent IDs.
 
         Note: This method returns a dictionary where the keys are parent IDs
         and the values are lists of Attachment objects associated with each parent ID.
@@ -59,17 +323,33 @@ class AttachmentCollection(BaseCollection):
         If no attachments are found for any of the provided parent IDs,
         the API response will be an error.
 
+        !!! example
+            ```python
+            by_parent = client.attachments.get_by_parent_ids(parent_ids=["INVA9999999", "PROA9999999"])
+            by_parent.get("INVA9999999", [])
+            # [Attachment(...), ...]
+            ```
+
         Parameters
         ----------
         parent_ids : list[str]
-            Parent IDs of the objects to which the attachments are linked.
+            Parent IDs of the objects to which the attachments are linked. IDs must
+            include the full entity prefix (e.g. ``"INVA123"`` for an inventory item,
+            ``"PRO123"`` for a project).
+
+        data_column_ids : list[DataColumnId] | None, optional
+            Restrict results to attachments linked through the given data columns
+            (format ``DAC...``). Defaults to None (no data-column filter).
 
         Returns
         -------
         dict[str, list[Attachment]]
             A dictionary mapping parent IDs to lists of Attachment objects associated with each parent ID.
         """
-        response = self.session.get(url=f"{self.base_path}/parents", params={"id": parent_ids})
+        response = self.session.get(
+            url=f"{self.base_path}/parents",
+            params={"id": parent_ids, "dataColumnId": data_column_ids},
+        )
         response_data = response.json()
         return {
             parent["parentId"]: [
@@ -88,6 +368,15 @@ class AttachmentCollection(BaseCollection):
     ) -> Attachment:
         """Attaches an already uploaded file to a note.
 
+        !!! example
+            ```python
+            attachment = client.attachments.attach_file_to_note(
+                note_id="...",
+                file_name="results.csv",
+                file_key="INVA9999999/notes/results.csv",
+            )
+            ```
+
         Parameters
         ----------
         note_id : str
@@ -97,38 +386,106 @@ class AttachmentCollection(BaseCollection):
         file_key : str
             The unique key of the file to attach (the returned upload name).
         category : FileCategory, optional
-            The type of file, by default FileCategory.OTHER
+            The type of file. Defaults to ``FileCategory.OTHER``.
 
         Returns
         -------
         Attachment
-            The related attachment object.
+            The created attachment linking the file to the note.
         """
         attachment = Attachment(
             parent_id=note_id, name=file_name, key=file_key, namespace="result", category=category
         )
-        response = self.session.post(
-            url=self.base_path,
-            json=attachment.model_dump(by_alias=True, mode="json", exclude_unset=True),
+        return self.create(attachment=attachment)
+
+    def get_jurisdiction_codes(self) -> dict[str, str]:
+        """Return available SDS jurisdiction codes.
+
+        Useful for supplying ``jurisdiction_code`` to
+        [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
+
+        !!! example
+            ```python
+            codes = client.attachments.get_jurisdiction_codes()
+            codes["USA"]
+            # 'US'
+            ```
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of jurisdiction name to code (e.g. ``{"Germany": "DE", "USA": "US"}``).
+        """
+        response = self.session.get(
+            f"{self.base_path}/jurisdictionslanguages", params={"type": "jurisdiction"}
         )
-        return Attachment(**response.json())
+        return response.json()
+
+    def get_language_codes(self) -> dict[str, str]:
+        """Return available SDS language codes.
+
+        Useful for supplying ``language_code`` to
+        [`upload_and_attach_sds_to_inventory_item`][albert.collections.attachments.AttachmentCollection.upload_and_attach_sds_to_inventory_item].
+
+        !!! example
+            ```python
+            codes = client.attachments.get_language_codes()
+            codes["English"]
+            # 'EN'
+            ```
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of language name to code (e.g. ``{"English": "EN", "German": "DE"}``).
+        """
+        response = self.session.get(
+            f"{self.base_path}/jurisdictionslanguages", params={"type": "language"}
+        )
+        return response.json()
 
     @validate_call
     def delete(self, *, id: AttachmentId) -> None:
-        """Deletes an attachment by ID.
+        """Delete an attachment by its ID.
+
+        !!! example
+            ```python
+            client.attachments.delete(id="ATT1")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the attachment to delete.
+        id : AttachmentId
+            The Attachment ID to delete (format ``ATT...``).
+
+        Returns
+        -------
+        None
         """
         self.session.delete(f"{self.base_path}/{id}")
 
     def upload_and_attach_file_as_note(
-        self, parent_id: str, file_data: IO, note_text: str = "", file_name: str = ""
+        self,
+        parent_id: str,
+        file_data: IO,
+        note_text: str = "",
+        file_name: str = "",
+        upload_key: str | None = None,
+        content_type: str | None = None,
     ) -> Note:
         """Uploads a file and attaches it to a new note. A user can be tagged in the note_text string by using f-string and the User.to_note_mention() method.
         This allows for easy tagging and referencing of users within notes. example: f"Hello {tagged_user.to_note_mention()}!"
+
+        !!! example
+            ```python
+            with open("results.csv", "rb") as fh:
+                note = client.attachments.upload_and_attach_file_as_note(
+                    parent_id="TASA1",
+                    file_data=fh,
+                    note_text="Attaching the raw results.",
+                    file_name="results.csv",
+                )
+            ```
 
         Parameters
         ----------
@@ -139,36 +496,58 @@ class AttachmentCollection(BaseCollection):
         note_text : str, optional
             Any additional text to add to the note, by default ""
         file_name : str, optional
-            The name of the file, by default ""
+            The name of the file. Include a file extension to infer the content type;
+            otherwise, the upload defaults to ``application/octet-stream``.
+        upload_key : str | None, optional
+            Override the storage key used when signing and uploading the file.
+            Defaults to ``{parent_id}/{note_id}/{file_name}``.
+        content_type : str | None, optional
+            Explicit MIME type for the upload. When omitted, inferred from
+            ``file_name`` or ``upload_key``; defaults to ``application/octet-stream``.
 
         Returns
         -------
         Note
-            The created note.
+            The created note, with the uploaded file attached.
         """
-        file_type = mimetypes.guess_type(file_name)[0]
-        file_collection = self._get_file_collection()
-        note_collection = self._get_note_collection()
+        if not (upload_key or file_name):
+            raise ValueError("A file name or upload key must be provided for attachment upload.")
 
-        file_collection.sign_and_upload_file(
-            data=file_data,
-            name=file_name,
-            namespace=FileNamespace.RESULT.value,
-            content_type=file_type,
-        )
-        file_info = file_collection.get_by_name(
-            name=file_name, namespace=FileNamespace.RESULT.value
-        )
+        note_collection = self._get_note_collection()
         note = Note(
             parent_id=parent_id,
             note=note_text,
         )
         registered_note = note_collection.create(note=note)
+        if upload_key:
+            attachment_name = file_name or Path(upload_key).name
+            upload_name = upload_key
+        else:
+            attachment_name = file_name
+            upload_name = f"{parent_id}/{registered_note.id}/{file_name}"
+        if content_type is None:
+            file_type = mimetypes.guess_type(attachment_name or upload_name)[0]
+            if file_type is None:
+                file_type = "application/octet-stream"
+        else:
+            file_type = content_type
+        file_collection = self._get_file_collection()
+
+        file_collection.sign_and_upload_file(
+            data=file_data,
+            name=upload_name,
+            namespace=FileNamespace.RESULT.value,
+            content_type=file_type,
+        )
+        file_info = file_collection.get_by_name(
+            name=upload_name, namespace=FileNamespace.RESULT.value
+        )
         self.attach_file_to_note(
             note_id=registered_note.id,
-            file_name=file_name,
+            file_name=attachment_name,
             file_key=file_info.name,
         )
+
         return note_collection.get_by_id(id=registered_note.id)
 
     @validate_call
@@ -188,6 +567,19 @@ class AttachmentCollection(BaseCollection):
     ) -> Attachment:
         """Upload an SDS document and attach it to an inventory item.
 
+        !!! example
+            ```python
+            from datetime import date
+            from pathlib import Path
+            attachment = client.attachments.upload_and_attach_sds_to_inventory_item(
+                inventory_id="INVA9999999",
+                file_sds=Path("~/Downloads/acetone_sds.pdf"),
+                revision_date=date(2024, 1, 1),
+                storage_class="3",
+                un_number="1090",
+            )
+            ```
+
         Parameters
         ----------
         inventory_id : str
@@ -200,68 +592,333 @@ class AttachmentCollection(BaseCollection):
             The UN number.
         storage_class : str
             The Storage Class number.
-        jurisdiction_code : str | None, optional
-            Jurisdiction code associated with the SDS (e.g. ``US``).
+        jurisdiction_code : str, optional
+            Jurisdiction code for the SDS (e.g. ``"US"``). Use
+            ``get_jurisdiction_codes()`` to retrieve the full list of available codes.
         language_code : str, optional
-            Language code for the SDS (e.g. ``EN``).
+            Language code for the SDS (e.g. ``"EN"``). Use
+            ``get_language_codes()`` to retrieve the full list of available codes.
         hazard_statements : list[HazardStatement] | None, optional
             Collection of hazard statements.
+        hazard_symbols : list[HazardSymbol] | None, optional
+            Collection of hazard symbols.
         wgk : str | None, optional
             WGK classification metadata.
+
+        Returns
+        -------
+        Attachment
+            The created SDS attachment linked to the inventory item.
         """
 
-        sds_path = file_sds.expanduser()
-        if not sds_path.is_file():
-            raise FileNotFoundError(f"SDS file not found at '{sds_path}'")
+        return self.upload_and_attach_document_to_inventory_item(
+            inventory_id=inventory_id,
+            file_path=file_sds,
+            category=AttachmentCategory.SDS,
+            revision_date=revision_date,
+            jurisdiction_code=jurisdiction_code,
+            language_code=language_code,
+            hazard_statements=hazard_statements,
+            hazard_symbols=hazard_symbols,
+            un_number=un_number,
+            storage_class=storage_class,
+            wgk=wgk,
+        )
 
-        content_type = mimetypes.guess_type(sds_path.name)[0] or "application/pdf"
+    @validate_call
+    def upload_and_attach_document_to_inventory_item(
+        self,
+        *,
+        inventory_id: InventoryId,
+        file_path: Path,
+        category: AttachmentCategory | str,
+        revision_date: date | None = None,
+        description: str | None = None,
+        jurisdiction_code: str | None = None,
+        language_code: str | None = None,
+        hazard_statements: list[HazardStatement] | None = None,
+        hazard_symbols: list[HazardSymbol] | None = None,
+        un_number: str | None = None,
+        storage_class: str | None = None,
+        wgk: str | None = None,
+    ) -> Attachment:
+        """Upload a file and attach it as a document to an inventory item (🧪 Beta).
 
-        encoded_file_name = quote(sds_path.name)
-        file_key = f"{inventory_id}/SDS/{encoded_file_name}"
+        !!! warning "Beta Feature!"
+            Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
+            This feature currently falls outside of the Albert support contract, but we'd love your feedback!
+
+        !!! example
+            ```python
+            from pathlib import Path
+            from albert.resources.attachments import AttachmentCategory
+
+            attachment = client.attachments.upload_and_attach_document_to_inventory_item(
+                inventory_id="INVA9999999",
+                file_path=Path("~/Downloads/certificate_of_analysis.pdf"),
+                category=AttachmentCategory.COA,
+            )
+            ```
+
+        Parameters
+        ----------
+        inventory_id : str
+            The Albert ID of the inventory item (e.g. ``INVA123``).
+        file_path : Path
+            Local path to the file to upload.
+        category : AttachmentCategory | str
+            Document category.
+        revision_date : date | None, optional
+            Revision date for the document.
+        description : str | None, optional
+            Description for the document.
+        jurisdiction_code : str | None, optional
+            Jurisdiction code (e.g. ``"US"``).
+        language_code : str | None, optional
+            Language code (e.g. ``"EN"``).
+        hazard_statements : list[HazardStatement] | None, optional
+            Hazard statements to associate with the document.
+        hazard_symbols : list[HazardSymbol] | None, optional
+            Hazard symbols to associate with the document.
+        un_number : str | None, optional
+            UN number.
+        storage_class : str | None, optional
+            Storage class.
+        wgk : str | None, optional
+            Water hazard class (WGK).
+
+        Returns
+        -------
+        Attachment
+            The created attachment linked to the inventory item.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``file_path`` does not exist.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        category_value = category.value if isinstance(category, AttachmentCategory) else category
+        content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/pdf"
+        upload_id = self._generate_upload_id()
+        file_key = f"{inventory_id}/{category_value}/{upload_id}{resolved_path.suffix}"
+        file_upload_category = (
+            FileCategory.SDS
+            if category_value == AttachmentCategory.SDS.value
+            else FileCategory.OTHER
+        )
 
         file_collection = self._get_file_collection()
-        with sds_path.open("rb") as file_handle:
+        with resolved_path.open("rb") as file_handle:
             file_collection.sign_and_upload_file(
                 data=file_handle,
                 name=file_key,
                 namespace=FileNamespace.RESULT,
                 content_type=content_type,
-                category=FileCategory.SDS,
+                category=file_upload_category,
             )
 
-        metadata: dict[str, MetadataItem] = {
-            "jurisdictionCode": jurisdiction_code,
-            "languageCode": language_code,
-        }
-
+        metadata: dict[str, MetadataItem] = {}
         if revision_date is not None:
             metadata["revisionDate"] = revision_date.isoformat()
-
-        if hazard_statements:
-            metadata["hazardStatement"] = [
-                statement.model_dump(by_alias=True, exclude_none=True)
-                for statement in hazard_statements
-            ]
-        if hazard_symbols:
-            metadata["Symbols"] = [
-                symbol.model_dump(by_alias=True, exclude_none=True) for symbol in hazard_symbols
-            ]
-
+        if description is not None:
+            metadata["description"] = description
+        if jurisdiction_code is not None:
+            metadata["jurisdictionCode"] = jurisdiction_code
+        if language_code is not None:
+            metadata["languageCode"] = language_code
         if un_number is not None:
             metadata["unNumber"] = un_number
         if storage_class is not None:
             metadata["storageClass"] = storage_class
         if wgk is not None:
             metadata["wgk"] = wgk
+        if hazard_statements:
+            metadata["hazardStatement"] = [
+                s.model_dump(by_alias=True, exclude_none=True) for s in hazard_statements
+            ]
+        if hazard_symbols:
+            metadata["Symbols"] = [
+                s.model_dump(by_alias=True, exclude_none=True) for s in hazard_symbols
+            ]
 
-        payload = {
-            "parentId": inventory_id,
-            "category": AttachmentCategory.SDS.value,
-            "name": encoded_file_name,
+        attachment_kwargs: dict = {
+            "parent_id": inventory_id,
+            "name": resolved_path.name,
             "key": file_key,
-            "nameSpace": FileNamespace.RESULT.value,
-            "Metadata": metadata,
+            "namespace": FileNamespace.RESULT.value,
+            "category": category,
         }
+        if revision_date is not None:
+            attachment_kwargs["revision_date"] = revision_date
+        if metadata:
+            attachment_kwargs["metadata"] = metadata
 
-        response = self.session.post(self.base_path, json=payload)
-        return Attachment(**response.json())
+        attachment = Attachment(**attachment_kwargs)
+        return self.create(attachment=attachment)
+
+    @staticmethod
+    def _generate_upload_id() -> str:
+        return str(uuid.uuid4())
+
+    @validate_call
+    def upload_and_attach_document_to_project(
+        self,
+        *,
+        project_id: ProjectId,
+        file_path: Path,
+    ) -> Attachment:
+        """Upload a file and attach it as a document to a project.
+
+        !!! example
+            ```python
+            from pathlib import Path
+            attachment = client.attachments.upload_and_attach_document_to_project(
+                project_id="PRO770",
+                file_path=Path("~/Downloads/report.pdf"),
+            )
+            ```
+
+        Parameters
+        ----------
+        project_id : ProjectId
+            The Albert ID of the project (e.g. ``PRO770``).
+        file_path : Path
+            Local path to the file to upload.
+
+        Returns
+        -------
+        Attachment
+            The created attachment record.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        content_type = mimetypes.guess_type(resolved_path.name)[0] or "application/octet-stream"
+        upload_id = self._generate_upload_id()
+        extension = resolved_path.suffix
+        file_key = f"{project_id}/documents/original/{upload_id}{extension}"
+
+        file_collection = self._get_file_collection()
+        with resolved_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=file_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+            )
+
+        attachment = Attachment(
+            parent_id=project_id,
+            name=resolved_path.name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.OTHER,
+        )
+        return self.create(attachment=attachment)
+
+    @validate_call
+    def upload_and_attach_script_to_data_template(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        file_path: Path,
+        name: str,
+        extension_names: list[str],
+    ) -> Attachment:
+        """Upload a script and attach it to a data template.
+
+        The script is stored under ``{data_template_id}/automated_scripts/`` and
+        registered as a ``Script`` attachment. Allowed input file extensions are
+        resolved from the platform extensions list (``list_type="extensions"``).
+
+        !!! example
+            ```python
+            from pathlib import Path
+            attachment = client.attachments.upload_and_attach_script_to_data_template(
+                data_template_id="DAT27984",
+                file_path=Path("etl.py"),
+                name="CSV import script",
+                extension_names=["csv"],
+            )
+            ```
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            The Albert ID of the data template (format ``DAT...``).
+        file_path : Path
+            Local path to the Python script file to upload. Must have a ``.py`` extension.
+        name : str
+            Display name for the script attachment.
+        extension_names : list[str]
+            Allowed input file extensions for the script (e.g. ``["csv"]``). Each
+            name is resolved via the extensions list.
+
+        Returns
+        -------
+        Attachment
+            The created script attachment linked to the data template.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``file_path`` does not exist.
+        ValueError
+            If ``file_path`` does not have a ``.py`` extension, or if an extension name
+            cannot be resolved in the extensions list.
+        """
+        resolved_path = file_path.expanduser()
+        if not resolved_path.is_file():
+            raise FileNotFoundError(f"File not found at '{resolved_path}'")
+
+        if resolved_path.suffix.lower() != ".py":
+            raise ValueError(
+                f"Script file must have a .py extension, got '{resolved_path.suffix}'."
+            )
+
+        lists_collection = self._get_lists_collection()
+        available_extensions = {
+            item.name.lower(): item
+            for item in lists_collection.get_all(
+                category=ListItemCategory.EXTENSIONS,
+                list_type="extensions",
+            )
+            if item.name
+        }
+        extension_links: list[EntityLinkWithName] = []
+        for extension_name in extension_names:
+            list_item = available_extensions.get(extension_name.lower())
+            if list_item is None:
+                raise ValueError(
+                    f"Extension '{extension_name}' was not found in the extensions list."
+                )
+            extension_links.append(EntityLinkWithName(id=list_item.id, name=list_item.name))
+
+        file_key = (
+            f"{data_template_id}/automated_scripts/{resolved_path.stem}{resolved_path.suffix}"
+        )
+        content_type = "text/x-python-script"
+
+        file_collection = self._get_file_collection()
+        with resolved_path.open("rb") as file_handle:
+            file_collection.sign_and_upload_file(
+                data=file_handle,
+                name=file_key,
+                namespace=FileNamespace.RESULT,
+                content_type=content_type,
+            )
+
+        attachment = Attachment(
+            parent_id=data_template_id,
+            name=name,
+            key=file_key,
+            namespace=FileNamespace.RESULT.value,
+            category=AttachmentCategory.SCRIPT,
+            metadata=AttachmentMetadata(extensions=extension_links),
+        )
+        return self.create(attachment=attachment)

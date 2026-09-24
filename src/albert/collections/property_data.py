@@ -1,13 +1,11 @@
-import re
+import warnings
 from collections.abc import Iterator
 from contextlib import suppress
-from enum import Enum
 
 import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.tasks import TaskCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -24,79 +22,214 @@ from albert.core.shared.identifiers import (
     TaskId,
     UserId,
 )
-from albert.core.shared.models.base import EntityLink
 from albert.core.shared.models.patch import PatchOperation
-from albert.exceptions import NotFoundError
+from albert.core.utils import ensure_list
+from albert.exceptions import AlbertException, NotFoundError
 from albert.resources.property_data import (
     BulkPropertyData,
     CheckPropertyData,
+    CurvePropertyValue,
     DataEntity,
+    ImagePropertyValue,
     InventoryDataColumn,
     InventoryPropertyData,
     InventoryPropertyDataCreate,
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
-    PropertyValue,
-    TaskDataColumn,
+    ReturnScope,
     TaskPropertyCreate,
     TaskPropertyData,
-    Trial,
+    TaskPropertyRecord,
 )
-from albert.resources.tasks import PropertyTask
+from albert.resources.workflows import Workflow
+from albert.utils import property_data as property_data_utils
 
 
 class PropertyDataCollection(BaseCollection):
-    """PropertyDataCollection is a collection class for managing Property Data entities in the Albert platform."""
+    """Manage Property Data in the Albert platform.
+
+    Property Data is the actual measured result values in Albert. It lives in two
+    places, and this collection covers both:
+
+    - **On a Task**: the results captured when a Property Task is executed,
+      organized per Block, interval combination, and trial. Task methods here are
+      named ``*_task_*`` / ``*_interval_*`` / ``*_trial_*``.
+    - **On an Inventory Item**: custom property-data values attached directly to a
+      material (methods named ``*_on_inventory``). Task-measured results also roll
+      up to the associated inventory item's properties.
+
+    Property Data is **not** Inventory Specs or Attributes. Specs
+    (``client.inventory.get_specs`` / ``add_specs``, deprecated) and
+    [`AttributeCollection`][albert.collections.attributes.AttributeCollection]
+    (``client.attributes``) store inventory **reference** properties for worksheet
+    lookup. Use this collection for experimentally measured (or custom PTD)
+    values.
+
+    **Intervals and trials.** Within a Block, results are addressed by:
+
+    - *Interval*: one specific combination of parameter setpoints (e.g. "measured
+      at 25°C"). It is identified by an interval ID of the form ``ROW1`` (one
+      intervalized parameter) or ``ROW1XROW2`` (two). Build this ID from parameter
+      values with [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id], or
+      list the intervals present on a task with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data]. When a
+      block has no intervalized parameters, use the literal ``"default"``.
+    - *Trial*: one replicate measurement of a given interval, identified by an
+      integer trial number.
+
+    The void/unvoid methods mirror this hierarchy: void an entire task block, a
+    single interval, or a single trial. Voided data is retained but excluded from
+    results; unvoiding restores it.
+
+    **Writing results.** Use [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] for brand-new values,
+    [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] to upsert, and
+    [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties] to load a whole table at once. When adding
+    trials, supply a trial number only for an existing trial; omit it to create a
+    new trial, and create new trials one call at a time (loop for many).
+
+    This collection is accessed as ``client.property_data``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        # Read every recorded result on a property task
+        for block in client.property_data.get_all_task_properties(
+            task_id="TASFOR1", with_data_only=True
+        ):
+            print(block.block_id, block.data)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for property data requests.
+
+    Methods
+    -------
+    get_properties_on_inventory(inventory_id) -> InventoryPropertyData
+        Get all property data attached to an inventory item (not Specs/Attributes).
+    add_properties_to_inventory(inventory_id, properties) -> list[InventoryPropertyDataCreate]
+        Add custom property-data values directly to an inventory item.
+    update_property_on_inventory(inventory_id, property_data) -> InventoryPropertyData
+        Update a property-data value on an inventory item.
+    get_task_block_properties(inventory_id, task_id, block_id, lot_id=None) -> TaskPropertyData
+        Get the results in one task block for one inventory item.
+    get_all_task_properties(task_id, with_data_only=False, inventory_id=None, lot_id=None) -> list[TaskPropertyData]
+        Get results across all block/inventory combinations of a task.
+    get_task_property_records(task_id, with_data_only=True, inventory_id=None, lot_id=None) -> list[TaskPropertyRecord]
+        Get a task's results as flat rows, with their parameter setpoints attached.
+    check_for_task_data(task_id) -> list[CheckPropertyData]
+        Report which block/interval combinations of a task have data.
+    check_block_interval_for_data(block_id, task_id, interval_id) -> CheckPropertyData
+        Report whether one block interval has data.
+    add_properties_to_task(...) -> list[TaskPropertyData]
+        Add new result values to a task block.
+    update_property_on_task(task_id, patch_payload, ...) -> list[TaskPropertyData]
+        Patch existing result values on a task.
+    update_or_create_task_properties(...) -> list[TaskPropertyData]
+        Upsert result values on a task block.
+    bulk_load_task_properties(...) -> list[TaskPropertyData]
+        Overwrite a task block's results from tabular data.
+    bulk_delete_task_data(...) -> None
+        Delete a task block's results.
+    void_task_data(...) / unvoid_task_data(...) -> None
+        Void/unvoid all results in a task block.
+    void_interval_data(...) / unvoid_interval_data(...) -> None
+        Void/unvoid the results of one interval combination.
+    void_trial_data(...) / unvoid_trial_data(...) -> None
+        Void/unvoid the results of one trial.
+    search(...) -> Iterator[PropertyDataSearchItem]
+        Search recorded property data across the platform.
+    """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the CompanyCollection with the provided session.
+        """Initialize a PropertyDataCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{PropertyDataCollection._api_version}/propertydata"
 
     @validate_call
-    def _get_task_from_id(self, *, id: TaskId) -> PropertyTask:
-        return TaskCollection(session=self.session).get_by_id(id=id)
-
-    @validate_call
     def get_properties_on_inventory(self, *, inventory_id: InventoryId) -> InventoryPropertyData:
-        """Returns all the properties of an inventory item.
+        """Get all property data attached to an inventory item.
+
+        This includes both task-measured results that have rolled up to the item
+        and custom property-data values added directly to it. This is **not**
+        Inventory Specs / Attributes (inventory reference properties); for those
+        use ``client.inventory.get_specs`` (deprecated) or
+        [`get_by_parent_ids`][albert.collections.attributes.AttributeCollection.get_by_parent_ids].
+        For results in the context of a specific task, use
+        [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        instead.
+
+        !!! example
+            ```python
+            props = client.property_data.get_properties_on_inventory(
+                inventory_id="INVA9999999"
+            )
+            len(props.custom_property_data)
+            # 3
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory item to retrieve properties for.
+            The inventory item to retrieve properties for (format ``INV...``).
 
         Returns
         -------
         InventoryPropertyData
-            The properties of the inventory item.
+            The item's properties, split into task-derived and directly-added data.
         """
         params = {"entity": "inventory", "id": [inventory_id]}
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
+        if not response_json:
+            return InventoryPropertyData(inventoryId=inventory_id)
         return InventoryPropertyData(**response_json[0])
 
     @validate_call
     def add_properties_to_inventory(
         self, *, inventory_id: InventoryId, properties: list[InventoryDataColumn]
     ) -> list[InventoryPropertyDataCreate]:
-        """Add new properties to an inventory item.
+        """Add custom property-data values directly to an inventory item.
+
+        Use this for property-data values known independently of a task (stored
+        as PTD on the item). Each entry targets a data column and carries a
+        value. Properties are added one at a time and collected into the result.
+
+        This is **not** Inventory Specs / Attributes. For inventory **reference**
+        properties (worksheet lookup source of truth), use
+        [`add_specs`][albert.collections.inventory.InventoryCollection.add_specs]
+        (deprecated) or
+        [`add_values`][albert.collections.attributes.AttributeCollection.add_values].
+
+        !!! example
+            ```python
+            from albert.resources.property_data import InventoryDataColumn
+            props = client.property_data.add_properties_to_inventory(
+                inventory_id="INVA9999999",
+                properties=[InventoryDataColumn(data_column_id="DAC9999999", value="1.2")],
+            )
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory item to add properties to.
+            The inventory item to add properties to (format ``INV...``).
         properties : list[InventoryDataColumn]
-            The properties to add.
+            The properties to add. Each pairs a data column with a value.
 
         Returns
         -------
@@ -124,17 +257,29 @@ class PropertyDataCollection(BaseCollection):
     ) -> InventoryPropertyData:
         """Update a property on an inventory item.
 
+        Matches the existing property by its data column and updates its value. If
+        the item has no value yet for that data column, the value is added.
+
+        !!! example
+            ```python
+            from albert.resources.property_data import InventoryDataColumn
+            updated = client.property_data.update_property_on_inventory(
+                inventory_id="INVA9999999",
+                property_data=InventoryDataColumn(data_column_id="DAC9999999", value="1.3"),
+            )
+            ```
+
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory item to update the property on.
+            The inventory item to update (format ``INV...``).
         property_data : InventoryDataColumn
-            The updated property data.
+            The data column and new value to set.
 
         Returns
         -------
         InventoryPropertyData
-            The updated property data as returned by the server.
+            The item's properties after the update.
         """
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
@@ -186,23 +331,37 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
     ) -> TaskPropertyData:
-        """Returns all the properties within a Property Task block for a specific inventory item.
+        """Get the recorded results in one task block for one inventory item.
+
+        This is the focused read for a single block/inventory (and optionally lot)
+        combination. To sweep every combination on a task at once, use
+        [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties].
+
+        !!! example
+            ```python
+            data = client.property_data.get_task_block_properties(
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
+            )
+            data.block_id
+            # 'BLK1'
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory.
+            The inventory item whose results to read (format ``INV...``).
         task_id : TaskId
-            The Property task ID.
+            The Property Task the block belongs to (format ``TAS...``).
         block_id : BlockId
-            The Block ID of the block to retrieve properties for.
-        lot_id : LotId | None, optional
-            The specific Lot of the inventory Item to retrieve lots for, by default None
+            The block to read (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None (all lots).
 
         Returns
         -------
         TaskPropertyData
-            The properties of the inventory item within the block.
+            The results in the block for the given inventory item, organized by
+            interval and trial.
         """
         params = {
             "entity": "task",
@@ -219,19 +378,31 @@ class PropertyDataCollection(BaseCollection):
 
     @validate_call
     def check_for_task_data(self, *, task_id: TaskId) -> list[CheckPropertyData]:
-        """Checks if a task has data.
+        """Report which block/interval combinations of a task have data.
+
+        Returns one entry per block/interval/inventory combination on the task,
+        each flagging whether data exists (``data_exists``) and carrying the
+        ``interval_id`` you can pass to the void/unvoid or read methods. This is
+        the easiest way to discover the interval IDs present on a task.
+
+        !!! example
+            ```python
+            statuses = client.property_data.check_for_task_data(task_id="TASFOR1")
+            [(s.block_id, s.interval_id, s.data_exists) for s in statuses]
+            # [('BLK1', 'ROW1', True), ('BLK1', 'ROW2', False)]
+            ```
 
         Parameters
         ----------
         task_id : TaskId
-            The ID of the task to check for data.
+            The task to inspect (format ``TAS...``).
 
         Returns
         -------
         list[CheckPropertyData]
-            A list of CheckPropertyData entities representing the data status of each block + inventory item of the task.
+            The data status of each block/interval/inventory combination.
         """
-        task_info = self._get_task_from_id(id=task_id)
+        task_info = property_data_utils.get_task_from_id(session=self.session, id=task_id)
 
         params = {
             "entity": "block",
@@ -247,21 +418,33 @@ class PropertyDataCollection(BaseCollection):
     def check_block_interval_for_data(
         self, *, block_id: BlockId, task_id: TaskId, interval_id: IntervalId
     ) -> CheckPropertyData:
-        """Check if a specific block interval has data.
+        """Report whether one specific block interval has data.
+
+        A single-interval version of [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
+
+        !!! example
+            ```python
+            status = client.property_data.check_block_interval_for_data(
+                block_id="BLK1", task_id="TASFOR1", interval_id="ROW1"
+            )
+            status.data_exists
+            # True
+            ```
 
         Parameters
         ----------
         block_id : BlockId
-            The ID of the block.
+            The block to check (format ``BLK...``).
         task_id : TaskId
-            The ID of the task.
+            The task the block belongs to (format ``TAS...``).
         interval_id : IntervalId
-            The ID of the interval.
+            The interval combination to check (e.g. ``"ROW1"``, ``"ROW1XROW2"``,
+            a child workflow id, a barcode, or ``"default"``). See [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data] to list interval IDs.
 
         Returns
         -------
         CheckPropertyData
-            _description_
+            The data status of the given block interval.
         """
         params = {
             "entity": "block",
@@ -272,69 +455,647 @@ class PropertyDataCollection(BaseCollection):
         }
 
         response = self.session.get(url=self.base_path, params=params)
-        return CheckPropertyData(response.json())
+        return CheckPropertyData(**response.json()[0])
 
     @validate_call
     def get_all_task_properties(
-        self, *, task_id: TaskId, with_data_only: bool = False
+        self,
+        *,
+        task_id: TaskId,
+        with_data_only: bool = False,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
     ) -> list[TaskPropertyData]:
-        """Collect task property data for block/inventory combinations in a task.
+        """Get recorded results across all block/inventory combinations of a task.
+
+        Sweeps every block/inventory/lot combination on the task and returns its
+        results. For a single known combination, [`get_task_block_properties`][albert.collections.property_data.PropertyDataCollection.get_task_block_properties]
+        is more direct.
+
+        Narrow the sweep with ``inventory_id`` and ``lot_id`` when only part of the
+        task is of interest. Combinations that do not match are never requested, so
+        filtering is faster than discarding results afterwards.
+
+        !!! example
+            ```python
+            blocks = client.property_data.get_all_task_properties(
+                task_id="TASFOR1", with_data_only=True
+            )
+            [b.block_id for b in blocks]
+            # ['BLK1', 'BLK2']
+
+            # Just one material on the task
+            blocks = client.property_data.get_all_task_properties(
+                task_id="TASFOR1", inventory_id="INVA9999999"
+            )
+            ```
 
         Parameters
         ----------
         task_id : TaskId
-            The ID of the task to retrieve properties for.
+            The task to retrieve results for (format ``TAS...``).
         with_data_only : bool, optional
-            When True, only return combinations actually having task data (``dataExist`` flag is true). Defaults to False.
+            When True, skip combinations that have no recorded data. Defaults to
+            False (every combination is returned).
+        inventory_id : InventoryId, optional
+            Only return results for this inventory item (format ``INV...``).
+            Defaults to None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return results for this lot (format ``LOT...``). May be given on its
+            own, since a lot belongs to a single inventory item. Defaults to None
+            (every lot).
 
         Returns
         -------
         list[TaskPropertyData]
-            Task property data for each block/inventory/lot combination. When
-            ``with_data_only`` is True, combinations without recorded data are omitted.
+            Results for each block/inventory/lot combination on the task. Each entry
+            carries every interval recorded for that combination. Empty when the
+            filters match no combination.
         """
+        # check_for_task_data reports one entry per interval, but a block/inventory/lot
+        # combination is read in full (all of its intervals) in a single request. Collapse
+        # the intervals first, or every combination is fetched once per interval and the
+        # identical result is returned that many times.
+        combos: dict[tuple[str, str, str | None], bool] = {}
+        for combo_info in self.check_for_task_data(task_id=task_id):
+            if inventory_id is not None and combo_info.inventory_id != inventory_id:
+                continue
+            if lot_id is not None and combo_info.lot_id != lot_id:
+                continue
+            key = (combo_info.block_id, combo_info.inventory_id, combo_info.lot_id)
+            combos[key] = combos.get(key, False) or bool(combo_info.data_exists)
+
         all_info = []
-        task_data_info = self.check_for_task_data(task_id=task_id)
-        for combo_info in task_data_info:
-            if with_data_only and not combo_info.data_exists:
+        for (block_id, combo_inventory_id, combo_lot_id), data_exists in combos.items():
+            if with_data_only and not data_exists:
                 continue
             all_info.append(
                 self.get_task_block_properties(
-                    inventory_id=combo_info.inventory_id,
+                    inventory_id=combo_inventory_id,
                     task_id=task_id,
-                    block_id=combo_info.block_id,
-                    lot_id=combo_info.lot_id,
+                    block_id=block_id,
+                    lot_id=combo_lot_id,
                 )
             )
         return all_info
 
     @validate_call
-    def update_property_on_task(
-        self, *, task_id: TaskId, patch_payload: list[PropertyDataPatchDatum]
-    ) -> list[TaskPropertyData]:
-        """Updates a specific property on a task.
+    def get_task_property_records(
+        self,
+        *,
+        task_id: TaskId,
+        with_data_only: bool = True,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
+    ) -> list[TaskPropertyRecord]:
+        """Get a task's recorded results as flat rows, with their parameter setpoints.
+
+        Returns one record per measured value, already associated with the inventory
+        item, lot, interval, trial and data column it belongs to, and with the parameter
+        setpoints for that interval resolved and attached. Use this instead of walking
+        [`get_all_task_properties`][albert.collections.property_data.PropertyDataCollection.get_all_task_properties]
+        and correlating workflows by hand.
+
+        Setpoints cannot be resolved for tenants running the increased-intervals beta,
+        where results are addressed by child workflow ID rather than by interval row.
+        Those records still carry their values and
+        ``interval_combination``, but ``parameter_setpoints`` is empty.
+
+        Narrow the read with ``inventory_id`` and ``lot_id`` when only part of the task
+        is of interest. Combinations that do not match are never requested, so
+        filtering is faster than discarding records afterwards.
+
+        !!! example
+            ```python
+            records = client.property_data.get_task_property_records(task_id="TASFOR1")
+            records[0].data_column_name, records[0].value, records[0].parameter_setpoints
+            # ('Combing Force', '17.77', {'Condition': 'Wet'})
+
+            # Just one material on the task
+            records = client.property_data.get_task_property_records(
+                task_id="TASFOR1", inventory_id="INVA9999999"
+            )
+            ```
 
         Parameters
         ----------
         task_id : TaskId
-            The ID of the task.
+            The task to read results from (format ``TAS...``).
+        with_data_only : bool, optional
+            When True, skip block/inventory combinations with no recorded data.
+            Defaults to True.
+        inventory_id : InventoryId, optional
+            Only return records for this inventory item (format ``INV...``).
+            Defaults to None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return records for this lot (format ``LOT...``). May be given on its
+            own, since a lot belongs to a single inventory item. Defaults to None
+            (every lot).
+
+        Returns
+        -------
+        list[TaskPropertyRecord]
+            One record per measured value, in block, interval, trial, column order.
+            Empty when the filters match no combination.
+
+        See Also
+        --------
+        TaskPropertyRecord.to_dataframe : Render the records as a table.
+        """
+        blocks = self.get_all_task_properties(
+            task_id=task_id,
+            with_data_only=with_data_only,
+            inventory_id=inventory_id,
+            lot_id=lot_id,
+        )
+        if not blocks:
+            return []
+
+        task = property_data_utils.get_task_from_id(session=self.session, id=task_id)
+        block_workflows = property_data_utils.map_block_final_workflows(task=task)
+
+        workflow_cache: dict[str, Workflow] = {}
+        setpoint_cache: dict[str, dict[str, dict[str, str]]] = {}
+
+        records: list[TaskPropertyRecord] = []
+        for block in blocks:
+            workflow_link = block_workflows.get(block.block_id)
+            workflow_id = getattr(workflow_link, "id", None)
+            workflow_name = getattr(workflow_link, "name", None)
+
+            interval_map: dict[str, dict[str, str]] = {}
+            if workflow_id:
+                if workflow_id not in setpoint_cache:
+                    # A block's workflow carries its interval combinations but not the
+                    # setpoint values, so the full workflow is needed to name them.
+                    with suppress(AlbertException):
+                        workflow_cache[workflow_id] = self._get_workflow(workflow_id=workflow_id)
+                    workflow = workflow_cache.get(workflow_id)
+                    setpoint_cache[workflow_id] = (
+                        property_data_utils.build_interval_setpoint_map(workflow=workflow)
+                        if workflow is not None
+                        else {}
+                    )
+                    if workflow is not None and workflow.name:
+                        workflow_name = workflow.name
+                interval_map = setpoint_cache[workflow_id]
+                workflow_name = getattr(workflow_cache.get(workflow_id), "name", workflow_name)
+
+            descriptions: dict[str, str] = {}
+            for c in getattr(workflow_link, "combinations", None) or []:
+                if not c.name:
+                    continue
+                if c.interval_row_key:
+                    descriptions[c.interval_row_key] = c.name
+                if c.id:
+                    descriptions[c.id] = c.name
+
+            records.extend(
+                property_data_utils.flatten_task_property_data(
+                    block=block,
+                    task_id=task_id,
+                    workflow_id=workflow_id,
+                    workflow_name=workflow_name,
+                    interval_setpoints=interval_map,
+                    interval_descriptions=descriptions,
+                )
+            )
+        return records
+
+    def _get_workflow(self, *, workflow_id: str) -> Workflow:
+        """Fetch a fully populated workflow, whose setpoints name each interval."""
+        from albert.collections.workflows import WorkflowCollection
+
+        return WorkflowCollection(session=self.session).get_by_id(id=workflow_id)
+
+    @validate_call
+    def update_property_on_task(
+        self,
+        *,
+        task_id: TaskId,
+        patch_payload: list[PropertyDataPatchDatum],
+        inventory_id: InventoryId | None = None,
+        block_id: BlockId | None = None,
+        lot_id: LotId | None = None,
+        return_scope: ReturnScope = "task",
+    ) -> list[TaskPropertyData]:
+        """Patch existing result values on a task.
+
+        This is the low-level update path: it applies a list of explicit patch
+        operations to values that already exist. For most cases prefer
+        [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] (upsert) or
+        [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] (new values), which build the patches for
+        you.
+
+        !!! example
+            ```python
+            from albert.resources.property_data import PropertyDataPatchDatum
+            from albert.core.shared.models.patch import PatchOperation
+            patch = PropertyDataPatchDatum(
+                operation=PatchOperation.UPDATE,
+                id="PTD1",
+                attribute="value",
+                new_value="1.5",
+                old_value="1.2",
+            )
+            client.property_data.update_property_on_task(
+                task_id="TASFOR1", patch_payload=[patch]
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to update (format ``TAS...``).
         patch_payload : list[PropertyDataPatchDatum]
-            The specific patch to make to update the property.
+            The patch operations to apply. Image and curve values cannot be updated
+            here; use [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties] for those.
+        inventory_id : InventoryId | None, optional
+            Required when return_scope="block".
+        block_id : BlockId | None, optional
+            Required when return_scope="block".
+        lot_id : LotId | None, optional
+            Optional context for combo fetches.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
         list[TaskPropertyData]
-            A list of TaskPropertyData entities representing the properties within the task.
+            The task's properties after the update, scoped per ``return_scope``.
         """
         if len(patch_payload) > 0:
+            resolved_payload = property_data_utils.resolve_patch_payload(
+                session=self.session,
+                task_id=task_id,
+                patch_payload=patch_payload,
+            )
             self.session.patch(
                 url=f"{self.base_path}/{task_id}",
-                json=[
-                    x.model_dump(exclude_none=True, by_alias=True, mode="json")
-                    for x in patch_payload
-                ],
+                json=resolved_payload,
             )
-        return self.get_all_task_properties(task_id=task_id)
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=None,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
+
+    @validate_call
+    def void_task_data(
+        self,
+        *,
+        task_id: TaskId,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Void all recorded results in a task block for one inventory item.
+
+        Voided data is retained but excluded from results; restore it with
+        [`unvoid_task_data`][albert.collections.property_data.PropertyDataCollection.unvoid_task_data]. To void a narrower scope, use
+        [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data] or [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
+
+        !!! example
+            ```python
+            client.property_data.void_task_data(
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        inventory_id : InventoryId
+            The inventory item whose results to void (format ``INV...``).
+        block_id : BlockId
+            The block to void (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "void",
+            "by": "task",
+            "id": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_task_data(
+        self,
+        *,
+        task_id: TaskId,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Restore previously voided results in a task block for one inventory item.
+
+        The inverse of [`void_task_data`][albert.collections.property_data.PropertyDataCollection.void_task_data].
+
+        !!! example
+            ```python
+            client.property_data.unvoid_task_data(
+                task_id="TASFOR1", inventory_id="INVA9999999", block_id="BLK1"
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        inventory_id : InventoryId
+            The inventory item whose results to restore (format ``INV...``).
+        block_id : BlockId
+            The block to unvoid (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "unvoid",
+            "by": "task",
+            "id": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def void_interval_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+        data_template_id: DataTemplateId | None = None,
+    ) -> None:
+        """Void the results of one interval combination in a task block.
+
+        Voided data is retained but excluded from results; restore it with
+        [`unvoid_interval_data`][albert.collections.property_data.PropertyDataCollection.unvoid_interval_data].
+
+        !!! example
+            ```python
+            client.property_data.void_interval_data(
+                task_id="TASFOR1",
+                interval_id="ROW1",
+                inventory_id="INVA9999999",
+                block_id="BLK1",
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        interval_id : str
+            The interval combination to void (e.g. ``"ROW1"``, ``"ROW1XROW2"``).
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data], or build
+            one with [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
+        inventory_id : InventoryId
+            The inventory item whose results to void (format ``INV...``).
+        block_id : BlockId
+            The block to void within (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+        data_template_id : DataTemplateId, optional
+            Limit voiding to a specific data template. Defaults to None (all).
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "void",
+            "by": "intervalCombination",
+            "id": interval_id,
+            "parentId": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+            "dataTemplateId": data_template_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_interval_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+        data_template_id: DataTemplateId | None = None,
+    ) -> None:
+        """Restore previously voided results of one interval combination.
+
+        The inverse of [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data].
+
+        !!! example
+            ```python
+            client.property_data.unvoid_interval_data(
+                task_id="TASFOR1",
+                interval_id="ROW1",
+                inventory_id="INVA9999999",
+                block_id="BLK1",
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        interval_id : str
+            The interval combination to restore (e.g. ``"ROW1"``, ``"ROW1XROW2"``).
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
+        inventory_id : InventoryId
+            The inventory item whose results to restore (format ``INV...``).
+        block_id : BlockId
+            The block to restore within (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+        data_template_id : DataTemplateId, optional
+            Limit unvoiding to a specific data template. Defaults to None (all).
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "operation": "unvoid",
+            "by": "intervalCombination",
+            "id": interval_id,
+            "parentId": task_id,
+            "inventoryId": inventory_id,
+            "blockId": block_id,
+            "lotId": lot_id,
+            "dataTemplateId": data_template_id,
+        }
+        payload = {k: v for k, v in payload.items() if v is not None}
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def void_trial_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        trial_number: int,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Void one trial (replicate) within an interval combination.
+
+        The narrowest void scope: a single replicate measurement. Restore it with
+        [`unvoid_trial_data`][albert.collections.property_data.PropertyDataCollection.unvoid_trial_data].
+
+        !!! example
+            ```python
+            client.property_data.void_trial_data(
+                task_id="TASFOR1",
+                interval_id="ROW1",
+                trial_number=2,
+                inventory_id="INVA9999999",
+                block_id="BLK1",
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        interval_id : str
+            The interval combination the trial belongs to (e.g. ``"ROW1"``).
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
+        trial_number : int
+            The 1-based trial (replicate) number to void.
+        inventory_id : InventoryId
+            The inventory item whose result to void (format ``INV...``).
+        block_id : BlockId
+            The block to void within (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+
+        Returns
+        -------
+        None
+        """
+        payload = [
+            {
+                "operation": "void",
+                "by": "trial",
+                "trial": trial_number,
+                "id": interval_id,
+                "inventoryId": inventory_id,
+                "blockId": block_id,
+                "lotId": lot_id,
+            }
+        ]
+        payload = [{k: v for k, v in item.items() if v is not None} for item in payload]
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
+
+    @validate_call
+    def unvoid_trial_data(
+        self,
+        *,
+        task_id: TaskId,
+        interval_id: str,
+        trial_number: int,
+        inventory_id: InventoryId,
+        block_id: BlockId,
+        lot_id: LotId | None = None,
+    ) -> None:
+        """Restore one previously voided trial (replicate).
+
+        The inverse of [`void_trial_data`][albert.collections.property_data.PropertyDataCollection.void_trial_data].
+
+        !!! example
+            ```python
+            client.property_data.unvoid_trial_data(
+                task_id="TASFOR1",
+                interval_id="ROW1",
+                trial_number=2,
+                inventory_id="INVA9999999",
+                block_id="BLK1",
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task containing the block (format ``TAS...``).
+        interval_id : str
+            The interval combination the trial belongs to (e.g. ``"ROW1"``).
+            List a task's interval IDs with [`check_for_task_data`][albert.collections.property_data.PropertyDataCollection.check_for_task_data].
+        trial_number : int
+            The 1-based trial (replicate) number to restore.
+        inventory_id : InventoryId
+            The inventory item whose result to restore (format ``INV...``).
+        block_id : BlockId
+            The block to restore within (format ``BLK...``).
+        lot_id : LotId, optional
+            A specific lot of the inventory item. Defaults to None.
+
+        Returns
+        -------
+        None
+        """
+        payload = [
+            {
+                "operation": "unvoid",
+                "by": "trial",
+                "trial": trial_number,
+                "id": interval_id,
+                "inventoryId": inventory_id,
+                "blockId": block_id,
+                "lotId": lot_id,
+            }
+        ]
+        payload = [{k: v for k, v in item.items() if v is not None} for item in payload]
+        self.session.patch(
+            url=f"{self.base_path}/{task_id}",
+            json=payload,
+        )
 
     @validate_call
     def add_properties_to_task(
@@ -345,32 +1106,66 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
-    ):
-        """
-        Add new task properties for a given task.
+        return_scope: ReturnScope = "task",
+    ) -> list[TaskPropertyData]:
+        """Add new result values to a task block.
 
-        This method only works for new values. If a trial number is provided in the TaskPropertyCreate,
-        it must relate to an existing trial. New trials must be added with no trial number provided.
-        Do not try to create multiple new trials in one call as this will lead to unexpected behavior.
-        Build out new trials in a loop if many new trials are needed.
+        This path is for **new** values only; to update existing values or upsert,
+        use [`update_or_create_task_properties`][albert.collections.property_data.PropertyDataCollection.update_or_create_task_properties], and to overwrite a whole
+        table use [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties]. Each value targets a data
+        column and an interval combination (build the interval ID with
+        [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id]).
+
+        !!! example
+            ```python
+            from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+            # Derive the required data column / template from the existing block
+            block = client.property_data.get_task_block_properties(
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
+            )
+            column = block.data[0].trials[0].data_columns[0]
+            new_value = TaskPropertyCreate(
+                interval_combination="default",
+                data_column=TaskDataColumn(
+                    data_column_id=column.id, column_sequence=column.sequence
+                ),
+                value="33.3",
+                data_template=block.data_template,
+            )
+            client.property_data.add_properties_to_task(
+                inventory_id="INVA9999999",
+                task_id="TASFOR1",
+                block_id="BLK1",
+                properties=[new_value],
+            )
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory.
+            The inventory item the results are for (format ``INV...``).
         task_id : TaskId
-            The ID of the task.
+            The task to add results to (format ``TAS...``).
         block_id : BlockId
-            The ID of the block.
+            The block to add results to (format ``BLK...``).
         lot_id : LotId, optional
-            The ID of the lot, by default None.
+            A specific lot of the inventory item. Defaults to None.
         properties : list[TaskPropertyCreate]
-            A list of TaskPropertyCreate entities representing the properties to add.
+            The result values to add.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
         list[TaskPropertyData]
-            The newly created task properties.
+            The task's results after the add, scoped per ``return_scope``.
+
+        Notes
+        -----
+        To add to an existing trial, set ``trial_number`` on the
+        ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
+        trials one call at a time (loop for many) to avoid unexpected behavior.
         """
         params = {
             "blockId": block_id,
@@ -380,25 +1175,96 @@ class PropertyDataCollection(BaseCollection):
             "history": "true",
         }
         params = {k: v for k, v in params.items() if v is not None}
+        payload = (
+            property_data_utils.resolve_task_property_payload(
+                session=self.session,
+                task_id=task_id,
+                block_id=block_id,
+                properties=properties,
+            )
+            if any(
+                isinstance(prop.value, ImagePropertyValue | CurvePropertyValue)
+                for prop in properties
+            )
+            else [x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties]
+        )
         response = self.session.post(
             url=f"{self.base_path}/{task_id}",
-            json=[x.model_dump(exclude_none=True, by_alias=True, mode="json") for x in properties],
+            json=payload,
             params=params,
         )
-
-        registered_properties = [
-            TaskPropertyCreate(**x) for x in response.json() if "DataTemplate" in x
-        ]
+        response_json = response.json()
+        registered_properties: list[TaskPropertyCreate] = []
+        for prop, item in zip(properties, response_json, strict=False):
+            item_data = dict(item)
+            if "DataTemplate" not in item_data and prop.data_template:
+                item_data["DataTemplate"] = prop.data_template
+            registered_properties.append(TaskPropertyCreate(**item_data))
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        patches = self._form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows, properties=registered_properties
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=registered_properties,
         )
         if len(patches) > 0:
-            return self.update_property_on_task(task_id=task_id, patch_payload=patches)
-        else:
-            return self.get_all_task_properties(task_id=task_id)
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
+
+    def _apply_calculated_task_property_patches(
+        self,
+        *,
+        inventory_id: InventoryId,
+        task_id: TaskId,
+        block_id: BlockId,
+        lot_id: LotId | None,
+        properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope,
+    ) -> list[TaskPropertyData]:
+        """Re-fetch block data and patch calculated columns from current input values."""
+        existing_data_rows = self.get_task_block_properties(
+            inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
+        )
+        patches = property_data_utils.form_calculated_task_property_patches(
+            existing_data_rows=existing_data_rows,
+            properties=properties,
+        )
+        if patches:
+            return self.update_property_on_task(
+                task_id=task_id,
+                patch_payload=patches,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+            )
+        return property_data_utils.resolve_return_scope(
+            task_id=task_id,
+            return_scope=return_scope,
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            prefetched_block=existing_data_rows,
+            get_all_task_properties=self.get_all_task_properties,
+            get_task_block_properties=self.get_task_block_properties,
+        )
 
     @validate_call
     def update_or_create_task_properties(
@@ -409,56 +1275,126 @@ class PropertyDataCollection(BaseCollection):
         block_id: BlockId,
         lot_id: LotId | None = None,
         properties: list[TaskPropertyCreate],
+        return_scope: ReturnScope = "task",
     ) -> list[TaskPropertyData]:
-        """
-        Update or create task properties for a given task.
+        """Upsert result values on a task block.
 
-        If a trial number is provided in the TaskPropertyCreate, it must relate to an existing trial.
-        New trials must be added with no trial number provided. Do not try to create multiple new trials
-        in one call as this will lead to unexpected behavior. Build out new trials in a loop if many new
-        trials are needed.
+        Updates values that already exist and adds those that do not, in a single
+        call. This is the recommended general-purpose write method; use
+        [`add_properties_to_task`][albert.collections.property_data.PropertyDataCollection.add_properties_to_task] when you know all values are new, or
+        [`bulk_load_task_properties`][albert.collections.property_data.PropertyDataCollection.bulk_load_task_properties] to overwrite an entire table. Handles
+        image and curve values, which [`update_property_on_task`][albert.collections.property_data.PropertyDataCollection.update_property_on_task] cannot.
+
+        !!! example
+            ```python
+            from albert.resources.property_data import TaskPropertyCreate, TaskDataColumn
+            block = client.property_data.get_task_block_properties(
+                inventory_id="INVA9999999", task_id="TASFOR1", block_id="BLK1"
+            )
+            column = block.data[0].trials[0].data_columns[0]
+            value = TaskPropertyCreate(
+                interval_combination="default",
+                data_column=TaskDataColumn(
+                    data_column_id=column.id, column_sequence=column.sequence
+                ),
+                value="42",
+                trial_number=1,
+                data_template=block.data_template,
+            )
+            client.property_data.update_or_create_task_properties(
+                inventory_id="INVA9999999",
+                task_id="TASFOR1",
+                block_id="BLK1",
+                properties=[value],
+            )
+            ```
 
         Parameters
         ----------
         inventory_id : InventoryId
-            The ID of the inventory.
+            The inventory item the results are for (format ``INV...``).
         task_id : TaskId
-            The ID of the task.
+            The task to write to (format ``TAS...``).
         block_id : BlockId
-            The ID of the block.
+            The block to write to (format ``BLK...``).
         lot_id : LotId, optional
-            The ID of the lot, by default None.
+            A specific lot of the inventory item. Defaults to None.
         properties : list[TaskPropertyCreate]
-            A list of TaskPropertyCreate entities representing the properties to update or create.
+            The result values to update or create.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
         list[TaskPropertyData]
-            The updated or newly created task properties.
+            The task's results after the upsert, scoped per ``return_scope``.
 
+        Notes
+        -----
+        To target an existing trial, set ``trial_number`` on the
+        ``TaskPropertyCreate``; leave it unset to create a new trial. Create new
+        trials one call at a time (loop for many) to avoid unexpected behavior.
         """
+
         existing_data_rows = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        update_patches, new_values = self._form_existing_row_value_patches(
-            existing_data_rows=existing_data_rows, properties=properties
+        update_patches, new_values = property_data_utils.form_existing_row_value_patches(
+            session=self.session,
+            task_id=task_id,
+            block_id=block_id,
+            existing_data_rows=existing_data_rows,
+            properties=properties,
         )
 
-        calculated_patches = self._form_calculated_task_property_patches(
-            existing_data_rows=existing_data_rows, properties=properties
-        )
-        all_patches = update_patches + calculated_patches
-        if len(new_values) > 0:
-            self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+        if not update_patches and not new_values:
+            return property_data_utils.resolve_return_scope(
+                task_id=task_id,
+                return_scope=return_scope,
+                inventory_id=inventory_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                prefetched_block=existing_data_rows,
+                get_all_task_properties=self.get_all_task_properties,
+                get_task_block_properties=self.get_task_block_properties,
+            )
+
+        if not update_patches:
             return self.add_properties_to_task(
                 inventory_id=inventory_id,
                 task_id=task_id,
                 block_id=block_id,
                 lot_id=lot_id,
                 properties=new_values,
+                return_scope=return_scope,
             )
-        else:
-            return self.update_property_on_task(task_id=task_id, patch_payload=all_patches)
+
+        self.update_property_on_task(
+            task_id=task_id,
+            patch_payload=update_patches,
+            return_scope="none",
+            inventory_id=inventory_id,
+            block_id=block_id,
+            lot_id=lot_id,
+        )
+        if new_values:
+            self.add_properties_to_task(
+                inventory_id=inventory_id,
+                task_id=task_id,
+                block_id=block_id,
+                lot_id=lot_id,
+                properties=new_values,
+                return_scope="none",
+            )
+        return self._apply_calculated_task_property_patches(
+            inventory_id=inventory_id,
+            task_id=task_id,
+            block_id=block_id,
+            lot_id=lot_id,
+            properties=properties,
+            return_scope=return_scope,
+        )
 
     def bulk_load_task_properties(
         self,
@@ -469,10 +1405,29 @@ class PropertyDataCollection(BaseCollection):
         property_data: BulkPropertyData,
         interval="default",
         lot_id: LotId = None,
+        return_scope: ReturnScope = "task",
     ) -> list[TaskPropertyData]:
-        """
-        Bulk load task properties for a given task. WARNING: This will overwrite any existing properties!
-        BulkPropertyData column names must exactly match the names of the data columns (Case Sensitive).
+        """Overwrite a task block's results from tabular data.
+
+        The fastest way to load a full table of results for one interval. Build the
+        ``BulkPropertyData`` from a DataFrame with ``BulkPropertyData.from_dataframe``.
+
+        .. warning::
+            This overwrites any existing results for the targeted interval. Column
+            names in the data must exactly match the data column names
+            (case-sensitive).
+
+        !!! example
+            ```python
+            from albert.resources.property_data import BulkPropertyData
+            data = BulkPropertyData.from_dataframe(df=my_dataframe)
+            results = client.property_data.bulk_load_task_properties(
+                block_id="BLK1",
+                inventory_id="INVA9999999",
+                property_data=data,
+                task_id="TASFOR291760",
+            )
+            ```
 
         Parameters
         ----------
@@ -485,81 +1440,37 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             The ID of the lot, by default None.
         interval : str, optional
-            The interval to use for the properties, by default "default". Can be obtained using Workflow.get_interval_id().
+            The interval combination to load into (e.g. ``"ROW1"``). Defaults to
+            ``"default"``. Build it with
+            [`get_interval_id`][albert.resources.workflows.Workflow.get_interval_id].
         property_data : BulkPropertyData
-            A list of columnwise data containing all your rows of data for a single interval. Can be created using BulkPropertyData.from_dataframe().
+            Column-wise data holding all rows for a single interval. Create it with
+            ``BulkPropertyData.from_dataframe``.
+        return_scope : Literal["task", "block", "none"], optional
+            Controls the response. "task" (default) returns all task properties,
+            "block" returns only the affected block/inventory/lot combination, and "none" skips fetching data.
 
         Returns
         -------
         list[TaskPropertyData]
-            The updated or newly created task properties.
-
-        Example
-        -------
-
-        ```python
-        from albert.resources.property_data import BulkPropertyData
-
-        data = BulkPropertyData.from_dataframe(df=my_dataframe)
-        res = client.property_data.bulk_load_task_properties(
-            block_id="BLK1",
-            inventory_id="INVEXP102748-042",
-            property_data=data,
-            task_id="TASFOR291760",
-        )
-
-        [TaskPropertyData(id="TASFOR291760", ...)]
-        ```
+            The task's results after the load, scoped per ``return_scope``.
         """
         property_df = pd.DataFrame(
             {x.data_column_name: x.data_series for x in property_data.columns}
         )
 
-        def _get_column_map(dataframe: pd.DataFrame, property_data: TaskPropertyData):
-            data_col_info = property_data.data[0].trials[0].data_columns  # PropertyValue
-            column_map = {}
-            for col in dataframe.columns:
-                column = [x for x in data_col_info if x.name == col]
-                if len(column) == 1:
-                    column_map[col] = column[0]
-                else:
-                    raise ValueError(
-                        f"Column '{col}' not found in block data columns or multiple matches found."
-                    )
-            return column_map
-
-        def _df_to_task_prop_create_list(
-            dataframe: pd.DataFrame,
-            column_map: dict[str, PropertyValue],
-            data_template_id: DataTemplateId,
-        ) -> list[TaskPropertyCreate]:
-            task_prop_create_list = []
-            for i, row in dataframe.iterrows():
-                for col_name, col_info in column_map.items():
-                    if col_name not in dataframe.columns:
-                        raise ValueError(f"Column '{col_name}' not found in DataFrame.")
-
-                    task_prop_create = TaskPropertyCreate(
-                        data_column=TaskDataColumn(
-                            data_column_id=col_info.id,
-                            column_sequence=col_info.sequence,
-                        ),
-                        value=str(row[col_name]),
-                        visible_trial_number=i + 1,
-                        interval_combination=interval,
-                        data_template=EntityLink(id=data_template_id),
-                    )
-                    task_prop_create_list.append(task_prop_create)
-            return task_prop_create_list
-
         task_prop_data = self.get_task_block_properties(
             inventory_id=inventory_id, task_id=task_id, block_id=block_id, lot_id=lot_id
         )
-        column_map = _get_column_map(property_df, task_prop_data)
-        all_task_prop_create = _df_to_task_prop_create_list(
+        column_map = property_data_utils._get_column_map(
+            dataframe=property_df,
+            property_data=task_prop_data,
+        )
+        all_task_prop_create = property_data_utils._df_to_task_prop_create_list(
             dataframe=property_df,
             column_map=column_map,
             data_template_id=task_prop_data.data_template.id,
+            interval=interval,
         )
         with suppress(NotFoundError):
             # This is expected if the task is new and has no data yet.
@@ -576,8 +1487,10 @@ class PropertyDataCollection(BaseCollection):
             block_id=block_id,
             lot_id=lot_id,
             properties=all_task_prop_create,
+            return_scope=return_scope,
         )
 
+    @validate_call
     def bulk_delete_task_data(
         self,
         *,
@@ -587,21 +1500,32 @@ class PropertyDataCollection(BaseCollection):
         lot_id: LotId | None = None,
         interval_id=None,
     ) -> None:
-        """
-        Bulk delete task data for a given task.
+        """Delete a task block's results.
+
+        Permanently removes results for the block/inventory combination (optionally
+        narrowed to one interval). To hide data reversibly instead of deleting it,
+        use the void methods ([`void_task_data`][albert.collections.property_data.PropertyDataCollection.void_task_data], [`void_interval_data`][albert.collections.property_data.PropertyDataCollection.void_interval_data]).
+
+        !!! example
+            ```python
+            client.property_data.bulk_delete_task_data(
+                task_id="TASFOR1", block_id="BLK1", inventory_id="INVA9999999"
+            )
+            ```
 
         Parameters
         ----------
         task_id : TaskId
-            The ID of the task.
+            The task to delete results from (format ``TAS...``).
         block_id : BlockId
-            The ID of the block.
+            The block to delete results from (format ``BLK...``).
         inventory_id : InventoryId
-            The ID of the inventory.
+            The inventory item whose results to delete (format ``INV...``).
         lot_id : LotId, optional
-            The ID of the lot, by default None.
+            A specific lot of the inventory item. Defaults to None.
         interval_id : IntervalId, optional
-            The ID of the interval, by default None. If provided, will delete data for this specific interval.
+            Limit deletion to one interval combination (e.g. ``"ROW1"``). Defaults
+            to None (all intervals in the block).
 
         Returns
         -------
@@ -616,178 +1540,6 @@ class PropertyDataCollection(BaseCollection):
         params = {k: v for k, v in params.items() if v is not None}
         self.session.delete(f"{self.base_path}/{task_id}", params=params)
 
-    ################### Methods to support Updated Row Value patches #################
-
-    def _form_existing_row_value_patches(
-        self, *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
-    ):
-        patches = []
-        new_properties = []
-
-        for prop in properties:
-            if prop.trial_number is None:
-                new_properties.append(prop)
-                continue
-
-            prop_patches = self._process_property(prop, existing_data_rows)
-            if prop_patches:
-                patches.extend(prop_patches)
-            else:
-                new_properties.append(prop)
-        return patches, new_properties
-
-    def _process_property(
-        self, prop: TaskPropertyCreate, existing_data_rows: TaskPropertyData
-    ) -> list | None:
-        for interval in existing_data_rows.data:
-            if interval.interval_combination != prop.interval_combination:
-                continue
-
-            for trial in interval.trials:
-                if trial.trial_number != prop.trial_number:
-                    continue
-
-                trial_patches = self._process_trial(trial, prop)
-                if trial_patches:
-                    return trial_patches
-
-        return None
-
-    def _process_trial(self, trial: Trial, prop: TaskPropertyCreate) -> list | None:
-        for data_column in trial.data_columns:
-            if (
-                data_column.data_column_unique_id
-                == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
-                and data_column.property_data is not None
-            ):
-                if data_column.property_data.value == prop.value:
-                    # No need to update this value
-                    return None
-                return [
-                    PropertyDataPatchDatum(
-                        id=data_column.property_data.id,
-                        operation=PatchOperation.UPDATE,
-                        attribute="value",
-                        new_value=prop.value,
-                        old_value=data_column.property_data.value,
-                    )
-                ]
-
-        return None
-
-    ################### Methods to support calculated value patches ##################
-
-    def _form_calculated_task_property_patches(
-        self, *, existing_data_rows: TaskPropertyData, properties: list[TaskPropertyCreate]
-    ):
-        patches = []
-        covered_interval_trials = set()
-        first_row_data_column = existing_data_rows.data[0].trials[0].data_columns
-        columns_used_in_calculations = self._get_all_columns_used_in_calculations(
-            first_row_data_column=first_row_data_column
-        )
-        for posted_prop in properties:
-            this_interval_trial = f"{posted_prop.interval_combination}-{posted_prop.trial_number}"
-            if (
-                this_interval_trial in covered_interval_trials
-                or posted_prop.data_column.column_sequence not in columns_used_in_calculations
-            ):
-                continue  # we don't need to worry about it hence we skip
-            on_platform_row = self._get_on_platform_row(
-                existing_data_rows=existing_data_rows,
-                trial_number=posted_prop.trial_number,
-                interval_combination=posted_prop.interval_combination,
-            )
-            if on_platform_row is not None:
-                these_patches = self._generate_data_patch_payload(trial=on_platform_row)
-                patches.extend(these_patches)
-            covered_interval_trials.add(this_interval_trial)
-        return patches
-
-    def _get_on_platform_row(
-        self, *, existing_data_rows: TaskPropertyData, interval_combination: str, trial_number: int
-    ):
-        for interval in existing_data_rows.data:
-            if interval.interval_combination == interval_combination:
-                for trial in interval.trials:
-                    if trial.trial_number == trial_number:
-                        return trial
-        return None
-
-    def _get_columns_used_in_calculation(self, *, calculation: str | None, used_columns: set[str]):
-        if calculation is None:
-            return used_columns
-        column_pattern = r"COL\d+"
-        matches = re.findall(column_pattern, calculation)
-        used_columns.update(set(matches))
-        return used_columns
-
-    def _get_all_columns_used_in_calculations(self, *, first_row_data_column: list[PropertyValue]):
-        used_columns = set()
-        for calc in [x.calculation for x in first_row_data_column]:
-            used_columns = self._get_columns_used_in_calculation(
-                calculation=calc, used_columns=used_columns
-            )
-        return used_columns
-
-    def _evaluate_calculation(self, *, calculation: str, column_values: dict) -> float | None:
-        calculation = calculation.lstrip("=")  # Remove '=' at the start of the calculation
-        try:
-            # Replace column names with their numeric values in the calculation string
-            for col, value in column_values.items():
-                calculation = calculation.replace(col, str(value))
-                calculation = calculation.replace(
-                    "^", "**"
-                )  # Replace '^' with '**' for exponentiation
-            # Evaluate the resulting expression
-            return eval(calculation)
-        except Exception as e:
-            logger.info(
-                f"Error evaluating calculation '{calculation}': {e}. Likely do not have all values needed."
-            )
-            return None
-
-    def _generate_data_patch_payload(self, *, trial: Trial) -> list[PropertyDataPatchDatum]:
-        column_values = {
-            col.sequence: col.property_data.value
-            for col in trial.data_columns
-            if col.property_data is not None
-        }
-
-        patch_data = []
-        for column in trial.data_columns:
-            if column.calculation:
-                # Evaluate the recalculated value
-                recalculated_value = self._evaluate_calculation(
-                    calculation=column.calculation, column_values=column_values
-                )
-                if recalculated_value is not None:
-                    # Determine whether this is an ADD or UPDATE operation
-                    if column.property_data.value is None:  # No existing value
-                        patch_data.append(
-                            PropertyDataPatchDatum(
-                                id=column.property_data.id,
-                                operation=PatchOperation.ADD,
-                                attribute="value",
-                                new_value=recalculated_value,
-                                old_value=None,
-                            )
-                        )
-                    elif str(column.property_data.value) != str(
-                        recalculated_value
-                    ):  # Existing value differs
-                        patch_data.append(
-                            PropertyDataPatchDatum(
-                                id=column.property_data.id,
-                                operation=PatchOperation.UPDATE,
-                                attribute="value",
-                                new_value=recalculated_value,
-                                old_value=column.property_data.value,
-                            )
-                        )
-
-        return patch_data
-
     @validate_call
     def search(
         self,
@@ -796,6 +1548,7 @@ class PropertyDataCollection(BaseCollection):
         text: str | None = None,
         # Sorting/pagination
         order: OrderBy | None = None,
+        order_by: OrderBy | None = None,
         sort_by: str | None = None,
         # Core platform identifiers
         inventory_ids: list[SearchInventoryId] | SearchInventoryId | None = None,
@@ -803,6 +1556,7 @@ class PropertyDataCollection(BaseCollection):
         lot_ids: list[LotId] | LotId | None = None,
         data_template_ids: DataTemplateId | list[DataTemplateId] | None = None,
         data_column_ids: DataColumnId | list[DataColumnId] | None = None,
+        sheet_ids: list[str] | None = None,
         # Data structure filters
         category: list[DataEntity] | DataEntity | None = None,
         data_templates: list[str] | str | None = None,
@@ -810,27 +1564,53 @@ class PropertyDataCollection(BaseCollection):
         # Data content filters
         parameters: list[str] | str | None = None,
         parameter_group: list[str] | str | None = None,
+        parameter_set: list[str] | None = None,
         unit: list[str] | str | None = None,
         # User filters
-        created_by: list[UserId] | UserId | None = None,
+        created_by: str | list[str] | None = None,
         task_created_by: list[UserId] | UserId | None = None,
-        # Response customization
+        updated_by: str | list[str] | None = None,
+        from_created_at: str | None = None,
+        to_created_at: str | None = None,
+        from_updated_at: str | None = None,
+        to_updated_at: str | None = None,
+        # Search field filters
+        search_field: list[str] | None = None,
+        source_field: list[str] | None = None,
+        facet_list: list[str] | None = None,
+        # Deprecated; accepted for backwards compatibility
         return_fields: list[str] | str | None = None,
         return_facets: list[str] | str | None = None,
         # Pagination
         max_items: int | None = None,
     ) -> Iterator[PropertyDataSearchItem]:
-        """
-        Search for property data with various filtering options.
+        """Search recorded property data across the platform.
+
+        Searches measured results platform-wide (not scoped to a single task) and
+        returns lightweight search items. The ``result`` parameter accepts a
+        compact result-query syntax for filtering by measured value under a
+        condition. Results are returned as a lazily paginated iterator.
+
+        !!! example
+            ```python
+            hits = client.property_data.search(
+                data_columns="Viscosity", max_items=25
+            )
+            for item in hits:
+                print(item)
+            ```
 
         Parameters
         ----------
         result : str, optional
-            Query using syntax, e.g. result=viscosity(<200)@temperature(25).
+            Result-value query, e.g. ``"viscosity(<200)@temperature(25)"`` to find
+            data where viscosity is under 200 measured at temperature 25.
         text : str, optional
             Free text search across all fields.
         order : OrderBy, optional
-            Sort order (ascending/descending).
+            Sort direction (ascending/descending).
+        order_by : OrderBy, optional
+            Alternate sort-direction parameter supported by the search API.
         sort_by : str, optional
             Field to sort results by.
         inventory_ids : SearchInventoryId or list[SearchInventoryId], optional
@@ -843,6 +1623,8 @@ class PropertyDataCollection(BaseCollection):
             Filter by data template IDs.
         data_column_ids : DataColumnId or list[DataColumnId], optional
             Filter by data column IDs.
+        sheet_ids : list[str], optional
+            Filter by sheet IDs.
         category : DataEntity or list[DataEntity], optional
             Filter by data entity categories.
         data_templates : str or list[str], optional
@@ -853,53 +1635,93 @@ class PropertyDataCollection(BaseCollection):
             Filter by parameter names.
         parameter_group : str or list[str], optional
             Filter by parameter group names.
+        parameter_set : list[str], optional
+            Filter by parameter, unit, and parameter-group combinations.
         unit : str or list[str], optional
             Filter by unit names.
-        created_by : UserId or list[UserId], optional
-            Filter by user IDs who created the data.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
         task_created_by : UserId or list[UserId], optional
             Filter by user IDs who created the task.
+        updated_by : str or list[str], optional
+            Filter by user(s) who last updated the data. Accepts UserId(s) only
+            (e.g. ``"USR4227"``), not display names.
+        from_created_at : str, optional
+            Only include records created on or after this date (ISO 8601).
+        to_created_at : str, optional
+            Only include records created on or before this date (ISO 8601).
+        from_updated_at : str, optional
+            Only include records updated on or after this date (ISO 8601).
+        to_updated_at : str, optional
+            Only include records updated on or before this date (ISO 8601).
+        search_field : list[str], optional
+            Restrict which fields the text query searches.
+        source_field : list[str], optional
+            Restrict which fields are returned in the response.
+        facet_list : list[str], optional
+            Fields to include in search facets.
         return_fields : str or list[str], optional
-            Specific fields to return.
+            Deprecated and ignored. Use ``source_field`` instead.
         return_facets : str or list[str], optional
-            Specific facets to return.
+            Deprecated and ignored. Use ``facet_list`` instead.
         max_items : int, optional
-            Maximum number of items to return in total. If None, fetches all available items.
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
 
         Returns
         -------
         Iterator[PropertyDataSearchItem]
-            An iterator of search results matching the specified filters.
+            A lazily paginated iterator of matching property data search items.
         """
 
         def deserialize(items: list[dict]) -> list[PropertyDataSearchItem]:
             return [PropertyDataSearchItem.model_validate(x) for x in items]
 
-        def ensure_list(v):
-            if v is None:
-                return None
-            return [v] if isinstance(v, str | Enum) else v
+        category_values = ensure_list(category)
+
+        if return_fields is not None:
+            warnings.warn(
+                "return_fields is deprecated and ignored; use source_field instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if return_facets is not None:
+            warnings.warn(
+                "return_facets is deprecated and ignored; use facet_list instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         params = {
             "result": result,
             "text": text,
-            "order": order.value if order else None,
+            "order": order,
+            "orderBy": order_by,
             "sortBy": sort_by,
             "inventoryIds": ensure_list(inventory_ids),
             "projectIds": ensure_list(project_ids),
-            "lotIds": ensure_list(lot_ids),
+            "lot": ensure_list(lot_ids),
             "dataTemplateId": ensure_list(data_template_ids),
             "dataColumnId": ensure_list(data_column_ids),
-            "category": [c.value for c in ensure_list(category)] if category else None,
+            "sheetIds": sheet_ids,
+            "category": category_values if category_values else None,
             "dataTemplates": ensure_list(data_templates),
             "dataColumns": ensure_list(data_columns),
             "parameters": ensure_list(parameters),
             "parameterGroup": ensure_list(parameter_group),
+            "parameterSet": parameter_set,
             "unit": ensure_list(unit),
             "createdBy": ensure_list(created_by),
-            "taskCreatedBy": ensure_list(task_created_by),
-            "returnFields": ensure_list(return_fields),
-            "returnFacets": ensure_list(return_facets),
+            "taskCreatedby": ensure_list(task_created_by),
+            "updatedBy": ensure_list(updated_by),
+            "fromCreatedAt": from_created_at,
+            "toCreatedAt": to_created_at,
+            "fromUpdatedAt": from_updated_at,
+            "toUpdatedAt": to_updated_at,
+            "searchField": search_field,
+            "sourceField": source_field,
+            "facetList": facet_list,
         }
 
         return AlbertPaginator(

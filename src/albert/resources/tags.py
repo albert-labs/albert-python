@@ -1,35 +1,44 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any
 
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import AliasChoices, Field
 
-from albert.core.logging import logger
 from albert.core.shared.models.base import BaseResource
-from albert.core.shared.types import SerializeAsEntityLink
 
 
 class TagEntity(str, Enum):
-    """TagEntity is an enumeration of possible tag entities."""
+    """The kind of entity a tag can be attached to.
+
+    Attributes
+    ----------
+    INVENTORY : str
+        Inventory items.
+    COMPANY : str
+        Companies.
+    """
 
     INVENTORY = "Inventory"
     COMPANY = "Company"
 
 
 class Tag(BaseResource):
-    """
-    Tag is a Pydantic model representing a tag entity.
+    """A freeform text label used to categorize and connect entities.
 
-    Attributes
-    ----------
-    tag : str
-        The name of the tag.
-    id : str | None
-        The Albert ID of the tag. Set when the tag is retrieved from Albert.
+    Tags are shared by name across the platform and can be applied to inventory
+    items, companies, tasks, and other records to group and filter them. Managed
+    through [`TagCollection`][albert.collections.tags.TagCollection] (``client.tags``);
+    the usual entry point is [`get_or_create`][albert.collections.tags.TagCollection.get_or_create].
 
+    !!! example
+        ```python
+        from albert.resources.tags import Tag
+        tag = Tag(tag="high-priority")
+        ```
     Methods
     -------
-    from_string(tag: str) -> "Tag"
-        Creates a Tag object from a string.
+    from_string(tag) -> Tag
+        Build a Tag from its name string.
     """
 
     # different endpoints use different aliases for the fields
@@ -38,16 +47,23 @@ class Tag(BaseResource):
         alias=AliasChoices("name", "tagName"),
         serialization_alias="name",
     )
+    """The name of the tag (its text label)."""
     id: str | None = Field(
         None,
         alias=AliasChoices("albertId", "tagId"),
         serialization_alias="albertId",
     )
+    """The Albert ID of the tag (format ``TAG...``). Set when the tag is retrieved from or created in Albert. Methods ------- from_string(tag) -> Tag Build a Tag from its name string."""
 
     @classmethod
-    def from_string(cls, tag: str) -> "Tag":
-        """
-        Creates a Tag object from a string.
+    def from_string(cls, tag: str) -> Tag:
+        """Build a Tag from its name string.
+
+        !!! example
+            ```python
+            from albert.resources.tags import Tag
+            tag = Tag.from_string("experimental")
+            ```
 
         Parameters
         ----------
@@ -57,43 +73,6 @@ class Tag(BaseResource):
         Returns
         -------
         Tag
-            The Tag object created from the string.
+            A Tag with the given name.
         """
         return cls(tag=tag)
-
-
-class BaseTaggedEntity(BaseResource):
-    """
-    BaseTaggedEntity is a Pydantic model that includes functionality for handling tags as either Tag objects or strings.
-
-    Attributes
-    ----------
-    tags : List[Tag | str] | None
-        A list of Tag objects or strings representing tags.
-    """
-
-    tags: list[SerializeAsEntityLink[Tag]] | None = Field(None, alias="Tags")
-
-    @model_validator(mode="before")  # must happen before to keep type validation
-    @classmethod
-    def convert_tags(cls, data: dict[str, Any]) -> dict[str, Any]:
-        if not isinstance(data, dict):
-            return data
-        tags = data.get("tags")
-        if not tags:
-            tags = data.get("Tags")
-        if tags:
-            new_tags = []
-            for t in tags:
-                if isinstance(t, Tag):
-                    new_tags.append(t)
-                elif isinstance(t, str):
-                    new_tags.append(Tag.from_string(t))
-                elif isinstance(t, dict):
-                    new_tags.append(Tag(**t))
-                else:
-                    # We do not expect this else to be hit because tags should only be Tag or str
-                    logger.warning(f"Unexpected value for Tag. {t} of type {type(t)}")
-                    continue
-            data["tags"] = new_tags
-        return data

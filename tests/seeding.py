@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from albert.core.shared.enums import SecurityClass
 from albert.core.shared.models.base import EntityLink
+from albert.core.shared.types import MetadataItem
+from albert.resources.attributes import Attribute, AttributeCategory, ValidationItem
 from albert.resources.btdataset import BTDataset
 from albert.resources.btinsight import BTInsight, BTInsightCategory
 from albert.resources.btmodel import BTModel, BTModelSession, BTModelSessionCategory, BTModelState
@@ -15,6 +17,15 @@ from albert.resources.custom_fields import (
 )
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.entity_types import (
+    EntityCategory,
+    EntityCustomField,
+    EntityServiceType,
+    EntityType,
+    EntityTypeStandardFieldRequired,
+    EntityTypeStandardFieldVisibility,
+    FieldSection,
+)
 from albert.resources.inventory import (
     CasAmount,
     InventoryCategory,
@@ -27,6 +38,7 @@ from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import (
     Lot,
+    LotVolumeUnit,
 )
 from albert.resources.notebooks import (
     BulletedListContent,
@@ -62,9 +74,19 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.report_templates import ReportTemplate, ReportTemplateCategory
 from albert.resources.reports import FullAnalyticalReport
+from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
 from albert.resources.tags import Tag
+from albert.resources.targets import (
+    ComparisonOperator,
+    Criterion,
+    NumericRange,
+    Target,
+    TargetParameter,
+    TargetType,
+)
 from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
@@ -99,7 +121,9 @@ def generate_custom_fields() -> list[CustomField]:
         ServiceType.TASKS,
         ServiceType.USERS,
         ServiceType.PARAMETER_GROUPS,
+        ServiceType.DATA_TEMPLATES,
         ServiceType.CAS,
+        ServiceType.SUBSTANCES,
     ]
 
     seeds = []
@@ -122,12 +146,48 @@ def generate_custom_fields() -> list[CustomField]:
                 field_type=FieldType.LIST,
                 display_name=f"TEST {service.value.capitalize()} List Field",
                 service=service,
+                searchable=service == ServiceType.PROJECTS,
                 category=FieldCategory.USER_DEFINED,
                 min=1,
                 max=5,
+                multiselect=True,
             )
         )
 
+    return seeds
+
+
+def generate_entity_custom_fields() -> list[CustomField]:
+    services = [
+        ServiceType.TASKS,
+    ]
+
+    seeds = []
+
+    for service in services:
+        # Create a string-type field for the service
+        seeds.append(
+            CustomField(
+                name=f"test_entity_type_{service.value}_string_field",
+                field_type=FieldType.STRING,
+                display_name=f"TEST Entity Type {service.value.capitalize()} String Field",
+                service=service,
+            )
+        )
+
+        # Create a list-type field for the service
+        seeds.append(
+            CustomField(
+                name=f"test_entity_type_{service.value}_list_field",
+                field_type=FieldType.LIST,
+                display_name=f"TEST Entity Type {service.value.capitalize()} List Field",
+                service=service,
+                category=FieldCategory.USER_DEFINED,
+                min=1,
+                max=5,
+                multiselect=True,
+            )
+        )
     return seeds
 
 
@@ -153,6 +213,109 @@ def generate_list_item_seeds(seeded_custom_fields: list[CustomField]) -> list[Li
                 )
             )
     return all_list_items
+
+
+# Prefer the tenant TEN.prefix map (staging: FOR/LAB/GEN). PT/BT/GT are
+# api-entitytype DEFAULT_PREFIX.tasks when the category is absent from TEN.
+_DEFAULT_TASK_PREFIXES = {
+    EntityCategory.PROPERTY: "FOR",
+    EntityCategory.BATCH: "LAB",
+    EntityCategory.GENERAL: "GEN",
+}
+
+
+def generate_entity_type_seeds(
+    seed_prefix: str,
+    static_entity_custom_fields: list[CustomField],
+    prefixes: dict[EntityCategory, str] | None = None,
+) -> list[EntityType]:
+    """Generate entity type seeds scoped to the tasks service."""
+    task_custom_field_string_type = next(
+        (
+            cf
+            for cf in static_entity_custom_fields
+            if cf.service == ServiceType.TASKS and cf.field_type == FieldType.STRING
+        ),
+        None,
+    )
+    task_custom_field_list_type = next(
+        (
+            cf
+            for cf in static_entity_custom_fields
+            if cf.service == ServiceType.TASKS and cf.field_type == FieldType.LIST
+        ),
+        None,
+    )
+
+    def build_custom_fields(*, hide_list_field: bool = False) -> list[EntityCustomField]:
+        return [
+            EntityCustomField(
+                id=task_custom_field_string_type.id,
+                section=FieldSection.TOP,
+                hidden=False,
+                required=True,
+                default="Default String Value",
+            ),
+            EntityCustomField(
+                id=task_custom_field_list_type.id,
+                section=FieldSection.BOTTOM,
+                hidden=hide_list_field,
+                required=False,
+                default="Default List Value",
+            ),
+        ]
+
+    def build_entity_type(
+        seed_prefix: str,
+        category: EntityCategory,
+        template_based: bool,
+        hide_list_field: bool,
+        visibility: tuple[bool, bool, bool],
+        required: tuple[bool, bool, bool],
+    ) -> EntityType:
+        seed_prefix = seed_prefix.replace("-", "")
+        # POST /entitytypes requires prefix for tasks; validatePrefix only
+        # accepts values already on the tenant TEN.prefix map.
+        prefix = (prefixes or {}).get(category) or _DEFAULT_TASK_PREFIXES[category]
+        return EntityType(
+            category=category,
+            custom_category=f"Category{seed_prefix}",
+            label=f"LABEL - {category.value} - {seed_prefix}",
+            service=EntityServiceType.TASKS,
+            prefix=prefix,
+            custom_fields=build_custom_fields(hide_list_field=hide_list_field),
+            standard_field_visibility=EntityTypeStandardFieldVisibility(
+                notes=visibility[0],
+                tags=visibility[1],
+                due_date=visibility[2],
+            ),
+            standard_field_required=EntityTypeStandardFieldRequired(
+                notes=required[0],
+                tags=required[1],
+                due_date=required[2],
+            ),
+            template_based=template_based,
+            locked_template=template_based,
+        )
+
+    return [
+        build_entity_type(
+            seed_prefix=f"{seed_prefix}-PRO",
+            category=EntityCategory.PROPERTY,
+            template_based=False,
+            hide_list_field=False,
+            visibility=(True, True, False),
+            required=(False, False, False),
+        ),
+        build_entity_type(
+            seed_prefix=f"{seed_prefix}-GEN",
+            category=EntityCategory.GENERAL,
+            template_based=True,
+            hide_list_field=True,
+            visibility=(True, False, True),
+            required=(True, False, True),
+        ),
+    ]
 
 
 def generate_cas_seeds(
@@ -348,7 +511,12 @@ def generate_storage_location_seeds(seeded_locations: list[Location]) -> list[St
     ]
 
 
-def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -> list[Project]:
+def generate_project_seeds(
+    seed_prefix: str,
+    seeded_locations: list[Location],
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+) -> list[Project]:
     """
     Generates a list of Project seed objects for testing without IDs.
 
@@ -356,6 +524,10 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
     ----------
     seeded_locations : List[Location]
         List of seeded Location objects.
+    static_custom_fields : list[CustomField]
+        Available custom fields for metadata seeding.
+    static_lists : list[ListItem]
+        List items used to populate list-type metadata.
 
     Returns
     -------
@@ -363,7 +535,28 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
         A list of Project objects with different permutations.
     """
 
-    return [
+    project_string_fields = [
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.PROJECTS and field.field_type == FieldType.STRING
+    ]
+    project_list_fields = [
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.PROJECTS and field.field_type == FieldType.LIST
+    ]
+    faux_metadata: dict[str, MetadataItem] = {}
+    for i, custom_field in enumerate(project_string_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(project_list_fields):
+        list_items = [item for item in static_lists if item.list_type == custom_field.name]
+        if not list_items:
+            continue
+        faux_metadata[custom_field.name] = [
+            list_items[min(i, len(list_items) - 1)].to_entity_link_with_name()
+        ]
+
+    seeds = [
         # Project with basic metadata and private classification
         Project(
             description=f"{seed_prefix} - A basic development project.",
@@ -386,7 +579,15 @@ def generate_project_seeds(seed_prefix: str, seeded_locations: list[Location]) -
             ],
             project_class=ProjectClass.PRIVATE,
         ),
+        Project(
+            description=f"{seed_prefix} - Project with metadata",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            project_class=ProjectClass.PRIVATE,
+            metadata=faux_metadata,
+        ),
     ]
+
+    return seeds
 
 
 def generate_tag_seeds(seed_prefix: str) -> list[Tag]:
@@ -500,6 +701,8 @@ def generate_data_template_seeds(
     seeded_units: list[Unit],
     seeded_tags: list[Tag],
     seeded_parameters: list[Parameter],
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
 ) -> list[DataTemplate]:
     """
     Generates a list of DataTemplate seed objects for testing with enhanced complexity.
@@ -516,12 +719,38 @@ def generate_data_template_seeds(
         A list of seeded Unit objects.
     seeded_tags : list[Tag]
         A list of seeded Tag objects.
+    static_custom_fields : list[CustomField]
+        A list of reusable CustomField objects for metadata seeding.
+    static_lists : list[ListItem]
+        A list of list items associated with the static custom fields.
 
     Returns
     -------
     list[DataTemplate]
         A list of DataTemplate objects with enhanced complexity.
     """
+    dt_string_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.DATA_TEMPLATES and x.field_type == FieldType.STRING
+    ]
+    dt_list_custom_fields = [
+        x
+        for x in static_custom_fields
+        if x.service == ServiceType.DATA_TEMPLATES and x.field_type == FieldType.LIST
+    ]
+
+    faux_metadata: dict[str, str | list[EntityLink]] = {}
+    for i, custom_field in enumerate(dt_string_custom_fields):
+        faux_metadata[custom_field.name] = f"{seed_prefix} - {custom_field.display_name} {i}"
+    for i, custom_field in enumerate(dt_list_custom_fields):
+        list_items = [x for x in static_lists if x.list_type == custom_field.name]
+        if not list_items:
+            continue
+        faux_metadata[custom_field.name] = [
+            list_items[min(i, len(list_items) - 1)].to_entity_link()
+        ]
+
     return [
         # Basic Data Template with a single column and no validations
         DataTemplate(
@@ -647,23 +876,6 @@ def generate_data_template_seeds(
             ],
             tags=[seeded_tags[0]],
         ),
-        # Data Template with calculations and no validations
-        DataTemplate(
-            name=f"{seed_prefix} - Calculation Template",
-            description="A data template with calculations and no validations.",
-            data_column_values=[
-                DataColumnValue(
-                    data_column=seeded_data_columns[0],
-                    calculation="=A1 + B1",
-                    unit=EntityLink(id=seeded_units[0].id),
-                ),
-                DataColumnValue(
-                    data_column=seeded_data_columns[1],
-                    calculation="=C1 / 2",
-                    unit=EntityLink(id=seeded_units[1].id),
-                ),
-            ],
-        ),
         # Data Template with parameters (for PATCH /parameters testing)
         DataTemplate(
             name=f"{seed_prefix} - Parameters Data Template",
@@ -753,6 +965,56 @@ def generate_data_template_seeds(
                 ),
             ],
             tags=[seeded_tags[1]],
+        ),
+        DataTemplate(
+            name=f"{seed_prefix} - Parameters Metadata Data Template",
+            description="A data template with parameters and metadata for testing PATCH metadata operations.",
+            data_column_values=[
+                DataColumnValue(
+                    data_column=seeded_data_columns[0],
+                    value="21.0",
+                    unit=EntityLink(id=seeded_units[0].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="0",
+                            max="50",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                )
+            ],
+            parameter_values=[
+                ParameterValue(
+                    id=seeded_parameters[4].id,
+                    name="Metadata Parameter",
+                    value="77.7",
+                    unit=EntityLink(id=seeded_units[1].id),
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="10",
+                            max="100",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                ),
+                ParameterValue(
+                    id=seeded_parameters[3].id,
+                    name="Metadata Parameter Two",
+                    value="12.0",
+                    validation=[
+                        ValueValidation(
+                            datatype=DataType.NUMBER,
+                            min="5",
+                            max="20",
+                            operator=Operator.BETWEEN,
+                        )
+                    ],
+                ),
+            ],
+            metadata=faux_metadata,
+            tags=[seeded_tags[0]],
         ),
     ]
 
@@ -1025,7 +1287,7 @@ def generate_inventory_seeds(
             name=f"{seed_prefix} - Ethanol",
             description="A volatile, flammable liquid used in chemical synthesis.",
             category=InventoryCategory.CONSUMABLES.value,
-            unit_category=InventoryUnitCategory.VOLUME.value,
+            unit_category=InventoryUnitCategory.MASS.value,
             tags=seeded_tags[0:1],
             cas=[CasAmount(id=seeded_cas[1].id, min=0.98, max=1, cas_smiles=seeded_cas[1].smiles)],
             security_class=SecurityClass.SHARED,
@@ -1035,7 +1297,7 @@ def generate_inventory_seeds(
             name=f"{seed_prefix} - Hydrochloric Acid",
             description="Strong acid used in various industrial processes.",
             category=InventoryCategory.RAW_MATERIALS,
-            unit_category=InventoryUnitCategory.VOLUME,
+            unit_category=InventoryUnitCategory.MASS,
             cas=[
                 # ensure it will reslove the cas obj to an id
                 CasAmount(cas=seeded_cas[0], min=0.50, max=1.0, cas_smiles=seeded_cas[0].smiles),
@@ -1057,6 +1319,15 @@ def generate_inventory_seeds(
             security_class=SecurityClass.SHARED,
             company=seeded_companies[0],
             tags=[seeded_tags[0].tag, seeded_tags[2].tag, seeded_tags[3].tag],
+        ),
+        InventoryItem(
+            name=f"{seed_prefix} - Isopropyl Alcohol",
+            description="Solvent tracked by volume.",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=0.785,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
         ),
     ]
 
@@ -1116,6 +1387,22 @@ def generate_lot_seeds(
             manufacturer_lot_number="MLN112233",
             location=EntityLink(id=seeded_locations[1].id),
             notes="This lot is quarantined due to quality issues.",
+            external_barcode_id=str(uuid4()),
+        ),
+        # Volume-based Lot
+        Lot(
+            inventory_id=seeded_inventory[4].id,
+            storage_location=EntityLink(id=seeded_storage_locations[0].id),
+            initial_quantity=100.0,
+            inventory_on_hand=100.0,
+            initial_quantity_l=127.39,
+            entry_unit=LotVolumeUnit.LITER,
+            cost=80.0,
+            density=0.785,
+            lot_number="LOT004",
+            expiration_date="2026-12-31",
+            manufacturer_lot_number="MLN445566",
+            notes="Volume-based test lot.",
             external_barcode_id=str(uuid4()),
         ),
     ]
@@ -1246,12 +1533,13 @@ def generate_workflow_seeds(
     ]
 
 
-def generate_notebook_block_seeds() -> list[NotebookBlock]:
+def generate_notebook_block_seeds(*, seed_prefix: str = "") -> list[NotebookBlock]:
+    paragraph_text = f"{seed_prefix} I am a paragraph block.".strip()
     return [
         HeaderBlock(content=HeaderContent(level=1, text="I am a header1 block.")),
         HeaderBlock(content=HeaderContent(level=2, text="I am a header2 block.")),
         HeaderBlock(content=HeaderContent(level=3, text="I am a header3 block.")),
-        ParagraphBlock(content=ParagraphContent(text="I am a paragraph block.")),
+        ParagraphBlock(content=ParagraphContent(text=paragraph_text)),
         TableBlock(
             content=TableContent(
                 content=[
@@ -1349,7 +1637,9 @@ def generate_task_seeds(
         list_items = [x for x in static_lists if x.list_type == custom_field.name]
         faux_metadata[custom_field.name] = [list_items[i].to_entity_link()]
 
-    formulation_proj = [x for x in seeded_projects if x.id == seeded_products[2].project_id][0]
+    formula = seeded_products[0]
+    # Worksheet (and therefore the formula) is always created on seeded_projects[0].
+    formulation_proj = seeded_projects[0]
     return [
         # Property Task 1
         PropertyTask(
@@ -1408,53 +1698,54 @@ def generate_task_seeds(
             priority=TaskPriority.HIGH,
             due_date="2024-10-31",
             location=seeded_locations[1],
-            metadata=faux_metadata,
+            metadata=dict(faux_metadata),
         ),
-        # Batch Task 1
-        # Use the Formulations used in #tests/resources/test_sheets/py defined as seeded_products
-        BatchTask(
-            name=f"{seed_prefix} - Batch Task 1",
-            category=TaskCategory.BATCH,
-            batch_size_unit=BatchSizeUnit.KILOGRAMS,
+        # General Task 2 - dedicated to list-metadata reassignment testing
+        GeneralTask(
+            name=f"{seed_prefix} - General Task with list metadata reassignment",
+            category=TaskCategory.GENERAL,
             inventory_information=[
                 TaskInventoryInformation(
-                    inventory_id=seeded_products[2].id,
-                    batch_size=100.0,
+                    inventory_id=seeded_inventory[2].id,
                 )
             ],
-            location=seeded_locations[1],
-            priority=TaskPriority.LOW,
-            project=formulation_proj,
-            parent_id=formulation_proj.id,
-            assigned_to=user,
-            start_date="2024-10-01",
+            priority=TaskPriority.HIGH,
             due_date="2024-10-31",
-            workflows=[seeded_workflows[1]],
+            location=seeded_locations[1],
+            metadata=dict(faux_metadata),
         ),
-        # Batch Task 2
+        # One batch task on the single seeded formula covers get/create/update
+        # batch-data tests and the block add/update/remove tests.
         BatchTask(
-            name=f"{seed_prefix} - Batch Task 2",
+            name=f"{seed_prefix} - Batch Task With Blocks",
             category=TaskCategory.BATCH,
             batch_size_unit=BatchSizeUnit.GRAMS,
             inventory_information=[
                 TaskInventoryInformation(
-                    inventory_id=seeded_products[1].id,
-                    batch_size=250.0,
+                    inventory_id=formula.id,
+                    batch_size=50.0,
                 )
             ],
-            location=seeded_locations[2],
-            priority=TaskPriority.MEDIUM,
+            location=seeded_locations[0],
+            priority=TaskPriority.LOW,
             project=formulation_proj,
             parent_id=formulation_proj.id,
             assigned_to=user,
-            start_date="2024-10-01",
             due_date="2024-10-31",
+            blocks=[
+                Block(
+                    workflow=[seeded_workflows[0]],
+                    data_template=[seeded_data_templates[0]],
+                )
+            ],
         ),
     ]
 
 
 def generate_note_seeds(
-    seeded_tasks: list[BaseTask], seeded_inventory: list[InventoryItem], seed_prefix: str
+    seeded_tasks: list[BaseTask],
+    seeded_inventory: list[InventoryItem],
+    seed_prefix: str,
 ):
     task_note = Note(
         parent_id=seeded_tasks[0].id,
@@ -1518,8 +1809,40 @@ def generate_btinsight_seed(
     )
 
 
+def pick_report_type_id(templates: list[ReportTemplate]) -> str:
+    """Pick a report type ID from the available templates for report seeding.
+
+    Parameters
+    ----------
+    templates : list[ReportTemplate]
+        Report templates returned by ``client.report_templates.get_all()``.
+
+    Returns
+    -------
+    str
+        A report type ID suitable for ``FullAnalyticalReport.report_type_id``.
+
+    Raises
+    ------
+    ValueError
+        If no templates with IDs are available.
+    """
+    for template in templates:
+        if template.id and template.category == ReportTemplateCategory.REPORTS:
+            return template.id
+
+    for template in templates:
+        if template.id:
+            return template.id
+
+    raise ValueError("No report templates with IDs are available for seeding")
+
+
 def generate_report_seeds(
-    seed_prefix: str, seeded_projects: list[Project]
+    seed_prefix: str,
+    seeded_projects: list[Project],
+    *,
+    report_type_id: str,
 ) -> list[FullAnalyticalReport]:
     """
     Generates a list of FullAnalyticalReport seed objects for testing.
@@ -1530,6 +1853,8 @@ def generate_report_seeds(
         Prefix to use for generating unique names.
     seeded_projects : list[Project]
         List of seeded Project objects to reference in reports.
+    report_type_id : str
+        Report type ID from an available report template (e.g. ``"RET42"``).
 
     Returns
     -------
@@ -1541,10 +1866,184 @@ def generate_report_seeds(
     return [
         # Basic analytical report
         FullAnalyticalReport(
-            report_type_id="ALB#RET42",
+            report_type_id=report_type_id,
             name=f"{seed_prefix} - Basic Analytical Report",
             description=f"{seed_prefix} - A basic analytical report for testing",
             input_data={"project": project_ids},
             project_id=seeded_projects[0].id if seeded_projects else None,
+        ),
+    ]
+
+
+def generate_target_seeds(
+    seed_prefix: str,
+    seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter] | None = None,
+) -> list[Target]:
+    """
+    Generates a list of Target seed objects for testing.
+
+    Parameters
+    ----------
+    seed_prefix : str
+        Prefix to use for generating unique names.
+    seeded_data_templates : list[DataTemplate]
+        List of seeded DataTemplate objects to reference in targets.
+
+    Returns
+    -------
+    list[Target]
+        A list of Target objects with different configurations.
+    """
+    enum_template = [
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Enum Validation Template"
+    ].pop()
+
+    enum_data_column = enum_template.data_column_values[0]
+
+    number_template = [
+        x for x in seeded_data_templates if x.name == f"{seed_prefix} - Number Validation Template"
+    ].pop()
+    number_data_column = number_template.data_column_values[0]
+
+    seeds = [
+        Target(
+            name=f"{seed_prefix} - gte",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
+            type=TargetType.PERFORMANCE,
+            target_value=Criterion(operator=ComparisonOperator.GTE, value=10),
+            is_required=True,
+        ),
+        Target(
+            name=f"{seed_prefix} - lte",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
+            type=TargetType.PERFORMANCE,
+            target_value=Criterion(operator=ComparisonOperator.LTE, value=10),
+            is_required=True,
+        ),
+        Target(
+            name=f"{seed_prefix} - between",
+            data_template_id=number_template.id,
+            data_column_id=number_data_column.data_column_id,
+            type=TargetType.PERFORMANCE,
+            target_value=Criterion(
+                operator=ComparisonOperator.BETWEEN, value={"min": 5, "max": 15}
+            ),
+            is_required=False,
+        ),
+        Target(
+            name=f"{seed_prefix} - in-set",
+            data_template_id=enum_template.id,
+            data_column_id=enum_data_column.data_column_id,
+            type=TargetType.PERFORMANCE,
+            target_value=Criterion(operator=ComparisonOperator.IN_SET, value=["A", "B", "C"]),
+            is_required=False,
+        ),
+    ]
+
+    if seeded_parameters is not None:
+        params_template = next(
+            (
+                x
+                for x in seeded_data_templates
+                if x.name == f"{seed_prefix} - Parameters Data Template"
+            ),
+            None,
+        )
+        if params_template is not None:
+            params_col = params_template.data_column_values[0]
+            seeds.append(
+                Target(
+                    name=f"{seed_prefix} - between-with-param-filter",
+                    data_template_id=params_template.id,
+                    data_column_id=params_col.data_column_id,
+                    type=TargetType.PERFORMANCE,
+                    target_value=Criterion(operator=ComparisonOperator.GTE, value=0),
+                    is_required=False,
+                    parameters=[
+                        TargetParameter(
+                            id=seeded_parameters[0].id,
+                            category=seeded_parameters[0].category,
+                            value=Criterion(
+                                operator=ComparisonOperator.BETWEEN,
+                                value=NumericRange(min=0, max=200),
+                            ),
+                            sequence="ROW1",
+                        )
+                    ],
+                )
+            )
+
+    return seeds
+
+
+def generate_smart_dataset_seed(
+    seeded_projects: list[Project],
+    seeded_targets: list[Target],
+) -> SmartDatasetScope:
+    """
+    Generates a SmartDatasetScope seed object for testing.
+
+    Parameters
+    ----------
+    seeded_projects : list[Project]
+        List of seeded Project objects.
+    seeded_targets : list[Target]
+        List of seeded Target objects.
+
+    Returns
+    -------
+    SmartDatasetScope
+        A SmartDatasetScope object with different configurations.
+    """
+    return SmartDatasetScope(
+        project_ids=[project.id for project in seeded_projects],
+        target_ids=[target.id for target in seeded_targets],
+    )
+
+
+def generate_attribute_seeds(
+    seed_prefix: str,
+    seeded_data_columns: list[DataColumn],
+) -> list[Attribute]:
+    """
+    Generates a list of Attribute seed objects for testing.
+
+    Returns
+    -------
+    list[Attribute]
+        A list of Attribute objects with different validation types.
+    """
+    return [
+        # NUMBER validation attribute
+        Attribute(
+            datacolumn_id=seeded_data_columns[0].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-number",
+            validation=[ValidationItem(datatype=DataType.NUMBER)],
+        ),
+        # ENUM validation attribute
+        Attribute(
+            datacolumn_id=seeded_data_columns[1].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-enum",
+            validation=[
+                ValidationItem(
+                    datatype=DataType.ENUM,
+                    value=[
+                        EnumValidationValue(text="Option1"),
+                        EnumValidationValue(text="Option2"),
+                    ],
+                )
+            ],
+        ),
+        # STRING validation attribute (for update tests)
+        Attribute(
+            datacolumn_id=seeded_data_columns[2].id,
+            category=AttributeCategory.PROPERTY,
+            reference_name=f"{seed_prefix}-attr-string",
+            validation=[ValidationItem(datatype=DataType.STRING)],
         ),
     ]

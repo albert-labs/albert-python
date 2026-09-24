@@ -1,9 +1,16 @@
+from contextlib import suppress
+
 import pytest
 
 from albert.client import Albert
 from albert.core.shared.models.base import EntityLink
 from albert.exceptions import NotFoundError
-from albert.resources.projects import Project, ProjectSearchItem
+from albert.resources.acls import ACL, AccessControlLevel
+from albert.resources.attachments import Attachment
+from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 
 def assert_valid_project_items(returned_list: list, entity_type: type = Project):
@@ -27,20 +34,23 @@ def test_project_search_basic(client: Albert):
     assert_valid_project_items(project_list, ProjectSearchItem)
 
 
-def test_project_search_paged(client: Albert):
-    """Test search with a small page size."""
-    short_lists = list(client.projects.search(max_items=10))
-    assert_valid_project_items(short_lists, ProjectSearchItem)
-
-
 def test_project_search_filtered(client: Albert):
     """Test search with status filter."""
     advanced_list = list(client.projects.search(status=["Active"], max_items=10))
     assert_valid_project_items(advanced_list, ProjectSearchItem)
 
 
-def test_hydrate_project(client: Albert):
-    projects = list(client.projects.search(created_by=["Sdk"], max_items=5))
+def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated projects the client has no ACL access to hydrate
+    seeded_ids = {p.id for p in seeded_projects}
+    projects = poll_until(
+        lambda: [
+            p
+            for p in client.projects.search(text=seed_prefix, max_items=100)
+            if p.id in seeded_ids
+        ]
+    )
     assert projects, "Expected at least one project in search results"
 
     for project in projects:
@@ -48,6 +58,31 @@ def test_hydrate_project(client: Albert):
         # identity checks
         assert hydrated.id == project.id
         assert hydrated.description == project.description
+
+
+def test_project_document_search(
+    client: Albert,
+    seeded_projects: list[Project],
+    seeded_project_document: Attachment,
+):
+    """Test document_search returns DocumentSearchItem items for a project."""
+    project_id = seeded_projects[0].id
+    attachment_id = seeded_project_document.id
+    documents = poll_until(
+        lambda: [
+            doc
+            for doc in client.projects.document_search(
+                linked_to=project_id,
+                sort_by="createdAt",
+                max_items=25,
+            )
+            if doc.id == attachment_id
+        ]
+    )
+    assert documents, "Expected at least one document"
+    for doc in documents:
+        assert isinstance(doc, DocumentSearchItem)
+        assert doc.id is not None
 
 
 def test_get_by_id(client: Albert, seeded_projects: list[Project]):
@@ -76,10 +111,84 @@ def test_create_project(client: Albert, seeded_locations):
     client.projects.delete(id=created_project.id)
 
 
-def test_update_project(seeded_projects, client: Albert):
-    seeded_projects[1].grid = "PD"
-    updated = client.projects.update(project=seeded_projects[1])
-    assert updated.id == seeded_projects[1].id
+def test_update_project(seeded_locations, client: Albert, seed_prefix: str):
+    # Update a private project so shared seeded projects stay intact
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Project to Update",
+            locations=[EntityLink(id=seeded_locations[1].id)],
+        )
+    )
+    try:
+        project.grid = "PD"
+        updated = client.projects.update(project=project)
+        assert updated.id == project.id
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+
+
+def test_update_project_acl(
+    client: Albert,
+    seeded_locations,
+    seed_prefix: str,
+):
+    """Test updating a project's ACL via update()."""
+    team = client.teams.create(name=f"{seed_prefix} - project ACL team")
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - ACL update project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            acl=[ACL(id=team.id, fgc=AccessControlLevel.PROJECT_VIEWER)],
+        )
+    )
+    try:
+        fetched = client.projects.get_by_id(id=project.id)
+        updated_acl = [
+            ACL(
+                id=entry.id,
+                fgc=(
+                    AccessControlLevel.PROJECT_STRICT_VIEWER if entry.id == team.id else entry.fgc
+                ),
+            )
+            for entry in fetched.acl or []
+        ]
+        updated = client.projects.update(project=fetched.model_copy(update={"acl": updated_acl}))
+        entry = next(entry for entry in updated.acl or [] if entry.id == team.id)
+        assert entry.fgc == AccessControlLevel.PROJECT_STRICT_VIEWER
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        with suppress(NotFoundError):
+            client.teams.delete(id=team.id)
+
+
+def test_update_project_acl_in_place(
+    client: Albert,
+    seeded_locations,
+    seed_prefix: str,
+):
+    """Test in-place ACL edits trigger update without reassigning acl."""
+    team = client.teams.create(name=f"{seed_prefix} - in-place ACL team")
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - in-place ACL project",
+            locations=[EntityLink(id=seeded_locations[0].id)],
+            acl=[ACL(id=team.id, fgc=AccessControlLevel.PROJECT_VIEWER)],
+        )
+    )
+    try:
+        fetched = client.projects.get_by_id(id=project.id)
+        team_entry = next(entry for entry in fetched.acl or [] if entry.id == team.id)
+        team_entry.fgc = AccessControlLevel.PROJECT_STRICT_VIEWER
+        updated = client.projects.update(project=fetched)
+        entry = next(entry for entry in updated.acl or [] if entry.id == team.id)
+        assert entry.fgc == AccessControlLevel.PROJECT_STRICT_VIEWER
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)
+        with suppress(NotFoundError):
+            client.teams.delete(id=team.id)
 
 
 def test_delete_project(client: Albert, seeded_locations):
@@ -99,3 +208,24 @@ def test_delete_project(client: Albert, seeded_locations):
     # Try to fetch the project, should return None or not found
     with pytest.raises(NotFoundError):
         client.projects.get_by_id(id=created_project.id)
+
+
+def test_reactivate_project(client: Albert, seeded_locations, seed_prefix: str):
+    """Test reactivating a soft-deleted project restores access."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Project to Reactivate",
+            locations=[EntityLink(id=seeded_locations[1].id)],
+        )
+    )
+    try:
+        client.projects.delete(id=project.id)
+        with pytest.raises(NotFoundError):
+            client.projects.get_by_id(id=project.id)
+
+        reactivated = client.projects.reactivate(id=project.id)
+        assert reactivated.id == project.id
+        assert reactivated.status == "active"
+    finally:
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)

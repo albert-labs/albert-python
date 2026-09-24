@@ -1,8 +1,31 @@
 version: 2.1
 
+setup: true
+
+parameters:
+  lambda_layer:
+    type: boolean
+    default: false
+  lambda_runtimes:
+    type: string
+    default: "3.11,3.12,3.13,3.14"
+  lambda_archs:
+    type: string
+    default: "x86_64,arm64"
+  lambda_regions:
+    type: string
+    # Keep in sync with DEFAULT_REGIONS in .circleci/scripts/generate_lambda_matrix.py
+    # and the Regions list in docs/lambda.md.
+    default: "us-west-2,us-east-1,eu-central-1,eu-west-1"
+  lambda_account_id:
+    type: string
+    default: ""
+
 orbs:
+  continuation: circleci/continuation@1.0.0
   python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
+  aws-cli: circleci/aws-cli@4.0
 
 commands:
   install_uv:
@@ -12,29 +35,6 @@ commands:
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
 jobs:
-  snyk_app_scan:
-    executor:
-      name: python/default
-      tag: "3.10.15"
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "SHA256:8xP/cfKKsXJOx9XDojfxU3nx9NRtDCEVSVm0uL6qL5I"
-      - install_uv
-      - run:
-          name: Export dependencies
-          command: |
-            uv sync
-            uv export > requirements_lock.txt
-            uv pip compile requirements_lock.txt > requirements.txt
-            uv pip install --system -r requirements.txt
-      - snyk/scan:
-          fail-on-issues: true
-          monitor-on-build: true
-          severity-threshold: high
-          token-variable: SNYK_TOKEN
-
   test:
     executor:
       name: python/default
@@ -46,10 +46,6 @@ jobs:
           name: Install dependencies
           command: uv sync
       - run:
-          name: Set environment
-          command: |
-            echo 'export ALBERT_BASE_URL="https://app.albertinvent.com"' >> "$BASH_ENV"
-      - run:
           name: Check formatting
           command: |
             uv run ruff format . --check
@@ -60,7 +56,7 @@ jobs:
       - run:
           name: Run pytest
           command: |
-            uv run pytest
+            uv run pytest -n 4 -v --tb=short -r fEsxX --durations=15
 
   validate_version_bump:
     executor:
@@ -146,9 +142,11 @@ jobs:
                 exit 0
               fi
 
-              if [[ "$CIRCLE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              SEMVER_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+((a|b|rc|dev)[0-9]+|-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$'
+
+              if [[ "$CIRCLE_TAG" =~ $SEMVER_REGEX ]]; then
                 VERSION="${CIRCLE_TAG#v}"
-                echo "Stable semver tag detected. Deploying $VERSION with alias: latest"
+                echo "Semver tag detected. Deploying $VERSION with alias: latest"
                 uv run mike deploy --push --update-aliases "$VERSION" latest
               else
                 echo "Non-semver release tag. Skipping docs deployment."
@@ -156,19 +154,65 @@ jobs:
               fi
             fi
 
+  lambda_layer_setup:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Validate lambda layer parameters
+          command: |
+            set -euo pipefail
+
+            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]] && \
+              ! [[ "<< pipeline.parameters.lambda_account_id >>" =~ ^[0-9]{12}$ ]]; then
+              echo "lambda_account_id must be a 12-digit AWS account ID."
+              exit 1
+            fi
+
+            # The layer is built from this checkout, so the SDK version is read from the
+            # package itself. When triggered on a release tag, the tag must agree with it.
+            if [[ -n "${CIRCLE_TAG:-}" ]]; then
+              python scripts/validate_release_tag.py --tag "${CIRCLE_TAG}"
+            fi
+            SDK_VERSION="$(python -c '
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, "scripts")
+            from validate_release_tag import extract_version
+            print(extract_version(Path("src/albert/__init__.py").read_text()))
+            ')"
+            echo "Building lambda layers for albert ${SDK_VERSION} from ${CIRCLE_TAG:-branch ${CIRCLE_BRANCH:-unknown}}"
+            echo "export LAMBDA_SDK_VERSION=${SDK_VERSION}" >> "$BASH_ENV"
+      - run:
+          name: Generate continuation config
+          command: |
+            python .circleci/scripts/generate_lambda_matrix.py \
+              --runtimes   "<< pipeline.parameters.lambda_runtimes >>" \
+              --archs      "<< pipeline.parameters.lambda_archs >>" \
+              --sdk-version "${LAMBDA_SDK_VERSION}" \
+              --regions    "<< pipeline.parameters.lambda_regions >>" \
+              --account-id "<< pipeline.parameters.lambda_account_id >>" \
+              --output     /tmp/lambda_continuation.yml
+      - continuation/continue:
+          configuration_path: /tmp/lambda_continuation.yml
+          parameters: "{}"
+
 workflows:
-  main:
+  lambda_layer_matrix:
+    when: << pipeline.parameters.lambda_layer >>
     jobs:
-      - snyk_app_scan:
-          name: Snyk App Scan
+      - lambda_layer_setup:
+          name: Lambda Layer Matrix Setup
           context: dev
+
+  main:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
+    jobs:
       - test:
           name: Test
           context: dev
-      - validate_version_bump:
-          name: Validate Version Bump
-          context: dev
-          base_branch: main
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev
@@ -178,6 +222,8 @@ workflows:
               only: main
 
   release:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - validate_release_tag:
           name: Validate Release Tag
@@ -197,6 +243,19 @@ workflows:
               only: /^v.+$/
             branches:
               ignore: /.*/
+      # Lambda layers are built from this checkout and published for every release
+      # tag. This continues the pipeline into the generated matrix config; the ad hoc
+      # lambda_layer_matrix workflow above remains for manual runs on a branch.
+      - lambda_layer_setup:
+          name: Publish Lambda Layers
+          context: dev
+          requires:
+            - Publish to PyPI
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/
       - deploy_docs:
           name: Deploy Docs on Github Release
           mode: release
@@ -205,6 +264,6 @@ workflows:
             - Validate Release Tag
           filters:
             tags:
-              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+(?:(?:a|b|rc|dev)[0-9]+|-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/
             branches:
               ignore: /.*/

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import Field, PrivateAttr
@@ -21,7 +23,7 @@ class EntityLink(BaseAlbertModel):
     name: str | None = Field(default=None, exclude=True)
     category: str | None = Field(default=None, exclude=True)
 
-    def to_entity_link(self) -> "EntityLink":
+    def to_entity_link(self) -> EntityLink:
         # Convience method to return self, so you can call this method on objects that are already entity links
         return self
 
@@ -40,19 +42,10 @@ class LocalizedNames(BaseAlbertModel):
 
 
 class BaseResource(BaseAlbertModel):
-    """The base resource for all Albert resources.
-
-    Attributes
-    ----------
-    status: Status | None
-        The status of the resource, optional.
-    created: AuditFields | None
-        Audit fields for the creation of the resource, optional.
-    updated: AuditFields | None
-        Audit fields for the update of the resource, optional.
-    """
+    """The base resource for all Albert resources."""
 
     status: Status | None = Field(default=None)
+    """The status of the resource, optional."""
 
     # Read-only fields
     created: AuditFields | None = Field(
@@ -60,11 +53,13 @@ class BaseResource(BaseAlbertModel):
         alias="Created",
         frozen=True,
     )
+    """Audit fields for the creation of the resource, optional."""
     updated: AuditFields | None = Field(
         default=None,
         alias="Updated",
         frozen=True,
     )
+    """Audit fields for the update of the resource, optional."""
 
     def to_entity_link(self) -> EntityLink:
         if id := getattr(self, "id", None):

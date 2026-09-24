@@ -1,8 +1,13 @@
 import uuid
 
+import pytest
+from pydantic import ValidationError
+
 from albert import Albert
 from albert.resources.locations import Location
-from albert.resources.storage_locations import StorageLocation
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
+
+pytestmark = pytest.mark.xdist_group("projects")
 
 
 def assert_valid_storage_location_items(returned_list: list[StorageLocation]):
@@ -42,6 +47,13 @@ def test_storage_location_get_all_with_filters(
     for sl in results_by_location:
         assert sl.location.id in seeded_location_ids
 
+    sample = results_by_location[0]
+    by_id = client.storage_locations.get_by_id(id=sample.id)
+    list_fields = {"id", "name", "location"}
+    assert sample.model_dump(mode="json", include=list_fields) == by_id.model_dump(
+        mode="json", include=list_fields
+    )
+
 
 def test_get_or_create_storage_location(
     caplog, client: Albert, seeded_storage_locations: list[StorageLocation]
@@ -64,3 +76,15 @@ def test_update(client: Albert, seeded_storage_locations: list[StorageLocation])
     updated = client.storage_locations.update(storage_location=sl)
     assert updated.id == seeded_storage_locations[0].id
     assert updated.name == sl.name
+
+
+def test_storage_location_create_type_still_requires_location():
+    """Test that StorageLocation (the create/update type) still requires a parent Location."""
+    with pytest.raises(ValidationError):
+        StorageLocation(name="No Parent")
+
+
+def test_storage_location_filter_is_name_only():
+    """Test that the search filter type validates with a name only (no parent Location)."""
+    f = StorageLocationFilter(name="Freezer A")
+    assert f.model_dump() == {"name": "Freezer A"}

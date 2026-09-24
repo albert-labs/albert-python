@@ -8,10 +8,14 @@ from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
     ParameterGroupSearchItem,
+    ParameterValue,
     ValueValidation,
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_parameter_groups(
@@ -58,6 +62,46 @@ def test_parameter_group_get_all(client: Albert, seeded_parameter_groups: list[P
     assert_valid_parameter_groups(results, ParameterGroup)
 
 
+def test_parameter_group_search_item_sanitizes_empty_entity_link_metadata():
+    """Some tenants have parameter-group metadata whose entity-link fields were
+    cleared server-side to `[{}]` instead of `[]`, which fails `MetadataItem`
+    validation.
+    """
+    raw = {
+        "albertId": "PRG23111",
+        "name": "sdfgfdgd",
+        "metadata": {
+            "AdvCTDSTPT_1": [{}],
+            "AdvPGLSPTINV_2": [{}],
+            "ADVNUMPTPG_1": 23,
+            "ADVNUMPTPG_2": 445,
+        },
+    }
+    item = ParameterGroupSearchItem(**raw)
+    assert item.metadata["AdvCTDSTPT_1"] == []
+    assert item.metadata["AdvPGLSPTINV_2"] == []
+    assert item.metadata["ADVNUMPTPG_1"] == 23
+    assert item.metadata["ADVNUMPTPG_2"] == 445
+
+
+def test_parameter_group_sanitizes_empty_entity_link_metadata():
+    """Same defect as above but against the hydrated ParameterGroup model."""
+    raw = {
+        "albertId": "PRG23111",
+        "name": "sdfgfdgd",
+        "class": "shared",
+        "Metadata": {
+            "AdvCTDSTPT_1": [{}],
+            "bareEmptyLink": {},
+            "ADVNUMPTPG_1": 23,
+        },
+    }
+    pg = ParameterGroup(**raw)
+    assert pg.metadata["AdvCTDSTPT_1"] == []
+    assert "bareEmptyLink" not in pg.metadata
+    assert pg.metadata["ADVNUMPTPG_1"] == 23
+
+
 def test_parameter_group_search_with_filters(
     client: Albert, seeded_parameter_groups: list[ParameterGroup]
 ):
@@ -67,8 +111,65 @@ def test_parameter_group_search_with_filters(
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
 
 
-def test_hydrate_pg(client: Albert):
-    pgs = list(client.parameter_groups.search(max_items=5))
+def test_parameter_group_search(
+    client: Albert, seed_prefix: str, seeded_parameter_groups: list[ParameterGroup]
+):
+    """Test POST search with owner, tags, parameters, and additional fields."""
+    seeded = next(
+        (pg for pg in seeded_parameter_groups if pg.tags and pg.parameters),
+        None,
+    )
+    assert seeded is not None, "Expected a seeded parameter group with tags and parameters"
+    pg = client.parameter_groups.get_by_id(id=seeded.id)
+    tag = pg.tags[0].tag or pg.tags[0].id
+    parameter = pg.parameters[0].name
+    assert tag and parameter
+
+    seeded_ids = {item.id for item in seeded_parameter_groups}
+    hits = poll_until(
+        lambda: [
+            hit
+            for hit in client.parameter_groups.search(
+                text=seed_prefix,
+                additional_field=["owner", "tags", "parameters", "createdByName"],
+                max_items=50,
+            )
+            if hit.id == pg.id and hit.owner
+        ]
+    )
+    assert hits, "Expected seeded parameter group with owner in search"
+    owner = hits[0].owner[0].name or hits[0].owner[0].id
+    assert owner
+
+    results = poll_until(
+        lambda: [
+            hit
+            for hit in client.parameter_groups.search(
+                text=seed_prefix,
+                owner=[owner],
+                tags=[tag],
+                parameters=[parameter],
+                additional_field=["owner", "tags", "createdByName"],
+                max_items=50,
+            )
+            if hit.id in seeded_ids
+        ]
+    )
+    assert_valid_parameter_groups(results, ParameterGroupSearchItem)
+    assert pg.id in {hit.id for hit in results}
+
+
+def test_hydrate_pg(client: Albert, seed_prefix: str, seeded_parameter_groups):
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated or deleted parameter groups
+    seeded_ids = {pg.id for pg in seeded_parameter_groups}
+    pgs = poll_until(
+        lambda: [
+            pg
+            for pg in client.parameter_groups.search(text=seed_prefix, max_items=100)
+            if pg.id in seeded_ids
+        ]
+    )
     assert pgs, "Expected at least one pg in search results"
 
     for pg in pgs:
@@ -234,3 +335,52 @@ def test_update_units(
     updated_param = updated_pg.parameters[0]
     assert updated_param.unit.id == new_unit.id
     assert updated_param.unit.id != original_unit.id
+
+
+def test_update_required(client: Albert, seeded_parameter_groups: list[ParameterGroup]):
+    """Test setting and unsetting the required flag on a parameter in a parameter group."""
+    pg = client.parameter_groups.get_by_id(id=seeded_parameter_groups[0].id)
+    param = pg.parameters[0]
+    assert not param.required
+
+    param.required = True
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+    updated_param = next(x for x in updated_pg.parameters if x.id == param.id)
+    assert updated_param.required is True
+
+    updated_param.required = False
+    restored_pg = client.parameter_groups.update(parameter_group=updated_pg)
+    restored_param = next(x for x in restored_pg.parameters if x.id == param.id)
+    assert not restored_param.required
+
+
+def test_new_parameter_enum_ids_populated(
+    client: Albert,
+    seeded_parameter_groups: list[ParameterGroup],
+    seeded_parameters,
+):
+    """Test that enum IDs are assigned when a new parameter with ENUM validation is added via update."""
+    pg = [x for x in seeded_parameter_groups if "Enums Parameter Group" in x.name][0]
+    pg = client.parameter_groups.get_by_id(id=pg.id)
+
+    pg.parameters.append(
+        ParameterValue(
+            parameter=seeded_parameters[4],
+            validation=[
+                ValueValidation(
+                    datatype=DataType.ENUM,
+                    value=[
+                        EnumValidationValue(text="EnumRepro1"),
+                        EnumValidationValue(text="EnumRepro2"),
+                    ],
+                )
+            ],
+        )
+    )
+    updated_pg = client.parameter_groups.update(parameter_group=pg)
+
+    new_param = next(p for p in updated_pg.parameters if p.id == seeded_parameters[4].id)
+    assert new_param.validation[0].datatype == DataType.ENUM
+    assert len(new_param.validation[0].value) == 2
+    for v in new_param.validation[0].value:
+        assert v.id is not None, f"Enum value '{v.text}' has no ID"

@@ -43,7 +43,7 @@ class PGPatchDatum(PatchDatum):
 
 class GeneralPatchDatum(PGPatchDatum):
     colId: str | None = Field(default=None)
-    actions: list[PGPatchDatum | DTPatchDatum] | None = None
+    actions: list[PGPatchDatum | DTPatchDatum | PatchDatum] | None = None
     operation: str | None = Field(default=None)
 
 
@@ -54,12 +54,7 @@ class GeneralPatchPayload(PatchPayload):
 
 
 class PGPatchPayload(PatchPayload):
-    """A payload for a PATCH request to update a parameter group.
-
-    Attributes
-    ----------
-    data : list[PGPatchDatum]
-        The data to be updated in the parameter group.
-    """
+    """A payload for a PATCH request to update a parameter group."""
 
     data: list[PGPatchDatum | PatchDatum] = Field(default_factory=list)
+    """The data to be updated in the parameter group."""

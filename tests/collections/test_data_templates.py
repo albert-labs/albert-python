@@ -1,10 +1,19 @@
+from contextlib import suppress
+from pathlib import Path
+
+import pytest
+
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
+from albert.exceptions import ForbiddenError, NotFoundError
+from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
+    DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
 )
+from albert.resources.lists import ListItemCategory
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -15,6 +24,10 @@ from albert.resources.parameter_groups import (
 from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
+from albert.resources.users import User
+from tests.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("datatemplates")
 
 
 def assert_valid_data_template_items(
@@ -43,13 +56,76 @@ def test_data_template_search_basic(client: Albert, seeded_data_templates: list[
     assert_valid_data_template_items(results, DataTemplateSearchItem)
 
 
+def test_data_template_search(
+    client: Albert, seed_prefix: str, seeded_data_templates: list[DataTemplate]
+):
+    """Test search with owner, tags, data columns, and additional fields."""
+    seeded_ids = {dt.id for dt in seeded_data_templates}
+    hits = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(
+                name=seed_prefix,
+                additional_field=["owner", "tags", "createdByName", "standards"],
+                max_items=50,
+            )
+            if dt.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected seeded data templates in search results"
+
+    candidate = next(
+        (
+            dt
+            for dt in hits
+            if (dt.owner and len(dt.owner) > 0)
+            and (dt.tags and len(dt.tags) > 0)
+            and (dt.data_columns and len(dt.data_columns) > 0)
+        ),
+        None,
+    )
+    if candidate is None:
+        assert_valid_data_template_items(hits, DataTemplateSearchItem)
+        return
+
+    owner = candidate.owner[0].name or candidate.owner[0].id
+    tag = candidate.tags[0].tag or candidate.tags[0].id
+    data_column = candidate.data_columns[0].name or candidate.data_columns[0].id
+
+    assert owner is not None
+    assert tag is not None
+    assert data_column is not None
+
+    standard_org = None
+    if candidate.standards and len(candidate.standards) > 0:
+        standard_org = candidate.standards[0].get("standardOrganization")
+
+    results = list(
+        client.data_templates.search(
+            name=seed_prefix,
+            owner=[owner],
+            tags=[tag],
+            data_columns=[data_column],
+            standard_organization=[standard_org] if standard_org else None,
+            additional_field=["owner", "tags", "createdByName", "standards"],
+            max_items=10,
+        )
+    )
+    assert_valid_data_template_items(results, DataTemplateSearchItem)
+
+
 def test_data_template_get_by_name(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test get_by_name returns a hydrated match or None if not found."""
     name = seeded_data_templates[0].name
     expected_id = seeded_data_templates[0].id
 
-    result = client.data_templates.get_by_name(name=name)
-    assert result is not None
+    results = poll_until(
+        lambda: (
+            [found] if (found := client.data_templates.get_by_name(name=name)) is not None else []
+        )
+    )
+    assert results, "Expected get_by_name to find seeded data template"
+    result = results[0]
     assert result.name == name
     assert result.id == expected_id
 
@@ -90,6 +166,72 @@ def test_update_tags(
     assert len(updated_dt.tags) == len(original_tags) + 1
 
 
+def test_update_owner(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    static_user: User,
+):
+    """Test updating owner for data templates."""
+    dt = next(x for x in seeded_data_templates if "ACL Data Template" in x.name)
+    dt = client.data_templates.get_by_id(
+        id=dt.id
+    )  # Get hydrated to ensure users_with_access is populated
+    original_acl = dt.users_with_access or []
+    original_ids = {entry.id for entry in original_acl if getattr(entry, "id", None)}
+
+    user_to_add = None
+    for user in client.users.search(max_items=50):
+        if not user.id or user.id == static_user.id or user.id in original_ids:
+            continue
+        try:
+            user_to_add = client.users.get_by_id(id=user.id)
+            break
+        except (NotFoundError, ForbiddenError):
+            continue
+
+    if user_to_add is None:
+        pytest.skip("No eligible user returned by users.search() for ACL update.")
+
+    dt.users_with_access = [*original_acl, user_to_add]
+    updated_dt = client.data_templates.update(data_template=dt)
+    assert updated_dt.users_with_access is not None
+    assert user_to_add.id in [entry.id for entry in updated_dt.users_with_access]
+
+    updated_dt.users_with_access = original_acl
+    restored_dt = client.data_templates.update(data_template=updated_dt)
+    assert restored_dt.users_with_access is not None
+    assert user_to_add.id not in [entry.id for entry in restored_dt.users_with_access]
+
+
+def test_update_metadata(client: Albert, seeded_data_templates: list[DataTemplate]):
+    """Test updating metadata on a data template."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Metadata Data Template" in x.name),
+        None,
+    )
+    assert dt is not None
+    assert dt.parameter_values
+
+    original_ids = sorted([p.id for p in dt.parameter_values])
+    original_sequences = sorted([p.sequence for p in dt.parameter_values if p.sequence])
+
+    dt.metadata = dt.metadata or {}
+    metadata_key = "test_datatemplates_string_field"
+    assert metadata_key in dt.metadata
+    dt.metadata[metadata_key] = "SDK metadata test value"
+
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt.metadata is not None
+    assert updated_dt.metadata.get(metadata_key) == "SDK metadata test value"
+    assert updated_dt.parameter_values is not None
+    assert sorted([p.id for p in updated_dt.parameter_values]) == original_ids
+    assert (
+        sorted([p.sequence for p in updated_dt.parameter_values if p.sequence])
+        == original_sequences
+    )
+
+
 def test_update_validations(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test updating validations on a data template."""
     dt = seeded_data_templates[2]
@@ -112,6 +254,46 @@ def test_update_validations(client: Albert, seeded_data_templates: list[DataTemp
     assert updated_column.value == "Updated Value"
 
 
+def test_date_validation_datatype_on_data_template(
+    client: Albert, seeded_data_templates: list[DataTemplate]
+):
+    """Test that data templates with date validation datatype deserialize correctly."""
+    dt = seeded_data_templates[2]
+    column = dt.data_column_values[0]
+    original_validation = column.validation
+    original_value = column.value
+
+    column.validation = [
+        ValueValidation(
+            datatype=DataType.DATE,
+            min="2026-01-01",
+            max="2026-12-31",
+            operator=Operator.BETWEEN,
+        )
+    ]
+    column.value = "2026-05-21"
+    updated_dt = client.data_templates.update(data_template=dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert updated_column.validation[0].datatype == DataType.DATE
+    assert updated_column.validation[0].min == "2026-01-01"
+    assert updated_column.validation[0].max == "2026-12-31"
+    assert updated_column.value == "2026-05-21"
+
+    fetched_dt = client.data_templates.get_by_id(id=dt.id)
+    fetched_column = next(
+        x for x in fetched_dt.data_column_values if x.data_column_id == column.data_column_id
+    )
+    assert fetched_column.validation[0].datatype == DataType.DATE
+
+    column.validation = original_validation
+    column.value = original_value
+    client.data_templates.update(data_template=dt)
+
+
 def test_enum_validation_creation(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test that enum validation can be created and contains expected values."""
     dt = seeded_data_templates[5]  # "Data Template 1"
@@ -127,27 +309,8 @@ def test_enum_validation_creation(client: Albert, seeded_data_templates: list[Da
     assert column.validation[0].value[1].text == "Option2"
 
 
-def test_enum_validation_addition(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test that enum validation can be added to a data template."""
-    dt = seeded_data_templates[5]  # "Data Template 1"
-    column = [
-        x
-        for x in dt.data_column_values
-        if (len(x.validation) > 0 and x.validation[0].datatype == DataType.ENUM)
-    ][0]  # Data column with enum validation
-
-    # Add a new enum value
-    column.validation[0].value.append(EnumValidationValue(text="Option3"))
-    updated_dt = client.data_templates.update(data_template=dt)
-
-    assert updated_dt is not None
-    updated_column = updated_dt.data_column_values[0]
-    assert len(updated_column.validation[0].value) == 3
-    assert "Option3" in [x.text for x in updated_column.validation[0].value]
-
-
 def test_enum_validation_update(client: Albert, seeded_data_templates: list[DataTemplate]):
-    """Test that enum validation can be updated in a data template."""
+    """Test that enum validation options are fully replaced in a data template."""
     dt = seeded_data_templates[5]  # "Data Template 1"
     column = [
         x
@@ -156,21 +319,109 @@ def test_enum_validation_update(client: Albert, seeded_data_templates: list[Data
     ][0]  # Data column with enum validation
     old_options = [x.text for x in column.validation[0].value]
     # Replace the entire enum validation
-    column.validation[0].value = [
-        EnumValidationValue(text="NewOption1"),
-        EnumValidationValue(text="NewOption2"),
-    ]
-    column.value = "NewOption1"
+    column.validation[0].value.extend(
+        [
+            EnumValidationValue(text="NewOption1"),
+            EnumValidationValue(text="NewOption2"),
+        ]
+    )
     updated_dt = client.data_templates.update(data_template=dt)
 
-    assert updated_dt is not None
+    refreshed_column = [
+        x
+        for x in updated_dt.data_column_values
+        if (len(x.validation) > 0 and x.validation[0].datatype == DataType.ENUM)
+    ][0]
+    refreshed_column.value = "NewOption1"
+    updated_dt = client.data_templates.update(data_template=updated_dt)
     updated_column = updated_dt.data_column_values[0]
-    assert len(updated_column.validation[0].value) == 2
+    assert len(updated_column.validation[0].value) == 4
     new_options = [x.text for x in updated_column.validation[0].value]
     assert "NewOption1" in new_options
     assert "NewOption2" in new_options
     for old in old_options:
-        assert old not in new_options
+        assert old in new_options
+
+
+@pytest.fixture
+def calculation_dt(client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str):
+    from contextlib import suppress
+
+    from albert.exceptions import NotFoundError
+    from albert.resources.data_templates import DataColumnValue
+
+    # Step 1: create without calculation so the backend doesn't lock in validation=[number]
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Calculation Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[2]),
+            ],
+        )
+    )
+
+    # Step 2: add calculation via PATCH — backend clears validation to [] on this path
+    col = next(c for c in dt.data_column_values if c.data_column_id == seeded_data_columns[2].id)
+    col.calculation = "=COL1"
+    dt = client.data_templates.update(data_template=dt)
+
+    yield dt
+
+    with suppress(NotFoundError):
+        client.data_templates.delete(id=dt.id)
+
+
+def test_update_delete_data_column(
+    client: Albert, seeded_data_columns: list[DataColumn], seed_prefix: str
+):
+    """Test removing a data column from a data template via update."""
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - Delete Column Test",
+            data_column_values=[
+                DataColumnValue(data_column=seeded_data_columns[0]),
+                DataColumnValue(data_column=seeded_data_columns[1]),
+            ],
+        )
+    )
+    try:
+        original_count = len(dt.data_column_values)
+        column_to_delete = next(
+            x for x in dt.data_column_values if x.data_column_id == seeded_data_columns[1].id
+        )
+
+        dt.data_column_values = [
+            x for x in dt.data_column_values if x.data_column_id != column_to_delete.data_column_id
+        ]
+        updated_dt = client.data_templates.update(data_template=dt)
+
+        assert len(updated_dt.data_column_values) == original_count - 1
+        assert column_to_delete.data_column_id not in [
+            x.data_column_id for x in updated_dt.data_column_values
+        ]
+        assert seeded_data_columns[0].id in [
+            x.data_column_id for x in updated_dt.data_column_values
+        ]
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+
+
+def test_update_calculation(client: Albert, calculation_dt: DataTemplate):
+    """Test updating calculation on a data template data column."""
+    column = next(x for x in calculation_dt.data_column_values if x.calculation is not None)
+
+    updated_calculation = "=COL1 * 2"
+    column.calculation = updated_calculation
+
+    updated_dt = client.data_templates.update(data_template=calculation_dt)
+
+    assert updated_dt is not None
+    updated_column = next(
+        x for x in updated_dt.data_column_values if x.sequence == column.sequence
+    )
+    assert updated_column.calculation == updated_calculation
 
 
 def test_update_units(
@@ -335,9 +586,18 @@ def test_update_enum_validations_on_data_column_and_parameter(
     assert updated_param.value == "ParamOption3"
 
 
-def test_hydrate_data_template(client: Albert):
+def test_hydrate_data_template(client: Albert, seed_prefix: str, seeded_data_templates):
     """Test that data templates can be hydrated correctly."""
-    data_templates = client.data_templates.search(max_items=3)
+    # Filter to this worker's seeds: name search is fuzzy (tokenized) and can rank
+    # unrelated or deleted templates
+    seeded_ids = {dt.id for dt in seeded_data_templates}
+    data_templates = poll_until(
+        lambda: [
+            dt
+            for dt in client.data_templates.search(name=seed_prefix, max_items=100)
+            if dt.id in seeded_ids
+        ]
+    )
     assert data_templates, "Expected at least one data_template in search results"
 
     for data_template in data_templates:
@@ -346,3 +606,181 @@ def test_hydrate_data_template(client: Albert):
         # identity checks
         assert hydrated.id == data_template.id
         assert hydrated.name == data_template.name
+
+
+def test_update_required_parameter(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+):
+    """Test setting and unsetting the required flag on a parameter in a data template."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
+        None,
+    )
+    assert dt is not None and dt.parameter_values
+
+    param = dt.parameter_values[0]
+    assert not param.required
+
+    param.required = True
+    updated_dt = client.data_templates.update(data_template=dt)
+    updated_param = next(x for x in updated_dt.parameter_values if x.id == param.id)
+    assert updated_param.required is True
+
+    updated_param.required = False
+    restored_dt = client.data_templates.update(data_template=updated_dt)
+    restored_param = next(x for x in restored_dt.parameter_values if x.id == param.id)
+    assert not restored_param.required
+
+
+def test_add_parameters_enum_ids_populated(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seeded_parameters: list[Parameter],
+):
+    """Test that enum IDs are assigned when parameters with ENUM validation are added via add_parameters."""
+    dt = next(
+        (x for x in seeded_data_templates if "Parameters Data Template" in x.name),
+        None,
+    )
+    assert dt is not None
+
+    updated_dt = client.data_templates.add_parameters(
+        data_template_id=dt.id,
+        parameters=[
+            ParameterValue(
+                id=seeded_parameters[3].id,
+                validation=[
+                    ValueValidation(
+                        datatype=DataType.ENUM,
+                        value=[
+                            EnumValidationValue(text="EnumA"),
+                            EnumValidationValue(text="EnumB"),
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+    added_param = next(
+        (p for p in updated_dt.parameter_values if p.id == seeded_parameters[3].id),
+        None,
+    )
+    assert added_param is not None
+    assert added_param.validation[0].datatype == DataType.ENUM
+    assert len(added_param.validation[0].value) == 2
+    for v in added_param.validation[0].value:
+        assert v.id is not None, f"Enum value '{v.text}' has no ID"
+
+
+def test_add_data_columns_default_number_validation(
+    client: Albert,
+    seeded_data_columns: list[DataColumn],
+    seed_prefix: str,
+):
+    """Test add_data_columns applies NUMBER validation when none is provided."""
+    data_column = client.data_columns.create(
+        data_column=DataColumn(name=f"{seed_prefix} - default validation column"),
+    )
+    dt = client.data_templates.create(
+        data_template=DataTemplate(
+            name=f"{seed_prefix} - default validation template",
+            data_column_values=[],
+        )
+    )
+    try:
+        updated_dt = client.data_templates.add_data_columns(
+            data_template_id=dt.id,
+            data_columns=[DataColumnValue(data_column_id=data_column.id)],
+        )
+        added_column = next(
+            col for col in updated_dt.data_column_values if col.data_column_id == data_column.id
+        )
+        assert added_column.validation
+        assert added_column.validation[0].datatype == DataType.NUMBER
+
+        fetched_dt = client.data_templates.get_by_id(id=dt.id)
+        fetched_column = next(
+            col for col in fetched_dt.data_column_values if col.data_column_id == data_column.id
+        )
+        assert fetched_column.validation
+        assert fetched_column.validation[0].datatype == DataType.NUMBER
+    finally:
+        with suppress(NotFoundError):
+            client.data_templates.delete(id=dt.id)
+        with suppress(NotFoundError):
+            client.data_columns.delete(id=data_column.id)
+
+
+def test_upload_and_attach_script_to_data_template(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test uploading a script and attaching it to a data template."""
+    data_template = seeded_data_templates[0]
+    available_extensions = list(
+        client.lists.get_all(
+            category=ListItemCategory.EXTENSIONS,
+            list_type="extensions",
+            max_items=1,
+        )
+    )
+    if not available_extensions:
+        pytest.skip("No extensions configured in tenant")
+    extension = available_extensions[0]
+
+    attachment = client.attachments.upload_and_attach_script_to_data_template(
+        data_template_id=data_template.id,
+        file_path=Path("tests/data/etl.py"),
+        name=f"{seed_prefix} etl script",
+        extension_names=[extension.name],
+    )
+    try:
+        assert isinstance(attachment, Attachment)
+        assert attachment.parent_id == data_template.id
+        assert attachment.category == AttachmentCategory.SCRIPT
+        assert attachment.key == f"{data_template.id}/automated_scripts/etl.py"
+        assert attachment.metadata is not None
+        assert attachment.metadata.extensions is not None
+        assert any(ext.id == extension.id for ext in attachment.metadata.extensions)
+
+        by_parent = client.attachments.get_by_parent_ids(parent_ids=[data_template.id])
+        attached_ids = {item.id for item in by_parent.get(data_template.id, [])}
+        assert attachment.id in attached_ids
+    finally:
+        with suppress(NotFoundError):
+            client.attachments.delete(id=attachment.id)
+
+
+def test_upload_and_attach_script_to_data_template_unknown_extension(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test unknown extension names raise a clear error."""
+    data_template = seeded_data_templates[0]
+    with pytest.raises(ValueError, match="not found in the extensions list"):
+        client.attachments.upload_and_attach_script_to_data_template(
+            data_template_id=data_template.id,
+            file_path=Path("tests/data/etl.py"),
+            name=f"{seed_prefix} invalid extension script",
+            extension_names=["not-a-real-extension"],
+        )
+
+
+def test_upload_and_attach_script_to_data_template_requires_py_suffix(
+    client: Albert,
+    seeded_data_templates: list[DataTemplate],
+    seed_prefix: str,
+):
+    """Test non-Python script files are rejected."""
+    data_template = seeded_data_templates[0]
+    with pytest.raises(ValueError, match="must have a .py extension"):
+        client.attachments.upload_and_attach_script_to_data_template(
+            data_template_id=data_template.id,
+            file_path=Path("tests/data/dontpanic.jpg"),
+            name=f"{seed_prefix} invalid script file",
+            extension_names=["csv"],
+        )

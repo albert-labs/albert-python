@@ -1,11 +1,17 @@
 from collections.abc import Iterator
+from contextlib import suppress
+from uuid import uuid4
 
 import pytest
 
 from albert.client import Albert
-from albert.resources.lots import Lot
+from albert.core.shared.models.base import EntityLink
+from albert.exceptions import BadRequestError, NotFoundError
+from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
+
+pytestmark = pytest.mark.xdist_group("inventory")
 
 
 @pytest.fixture(scope="function")
@@ -25,6 +31,32 @@ def seeded_lot(
     client.lots.delete(id=seeded.id)
 
 
+@pytest.fixture(scope="function")
+def seeded_volume_lot(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+) -> Iterator[Lot]:
+    lot = Lot(
+        inventory_id=seeded_inventory[4].id,
+        storage_location=EntityLink(id=seeded_storage_locations[0].id),
+        initial_quantity=100.0,
+        inventory_on_hand=100.0,
+        initial_quantity_l=127.39,
+        entry_unit=LotVolumeUnit.LITER,
+        cost=80.0,
+        density=0.785,
+        lot_number=f"VOL-{uuid4().hex[:6]}",
+        manufacturer_lot_number=f"MLN-{uuid4().hex[:6]}",
+        notes="Function-scoped volume lot fixture.",
+        external_barcode_id=str(uuid4()),
+    )
+    seeded = client.lots.create(lots=[lot])[0]
+    yield seeded
+    with suppress(NotFoundError):
+        client.lots.delete(id=seeded.id)
+
+
 def assert_valid_lot_items(returned_list: list[Lot]):
     """Assert all items are valid Lot objects with proper IDs."""
     assert returned_list, "Expected at least one Lot item"
@@ -36,8 +68,10 @@ def assert_valid_lot_items(returned_list: list[Lot]):
 
 def test_lot_get_all_basic(client: Albert, seeded_lots):
     """Test basic usage of lots.get_all()."""
-    results = list(client.lots.get_all(max_items=10))
+    parent_id = seeded_lots[0].inventory_id
+    results = list(client.lots.get_all(parent_id=parent_id, max_items=10))
     assert_valid_lot_items(results)
+    assert any(lot.id == seeded_lots[0].id for lot in results)
 
 
 def test_get_by_id(client: Albert, seeded_lots: list[Lot]):
@@ -55,7 +89,10 @@ def test_get_by_ids(client: Albert, seeded_lots: list[Lot]):
 
 
 def test_update(
-    client: Albert, seeded_lot: Lot, seeded_storage_locations: Iterator[list[StorageLocation]]
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+    second_user,
 ):
     lot = seeded_lot.model_copy()
     marker = "TEST"
@@ -70,8 +107,336 @@ def test_update(
         "Expected an alternate storage location for update test"
     )
     lot.storage_location = new_storage_location
+    lot.owner = [second_user]
+    lot.external_barcode_id = str(uuid4())
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
     assert updated_lot.storage_location is not None
     assert updated_lot.storage_location.id == new_storage_location.id
+    assert updated_lot.owner is not None
+    assert any(o.id == second_user.id for o in updated_lot.owner)
+    assert updated_lot.external_barcode_id == lot.external_barcode_id
+
+
+def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
+    """Test that updating a lot without setting a field leaves that field untouched."""
+    seeded_lot.manufacturer_lot_number = "PRESERVE-ME"
+    client.lots.update(lot=seeded_lot)
+
+    # Update object that sets only pack_size and omits manufacturer_lot_number.
+    partial = Lot(
+        id=seeded_lot.id,
+        inventory_id=seeded_lot.inventory_id,
+        inventory_on_hand=seeded_lot.inventory_on_hand,
+        pack_size="NEW-PACK",
+    )
+    assert "manufacturer_lot_number" not in partial.model_fields_set
+    client.lots.update(lot=partial)
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.pack_size == "NEW-PACK"
+    assert refetched.manufacturer_lot_number == "PRESERVE-ME"
+
+
+def test_update_workflow_id(client: Albert, seeded_lot: Lot):
+    """Test assigning workflow_id to a lot via update."""
+    assert seeded_lot.workflow_id is None
+
+    # WFL1 is the built-in "No Parameter Group" workflow present on every tenant.
+    lot = seeded_lot.model_copy(update={"workflow_id": "WFL1"})
+    updated_lot = client.lots.update(lot=lot)
+    assert updated_lot.workflow_id == "WFL1"
+
+    refetched = client.lots.get_by_id(id=seeded_lot.id)
+    assert refetched.workflow_id == "WFL1"
+
+
+def test_adjust_add(client: Albert, seeded_lot: Lot):
+    add_quantity = 10.1234567891
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.ADD,
+        quantity=add_quantity,
+        description="add test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(
+        seeded_lot.inventory_on_hand + add_quantity
+    )
+
+
+def test_adjust_subtract(client: Albert, seeded_lot: Lot):
+    subtract_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.SUBTRACT,
+        quantity=subtract_quantity,
+        description="subtract test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(
+        seeded_lot.inventory_on_hand - subtract_quantity
+    )
+
+
+def test_adjust_set(client: Albert, seeded_lot: Lot):
+    target_quantity = seeded_lot.inventory_on_hand + 7.25
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.SET,
+        quantity=target_quantity,
+        description="set test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(target_quantity)
+
+
+def test_adjust_zero(client: Albert, seeded_lot: Lot):
+    updated_lot = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.ZERO,
+        description="zero test",
+    )
+    assert updated_lot.inventory_on_hand == pytest.approx(0)
+
+
+@pytest.mark.parametrize(
+    "action, quantity, error_message",
+    [
+        (LotAdjustmentAction.ZERO, 1, "quantity must be omitted for ZERO action."),
+        (
+            LotAdjustmentAction.ADD,
+            None,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+        (
+            LotAdjustmentAction.SUBTRACT,
+            -1,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+        (
+            LotAdjustmentAction.SET,
+            0,
+            "quantity must be greater than zero for ADD, SUBTRACT, and SET.",
+        ),
+    ],
+)
+def test_adjust_validation(client: Albert, seeded_lot: Lot, action, quantity, error_message):
+    with pytest.raises(ValueError, match=error_message):
+        client.lots.adjust(
+            lot_id=seeded_lot.id,
+            action=action,
+            quantity=quantity,
+            description="validation",
+        )
+
+
+def test_transfer_with_explicit_owner(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+    static_user,
+):
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    transfer_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    split_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity=transfer_quantity,
+        storage_location_id=destination.id,
+        owner=static_user.id,
+    )
+    try:
+        assert split_lot.inventory_on_hand == pytest.approx(transfer_quantity)
+        assert split_lot.storage_location is not None
+        assert split_lot.storage_location.id == destination.id
+        assert split_lot.owner is not None
+        assert any(o.id == static_user.id for o in split_lot.owner)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=split_lot.id)
+
+
+def test_transfer_defaults_to_current_user(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+):
+    current_user = client.users.get_current_user()
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    transfer_quantity = max(1, seeded_lot.inventory_on_hand / 2)
+    split_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity=transfer_quantity,
+        storage_location_id=destination.id,
+    )
+    try:
+        assert split_lot.owner is not None
+        assert any(o.id == current_user.id for o in split_lot.owner)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=split_lot.id)
+
+
+def test_transfer_all_quantity(
+    client: Albert,
+    seeded_lot: Lot,
+    seeded_storage_locations: Iterator[list[StorageLocation]],
+):
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    destination = next(
+        (sl for sl in seeded_storage_locations if sl.id != current_location_id), None
+    )
+    assert destination is not None, "Expected an alternate storage location for transfer test"
+
+    updated_lot = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity="ALL",
+        storage_location_id=destination.id,
+    )
+    assert updated_lot.id == seeded_lot.id
+    assert updated_lot.inventory_on_hand == pytest.approx(seeded_lot.inventory_on_hand)
+    assert updated_lot.storage_location is not None
+    assert updated_lot.storage_location.id == destination.id
+
+
+def test_transfer_all_same_location_no_op(client: Albert, seeded_lot: Lot):
+    """Test that transferring ALL to the current location does not raise an error."""
+    current_location_id = seeded_lot.storage_location.id if seeded_lot.storage_location else None
+    assert current_location_id is not None, "Seeded lot must have a storage location"
+
+    result = client.lots.transfer(
+        lot_id=seeded_lot.id,
+        quantity="ALL",
+        storage_location_id=current_location_id,
+    )
+    assert result.id == seeded_lot.id
+    assert result.storage_location is not None
+    assert result.storage_location.id == current_location_id
+
+
+def test_adjust_set_no_op(client: Albert, seeded_lot: Lot):
+    """Test that SET to the current inventory value does not raise an error."""
+    result = client.lots.adjust(
+        lot_id=seeded_lot.id,
+        action=LotAdjustmentAction.SET,
+        quantity=seeded_lot.inventory_on_hand,
+    )
+    assert result.inventory_on_hand == pytest.approx(seeded_lot.inventory_on_hand)
+
+
+def test_adjust_zero_no_op(client: Albert, seeded_lot: Lot):
+    """Test that ZERO on a lot already at zero does not raise an error."""
+    # First zero it out
+    client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
+    # Zero again — should be a no-op without error
+    result = client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
+    assert result.inventory_on_hand == pytest.approx(0)
+
+
+def test_create_volume_lot(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+):
+    """Test creating a volume lot returns parsed volume fields and density on both create and get_by_id."""
+    lot = Lot(
+        inventory_id=seeded_inventory[4].id,
+        storage_location=EntityLink(id=seeded_storage_locations[0].id),
+        initial_quantity=50.0,
+        inventory_on_hand=50.0,
+        initial_quantity_l=63.69,
+        entry_unit=LotVolumeUnit.LITER,
+        entry_cost_unit="$/L",
+        cost=40.0,
+        cost_l=31.4,
+        density="0.785",
+        lot_number=f"VOL-{uuid4().hex[:6]}",
+        manufacturer_lot_number=f"MLN-{uuid4().hex[:6]}",
+        notes="Volume create test.",
+        external_barcode_id=str(uuid4()),
+    )
+    created = client.lots.create(lots=[lot])[0]
+    try:
+        assert created.id is not None
+        assert created.initial_quantity_l == pytest.approx(63.69)
+        assert created.inventory_on_hand_l == pytest.approx(63.69)
+        assert created.entry_unit == LotVolumeUnit.LITER
+        assert created.entry_cost_unit == "$/L"
+        assert created.cost_l == pytest.approx(31.4)
+        assert created.density is not None
+        assert created.density.value == pytest.approx(0.785)
+
+        fetched = client.lots.get_by_id(id=created.id)
+        assert fetched.initial_quantity_l == pytest.approx(63.69)
+        assert fetched.inventory_on_hand_l == pytest.approx(63.69)
+        assert fetched.entry_unit == LotVolumeUnit.LITER
+        assert fetched.cost_l == pytest.approx(31.4)
+        assert fetched.density is not None
+        assert fetched.density.value == pytest.approx(0.785)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=created.id)
+
+
+def test_adjust_volume_lot_recalculates_volume_on_hand(client: Albert, seeded_volume_lot: Lot):
+    """Test adjusting inventory on hand converts mass delta through locked density to update inventoryOnHandL."""
+    initial_l = seeded_volume_lot.inventory_on_hand_l
+    density_val = seeded_volume_lot.density.value
+    adjusted = client.lots.adjust(
+        lot_id=seeded_volume_lot.id,
+        action=LotAdjustmentAction.ADD,
+        quantity=10.0,
+    )
+    expected_l = initial_l + (10.0 / density_val)
+    assert adjusted.inventory_on_hand_l == pytest.approx(expected_l, rel=1e-5)
+
+
+def test_update_volume_lot_cost_l_round_trips(client: Albert, seeded_volume_lot: Lot):
+    """Test updating cost_l round-trips via update()."""
+    updated = seeded_volume_lot.model_copy()
+    updated.cost_l = 75.5
+    res = client.lots.update(lot=updated)
+    assert res.cost_l == pytest.approx(75.5)
+
+
+def test_update_volume_lot_rejects_readonly_volume_fields(client: Albert, seeded_volume_lot: Lot):
+    """Test backend rejects updating density or initial_quantity_l on an existing lot via PATCH."""
+    # Attempting to patch density directly raises BadRequestError
+    with pytest.raises(BadRequestError):
+        client.session.patch(
+            f"{client.lots.base_path}/{seeded_volume_lot.id}",
+            json={
+                "data": [
+                    {
+                        "operation": "UPDATE",
+                        "attribute": "density",
+                        "oldValue": "0.785",
+                        "newValue": "0.999",
+                    }
+                ]
+            },
+        )
+
+    # Attempting to patch initialQuantityL directly raises BadRequestError
+    with pytest.raises(BadRequestError):
+        client.session.patch(
+            f"{client.lots.base_path}/{seeded_volume_lot.id}",
+            json={
+                "data": [
+                    {
+                        "operation": "UPDATE",
+                        "attribute": "initialQuantityL",
+                        "oldValue": "127.39",
+                        "newValue": "200.0",
+                    }
+                ]
+            },
+        )

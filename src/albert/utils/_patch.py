@@ -1,14 +1,16 @@
 from copy import deepcopy
 
+from albert.core.session import AlbertSession
 from albert.core.shared.models.patch import (
     DTPatchDatum,
     GeneralPatchDatum,
+    GeneralPatchPayload,
     PatchDatum,
     PatchPayload,
     PGPatchDatum,
     PGPatchPayload,
 )
-from albert.resources.data_templates import DataColumnValue, DataTemplate
+from albert.resources.data_templates import CurveDataEntityLink, DataColumnValue, DataTemplate
 from albert.resources.parameter_groups import (
     DataType,
     EnumValidationValue,
@@ -16,20 +18,7 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
-
-
-def _normalize_validation(validation: list[EnumValidationValue]) -> list[EnumValidationValue]:
-    """Normalize validation objects for comparison. Ignore original_text for enum values."""
-    normalized = []
-    for v in validation:
-        if isinstance(v.value, list):
-            normalized_value = [
-                EnumValidationValue(text=enum.text, id=enum.id, original_text=None)
-                for enum in v.value
-            ]
-            v.value = normalized_value
-        normalized.append(v)
-    return normalized
+from albert.utils.data_template import ensure_data_column_validation
 
 
 def _parameter_unit_patches(
@@ -168,6 +157,39 @@ def _data_column_value_patches(
     return None
 
 
+def _data_column_calculation_patches(
+    initial_data_column_value: DataColumnValue, updated_data_column_value: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate a Patch for a data column calculation."""
+    if initial_data_column_value.calculation == updated_data_column_value.calculation:
+        return None
+    elif initial_data_column_value.calculation is None:
+        if updated_data_column_value.calculation is not None:
+            return DTPatchDatum(
+                operation="add",
+                attribute="calculation",
+                newValue=updated_data_column_value.calculation,
+                colId=initial_data_column_value.sequence,
+            )
+    elif updated_data_column_value.calculation is None:
+        if initial_data_column_value.calculation is not None:
+            return DTPatchDatum(
+                operation="delete",
+                attribute="calculation",
+                oldValue=initial_data_column_value.calculation,
+                colId=initial_data_column_value.sequence,
+            )
+    elif initial_data_column_value.calculation != updated_data_column_value.calculation:
+        return DTPatchDatum(
+            operation="update",
+            attribute="calculation",
+            oldValue=initial_data_column_value.calculation,
+            newValue=updated_data_column_value.calculation,
+            colId=initial_data_column_value.sequence,
+        )
+    return None
+
+
 def data_column_validation_patches(
     initial_data_column: DataColumnValue, updated_data_column: DataColumnValue
 ) -> DTPatchDatum | None:
@@ -206,6 +228,74 @@ def data_column_validation_patches(
             newValue=updated_data_column.validation,
         )
     return None
+
+
+def _normalize_curve_links(links: list[CurveDataEntityLink] | None) -> list[CurveDataEntityLink]:
+    if links is None:
+        return []
+    # Sort consistently by (id, axis) for stable comparisons
+    return sorted(links, key=lambda x: (x.id, x.axis))
+
+
+def data_column_curve_data_patches(
+    initial_data_column: DataColumnValue, updated_data_column: DataColumnValue
+) -> DTPatchDatum | None:
+    """Generate curveData patches for a data column."""
+    initial_links = _normalize_curve_links(initial_data_column.curve_data)
+    updated_links = _normalize_curve_links(updated_data_column.curve_data)
+
+    if initial_links == updated_links:
+        return None
+
+    if (initial_links is None or len(initial_links) == 0) and len(updated_links) > 0:
+        return DTPatchDatum(
+            operation="add",
+            attribute="curveData",
+            newValue=updated_data_column.curve_data,
+        )
+
+    if (updated_links is None or len(updated_links) == 0) and len(initial_links) > 0:
+        return DTPatchDatum(
+            operation="delete",
+            attribute="curveData",
+            oldValue=initial_data_column.curve_data,
+        )
+
+    # Otherwise, update
+    return DTPatchDatum(
+        operation="update",
+        attribute="curveData",
+        oldValue=initial_data_column.curve_data,
+        newValue=updated_data_column.curve_data,
+    )
+
+
+def _parameter_required_patch(
+    initial_parameter_value: ParameterValue, updated_parameter_value: ParameterValue
+) -> PGPatchDatum | None:
+    """Generate a patch for a parameter required flag."""
+    updated_required = updated_parameter_value.required
+    if updated_required is None:
+        return None
+    initial_required = initial_parameter_value.required
+    # When `required` was never set, it must be added rather than updated; an
+    # `update` is rejected because there is no existing value to match against.
+    if initial_required is None:
+        return PGPatchDatum(
+            operation="add",
+            attribute="required",
+            newValue=updated_required,
+            rowId=updated_parameter_value.sequence,
+        )
+    if initial_required == updated_required:
+        return None
+    return PGPatchDatum(
+        operation="update",
+        attribute="required",
+        oldValue=initial_required,
+        newValue=updated_required,
+        rowId=updated_parameter_value.sequence,
+    )
 
 
 def parameter_validation_patch(
@@ -296,9 +386,13 @@ def generate_data_column_patches(
     updated_data_columns = [
         x for x in updated_data_column if x.sequence in [y.sequence for y in initial_data_column]
     ]
+    # TODO: verify and fix deleting multiple data columns in a single update() call.
+    # Backend only allows one "datacolumns" delete patch per request; batching all
+    # sequences into one oldValue list leaves the removed DataColumn records in a
+    # state where a later DELETE /datacolumns/{id} 500s ("reading 'splice'").
     for del_dc in deleted_data_columns:
         patches.append(
-            DTPatchDatum(operation="delete", attribute="datacolumn", oldValue=del_dc.sequence)
+            DTPatchDatum(operation="delete", attribute="datacolumns", oldValue=[del_dc.sequence])
         )
 
     for updated_dc in updated_data_columns:
@@ -306,13 +400,19 @@ def generate_data_column_patches(
         initial_dc = next(x for x in initial_data_column if x.sequence == updated_dc.sequence)
         # unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         value_patch = _data_column_value_patches(initial_dc, updated_dc)
+        calculation_patch = _data_column_calculation_patches(initial_dc, updated_dc)
         validation_patch = data_column_validation_patches(initial_dc, updated_dc)
+        curve_data_patch = data_column_curve_data_patches(initial_dc, updated_dc)
         # if unit_patch:
         #     these_actions.append(unit_patch)
         if value_patch:
             these_actions.append(value_patch)
+        if calculation_patch:
+            these_actions.append(calculation_patch)
         if validation_patch:
             these_actions.append(validation_patch)
+        if curve_data_patch:
+            these_actions.append(curve_data_patch)
         # actions cannot have colId, so we need to remove it
         for action in these_actions:
             action.colId = None
@@ -333,8 +433,15 @@ def generate_data_column_patches(
             and updated_dc.validation != []
             and updated_dc.validation[0].datatype == DataType.ENUM
         ):
+            existing_enums = []
+            if (
+                initial_dc.validation is not None
+                and initial_dc.validation != []
+                and initial_dc.validation[0].datatype == DataType.ENUM
+            ):
+                existing_enums = initial_dc.validation[0].value
             enum_patches[updated_dc.sequence] = generate_enum_patches(
-                existing_enums=initial_dc.validation[0].value,
+                existing_enums=existing_enums,
                 updated_enums=updated_dc.validation[0].value,
             )
     return patches, new_data_columns, enum_patches
@@ -451,12 +558,15 @@ def generate_parameter_patches(
     for existing_param, updated_param in updated_param_pairs:
         unit_patch = _parameter_unit_patches(existing_param, updated_param)
         value_patch = _parameter_value_patches(existing_param, updated_param)
+        required_patch = _parameter_required_patch(existing_param, updated_param)
         validation_patch = parameter_validation_patch(existing_param, updated_param)
 
         if unit_patch:
             parameter_patches.append(unit_patch)
         if value_patch:
             parameter_patches.append(value_patch)
+        if required_patch:
+            parameter_patches.append(required_patch)
         # Check if this parameter will have enum patches
         will_have_enum_patches = (
             updated_param.validation is not None
@@ -522,11 +632,21 @@ def generate_data_template_patches(
     updated_data_template: DataTemplate,
     existing_data_template: DataTemplate,
 ):
+    updated_data_columns = (
+        updated_data_template.data_column_values
+        if updated_data_template.data_column_values is not None
+        else existing_data_template.data_column_values
+    )
+    updated_parameters = (
+        updated_data_template.parameter_values
+        if updated_data_template.parameter_values is not None
+        else existing_data_template.parameter_values
+    )
     # First handle the data columns
     general_patches = initial_patches
     patches, new_data_columns, data_column_enum_patches = generate_data_column_patches(
         initial_data_column=existing_data_template.data_column_values,
-        updated_data_column=updated_data_template.data_column_values,
+        updated_data_column=updated_data_columns,
     )
 
     tag_patches = handle_tags(
@@ -540,9 +660,33 @@ def generate_data_template_patches(
 
     parameter_patches, new_parameters, parameter_enum_patches = generate_parameter_patches(
         initial_parameters=existing_data_template.parameter_values,
-        updated_parameters=updated_data_template.parameter_values,
+        updated_parameters=updated_parameters,
         parameter_attribute_name="parameters",
     )
+
+    acl_add_values: list[dict[str, str]] = []
+    acl_delete_values: list[dict[str, str]] = []
+    if updated_data_template.users_with_access is not None:
+        existing_acl = existing_data_template.users_with_access or []
+        updated_acl = updated_data_template.users_with_access or []
+
+        # Keep ID order stable while removing duplicates.
+        existing_ids = list(
+            dict.fromkeys(entry.id for entry in existing_acl if getattr(entry, "id", None))
+        )
+        updated_ids = list(
+            dict.fromkeys(entry.id for entry in updated_acl if getattr(entry, "id", None))
+        )
+
+        existing_set = set(existing_ids)
+        updated_set = set(updated_ids)
+        to_add = updated_set - existing_set
+        to_delete = existing_set - updated_set
+
+        acl_add_values = [{"id": entry_id} for entry_id in updated_ids if entry_id in to_add]
+        acl_delete_values = [
+            {"id": entry_id} for entry_id in existing_ids if entry_id in to_delete
+        ]
 
     return (
         general_patches,
@@ -551,7 +695,173 @@ def generate_data_template_patches(
         new_parameters,
         parameter_enum_patches,
         parameter_patches,
+        acl_add_values,
+        acl_delete_values,
     )
+
+
+def build_acl_patch_payload(
+    *,
+    operation: str,
+    values: list[dict[str, str]],
+) -> GeneralPatchPayload | None:
+    """Build a DataTemplate ACL patch payload for add/delete operations."""
+    if len(values) == 0:
+        return None
+    datum_kwargs = {"new_value": values} if operation == "add" else {"old_value": values}
+    return GeneralPatchPayload(
+        data=[GeneralPatchDatum(attribute="ACL", operation=operation, **datum_kwargs)]
+    )
+
+
+def create_parameters_with_enums(
+    *,
+    session: AlbertSession,
+    parameters_base_url: str,
+    patch_url: str,
+    parameters: list[ParameterValue],
+) -> list[ParameterValue]:
+    """Create parameters, including any ENUM validation options.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    parameters_base_url : str
+        Base URL for the parameters resource.
+    patch_url : str
+        URL of the parent resource to patch after enum options are registered.
+    parameters : list[ParameterValue]
+        Parameters to create.
+
+    Returns
+    -------
+    list[ParameterValue]
+        The created parameters with sequences assigned.
+    """
+    if not parameters:
+        return []
+
+    pending: dict[str, list[EnumValidationValue]] = {}
+    payloads: list[dict] = []
+    for p in parameters:
+        d = p.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if (
+            p.id is not None
+            and p.validation
+            and p.validation[0].datatype == DataType.ENUM
+            and isinstance(p.validation[0].value, list)
+        ):
+            pending[p.id] = p.validation[0].value
+            d["validation"] = [{"datatype": DataType.STRING}]
+        payloads.append(d)
+
+    response = session.put(parameters_base_url, json={"Parameters": payloads})
+    returned = [ParameterValue(**x) for x in response.json()["Parameters"]]
+
+    for param in returned:
+        enum_values = pending.get(param.id)
+        if not enum_values or param.sequence is None:
+            continue
+        enum_ops = [{"operation": "add", "text": v.text} for v in enum_values]
+        returned_enums = session.put(
+            f"{parameters_base_url}/{param.sequence}/enums",
+            json=enum_ops,
+        ).json()
+        patch_payload = PGPatchPayload(
+            data=[
+                PGPatchDatum(
+                    operation="update",
+                    attribute="enumSequence",
+                    rowId=param.sequence,
+                    new_value=[{"id": e["id"]} for e in returned_enums],
+                )
+            ]
+        )
+        session.patch(
+            patch_url,
+            json=patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+
+    return returned
+
+
+def create_data_columns_with_enums(
+    *,
+    session: AlbertSession,
+    data_columns_base_url: str,
+    data_template_url: str,
+    data_columns: list[DataColumnValue],
+) -> list[DataColumnValue]:
+    """Create data columns, including any ENUM validation options.
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The active session.
+    data_columns_base_url : str
+        Base URL for the data columns resource.
+    data_template_url : str
+        URL of the parent data template.
+    data_columns : list[DataColumnValue]
+        Data columns to create.
+
+    Returns
+    -------
+    list[DataColumnValue]
+        The created data columns with sequences assigned.
+    """
+    if not data_columns:
+        return []
+
+    pending: dict[str, list[EnumValidationValue]] = {}
+    payloads: list[dict] = []
+    for col in data_columns:
+        ensure_data_column_validation(col)
+        d = col.model_dump(mode="json", by_alias=True, exclude_none=True)
+        if (
+            col.data_column_id is not None
+            and col.validation
+            and col.validation[0].datatype == DataType.ENUM
+            and isinstance(col.validation[0].value, list)
+        ):
+            pending[col.data_column_id] = col.validation[0].value
+            d["validation"] = [{"datatype": DataType.STRING}]
+        payloads.append(d)
+
+    response = session.put(data_columns_base_url, json={"DataColumns": payloads})
+    returned = [DataColumnValue(**x) for x in response.json()["DataColumns"]]
+
+    for col in returned:
+        enum_values = pending.get(col.data_column_id)
+        if not enum_values or col.sequence is None:
+            continue
+        enum_ops = [{"operation": "add", "text": v.text} for v in enum_values]
+        returned_enums = session.put(
+            f"{data_columns_base_url}/{col.sequence}/enums",
+            json=enum_ops,
+        ).json()
+        patch_payload = GeneralPatchPayload(
+            data=[
+                GeneralPatchDatum(
+                    attribute="datacolumn",
+                    colId=col.sequence,
+                    actions=[
+                        PatchDatum(
+                            operation="update",
+                            attribute="enumSequence",
+                            new_value=[{"id": e["id"]} for e in returned_enums],
+                        )
+                    ],
+                )
+            ]
+        )
+        session.patch(
+            data_template_url,
+            json=patch_payload.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
+
+    return returned
 
 
 def generate_parameter_group_patches(

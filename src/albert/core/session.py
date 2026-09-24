@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import quote, urlencode, urljoin
 
@@ -27,6 +28,20 @@ class AlbertSession(requests.Session):
         If provided, it overrides `token`.
     retries : int, optional
         The number of automatic retries on failed requests (default is 3).
+    timeout : float | tuple[float, float], optional
+        Default timeout in seconds applied to every request. Accepts a single
+        float (applied to both connect and read) or a ``(connect, read)`` tuple.
+        When ``None`` (the default), requests have no timeout and can block
+        indefinitely. A per-call ``timeout`` passed to a request always takes
+        precedence.
+    headers : Mapping[str, str], optional
+        Extra headers applied to every request made through this session, for
+        example a caller-supplied correlation or audit header. Merged over the
+        session defaults, matching header names case-insensitively, so a key
+        given here replaces ``Content-Type``, ``Accept``, or ``User-Agent``
+        rather than being sent alongside it. ``Authorization`` is set per
+        request from the session's own credentials and cannot be overridden
+        here.
     """
 
     def __init__(
@@ -36,9 +51,12 @@ class AlbertSession(requests.Session):
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
+        timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
     ):
         super().__init__()
         self.base_url = base_url
+        self._timeout = timeout
         self.headers.update(
             {
                 "Content-Type": "application/json",
@@ -46,6 +64,8 @@ class AlbertSession(requests.Session):
                 "User-Agent": f"albert-SDK V.{albert.__version__}",
             }
         )
+        if headers:
+            self.headers.update(headers)
 
         if token is None and auth_manager is None:
             raise ValueError("Either `token` or `auth_manager` must be specified.")
@@ -75,10 +95,15 @@ class AlbertSession(requests.Session):
         return self._provided_token
 
     def request(self, method: str, path: str, *args, **kwargs) -> requests.Response:
-        self.headers["Authorization"] = f"Bearer {self._access_token}"
+        # Send auth via per-request headers: mutating self.headers is not safe when
+        # the session is shared across threads. Applied last so neither a
+        # per-request header nor a session default can displace it.
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers["Authorization"] = f"Bearer {self._access_token}"
+        kwargs["headers"] = headers
+        kwargs.setdefault("timeout", self._timeout)
         full_url = urljoin(self.base_url, path) if not path.startswith("http") else path
-        params = self._encode_query_params(kwargs.pop("params", {}))
-
+        params = self._encode_query_params(kwargs.pop("params", None) or {})
         # The requests library internally uses urllib.parse.urlencode() with the quote_via parameter set to quote_plus, which breaks CAS pagination.
         # Encoding parameters manually (via quote) to avoid this issue.
         if params:

@@ -1,16 +1,52 @@
+from enum import Enum
+
 from pydantic import Field
 
-from albert.core.shared.enums import Status
 from albert.core.shared.models.base import EntityLinkWithName
 
 
-class HazardSymbol(EntityLinkWithName):
-    """Model representing a hazard symbol."""
+class HazardSymbolStatus(str, Enum):
+    """The status of a [`HazardSymbol`][albert.resources.hazards.HazardSymbol].
 
-    status: Status | None = Field(default=None)
+    Attributes
+    ----------
+    ACTIVE : str
+        The hazard symbol is fully operational and visible in normal operations.
+    INACTIVE : str
+        The hazard symbol is hidden from normal operations and disabled from use.
+    ADDED_MANUALLY : str
+        The hazard symbol was manually chosen.
+    FROM_MODEL : str
+        The hazard symbol was selected by a model.
+    """
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ADDED_MANUALLY = "Added Manually"
+    FROM_MODEL = "From Model"
+
+
+class HazardSymbol(EntityLinkWithName):
+    """A GHS hazard pictogram symbol from the platform reference list.
+
+    Returned by
+    [`get_symbols`][albert.collections.hazards.HazardsCollection.get_symbols]."""
+
+    status: HazardSymbolStatus | None = Field(default=None)
+    """Whether the symbol is active, inactive, manually added, or selected by a model."""
 
 
 class HazardStatement(EntityLinkWithName):
-    """Model representing a hazard statement."""
+    """A GHS hazard statement from the platform reference list.
 
-    pass
+    Returned by
+    [`get_statements`][albert.collections.hazards.HazardsCollection.get_statements]."""
+
+    id: str
+    """The Albert ID of the hazard statement."""
+
+    name: str | None = Field(default=None, exclude=False)
+    """The text of the hazard statement."""
+
+    category: str | None = Field(default=None, exclude=True)
+    """The category of the hazard statement, when set."""

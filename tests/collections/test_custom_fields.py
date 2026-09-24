@@ -1,8 +1,11 @@
+from uuid import uuid4
+
 import pytest
 
 from albert.client import Albert
 from albert.resources.custom_fields import (
     CustomField,
+    DateDefault,
     FieldCategory,
     FieldType,
     ListDefault,
@@ -10,8 +13,11 @@ from albert.resources.custom_fields import (
     NumberDefault,
     ServiceType,
     StringDefault,
+    TimestampDefault,
 )
 from albert.resources.lists import ListItem
+
+pytestmark = pytest.mark.xdist_group("customfields")
 
 
 def get_or_create_custom_field(
@@ -58,11 +64,15 @@ def get_or_create_list_items(
 ) -> list[ListItem]:
     names = [f"{custom_field_name} Option {i}" for i in range(0, 2)]
     existing_items = [
-        client.lists.get_matching_item(name=name, list_type=custom_field_name) for name in names
+        item
+        for item in [
+            client.lists.get_matching_item(name=name, list_type=custom_field_name)
+            for name in names
+        ]
+        if item is not None
     ]
-    items_to_create = [
-        name for name in names if name not in [item.name for item in existing_items]
-    ]
+    existing_names = [item.name for item in existing_items]
+    items_to_create = [name for name in names if name not in existing_names]
 
     new_items = []
     for name in items_to_create:
@@ -129,12 +139,18 @@ def test_get_by_name(client: Albert, static_custom_fields: list[CustomField]):
                 "display_name": "Initial String Field",
                 "searchable": False,
                 "hidden": False,
+                "required": False,
+                "editable": True,
+                "pattern": None,
                 "default": None,
             },
             {
                 "display_name": "Updated String Field",
                 "searchable": True,
-                "hidden": True,
+                "hidden": False,
+                "required": True,
+                "editable": False,
+                "pattern": r"^[a-zA-Z0-9_]+$",
                 "default": StringDefault(value="default string"),
             },
         ),
@@ -144,12 +160,20 @@ def test_get_by_name(client: Albert, static_custom_fields: list[CustomField]):
             {
                 "display_name": "Initial Number Field",
                 "hidden": False,
+                "required": False,
+                "editable": True,
+                "min": 0,
+                "max": 10,
                 "default": None,
             },
             {
                 "display_name": "Updated Number Field",
                 "hidden": True,
-                "default": NumberDefault(value=42),
+                "required": False,
+                "editable": False,
+                "min": 1,
+                "max": 20,
+                "default": NumberDefault(value=5),
             },
         ),
     ],
@@ -162,7 +186,7 @@ def test_update_custom_field(
     updated_attributes: dict,
 ):
     """Test updating various attributes of a custom field."""
-    field_name = f"test_update_{field_type.value}_{service.value}"
+    field_name = f"test_update_{field_type.value}_{service.value}_{uuid4().hex[:8]}"
     custom_field = get_or_create_custom_field(
         client,
         name=field_name,
@@ -170,66 +194,178 @@ def test_update_custom_field(
         service=service,
         **initial_attributes,
     )
+    try:
+        if field_type == FieldType.NUMBER:
+            initial_attributes = dict(initial_attributes)
+            updated_attributes = dict(updated_attributes)
 
-    # Reset to initial state first to ensure a consistent starting point
-    for key, value in initial_attributes.items():
-        setattr(custom_field, key, value)
-    custom_field = client.custom_fields.update(custom_field=custom_field)
-    for key, value in initial_attributes.items():
-        assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+            current_min = (
+                custom_field.min if custom_field.min is not None else initial_attributes["min"]
+            )
+            current_max = (
+                custom_field.max if custom_field.max is not None else initial_attributes["max"]
+            )
 
-    # Apply the updated attributes
-    for key, value in updated_attributes.items():
-        setattr(custom_field, key, value)
+            initial_attributes["min"] = current_min
+            initial_attributes["max"] = current_max
+            updated_attributes["max"] = current_max + 10
 
-    updated_field = client.custom_fields.update(custom_field=custom_field)
+            # API only accepts min updates when new min is smaller than old min.
+            updated_attributes["min"] = current_min - 1 if current_min > 0 else current_min
+            updated_attributes["default"] = NumberDefault(value=updated_attributes["min"])
 
-    for key, value in updated_attributes.items():
-        assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+        # Reset to initial state first to ensure a consistent starting point
+        for key, value in initial_attributes.items():
+            setattr(custom_field, key, value)
+        custom_field = client.custom_fields.update(custom_field=custom_field)
+        for key, value in initial_attributes.items():
+            assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+
+        # Apply the updated attributes
+        for key, value in updated_attributes.items():
+            setattr(custom_field, key, value)
+
+        updated_field = client.custom_fields.update(custom_field=custom_field)
+
+        for key, value in updated_attributes.items():
+            assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+    finally:
+        if custom_field.id is not None:
+            client.custom_fields.delete(id=custom_field.id)
 
 
 def test_update_custom_field_type_list(client: Albert):
     """Test updating various attributes of a custom field."""
     field_type = FieldType.LIST
     service = ServiceType.PROJECTS
-    field_name = f"test_update_{field_type.value}_{service.value}"
-    list_items = get_or_create_list_items(
-        client, custom_field_name=field_name, category=FieldCategory.USER_DEFINED
-    )
+    field_name = f"test_update_{field_type.value}_{service.value}_{uuid4().hex[:8]}"
 
     initial_attributes = {
         "display_name": "Initial List Field",
         "searchable": False,
         "hidden": False,
-        "default": ListDefault(
-            value=ListDefaultValue(id=list_items[0].id, name=list_items[0].name)
-        ),
+        "multiselect": False,
+        "default": None,
     }
 
     updated_attributes = {
         "display_name": "Updated List Field",
         "searchable": True,
         "hidden": True,
-        "default": ListDefault(
-            value=ListDefaultValue(id=list_items[1].id, name=list_items[1].name)
-        ),
+        "multiselect": True,
+        "default": None,
     }
 
     custom_field = get_or_create_custom_field(
-        client, name=field_name, field_type=field_type, service=service, **initial_attributes
+        client,
+        name=field_name,
+        field_type=field_type,
+        service=service,
+        category=FieldCategory.BUSINESS_DEFINED,
+        **initial_attributes,
     )
-    # Reset to initial state first to ensure a consistent starting point
-    for key, value in initial_attributes.items():
-        setattr(custom_field, key, value)
-    custom_field = client.custom_fields.update(custom_field=custom_field)
-    for key, value in initial_attributes.items():
-        assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
+    list_items = get_or_create_list_items(
+        client, custom_field_name=field_name, category=FieldCategory.BUSINESS_DEFINED
+    )
+    initial_attributes["default"] = ListDefault(
+        value=ListDefaultValue(id=list_items[0].id, name=list_items[0].name)
+    )
+    updated_attributes["default"] = ListDefault(
+        value=[ListDefaultValue(id=list_items[1].id, name=list_items[1].name)]
+    )
+    try:
+        # Ensure reset starts from non-multiselect mode so scalar default is valid.
+        if custom_field.multiselect:
+            custom_field.multiselect = False
+            custom_field = client.custom_fields.update(custom_field=custom_field)
 
-    # Apply the updated attributes
-    for key, value in updated_attributes.items():
-        setattr(custom_field, key, value)
+        # Reset to initial state first to ensure a consistent starting point
+        for key, value in initial_attributes.items():
+            setattr(custom_field, key, value)
+        custom_field = client.custom_fields.update(custom_field=custom_field)
+        for key, value in initial_attributes.items():
+            assert getattr(custom_field, key) == value, f"Failed to reset attribute: {key}"
 
-    updated_field = client.custom_fields.update(custom_field=custom_field)
+        # API validates default against the current multiselect mode.
+        for key in ("display_name", "searchable", "hidden", "multiselect"):
+            setattr(custom_field, key, updated_attributes[key])
+        custom_field = client.custom_fields.update(custom_field=custom_field)
 
-    for key, value in updated_attributes.items():
-        assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+        custom_field.default = updated_attributes["default"]
+        updated_field = client.custom_fields.update(custom_field=custom_field)
+
+        for key, value in updated_attributes.items():
+            assert getattr(updated_field, key) == value, f"Failed to update attribute: {key}"
+    finally:
+        if custom_field.id is not None:
+            client.custom_fields.delete(id=custom_field.id)
+
+
+def test_update_searchable_on_unset_field(client: Albert):
+    """Test enabling searchable on a field where it was never set."""
+    custom_field = CustomField(
+        name=f"test_searchable_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="Searchable Unset Field",
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert not created.searchable
+        created.searchable = True
+        updated = client.custom_fields.update(custom_field=created)
+        assert updated.searchable is True
+    finally:
+        client.custom_fields.delete(id=created.id)
+
+
+@pytest.mark.parametrize(
+    "field_type, default_class, default_value",
+    [
+        (FieldType.DATE, DateDefault, "2026-05-21"),
+        (FieldType.TIMESTAMP, TimestampDefault, "2026-05-21T14:32:00+02:00"),
+    ],
+)
+def test_custom_field_date_and_timestamp_defaults(
+    client: Albert,
+    field_type: FieldType,
+    default_class: type[DateDefault | TimestampDefault],
+    default_value: str,
+):
+    """Test date and timestamp custom fields with default values round-trip."""
+    field_name = f"test_{field_type.value}_{uuid4().hex[:8]}"
+    custom_field = CustomField(
+        name=field_name,
+        field_type=field_type,
+        service=ServiceType.PROJECTS,
+        display_name=f"Test {field_type.value.title()} Field",
+        default=default_class(value=default_value),
+    )
+    created = client.custom_fields.create(custom_field=custom_field)
+    try:
+        assert isinstance(created.default, default_class)
+        assert created.default.value == default_value
+
+        fetched = client.custom_fields.get_by_id(id=created.id)
+        assert isinstance(fetched.default, default_class)
+        assert fetched.default.value == default_value
+    finally:
+        client.custom_fields.delete(id=created.id)
+
+
+def test_delete_custom_field(client: Albert):
+    """Test deleting a custom field by ID."""
+    custom_field = CustomField(
+        name=f"test_delete_{uuid4().hex[:12]}",
+        field_type=FieldType.STRING,
+        service=ServiceType.PROJECTS,
+        display_name="Delete Test Field",
+    )
+
+    created_field = client.custom_fields.create(custom_field=custom_field)
+    client.custom_fields.delete(id=created_field.id)
+
+    assert (
+        client.custom_fields.get_by_name(name=created_field.name, service=created_field.service)
+        is None
+    )

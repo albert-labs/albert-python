@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any, ForwardRef, Union
+from typing import Any, ForwardRef, Literal, TypedDict, Union
 
 import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import InventoryId
+from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
-from albert.exceptions import AlbertException
+from albert.core.shared.models.patch import PatchDatum
+from albert.exceptions import AlbertException, AlbertHTTPError
 from albert.resources.inventory import InventoryItem
 
 # Define forward references
@@ -15,9 +18,37 @@ Row = ForwardRef("Row")
 Column = ForwardRef("Column")
 Sheet = ForwardRef("Sheet")
 
+CellAttributeValue = str | float | int | dict[str, Any] | list[Any] | None
+
+
+class CellChangeId(TypedDict):
+    """Internal identifier (row ID and column ID) locating a cell in a change payload."""
+
+    rowId: str
+    colId: str
+
+
+class CellChangePayload(TypedDict):
+    """Internal payload describing the patch operations to apply to a single cell."""
+
+    Id: CellChangeId
+    data: list[PatchDatum]
+
 
 class CellColor(str, Enum):
-    """The allowed colors for a cell"""
+    """A background color that can be applied to Sheet cells.
+
+    Each value is the RGB string the platform stores for the cell background.
+    Used with [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] and [`recolor_cells`][albert.resources.sheets.Row.recolor_cells] to
+    highlight cells in a Sheet.
+
+    !!! example
+        ```python
+        from albert.resources.sheets import CellColor
+        column = sheet.get_column(column_name="Formulation A")
+        column.recolor_cells(CellColor.GREEN)
+        ```
+    """
 
     WHITE = "RGB(255, 255, 255)"
     RED = "RGB(255, 161, 161)"
@@ -29,7 +60,16 @@ class CellColor(str, Enum):
 
 
 class CellType(str, Enum):
-    """The type of information in the Cell"""
+    """The kind of content a Cell, Column, or Row holds.
+
+    Cells, Columns, and Rows all carry a type drawn from this enum, which
+    determines how the platform interprets their contents. The values most
+    relevant when building formulations are ``INVENTORY`` (an ingredient amount),
+    ``TOTAL`` (a computed total row), ``FORMULA`` and ``FOR`` (formulation
+    columns), ``LKP`` (a lookup that displays an inventory attribute), and
+    ``BLANK`` (an empty cell). The remaining members correspond to specialized
+    grid content such as tags, prices, tasks, results, and apps.
+    """
 
     INVENTORY = "INV"
     APP = "APP"
@@ -46,65 +86,114 @@ class CellType(str, Enum):
     FOR = "FOR"
     EXTINV = "EXTINV"
     BTI = "BTI"
+    PRM = "PRM"
+    PRG = "PRG"
+    RSL = "RSL"
+    FNC = "FNC"
+    WFL = "WFL"
+    DAC = "DAC"
+    INT = "INT"
+    DAT = "DAT"
+    NDR = "NDR"
+    PIC = "PIC"
 
 
 class DesignType(str, Enum):
-    """The type of Design"""
+    """The section of a Sheet that a Design represents.
+
+    A Sheet is organized into stacked sections, each backed by a Design
+    ([`Design`][albert.resources.sheets.Design]). The type identifies which section:
+
+    - ``PRODUCTS``: Product Design, where formulations are built.
+    - ``PROCESS``: Process Design.
+    - ``RESULTS``: Results, holding Property Tasks and their data.
+    - ``APPS``: Apps, holding insights, reporting, and notes.
+    """
 
     APPS = "apps"
     PRODUCTS = "products"
     RESULTS = "results"
     PROCESS = "process"
+    # Additional legacy/tenant values observed in the wild:
+    REAGENTS = "reagents"
+
+
+class ColumnPosition(str, Enum):
+    """Where to insert a new column relative to a reference column.
+
+    Used by the ``add_*_column`` methods of [`Sheet`][albert.resources.sheets.Sheet] to place a new column
+    ``LEFT_OF`` or ``RIGHT_OF`` an existing one.
+    """
+
+    LEFT_OF = "leftOf"
+    RIGHT_OF = "rightOf"
+
+
+class RowPosition(str, Enum):
+    """Where to insert a new row relative to a reference row.
+
+    Used by the row-adding methods of [`Sheet`][albert.resources.sheets.Sheet] (e.g. [`add_lookup_row`][albert.resources.sheets.Sheet.add_lookup_row],
+    [`add_app_row`][albert.resources.sheets.Sheet.add_app_row]) to place a new row ``ABOVE`` or ``BELOW`` an existing one.
+    """
+
+    ABOVE = "above"
+    BELOW = "below"
 
 
 class Cell(BaseResource):
-    """A Cell in a Sheet
+    """A single cell in a Sheet grid, at the intersection of a Column and a Row.
 
-    Attributes
-    ----------
-    column_id : str
-        The column ID of the cell.
-    row_id : str
-        The row ID of the cell.
-    value : str | dict
-        The value of the cell. If the cell is an inventory item, this will be a dict.
-    min_value : str | None
-        The minimum allowed value for inventory cells. Optional.
-    max_value : str | None
-        The maximum allowed value for inventory cells. Optional.
-    row_label_name : str, optional
-        The display name of the row.
-    type : CellType
-        The type of the cell. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
-    row_type : CellType, optional
-        The type of the row containing this cell. Usually one of
-        INV (inventory row), TOT (total row), TAS (task row), TAG, PRC, PDC, BAT or BLK.
-    name : str | None
-        The name of the cell. Optional. Default is None.
-    calculation : str
-        The calculation of the cell. Optional. Default is "".
-    design_id : str
-        The design ID of the design this cell is in.
-    format : dict
-        The format of the cell. Optional. Default is {}. The format is a dict with the keys `bgColor` and `fontColor`. The values are strings in the format `RGB(255, 255, 255)`.
-    raw_value : str
-        The raw value of the cell. If the cell is an inventory item, this will be the value of the inventory item. Read-only.
-    color : str | None
-        The color of the cell. Read only.
-    """
+    A Cell is a live grid element: it carries the session and knows its position
+    (via ``column_id``, ``row_id``, and ``design_id``) as well as its value,
+    calculation, and formatting. Cells are typically read from a Sheet's grid or
+    from [`cells`][albert.resources.sheets.Column.cells] / [`cells`][albert.resources.sheets.Row.cells], and written back with
+    [`update_cells`][albert.resources.sheets.Sheet.update_cells]."""
 
     column_id: str = Field(alias="colId")
+    """The ID of the Column this cell belongs to."""
+
     row_id: str = Field(alias="rowId")
+    """The ID of the Row this cell belongs to."""
+
     row_label_name: str | None = Field(default=None, alias="lableName")
+    """The display name of the row this cell is in."""
+
     value: str | dict | list = ""
+    """The value of the cell. For an inventory cell this may be a dict rather than a plain string; see [`raw_value`][albert.resources.sheets.Cell.raw_value] for the underlying value.
+
+    For **special parameters** in the Process Design grid (parameters whose value
+    references an inventory item: equipment, consumables, raw materials), the
+    linked-cell form is the lookup string ``"<DisplayID> || <ItemName>"`` (double
+    pipe with spaces, INV prefix stripped), e.g. ``"B90948 || Copper Coupon"``.
+    Writing a bare ``"INV..."`` id is accepted by the API but stored as unlinked
+    plain text, so the UI shows the raw id instead of the linked item. On reads,
+    a linked cell's value is a dict of the form ``{"id": "INVB90948", "name":
+    "B90948 || Copper Coupon"}``."""
+
     min_value: str | None = Field(default=None, alias="minValue")
+    """The minimum allowed value for inventory cells. Optional."""
+
     max_value: str | None = Field(default=None, alias="maxValue")
-    type: CellType
-    row_type: CellType | None = Field(default=None)
+    """The maximum allowed value for inventory cells. Optional."""
+
+    type: CellType | str
+    """The type of the cell. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
+
+    row_type: CellType | str | None = Field(default=None)
+    """The type of the row containing this cell. Usually one of ``INV`` (inventory row), ``TOT`` (total row), ``TAS`` (task row), ``TAG``, ``PRC``, ``PDC``, ``BAT``, or ``BLK``."""
+
     name: str | None = Field(default=None)
+    """The name of the cell. Optional. Default is None."""
+
     calculation: str = ""
+    """The formula backing the cell, if any (e.g. a total). Default is ``""``."""
+
     design_id: str
+    """The ID of the Design (Sheet section) this cell is in."""
+
     format: dict = Field(default_factory=dict, alias="cellFormat")
+    """The cell formatting. Default is ``{}``. Keys are ``bgColor`` and ``fontColor``, with RGB string values such as ``"RGB(255, 255, 255)"``."""
+
     inventory_id: str | None = Field(default=None)
 
     @property
@@ -120,30 +209,41 @@ class Cell(BaseResource):
 
 
 class Component(BaseResource):
-    """Represents an amount of an inventory item in a formulation.
+    """One ingredient and its amount within a formulation.
 
-    Attributes
-    ----------
-    inventory_item : InventoryItem | None
-        The inventory item in the component. Optional when ``inventory_id`` is provided.
-    inventory_id : InventoryId | None
-        The inventory identifier backing the component. Automatically populated from
-        ``inventory_item`` when present; required when ``inventory_item`` is omitted.
-    amount : float
-        The amount of the inventory item in the component.
-    cell : Cell
-        The cell that the component is in. Read-only.
-    """
+    A Component pairs an inventory item ([`InventoryItem`][albert.resources.inventory.InventoryItem])
+    with the amount of it used in a formulation. Components are the input to
+    [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`add_components_to_formulation`][albert.resources.sheets.Sheet.add_components_to_formulation],
+    which place each ingredient's amount into the appropriate Cell of a
+    formulation Column. Provide either ``inventory_item`` or ``inventory_id``;
+    when ``inventory_item`` is given, ``inventory_id`` is populated from it
+    automatically.
+
+    !!! example
+        ```python
+        from albert.resources.sheets import Component
+        component = Component(inventory_id="INVA9999999", amount=42.0)
+        ```"""
 
     inventory_item: InventoryItem | None = Field(default=None)
+    """The inventory item in the component. Optional when ``inventory_id`` is provided."""
+
     inventory_id: InventoryId | None = Field(default=None)
+    """The inventory ID backing the component (format ``INV...``). Automatically populated from ``inventory_item`` when present; required when ``inventory_item`` is omitted."""
+
     amount: float
+    """The amount of the inventory item in the formulation."""
+
     min_value: float | None = Field(default=None)
+    """The minimum allowed amount for the component. Optional."""
+
     max_value: float | None = Field(default=None)
+    """The maximum allowed amount for the component. Optional."""
+
     _cell: Cell = None  # read only property set on registrstion
 
     @model_validator(mode="after")
-    def _ensure_inventory_reference(self: "Component") -> "Component":
+    def _ensure_inventory_reference(self: Component) -> Component:
         item = self.inventory_item
         if item is None and self.inventory_id is None:
             raise ValueError("Component requires either 'inventory_item' or 'inventory_id'.")
@@ -167,38 +267,60 @@ class Component(BaseResource):
 
 
 class DesignState(BaseResource):
-    """The state of a Design"""
+    """The display state of a Design section within a Sheet."""
 
     collapsed: bool | None = False
+    """Whether the Design section is collapsed in the Sheet view. Default is False."""
+
+
+class RowConfig(BaseAlbertModel):
+    """Configuration for an APP or location-type row."""
+
+    option: str | None = Field(default=None)
+    value: str | None = Field(default=None)
+
+
+class RowGroup(BaseAlbertModel):
+    """A named group of rows within a Design."""
+
+    row_id: str = Field(alias="rowId")
+    name: str | None = Field(default=None)
+    child_row_ids: list[str] = Field(default_factory=list)
 
 
 class Design(BaseSessionResource):
-    """A Design in a Sheet. Designs are sheet subsections that are largly abstracted away from the user.
+    """One section of a Sheet, backing the grid for a single [`DesignType`][albert.resources.sheets.DesignType].
 
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the design.
-    design_type : DesignType
-        The type of the design. Allowed values are `apps`, `products`, and `results`.
-    state : DesignState | None
-        The state of the design. Optional. Default is None.
-    grid : pd.DataFrame | None
-        The grid of the design. Optional. Default is None. Read-only.
-    rows : list[Row] | None
-        The rows of the design. Optional. Default is None. Read-only.
-    columns : list[Column] | None
-        The columns of the design. Optional. Default is None. Read-only.
+    A Sheet is made up of stacked sections (Product Design, Process Design,
+    Results, and Apps) and each section is a Design. Designs are largely an
+    internal detail: most work is done through the parent [`Sheet`][albert.resources.sheets.Sheet], which
+    exposes its Designs as [`product_design`][albert.resources.sheets.Sheet.product_design],
+    [`result_design`][albert.resources.sheets.Sheet.result_design], [`app_design`][albert.resources.sheets.Sheet.app_design], and
+    [`process_design`][albert.resources.sheets.Sheet.process_design]. A Design is a live grid element that carries the
+    session and lazily loads its rows, columns, and grid on first access.
+    Methods
+    -------
+    group_rows(name, child_row_ids, ...) -> RowGroup
+        Create a named row group within this design.
+    get_groups(refresh=False) -> list[RowGroup]
+        Get all row groups in this design.
     """
 
-    state: DesignState | None = Field({})
+    state: DesignState | None = Field(default=None)
+    """The display state of the design. Optional. Default is None."""
+
     id: str = Field(alias="albertId")
-    design_type: DesignType = Field(alias="designType")
+    """The Albert ID of the design."""
+
+    design_type: DesignType | str = Field(alias="designType", union_mode="left_to_right")
+    """The section of the Sheet this design backs. See [`DesignType`][albert.resources.sheets.DesignType]. Unknown legacy/tenant values parse as plain strings."""
+
     _grid: pd.DataFrame | None = PrivateAttr(default=None)
-    _rows: list["Row"] | None = PrivateAttr(default=None)
-    _columns: list["Column"] | None = PrivateAttr(default=None)
-    _sheet: Union["Sheet", None] = PrivateAttr(default=None)  # noqa
+    _rows: list[Row] | None = PrivateAttr(default=None)
+    _columns: list[Column] | None = PrivateAttr(default=None)
+    _sheet: Union[Sheet, None] = PrivateAttr(default=None)  # noqa
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
+    _groups_cache: list[RowGroup] | None = PrivateAttr(default=None)
 
     def _grid_to_cell_df(self, *, grid_response):
         items = grid_response.get("Items") or []
@@ -241,13 +363,15 @@ class Design(BaseSessionResource):
 
             records.append(row_cells)
 
-        # Determine the leftmost pinned column
+        # Determine the leftmost pinned column (last pinned col before first unpinned col).
+        # Guard i > 0: if the very first formula is unpinned there are no pinned columns
+        # and Formulas[i - 1] would wrap to the last element (Python negative index).
         for i, fmt in enumerate(grid_response.get("Formulas", [])):
             state = fmt.get("state", {})
             if state.get("pinned") is None:
-                # use the previous formula's colId
-                prev = grid_response["Formulas"][i - 1]
-                self._leftmost_pinned_column = prev["colId"]
+                if i > 0:
+                    prev = grid_response["Formulas"][i - 1]
+                    self._leftmost_pinned_column = prev["colId"]
                 break
 
         return pd.DataFrame.from_records(records, index=index)
@@ -262,10 +386,10 @@ class Design(BaseSessionResource):
             self._grid = self._get_grid()
         return self._grid
 
-    def _get_columns(self, *, grid_response: dict) -> list["Column"]:
+    def _get_columns(self, *, grid_response: dict) -> list[Column]:
         """
-        Normalizes inventory IDs (always prefixed "INV") and—for the
-        "Inventory ID" header—falls back to the row's top-level `id`
+        Normalizes inventory IDs (always prefixed "INV") and, for the
+        "Inventory ID" header, falls back to the row's top-level `id`
         when Values[].id is absent.
 
         Parameters
@@ -336,7 +460,7 @@ class Design(BaseSessionResource):
 
         return cols
 
-    def _get_rows(self, *, grid_response: dict) -> list["Row"]:
+    def _get_rows(self, *, grid_response: dict) -> list[Row]:
         """
         Parse the /grid response into a list of Row models.
 
@@ -379,7 +503,15 @@ class Design(BaseSessionResource):
         return rows
 
     def _get_grid(self):
-        endpoint = f"/api/v3/worksheet/{self.id}/{self.design_type.value}/grid"
+        if self.design_type == DesignType.PROCESS:
+            endpoint = f"/api/v3/designs/{self.id}/grid"
+        else:
+            design_type = (
+                self.design_type.value
+                if isinstance(self.design_type, DesignType)
+                else str(self.design_type)
+            )
+            endpoint = f"/api/v3/worksheet/{self.id}/{design_type}/grid"
         response = self.session.get(endpoint)
 
         resp_json = response.json()
@@ -388,59 +520,270 @@ class Design(BaseSessionResource):
         return self._grid_to_cell_df(grid_response=resp_json)
 
     @property
-    def columns(self) -> list["Column"]:
+    def columns(self) -> list[Column]:
         if not self._columns:
             self._get_grid()
         return self._columns
 
     @property
-    def rows(self) -> list["Row"]:
+    def rows(self) -> list[Row]:
         if not self._rows:
             self._get_grid()
         return self._rows
+
+    def group_rows(
+        self,
+        *,
+        name: str,
+        child_row_ids: list[str],
+        reference_id: str | None = None,
+        position: str = "above",
+    ) -> RowGroup:
+        """Create a row group within this design.
+
+        !!! example
+            ```python
+            design = sheet.product_design
+            group = design.group_rows(name="Solvents", child_row_ids=["ROW2", "ROW3"])
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The name of the row group.
+        child_row_ids : list[str]
+            Row IDs to include in the group. Must contain at least one ID.
+        reference_id : str, optional
+            The reference row ID for insertion. Defaults to the first child row.
+        position : str, optional
+            Position relative to ``reference_id``. One of ``"above"`` or ``"below"``.
+            Default is ``"above"``.
+
+        Returns
+        -------
+        RowGroup
+            The created row group.
+        """
+        if not child_row_ids:
+            raise AlbertException("child_row_ids must include at least one row ID")
+
+        seen: set[str] = set()
+        ids = [x for x in child_row_ids if not (x in seen or seen.add(x))]
+
+        if reference_id and reference_id in ids:
+            ids = [reference_id] + [x for x in ids if x != reference_id]
+        else:
+            reference_id = ids[0]
+
+        payload = {
+            "name": name,
+            "referenceId": reference_id,
+            "position": position,
+            "ChildRows": [{"rowId": rid} for rid in ids],
+        }
+        response = self.session.put(f"/api/v3/worksheet/{self.id}/designs/groups", json=payload)
+        data = response.json()
+        group = RowGroup(
+            rowId=data.get("rowId", reference_id),
+            name=data.get("name", name),
+        )
+        child_rows = data.get("ChildRows") or []
+        group.child_row_ids = [r["rowId"] for r in child_rows if r.get("rowId")]
+        if not group.child_row_ids:
+            group.child_row_ids = ids
+
+        existing = {g.row_id: g for g in (self._groups_cache or [])}
+        existing[group.row_id] = group
+        self._groups_cache = list(existing.values())
+        self._rows = None
+        return group
+
+    def get_groups(self, *, refresh: bool = False) -> list[RowGroup]:
+        """Get all row groups in this design.
+
+        !!! example
+            ```python
+            groups = sheet.product_design.get_groups()
+            for group in groups:
+                print(group.name, group.child_row_ids)
+            ```
+
+        Parameters
+        ----------
+        refresh : bool, optional
+            When True, re-fetches the group list even if cached. Default is False.
+
+        Returns
+        -------
+        list[RowGroup]
+            The row groups in this design.
+        """
+        if self._groups_cache is not None and not refresh:
+            return self._groups_cache
+
+        try:
+            response = self.session.get(f"/api/v3/worksheet/design/{self.id}/rows/sequence")
+        except AlbertHTTPError:
+            self._groups_cache = []
+            return []
+
+        seq = response.json()
+        if not isinstance(seq, list):
+            self._groups_cache = []
+            return []
+
+        groups: list[RowGroup] = []
+        for item in seq:
+            rid = item.get("rowId") or item.get("id")
+            child_dicts = (
+                item.get("children") or item.get("childRows") or item.get("ChildRows") or []
+            )
+            if rid and child_dicts:
+                child_ids = [
+                    (c.get("rowId") or c.get("id"))
+                    for c in child_dicts
+                    if isinstance(c, dict) and (c.get("rowId") or c.get("id"))
+                ]
+                groups.append(RowGroup(rowId=rid, name=item.get("name"), child_row_ids=child_ids))
+
+        self._groups_cache = groups
+        return groups
 
 
 class SheetFormulationRef(BaseAlbertModel):
     """A reference to a formulation in a sheet"""
 
     id: str = Field(description="The Albert ID of the inventory item that is the formulation")
-    name: str = Field(description="The name of the formulation")
+    name: str | None = Field(default=None, description="The name of the formulation")
     hidden: bool = Field(description="Whether the formulation is hidden")
 
 
 class Sheet(BaseSessionResource):  # noqa:F811
-    """A Sheet in Albert
+    """An interactive grid within a Worksheet where formulations are built.
 
-    Attributes
-    ----------
-    id : str
-        The Albert ID of the sheet.
-    name : str
-        The name of the sheet.
-    hidden : bool
-        Whether the sheet is hidden.
-    designs : list[Design]
-        The designs of the sheet.
-    project_id : str
-        The Albert ID of the project the sheet is in.
-    grid : pd.DataFrame | None
-        The grid of the sheet. Optional. Default is None. Read-only.
-    columns : list[Column]
-        The columns of the sheet. Read-only.
-    rows : list[Row]
-        The rows of the sheet. Read-only.
+    A Sheet is one grid inside a Worksheet ([`Worksheet`][albert.resources.worksheets.Worksheet]).
+    It is organized into stacked sections, each a [`Design`][albert.resources.sheets.Design]: Product Design
+    (where formulations are built), Process Design, Results (Property Tasks and
+    their data), and Apps (insights and notes). Access those sections through
+    [`product_design`][albert.resources.sheets.Sheet.product_design], [`process_design`][albert.resources.sheets.Sheet.process_design], [`result_design`][albert.resources.sheets.Sheet.result_design], and
+    [`app_design`][albert.resources.sheets.Sheet.app_design].
 
+    A Sheet Column can be a formulation (the most common case for the SDK), a
+    lookup column that displays an inventory attribute, or an ingredient name.
+    Rows typically represent ingredients (inventory items) and their amounts.
+    Adding a formulation to a Sheet is what registers a Formula inventory item.
+
+    The Sheet is a live grid element that carries the session; its cells, columns,
+    and rows are themselves interactive. Retrieve a Sheet from a Worksheet's
+    [`sheets`][albert.resources.worksheets.Worksheet.sheets], then edit it in place
+    with the methods below.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
+        sheet = worksheet.sheets[0]
+        print(sheet.grid)
+        ```
+    Methods
+    -------
+    rename(new_name) -> Sheet
+        Rename the sheet.
+    add_formulation(formulation_name, components, ...) -> Column
+        Build a formulation column from a list of components (registers a Formula).
+    add_components_to_formulation(components, ...) -> Column
+        Add components to an existing formulation column.
+    add_formulation_columns(formulation_names, ...) -> list[Column]
+        Add one or more empty formulation columns.
+    add_inventory_row(inventory_id, ...) -> Row
+        Add an ingredient (inventory) row.
+    add_blank_row(row_name, ...) -> Row
+        Add a blank row.
+    add_blank_rows(row_names, ...) -> list[Row]
+        Add multiple blank rows in one call.
+    add_lookup_row(name, ...) -> Row
+        Add a lookup row.
+    add_app_row(app_id, name, ...) -> Row
+        Add an application row.
+    add_parameter_group_row(parameter_group_id, ...) -> Row
+        Add a parameter group (PRG) row to Process Design.
+    add_task_row(task_id, ...) -> Row
+        Link a task into the Results section as a task (TAS) row.
+    add_blank_column(name, ...) -> Column
+        Add a blank column.
+    add_columns(names, ...) -> list[Column]
+        Add multiple columns of one type in one call.
+    add_lookup_column(name, ...) -> Column
+        Add a lookup column.
+    add_function_column(name, ...) -> Column
+        Add a function column.
+    add_property_column(name, attribute_id, ...) -> Column
+        Add a property/result column.
+    get_column(...) -> Column
+        Retrieve a column by column ID, inventory ID, or name.
+    update_cells(cells) -> tuple[list[Cell], list[Cell]]
+        Write changed cells back to the sheet.
+    pin_columns(col_ids, side) -> None
+        Pin columns to the left or right edge.
+    unpin_columns(col_ids) -> None
+        Unpin columns.
+    lock_column(...) -> Column
+        Lock or unlock a column.
+    lock_columns(column_ids, locked=True) -> None
+        Lock or unlock multiple columns in one call.
+    rename_columns(columns) -> None
+        Rename multiple columns in one call.
+    hide_column(col_id) -> None
+        Hide a column.
+    hide_columns(column_ids) -> None
+        Hide multiple columns in one call.
+    show_column(col_id) -> None
+        Show a hidden column.
+    show_columns(column_ids) -> None
+        Show multiple hidden columns in one call.
+    set_columns_width(col_ids, width) -> None
+        Set the display width of columns.
+    reorder_columns(column_ids) -> None
+        Reorder all columns left to right by column ID.
+    delete_column(column_id) -> None
+        Delete a column.
+    delete_columns(column_ids) -> None
+        Delete multiple columns in one call.
+    delete_row(row_id, design_id) -> None
+        Delete a row.
+    delete_rows(row_ids, design_id) -> None
+        Delete multiple rows from a Design section in one call.
     """
 
     id: str = Field(alias="albertId")
+    """The Albert ID of the sheet."""
+
     name: str
+    """The name of the sheet."""
+
     formulations: list[SheetFormulationRef] = Field(default_factory=list, alias="Formulas")
+    """References to the formulations present on the sheet."""
+
     hidden: bool
+    """Whether the sheet is hidden."""
+
+    is_column_right: bool | None = Field(default=None, alias="isColumnRight")
+    """When True, copied columns are placed to the right of the source column; when False, to the left."""
+
+    col_size_mode: str | None = Field(default=None, alias="colSizeMode")
+    """Column width sizing mode. Allowed values are ``"minimum"`` and ``"fitToColumn"``. ``None`` resets to the default grid width."""
+
     _app_design: Design = PrivateAttr(default=None)
     _product_design: Design = PrivateAttr(default=None)
     _result_design: Design = PrivateAttr(default=None)
+    _process_design: Design = PrivateAttr(default=None)
     designs: list[Design] = Field(alias="Designs")
+    """The Designs (sections) of the sheet."""
+
     project_id: str = Field(alias="projectId")
+    """The ID of the Project the sheet belongs to (format ``PRO...``)."""
+
     _grid: pd.DataFrame = PrivateAttr(default=None)
     _leftmost_pinned_column: str | None = PrivateAttr(default=None)
 
@@ -463,8 +806,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def result_design(self):
         return self._result_design
 
+    @property
+    def process_design(self):
+        return self._process_design
+
     @model_validator(mode="after")
-    def set_sheet_fields(self: "Sheet") -> "Sheet":
+    def set_sheet_fields(self: Sheet) -> Sheet:
         for _idx, d in enumerate(self.designs):  # Instead of creating a new list
             d._sheet = self  # Set the reference to the sheet
             if d.design_type == DesignType.APPS:
@@ -473,17 +820,21 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 self._product_design = d
             elif d.design_type == DesignType.RESULTS:
                 self._result_design = d
+            elif d.design_type == DesignType.PROCESS:
+                self._process_design = d
         return self
 
     @property
     def grid(self):
         if self._grid is None:
-            grids = [
+            design_order = [
                 self.product_design,
                 self.result_design,
                 self.app_design,
-            ]  # I don't just use the designs property, so I can ensure order.
-            self._grid = pd.concat([x.grid for x in grids])
+                self.process_design,
+            ]
+            frames = [design.grid for design in design_order if design is not None]
+            self._grid = pd.concat(frames) if frames else pd.DataFrame()
         return self._grid
 
     @grid.setter
@@ -503,40 +854,68 @@ class Sheet(BaseSessionResource):  # noqa:F811
     def leftmost_pinned_column(self):
         """The leftmost pinned column in the sheet"""
         if self._leftmost_pinned_column is None:
-            self._leftmost_pinned_column = self.app_design._leftmost_pinned_column
+            # Loading the product design grid populates its _leftmost_pinned_column
+            # as a side effect. Pinned columns are sheet-wide, so the product design
+            # (where formulation columns live) is the natural source.
+            _ = self.product_design.grid
+            self._leftmost_pinned_column = self.product_design._leftmost_pinned_column
 
         return self._leftmost_pinned_column
 
     @property
-    def columns(self) -> list["Column"]:
+    def columns(self) -> list[Column]:
         """The columns of a given sheet"""
         return self.product_design.columns
 
     @property
-    def rows(self) -> list["Row"]:
+    def rows(self) -> list[Row]:
         """The rows of a given sheet"""
         rows = []
         for d in self.designs:
             rows.extend(d.rows)
         return rows
 
+    def _design_lookup(self) -> dict[DesignType, Design]:
+        mapping = {
+            DesignType.APPS: self.app_design,
+            DesignType.PRODUCTS: self.product_design,
+            DesignType.RESULTS: self.result_design,
+            DesignType.PROCESS: self.process_design,
+        }
+        return {
+            design_type: design for design_type, design in mapping.items() if design is not None
+        }
+
+    def _resolve_design(self, design_type: DesignType) -> Design:
+        lookup = self._design_lookup()
+        if design_type not in lookup:
+            raise AlbertException(f"No design found for type '{design_type.value}'")
+        return lookup[design_type]
+
     def _get_design_id(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design.id
-        elif design == DesignType.PRODUCTS:
-            return self.product_design.id
-        elif design == DesignType.RESULTS:
-            return self.result_design.id
+        return self._resolve_design(design).id
 
     def _get_design(self, *, design: DesignType):
-        if design == DesignType.APPS:
-            return self.app_design
-        elif design == DesignType.PRODUCTS:
-            return self.product_design
-        elif design == DesignType.RESULTS:
-            return self.result_design
+        return self._resolve_design(design)
 
     def rename(self, *, new_name: str):
+        """Rename this sheet.
+
+        !!! example
+            ```python
+            sheet.rename(new_name="Final trial")
+            ```
+
+        Parameters
+        ----------
+        new_name : str
+            The new name for the sheet.
+
+        Returns
+        -------
+        Sheet
+            This sheet, with its name updated.
+        """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}"
 
         payload = [{"attribute": "name", "operation": "update", "newValue": new_name}]
@@ -566,10 +945,10 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_dicts.append(this_dict)
         return new_dicts
 
-    def _clear_formulation_from_column(self, *, column: "Column"):
+    def _clear_formulation_from_column(self, *, column: Column):
         cleared_cells = []
         for cell in column.cells:
-            if cell.type == CellType.INVENTORY:
+            if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL:
                 cell_copy = cell.model_copy(update={"value": "", "calculation": ""})
                 cleared_cells.append(cell_copy)
         self.update_cells(cells=cleared_cells)
@@ -583,6 +962,57 @@ class Sheet(BaseSessionResource):  # noqa:F811
         enforce_order: bool = False,
         clear: bool = True,
     ) -> Column:
+        """Build a formulation on this sheet from a list of components.
+
+        This is the primary way to create a formulation. Each component
+        ([`Component`][albert.resources.sheets.Component]) contributes an ingredient and its amount, which are
+        written into a formulation column. Adding rows for any new ingredients and
+        maintaining the column's Total cell are handled automatically. Building a
+        formulation this way is what registers a Formula inventory item
+        ([`InventoryItem`][albert.resources.inventory.InventoryItem]).
+
+        If a column named ``formulation_name`` already exists and ``clear`` is True,
+        that column is emptied and reused; otherwise a new formulation column is added.
+
+        !!! example
+            ```python
+            from albert import Albert
+            from albert.resources.sheets import Component
+            client = Albert()
+            worksheet = client.worksheets.get_by_project_id(project_id="PROA9999999")
+            sheet = worksheet.sheets[0]
+            column = sheet.add_formulation(
+                formulation_name="Formulation A",
+                components=[
+                    Component(inventory_id="INVA9999999", amount=80.0),
+                    Component(inventory_id="INVA9999998", amount=20.0),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        formulation_name : str
+            The name of the formulation, used as the column header.
+        components : list[Component]
+            The ingredients and their amounts to place in the formulation.
+        inventory_id : InventoryId, optional
+            The inventory ID of an existing formulation column to target
+            (format ``INV...``). Used to disambiguate when reusing a column.
+        enforce_order : bool, optional
+            When True, ingredient rows are arranged to match the order of
+            ``components``, adding rows as needed. Default is False.
+        clear : bool, optional
+            When True, an existing column with the same name is cleared and reused
+            rather than adding a duplicate. Default is True.
+
+        Returns
+        -------
+        Column
+            The formulation column that was created or updated.
+        """
+
+        all_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
@@ -590,10 +1020,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
             self._clear_formulation_from_column(column=col)
         else:
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
-        col_id = col.column_id
+        column_id = col.column_id
 
-        all_cells = []
         self.grid = None  # reset the grid for saftey
+        product_rows = list(self.product_design.rows)
+        initial_row_ids = {row.row_id for row in product_rows}
 
         for component in components:
             component_inventory_id = component.inventory_item_id
@@ -601,6 +1032,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 inventory_id=component_inventory_id,
                 existing_cells=all_cells,
                 enforce_order=enforce_order,
+                product_rows=product_rows,
             )
             if row_id is None:
                 raise AlbertException(f"No Component with id {component_inventory_id}")
@@ -609,7 +1041,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             min_value = str(component.min_value) if component.min_value is not None else None
             max_value = str(component.max_value) if component.max_value is not None else None
             this_cell = Cell(
-                column_id=col_id,
+                column_id=column_id,
                 row_id=row_id,
                 value=value,
                 calculation="",
@@ -622,83 +1054,279 @@ class Sheet(BaseSessionResource):  # noqa:F811
             )
             all_cells.append(this_cell)
 
+        new_row_ids = [row.row_id for row in product_rows if row.row_id not in initial_row_ids]
+
+        total_row = next((r for r in product_rows if r.type == CellType.TOTAL), None)
+        if total_row is not None:
+            ingredient_row_ids = [
+                row.row_id
+                for row in product_rows
+                if row.inventory_id is not None and row.row_id != total_row.row_id
+            ]
+            calculation = "=" + "+".join(f"{column_id}{row_id}" for row_id in ingredient_row_ids)
+            total_cell = Cell(
+                column_id=column_id,
+                row_id=total_row.row_id,
+                value=str(sum(component.amount for component in components)),
+                calculation=calculation,
+                type=CellType.TOTAL,
+                design_id=self.product_design.id,
+                name=formulation_name,
+                inventory_id=col.inventory_id,
+            )
+            all_cells.append(total_cell)
+
+            # When new ingredient rows were added to the sheet, every other existing
+            # inventory column's Total cell must also include those rows in its
+            # calculation formula.
+            if new_row_ids:
+                all_ingredient_row_ids = [
+                    row.row_id
+                    for row in product_rows
+                    if row.inventory_id is not None and row.row_id != total_row.row_id
+                ]
+                for other_col in self.columns:
+                    if other_col.column_id == column_id or other_col.type != CellType.INVENTORY:
+                        continue
+                    other_total_cell = next(
+                        (
+                            c
+                            for c in other_col.cells
+                            if isinstance(c, Cell) and c.row_id == total_row.row_id
+                        ),
+                        None,
+                    )
+                    if other_total_cell is None:
+                        continue
+                    new_calculation = "=" + "+".join(
+                        f"{other_col.column_id}{rid}" for rid in all_ingredient_row_ids
+                    )
+                    all_cells.append(
+                        other_total_cell.model_copy(update={"calculation": new_calculation})
+                    )
+
+        # Send ingredient cells first, then Total cells in a separate call.
+        def _is_total_cell(c: Cell) -> bool:
+            return c.row_type == CellType.TOTAL or c.type == CellType.TOTAL
+
+        ingredient_cells = [c for c in all_cells if not _is_total_cell(c)]
+        total_cells = [c for c in all_cells if _is_total_cell(c)]
+
+        if ingredient_cells:
+            self.update_cells(cells=ingredient_cells)
+
+        if total_cells:
+            # grid reset for safety
+            self.grid = None
+            self.update_cells(cells=total_cells)
+
+        return self.get_column(column_id=column_id)
+
+    @validate_call
+    def add_components_to_formulation(
+        self,
+        *,
+        formulation_name: str | None = None,
+        column_id: str | None = None,
+        inventory_id: InventoryId | None = None,
+        components: list[Component],
+        enforce_order: bool = False,
+    ) -> Column:
+        """Add components to an existing formulation column without clearing other cells.
+
+        Exactly one of ``column_id``, ``inventory_id``, or ``formulation_name`` must be provided.
+
+        !!! example
+            ```python
+            from albert.resources.sheets import Component
+            column = sheet.add_components_to_formulation(
+                formulation_name="Formulation A",
+                components=[Component(inventory_id="INVA9999997", amount=5.0)],
+            )
+            ```
+
+        Parameters
+        ----------
+        formulation_name : str, optional
+            The name of the formulation column.
+        column_id : str, optional
+            The column ID of the formulation column.
+        inventory_id : str, optional
+            The inventory ID of the formulation column.
+        components : list[Component]
+            The components to append.
+        enforce_order : bool, optional
+            When True, rows are inserted in the order of ``components``. Default is False.
+
+        Returns
+        -------
+        Column
+            The updated formulation column.
+        """
+        col = self.get_column(
+            column_id=column_id, inventory_id=inventory_id, column_name=formulation_name
+        )
+        col_id = col.column_id
+        self.grid = None
+
+        product_rows = list(self.product_design.rows)
+        all_cells: list[Cell] = []
+        for component in components:
+            inv_item = component.inventory_item
+            item_id: InventoryId = inv_item.id if inv_item is not None else component.inventory_id
+            row_id = self._get_row_id_for_component(
+                inventory_id=item_id,
+                existing_cells=all_cells,
+                enforce_order=enforce_order,
+                product_rows=product_rows,
+            )
+            if row_id is None:
+                raise AlbertException(f"No row found for inventory ID {item_id}")
+
+            all_cells.append(
+                Cell(
+                    column_id=col_id,
+                    row_id=row_id,
+                    value=str(component.amount),
+                    calculation="",
+                    type=CellType.INVENTORY,
+                    design_id=self.product_design.id,
+                    name=col.name or formulation_name or "",
+                    inventory_id=col.inventory_id,
+                    min_value=str(component.min_value)
+                    if component.min_value is not None
+                    else None,
+                    max_value=str(component.max_value)
+                    if component.max_value is not None
+                    else None,
+                )
+            )
+
         self.update_cells(cells=all_cells)
         return self.get_column(column_id=col_id)
 
     def _get_row_id_for_component(
-        self, *, inventory_id: InventoryId, existing_cells, enforce_order
+        self,
+        *,
+        inventory_id: InventoryId,
+        existing_cells,
+        enforce_order,
+        product_rows: list[Row],
     ):
-        self.grid = None
-
-        # within a sheet, the "INV" prefix is dropped
         sheet_inv_id = inventory_id
-        matching_rows = [x for x in self.product_design.rows if x.inventory_id == sheet_inv_id]
+        matching_rows = [row for row in product_rows if row.inventory_id == sheet_inv_id]
 
-        used_row_ids = [x.row_id for x in existing_cells]
+        used_row_ids = [cell.row_id for cell in existing_cells]
+
+        existing_inv_order: list[str] = []
+        index_last_row = 0
         if enforce_order:
             existing_inv_order = [
-                x.row_id for x in self.product_design.rows if x.inventory_id is not None
+                row.row_id for row in product_rows if row.inventory_id is not None
             ]
-            index_last_row = 0
             for row_id in used_row_ids:
                 if row_id in existing_inv_order:
                     this_row_index = existing_inv_order.index(row_id)
                     if this_row_index > index_last_row:
                         index_last_row = this_row_index
-        for r in matching_rows:
-            if r.row_id not in used_row_ids:
-                if enforce_order:
-                    if existing_inv_order.index(r.row_id) >= index_last_row:
-                        return r.row_id
-                    else:
-                        continue
-                else:
-                    return r.row_id
-        # Otherwise I need to add a new row
+
+        for row in matching_rows:
+            if row.row_id in used_row_ids:
+                continue
+            if not enforce_order:
+                return row.row_id
+
+            if row.row_id in existing_inv_order:
+                if existing_inv_order.index(row.row_id) >= index_last_row:
+                    return row.row_id
+                continue
+
         if enforce_order:
-            return self.add_inventory_row(
-                inventory_id=inventory_id,
-                position={
-                    "reference_id": existing_inv_order[index_last_row],
-                    "position": "below",
-                },
-            ).row_id
-        else:
-            return self.add_inventory_row(inventory_id=inventory_id).row_id
+            if existing_inv_order:
+                reference_row_id = existing_inv_order[index_last_row]
+                new_row = self.add_inventory_row(
+                    inventory_id=inventory_id,
+                    position={"reference_id": reference_row_id, "position": "below"},
+                )
+
+                insert_position = None
+                for idx, row in enumerate(product_rows):
+                    if row.row_id == reference_row_id:
+                        insert_position = idx + 1
+                        break
+                if insert_position is None:
+                    product_rows.append(new_row)
+                else:
+                    product_rows.insert(insert_position, new_row)
+                return new_row.row_id
+
+            new_row = self.add_inventory_row(inventory_id=inventory_id)
+            product_rows.append(new_row)
+            return new_row.row_id
+
+        new_row = self.add_inventory_row(inventory_id=inventory_id)
+        product_rows.append(new_row)
+        return new_row.row_id
 
     def add_formulation_columns(
         self,
         *,
         formulation_names: list[str],
         starting_position: dict | None = None,
-    ) -> list["Column"]:
-        if starting_position is None:
-            starting_position = {
-                "reference_id": self.leftmost_pinned_column,
-                "position": "rightOf",
-            }
-        sheet_id = self.id
+    ) -> list[Column]:
+        """Add one or more empty formulation columns to this sheet.
 
-        endpoint = f"/api/v3/worksheet/sheet/{sheet_id}/columns"
+        Creates the formulation columns without populating any ingredient amounts.
+        To build a formulation and fill in its components in one step, use
+        [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] instead.
+
+        !!! example
+            ```python
+            columns = sheet.add_formulation_columns(
+                formulation_names=["Formulation A", "Formulation B"]
+            )
+            ```
+
+        Parameters
+        ----------
+        formulation_names : list[str]
+            The names of the formulation columns to add, used as column headers.
+        starting_position : dict, optional
+            Where to insert the new columns, as a dict with ``reference_id`` (a
+            column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
+            omitted, inserts ``RIGHT_OF`` the last product-design column, matching
+            [`add_blank_column`][albert.resources.sheets.Sheet.add_blank_column] and
+            other ``add_*_column`` helpers.
+
+        Returns
+        -------
+        list[Column]
+            The created formulation columns, in the order requested.
+        """
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
 
         # In case a user supplied a single formulation name instead of a list
         formulation_names = (
             formulation_names if isinstance(formulation_names, list) else [formulation_names]
         )
 
+        if starting_position is None:
+            starting_position = {
+                "reference_id": (
+                    self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                ),
+                "position": ColumnPosition.RIGHT_OF.value,
+            }
+
         payload = []
-        for formulation_name in (
-            formulation_names
-        ):  # IS there a limit to the number I can add at once? Need to check this.
-            # define payload for this item
-            payload.append(
-                {
-                    "type": "INV",
-                    "name": formulation_name,
-                    "referenceId": starting_position["reference_id"],  # initially defined column
-                    "position": starting_position["position"],
-                }
-            )
+        for formulation_name in formulation_names:
+            entry = {
+                "type": "INV",
+                "name": formulation_name,
+                "referenceId": starting_position["reference_id"],
+                "position": starting_position["position"],
+            }
+            payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
         self.grid = None
@@ -709,11 +1337,46 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self,
         *,
         row_name: str,
-        design: DesignType | str | None = DesignType.PRODUCTS,
+        design: DesignType = DesignType.PRODUCTS,
         position: dict | None = None,
     ):
+        """Add a blank (BLK) row to a Design section of this sheet.
+
+        !!! example
+            ```python
+            row = sheet.add_blank_row(row_name="Notes")
+            ```
+
+        Parameters
+        ----------
+        row_name : str
+            The display name of the new row.
+        design : DesignType, optional
+            Which Design section to add the row to. Default is ``DesignType.PRODUCTS``.
+            Rows cannot be added to the Results design.
+        position : dict, optional
+            Where to insert the row, as a dict with ``reference_id`` (a row ID) and
+            ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+
+        Returns
+        -------
+        Row
+            The created row.
+
+        Raises
+        ------
+        AlbertException
+            If ``design`` is ``DesignType.RESULTS`` or ``DesignType.PROCESS``.
+            Process Design only accepts parameter-group (PRG) rows: use
+            [`add_parameter_group_row`][albert.resources.sheets.Sheet.add_parameter_group_row].
+        """
         if design == DesignType.RESULTS:
             raise AlbertException("You cannot add rows to the results design")
+        if design == DesignType.PROCESS or design == DesignType.PROCESS.value:
+            raise AlbertException(
+                "Blank rows cannot be added to Process Design; "
+                "use add_parameter_group_row to attach a parameter group"
+            )
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
@@ -740,12 +1403,115 @@ class Sheet(BaseSessionResource):  # noqa:F811
             sheet=self,
         )
 
+    @validate_call
+    def add_blank_rows(
+        self,
+        *,
+        row_names: list[str],
+        design: DesignType = DesignType.PRODUCTS,
+        position: dict | None = None,
+    ) -> list[Row]:
+        """Add multiple blank (BLK) rows to a Design section of this sheet.
+
+        !!! example
+            ```python
+            rows = sheet.add_blank_rows(row_names=["Notes", "Observations"])
+            ```
+
+        Parameters
+        ----------
+        row_names : list[str]
+            The display names of the new rows. Rows are created in the order
+            given.
+        design : DesignType, optional
+            Which Design section to add the rows to. Default is
+            ``DesignType.PRODUCTS``. Rows cannot be added to the Results design.
+        position : dict, optional
+            Where to insert the rows, as a dict with ``reference_id`` (a row ID)
+            and ``position`` (``"above"`` or ``"below"``). Defaults to above
+            ``"ROW1"``.
+
+        Returns
+        -------
+        list[Row]
+            The created rows, in the order requested.
+
+        Raises
+        ------
+        AlbertException
+            If ``design`` is ``DesignType.RESULTS`` or ``DesignType.PROCESS``.
+            Process Design only accepts parameter-group (PRG) rows: use
+            [`add_parameter_group_row`][albert.resources.sheets.Sheet.add_parameter_group_row].
+        """
+        if design == DesignType.RESULTS:
+            raise AlbertException("You cannot add rows to the results design")
+        if design == DesignType.PROCESS or design == DesignType.PROCESS.value:
+            raise AlbertException(
+                "Blank rows cannot be added to Process Design; "
+                "use add_parameter_group_row to attach a parameter group"
+            )
+        if position is None:
+            position = {"reference_id": "ROW1", "position": "above"}
+        endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
+
+        rows = []
+        # The platform accepts at most 24 rows per call.
+        for i in range(0, len(row_names), 24):
+            batch = row_names[i : i + 24]
+            payload = [
+                {
+                    "type": "BLK",
+                    "name": row_name,
+                    "referenceId": position["reference_id"],
+                    "position": position["position"],
+                }
+                for row_name in batch
+            ]
+            response = self.session.post(endpoint, json=payload)
+            rows.extend(
+                Row(
+                    rowId=row_dict["rowId"],
+                    type=row_dict["type"],
+                    session=self.session,
+                    design=self._get_design(design=design),
+                    name=row_dict["name"],
+                    sheet=self,
+                )
+                for row_dict in response.json()
+            )
+
+        self.grid = None
+        return rows
+
     def add_inventory_row(
         self,
         *,
         inventory_id: str,
         position: dict | None = None,
     ):
+        """Add an ingredient (inventory) row to the Product Design.
+
+        The row represents an inventory item that can then carry amounts in each
+        formulation column. The ``INV`` prefix is added to ``inventory_id`` if absent.
+
+        !!! example
+            ```python
+            row = sheet.add_inventory_row(inventory_id="INVA9999999")
+            ```
+
+        Parameters
+        ----------
+        inventory_id : str
+            The inventory ID of the item to add as a row (format ``INV...``).
+        position : dict, optional
+            Where to insert the row, as a dict with ``reference_id`` (a row ID) and
+            ``position`` (``"above"`` or ``"below"``). Defaults to above ``"ROW1"``.
+
+        Returns
+        -------
+        Row
+            The created inventory row.
+        """
         if position is None:
             position = {"reference_id": "ROW1", "position": "above"}
         design_id = self.product_design.id
@@ -774,6 +1540,306 @@ class Sheet(BaseSessionResource):  # noqa:F811
             manufacturer=row_dict["manufacturer"],
         )
 
+    @validate_call
+    def add_lookup_row(
+        self,
+        *,
+        name: str,
+        design: DesignType | str | None = DesignType.APPS,
+        reference_id: str = "ROW1",
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Add a lookup (LKP) row to a design.
+
+        !!! example
+            ```python
+            row = sheet.add_lookup_row(name="Density")
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The display name of the new row.
+        design : DesignType or str, optional
+            Which design to add the row to. Default is ``DesignType.APPS``.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to ``"ROW1"``.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``.
+
+        Returns
+        -------
+        Row
+            The created row.
+        """
+        if design == DesignType.RESULTS:
+            raise AlbertException("Cannot add rows to the results design")
+        design_obj = self._get_design(design=design)
+        payload = [
+            {
+                "type": "LKP",
+                "name": name,
+                "referenceId": reference_id,
+                "position": position.value,
+            }
+        ]
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=payload
+        )
+        self.grid = None
+        data = response.json()[0] if isinstance(response.json(), list) else response.json()
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("lableName") or data.get("name") or name,
+            inventory_id=data.get("id"),
+            manufacturer=data.get("manufacturer"),
+        )
+
+    @validate_call
+    def add_app_row(
+        self,
+        *,
+        app_id: str,
+        name: str,
+        config: RowConfig | None = None,
+        design: DesignType | str | None = DesignType.APPS,
+        reference_id: str = "ROW1",
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Add an application (APP) row to a design.
+
+        !!! example
+            ```python
+            row = sheet.add_app_row(app_id="APP1", name="Cost insight")
+            ```
+
+        Parameters
+        ----------
+        app_id : str
+            The ID of the application. The ``APP`` prefix is added automatically if absent.
+        name : str
+            The display name of the row.
+        config : RowConfig, optional
+            Row configuration (``option`` and ``value``). Used to scope the app
+            to a location or region.
+        design : DesignType or str, optional
+            Which design to add the row to. Default is ``DesignType.APPS``.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to ``"ROW1"``.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``.
+
+        Returns
+        -------
+        Row
+            The created row.
+        """
+        if design == DesignType.RESULTS:
+            raise AlbertException("Cannot add rows to the results design")
+        design_obj = self._get_design(design=design)
+        app_id = app_id if app_id.startswith("APP") else f"APP{app_id}"
+
+        payload: dict = {
+            "type": "APP",
+            "id": app_id,
+            "name": name,
+            "referenceId": reference_id,
+            "position": position.value,
+        }
+        if config is not None:
+            payload["config"] = config.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload]
+        )
+        self.grid = None
+        data = response.json()[0] if isinstance(response.json(), list) else response.json()
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("name") or name,
+            inventory_id=data.get("id"),
+            manufacturer=data.get("manufacturer"),
+            config=data.get("config"),
+        )
+
+    @validate_call
+    def add_parameter_group_row(
+        self,
+        *,
+        parameter_group_id: ParameterGroupId,
+        reference_id: str | None = None,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Add a parameter group (PRG) row to this sheet's Process Design.
+
+        The platform expands the PRG into one PRM row per parameter in the group.
+
+        !!! example
+            ```python
+            row = sheet.add_parameter_group_row(parameter_group_id="PRG9999999")
+            ```
+
+        Parameters
+        ----------
+        parameter_group_id : ParameterGroupId
+            The Parameter Group ID to add (format ``PRG...``).
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to the first Process Design
+            row when one exists. Omit (or leave ``None``) when Process Design is
+            empty (the first PRG does not need a reference row).
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``. Ignored when Process Design has no rows and
+            ``reference_id`` is omitted.
+
+        Returns
+        -------
+        Row
+            The created PRG row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Process Design section, or the response has no rows.
+        """
+        design_obj = self.process_design
+        if design_obj is None:
+            raise AlbertException(
+                "Sheet has no Process Design section; cannot add a parameter group row"
+            )
+        payload_item: dict[str, str] = {
+            "type": CellType.PRG.value,
+            "id": parameter_group_id,
+        }
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            # Empty Process Design accepts a PRG with no referenceId/position.
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
+
+        payload = [payload_item]
+        response = self.session.post(f"/api/v3/designs/{design_obj.id}/rows", json=payload)
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding parameter group '{parameter_group_id}' "
+                f"to Process Design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.PRG.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("labelName") or data.get("name"),
+            inventory_id=data.get("id"),
+        )
+
+    @validate_call
+    def add_task_row(
+        self,
+        *,
+        task_id: TaskId,
+        name: str | None = None,
+        reference_id: str | None = None,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Link a task into this sheet's Results section as a task (TAS) row.
+
+        Creating a task does not place it in the worksheet's Results grid — the
+        platform only adds the TAS row when the task is created from the worksheet
+        UI. Call this after creating a property task programmatically so the task
+        (and its results) shows up in the sheet.
+
+        !!! example
+            ```python
+            row = sheet.add_task_row(task_id="TASPT9999999")
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Task ID to link (format ``TAS...``).
+        name : str, optional
+            The display name of the row. Defaults to the task's current name,
+            read from the platform.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to the first Results
+            row when one exists. Omit (or leave ``None``) when the Results
+            section has no rows.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``. Ignored when the Results section has no rows
+            and ``reference_id`` is omitted.
+
+        Returns
+        -------
+        Row
+            The created task row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Results section, or the response has no rows.
+        """
+        design_obj = self.result_design
+        if design_obj is None:
+            raise AlbertException("Sheet has no Results section; cannot add a task row")
+        if name is None:
+            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            name = task.get("name") or task_id
+        payload_item: dict[str, str] = {
+            "type": CellType.TAS.value,
+            "id": task_id,
+            "name": name,
+        }
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
+
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload_item]
+        )
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding task '{task_id}' to Results design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.TAS.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("name") or name,
+            inventory_id=data.get("id"),
+        )
+
     def _filter_cells(self, *, cells: list[Cell], response_dict: dict):
         updated = []
         failed = []
@@ -788,69 +1854,88 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return (updated, failed)
 
     def _get_current_cell(self, *, cell: Cell) -> Cell:
-        filtered_columns = [
-            col for col in self.grid.columns if col.startswith(cell.column_id + "#")
-        ]
-        filtered_rows = [
-            idx for idx in self.grid.index if idx.startswith(cell.design_id + "#" + cell.row_id)
-        ]
+        def _matches_column(column_label: str) -> bool:
+            col_parts = column_label.split("#", 1)
+            return col_parts[0] == cell.column_id
 
-        first_value = None
+        def _matches_row(index_label: str) -> bool:
+            row_parts = index_label.split("#", 2)
+            if len(row_parts) < 2:
+                return False
+            return row_parts[0] == cell.design_id and row_parts[1] == cell.row_id
+
+        filtered_columns = [col for col in self.grid.columns if _matches_column(col)]
+        filtered_rows = [idx for idx in self.grid.index if _matches_row(idx)]
+
         for row in filtered_rows:
             for col in filtered_columns:
-                first_value = self.grid.loc[row, col]
-                return first_value
-        return first_value
+                # grid.loc may return numpy.NaN for missing cells
+                value = self.grid.loc[row, col]
+                if isinstance(value, Cell):
+                    return value
+        return None
 
-    def _generate_attribute_change(self, *, new_value, old_value, api_attribute_name):
+    def _generate_attribute_change(
+        self,
+        *,
+        new_value: CellAttributeValue,
+        old_value: CellAttributeValue,
+        api_attribute_name: str,
+    ) -> PatchDatum | None:
         """Generates a change dictionary for a single attribute."""
         if new_value == old_value:
             return None
 
         if new_value is None or new_value in ("", {}):
-            return {
-                "operation": "delete",
-                "attribute": api_attribute_name,
-                "oldValue": old_value,
-            }
+            return PatchDatum(
+                operation="delete",
+                attribute=api_attribute_name,
+                old_value=old_value,
+            )
         if old_value is None or old_value in ("", {}):
-            return {
-                "operation": "add",
-                "attribute": api_attribute_name,
-                "newValue": new_value,
-            }
-        return {
-            "operation": "update",
-            "attribute": api_attribute_name,
-            "oldValue": old_value,
-            "newValue": new_value,
-        }
+            return PatchDatum(
+                operation="add",
+                attribute=api_attribute_name,
+                new_value=new_value,
+            )
+        return PatchDatum(
+            operation="update",
+            attribute=api_attribute_name,
+            old_value=old_value,
+            new_value=new_value,
+        )
 
-    def _get_cell_changes(self, *, cell: Cell) -> dict:
+    def _get_cell_changes(self, *, cell: Cell) -> CellChangePayload | None:
         current_cell = self._get_current_cell(cell=cell)
         if current_cell is None:
-            return None
+            # New cell not yet in grid; blank baseline generates "add" operations.
+            current_cell = Cell(
+                column_id=cell.column_id,
+                row_id=cell.row_id,
+                design_id=cell.design_id,
+                type=cell.type,
+            )
 
-        data = []
+        data: list[PatchDatum] = []
 
         # Handle format change
         if cell.format != current_cell.format:
             if cell.format is None or cell.format == {}:
                 data.append(
-                    {
-                        "operation": "delete",
-                        "attribute": "cellFormat",
-                        "oldValue": current_cell.format,
-                    }
+                    PatchDatum(
+                        operation="delete",
+                        attribute="cellFormat",
+                        old_value=current_cell.format,
+                    )
                 )
             else:
                 data.append(
-                    {
-                        "operation": "update",
-                        "attribute": "cellFormat",
-                        "oldValue": current_cell.format,
-                        "newValue": cell.format,
-                    }
+                    PatchDatum(
+                        operation="update",
+                        attribute="cellFormat",
+                        old_value=current_cell.format,
+                        new_value=cell.format,
+                    )
                 )
 
         # Handle calculation change
@@ -869,7 +1954,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
             ("min_value", "minValue"),
             ("max_value", "maxValue"),
         ]
-        if cell.calculation is None or cell.calculation == "":
+        if cell.calculation is None or cell.calculation == "" or cell.row_type == CellType.TOTAL:
             for attr, api_attr in value_attributes:
                 if not self._compare_cell_attributes(
                     cell=cell, existing_cell=current_cell, attribute=attr
@@ -909,9 +1994,38 @@ class Sheet(BaseSessionResource):  # noqa:F811
         return False
 
     def update_cells(self, *, cells: list[Cell]):
-        request_path_dict = {}
-        updated = []
-        failed = []
+        """Write changed cells back to the sheet.
+
+        Compares each cell against the current grid and sends only the changed
+        attributes (value, calculation, formatting, bounds). Higher-level methods
+        such as [`add_formulation`][albert.resources.sheets.Sheet.add_formulation] and [`recolor_cells`][albert.resources.sheets.Column.recolor_cells] call this
+        for you; use it directly when editing cells obtained from the grid.
+
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            column = sheet.get_column(column_name="Formulation A")
+            recolored = [c.model_copy(update={"format": {"bgColor": CellColor.YELLOW.value}})
+                         for c in column.cells]
+            updated, failed = sheet.update_cells(cells=recolored)
+            ```
+
+        Parameters
+        ----------
+        cells : list[Cell]
+            The cells to update. Typically copies of existing cells with modified
+            values or formatting.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair: the cells that were successfully updated
+            and the cells that failed to update.
+        """
+
+        request_path_dict: dict[str, list[Cell]] = {}
+        updated: list[Cell] = []
+        failed: list[Cell] = []
         # sort by design ID
         for c in cells:
             if c.design_id not in request_path_dict:
@@ -920,84 +2034,759 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 request_path_dict[c.design_id].append(c)
 
         for design_id, cell_list in request_path_dict.items():
-            payloads = []
+            payload_entries: list[tuple[CellChangePayload, Cell]] = []
             for cell in cell_list:
                 change_dict = self._get_cell_changes(cell=cell)
-                if change_dict is not None:
-                    # For non-calculation cells, only one change is allowed at a time.
-                    is_calculation_cell = cell.calculation is not None and cell.calculation != ""
-                    max_items = 2 if is_calculation_cell else 1
+                if change_dict is None:
+                    continue
 
-                    if len(change_dict["data"]) > max_items:
-                        for item in change_dict["data"]:
-                            payloads.append(
-                                {
-                                    "Id": change_dict["Id"],
-                                    "data": [item],
-                                }
-                            )
-                    else:
-                        payloads.append(change_dict)
+                is_calculation_cell = cell.calculation is not None and cell.calculation != ""
+                max_items = 2 if is_calculation_cell else 1
 
-            if not payloads:
+                if len(change_dict["data"]) > max_items:
+                    for item in change_dict["data"]:
+                        single_change: CellChangePayload = {
+                            "Id": change_dict["Id"],
+                            "data": [item],
+                        }
+                        payload_entries.append((single_change, cell))
+                else:
+                    payload_entries.append((change_dict, cell))
+
+            if not payload_entries:
                 continue
 
             this_url = f"/api/v3/worksheet/{design_id}/values"
-            for payload in payloads:
-                response = self.session.patch(
-                    this_url,
-                    json=[payload],  # The API expects a list of changes
-                )
+            pending_by_cell: dict[tuple[str, str], list[tuple[CellChangePayload, Cell]]] = {}
+            for payload, cell in payload_entries:
+                key = (payload["Id"]["rowId"], payload["Id"]["colId"])
+                pending_by_cell.setdefault(key, []).append((payload, cell))
 
-                original_cell = next(
-                    (
-                        c
-                        for c in cell_list
-                        if c.row_id == payload["Id"]["rowId"]
-                        and c.column_id == payload["Id"]["colId"]
-                    ),
-                    None,
-                )
+            ordered_keys = list(pending_by_cell.keys())
+
+            def _unique_cells(cells: list[Cell]) -> list[Cell]:
+                seen: set[tuple[str, str, str]] = set()
+                result: list[Cell] = []
+                for c in cells:
+                    key = (c.design_id, c.row_id, c.column_id)
+                    if key not in seen:
+                        seen.add(key)
+                        result.append(c)
+                return result
+
+            batch_index = 0
+            while True:
+                batch_payloads: list[CellChangePayload] = []
+                batch_cells: list[Cell] = []
+                for key in ordered_keys:
+                    queue = pending_by_cell.get(key)
+                    if queue:
+                        payload, cell = queue.pop(0)
+                        batch_payloads.append(payload)
+                        batch_cells.append(cell)
+                if not batch_payloads:
+                    break
+
+                payload_body = [
+                    {
+                        "Id": payload["Id"],
+                        "data": [datum.model_dump(by_alias=True) for datum in payload["data"]],
+                    }
+                    for payload in batch_payloads
+                ]
+                response = self.session.patch(this_url, json=payload_body)
+                target_cells = _unique_cells(batch_cells)
 
                 if response.status_code == 204:
-                    if original_cell and original_cell not in updated:
-                        updated.append(original_cell)
+                    for c in target_cells:
+                        if c not in updated:
+                            updated.append(c)
                 elif response.status_code == 206:
                     cell_results = self._filter_cells(
-                        cells=[original_cell], response_dict=response.json()
+                        cells=target_cells, response_dict=response.json()
                     )
-                    updated.extend(cell_results[0])
-                    failed.extend(cell_results[1])
+                    for c in cell_results[0]:
+                        if c not in updated:
+                            updated.append(c)
+                    for c in cell_results[1]:
+                        if c not in failed:
+                            failed.append(c)
                 else:
-                    if original_cell and original_cell not in failed:
-                        failed.append(original_cell)
+                    for c in target_cells:
+                        if c not in failed:
+                            failed.append(c)
+
+                batch_index += 1
 
         # reset the in-memory grid after updates
         self.grid = None
         return (updated, failed)
 
-    def add_blank_column(self, *, name: str, position: dict = None):
-        if position is None:
-            position = {"reference_id": self.leftmost_pinned_column, "position": "rightOf"}
-        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
+    def _add_column(
+        self,
+        *,
+        type: str,
+        name: str,
+        reference_id: str | None,
+        position: ColumnPosition,
+        extra: dict | None = None,
+    ) -> Column:
+        if reference_id is None:
+            reference_id = (
+                self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+            )
+        payload: dict = {
+            "type": type,
+            "name": name,
+            "referenceId": reference_id,
+            "position": position.value if isinstance(position, ColumnPosition) else position,
+            **(extra or {}),
+        }
+        response = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=[payload])
+        data = response.json()[0]
+        data["sheet"] = self
+        data["session"] = self.session
+        self.grid = None
+        return Column(**data)
+
+    @validate_call
+    def add_blank_column(
+        self,
+        *,
+        name: str,
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> Column:
+        """Add a blank (BLK) column to this sheet.
+
+        !!! example
+            ```python
+            column = sheet.add_blank_column(name="Notes")
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The display name of the new column.
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        Column
+            The created column.
+        """
+        return self._add_column(
+            type="BLK", name=name, reference_id=reference_id, position=position
+        )
+
+    @validate_call
+    def add_columns(
+        self,
+        *,
+        names: list[str],
+        type: Literal["BLK", "LKP", "FNC"] = "BLK",
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> list[Column]:
+        """Add multiple columns of one type in a single call.
+
+        !!! example
+            ```python
+            columns = sheet.add_columns(names=["Notes", "Observations"])
+            ```
+
+        Parameters
+        ----------
+        names : list[str]
+            The display names of the new columns, in left-to-right order.
+        type : str, optional
+            The column type: ``"BLK"`` (blank, default), ``"LKP"`` (lookup), or
+            ``"FNC"`` (function). For property columns use
+            [`add_property_column`][albert.resources.sheets.Sheet.add_property_column].
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in
+            the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        list[Column]
+            The created columns, in the order requested.
+        """
+        if not names:
+            return []
+        if reference_id is None:
+            reference_id = (
+                self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+            )
+        position_value = position.value if isinstance(position, ColumnPosition) else position
+
+        # When inserting RIGHT_OF a reference column in bulk, the backend iteratively
+        # inserts each element immediately right of reference_id, which would reverse
+        # their relative left-to-right order if sent in forward order. Reversing the
+        # payload when position is RIGHT_OF ensures each subsequent column is placed
+        # immediately to the right of the reference column, leaving the batch in the
+        # caller's requested left-to-right order on the sheet.
+        ordered_names = (
+            list(reversed(names))
+            if position_value == ColumnPosition.RIGHT_OF.value
+            else list(names)
+        )
         payload = [
-            {
-                "type": "BLK",
-                "name": name,
-                "referenceId": position["reference_id"],
-                "position": position["position"],
-            }
+            {"type": type, "name": name, "referenceId": reference_id, "position": position_value}
+            for name in ordered_names
         ]
+        response = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+        cols_by_id = {}
+        for data in response.json():
+            data["sheet"] = self
+            data["session"] = self.session
+            col = Column(**data)
+            cols_by_id[col.column_id] = col
 
-        response = self.session.post(endpoint, json=payload)
+        # Return columns in the requested caller order (matching `names`)
+        ordered_cols = []
+        for name in names:
+            for col in list(cols_by_id.values()):
+                if col.name == name:
+                    ordered_cols.append(col)
+                    cols_by_id.pop(col.column_id)
+                    break
+        # Append any remainder just in case name matching missed anything
+        ordered_cols.extend(cols_by_id.values())
+        return ordered_cols
 
-        data = response.json()
-        data[0]["sheet"] = self
-        data[0]["session"] = self.session
-        self.grid = None  # reset the known grid. We could probably make this nicer later.
-        return Column(**data[0])
+    @validate_call
+    def add_lookup_column(
+        self,
+        *,
+        name: str,
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> Column:
+        """Add a lookup (LKP) column to this sheet.
+
+        !!! example
+            ```python
+            column = sheet.add_lookup_column(name="CAS Number")
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The display name of the new column.
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        Column
+            The created column.
+        """
+        return self._add_column(
+            type="LKP", name=name, reference_id=reference_id, position=position
+        )
+
+    @validate_call
+    def add_function_column(
+        self,
+        *,
+        name: str,
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> Column:
+        """Add a function (FNC) column to this sheet.
+
+        !!! example
+            ```python
+            column = sheet.add_function_column(name="Cost per kg")
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The display name of the new column.
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        Column
+            The created column.
+        """
+        return self._add_column(
+            type="FNC", name=name, reference_id=reference_id, position=position
+        )
+
+    @validate_call
+    def add_property_column(
+        self,
+        *,
+        name: str,
+        attribute_id: str,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> Column:
+        """Add a property/result (RSL) column to this sheet.
+
+        Exactly one of ``data_column_id`` or ``data_column_name`` must be provided;
+        the other is fetched automatically.
+
+        !!! example
+            ```python
+            column = sheet.add_property_column(
+                name="Viscosity",
+                attribute_id="ATR2020",
+                data_column_name="Viscosity",
+            )
+            ```
+
+        Parameters
+        ----------
+        name : str
+            The display name of the new column.
+        attribute_id : str
+            The ID of the attribute (e.g. ``"ATR2020"``).
+        data_column_id : DataColumnId, optional
+            The data column ID (e.g. ``"DAC2900"``). Fetched from the API if omitted.
+        data_column_name : str, optional
+            The data column name. Fetched from the API if omitted.
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        Column
+            The created column.
+        """
+        if not data_column_id and not data_column_name:
+            raise AlbertException("Provide at least one of data_column_id or data_column_name.")
+        if not data_column_id or not data_column_name:
+            from albert.collections.data_columns import DataColumnCollection
+
+            dc_collection = DataColumnCollection(session=self.session)
+            if data_column_id and not data_column_name:
+                dc = dc_collection.get_by_id(id=data_column_id)
+                data_column_name = dc.name
+            else:
+                dc = dc_collection.get_by_name(name=data_column_name)
+                if dc is None:
+                    raise AlbertException(f"No data column found with name '{data_column_name}'.")
+                data_column_id = dc.id
+
+        return self._add_column(
+            type="RSL",
+            name=name,
+            reference_id=reference_id,
+            position=position,
+            extra={
+                "id": attribute_id,
+                "datacolumnId": data_column_id,
+                "datacolumnName": data_column_name,
+            },
+        )
+
+    def _move_column(
+        self,
+        *,
+        source_id: str,
+        reference_id: str,
+        position: ColumnPosition,
+    ) -> None:
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "sequence",
+                    "sourceId": source_id,
+                    "referenceId": reference_id,
+                    "position": (
+                        position.value if isinstance(position, ColumnPosition) else position
+                    ),
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+
+    @validate_call
+    def reorder_columns(self, *, column_ids: list[str]) -> None:
+        """Reorder all columns on this sheet from left to right.
+
+        Provide every column ID on the sheet exactly once, in the desired display
+        order. The first ID is placed at the left edge; the last at the right.
+
+        !!! example
+            ```python
+            column_ids = [col.column_id for col in sheet.columns]
+            column_ids = [column_ids[2], column_ids[0], column_ids[1], *column_ids[3:]]
+            sheet.reorder_columns(column_ids=column_ids)
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            Column IDs in the desired left-to-right order. Must include every column
+            on the sheet exactly once.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertException
+            If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
+            any column on the sheet.
+        """
+        if not column_ids:
+            raise AlbertException("column_ids must include at least one column ID.")
+
+        current_ids = [col.column_id for col in self.columns]
+        current_set = set(current_ids)
+        if len(column_ids) != len(set(column_ids)):
+            raise AlbertException("column_ids must not contain duplicates.")
+
+        unknown = set(column_ids) - current_set
+        if unknown:
+            raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
+
+        missing = current_set - set(column_ids)
+        if missing:
+            raise AlbertException(
+                "column_ids must include every column on the sheet; "
+                f"missing: {', '.join(sorted(missing))}"
+            )
+
+        if column_ids == current_ids:
+            return
+
+        order = list(current_ids)
+        for i, target_id in enumerate(column_ids):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            reference_id = order[i]
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            self._move_column(
+                source_id=target_id,
+                reference_id=reference_id,
+                position=position,
+            )
+            order.pop(j)
+            order.insert(i, target_id)
+
+        self.grid = None
+
+    @validate_call
+    def pin_columns(
+        self,
+        *,
+        col_ids: list[str],
+        side: Literal["left", "right"],
+    ) -> None:
+        """Pin one or more columns to the left or right edge of the sheet.
+
+        !!! example
+            ```python
+            sheet.pin_columns(col_ids=["COL9999999", "COL2"], side="left")
+            ```
+
+        Parameters
+        ----------
+        col_ids : list[str]
+            The column IDs to pin.
+        side : "left" or "right"
+            Which edge to pin to.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "pinned",
+                    "colIds": col_ids,
+                    "newValue": side,
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+
+    @validate_call
+    def unpin_columns(self, *, col_ids: list[str]) -> None:
+        """Unpin one or more columns.
+
+        !!! example
+            ```python
+            sheet.unpin_columns(col_ids=["COL9999999", "COL2"])
+            ```
+
+        Parameters
+        ----------
+        col_ids : list[str]
+            The column IDs to unpin.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "pinned",
+                    "colIds": col_ids,
+                    "newValue": False,
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+
+    @validate_call
+    def set_columns_width(self, *, col_ids: list[str], width: str) -> None:
+        """Set the display width of one or more columns.
+
+        !!! example
+            ```python
+            sheet.set_columns_width(col_ids=["COL9999999"], width="200px")
+            ```
+
+        Parameters
+        ----------
+        col_ids : list[str]
+            Column IDs to update.
+        width : str
+            Width value, e.g. ``"142px"``.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "columnWidth",
+                    "colIds": col_ids,
+                    "newValue": width,
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+
+    @validate_call
+    def hide_column(self, *, col_id: str) -> None:
+        """Hide a column.
+
+        !!! example
+            ```python
+            sheet.hide_column(col_id="COL5")
+            ```
+
+        Parameters
+        ----------
+        col_id : str
+            The column ID to hide.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": True,
+                    }
+                ]
+            },
+        )
+        self.grid = None
+
+    @validate_call
+    def show_column(self, *, col_id: str) -> None:
+        """Show a hidden column.
+
+        !!! example
+            ```python
+            sheet.show_column(col_id="COL5")
+            ```
+
+        Parameters
+        ----------
+        col_id : str
+            The column ID to show.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": False,
+                    }
+                ]
+            },
+        )
+        self.grid = None
+
+    @validate_call
+    def hide_columns(self, *, column_ids: list[str]) -> None:
+        """Hide multiple columns in a single call.
+
+        !!! example
+            ```python
+            sheet.hide_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to hide.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": True,
+                    }
+                    for col_id in column_ids
+                ]
+            },
+        )
+        self.grid = None
+
+    @validate_call
+    def show_columns(self, *, column_ids: list[str]) -> None:
+        """Show multiple hidden columns in a single call.
+
+        !!! example
+            ```python
+            sheet.show_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to show.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": False,
+                    }
+                    for col_id in column_ids
+                ]
+            },
+        )
+        self.grid = None
+
+    # NOTE: @validate_call cannot be used here because Column is defined after Sheet in this module, causing a NameError during Pydantic schema generation.
+    def rename_columns(self, *, columns: list[Column]) -> None:
+        """Rename multiple columns in a single call.
+
+        Set ``name`` on each column to its new name before calling.
+
+        !!! example
+            ```python
+            cols = [sheet.get_column(column_id="COL5"), sheet.get_column(column_id="COL6")]
+            cols[0].name = "New Name 1"
+            cols[1].name = "New Name 2"
+            sheet.rename_columns(columns=cols)
+            ```
+
+        Parameters
+        ----------
+        columns : list[Column]
+            The columns to rename, each carrying its new ``name``.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "name",
+                        "colId": column.column_id,
+                        "newValue": column.name,
+                    }
+                    for column in columns
+                ]
+            },
+        )
+        self.grid = None
 
     def delete_column(self, *, column_id: str) -> None:
+        """Delete a column from this sheet.
+
+        !!! example
+            ```python
+            sheet.delete_column(column_id="COL5")
+            ```
+
+        Parameters
+        ----------
+        column_id : str
+            The ID of the column to delete.
+
+        Returns
+        -------
+        None
+        """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [{"colId": column_id}]
         self.session.delete(endpoint, json=payload)
@@ -1005,9 +2794,82 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
             self.grid = None
 
+    @validate_call
+    def delete_columns(self, *, column_ids: list[str]) -> None:
+        """Delete multiple columns from this sheet in a single call.
+
+        Note: The platform only allows deleting blank (BLK) columns.
+
+        !!! example
+            ```python
+            sheet.delete_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The IDs of the columns to delete. Only blank (BLK) columns can be
+            deleted.
+
+        Returns
+        -------
+        None
+        """
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
+        payload = [{"colId": column_id} for column_id in column_ids]
+        self.session.delete(endpoint, json=payload)
+
+        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
+            self.grid = None
+
     def delete_row(self, *, row_id: str, design_id: str) -> None:
+        """Delete a row from a Design section of this sheet.
+
+        !!! example
+            ```python
+            sheet.delete_row(row_id="ROW3", design_id=sheet.product_design.id)
+            ```
+
+        Parameters
+        ----------
+        row_id : str
+            The ID of the row to delete.
+        design_id : str
+            The ID of the Design (section) the row belongs to.
+
+        Returns
+        -------
+        None
+        """
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
         payload = [{"rowId": row_id}]
+        self.session.delete(endpoint, json=payload)
+
+        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
+            self.grid = None
+
+    @validate_call
+    def delete_rows(self, *, row_ids: list[str], design_id: str) -> None:
+        """Delete multiple rows from a Design section of this sheet in a single call.
+
+        !!! example
+            ```python
+            sheet.delete_rows(row_ids=["ROW3", "ROW4"], design_id=sheet.product_design.id)
+            ```
+
+        Parameters
+        ----------
+        row_ids : list[str]
+            The IDs of the rows to delete.
+        design_id : str
+            The ID of the Design (section) the rows belong to.
+
+        Returns
+        -------
+        None
+        """
+        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        payload = [{"rowId": row_id} for row_id in row_ids]
         self.session.delete(endpoint, json=payload)
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
@@ -1037,27 +2899,34 @@ class Sheet(BaseSessionResource):  # noqa:F811
         inventory_id: InventoryId | None = None,
         column_name: str | None = None,
     ) -> Column:
-        """
-        Retrieve a Column by its colId, underlying inventory ID, or display header name.
+        """Retrieve a Column by its column ID, underlying inventory ID, or header name.
+
+        Provide at least one of the three identifiers; the match must be unique.
+
+        !!! example
+            ```python
+            column = sheet.get_column(column_name="Formulation A")
+            ```
 
         Parameters
         ----------
-        column_id : str | None
-            The sheet column ID to match (e.g. "COL5").
-        inventory_id : str | None
-            The internal inventory identifier to match (e.g. "INVP015-001").
-        column_name : str | None
-            The human-readable header name of the column (e.g. "p1").
+        column_id : str, optional
+            The sheet column ID to match (e.g. ``"COL5"``).
+        inventory_id : str, optional
+            The underlying inventory ID to match (e.g. ``"INVP015-001"``).
+        column_name : str, optional
+            The human-readable header name of the column (e.g. ``"Formulation A"``).
 
         Returns
         -------
         Column
-            The matching Column object.
+            The matching column.
 
         Raises
         ------
         AlbertException
-            If no matching column is found or if multiple matches exist.
+            If no identifier is provided, no matching column is found, or multiple
+            columns match.
         """
 
         if not (column_id or inventory_id or column_name):
@@ -1099,6 +2968,11 @@ class Sheet(BaseSessionResource):  # noqa:F811
         by the underlying inventory identifier of a formulation/product, or by
         the displayed header name. By default the column will be locked; pass
         ``locked=False`` to unlock it.
+
+        !!! example
+            ```python
+            sheet.lock_column(column_name="Formulation A")
+            ```
 
         Parameters
         ----------
@@ -1142,36 +3016,89 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         return self.get_column(column_id=column.column_id)
 
+    @validate_call
+    def lock_columns(self, *, column_ids: list[str], locked: bool = True) -> None:
+        """Lock or unlock multiple columns in a single call.
+
+        !!! example
+            ```python
+            sheet.lock_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to lock or unlock.
+        locked : bool
+            Whether to lock (``True``) or unlock (``False``) the columns.
+            Defaults to ``True``.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "locked",
+                    "colIds": column_ids,
+                    "newValue": locked,
+                }
+            ]
+        }
+
+        self.session.patch(
+            url=f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json=payload,
+        )
+
+        self.grid = None
+
 
 class Column(BaseSessionResource):  # noqa:F811
-    """A column in a Sheet
+    """A column in a Sheet.
 
-    Attributes
-    ----------
-    column_id : str
-        The column ID of the column.
-    name : str | None
-        The name of the column. Optional. Default is None.
-    type : CellType
-        The type of the column. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
-    sheet : Sheet
-        The sheet the column is in.
-    cells : list[Cell]
-        The cells in the column. Read-only.
-    df_name : str
-        The name of the column in the DataFrame. Read-only
+    A Column is a live grid element that carries the session. A column can be a
+    formulation (the most common case for the SDK), a lookup column that displays
+    an inventory attribute, an ingredient name, or another type given by
+    [`CellType`][albert.resources.sheets.CellType]. Its cells are read through [`cells`][albert.resources.sheets.Column.cells] and written back
+    with [`update_cells`][albert.resources.sheets.Sheet.update_cells].
+    Methods
+    -------
+    rename(new_name) -> Column
+        Rename the column.
+    recolor_cells(color) -> tuple[list[Cell], list[Cell]]
+        Apply a background color to every cell in the column.
     """
 
     column_id: str = Field(alias="colId")
+    """The ID of the column."""
+
     name: str | None = Field(default=None)
-    type: CellType
+    """The header name of the column. Optional. Default is None."""
+
+    type: CellType | str
+    """The type of the column. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
+
     sheet: Sheet
+    """The sheet the column belongs to."""
+
     inventory_id: str | None = Field(default=None, exclude=True)
+    """For a formulation column, the underlying inventory ID (format ``INV...``). Optional. Default is None."""
+
     _cells: list[Cell] | None = PrivateAttr(default=None)
     locked: bool = Field(default=False)
+    """Whether the column is locked against edits. Default is False."""
+
     hidden: bool | None = Field(default=None)
+    """Whether the column is hidden. Optional. Default is None."""
+
     pinned: str | None = Field(default=None)
+    """The edge the column is pinned to (``"left"`` or ``"right"``), or None."""
+
     column_width: str | None = Field(default=None)
+    """The display width of the column (e.g. ``"142px"``), or None."""
 
     @field_validator("locked", mode="before")
     @classmethod
@@ -1185,10 +3112,33 @@ class Column(BaseSessionResource):  # noqa:F811
         return f"{self.column_id}#{self.name}"
 
     @property
-    def cells(self) -> list[Cell]:
+    def cells(self) -> pd.Series:
+        """This column's cells as a pandas Series keyed by row id.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid[self.df_name]
 
     def rename(self, new_name):
+        """Rename this column.
+
+        !!! example
+            ```python
+            column = sheet.get_column(column_name="Formulation A")
+            column.rename("Formulation A (rev 2)")
+            ```
+
+        Parameters
+        ----------
+        new_name : str
+            The new header name for the column.
+
+        Returns
+        -------
+        Column
+            This column, with its name updated.
+        """
         payload = {
             "data": [
                 {
@@ -1213,6 +3163,25 @@ class Column(BaseSessionResource):  # noqa:F811
         return self
 
     def recolor_cells(self, color: CellColor):
+        """Apply a background color to every cell in this column.
+
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            column = sheet.get_column(column_name="Formulation A")
+            column.recolor_cells(CellColor.BLUE)
+            ```
+
+        Parameters
+        ----------
+        color : CellColor
+            The background color to apply.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair, as returned by [`update_cells`][albert.resources.sheets.Sheet.update_cells].
+        """
         new_cells = []
         for c in self.cells:
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
@@ -1221,48 +3190,96 @@ class Column(BaseSessionResource):  # noqa:F811
 
 
 class Row(BaseSessionResource):  # noqa:F811
-    """A row in a Sheet
+    """A row in a Sheet.
 
-    Attributes
-    ----------
-    row_id : str
-        The row ID of the row.
-    type : CellType
-        The type of the row. Allowed values are `INV`, `APP`, `BLK`, `Formula`, `TAG`, `PRC`, `PDC`, `BAT`, `TOT`, `TAS`, `DEF`, `LKP`, `FOR`, and `EXTINV`.
-    design : Design
-        The design the row is in.
-    sheet : Sheet
-        The sheet the row is in.
-    name : str | None
-        The name of the row. Optional. Default is None.
-    inventory_id : str | None
-        The inventory ID of the row. Optional. Default is None.
-    manufacturer : str | None
-        The manufacturer of the row. Optional. Default is None.
-    row_unique_id : str
-        The unique ID of the row. Read-only.
-    cells : list[Cell]
-        The cells in the row. Read-only.
-
+    A Row is a live grid element that carries the session. Rows typically
+    represent ingredients (inventory items) and their amounts, but a row can also
+    be a total, lookup, app, or blank row per its [`type`][albert.resources.sheets.Row.type]. Each row belongs
+    to a specific [`Design`][albert.resources.sheets.Design] section of the [`sheet`][albert.resources.sheets.Row.sheet]. Its cells are read
+    through [`cells`][albert.resources.sheets.Row.cells] and written back with [`update_cells`][albert.resources.sheets.Sheet.update_cells].
+    Methods
+    -------
+    recolor_cells(color) -> tuple[list[Cell], list[Cell]]
+        Apply a background color to every cell in the row.
     """
 
     row_id: str = Field(alias="rowId")
-    type: CellType
+    """The ID of the row."""
+
+    type: CellType | str
+    """The type of the row. Allowed values are the same as for [`CellType`][albert.resources.sheets.CellType]."""
+
     design: Design
+    """The Design (section) the row belongs to."""
+
     sheet: Sheet
+    """The sheet the row belongs to."""
+
     name: str | None = Field(default=None)
+    """The display name of the row. Optional. Default is None."""
+
     inventory_id: str | None = Field(default=None, alias="id")
+    """For an ingredient row, the inventory ID of the item (format ``INV...``). Optional. Default is None."""
+
     manufacturer: str | None = Field(default=None)
+    """The manufacturer of the row's inventory item. Optional. Default is None."""
+
+    config: RowConfig | None = Field(default=None)
+    """Configuration for APP or location-scoped rows. Optional. Default is None."""
+
+    parent_row_id: str | None = Field(default=None)
+    """The row ID of the group header this row belongs to. None if not grouped."""
+
+    child_row_ids: list[str] = Field(default_factory=list)
+    """Row IDs of rows grouped under this row. Non-empty only on group header rows."""
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def _coerce_config(cls, v):
+        if v is None or isinstance(v, RowConfig):
+            return v
+        if isinstance(v, dict):
+            return RowConfig(**v)
+        return None
 
     @property
     def row_unique_id(self):
         return f"{self.design.id}#{self.row_id}"
 
     @property
-    def cells(self) -> list[Cell]:
+    def is_group_header(self) -> bool:
+        """True when this row is the header of a collapsed row group."""
+        return bool(self.child_row_ids)
+
+    @property
+    def cells(self) -> pd.Series:
+        """This row's cells as a pandas Series keyed by column df-name.
+
+        Empty cells may appear as ``NaN`` floats (pandas padding); check
+        ``isinstance(value, Cell)`` before using a value.
+        """
         return self.sheet.grid.loc[self.row_unique_id]
 
     def recolor_cells(self, color: CellColor):
+        """Apply a background color to every cell in this row.
+
+        !!! example
+            ```python
+            from albert.resources.sheets import CellColor
+            row = sheet.rows[0]
+            row.recolor_cells(CellColor.RED)
+            ```
+
+        Parameters
+        ----------
+        color : CellColor
+            The background color to apply.
+
+        Returns
+        -------
+        tuple[list[Cell], list[Cell]]
+            A ``(updated, failed)`` pair, as returned by [`update_cells`][albert.resources.sheets.Sheet.update_cells].
+        """
         new_cells = []
         for c in self.cells:
             cell_copy = c.model_copy(update={"format": {"bgColor": color.value}})
