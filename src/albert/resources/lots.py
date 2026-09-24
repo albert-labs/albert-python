@@ -331,7 +331,7 @@ class Lot(BaseResource):
 
     parent_category: InventoryCategory | None = Field(
         default=None,
-        alias="parentCategory",
+        alias="parentIdCategory",
         exclude=True,
         frozen=True,
     )

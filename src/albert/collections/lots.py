@@ -571,13 +571,16 @@ class LotCollection(BaseCollection):
                 )
             )
 
-        # costL must be serialized as a formatted decimal string and uses update operation
+        # cost, costL, and initialQuantity are stored as strings by the API and
+        # strict-compared against oldValue, so both values must be decimal strings.
+        # costL only supports the update operation; an unset old value is sent as "0".
         for datum in patch_data.data:
-            if datum.attribute == "costL":
-                datum.operation = PatchOperation.UPDATE
-                if datum.old_value is None:
-                    datum.old_value = "0"
-                else:
+            if datum.attribute in {"cost", "costL", "initialQuantity"}:
+                if datum.attribute == "costL":
+                    datum.operation = PatchOperation.UPDATE
+                    if datum.old_value is None:
+                        datum.old_value = "0"
+                if datum.old_value is not None:
                     datum.old_value = (
                         Lot._format_decimal(datum.old_value)
                         if isinstance(datum.old_value, (int, float))

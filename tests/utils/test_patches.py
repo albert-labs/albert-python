@@ -1,5 +1,7 @@
+from albert.collections.lots import LotCollection
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.lists import ListItem
+from albert.resources.lots import Lot
 from albert.resources.parameter_groups import ParameterGroup
 from albert.resources.tasks import BaseTask
 
@@ -50,6 +52,30 @@ def change_metadata(
             new_metadata[k] = [x.to_entity_link() for x in new_list]
 
     return new_metadata
+
+
+def test_lots_patch_payload_stringifies_numeric_values():
+    """Test that lot cost and initialQuantity patch values are serialized as decimal strings."""
+    existing = Lot(
+        id="LOT1",
+        inventory_id="INV1",
+        inventory_on_hand=10.0,
+        cost=50.0,
+        initial_quantity=100.0,
+    )
+    updated = existing.model_copy(update={"cost": 42.5, "initial_quantity": 200.0})
+
+    payload = LotCollection(session=None)._generate_lots_patch_payload(
+        existing=existing, updated=updated
+    )
+    by_attribute = {d.attribute: d for d in payload.data}
+
+    assert by_attribute["cost"].operation == PatchOperation.UPDATE
+    assert by_attribute["cost"].old_value == "50"
+    assert by_attribute["cost"].new_value == "42.5"
+    assert by_attribute["initialQuantity"].operation == PatchOperation.UPDATE
+    assert by_attribute["initialQuantity"].old_value == "100"
+    assert by_attribute["initialQuantity"].new_value == "200"
 
 
 def make_metadata_update_assertions(
