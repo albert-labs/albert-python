@@ -13,6 +13,7 @@ from albert.resources.sheets import (
     CellType,
     Column,
     Component,
+    Design,
     DesignType,
     Row,
     Sheet,
@@ -87,6 +88,94 @@ def test_get_current_cell_exact_row_match():
 
     assert result is row_22_cell
     assert result.row_id == "ROW22"
+
+
+def _sheet_with_formatted_cell() -> Sheet:
+    sheet = Sheet(
+        albertId="SHEET1",
+        name="Test",
+        Formulas=[],
+        hidden=False,
+        Designs=[
+            {"albertId": "DES1", "designType": "products", "state": {}},
+            {"albertId": "DES2", "designType": "results", "state": {}},
+            {"albertId": "DES3", "designType": "apps", "state": {}},
+        ],
+        projectId="PRJ1",
+    )
+    existing = Cell(
+        colId="COL1",
+        rowId="ROW1",
+        value="1",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        cellFormat={"precision": 2},
+    )
+    sheet._grid = pd.DataFrame([[existing]], index=["DES1#ROW1"], columns=["COL1#INV1"])
+    return sheet
+
+
+def test_cell_changes_leave_existing_format_alone_when_unset():
+    """AI-1926: the ``{}`` format default must not emit an API-rejected cellFormat delete."""
+    sheet = _sheet_with_formatted_cell()
+    cell = Cell(colId="COL1", rowId="ROW1", value="5", type=CellType.INVENTORY, design_id="DES1")
+
+    payload = sheet._get_cell_changes(cell=cell)
+
+    assert payload is not None
+    attributes = [datum.attribute for datum in payload["data"]]
+    assert "cellFormat" not in attributes
+    assert all(datum.operation != "delete" for datum in payload["data"])
+
+
+def test_cell_changes_send_explicit_format_as_update():
+    sheet = _sheet_with_formatted_cell()
+    cell = Cell(
+        colId="COL1",
+        rowId="ROW1",
+        value="1",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        cellFormat={"precision": 3},
+    )
+
+    payload = sheet._get_cell_changes(cell=cell)
+
+    assert payload is not None
+    (datum,) = [d for d in payload["data"] if d.attribute == "cellFormat"]
+    assert datum.operation == "update"
+    assert datum.new_value == {"precision": 3}
+
+
+def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
+    """AI-1926: ``clear=True`` must not leave the column blank after a failed write."""
+    sheet = _sheet_with_formatted_cell()
+    original = Cell(
+        colId="COL1", rowId="ROW1", value="7", type=CellType.INVENTORY, design_id="DES1"
+    )
+    column = Column(colId="COL1", name="F1", type=CellType.INVENTORY, sheet=sheet)
+    writes: list[list[Cell]] = []
+
+    def _update_cells(*, cells):
+        writes.append(cells)
+        if len(writes) == 2:
+            raise AlbertException("cellFormat")
+
+    monkeypatch.setattr(Sheet, "columns", property(lambda self: [column]))
+    monkeypatch.setattr(Sheet, "get_column", lambda self, **_: column)
+    monkeypatch.setattr(Column, "cells", property(lambda self: [original]))
+    monkeypatch.setattr(Sheet, "update_cells", lambda self, *, cells: _update_cells(cells=cells))
+    monkeypatch.setattr(Sheet, "_get_row_id_for_component", lambda self, **_: "ROW1")
+    monkeypatch.setattr(Design, "rows", property(lambda self: []))
+
+    with pytest.raises(AlbertException):
+        sheet.add_formulation(
+            formulation_name="F1",
+            components=[Component(inventory_id="INV1", amount=5.0)],
+        )
+
+    assert writes[0][0].value == ""
+    assert writes[-1] == [original]
 
 
 def test_update_cells_updates_inventory_values(
