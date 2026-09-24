@@ -169,6 +169,8 @@ class TaskCollection(BaseCollection):
         Delete a task by its ID.
     add_block(task_id, data_template_id, workflow_id) -> None
         Add a Block (Data Template + Workflow) to a Property or Batch task.
+    add_blocks(task_id, blocks) -> None
+        Add multiple Blocks to a task in one call.
     remove_block(task_id, block_id) -> None
         Remove a Block from a Property or Batch task.
     update_block_workflow(task_id, block_id, workflow_id) -> None
@@ -578,6 +580,71 @@ class TaskCollection(BaseCollection):
                         "operation": "add",
                         "attribute": "Block",
                         "newValue": [{"datId": data_template_id, "Workflow": {"id": workflow_id}}],
+                    }
+                ],
+            }
+        ]
+        self.session.patch(url=url, json=payload)
+
+    @validate_call
+    def add_blocks(self, *, task_id: TaskId, blocks: list[Block]) -> None:
+        """Add multiple Blocks to a Property or Batch task in one call.
+
+        Each Block pairs a Data Template (the results/data columns to capture)
+        with a Workflow (the parameter conditions to run under), exactly as with
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block]; only
+        the block's workflow and data template IDs are used.
+
+        !!! example
+            ```python
+            from albert.resources.tasks import Block
+            client.tasks.add_blocks(
+                task_id="TASFOR1",
+                blocks=[
+                    Block(workflow=[{"id": "WFL1"}], Datatemplate=[{"id": "DAT9999999"}]),
+                    Block(workflow=[{"id": "WFL2"}], Datatemplate=[{"id": "DAT9999998"}]),
+                ],
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to add the blocks to (format ``TAS...``).
+        blocks : list[Block]
+            The blocks to add. Build each with a single Workflow and a single
+            Data Template referenced by ID.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        add_block : Add a single Block to a task.
+        remove_block : Remove a block from a task.
+        """
+        if not blocks:
+            return
+        url = f"{self.base_path}/{task_id}"
+        payload = [
+            {
+                "id": task_id,
+                "data": [
+                    {
+                        "operation": "add",
+                        "attribute": "Block",
+                        "newValue": [
+                            {
+                                "datId": (
+                                    block.data_template[0]
+                                    if isinstance(block.data_template, list)
+                                    else block.data_template
+                                ).id,
+                                "Workflow": {"id": block.workflow[0].id},
+                            }
+                            for block in blocks
+                        ],
                     }
                 ],
             }
