@@ -38,6 +38,7 @@ from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.lots import (
     Lot,
+    LotVolumeUnit,
 )
 from albert.resources.notebooks import (
     BulletedListContent,
@@ -73,6 +74,7 @@ from albert.resources.projects import (
     Project,
     ProjectClass,
 )
+from albert.resources.report_templates import ReportTemplate, ReportTemplateCategory
 from albert.resources.reports import FullAnalyticalReport
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.storage_locations import StorageLocation
@@ -1318,6 +1320,15 @@ def generate_inventory_seeds(
             company=seeded_companies[0],
             tags=[seeded_tags[0].tag, seeded_tags[2].tag, seeded_tags[3].tag],
         ),
+        InventoryItem(
+            name=f"{seed_prefix} - Isopropyl Alcohol",
+            description="Solvent tracked by volume.",
+            category=InventoryCategory.RAW_MATERIALS,
+            unit_category=InventoryUnitCategory.VOLUME,
+            density=0.785,
+            security_class=SecurityClass.SHARED,
+            company=seeded_companies[0],
+        ),
     ]
 
 
@@ -1376,6 +1387,22 @@ def generate_lot_seeds(
             manufacturer_lot_number="MLN112233",
             location=EntityLink(id=seeded_locations[1].id),
             notes="This lot is quarantined due to quality issues.",
+            external_barcode_id=str(uuid4()),
+        ),
+        # Volume-based Lot
+        Lot(
+            inventory_id=seeded_inventory[4].id,
+            storage_location=EntityLink(id=seeded_storage_locations[0].id),
+            initial_quantity=100.0,
+            inventory_on_hand=100.0,
+            initial_quantity_l=127.39,
+            entry_unit=LotVolumeUnit.LITER,
+            cost=80.0,
+            density=0.785,
+            lot_number="LOT004",
+            expiration_date="2026-12-31",
+            manufacturer_lot_number="MLN445566",
+            notes="Volume-based test lot.",
             external_barcode_id=str(uuid4()),
         ),
     ]
@@ -1506,12 +1533,13 @@ def generate_workflow_seeds(
     ]
 
 
-def generate_notebook_block_seeds() -> list[NotebookBlock]:
+def generate_notebook_block_seeds(*, seed_prefix: str = "") -> list[NotebookBlock]:
+    paragraph_text = f"{seed_prefix} I am a paragraph block.".strip()
     return [
         HeaderBlock(content=HeaderContent(level=1, text="I am a header1 block.")),
         HeaderBlock(content=HeaderContent(level=2, text="I am a header2 block.")),
         HeaderBlock(content=HeaderContent(level=3, text="I am a header3 block.")),
-        ParagraphBlock(content=ParagraphContent(text="I am a paragraph block.")),
+        ParagraphBlock(content=ParagraphContent(text=paragraph_text)),
         TableBlock(
             content=TableContent(
                 content=[
@@ -1781,8 +1809,40 @@ def generate_btinsight_seed(
     )
 
 
+def pick_report_type_id(templates: list[ReportTemplate]) -> str:
+    """Pick a report type ID from the available templates for report seeding.
+
+    Parameters
+    ----------
+    templates : list[ReportTemplate]
+        Report templates returned by ``client.report_templates.get_all()``.
+
+    Returns
+    -------
+    str
+        A report type ID suitable for ``FullAnalyticalReport.report_type_id``.
+
+    Raises
+    ------
+    ValueError
+        If no templates with IDs are available.
+    """
+    for template in templates:
+        if template.id and template.category == ReportTemplateCategory.REPORTS:
+            return template.id
+
+    for template in templates:
+        if template.id:
+            return template.id
+
+    raise ValueError("No report templates with IDs are available for seeding")
+
+
 def generate_report_seeds(
-    seed_prefix: str, seeded_projects: list[Project]
+    seed_prefix: str,
+    seeded_projects: list[Project],
+    *,
+    report_type_id: str,
 ) -> list[FullAnalyticalReport]:
     """
     Generates a list of FullAnalyticalReport seed objects for testing.
@@ -1793,6 +1853,8 @@ def generate_report_seeds(
         Prefix to use for generating unique names.
     seeded_projects : list[Project]
         List of seeded Project objects to reference in reports.
+    report_type_id : str
+        Report type ID from an available report template (e.g. ``"RET42"``).
 
     Returns
     -------
@@ -1804,7 +1866,7 @@ def generate_report_seeds(
     return [
         # Basic analytical report
         FullAnalyticalReport(
-            report_type_id="ALB#RET42",
+            report_type_id=report_type_id,
             name=f"{seed_prefix} - Basic Analytical Report",
             description=f"{seed_prefix} - A basic analytical report for testing",
             input_data={"project": project_ids},

@@ -194,6 +194,79 @@ class SDSRequest(BaseAlbertModel):
     kinematic_viscosity_40: float | None = Field(default=None, alias="kinematicViscosity40")
     """Kinematic viscosity at 40°C in mm²/s, optional."""
 
+    intended_use: str | None = Field(default=None, alias="intendedUse")
+    """Intended-use option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``intendedUse``, optional. Required by some tenants."""
+
+    use: str | None = Field(default=None)
+    """Use option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``use``, optional."""
+
+    physical_form: str | None = Field(default=None, alias="physicalForm")
+    """Physical-form option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``physicalForm``, optional."""
+
+    waste_code: str | None = Field(default=None, alias="wasteCode")
+    """Union waste-code option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``wasteCode``, optional."""
+
+    flammability: str | None = Field(default=None)
+    """Flammability option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``flammability``, optional."""
+
+    burning_test_result: str | None = Field(default=None, alias="burningTestResult")
+    """Burning-test option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``burningTestResult``, optional. Filtered by ``flammability``."""
+
+    plm_number: str | None = Field(default=None, alias="plmNumber", max_length=100)
+    """PLM number, optional. Tenant-gated via field options (``plmNumber``)."""
+
+    ufi_identifier: str | None = Field(default=None, alias="ufiIdentifier", max_length=100)
+    """UFI identifier, optional. Tenant-gated via field options (``ufiIdentifier``)."""
+
+    viscosity_input: str | None = Field(default=None, alias="viscosityInput", max_length=100)
+    """Viscosity SDS-output option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``viscosityInput``, optional."""
+
+    particle_characteristics: str | None = Field(default=None, alias="particleCharacteristics")
+    """Particle-characteristics option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``particleCharacteristics``, optional."""
+
+    ph_input: str | None = Field(default=None, alias="pHInput", max_length=100)
+    """pH SDS-output option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``pHInput``, optional."""
+
+    melting_point_range: str | None = Field(
+        default=None, alias="meltingPointRange", max_length=100
+    )
+    """Melting point / freezing point option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``meltingPointRange``, optional."""
+
+    boiling_point_range: str | None = Field(
+        default=None, alias="boilingPointRange", max_length=100
+    )
+    """Boiling point option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``boilingPointRange``, optional."""
+
+    vapor_pressure: str | None = Field(default=None, alias="vaporPressure", max_length=100)
+    """Vapor-pressure option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``vaporPressure``, optional."""
+
+    vapor_density: str | None = Field(default=None, alias="vaporDensity", max_length=100)
+    """Vapor-density option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``vaporDensity``, optional."""
+
+    water_solubility: str | None = Field(default=None, alias="waterSolubility", max_length=100)
+    """Water-solubility option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``waterSolubility``, optional."""
+
+    auto_ignition_temp: str | None = Field(default=None, alias="autoIgnitionTemp", max_length=100)
+    """Auto-ignition temperature option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``autoIgnitionTemp``, optional."""
+
+    decomposition_temp: str | None = Field(default=None, alias="decompositionTemp", max_length=100)
+    """Decomposition temperature option value from [`get_field_options`][albert.collections.sds.SDSCollection.get_field_options] with ``decompositionTemp``, optional."""
+
+    evaporation_rate: str | None = Field(default=None, alias="evaporationRate")
+    """Evaporation rate, optional. Not gated by tenant field options."""
+
+    explosive_limits_lower: str | None = Field(default=None, alias="explosiveLimitsLower")
+    """Lower explosive limit, optional. Not gated by tenant field options."""
+
+    explosive_limits_upper: str | None = Field(default=None, alias="explosiveLimitsUpper")
+    """Upper explosive limit, optional. Not gated by tenant field options."""
+
+    odor_threshold: str | None = Field(default=None, alias="odorThreshold")
+    """Odor threshold, optional. Not gated by tenant field options."""
+
+    partition_coefficient: str | None = Field(default=None, alias="partitionCoefficient")
+    """Partition coefficient (n-octanol/water), optional. Not gated by tenant field options."""
+
     @field_serializer("albert_id")
     def _serialize_albert_id(self, value: str) -> str:
         return remove_id_prefix(value, "InventoryId")

@@ -1,15 +1,29 @@
+from contextlib import suppress
+
 import pytest
 
 from albert import Albert
+from albert.exceptions import AlbertException, BadRequestError, NotFoundError
+from albert.resources.interval_combinations import (
+    BlockRules,
+    CombinationOverride,
+    ExclusionRule,
+    OverrideAction,
+    RuleCondition,
+    RuleOperator,
+)
 from albert.resources.lists import ListItem
 from albert.resources.tags import Tag
 from albert.resources.tasks import (
     BaseTask,
     BatchTask,
+    Block,
+    GeneralTask,
     PropertyTask,
     TaskCategory,
     TaskSearchItem,
 )
+from albert.resources.worker_jobs import WorkerJob
 from albert.resources.workflows import Workflow
 from tests.utils.test_patches import change_metadata, make_metadata_update_assertions
 from tests.utils.wait import poll_until
@@ -97,6 +111,32 @@ def test_get_by_id(client: Albert, seeded_tasks):
     assert task.name == seeded_tasks[0].name
 
 
+def test_create_many(client: Albert, seed_prefix: str, seeded_locations):
+    """Test creating multiple tasks in a single call."""
+    # POST /tasks/multi requires Location on General tasks (see api-task GeneralTask schema).
+    to_create = [
+        GeneralTask(name=f"{seed_prefix} - create_many 1", location=seeded_locations[0]),
+        GeneralTask(name=f"{seed_prefix} - create_many 2", location=seeded_locations[0]),
+    ]
+    created: list[BaseTask] = []
+    try:
+        created = client.tasks.create_many(tasks=to_create)
+        assert len(created) == len(to_create)
+        assert all(isinstance(t, GeneralTask) for t in created)
+        assert all(t.id is not None for t in created)
+        assert [t.name for t in created] == [t.name for t in to_create]
+    finally:
+        for task in created:
+            with suppress(NotFoundError, BadRequestError):
+                client.tasks.delete(id=task.id)
+
+
+def test_create_many_rejects_mixed_categories(client: Albert):
+    """Test that create_many rejects tasks of mixed categories."""
+    with pytest.raises(AlbertException):
+        client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
+
+
 def test_update(
     client: Albert,
     seeded_tasks,
@@ -165,6 +205,28 @@ def test_add_block(client: Albert, seeded_tasks, seeded_workflows, seeded_data_t
     )
     updated_task = client.tasks.get_by_id(id=task.id)
     assert len(updated_task.blocks) == starting_blocks + 1
+
+
+def test_add_blocks(client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates):
+    """Test adding multiple blocks to a task in one call."""
+    task = [x for x in seeded_tasks if isinstance(x, PropertyTask)][0]
+    task = client.tasks.get_by_id(id=task.id)
+    starting_blocks = len(task.blocks)
+    client.tasks.add_blocks(
+        task_id=task.id,
+        blocks=[
+            Block(
+                workflow=[{"id": seeded_workflows[0].id}],
+                Datatemplate=[{"id": seeded_data_templates[0].id}],
+            ),
+            Block(
+                workflow=[{"id": seeded_workflows[0].id}],
+                Datatemplate=[{"id": seeded_data_templates[1].id}],
+            ),
+        ],
+    )
+    updated_task = client.tasks.get_by_id(id=task.id)
+    assert len(updated_task.blocks) == starting_blocks + 2
 
 
 def test_update_block_workflow(
@@ -242,3 +304,125 @@ def test_remove_block_from_batch_task(client: Albert, seeded_tasks, seeded_workf
 def test_task_get_history(client: Albert, seeded_tasks):
     task_history = client.tasks.get_history(id=seeded_tasks[0].id)
     assert isinstance(task_history.items, list)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_get_and_set_block_rules(
+    client: Albert, seeded_tasks, seeded_workflows, seeded_data_templates
+):
+    """Test getting and setting block combination rules and overrides."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        # Initially empty
+        initial = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert isinstance(initial, BlockRules)
+        assert initial.rules == []
+        assert initial.overrides == []
+
+        # Set rules and overrides
+        rule = ExclusionRule(
+            name="Test Exclusion Rule",
+            conditions=[
+                RuleCondition(
+                    parameter_group_id="PRG1",
+                    parameter_id="PRM1",
+                    operator=RuleOperator.GT,
+                    value=50,
+                )
+            ],
+        )
+        override = CombinationOverride(
+            key="PRG1#PRM1#ROW1",
+            action=OverrideAction.SKIP,
+        )
+        updated = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[rule],
+            overrides=[override],
+            wait=False,
+        )
+        assert isinstance(updated, BlockRules)
+        assert len(updated.rules) == 1
+        assert updated.rules[0].name == "Test Exclusion Rule"
+        assert len(updated.rules[0].conditions) == 1
+        assert updated.rules[0].conditions[0].operator == RuleOperator.GT
+        assert len(updated.overrides) == 1
+        assert updated.overrides[0].action == OverrideAction.SKIP
+        assert updated.job is not None
+
+        # Fetch again to verify persistence
+        fetched = client.tasks.get_block_rules(task_id=task.id, block_id=block.id)
+        assert len(fetched.rules) == 1
+        assert fetched.rules[0].name == "Test Exclusion Rule"
+        assert len(fetched.overrides) == 1
+        assert fetched.overrides[0].action == OverrideAction.SKIP
+
+        # Clear rules and overrides
+        cleared = client.tasks.set_block_rules(
+            task_id=task.id,
+            block_id=block.id,
+            rules=[],
+            overrides=[],
+            wait=False,
+        )
+        assert cleared.rules == []
+        assert cleared.overrides == []
+        assert cleared.job is not None
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_generate_block_combinations_integration(
+    client: Albert, seeded_tasks, seeded_data_templates, seeded_workflows
+):
+    """Test generating block combinations on a task block."""
+    task = next(x for x in seeded_tasks if isinstance(x, PropertyTask) and x.blocks is not None)
+    task = client.tasks.get_by_id(id=task.id)
+    client.tasks.add_block(
+        task_id=task.id,
+        data_template_id=seeded_data_templates[0].id,
+        workflow_id=seeded_workflows[0].id,
+    )
+    task = client.tasks.get_by_id(id=task.id)
+    block = task.blocks[-1]
+    try:
+        job = client.tasks.generate_block_combinations(
+            task_id=task.id,
+            block_id=block.id,
+            wait=False,
+        )
+        assert isinstance(job, WorkerJob)
+        assert job.job_type == "createChildWorkflows"
+    finally:
+        client.tasks.remove_block(task_id=task.id, block_id=block.id)
+
+
+@pytest.mark.xfail(reason="increased intervals is not live on ten0 test env")
+def test_create_with_combinations_integration(
+    client: Albert, seeded_projects, seeded_data_templates, seeded_workflows
+):
+    """Test orchestrating task creation with combinations."""
+    task = PropertyTask(
+        name="Test Task With Combinations",
+        parent_id=seeded_projects[0].id,
+        blocks=[
+            Block(
+                data_template=[{"id": seeded_data_templates[0].id}],
+                workflow=[{"id": seeded_workflows[0].id}],
+            )
+        ],
+    )
+    created = client.tasks.create_with_combinations(task=task, wait=False)
+    assert created.id is not None
+    assert len(created.blocks) == 1
+    assert created.blocks[0].job_id is not None

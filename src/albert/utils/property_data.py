@@ -10,6 +10,7 @@ import re
 import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -34,9 +35,11 @@ from albert.resources.property_data import (
     TaskDataColumn,
     TaskPropertyCreate,
     TaskPropertyData,
+    TaskPropertyRecord,
     Trial,
 )
 from albert.resources.tasks import PropertyTask
+from albert.resources.workflows import Workflow
 from albert.utils.data_template import (
     create_curve_import_job,
     derive_curve_csv_mapping,
@@ -270,6 +273,7 @@ def resolve_task_property_payload(
     properties: list[TaskPropertyCreate],
 ) -> list[dict]:
     """Build POST payloads for task properties, resolving image/curve values."""
+    has_curve = any(isinstance(prop.value, CurvePropertyValue) for prop in properties)
     payload = []
     for prop in properties:
         prop_payload = prop.model_dump(exclude_none=True, by_alias=True, mode="json")
@@ -287,7 +291,10 @@ def resolve_task_property_payload(
                 prop=prop,
                 curve_value=prop.value,
             )
-            # For curve property data, remove DataTemplate from payload as it's not needed
+        # When any curve property is in the batch, the backend evaluates the array
+        # against CurveData (which has additionalProperties: false and does not define DataTemplate).
+        # DataTemplate must therefore be stripped from every item in the batch.
+        if has_curve:
             prop_payload.pop("DataTemplate", None)
         payload.append(prop_payload)
     return payload
@@ -755,3 +762,153 @@ def generate_data_patch_payload(*, trial: Trial) -> list[PropertyDataPatchDatum]
                     )
 
     return patch_data
+
+
+def _setpoint_display_value(value: Any) -> str | None:
+    """Reduce a setpoint or interval value to a plain string for tabular output."""
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return str(value)
+    if isinstance(value, dict):
+        return str(value.get("name") or value.get("id") or value)
+    return getattr(value, "name", None) or getattr(value, "id", None) or str(value)
+
+
+def build_interval_setpoint_map(*, workflow: Workflow) -> dict[str, dict[str, str]]:
+    """Map each interval ID of a workflow to the parameter setpoints it represents.
+
+    Combines the parameters the interval varies with the workflow's fixed setpoints, so
+    each entry is the complete set of conditions for that interval. The ``"default"``
+    key holds the fixed setpoints alone, for blocks with no intervalized parameters.
+
+    Only ROW-chain interval IDs are resolved. Tenants running the increased-intervals
+    beta address data by child workflow ID instead, and those IDs do not correspond to
+    the workflow's own interval rows, so they are left out.
+
+    Parameters
+    ----------
+    workflow : Workflow
+        A fully populated workflow, as returned by
+        [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id].
+
+    Returns
+    -------
+    dict[str, dict[str, str]]
+        Interval ID to a mapping of parameter name to value.
+    """
+    fixed: dict[str, str] = {}
+    varied: dict[str, tuple[str, str]] = {}
+
+    for group in workflow.parameter_group_setpoints or []:
+        for setpoint in group.parameter_setpoints or []:
+            name = setpoint.name or setpoint.short_name or setpoint.parameter_id
+            if not name:
+                continue
+            if setpoint.intervals:
+                for interval in setpoint.intervals:
+                    if interval.row_id:
+                        value = _setpoint_display_value(interval.value)
+                        varied[interval.row_id] = (name, "" if value is None else value)
+            else:
+                value = _setpoint_display_value(setpoint.value)
+                if value is not None:
+                    fixed[name] = value
+
+    interval_map: dict[str, dict[str, str]] = {"default": dict(fixed)}
+
+    # An interval ID is a chain of the row IDs of each varied parameter, joined with "X".
+    interval_ids = {c.interval_id for c in (workflow.interval_combinations or []) if c.interval_id}
+    interval_ids.update(varied)
+    for interval_id in interval_ids:
+        setpoints = dict(fixed)
+        resolved = True
+        for row_id in interval_id.split("X"):
+            if row_id not in varied:
+                resolved = False
+                break
+            name, value = varied[row_id]
+            setpoints[name] = value
+        if resolved:
+            interval_map[interval_id] = setpoints
+
+    return interval_map
+
+
+def map_block_final_workflows(*, task: PropertyTask) -> dict[str, Workflow | EntityLink]:
+    """Map each block ID of a task to that block's FINAL workflow.
+
+    The property data endpoints do not return the workflows, so the block is the only
+    place to learn which workflow's setpoints apply to a block's results.
+    """
+    mapping: dict[str, Workflow | EntityLink] = {}
+    for block in getattr(task, "blocks", None) or []:
+        workflow = getattr(block, "workflow", None)
+        candidates = workflow if isinstance(workflow, list) else [workflow]
+        chosen = None
+        for candidate in candidates:
+            if candidate is None:
+                continue
+            if str(getattr(candidate, "category", "") or "").upper() == "FINAL":
+                chosen = candidate
+                break
+            chosen = chosen or candidate
+        if chosen is not None:
+            mapping[block.id] = chosen
+    return mapping
+
+
+def flatten_task_property_data(
+    *,
+    block: TaskPropertyData,
+    task_id: TaskId,
+    workflow_id: str | None,
+    workflow_name: str | None,
+    interval_setpoints: dict[str, dict[str, str]],
+    interval_descriptions: dict[str, str],
+) -> list[TaskPropertyRecord]:
+    """Flatten one block's interval/trial tree into one record per measured value."""
+    data_template = block.data_template
+    inventory = block.inventory
+
+    records: list[TaskPropertyRecord] = []
+    for interval in block.data:
+        interval_id = interval.interval_combination
+        setpoints = interval_setpoints.get(interval_id, {})
+        description = interval_descriptions.get(interval_id) or interval.name
+        for trial in interval.trials:
+            for column in trial.data_columns:
+                property_data = column.property_data
+                unit = column.unit
+                unit_name = (
+                    unit.get("name") if isinstance(unit, dict) else getattr(unit, "name", None)
+                )
+                records.append(
+                    TaskPropertyRecord(
+                        task_id=task_id,
+                        block_id=block.block_id,
+                        data_template_id=getattr(data_template, "id", None),
+                        data_template_name=getattr(data_template, "name", None),
+                        inventory_id=getattr(inventory, "inventory_id", None),
+                        lot_id=getattr(inventory, "lot_id", None),
+                        interval_combination=interval_id,
+                        interval_description=description.strip() if description else None,
+                        parameter_setpoints=dict(setpoints),
+                        trial_number=trial.trial_number,
+                        visible_trial_number=trial.visible_trial_number,
+                        void=interval.void or trial.void,
+                        data_column_id=column.id,
+                        data_column_name=column.name,
+                        sequence=column.sequence,
+                        property_data_id=getattr(property_data, "id", None),
+                        value=column.value
+                        if column.value is not None
+                        else getattr(property_data, "value", None),
+                        numeric_value=column.numeric_value,
+                        unit_name=unit_name,
+                        calculation=column.calculation,
+                        workflow_id=workflow_id,
+                        workflow_name=workflow_name,
+                    )
+                )
+    return records

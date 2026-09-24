@@ -59,6 +59,9 @@ theme:
 extra_css:
   - styles/extra.css
 
+extra_javascript:
+  - javascripts/lambda-layers.js
+
 markdown_extensions:
   - admonition
   - pymdownx.highlight:
@@ -119,6 +122,7 @@ nav:
   - Getting Started:
       - Overview: index.md
       - Installation: installation.md
+      - AWS Lambda Layer: lambda.md
       - Authentication: authentication.md
       - Concepts: concepts.md
       - Configuration: configuration.md
@@ -216,12 +220,14 @@ nav:
           - Data Columns: resources/data_columns.md
           - Data Templates: resources/data_templates.md
           - Design: resources/design.md
+          - Documents: resources/documents.md
           - Entity Types: resources/entity_types.md
           - Enums: resources/enums.md
           - Files: resources/files.md
           - Hazards: resources/hazards.md
           - Identifiers: resources/identifiers.md
           - Inventory: resources/inventory.md
+          - Interval Combinations (🧪 Beta): resources/interval_combinations.md
           - Label Templates: resources/label_templates.md
           - Links: resources/links.md
           - Lists: resources/lists.md
@@ -241,6 +247,7 @@ nav:
           - Roles: resources/roles.md
           - SDS (🧪 Beta): resources/sds.md
           - Smart Datasets (🧪Beta): resources/smart_datasets.md
+          - Smart Projects (🧪Beta): resources/smart_projects.md
           - Storage Classes: resources/storage_classes.md
           - Storage Locations: resources/storage_locations.md
           - Substances: resources/substances.md

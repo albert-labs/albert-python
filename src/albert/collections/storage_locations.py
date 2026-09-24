@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Iterator
 
+from pydantic import ValidationError
+
 from albert.collections.base import BaseCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MappedPaginator
@@ -141,7 +143,6 @@ class StorageLocationsCollection(BaseCollection):
             ``total`` from the underlying list paginator.
         """
 
-        # Remove explicit hydration when SUP-410 is fixed
         params = {
             "locationId": location.id
             if isinstance(location, (Location | EntityLink))
@@ -156,6 +157,11 @@ class StorageLocationsCollection(BaseCollection):
             id = item.get("albertId")
             if not id:
                 return None
+            if item.get("Location"):
+                try:
+                    return StorageLocation(**item)
+                except ValidationError:
+                    pass
             try:
                 return self.get_by_id(id=id)
             except AlbertHTTPError as e:

@@ -12,6 +12,8 @@ def assert_valid_activity_items(returned_list):
     for a in returned_list:
         assert isinstance(a, Activity)
         assert isinstance(a.id, str)
+        if a.actor is not None:
+            assert a.actor.details is not None
 
 
 def test_activity_get_all(client: Albert):
@@ -49,3 +51,5 @@ def test_activity_search(client: Albert):
     assert results, "Expected at least one search result"
     for item in results:
         assert isinstance(item, ActivitySearchItem)
+        if item.actor is not None:
+            assert item.actor.details is not None

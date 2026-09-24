@@ -1,11 +1,13 @@
 from collections.abc import Iterator
 from contextlib import suppress
+from uuid import uuid4
 
 import pytest
 
 from albert.client import Albert
-from albert.exceptions import NotFoundError
-from albert.resources.lots import Lot, LotAdjustmentAction
+from albert.core.shared.models.base import EntityLink
+from albert.exceptions import BadRequestError, NotFoundError
+from albert.resources.lots import Lot, LotAdjustmentAction, LotVolumeUnit
 from albert.resources.storage_locations import StorageLocation
 from tests.seeding import generate_lot_seeds
 
@@ -27,6 +29,32 @@ def seeded_lot(
     seeded = client.lots.create(lots=[lot])[0]
     yield seeded
     client.lots.delete(id=seeded.id)
+
+
+@pytest.fixture(scope="function")
+def seeded_volume_lot(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+) -> Iterator[Lot]:
+    lot = Lot(
+        inventory_id=seeded_inventory[4].id,
+        storage_location=EntityLink(id=seeded_storage_locations[0].id),
+        initial_quantity=100.0,
+        inventory_on_hand=100.0,
+        initial_quantity_l=127.39,
+        entry_unit=LotVolumeUnit.LITER,
+        cost=80.0,
+        density=0.785,
+        lot_number=f"VOL-{uuid4().hex[:6]}",
+        manufacturer_lot_number=f"MLN-{uuid4().hex[:6]}",
+        notes="Function-scoped volume lot fixture.",
+        external_barcode_id=str(uuid4()),
+    )
+    seeded = client.lots.create(lots=[lot])[0]
+    yield seeded
+    with suppress(NotFoundError):
+        client.lots.delete(id=seeded.id)
 
 
 def assert_valid_lot_items(returned_list: list[Lot]):
@@ -80,6 +108,7 @@ def test_update(
     )
     lot.storage_location = new_storage_location
     lot.owner = [second_user]
+    lot.external_barcode_id = str(uuid4())
     updated_lot = client.lots.update(lot=lot)
     assert updated_lot.manufacturer_lot_number == lot.manufacturer_lot_number
     assert updated_lot.inventory_on_hand == 10
@@ -87,6 +116,7 @@ def test_update(
     assert updated_lot.storage_location.id == new_storage_location.id
     assert updated_lot.owner is not None
     assert any(o.id == second_user.id for o in updated_lot.owner)
+    assert updated_lot.external_barcode_id == lot.external_barcode_id
 
 
 def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_lot: Lot):
@@ -309,3 +339,104 @@ def test_adjust_zero_no_op(client: Albert, seeded_lot: Lot):
     # Zero again — should be a no-op without error
     result = client.lots.adjust(lot_id=seeded_lot.id, action=LotAdjustmentAction.ZERO)
     assert result.inventory_on_hand == pytest.approx(0)
+
+
+def test_create_volume_lot(
+    client: Albert,
+    seeded_inventory,
+    seeded_storage_locations,
+):
+    """Test creating a volume lot returns parsed volume fields and density on both create and get_by_id."""
+    lot = Lot(
+        inventory_id=seeded_inventory[4].id,
+        storage_location=EntityLink(id=seeded_storage_locations[0].id),
+        initial_quantity=50.0,
+        inventory_on_hand=50.0,
+        initial_quantity_l=63.69,
+        entry_unit=LotVolumeUnit.LITER,
+        entry_cost_unit="$/L",
+        cost=40.0,
+        cost_l=31.4,
+        density="0.785",
+        lot_number=f"VOL-{uuid4().hex[:6]}",
+        manufacturer_lot_number=f"MLN-{uuid4().hex[:6]}",
+        notes="Volume create test.",
+        external_barcode_id=str(uuid4()),
+    )
+    created = client.lots.create(lots=[lot])[0]
+    try:
+        assert created.id is not None
+        assert created.initial_quantity_l == pytest.approx(63.69)
+        assert created.inventory_on_hand_l == pytest.approx(63.69)
+        assert created.entry_unit == LotVolumeUnit.LITER
+        assert created.entry_cost_unit == "$/L"
+        assert created.cost_l == pytest.approx(31.4)
+        assert created.density is not None
+        assert created.density.value == pytest.approx(0.785)
+
+        fetched = client.lots.get_by_id(id=created.id)
+        assert fetched.initial_quantity_l == pytest.approx(63.69)
+        assert fetched.inventory_on_hand_l == pytest.approx(63.69)
+        assert fetched.entry_unit == LotVolumeUnit.LITER
+        assert fetched.cost_l == pytest.approx(31.4)
+        assert fetched.density is not None
+        assert fetched.density.value == pytest.approx(0.785)
+    finally:
+        with suppress(NotFoundError):
+            client.lots.delete(id=created.id)
+
+
+def test_adjust_volume_lot_recalculates_volume_on_hand(client: Albert, seeded_volume_lot: Lot):
+    """Test adjusting inventory on hand converts mass delta through locked density to update inventoryOnHandL."""
+    initial_l = seeded_volume_lot.inventory_on_hand_l
+    density_val = seeded_volume_lot.density.value
+    adjusted = client.lots.adjust(
+        lot_id=seeded_volume_lot.id,
+        action=LotAdjustmentAction.ADD,
+        quantity=10.0,
+    )
+    expected_l = initial_l + (10.0 / density_val)
+    assert adjusted.inventory_on_hand_l == pytest.approx(expected_l, rel=1e-5)
+
+
+def test_update_volume_lot_cost_l_round_trips(client: Albert, seeded_volume_lot: Lot):
+    """Test updating cost_l round-trips via update()."""
+    updated = seeded_volume_lot.model_copy()
+    updated.cost_l = 75.5
+    res = client.lots.update(lot=updated)
+    assert res.cost_l == pytest.approx(75.5)
+
+
+def test_update_volume_lot_rejects_readonly_volume_fields(client: Albert, seeded_volume_lot: Lot):
+    """Test backend rejects updating density or initial_quantity_l on an existing lot via PATCH."""
+    # Attempting to patch density directly raises BadRequestError
+    with pytest.raises(BadRequestError):
+        client.session.patch(
+            f"{client.lots.base_path}/{seeded_volume_lot.id}",
+            json={
+                "data": [
+                    {
+                        "operation": "UPDATE",
+                        "attribute": "density",
+                        "oldValue": "0.785",
+                        "newValue": "0.999",
+                    }
+                ]
+            },
+        )
+
+    # Attempting to patch initialQuantityL directly raises BadRequestError
+    with pytest.raises(BadRequestError):
+        client.session.patch(
+            f"{client.lots.base_path}/{seeded_volume_lot.id}",
+            json={
+                "data": [
+                    {
+                        "operation": "UPDATE",
+                        "attribute": "initialQuantityL",
+                        "oldValue": "127.39",
+                        "newValue": "200.0",
+                    }
+                ]
+            },
+        )

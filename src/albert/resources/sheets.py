@@ -7,7 +7,7 @@ import pandas as pd
 from pydantic import Field, PrivateAttr, field_validator, model_validator, validate_call
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId
+from albert.core.shared.identifiers import DataColumnId, InventoryId, ParameterGroupId, TaskId
 from albert.core.shared.models.base import BaseResource, BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum
 from albert.exceptions import AlbertException, AlbertHTTPError
@@ -700,14 +700,20 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Add an ingredient (inventory) row.
     add_blank_row(row_name, ...) -> Row
         Add a blank row.
+    add_blank_rows(row_names, ...) -> list[Row]
+        Add multiple blank rows in one call.
     add_lookup_row(name, ...) -> Row
         Add a lookup row.
     add_app_row(app_id, name, ...) -> Row
         Add an application row.
     add_parameter_group_row(parameter_group_id, ...) -> Row
         Add a parameter group (PRG) row to Process Design.
+    add_task_row(task_id, ...) -> Row
+        Link a task into the Results section as a task (TAS) row.
     add_blank_column(name, ...) -> Column
         Add a blank column.
+    add_columns(names, ...) -> list[Column]
+        Add multiple columns of one type in one call.
     add_lookup_column(name, ...) -> Column
         Add a lookup column.
     add_function_column(name, ...) -> Column
@@ -724,16 +730,30 @@ class Sheet(BaseSessionResource):  # noqa:F811
         Unpin columns.
     lock_column(...) -> Column
         Lock or unlock a column.
+    lock_columns(column_ids, locked=True) -> None
+        Lock or unlock multiple columns in one call.
+    rename_columns(columns) -> None
+        Rename multiple columns in one call.
     hide_column(col_id) -> None
         Hide a column.
+    hide_columns(column_ids) -> None
+        Hide multiple columns in one call.
     show_column(col_id) -> None
         Show a hidden column.
+    show_columns(column_ids) -> None
+        Show multiple hidden columns in one call.
     set_columns_width(col_ids, width) -> None
         Set the display width of columns.
+    reorder_columns(column_ids) -> None
+        Reorder all columns left to right by column ID.
     delete_column(column_id) -> None
         Delete a column.
+    delete_columns(column_ids) -> None
+        Delete multiple columns in one call.
     delete_row(row_id, design_id) -> None
         Delete a row.
+    delete_rows(row_ids, design_id) -> None
+        Delete multiple rows from a Design section in one call.
     """
 
     id: str = Field(alias="albertId")
@@ -1274,7 +1294,9 @@ class Sheet(BaseSessionResource):  # noqa:F811
         starting_position : dict, optional
             Where to insert the new columns, as a dict with ``reference_id`` (a
             column ID) and ``position`` (``"leftOf"`` or ``"rightOf"``). When
-            omitted, the platform chooses the default placement.
+            omitted, inserts ``RIGHT_OF`` the last product-design column, matching
+            [`add_blank_column`][albert.resources.sheets.Sheet.add_blank_column] and
+            other ``add_*_column`` helpers.
 
         Returns
         -------
@@ -1288,15 +1310,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
             formulation_names if isinstance(formulation_names, list) else [formulation_names]
         )
 
+        if starting_position is None:
+            starting_position = {
+                "reference_id": (
+                    self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+                ),
+                "position": ColumnPosition.RIGHT_OF.value,
+            }
+
         payload = []
         for formulation_name in formulation_names:
-            entry = {"type": "INV", "name": formulation_name}
-            # When no position is given, omit referenceId/position so the platform
-            # applies its default placement. Sending a null (or stale) referenceId
-            # leaves the new column out of the sheet sequence, hiding it on refresh.
-            if starting_position is not None:
-                entry["referenceId"] = starting_position["reference_id"]
-                entry["position"] = starting_position["position"]
+            entry = {
+                "type": "INV",
+                "name": formulation_name,
+                "referenceId": starting_position["reference_id"],
+                "position": starting_position["position"],
+            }
             payload.append(entry)
         response = self.session.post(endpoint, json=payload)
 
@@ -1373,6 +1402,86 @@ class Sheet(BaseSessionResource):  # noqa:F811
             name=row_dict["name"],
             sheet=self,
         )
+
+    @validate_call
+    def add_blank_rows(
+        self,
+        *,
+        row_names: list[str],
+        design: DesignType = DesignType.PRODUCTS,
+        position: dict | None = None,
+    ) -> list[Row]:
+        """Add multiple blank (BLK) rows to a Design section of this sheet.
+
+        !!! example
+            ```python
+            rows = sheet.add_blank_rows(row_names=["Notes", "Observations"])
+            ```
+
+        Parameters
+        ----------
+        row_names : list[str]
+            The display names of the new rows. Rows are created in the order
+            given.
+        design : DesignType, optional
+            Which Design section to add the rows to. Default is
+            ``DesignType.PRODUCTS``. Rows cannot be added to the Results design.
+        position : dict, optional
+            Where to insert the rows, as a dict with ``reference_id`` (a row ID)
+            and ``position`` (``"above"`` or ``"below"``). Defaults to above
+            ``"ROW1"``.
+
+        Returns
+        -------
+        list[Row]
+            The created rows, in the order requested.
+
+        Raises
+        ------
+        AlbertException
+            If ``design`` is ``DesignType.RESULTS`` or ``DesignType.PROCESS``.
+            Process Design only accepts parameter-group (PRG) rows: use
+            [`add_parameter_group_row`][albert.resources.sheets.Sheet.add_parameter_group_row].
+        """
+        if design == DesignType.RESULTS:
+            raise AlbertException("You cannot add rows to the results design")
+        if design == DesignType.PROCESS or design == DesignType.PROCESS.value:
+            raise AlbertException(
+                "Blank rows cannot be added to Process Design; "
+                "use add_parameter_group_row to attach a parameter group"
+            )
+        if position is None:
+            position = {"reference_id": "ROW1", "position": "above"}
+        endpoint = f"/api/v3/worksheet/design/{self._get_design_id(design=design)}/rows"
+
+        rows = []
+        # The platform accepts at most 24 rows per call.
+        for i in range(0, len(row_names), 24):
+            batch = row_names[i : i + 24]
+            payload = [
+                {
+                    "type": "BLK",
+                    "name": row_name,
+                    "referenceId": position["reference_id"],
+                    "position": position["position"],
+                }
+                for row_name in batch
+            ]
+            response = self.session.post(endpoint, json=payload)
+            rows.extend(
+                Row(
+                    rowId=row_dict["rowId"],
+                    type=row_dict["type"],
+                    session=self.session,
+                    design=self._get_design(design=design),
+                    name=row_dict["name"],
+                    sheet=self,
+                )
+                for row_dict in response.json()
+            )
+
+        self.grid = None
+        return rows
 
     def add_inventory_row(
         self,
@@ -1640,6 +1749,94 @@ class Sheet(BaseSessionResource):  # noqa:F811
             design=design_obj,
             sheet=self,
             name=data.get("labelName") or data.get("name"),
+            inventory_id=data.get("id"),
+        )
+
+    @validate_call
+    def add_task_row(
+        self,
+        *,
+        task_id: TaskId,
+        name: str | None = None,
+        reference_id: str | None = None,
+        position: RowPosition = RowPosition.ABOVE,
+    ) -> Row:
+        """Link a task into this sheet's Results section as a task (TAS) row.
+
+        Creating a task does not place it in the worksheet's Results grid — the
+        platform only adds the TAS row when the task is created from the worksheet
+        UI. Call this after creating a property task programmatically so the task
+        (and its results) shows up in the sheet.
+
+        !!! example
+            ```python
+            row = sheet.add_task_row(task_id="TASPT9999999")
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The Task ID to link (format ``TAS...``).
+        name : str, optional
+            The display name of the row. Defaults to the task's current name,
+            read from the platform.
+        reference_id : str, optional
+            The row ID to insert relative to. Defaults to the first Results
+            row when one exists. Omit (or leave ``None``) when the Results
+            section has no rows.
+        position : RowPosition, optional
+            Whether to insert ``ABOVE`` or ``BELOW`` the reference row.
+            Default is ``ABOVE``. Ignored when the Results section has no rows
+            and ``reference_id`` is omitted.
+
+        Returns
+        -------
+        Row
+            The created task row.
+
+        Raises
+        ------
+        AlbertException
+            If the sheet has no Results section, or the response has no rows.
+        """
+        design_obj = self.result_design
+        if design_obj is None:
+            raise AlbertException("Sheet has no Results section; cannot add a task row")
+        if name is None:
+            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            name = task.get("name") or task_id
+        payload_item: dict[str, str] = {
+            "type": CellType.TAS.value,
+            "id": task_id,
+            "name": name,
+        }
+        if reference_id is None:
+            existing_rows = design_obj.rows
+            if existing_rows:
+                reference_id = existing_rows[0].row_id
+        if reference_id is not None:
+            payload_item["referenceId"] = reference_id
+            payload_item["position"] = position.value
+
+        response = self.session.post(
+            f"/api/v3/worksheet/design/{design_obj.id}/rows", json=[payload_item]
+        )
+        self.grid = None
+        rows = response.json()
+        if not isinstance(rows, list):
+            rows = [rows]
+        if not rows:
+            raise AlbertException(
+                f"No rows returned when adding task '{task_id}' to Results design '{design_obj.id}'"
+            )
+        data = next((row for row in rows if row.get("type") == CellType.TAS.value), rows[0])
+        return Row(
+            rowId=data["rowId"],
+            type=data["type"],
+            session=self.session,
+            design=design_obj,
+            sheet=self,
+            name=data.get("name") or name,
             inventory_id=data.get("id"),
         )
 
@@ -1987,6 +2184,86 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
 
     @validate_call
+    def add_columns(
+        self,
+        *,
+        names: list[str],
+        type: Literal["BLK", "LKP", "FNC"] = "BLK",
+        reference_id: str | None = None,
+        position: ColumnPosition = ColumnPosition.RIGHT_OF,
+    ) -> list[Column]:
+        """Add multiple columns of one type in a single call.
+
+        !!! example
+            ```python
+            columns = sheet.add_columns(names=["Notes", "Observations"])
+            ```
+
+        Parameters
+        ----------
+        names : list[str]
+            The display names of the new columns, in left-to-right order.
+        type : str, optional
+            The column type: ``"BLK"`` (blank, default), ``"LKP"`` (lookup), or
+            ``"FNC"`` (function). For property columns use
+            [`add_property_column`][albert.resources.sheets.Sheet.add_property_column].
+        reference_id : str, optional
+            The column ID to insert relative to. Defaults to the last column in
+            the sheet.
+        position : ColumnPosition, optional
+            Whether to insert ``LEFT_OF`` or ``RIGHT_OF`` the reference column.
+            Default is ``RIGHT_OF``.
+
+        Returns
+        -------
+        list[Column]
+            The created columns, in the order requested.
+        """
+        if not names:
+            return []
+        if reference_id is None:
+            reference_id = (
+                self.columns[-1].column_id if self.columns else self.leftmost_pinned_column
+            )
+        position_value = position.value if isinstance(position, ColumnPosition) else position
+
+        # When inserting RIGHT_OF a reference column in bulk, the backend iteratively
+        # inserts each element immediately right of reference_id, which would reverse
+        # their relative left-to-right order if sent in forward order. Reversing the
+        # payload when position is RIGHT_OF ensures each subsequent column is placed
+        # immediately to the right of the reference column, leaving the batch in the
+        # caller's requested left-to-right order on the sheet.
+        ordered_names = (
+            list(reversed(names))
+            if position_value == ColumnPosition.RIGHT_OF.value
+            else list(names)
+        )
+        payload = [
+            {"type": type, "name": name, "referenceId": reference_id, "position": position_value}
+            for name in ordered_names
+        ]
+        response = self.session.post(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+        self.grid = None
+        cols_by_id = {}
+        for data in response.json():
+            data["sheet"] = self
+            data["session"] = self.session
+            col = Column(**data)
+            cols_by_id[col.column_id] = col
+
+        # Return columns in the requested caller order (matching `names`)
+        ordered_cols = []
+        for name in names:
+            for col in list(cols_by_id.values()):
+                if col.name == name:
+                    ordered_cols.append(col)
+                    cols_by_id.pop(col.column_id)
+                    break
+        # Append any remainder just in case name matching missed anything
+        ordered_cols.extend(cols_by_id.values())
+        return ordered_cols
+
+    @validate_call
     def add_lookup_column(
         self,
         *,
@@ -2126,6 +2403,97 @@ class Sheet(BaseSessionResource):  # noqa:F811
                 "datacolumnName": data_column_name,
             },
         )
+
+    def _move_column(
+        self,
+        *,
+        source_id: str,
+        reference_id: str,
+        position: ColumnPosition,
+    ) -> None:
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "sequence",
+                    "sourceId": source_id,
+                    "referenceId": reference_id,
+                    "position": (
+                        position.value if isinstance(position, ColumnPosition) else position
+                    ),
+                }
+            ]
+        }
+        self.session.patch(f"/api/v3/worksheet/sheet/{self.id}/columns", json=payload)
+
+    @validate_call
+    def reorder_columns(self, *, column_ids: list[str]) -> None:
+        """Reorder all columns on this sheet from left to right.
+
+        Provide every column ID on the sheet exactly once, in the desired display
+        order. The first ID is placed at the left edge; the last at the right.
+
+        !!! example
+            ```python
+            column_ids = [col.column_id for col in sheet.columns]
+            column_ids = [column_ids[2], column_ids[0], column_ids[1], *column_ids[3:]]
+            sheet.reorder_columns(column_ids=column_ids)
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            Column IDs in the desired left-to-right order. Must include every column
+            on the sheet exactly once.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        AlbertException
+            If ``column_ids`` is empty, contains duplicates or unknown IDs, or omits
+            any column on the sheet.
+        """
+        if not column_ids:
+            raise AlbertException("column_ids must include at least one column ID.")
+
+        current_ids = [col.column_id for col in self.columns]
+        current_set = set(current_ids)
+        if len(column_ids) != len(set(column_ids)):
+            raise AlbertException("column_ids must not contain duplicates.")
+
+        unknown = set(column_ids) - current_set
+        if unknown:
+            raise AlbertException(f"Unknown column ID(s): {', '.join(sorted(unknown))}")
+
+        missing = current_set - set(column_ids)
+        if missing:
+            raise AlbertException(
+                "column_ids must include every column on the sheet; "
+                f"missing: {', '.join(sorted(missing))}"
+            )
+
+        if column_ids == current_ids:
+            return
+
+        order = list(current_ids)
+        for i, target_id in enumerate(column_ids):
+            j = order.index(target_id)
+            if j == i:
+                continue
+            reference_id = order[i]
+            position = ColumnPosition.LEFT_OF if j > i else ColumnPosition.RIGHT_OF
+            self._move_column(
+                source_id=target_id,
+                reference_id=reference_id,
+                position=position,
+            )
+            order.pop(j)
+            order.insert(i, target_id)
+
+        self.grid = None
 
     @validate_call
     def pin_columns(
@@ -2295,6 +2663,113 @@ class Sheet(BaseSessionResource):  # noqa:F811
         )
         self.grid = None
 
+    @validate_call
+    def hide_columns(self, *, column_ids: list[str]) -> None:
+        """Hide multiple columns in a single call.
+
+        !!! example
+            ```python
+            sheet.hide_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to hide.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": True,
+                    }
+                    for col_id in column_ids
+                ]
+            },
+        )
+        self.grid = None
+
+    @validate_call
+    def show_columns(self, *, column_ids: list[str]) -> None:
+        """Show multiple hidden columns in a single call.
+
+        !!! example
+            ```python
+            sheet.show_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to show.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "hidden",
+                        "colId": col_id,
+                        "newValue": False,
+                    }
+                    for col_id in column_ids
+                ]
+            },
+        )
+        self.grid = None
+
+    # NOTE: @validate_call cannot be used here because Column is defined after Sheet in this module, causing a NameError during Pydantic schema generation.
+    def rename_columns(self, *, columns: list[Column]) -> None:
+        """Rename multiple columns in a single call.
+
+        Set ``name`` on each column to its new name before calling.
+
+        !!! example
+            ```python
+            cols = [sheet.get_column(column_id="COL5"), sheet.get_column(column_id="COL6")]
+            cols[0].name = "New Name 1"
+            cols[1].name = "New Name 2"
+            sheet.rename_columns(columns=cols)
+            ```
+
+        Parameters
+        ----------
+        columns : list[Column]
+            The columns to rename, each carrying its new ``name``.
+
+        Returns
+        -------
+        None
+        """
+        self.session.patch(
+            f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json={
+                "data": [
+                    {
+                        "operation": "update",
+                        "attribute": "name",
+                        "colId": column.column_id,
+                        "newValue": column.name,
+                    }
+                    for column in columns
+                ]
+            },
+        )
+        self.grid = None
+
     def delete_column(self, *, column_id: str) -> None:
         """Delete a column from this sheet.
 
@@ -2314,6 +2789,34 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """
         endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
         payload = [{"colId": column_id}]
+        self.session.delete(endpoint, json=payload)
+
+        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
+            self.grid = None
+
+    @validate_call
+    def delete_columns(self, *, column_ids: list[str]) -> None:
+        """Delete multiple columns from this sheet in a single call.
+
+        Note: The platform only allows deleting blank (BLK) columns.
+
+        !!! example
+            ```python
+            sheet.delete_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The IDs of the columns to delete. Only blank (BLK) columns can be
+            deleted.
+
+        Returns
+        -------
+        None
+        """
+        endpoint = f"/api/v3/worksheet/sheet/{self.id}/columns"
+        payload = [{"colId": column_id} for column_id in column_ids]
         self.session.delete(endpoint, json=payload)
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
@@ -2340,6 +2843,33 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """
         endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
         payload = [{"rowId": row_id}]
+        self.session.delete(endpoint, json=payload)
+
+        if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
+            self.grid = None
+
+    @validate_call
+    def delete_rows(self, *, row_ids: list[str], design_id: str) -> None:
+        """Delete multiple rows from a Design section of this sheet in a single call.
+
+        !!! example
+            ```python
+            sheet.delete_rows(row_ids=["ROW3", "ROW4"], design_id=sheet.product_design.id)
+            ```
+
+        Parameters
+        ----------
+        row_ids : list[str]
+            The IDs of the rows to delete.
+        design_id : str
+            The ID of the Design (section) the rows belong to.
+
+        Returns
+        -------
+        None
+        """
+        endpoint = f"/api/v3/worksheet/design/{design_id}/rows"
+        payload = [{"rowId": row_id} for row_id in row_ids]
         self.session.delete(endpoint, json=payload)
 
         if self._grid is not None:  # if I have a grid loaded into memory, adjust it.
@@ -2485,6 +3015,45 @@ class Sheet(BaseSessionResource):  # noqa:F811
         self.grid = None
 
         return self.get_column(column_id=column.column_id)
+
+    @validate_call
+    def lock_columns(self, *, column_ids: list[str], locked: bool = True) -> None:
+        """Lock or unlock multiple columns in a single call.
+
+        !!! example
+            ```python
+            sheet.lock_columns(column_ids=["COL5", "COL6"])
+            ```
+
+        Parameters
+        ----------
+        column_ids : list[str]
+            The column IDs to lock or unlock.
+        locked : bool
+            Whether to lock (``True``) or unlock (``False``) the columns.
+            Defaults to ``True``.
+
+        Returns
+        -------
+        None
+        """
+        payload = {
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "locked",
+                    "colIds": column_ids,
+                    "newValue": locked,
+                }
+            ]
+        }
+
+        self.session.patch(
+            url=f"/api/v3/worksheet/sheet/{self.id}/columns",
+            json=payload,
+        )
+
+        self.grid = None
 
 
 class Column(BaseSessionResource):  # noqa:F811

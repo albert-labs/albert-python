@@ -1,12 +1,18 @@
+from collections.abc import Iterator
+from typing import Any
+
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
+from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
-from albert.core.shared.identifiers import ProjectId
+from albert.core.shared.enums import OrderBy, PaginationMode
+from albert.core.shared.identifiers import ProjectId, SearchProjectId
+from albert.core.utils import ensure_list
 from albert.resources.acls import ACLContainer
 from albert.resources.custom_templates import CustomTemplate
-from albert.resources.worksheets import Worksheet
+from albert.resources.worksheets import Worksheet, WorksheetSearchItem
 from albert.utils.worksheets import (
     get_columns_to_copy,
     get_prg_rows_to_copy,
@@ -61,6 +67,8 @@ class WorksheetCollection(BaseCollection):
     -------
     get_by_project_id(project_id) -> Worksheet
         Get the Worksheet paired with a Project.
+    search(...) -> Iterator[WorksheetSearchItem]
+        Search for formulas across Worksheets matching the given filters.
     setup_worksheet(project_id, add_sheet=False) -> Worksheet
         Initialize a Worksheet for a Project that does not yet have one.
     add_sheet(project_id, sheet_name) -> Worksheet
@@ -133,6 +141,123 @@ class WorksheetCollection(BaseCollection):
         # Sheets are themselves collections, and therefore need access to the session
         response_json = self._add_session_to_sheets(response_json)
         return Worksheet(**response_json)
+
+    @validate_call
+    def search(
+        self,
+        *,
+        text: str | None = None,
+        project_id: SearchProjectId | None = None,
+        sheet_id: str | None = None,
+        tags: str | list[str] | None = None,
+        albert_id: str | list[str] | None = None,
+        state: str | list[str] | None = None,
+        predecessor: str | list[str] | None = None,
+        data_template: str | list[str] | None = None,
+        inventory_name: str | list[str] | None = None,
+        inventory_id: str | list[str] | None = None,
+        formula_created_by: str | list[str] | None = None,
+        facet_text: str | None = None,
+        facet_field: str | None = None,
+        contains_field: str | list[str] | None = None,
+        contains_text: str | list[str] | None = None,
+        exclude_hidden: bool | None = None,
+        sort_by: str | None = None,
+        order: OrderBy | None = None,
+        max_items: int | None = None,
+    ) -> Iterator[WorksheetSearchItem]:
+        """Search for formulas across Worksheets matching the given filters.
+
+        Returns lightweight, partially populated
+        [`WorksheetSearchItem`][albert.resources.worksheets.WorksheetSearchItem]
+        results and is the fastest way to discover formulations across Projects and
+        Sheets. Results are returned as a lazily paginated iterator. When you need
+        the complete formula, pass a result's ``id`` to
+        [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id].
+
+        !!! example
+            ```python
+            for hit in client.worksheets.search(text="cool formulation", max_items=10):
+                print(hit.id, hit.name)
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query matched against formula fields.
+        project_id : SearchProjectId, optional
+            Scope the search to a Project (format ``PRO...``).
+            The ``PRO`` prefix is stripped before the request is sent.
+        sheet_id : str, optional
+            Filter to formulas on a given Sheet.
+        tags : str or list[str], optional
+            Filter by tag name(s).
+        albert_id : str or list[str], optional
+            Filter by formula inventory ID(s) (format ``INV...``).
+        state : str or list[str], optional
+            Filter by formula state (e.g. locked or unlocked).
+        predecessor : str or list[str], optional
+            Filter by predecessor formula.
+        data_template : str or list[str], optional
+            Filter by data template name(s).
+        inventory_name : str or list[str], optional
+            Filter by ingredient name(s).
+        inventory_id : str or list[str], optional
+            Filter by ingredient inventory ID(s).
+        formula_created_by : str or list[str], optional
+            Filter by formula creator(s).
+        facet_text : str, optional
+            Text to match within a facet search.
+        facet_field : str, optional
+            Field to search within for facet filtering.
+        contains_field : str or list[str], optional
+            Field(s) to apply a "contains" search to.
+        contains_text : str or list[str], optional
+            Text value(s) for the "contains" search.
+        exclude_hidden : bool, optional
+            When True, omit hidden formulas from the results.
+        sort_by : str, optional
+            Field to sort results by.
+        order : OrderBy, optional
+            The order in which to sort results (``asc`` or ``desc``).
+        max_items : int, optional
+            Maximum number of items to return in total. If None, iterates over all
+            matches.
+
+        Returns
+        -------
+        Iterator[WorksheetSearchItem]
+            A lazily paginated iterator of matching formula search results.
+        """
+        params: dict[str, Any] = {
+            "text": text,
+            "projectId": project_id,
+            "sheetId": sheet_id,
+            "tags": ensure_list(tags),
+            "albertId": ensure_list(albert_id),
+            "state": ensure_list(state),
+            "predecessor": ensure_list(predecessor),
+            "dataTemplate": ensure_list(data_template),
+            "inventoryName": ensure_list(inventory_name),
+            "inventoryId": ensure_list(inventory_id),
+            "formulaCreatedBy": ensure_list(formula_created_by),
+            "facetText": facet_text,
+            "facetField": facet_field,
+            "containsField": ensure_list(contains_field),
+            "containsText": ensure_list(contains_text),
+            "excludeHidden": exclude_hidden,
+            "sortBy": sort_by,
+            "order": order,
+        }
+
+        return AlbertPaginator(
+            mode=PaginationMode.OFFSET,
+            path=f"{self.base_path}/search",
+            session=self.session,
+            params=params,
+            max_items=max_items,
+            deserialize=lambda items: [WorksheetSearchItem.model_validate(x) for x in items],
+        )
 
     @validate_call
     def setup_worksheet(self, *, project_id: ProjectId, add_sheet=False) -> Worksheet:
