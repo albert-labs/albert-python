@@ -96,6 +96,8 @@ class InventoryCollection(BaseCollection):
         Same filters as search, but returns fully populated items (slower).
     update(inventory_item) -> InventoryItem
         Update an existing item.
+    update_many(inventory_items) -> list[InventoryItem]
+        Update multiple items, fetching current state in one batched call.
     delete(id) -> None
         Delete an item by its ID.
     merge(parent_id, child_id, modules=None) -> None
@@ -1762,9 +1764,16 @@ class InventoryCollection(BaseCollection):
             existing=current_object, updated=inventory_item
         )
 
+        self._apply_inventory_patch_payload(
+            url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
+        )
+
+        updated_inv = self.get_by_id(id=inventory_item.id)
+        return updated_inv
+
+    def _apply_inventory_patch_payload(self, *, url: str, patch_payload: dict) -> None:
         # Complex patching does not work for some fields, so I'm going to do this in a loop :(
         # https://teams.microsoft.com/l/message/19:de4a48c366664ce1bafcdbea02298810@thread.tacv2/1724856117312?tenantId=98aab90e-764b-48f1-afaa-02e3c7300653&groupId=35a36a3d-fc25-4899-a1dd-ad9c7d77b5b3&parentMessageId=1724856117312&teamName=Product%20%2B%20Engineering&channelName=General%20-%20API&createdTime=1724856117312
-        url = f"{self.base_path}/{inventory_item.id}"
         batch_patch_changes = list()
         for change in patch_payload["data"]:
             if change["attribute"].startswith("Metadata."):  # Metadata can be batch patched
@@ -1778,5 +1787,50 @@ class InventoryCollection(BaseCollection):
             batch_patch_payload = {"data": batch_patch_changes}
             self.session.patch(url, json=batch_patch_payload)
 
-        updated_inv = self.get_by_id(id=inventory_item.id)
-        return updated_inv
+    def update_many(self, *, inventory_items: list[InventoryItem]) -> list[InventoryItem]:
+        """Update multiple inventory items.
+
+        Same per-item semantics as [`update`][albert.collections.inventory.InventoryCollection.update],
+        but the current state of all items is fetched up front in batched calls
+        and the updated items are re-fetched the same way, so updating N items
+        avoids N individual read round-trips.
+
+        !!! example
+            ```python
+            items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])
+            for item in items:
+                item.description = "Updated description"
+            updated = client.inventory.update_many(inventory_items=items)
+            ```
+
+        Parameters
+        ----------
+        inventory_items : list[InventoryItem]
+            The items to update. Each must have a valid ``id``.
+
+        Returns
+        -------
+        list[InventoryItem]
+            The updated items, in the order returned by the platform.
+
+        Notes
+        -----
+        The same fields can be updated as with
+        [`update`][albert.collections.inventory.InventoryCollection.update].
+        """
+        if not inventory_items:
+            return []
+        ids = [item.id for item in inventory_items]
+        existing_by_id = {item.id: item for item in self.get_by_ids(ids=ids)}
+        for inventory_item in inventory_items:
+            current_object = existing_by_id.get(inventory_item.id)
+            if current_object is None:
+                # Raises NotFoundError, matching update() on an unknown ID.
+                current_object = self.get_by_id(id=inventory_item.id)
+            patch_payload = self._generate_inventory_patch_payload(
+                existing=current_object, updated=inventory_item
+            )
+            self._apply_inventory_patch_payload(
+                url=f"{self.base_path}/{inventory_item.id}", patch_payload=patch_payload
+            )
+        return self.get_by_ids(ids=ids)

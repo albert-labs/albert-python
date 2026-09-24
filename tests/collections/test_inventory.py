@@ -382,6 +382,20 @@ def test_update_inventory_item_standard_attributes(
     assert fetched_item.alias == "Updated Alias"
 
 
+def test_update_many_inventory_items(client: Albert, seeded_inventory: list[InventoryItem]):
+    """Test updating multiple inventory items in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        item.model_copy(update={"description": f"update_many description {i}"})
+        for i, item in enumerate(items)
+    ]
+    updated = client.inventory.update_many(inventory_items=to_update)
+    updated_by_id = {item.id: item for item in updated}
+    assert set(updated_by_id) == {item.id for item in items}
+    for i, item in enumerate(items):
+        assert updated_by_id[item.id].description == f"update_many description {i}"
+
+
 def test_update_inventory_item_advanced_attributes(
     client: Albert,
     seeded_inventory: list[InventoryItem],
