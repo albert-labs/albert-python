@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.models.base import BaseResource
@@ -49,12 +49,12 @@ class UnitFamilyV4Ref(BaseAlbertModel):
         family = UnitFamilyV4Ref(id="UNF1")
         ```"""
 
-    id: str
-    """The unit family ID."""
+    id: str = Field(validation_alias=AliasChoices("id", "familyId"))
+    """The unit family ID. Units endpoints return it as ``familyId``; both keys are accepted."""
 
-    name: str | None = None
-    """The unit family name. Populated on records returned from Albert; optional when
-    referencing a family by ID on create."""
+    name: str | None = Field(default=None, validation_alias=AliasChoices("name", "familyName"))
+    """The unit family name. Populated on records returned from Albert (as ``familyName``);
+    optional when referencing a family by ID on create."""
 
 
 class UnitV4Ref(BaseAlbertModel):
