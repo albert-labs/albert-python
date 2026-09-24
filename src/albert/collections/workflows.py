@@ -11,6 +11,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import WorkflowId
 from albert.core.utils import ensure_list
+from albert.exceptions import AlbertException
 from albert.resources.parameter_groups import DataType, ParameterValue
 from albert.resources.workflows import (
     ParameterSetpoint,
@@ -207,7 +208,10 @@ class WorkflowCollection(BaseCollection):
             if "name" not in x:
                 # The platform omits the name of a matched workflow that has no
                 # parameter groups; fetch the full record instead.
-                results.append(self.get_by_id(id=x.get("existingAlbertId") or x.get("albertId")))
+                target_id = x.get("existingAlbertId") or x.get("albertId")
+                if not target_id:
+                    raise AlbertException(f"Workflow response item missing ID: {x}")
+                results.append(self.get_by_id(id=target_id))
             else:
                 results.append(Workflow(**x))
         return results
