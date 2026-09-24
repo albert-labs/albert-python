@@ -111,11 +111,12 @@ def test_get_by_id(client: Albert, seeded_tasks):
     assert task.name == seeded_tasks[0].name
 
 
-def test_create_many(client: Albert, seed_prefix: str):
+def test_create_many(client: Albert, seed_prefix: str, seeded_locations):
     """Test creating multiple tasks in a single call."""
+    # POST /tasks/multi requires Location on General tasks (see api-task GeneralTask schema).
     to_create = [
-        GeneralTask(name=f"{seed_prefix} - create_many 1"),
-        GeneralTask(name=f"{seed_prefix} - create_many 2"),
+        GeneralTask(name=f"{seed_prefix} - create_many 1", location=seeded_locations[0]),
+        GeneralTask(name=f"{seed_prefix} - create_many 2", location=seeded_locations[0]),
     ]
     created: list[BaseTask] = []
     try:
