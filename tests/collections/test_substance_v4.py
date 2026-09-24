@@ -152,7 +152,10 @@ def test_update_metadata_multiselect_list_field(
     assert sub_id
 
     def stored_ids() -> set[str]:
-        substance = client.substances_v4.get_by_id(sub_id=sub_id)
+        # Read back with catch_errors=False: the freshly created substance carries
+        # a casID (its ts identifier) but no hazards data, so the default GET 422s
+        # with ERROR_MISSING_HAZARDS_CAS. update_metadata reads the same way.
+        substance = client.substances_v4.get_by_id(sub_id=sub_id, catch_errors=False)
         assert substance is not None
         entries = (substance.metadata or {}).get(substance_list_field.name) or []
         return {entry["id"] for entry in entries}
