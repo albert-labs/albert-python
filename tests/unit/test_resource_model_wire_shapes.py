@@ -4,6 +4,7 @@ Pure model validation: no client, no session, no network.
 """
 
 from albert.resources.data_columns import DataColumn
+from albert.resources.roles import Role
 from albert.resources.un_numbers import UnNumber
 
 
@@ -30,3 +31,10 @@ def test_un_number_accepts_sparse_record() -> None:
     assert sparse.storage_class_name is None
     assert sparse.shipping_description is None
     assert sparse.un_classification is None
+
+
+def test_role_accepts_missing_tenant() -> None:
+    """Test role-only (id-filtered) responses validate without a ``tenant`` key."""
+    role = Role.model_validate({"albertId": "ROL1", "name": "Administrator"})
+    assert role.id == "ROL1"
+    assert role.tenant is None
