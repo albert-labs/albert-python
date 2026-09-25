@@ -13,10 +13,14 @@ from albert.exceptions import (
     BadGateway,
     BadRequestError,
     CombinationGenerationError,
+    ConflictError,
     ForbiddenError,
     InternalServerError,
     NotFoundError,
+    PreconditionFailedError,
+    PreconditionRequiredError,
     UnauthorizedError,
+    UnsupportedMediaTypeError,
     _get_http_error_cls,
     handle_async_http_errors,
     handle_http_errors,
@@ -84,6 +88,10 @@ def _make_httpx_response(
         UnauthorizedError,
         ForbiddenError,
         NotFoundError,
+        ConflictError,
+        PreconditionFailedError,
+        UnsupportedMediaTypeError,
+        PreconditionRequiredError,
         AlbertServerError,
         InternalServerError,
     ],
@@ -129,6 +137,44 @@ def test_pickle_sets_response_to_none():
     assert restored.response is None
 
 
+def _make_error_response(status_code: int, reason: str) -> requests.Response:
+    """Simulate an error response returned by the Albert API."""
+    req = requests.PreparedRequest()
+    req.method = "PATCH"
+    req.url = "https://app.albertinvent.com/api/v4.0/master-data/units/UNT0001"
+    req.body = None
+
+    resp = requests.Response()
+    resp.status_code = status_code
+    resp.reason = reason
+    resp.request = req
+    resp._content = json.dumps({"errors": reason}).encode()
+    resp.encoding = "utf-8"
+    return resp
+
+
+@pytest.mark.parametrize(
+    "status_code,reason,exc_cls",
+    [
+        (409, "Conflict", ConflictError),
+        (412, "Precondition Failed", PreconditionFailedError),
+        (415, "Unsupported Media Type", UnsupportedMediaTypeError),
+        (428, "Precondition Required", PreconditionRequiredError),
+    ],
+)
+def test_handle_http_errors_maps_typed_exceptions(status_code, reason, exc_cls):
+    """Test that each status code maps to its typed exception carrying the response."""
+    response = _make_error_response(status_code, reason)
+
+    with pytest.raises(exc_cls) as exc_info, handle_http_errors():
+        raise requests.HTTPError(response=response)
+
+    exc = exc_info.value
+    assert exc.response is response
+    assert str(status_code) in exc.message
+    assert reason in exc.message
+
+
 def test_combination_generation_error_attributes():
     """Test that CombinationGenerationError preserves task, failed_blocks, and job_states."""
     task = PropertyTask(id="TASFOR123", name="Test Task")
@@ -158,7 +204,11 @@ def test_combination_generation_error_attributes():
         (401, UnauthorizedError),
         (403, ForbiddenError),
         (404, NotFoundError),
+        (409, ConflictError),
         (410, AlbertClientError),
+        (412, PreconditionFailedError),
+        (415, UnsupportedMediaTypeError),
+        (428, PreconditionRequiredError),
         (429, AlbertClientError),
         (500, InternalServerError),
         (502, BadGateway),
