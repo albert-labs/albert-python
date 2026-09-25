@@ -185,12 +185,16 @@ def test_inventory_search_with_name_only_storage_location_filter(
         ]
 
     filter_results = poll_until(
-        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)])
+        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)]),
+        predicate=lambda results: {f"INV{p.id}" for p in results} == expected_ids,
     )
     assert {f"INV{p.id}" for p in filter_results} == expected_ids
 
     # The full StorageLocation object from a lookup remains accepted.
-    object_results = poll_until(lambda: search_scoped(storage_location=unit))
+    object_results = poll_until(
+        lambda: search_scoped(storage_location=unit),
+        predicate=lambda results: {f"INV{p.id}" for p in results} == expected_ids,
+    )
     assert {f"INV{p.id}" for p in object_results} == expected_ids
 
 
