@@ -153,6 +153,7 @@ class FileCollection(BaseCollection):
             files. Defaults to False.
         category : FileCategory | None, optional
             The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
+            Reserved for future use; currently not applied.
 
         Returns
         -------
@@ -211,6 +212,7 @@ class FileCollection(BaseCollection):
             files. Defaults to False.
         category : FileCategory | None, optional
             The file category (e.g. ``SDS``, ``OTHER``). Defaults to None.
+            Reserved for future use; currently not applied to the stored file.
 
         Returns
         -------
@@ -281,6 +283,7 @@ class FileCollection(BaseCollection):
             files. Defaults to False.
         category : FileCategory | None, optional
             The category of the file (e.g. ``SDS``, ``OTHER``). Defaults to None.
+            Reserved for future use; currently not applied to the stored file.
 
         Returns
         -------
