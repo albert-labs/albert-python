@@ -177,11 +177,6 @@ def test_resolve_return_scope_block_requires_inventory_and_block_id():
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: property_data.py:81 error message says return_scope='combo' but the "
-    "check guards return_scope=='block'; message should name the actual scope.",
-)
 def test_resolve_return_scope_block_error_message_names_block_scope():
     """Test that the missing-ids error message names the 'block' scope it actually guards."""
     with pytest.raises(ValueError, match="return_scope='block'"):
@@ -718,6 +713,41 @@ def test_safe_eval_math_rejects_unsafe_expressions(expression):
     """Test that names, attribute access, calls, imports, and non-allow-listed functions are rejected."""
     with pytest.raises((ValueError, SyntaxError)):
         _safe_eval_math(expression=expression)
+
+
+@pytest.mark.parametrize(
+    "expression", ["9 ** 9 ** 9", "10 ** 100000", "((2 ** 1000) ** 1000) ** 1000"]
+)
+def test_safe_eval_math_rejects_huge_integer_powers(expression):
+    """Test that integer powers too large to compute quickly are rejected."""
+    with pytest.raises(ValueError, match="too large"):
+        _safe_eval_math(expression=expression)
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("2 ** 1000", 2**1000),
+        ("1 ** 100000", 1),
+        ("0 ** 100000", 0),
+        ("(-1) ** 100001", -1),
+        ("2 ** -100000", 0.0),
+        ("2.0 ** 0.5", 2**0.5),
+    ],
+)
+def test_safe_eval_math_allows_bounded_powers(expression, expected):
+    """Test that powers within the limit, and trivial bases, still evaluate."""
+    assert _safe_eval_math(expression=expression) == pytest.approx(expected)
+
+
+def test_evaluate_calculation_returns_none_for_huge_exponent():
+    """Test that a calculation with an oversized exponent returns None instead of hanging."""
+    assert (
+        evaluate_calculation(
+            calculation="=COL1^COL2", column_values={"COL1": "9", "COL2": "99999999"}
+        )
+        is None
+    )
 
 
 # ---------------------------------------------------------------------------
