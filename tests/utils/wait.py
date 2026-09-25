@@ -18,11 +18,20 @@ def poll_until(
     Pass a ``predicate`` when the assertion needs the complete expected set: a
     non-empty but partially indexed result satisfies the default check while
     remaining items are still becoming visible.
+
+    Exceptions raised by ``fetch`` (for example a transient 5xx or 429) do not
+    end polling: the poll retries until the deadline and re-raises the last
+    exception if the deadline expires on an erroring attempt.
     """
     deadline = time.monotonic() + timeout
     while True:
-        result = fetch()
-        ready = predicate(result) if predicate is not None else bool(result)
-        if ready or time.monotonic() >= deadline:
-            return result
+        try:
+            result = fetch()
+        except Exception:
+            if time.monotonic() >= deadline:
+                raise
+        else:
+            ready = predicate(result) if predicate is not None else bool(result)
+            if ready or time.monotonic() >= deadline:
+                return result
         time.sleep(interval)
