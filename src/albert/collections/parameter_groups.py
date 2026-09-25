@@ -634,7 +634,7 @@ class ParameterGroupCollection(BaseCollection):
         Notes
         -----
         The following fields can be updated: ``description``, ``metadata``,
-        ``name``, and, per parameter, ``value``, ``unit``, ``required``, and
+        ``name``, ``tags``, and, per parameter, ``value``, ``unit``, ``required``, and
         ``validation``.
         """
         existing = self.get_by_id(id=parameter_group.id)
