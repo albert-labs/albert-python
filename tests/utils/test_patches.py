@@ -1,5 +1,8 @@
+from albert.collections.base import BaseCollection
+from albert.collections.companies import CompanyCollection
 from albert.collections.lots import LotCollection
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.resources.companies import Company
 from albert.resources.lists import ListItem
 from albert.resources.lots import Lot
 from albert.resources.parameter_groups import ParameterGroup
@@ -31,6 +34,42 @@ def test_exclude_unset_default():
     datum1 = dumped["data"][1]
     assert "oldValue" not in datum1
     assert datum1["newValue"] == 4
+
+
+class _DeletableNameCollection(BaseCollection):
+    _updatable_attributes = {"name"}
+
+
+def _company_with_name_cleared() -> Company:
+    # ``name`` is required on the model, so bypass validation to build the
+    # "explicitly set to None" state an update payload would carry.
+    return Company.model_construct(id="COM123", name=None)
+
+
+def test_delete_op_emitted_by_default() -> None:
+    """Test that clearing an updatable attribute emits a delete op by default."""
+    existing = Company(id="COM123", name="Acme Chemicals")
+    updated = _company_with_name_cleared()
+
+    payload = _DeletableNameCollection(session=None)._generate_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert len(payload.data) == 1
+    assert payload.data[0].operation == PatchOperation.DELETE
+    assert payload.data[0].attribute == "name"
+
+
+def test_non_deletable_attributes_skip_delete_ops() -> None:
+    """Test that no delete op is emitted for a non-deletable attribute set to None."""
+    existing = Company(id="COM123", name="Acme Chemicals")
+    updated = _company_with_name_cleared()
+
+    payload = CompanyCollection(session=None)._generate_patch_payload(
+        existing=existing, updated=updated
+    )
+
+    assert payload.data == []
 
 
 def change_metadata(

@@ -84,6 +84,15 @@ class UserCollection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{UserCollection._api_version}/users"
 
+    @staticmethod
+    def _normalize_filter_id(value: str, *, type: UserFilterType | None) -> str:
+        """Prefix an ``id`` filter value, keeping an existing USR or ROL prefix."""
+        upper = value.upper()
+        if upper.startswith(("USR", "ROL")):
+            return upper
+        prefix = "ROL" if type == UserFilterType.ROLE else "USR"
+        return f"{prefix}{upper}"
+
     def get_current_user(self) -> User:
         """Get the user account for the currently authenticated session.
 
@@ -281,7 +290,7 @@ class UserCollection(BaseCollection):
         *,
         status: Status | None = None,
         type: UserFilterType | None = None,
-        id: list[UserId] | None = None,
+        id: list[str] | None = None,
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[User]:
@@ -306,9 +315,10 @@ class UserCollection(BaseCollection):
         type : UserFilterType, optional
             The attribute that ``id`` filters on. Currently only ``role`` is
             supported.
-        id : list[UserId], optional
+        id : list[str], optional
             The values to filter on for the chosen ``type`` (e.g. role IDs when
-            ``type`` is ``role``).
+            ``type`` is ``role``). Existing ``USR``/``ROL`` prefixes are kept;
+            bare IDs are prefixed to match ``type``.
         start_key : str, optional
             Pagination cursor marking where the next page of results begins.
         max_items : int, optional
@@ -321,6 +331,9 @@ class UserCollection(BaseCollection):
             An iterator of fully populated users. Preserves ``has_more`` / ``total``
             from the underlying list paginator.
         """
+        if id is not None:
+            id = [self._normalize_filter_id(value, type=type) for value in id]
+
         params = {
             "status": status,
             "type": type,

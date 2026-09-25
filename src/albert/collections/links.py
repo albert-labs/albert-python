@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
@@ -97,12 +98,26 @@ class LinksCollection(BaseCollection):
         -------
         list[Link]
             The created links, each populated with its assigned Link ID.
+
+        Notes
+        -----
+        If the API reports a partial success (some links failed to create), a
+        warning is logged and only the successfully created links are returned.
         """
         response = self.session.post(
             self.base_path,
             json=[l.model_dump(by_alias=True, exclude_none=True, mode="json") for l in links],
         )
-        return [Link(**l) for l in response.json()]
+        data = response.json()
+        if isinstance(data, list):
+            created, failed = data, []
+        else:
+            # Partial success (206) wraps the created links in an envelope.
+            created = data.get("CreatedItems") or data.get("Items") or []
+            failed = data.get("FailedItems") or []
+        if response.status_code == 206 or failed:
+            logger.warning("Link creation partially succeeded", extra={"failed": failed})
+        return [Link(**l) for l in created]
 
     def get_all(
         self,

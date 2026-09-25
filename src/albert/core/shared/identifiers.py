@@ -405,6 +405,10 @@ RowId = Annotated[str, AfterValidator(ensure_row_id)]
 
 
 def ensure_report_id(id: str) -> str:
+    # Fully qualified ids (``ALB#REP14``) carry a tenant qualifier. Strip it
+    # before prefix normalization, as the report collections do for type ids.
+    if id:
+        id = id.rsplit("#", 1)[-1]
     return _ensure_albert_id(id, "ReportId")
 
 
