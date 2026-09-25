@@ -40,7 +40,7 @@ def _restore_albert_http_error(cls: type, message: str) -> AlbertHTTPError:
 class AlbertHTTPError(AlbertException):
     """Base class for all erors due to HTTP responses."""
 
-    def __init__(self, response: requests.Response):
+    def __init__(self, response: requests.Response | httpx.Response):
         message = self._format_message(response)
         super().__init__(message)
         self.response = response
@@ -49,15 +49,18 @@ class AlbertHTTPError(AlbertException):
         return (_restore_albert_http_error, (type(self), self.message))
 
     @classmethod
-    def _format_message(cls, response: requests.Response) -> str:
+    def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         try:
             payload = response.json()
             errors = payload.get("errors") or payload
         except ValueError:
             errors = response.text.strip()
+        reason = (
+            response.reason if isinstance(response, requests.Response) else response.reason_phrase
+        )
         message = (
             f"{response.request.method} '{response.request.url}' failed with status code "
-            f"{response.status_code} ({response.reason})."
+            f"{response.status_code} ({reason})."
         )
         return f"{message} Errors: {errors}" if errors else message
 
@@ -70,9 +73,17 @@ class BadRequestError(AlbertClientError):
     """HTTP Error due to a 400 Bad Request response."""
 
     @classmethod
-    def _format_message(cls, response: requests.Response) -> str:
+    def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         message = super()._format_message(response)
-        message += f"\nBody:\n{response.request.body}"
+        request = response.request
+        if isinstance(request, requests.PreparedRequest):
+            body = request.body
+        else:
+            try:
+                body = request.content
+            except httpx.RequestNotRead:
+                body = None
+        message += f"\nBody:\n{body}"
         return message
 
 
@@ -143,7 +154,7 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
         case code if 500 <= code < 600:
             return AlbertServerError
         case _:
-            raise AlbertHTTPError
+            return AlbertHTTPError
 
 
 @contextlib.asynccontextmanager
@@ -151,25 +162,8 @@ async def handle_async_http_errors() -> AsyncIterator[None]:
     try:
         yield
     except httpx.HTTPStatusError as e:
-        response = e.response
-        try:
-            payload = response.json()
-            errors = payload.get("errors") or payload
-        except Exception:
-            errors = response.text.strip()
-        reason = getattr(response, "reason_phrase", str(response.status_code))
-        message = (
-            f"{response.request.method} '{response.request.url}' failed with status code "
-            f"{response.status_code} ({reason})."
-        )
-        if errors:
-            message = f"{message} Errors: {errors}"
-        error_cls = _get_http_error_cls(response.status_code)
-        # Bypass AlbertHTTPError.__init__ (requires requests.Response), use
-        # Exception.__new__ which sets exc.args and is safe in Python 3.12+.
-        exc = Exception.__new__(error_cls, message)
-        exc.message = message
-        raise exc from e
+        error_cls = _get_http_error_cls(e.response.status_code)
+        raise error_cls(e.response) from e
 
 
 @contextlib.contextmanager
