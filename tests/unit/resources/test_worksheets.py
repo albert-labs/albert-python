@@ -1,4 +1,3 @@
-
 from albert.resources.sheets import Sheet
 from albert.resources.worksheets import Worksheet
 
