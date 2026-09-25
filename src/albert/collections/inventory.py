@@ -1575,11 +1575,6 @@ class InventoryCollection(BaseCollection):
             Request data for the PATCH operation.
         """
 
-        def _remove_old_value_on_add(patch_dict):
-            if "oldValue" in patch_dict and patch_dict["operation"] == "add":
-                del patch_dict["oldValue"]
-            return patch_dict
-
         _updatable_attributes_special = {"company", "tags", "cas", "acls"}
         payload = self._generate_patch_payload(existing=existing, updated=updated)
         payload = payload.model_dump(mode="json", by_alias=True)
@@ -1750,9 +1745,9 @@ class InventoryCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``alias``, ``description``,
-        ``is_formula_override``, ``metadata``, ``name``, ``security_class``,
-        ``unit_category``.
+        The following fields can be updated: ``acls``, ``alias``, ``company``,
+        ``description``, ``is_formula_override``, ``metadata``, ``name``,
+        ``security_class``, ``tags``, ``unit_category``.
         Note that ``unit_category`` cannot be changed to or from ``volume``,
         and ``density`` is fixed at creation.
         On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,
