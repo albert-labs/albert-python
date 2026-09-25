@@ -7427,8 +7427,7 @@ tolerated as plain strings on <a class="autorefs autorefs-internal" href="#alber
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Project</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span></code></pre></div>
+
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
@@ -8094,10 +8093,6 @@ only from the client's perspective.</p>
                 (<code><a class="autorefs autorefs-internal" href="../../core/models/#albert.core.shared.models.base.AuditFields">AuditFields</a> | None</code>)
             </li>
             <li>
-              <code><span title="albert.resources.projects.Project._session">_session</span></code>
-                (<code><span title="albert.core.session.AlbertSession">AlbertSession</span> | None</code>)
-            </li>
-            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.projects.Project.description">description</a></code>
                 (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
             </li>
@@ -8154,20 +8149,14 @@ only from the client's perspective.</p>
         <p>Validators:</p>
         <ul>
             <li>
+              <code><span title="albert.resources.projects.Project._bind_session">_bind_session</span></code>
+            </li>
+            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.projects.Project.validate_status">validate_status</a></code>
                 &rarr;
                   <code><a class="autorefs autorefs-internal" href="#albert.resources.projects.Project.status">status</a></code>            </li>
         </ul>
 
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>src/albert/core/shared/models/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span></code></pre></div></td></tr></table></div>
-                  </details>
 
 
 <div class="doc doc-children">
@@ -8682,6 +8671,10 @@ the full <a class="autorefs autorefs-internal" href="#albert.resources.projects.
 
         <p>Fields:</p>
         <ul>
+            <li>
+              <code><span title="albert.resources.projects.ProjectSearchItem._collection">_collection</span></code>
+                (<code><a class="autorefs autorefs-internal" href="../../collections/base/#albert.collections.base.BaseCollection">BaseCollection</a> | None</code>)
+            </li>
             <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.projects.ProjectSearchItem.id">id</a></code>
                 (<code><a class="autorefs autorefs-internal" href="../identifiers/#albert.core.shared.identifiers.ProjectId">ProjectId</a> | None</code>)

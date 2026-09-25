@@ -14479,8 +14479,7 @@ automatically.</p>
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Design</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span></code></pre></div>
+
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
@@ -14736,10 +14735,6 @@ session and lazily loads its rows, columns, and grid on first access.</p>
                 (<code><a class="autorefs autorefs-internal" href="../../core/models/#albert.core.shared.models.base.AuditFields">AuditFields</a> | None</code>)
             </li>
             <li>
-              <code><span title="albert.resources.sheets.Design._session">_session</span></code>
-                (<code><span title="albert.core.session.AlbertSession">AlbertSession</span> | None</code>)
-            </li>
-            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Design.state">state</a></code>
                 (<code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.DesignState">DesignState</a> | None</code>)
             </li>
@@ -14753,16 +14748,13 @@ session and lazily loads its rows, columns, and grid on first access.</p>
             </li>
         </ul>
 
+        <p>Validators:</p>
+        <ul>
+            <li>
+              <code><span title="albert.resources.sheets.Design._bind_session">_bind_session</span></code>
+            </li>
+        </ul>
 
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>src/albert/core/shared/models/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span></code></pre></div></td></tr></table></div>
-                  </details>
 
 
 <div class="doc doc-children">
@@ -15533,8 +15525,7 @@ Default is <code>"above"</code>.</p>
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Sheet</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span></code></pre></div>
+
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
@@ -16200,10 +16191,6 @@ with the methods below.</p>
                 (<code><a class="autorefs autorefs-internal" href="../../core/models/#albert.core.shared.models.base.AuditFields">AuditFields</a> | None</code>)
             </li>
             <li>
-              <code><span title="albert.resources.sheets.Sheet._session">_session</span></code>
-                (<code><span title="albert.core.session.AlbertSession">AlbertSession</span> | None</code>)
-            </li>
-            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Sheet.id">id</a></code>
                 (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
             </li>
@@ -16240,6 +16227,9 @@ with the methods below.</p>
         <p>Validators:</p>
         <ul>
             <li>
+              <code><span title="albert.resources.sheets.Sheet._bind_session">_bind_session</span></code>
+            </li>
+            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Sheet.set_session">set_session</a></code>
             </li>
             <li>
@@ -16247,15 +16237,6 @@ with the methods below.</p>
             </li>
         </ul>
 
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>src/albert/core/shared/models/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span></code></pre></div></td></tr></table></div>
-                  </details>
 
 
 <div class="doc doc-children">
@@ -24175,8 +24156,7 @@ Defaults to <code>True</code>.</p>
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Column</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span></code></pre></div>
+
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
@@ -24748,10 +24728,6 @@ with <a class="autorefs autorefs-internal" href="#albert.resources.sheets.Sheet.
                 (<code><a class="autorefs autorefs-internal" href="../../core/models/#albert.core.shared.models.base.AuditFields">AuditFields</a> | None</code>)
             </li>
             <li>
-              <code><span title="albert.resources.sheets.Column._session">_session</span></code>
-                (<code><span title="albert.core.session.AlbertSession">AlbertSession</span> | None</code>)
-            </li>
-            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Column.column_id">column_id</a></code>
                 (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
             </li>
@@ -24792,20 +24768,14 @@ with <a class="autorefs autorefs-internal" href="#albert.resources.sheets.Sheet.
         <p>Validators:</p>
         <ul>
             <li>
+              <code><span title="albert.resources.sheets.Column._bind_session">_bind_session</span></code>
+            </li>
+            <li>
               <code><span title="albert.resources.sheets.Column._none_to_false">_none_to_false</span></code>
                 &rarr;
                   <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Column.locked">locked</a></code>            </li>
         </ul>
 
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>src/albert/core/shared/models/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span></code></pre></div></td></tr></table></div>
-                  </details>
 
 
 <div class="doc doc-children">
@@ -25355,8 +25325,7 @@ with <a class="autorefs autorefs-internal" href="#albert.resources.sheets.Sheet.
 
 
 </h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">Row</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span></code></pre></div>
+
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
@@ -25957,10 +25926,6 @@ through <a class="autorefs autorefs-internal" href="#albert.resources.sheets.Row
                 (<code><a class="autorefs autorefs-internal" href="../../core/models/#albert.core.shared.models.base.AuditFields">AuditFields</a> | None</code>)
             </li>
             <li>
-              <code><span title="albert.resources.sheets.Row._session">_session</span></code>
-                (<code><span title="albert.core.session.AlbertSession">AlbertSession</span> | None</code>)
-            </li>
-            <li>
               <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Row.row_id">row_id</a></code>
                 (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
             </li>
@@ -26005,20 +25970,14 @@ through <a class="autorefs autorefs-internal" href="#albert.resources.sheets.Row
         <p>Validators:</p>
         <ul>
             <li>
+              <code><span title="albert.resources.sheets.Row._bind_session">_bind_session</span></code>
+            </li>
+            <li>
               <code><span title="albert.resources.sheets.Row._coerce_config">_coerce_config</span></code>
                 &rarr;
                   <code><a class="autorefs autorefs-internal" href="#albert.resources.sheets.Row.config">config</a></code>            </li>
         </ul>
 
-                  <details class="mkdocstrings-source">
-                    <summary>Source code in <code>src/albert/core/shared/models/base.py</code></summary>
-                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-84">84</a></span>
-<span class="normal"><a href="#__codelineno-0-85">85</a></span>
-<span class="normal"><a href="#__codelineno-0-86">86</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">data</span><span class="p">):</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
-</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">)</span>
-</span></code></pre></div></td></tr></table></div>
-                  </details>
 
 
 <div class="doc doc-children">
