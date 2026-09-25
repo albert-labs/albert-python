@@ -14,6 +14,7 @@ from albert.resources.product_design import (
     UnpackedProductDesign,
 )
 from albert.resources.projects import Project, ProjectClass, TaskConfig
+from albert.resources.property_data import PropertyData, TaskDataColumn, TaskPropertyCreate
 from albert.resources.substance import SubstanceInfo
 from albert.resources.substance_v4 import SubstanceV4Info, SubstanceV4SearchItem
 
@@ -149,6 +150,38 @@ def test_project_old_api_params_uses_wire_name():
     project = Project.model_validate({"description": "p", "oldApiParams": {"moNumber": "42"}})
 
     assert project.old_api_params == {"moNumber": "42"}
+
+
+# Recorded from GET /api/v3/propertydata?entity=task (DataColumns[].PropertyData)
+TASK_PROPERTY_DATA_PAYLOAD = {
+    "id": "PTD5495725",
+    "value": "12",
+    "valueNumeric": 12,
+    "valueString": "Text value for cell",
+    "valueType": "number",
+}
+
+
+def test_property_data_keeps_numeric_and_string_forms():
+    """The typed value forms must survive validation, not be dropped as extras."""
+    property_data = PropertyData.model_validate(TASK_PROPERTY_DATA_PAYLOAD)
+
+    assert property_data.value == "12"
+    assert property_data.value_numeric == 12
+    assert property_data.value_string == "Text value for cell"
+
+
+def test_task_property_create_sends_visible_trial_number_as_number():
+    """``visibleTrialNo`` is a ``number`` in the API schema, not a string."""
+    prop = TaskPropertyCreate(
+        data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="COL1"),
+        value="1.2",
+    )
+
+    payload = prop.model_dump(by_alias=True, exclude_none=True, mode="json")
+
+    assert isinstance(payload["visibleTrialNo"], int)
+    assert payload["visibleTrialNo"] == 1
 
 
 def test_substance_info_tolerates_wider_v3_field_types():

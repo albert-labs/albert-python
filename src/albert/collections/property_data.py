@@ -283,6 +283,7 @@ class PropertyDataCollection(BaseCollection):
         """
         existing_properties = self.get_properties_on_inventory(inventory_id=inventory_id)
         existing_value = None
+        existing_id = None
         for p in existing_properties.custom_property_data:
             if p.data_column.data_column_id == property_data.data_column_id:
                 existing_value = (
@@ -296,6 +297,11 @@ class PropertyDataCollection(BaseCollection):
                 )
                 existing_id = p.data_column.property_data.id
                 break
+        if existing_id is None:
+            # No property-data record exists for this column, so there is nothing
+            # to patch; add the value instead.
+            self.add_properties_to_inventory(inventory_id=inventory_id, properties=[property_data])
+            return self.get_properties_on_inventory(inventory_id=inventory_id)
         if existing_value is not None:
             payload = [
                 PropertyDataPatchDatum(
@@ -887,12 +893,20 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             A specific lot of the inventory item. Defaults to None.
         data_template_id : DataTemplateId, optional
-            Limit voiding to a specific data template. Defaults to None (all).
+            Deprecated and ignored. Voiding always applies to every data
+            template in the interval.
 
         Returns
         -------
         None
         """
+        if data_template_id is not None:
+            warnings.warn(
+                "data_template_id is deprecated and ignored; voiding applies to "
+                "every data template in the interval.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         payload = {
             "operation": "void",
             "by": "intervalCombination",
@@ -901,7 +915,6 @@ class PropertyDataCollection(BaseCollection):
             "inventoryId": inventory_id,
             "blockId": block_id,
             "lotId": lot_id,
-            "dataTemplateId": data_template_id,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         self.session.patch(
@@ -948,12 +961,20 @@ class PropertyDataCollection(BaseCollection):
         lot_id : LotId, optional
             A specific lot of the inventory item. Defaults to None.
         data_template_id : DataTemplateId, optional
-            Limit unvoiding to a specific data template. Defaults to None (all).
+            Deprecated and ignored. Unvoiding always applies to every data
+            template in the interval.
 
         Returns
         -------
         None
         """
+        if data_template_id is not None:
+            warnings.warn(
+                "data_template_id is deprecated and ignored; unvoiding applies to "
+                "every data template in the interval.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         payload = {
             "operation": "unvoid",
             "by": "intervalCombination",
@@ -962,7 +983,6 @@ class PropertyDataCollection(BaseCollection):
             "inventoryId": inventory_id,
             "blockId": block_id,
             "lotId": lot_id,
-            "dataTemplateId": data_template_id,
         }
         payload = {k: v for k, v in payload.items() if v is not None}
         self.session.patch(
@@ -1172,7 +1192,6 @@ class PropertyDataCollection(BaseCollection):
             "inventoryId": inventory_id,
             "lotId": lot_id,
             "autoCalculate": "true",
-            "history": "true",
         }
         params = {k: v for k, v in params.items() if v is not None}
         payload = (
@@ -1194,10 +1213,31 @@ class PropertyDataCollection(BaseCollection):
             params=params,
         )
         response_json = response.json()
+        # The POST response is not in request order (existing trials are returned
+        # before new trials, and rejected values are dropped), so pair each
+        # response item back to its request property by identity, not position.
+        properties_by_key = {
+            (
+                prop.interval_combination,
+                prop.data_column.data_column_id,
+                prop.data_column.column_sequence,
+                prop.visible_trial_number,
+            ): prop
+            for prop in properties
+        }
         registered_properties: list[TaskPropertyCreate] = []
-        for prop, item in zip(properties, response_json, strict=False):
+        for item in response_json:
             item_data = dict(item)
-            if "DataTemplate" not in item_data and prop.data_template:
+            item_column = item_data.get("DataColumns") or {}
+            prop = properties_by_key.get(
+                (
+                    item_data.get("intervalCombination"),
+                    item_column.get("id"),
+                    item_column.get("columnId"),
+                    item_data.get("visibleTrialNo"),
+                )
+            )
+            if prop is not None and "DataTemplate" not in item_data and prop.data_template:
                 item_data["DataTemplate"] = prop.data_template
             registered_properties.append(TaskPropertyCreate(**item_data))
         existing_data_rows = self.get_task_block_properties(
