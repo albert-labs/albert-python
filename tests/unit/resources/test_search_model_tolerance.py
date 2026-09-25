@@ -2,7 +2,7 @@
 
 Pins the wire shapes observed in the wild (eval-log dropped rows, citation
 hydration failures) so the tolerance fixes cannot regress. No client or network
-required — pure model validation.
+required: pure model validation.
 """
 
 import pytest

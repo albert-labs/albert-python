@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from albert.resources.targets import (
     ComparisonOperator,
     NumericRange,
@@ -77,3 +80,8 @@ class TestTargetParameterCoercion:
         pf = target.parameters[0].value
         assert pf.operator == ComparisonOperator.IN_SET
         assert pf.value == ["A", "B"]
+
+    def test_raw_list_bypasses_coercion_and_fails_criterion_validation(self):
+        """Test that a bare list (not the in-set dict shape) is left unchanged and rejected downstream."""
+        with pytest.raises(ValidationError):
+            self._validate_target([1, 2, 3])

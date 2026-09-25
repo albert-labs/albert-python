@@ -118,6 +118,31 @@ def test_block_rules_unwrap_response():
     assert block_rules.overrides[0].action == OverrideAction.UNSKIP
 
 
+def test_block_rules_accepts_already_unwrapped_rules_list():
+    """Test BlockRules accepts rules already given as a plain list (not the paginated envelope)."""
+    payload = {
+        "taskId": "TASFOR123",
+        "blockId": "BLK1",
+        "rules": [
+            {
+                "id": "rule-uuid-1",
+                "name": "High temp cutoff",
+                "conditions": [],
+            }
+        ],
+        "overrides": [],
+    }
+    block_rules = BlockRules.model_validate(payload)
+    assert len(block_rules.rules) == 1
+    assert block_rules.rules[0].id == "rule-uuid-1"
+
+
+def test_block_rules_unwrap_rules_ignores_non_dict_input():
+    """Test the rules-unwrap validator leaves non-dict input for downstream validation to reject."""
+    with pytest.raises(ValidationError):
+        BlockRules.model_validate(["not", "a", "dict"])
+
+
 def test_workflow_get_override_key():
     """Test Workflow.get_override_key builds compound keys in canonical order."""
     wf = Workflow(
