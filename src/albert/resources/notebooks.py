@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pandas import DataFrame
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import Status
@@ -62,6 +62,14 @@ class BlockType(str, Enum):
         A chemical structure drawn in the Ketcher editor.
     TABLE : str
         A tabular grid of cells.
+    WORD : str
+        A Microsoft Word document (wire value ``msdocx``).
+    EXCEL : str
+        A Microsoft Excel workbook (wire value ``msxlsx``).
+    POWERPOINT : str
+        A Microsoft PowerPoint presentation (wire value ``mspptx``).
+    REPORT : str
+        An embedded Albert report.
     """
 
     PARAGRAPH = "paragraph"
@@ -72,6 +80,10 @@ class BlockType(str, Enum):
     ATTACHES = "attaches"
     KETCHER = "ketcher"
     TABLE = "table"
+    WORD = "msdocx"
+    EXCEL = "msxlsx"
+    POWERPOINT = "mspptx"
+    REPORT = "report"
 
 
 class NotebookCopyType(str, Enum):
@@ -490,6 +502,100 @@ class ListBlock(BaseBlock):
     """The list entries and style."""
 
 
+class OfficeContent(BaseAlbertModel):
+    """The content of a Microsoft Office block (Word, Excel, or PowerPoint).
+
+    Office blocks are created with empty content; Albert generates the backing
+    document and populates ``title`` and ``file_key``."""
+
+    title: str | None = Field(default=None)
+    """The display title of the Office document. Set by Albert when the document is created."""
+
+    namespace: str = Field(default="result")
+    """The file storage namespace. Defaults to ``"result"``."""
+
+    file_key: str | None = Field(default=None, alias="fileKey")
+    """The storage key of the Office document on Albert. Set by Albert when the document is created."""
+
+
+class WordBlock(BaseBlock):
+    """A Microsoft Word document embedded in a notebook.
+
+    !!! example
+        ```python
+        from albert.resources.notebooks import WordBlock
+
+        block = WordBlock()
+        ```"""
+
+    type: Literal[BlockType.WORD] = Field(default=BlockType.WORD, alias="blockType")
+    """Always [`WORD`][albert.resources.notebooks.BlockType.WORD]."""
+
+    content: OfficeContent = Field(default_factory=OfficeContent)
+    """The Word document details."""
+
+
+class ExcelBlock(BaseBlock):
+    """A Microsoft Excel workbook embedded in a notebook.
+
+    !!! example
+        ```python
+        from albert.resources.notebooks import ExcelBlock
+
+        block = ExcelBlock()
+        ```"""
+
+    type: Literal[BlockType.EXCEL] = Field(default=BlockType.EXCEL, alias="blockType")
+    """Always [`EXCEL`][albert.resources.notebooks.BlockType.EXCEL]."""
+
+    content: OfficeContent = Field(default_factory=OfficeContent)
+    """The Excel workbook details."""
+
+
+class PowerPointBlock(BaseBlock):
+    """A Microsoft PowerPoint presentation embedded in a notebook.
+
+    !!! example
+        ```python
+        from albert.resources.notebooks import PowerPointBlock
+
+        block = PowerPointBlock()
+        ```"""
+
+    type: Literal[BlockType.POWERPOINT] = Field(default=BlockType.POWERPOINT, alias="blockType")
+    """Always [`POWERPOINT`][albert.resources.notebooks.BlockType.POWERPOINT]."""
+
+    content: OfficeContent = Field(default_factory=OfficeContent)
+    """The PowerPoint presentation details."""
+
+
+class ReportContent(BaseAlbertModel):
+    """The content of a report block.
+
+    Report blocks embed an Albert report in a notebook. The API stores the
+    content as a free-form object, so unknown fields are preserved on the model.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ReportBlock(BaseBlock):
+    """An Albert report embedded in a notebook.
+
+    !!! example
+        ```python
+        from albert.resources.notebooks import ReportBlock
+
+        block = ReportBlock()
+        ```"""
+
+    type: Literal[BlockType.REPORT] = Field(default=BlockType.REPORT, alias="blockType")
+    """Always [`REPORT`][albert.resources.notebooks.BlockType.REPORT]."""
+
+    content: ReportContent = Field(default_factory=ReportContent)
+    """The report block payload."""
+
+
 class NotebookSearchItem(BaseAlbertModel):
     """A block-level notebook search hit.
 
@@ -548,6 +654,10 @@ _NotebookBlockUnion = (
     | KetcherBlock
     | TableBlock
     | ListBlock
+    | WordBlock
+    | ExcelBlock
+    | PowerPointBlock
+    | ReportBlock
 )
 NotebookBlock = Annotated[_NotebookBlockUnion, Field(discriminator="type")]
 
@@ -556,7 +666,8 @@ class Notebook(BaseResource):
     """An electronic lab notebook (ELN) in Albert.
 
     A Notebook is an ordered document of content blocks (paragraphs, headers,
-    checklists, tables, images, attachments, lists, and Ketcher chemical drawings)
+    checklists, tables, images, attachments, lists, Ketcher chemical drawings,
+    Microsoft Office documents, and embedded reports)
     attached to a parent Project, Task, or custom template. Notebooks are created
     empty and then populated block-by-block; see
     [`NotebookCollection`][albert.collections.notebooks.NotebookCollection] for the workflow.
@@ -597,6 +708,8 @@ NotebookContent = (
     | TableContent
     | BulletedListContent
     | NumberedListContent
+    | OfficeContent
+    | ReportContent
 )
 
 allowed_notebook_contents = {
@@ -608,6 +721,10 @@ allowed_notebook_contents = {
     BlockType.KETCHER: KetcherContent,
     BlockType.TABLE: TableContent,
     BlockType.LIST: (BulletedListContent, NumberedListContent),
+    BlockType.WORD: OfficeContent,
+    BlockType.EXCEL: OfficeContent,
+    BlockType.POWERPOINT: OfficeContent,
+    BlockType.REPORT: ReportContent,
 }
 
 
@@ -706,5 +823,9 @@ class NotebookCopyInfo(BaseAlbertModel):
     name: str | None = Field(default=None)
     """An optional alternative name for the copy."""
 
-    acl: ACLContainer | NotebookCopyACL | None = Field(default=None)
+    template_id: CustomTemplateId | None = Field(default=None, alias="templateId")
+    """The ID of the source custom template (format ``CTP...``). Required when copying with
+    [`RESTORE_TEMPLATE`][albert.resources.notebooks.NotebookCopyType.RESTORE_TEMPLATE]."""
+
+    acl: ACLContainer | NotebookCopyACL | None = Field(default=None, alias="ACL")
     """Access-control settings to apply to the copy."""

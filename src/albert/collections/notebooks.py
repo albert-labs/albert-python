@@ -48,7 +48,8 @@ class NotebookCollection(BaseCollection):
 
     A Notebook is an electronic lab notebook (ELN): an ordered document made up
     of content blocks (paragraphs, headers, checklists, tables, images, file
-    attachments, and Ketcher chemical drawings). Each Notebook is attached to a
+    attachments, Ketcher chemical drawings, Microsoft Office documents, and
+    embedded reports). Each Notebook is attached to a
     parent entity, which is a Project, a Task, or a custom template, and is
     referenced by its Notebook ID (format ``NTB...``, e.g. ``"NTB123"``).
 
@@ -613,6 +614,8 @@ class NotebookCollection(BaseCollection):
         ----------
         notebook_copy_info : NotebookCopyInfo
             Describes the source notebook and the destination parent for the copy.
+            When ``type`` is [`RESTORE_TEMPLATE`][albert.resources.notebooks.NotebookCopyType.RESTORE_TEMPLATE],
+            ``template_id`` must be set to the source custom template (format ``CTP...``).
         type : NotebookCopyType
             The kind of copy to perform (e.g. into a template, task, or project,
             or restoring a template).

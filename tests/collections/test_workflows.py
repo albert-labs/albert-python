@@ -1,6 +1,8 @@
 import pytest
 
 from albert import Albert
+from albert.resources.facet import FacetItem
+from albert.resources.parameters import ParameterCategory
 from albert.resources.workflows import Workflow, WorkflowSearchItem
 from tests.utils.wait import poll_until
 
@@ -131,3 +133,47 @@ def test_workflow_search_by_parameter_groups(
         timeout=60.0,
     )
     assert hits, "Expected at least one seeded workflow matching parameter group filter"
+
+
+def test_create_strips_short_name_on_normal_parameters(
+    client: Albert, seeded_workflows: list[Workflow]
+):
+    """Test create drops short_name on Normal parameters instead of failing."""
+    wf = seeded_workflows[0].model_copy(deep=True)
+    wf.id = None
+    wf.status = None
+
+    normal_setpoint = wf.parameter_group_setpoints[0].parameter_setpoints[0]
+    assert normal_setpoint.category != ParameterCategory.SPECIAL
+    normal_setpoint.short_name = "SDK-162 strip me"
+
+    [matched] = client.workflows.create(workflows=[wf])
+    assert matched.id == seeded_workflows[0].id
+
+
+def test_workflow_search_with_facet_list(
+    client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]
+):
+    """Test search accepts facet_list and still returns seeded workflows."""
+    seeded_ids = {wf.id for wf in seeded_workflows}
+    hits = poll_until(
+        lambda: [
+            item
+            for item in client.workflows.search(
+                text=seed_prefix, facet_list=["parameterGroup"], max_items=100
+            )
+            if item.id in seeded_ids
+        ]
+    )
+    assert hits, "Expected at least one seeded workflow in facet search results"
+
+
+def test_get_all_facets(client: Albert, seed_prefix: str, seeded_workflows: list[Workflow]):
+    """Test get_all_facets returns facet groups for a scoped workflow query."""
+    facets = poll_until(
+        lambda: client.workflows.get_all_facets(text=seed_prefix, facet_list=["parameterGroup"]),
+        timeout=60.0,
+    )
+    assert facets, "Expected at least one facet for the seeded workflows"
+    for facet in facets:
+        assert isinstance(facet, FacetItem)

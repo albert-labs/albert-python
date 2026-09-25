@@ -13,6 +13,7 @@ from albert.resources.product_design import (
     UnpackedCasInfo,
     UnpackedProductDesign,
 )
+from albert.resources.projects import Project, ProjectClass, TaskConfig
 from albert.resources.substance import SubstanceInfo
 from albert.resources.substance_v4 import SubstanceV4Info, SubstanceV4SearchItem
 
@@ -100,6 +101,54 @@ def test_substance_v4_info_accepts_japanese_object_fields(field, value):
     info = SubstanceV4Info.model_validate({"casID": "50-00-0", field: value})
 
     assert getattr(info, field) == value
+
+
+# Recorded from GET /api/v3/projects/{id}; TaskConfig entries arrive under the
+# "TaskConfig" key with "dataTemplateId" and string "hidden" values.
+PROJECT_TASK_CONFIG_PAYLOAD = {
+    "dataTemplateId": "DAT123",
+    "workflowId": "WFL123",
+    "defaultTaskName": "Characterization",
+    "target": "standard",
+    "hidden": "true",
+}
+
+
+def test_project_task_config_deserializes_from_wire_names():
+    """Test TaskConfig entries on a project survive validation, not dropped as extras."""
+    project = Project.model_validate(
+        {"description": "p", "TaskConfig": [PROJECT_TASK_CONFIG_PAYLOAD]}
+    )
+
+    assert len(project.task_config) == 1
+    config = project.task_config[0]
+    assert isinstance(config, TaskConfig)
+    assert config.data_template_id == "DAT123"
+    assert config.workflow_id == "WFL123"
+    assert config.default_task_name == "Characterization"
+    assert config.hidden == "true"
+
+
+def test_project_task_config_serializes_to_wire_names():
+    """Test TaskConfig dumps under "TaskConfig" with the API's inner field names."""
+    project = Project(description="p", task_config=[TaskConfig(**PROJECT_TASK_CONFIG_PAYLOAD)])
+
+    dumped = project.model_dump(by_alias=True, exclude_none=True, mode="json")
+    assert dumped["TaskConfig"] == [PROJECT_TASK_CONFIG_PAYLOAD]
+
+
+def test_project_class_supports_restricted():
+    """Test the restricted project class parses from API responses."""
+    project = Project.model_validate({"description": "p", "class": "restricted"})
+
+    assert project.project_class is ProjectClass.RESTRICTED
+
+
+def test_project_old_api_params_uses_wire_name():
+    """Test oldApiParams maps to old_api_params instead of being dropped."""
+    project = Project.model_validate({"description": "p", "oldApiParams": {"moNumber": "42"}})
+
+    assert project.old_api_params == {"moNumber": "42"}
 
 
 def test_substance_info_tolerates_wider_v3_field_types():

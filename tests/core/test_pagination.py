@@ -632,4 +632,5 @@ def test_paginator_skips_unparseable_item_without_losing_page(caplog) -> None:
         results = list(paginator)
 
     assert results == [1, 3]
+    assert paginator.skipped_items == 1
     assert any("A2" in record.message for record in caplog.records)
