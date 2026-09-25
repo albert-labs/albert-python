@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import warnings
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter
+from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
 from albert.core.shared.enums import SecurityClass
@@ -325,22 +327,31 @@ class Block(BaseAlbertModel):
 
     Omitted when increased intervals is disabled or when the block has no intervals."""
 
-    combinations_count: int | None = Field(default=None, alias="combinationsCount", exclude=True)
-    """Total number of interval combinations for this block. Read-only from task responses."""
-
     rules: list[ExclusionRule] | None = Field(default=None, exclude=True)
     """Combination rules for this block. Conditions within a single rule use AND logic, while multiple rules use OR logic (excluding combinations in Exclude Mode, including in Include Mode). Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
     overrides: list[CombinationOverride] | None = Field(default=None, exclude=True)
     """Combination overrides targeting specific variants on this block by parameter values. Supports ``skip`` (exclude) or ``unskip`` (include) actions, and always takes precedence over rules. In Include Mode, set ``is_manual=True`` to cherry-pick combinations. Persisted via [`set_block_rules`][albert.collections.tasks.TaskCollection.set_block_rules] or during [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]. Always ``None`` on blocks read from task endpoints; use [`get_block_rules`][albert.collections.tasks.TaskCollection.get_block_rules] to read them."""
 
-    def model_dump(self, *args, **kwargs):
-        # Use default serialization with customized field output.
-        # Workflow and DataTemplate are both lists of length one, which is annoying to
-        data = super().model_dump(*args, **kwargs)
-        data["Workflow"] = [data["Workflow"]] if "Workflow" in data else None
-        data["Datatemplate"] = [data["Datatemplate"]] if "Datatemplate" in data else None
-        return data
+    @property
+    @deprecated(
+        "`Block.combinations_count` is deprecated; the platform returns the combination "
+        "count on the block's final Workflow element, not on the Block. Use "
+        "`Workflow.combinations_count` instead."
+    )
+    def combinations_count(self) -> int | None:
+        """Deprecated alias for the ``combinations_count`` of the block's final workflow."""
+        warnings.warn(
+            "`Block.combinations_count` is deprecated and will be removed in a future "
+            "release; read `combinations_count` from the block's final Workflow instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        for workflow in self.workflow or []:
+            count = getattr(workflow, "combinations_count", None)
+            if count is not None:
+                return count
+        return None
 
 
 class QCTarget(BaseAlbertModel):
