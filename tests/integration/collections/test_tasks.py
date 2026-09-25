@@ -26,7 +26,7 @@ from albert.resources.tasks import (
 from albert.resources.worker_jobs import WorkerJob
 from albert.resources.workflows import Workflow
 from tests.integration.utils.metadata import change_metadata, make_metadata_update_assertions
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 

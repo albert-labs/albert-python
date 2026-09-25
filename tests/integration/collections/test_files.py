@@ -7,7 +7,7 @@ import requests
 from albert import Albert
 from albert.exceptions import NotFoundError
 from albert.resources.files import FileNamespace
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 
 def test_file_round_trip(client: Albert):

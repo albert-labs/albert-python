@@ -13,7 +13,7 @@ from albert.resources.parameter_groups import (
 )
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
@@ -85,7 +85,6 @@ def test_parameter_group_search(
     parameter = pg.parameters[0].name
     assert tag and parameter
 
-    seeded_ids = {item.id for item in seeded_parameter_groups}
     hits = poll_until(
         lambda: [
             hit
@@ -112,11 +111,11 @@ def test_parameter_group_search(
                 additional_field=["owner", "tags", "createdByName"],
                 max_items=50,
             )
-            if hit.id in seeded_ids
+            if hit.id == pg.id
         ]
     )
     assert_valid_parameter_groups(results, ParameterGroupSearchItem)
-    assert pg.id in {hit.id for hit in results}
+    assert results[0].id == pg.id
 
 
 def test_hydrate_pg(client: Albert, seed_prefix: str, seeded_parameter_groups):

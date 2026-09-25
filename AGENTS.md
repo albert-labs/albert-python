@@ -168,7 +168,7 @@ Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limi
   - Shared `seeded_*` fixtures are read-only; update/delete tests create private entities and
     clean up in `try/finally`.
   - Search assertions must be scoped to `seed_prefix`, filtered to the fixture's ids, and
-    wrapped in `poll_until` (`tests/integration/utils/wait.py`); `text`/`name` params are
+    wrapped in `poll_until` (`tests/utils/wait.py`); `text`/`name` params are
     fuzzy full-text queries, and other workers delete their seeds mid-run.
   - No exact-count asserts on unscoped queries.
   - Seed helpers live in `tests/integration/seeding.py`; new seed entities are appended
