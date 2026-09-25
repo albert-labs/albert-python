@@ -426,6 +426,7 @@ class CompanyCollection(BaseCollection):
         The company is identified by its ``id``, which must be set. Only the
         updatable fields listed in Notes are applied. To rename a company by its
         current name rather than by its ID, use [`rename`][albert.collections.companies.CompanyCollection.rename].
+        If nothing changed, the current company is returned unmodified.
 
         !!! example
             ```python
@@ -455,6 +456,8 @@ class CompanyCollection(BaseCollection):
 
         # Generate the PATCH payload
         patch_payload = self._generate_patch_payload(existing=current_object, updated=company)
+        if not patch_payload.data:
+            return current_object
         url = f"{self.base_path}/{company.id}"
         self.session.patch(url, json=patch_payload.model_dump(mode="json", by_alias=True))
         updated_company = self.get_by_id(id=company.id)

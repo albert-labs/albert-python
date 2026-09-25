@@ -27,12 +27,15 @@ class SmartDatasetCollection(BaseCollection):
     the material amounts, parameters, molecules, and measured properties observed
     across those experiments.
 
-    A Smart Dataset is built asynchronously: after [`create`][albert.collections.smart_datasets.SmartDatasetCollection.create] (or an
-    [`update`][albert.collections.smart_datasets.SmartDatasetCollection.update] that changes the scope) the dataset moves through a build state
+    A Smart Dataset is built asynchronously: after [`create`][albert.collections.smart_datasets.SmartDatasetCollection.create]
+    the dataset moves through a build state
     ([`SmartDatasetBuildState`][albert.resources.smart_datasets.SmartDatasetBuildState]) and only
     exposes its data once it is ``ready``. Use [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data] to pull the built
     matrix, choosing how rows are aggregated with
     [`SmartDatasetAggregateBy`][albert.resources.smart_datasets.SmartDatasetAggregateBy].
+    Note that [`update`][albert.collections.smart_datasets.SmartDatasetCollection.update] does not rebuild the
+    dataset: changing the ``scope`` updates the stored definition only, and
+    [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data] keeps returning the matrix from the last build.
 
     Smart Datasets are referenced by their Smart Dataset ID (format ``SDT...``).
     They aggregate the same experiment Property Data managed through
@@ -260,6 +263,10 @@ class SmartDatasetCollection(BaseCollection):
         -----
         Only the following fields are updatable: ``scope``, ``build_state``,
         ``storage_key``, and ``schema_``. Changes to any other field are ignored.
+
+        Updating ``scope`` stores the new definition but does not rebuild the
+        dataset: [`get_data`][albert.collections.smart_datasets.SmartDatasetCollection.get_data] keeps returning the
+        matrix assembled by the last build.
         """
         existing = self.get_by_id(id=smart_dataset.id, parent_id=smart_dataset.parent_id)
         payload = self._generate_patch_payload(existing=existing, updated=smart_dataset)
@@ -380,6 +387,8 @@ class SmartDatasetCollection(BaseCollection):
         if smart_dataset.build_state != SmartDatasetBuildState.READY:
             raise ValueError("Smart dataset is not ready")
         params: dict = {"aggregate_by": aggregate_by.to_api_value()}
+        if parent_id is not None:
+            params["parentId"] = parent_id
         if ids is not None:
             params["id"] = ids
         if variables is not None:
