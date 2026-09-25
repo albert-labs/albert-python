@@ -1,4 +1,4 @@
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 
 def test_poll_until_returns_first_non_empty_by_default():

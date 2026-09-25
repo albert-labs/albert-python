@@ -90,10 +90,10 @@ For any search-based assertion:
 
 1. Scope the query with `text=`/`name=` set to `seed_prefix` (reduces noise).
 2. **Filter results to the ids owned by the fixture** (correctness).
-3. Wrap the fetch in `poll_until` from `tests/integration/utils/wait.py` (index lag).
+3. Wrap the fetch in `poll_until` from `tests/utils/wait.py` (index lag).
 
 ```python
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 
 def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list[Project]):
