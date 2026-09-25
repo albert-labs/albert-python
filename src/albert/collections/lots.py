@@ -175,6 +175,11 @@ class LotCollection(BaseCollection):
         litres are not automatically derived from mass or density. See field
         docstrings on [`Lot`][albert.resources.lots.Lot] for the full create matrix.
 
+        ``notes`` and ``workflow_id`` are not saved on create. Assign a workflow
+        after creation via [`update`][albert.collections.lots.LotCollection.update];
+        lot notes are managed through the Notes collection
+        ([`NotesCollection`][albert.collections.notes.NotesCollection]).
+
         If the API reports a partial success (some lots failed to create), a
         warning is logged and only the successfully created lots are returned.
         """
@@ -571,13 +576,16 @@ class LotCollection(BaseCollection):
                 )
             )
 
-        # costL must be serialized as a formatted decimal string and uses update operation
+        # cost, costL, and initialQuantity are stored as strings by the API and
+        # strict-compared against oldValue, so both values must be decimal strings.
+        # costL only supports the update operation; an unset old value is sent as "0".
         for datum in patch_data.data:
-            if datum.attribute == "costL":
-                datum.operation = PatchOperation.UPDATE
-                if datum.old_value is None:
-                    datum.old_value = "0"
-                else:
+            if datum.attribute in {"cost", "costL", "initialQuantity"}:
+                if datum.attribute == "costL":
+                    datum.operation = PatchOperation.UPDATE
+                    if datum.old_value is None:
+                        datum.old_value = "0"
+                if datum.old_value is not None:
                     datum.old_value = (
                         Lot._format_decimal(datum.old_value)
                         if isinstance(datum.old_value, (int, float))
@@ -873,6 +881,10 @@ class LotCollection(BaseCollection):
         ``workflow_id``.
         ``density``, ``initial_quantity_l``, and ``inventory_on_hand_l`` are
         fixed at creation and cannot be updated.
+
+        Clearing a field (setting it to ``None``) is only supported for
+        ``expiration_date``, ``pack_size``, ``external_barcode_id``, and
+        individual ``metadata`` keys; clearing any other field is rejected.
         """
         existing_lot = self.get_by_id(id=lot.id)
         patch_data = self._generate_lots_patch_payload(existing=existing_lot, updated=lot)

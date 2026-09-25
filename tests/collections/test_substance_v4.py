@@ -3,7 +3,9 @@ import uuid
 import pytest
 
 from albert.client import Albert
+from albert.core.shared.models.base import EntityLink
 from albert.resources.custom_fields import CustomField, FieldType, ServiceType
+from albert.resources.lists import ListItem
 from albert.resources.substance_v4 import (
     SubstanceV4Attribute,
     SubstanceV4Create,
@@ -70,6 +72,12 @@ def test_get_by_ids_requires_at_least_one_identifier(client: Albert):
         client.substances_v4.get_by_ids()
 
 
+def test_get_by_ids_rejects_external_ids_combined(client: Albert):
+    """Test that get_by_ids raises when external_ids is combined with cas_ids."""
+    with pytest.raises(ValueError):
+        client.substances_v4.get_by_ids(cas_ids=[WATER_CAS], external_ids=["EXT-1"])
+
+
 def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]):
     """Test updating scalar and custom string metadata fields on a tenant substance."""
     substance_string_field = next(
@@ -106,6 +114,71 @@ def test_update_metadata(client: Albert, static_custom_fields: list[CustomField]
         cas_smiles="CCO",
         metadata={substance_string_field.name: "sdk test value"},
     )
+
+
+def test_update_metadata_multiselect_list_field(
+    client: Albert,
+    static_custom_fields: list[CustomField],
+    static_lists: list[ListItem],
+):
+    """Test multi-select list metadata round-trips: add, single-element delete, replace."""
+    substance_list_field = next(
+        cf
+        for cf in static_custom_fields
+        if cf.service == ServiceType.SUBSTANCES and cf.field_type == FieldType.LIST
+    )
+    options = [li for li in static_lists if li.list_type == substance_list_field.name]
+    assert len(options) >= 2, "Expected at least two substance list items in static seeds"
+
+    result = client.substances_v4.create(
+        substance=SubstanceV4Create(
+            is_global_record=False,
+            identifiers=[
+                SubstanceV4Identifier(
+                    attributeName="ts", value=f"sdk-test-sub-{uuid.uuid4().hex[:8]}"
+                )
+            ],
+            attributes=[
+                SubstanceV4Attribute(
+                    attributeName="name",
+                    region="global",
+                    data=[{"name": "SDK Test Substance", "language_code": "EN"}],
+                ),
+            ],
+        )
+    )
+    assert result.created_items, "Expected a freshly created substance"
+    sub_id = result.created_items[0].substance_id
+    assert sub_id
+
+    def stored_ids() -> set[str]:
+        # Read back with catch_errors=False: the freshly created substance carries
+        # a casID (its ts identifier) but no hazards data, so the default GET 422s
+        # with ERROR_MISSING_HAZARDS_CAS. update_metadata reads the same way.
+        substance = client.substances_v4.get_by_id(sub_id=sub_id, catch_errors=False)
+        assert substance is not None
+        entries = (substance.metadata or {}).get(substance_list_field.name) or []
+        return {entry["id"] for entry in entries}
+
+    # Single-element add, then clear: the delete must stay list-valued, since a
+    # bare-string oldValue is rejected by the API with a 400.
+    client.substances_v4.update_metadata(
+        id=sub_id,
+        metadata={substance_list_field.name: [EntityLink(id=options[0].id, name=options[0].name)]},
+    )
+    assert stored_ids() == {options[0].id}
+
+    client.substances_v4.update_metadata(id=sub_id, metadata={substance_list_field.name: None})
+    assert stored_ids() == set()
+
+    # Multi-select replace round-trips both options.
+    client.substances_v4.update_metadata(
+        id=sub_id,
+        metadata={
+            substance_list_field.name: [EntityLink(id=li.id, name=li.name) for li in options[:2]]
+        },
+    )
+    assert stored_ids() == {li.id for li in options[:2]}
 
 
 def test_search_requires_at_least_one_filter(client: Albert):
