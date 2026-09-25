@@ -110,10 +110,13 @@ def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list
 
 `poll_until` stops at the first **non-empty** result by default. Our NoSQL store plus
 search index is eventually consistent, so freshly seeded items become visible one by one
-and a partial page is normal during indexing. If the assertion needs the **complete**
-expected set (exact-equality asserts against your fixture's ids), pass a `predicate` so
-polling continues until the set is whole; without it the test flakes the moment one item
-indexes before the rest:
+and a partial page is normal during indexing. One rule decides how to poll: **whatever
+stops the polling must imply the assertion that follows.** When asserting on a specific
+item, filter the fetched page to that item's id, so a non-empty result means the item is
+visible. When the assertion needs the **complete** expected set (exact-equality or
+exact-count asserts against your fixture's ids), pass a `predicate` so polling continues
+until the set is whole; without it the test flakes the moment one item indexes before
+the rest:
 
 ```python
 expected_ids = {f"INV{lot.inventory_id}" for lot in seeded_lots if ...}
@@ -125,8 +128,8 @@ assert {f"INV{p.id}" for p in results} == expected_ids
 ```
 
 Even with a predicate, a rare timeout is expected behavior of an eventually consistent
-index. Treat it as a re-run, not a code change — but write the predicate to describe the
-full expectation so only genuine lag can trip it.
+index. A timeout usually means indexing lag, so re-run once. A repeat failure means the
+predicate or the code under test is wrong; investigate it like any other failure.
 
 Also:
 
