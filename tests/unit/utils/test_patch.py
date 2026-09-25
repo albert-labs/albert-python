@@ -878,15 +878,6 @@ def test_generate_data_template_patches_acl_diff_adds_and_removes():
     assert acl_delete == [{"id": "U1"}]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: generate_data_template_patches passes updated_data_template.tags "
-        "straight to handle_tags (src/albert/utils/_patch.py:652-656) with no "
-        "unset guard, so an unset tags field deletes every existing tag even "
-        "though update()'s docstring Notes never list tags as updatable."
-    ),
-)
 def test_generate_data_template_patches_tags_left_unset_is_not_touched():
     """Test that leaving tags unset on the updated template does not delete existing tags."""
     existing = _data_template(tags=[Tag(id="TAG1", tag="a")])
@@ -897,6 +888,20 @@ def test_generate_data_template_patches_tags_left_unset_is_not_touched():
     )
 
     assert general_patches.data == []
+
+
+def test_generate_data_template_patches_tags_explicit_empty_clears_all():
+    """Test that explicitly setting tags to an empty list deletes every existing tag."""
+    existing = _data_template(tags=[Tag(id="TAG1", tag="a")])
+    updated = _data_template(tags=[])
+
+    general_patches, *_rest = generate_data_template_patches(
+        PatchPayload(data=[]), updated_data_template=updated, existing_data_template=existing
+    )
+
+    assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
+        ("delete", "tag", "TAG1")
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -964,15 +969,6 @@ def test_generate_parameter_group_patches_appends_parameter_and_tag_ops():
     assert "tagId" in attrs  # tags use "tagId" for parameter groups, not "tag"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: generate_parameter_group_patches passes updated_parameter_group.tags "
-        "straight to handle_tags (src/albert/utils/_patch.py:879-883) with no "
-        "unset guard, so an unset tags field deletes every existing tag even "
-        "though update()'s docstring Notes never list tags as updatable."
-    ),
-)
 def test_generate_parameter_group_patches_tags_left_unset_is_not_touched():
     """Test that leaving tags unset on the updated group does not delete existing tags."""
     existing = _parameter_group(tags=[Tag(id="TAG1", tag="a")])
@@ -985,3 +981,19 @@ def test_generate_parameter_group_patches_tags_left_unset_is_not_touched():
     )
 
     assert general_patches.data == []
+
+
+def test_generate_parameter_group_patches_tags_explicit_empty_clears_all():
+    """Test that explicitly setting tags to an empty list deletes every existing tag."""
+    existing = _parameter_group(tags=[Tag(id="TAG1", tag="a")])
+    updated = _parameter_group(tags=[])
+
+    general_patches, *_rest = generate_parameter_group_patches(
+        initial_patches=PatchPayload(data=[]),
+        updated_parameter_group=updated,
+        existing_parameter_group=existing,
+    )
+
+    assert [(p.operation, p.attribute, p.old_value) for p in general_patches.data] == [
+        ("delete", "tagId", "TAG1")
+    ]
