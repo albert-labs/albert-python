@@ -10,9 +10,11 @@ from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode, Status
 from albert.core.shared.identifiers import WorkflowId
-from albert.core.utils import ensure_list
+from albert.core.utils import ensure_list, unpack_bulk_created_items
 from albert.exceptions import AlbertException
+from albert.resources.facet import FacetItem
 from albert.resources.parameter_groups import DataType, ParameterValue
+from albert.resources.parameters import ParameterCategory
 from albert.resources.workflows import (
     ParameterSetpoint,
     Workflow,
@@ -93,6 +95,8 @@ class WorkflowCollection(BaseCollection):
     -------
     create(workflows) -> list[Workflow]
         Find-or-create workflows, deduplicating by parameter setpoints.
+    get_all_facets(...) -> list[FacetItem]
+        Get facet groups (aggregated filter counts) for a workflow query.
     get_by_id(id) -> Workflow
         Get a single workflow, including its full setpoints and interval combinations.
     get_by_ids(ids) -> list[Workflow]
@@ -138,25 +142,24 @@ class WorkflowCollection(BaseCollection):
             # A workflow combining a Data Template's pre-linked parameters (keyed by a
             # DAT... id, used just like a Parameter Group) with two Parameter Groups.
             workflow = Workflow(
-                name="Tensile test at 23C, 50% RH",
                 parameter_group_setpoints=[
                     ParameterGroupSetpoints(
                         id="DAT9999999",
                         parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM9999999", value="23", short_name="Temperature"),
-                            ParameterSetpoint(parameter_id="PRM2", value="50", short_name="Humidity"),
+                            ParameterSetpoint(parameter_id="PRM9999999", value="23"),
+                            ParameterSetpoint(parameter_id="PRM2", value="50"),
                         ],
                     ),
                     ParameterGroupSetpoints(
                         id="PRG9999999",
                         parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM3", value="24", short_name="Cure Time"),
+                            ParameterSetpoint(parameter_id="PRM3", value="24"),
                         ],
                     ),
                     ParameterGroupSetpoints(
                         id="PRG2",
                         parameter_setpoints=[
-                            ParameterSetpoint(parameter_id="PRM4", value="2000", short_name="Mix Speed"),
+                            ParameterSetpoint(parameter_id="PRM4", value="2000"),
                         ],
                     ),
                 ],
@@ -177,6 +180,13 @@ class WorkflowCollection(BaseCollection):
         list[Workflow]
             The created or matched workflows, in the same order as the input.
 
+        Raises
+        ------
+        AlbertPartialError
+            If only some of the workflows could be created or matched. The error
+            carries the succeeded (``created_items``) and failed (``failed_items``)
+            items.
+
         Notes
         -----
         When a group is identified by ``id``, the SDK resolves setpoint ``sequence`` row
@@ -184,9 +194,11 @@ class WorkflowCollection(BaseCollection):
         ``sequence`` on [`ParameterSetpoint`][albert.resources.workflows.ParameterSetpoint]
         objects.
 
-        Returned workflows carry an empty ``parameter_group_setpoints`` list
-        whether they were newly created or matched. Call [`get_by_id`][albert.collections.workflows.WorkflowCollection.get_by_id] to
-        fetch the full setpoints.
+        The platform derives each workflow's ``name`` from its parameter groups and
+        setpoints, so a caller-supplied ``name`` is not preserved. Returned workflows
+        carry the parameter group setpoints they were created or matched with. A matched
+        workflow without parameter groups (such as the built-in ``WFL1``) comes back
+        without those details, so the SDK fetches it by ID before returning it.
         """
         if isinstance(workflows, Workflow):
             # in case the user forgets this should be a list
@@ -195,6 +207,12 @@ class WorkflowCollection(BaseCollection):
         # Hydrate any parameter groups provided only by ID with their parameters
         for wf in workflows:
             self._hydrate_parameter_groups(workflow=wf)
+            for pg_setpoint in wf.parameter_group_setpoints:
+                for setpoint in pg_setpoint.parameter_setpoints:
+                    # The platform accepts shortName only on Special parameters and
+                    # rejects it with a 400 anywhere else; never send it otherwise.
+                    if setpoint.category != ParameterCategory.SPECIAL:
+                        setpoint.short_name = None
 
         response = self.session.post(
             url=f"{self.base_path}/bulk",
@@ -209,7 +227,7 @@ class WorkflowCollection(BaseCollection):
             ],
         )
         results = []
-        for x in response.json():
+        for x in unpack_bulk_created_items(response):
             if "name" not in x:
                 # The platform omits the name of a matched workflow that has no
                 # parameter groups; fetch the full record instead.
@@ -402,6 +420,7 @@ class WorkflowCollection(BaseCollection):
         parameter_set: list[WorkflowParameterSet] | None = None,
         facet_text: str | None = None,
         facet_field: str | None = None,
+        facet_list: list[str] | None = None,
         contains_field: str | list[str] | None = None,
         contains_text: str | list[str] | None = None,
         search_field: list[str] | None = None,
@@ -457,6 +476,11 @@ class WorkflowCollection(BaseCollection):
             Text to match within a facet search.
         facet_field : str, optional
             Field to search within for facet filtering.
+        facet_list : list[str], optional
+            Facet(s) to compute over the matching workflows. One or more of
+            ``"status"``, ``"createdBy"``, ``"dataTemplate"``, ``"parameterGroup"``,
+            ``"parameter"``, ``"unit"``. Retrieve computed facet groups with
+            [`get_all_facets`][albert.collections.workflows.WorkflowCollection.get_all_facets].
         contains_field : str or list[str], optional
             Field(s) to apply a "contains" search to.
         contains_text : str or list[str], optional
@@ -498,6 +522,7 @@ class WorkflowCollection(BaseCollection):
             "unit": ensure_list(unit),
             "facetText": facet_text,
             "facetField": facet_field,
+            "facetList": ensure_list(facet_list),
             "containsField": ensure_list(contains_field),
             "containsText": ensure_list(contains_text),
             "searchField": ensure_list(search_field),
@@ -524,3 +549,94 @@ class WorkflowCollection(BaseCollection):
                 WorkflowSearchItem.model_validate(x)._bind_collection(self) for x in items
             ],
         )
+
+    @validate_call
+    def get_all_facets(
+        self,
+        *,
+        text: str | None = None,
+        status: Status | list[Status] | None = None,
+        created_by: str | list[str] | None = None,
+        ids: WorkflowId | list[WorkflowId] | None = None,
+        data_templates: str | list[str] | None = None,
+        data_template_ids: str | list[str] | None = None,
+        parameter_groups: str | list[str] | None = None,
+        parameter_group_ids: str | list[str] | None = None,
+        parameters: str | list[str] | None = None,
+        unit: str | list[str] | None = None,
+        parameter_set: list[WorkflowParameterSet] | None = None,
+        facet_list: list[str] | None = None,
+    ) -> list[FacetItem]:
+        """Get the facets available for a workflow search.
+
+        Facets are the grouped, counted filter options for a query, like the
+        refinement sidebar of a search UI (e.g. how many matching workflows fall
+        under each parameter group or unit). Use them to build progressive
+        filtering or to summarize a result set without fetching every item.
+
+        !!! example
+            ```python
+            facets = client.workflows.get_all_facets(text="Tensile")
+            [(f.name, len(f.value)) for f in facets]
+            # [('Parameter Group', 3), ('Unit', 2)]
+            ```
+
+        Parameters
+        ----------
+        text : str, optional
+            Free-text query.
+        status : Status or list[Status], optional
+            Filter by workflow status.
+        created_by : str or list[str], optional
+            Filter by creator. Accepts user display name(s) or UserId(s) (e.g.
+            ``"USR4227"`` or ``"Jane Doe"``).
+        ids : WorkflowId or list[WorkflowId], optional
+            Filter by workflow ID(s) (format ``WFL...``).
+        data_templates : str or list[str], optional
+            Filter by data template name(s).
+        data_template_ids : str or list[str], optional
+            Filter by data template ID(s) (format ``DAT...``).
+        parameter_groups : str or list[str], optional
+            Filter by parameter group name(s).
+        parameter_group_ids : str or list[str], optional
+            Filter by parameter group ID(s) (format ``PRG...``).
+        parameters : str or list[str], optional
+            Filter by parameter name(s). Supports inline range syntax such as
+            ``name(value)``, ``name(>n)``, ``name(<n)``, or ``name(min-max)``.
+        unit : str or list[str], optional
+            Filter by unit name(s).
+        parameter_set : list[WorkflowParameterSet], optional
+            Filter by parameter constraints that bind a name, value range, and unit.
+        facet_list : list[str], optional
+            Facet(s) to compute. One or more of ``"status"``, ``"createdBy"``,
+            ``"dataTemplate"``, ``"parameterGroup"``, ``"parameter"``, ``"unit"``.
+            If None, the platform's default facet set is returned.
+
+        Returns
+        -------
+        list[FacetItem]
+            The facet groups available for the query.
+        """
+        payload: dict[str, Any] = {
+            "text": text,
+            "status": ensure_list(status),
+            "createdBy": ensure_list(created_by),
+            "albertId": ensure_list(ids),
+            "dataTemplates": ensure_list(data_templates),
+            "dataTemplateIds": ensure_list(data_template_ids),
+            "parameterGroups": ensure_list(parameter_groups),
+            "parameterGroupIds": ensure_list(parameter_group_ids),
+            "parameters": ensure_list(parameters),
+            "unit": ensure_list(unit),
+            "facetList": ensure_list(facet_list),
+            "limit": 0,  # a limit of 0 asks the platform for facets only
+        }
+        if parameter_set is not None:
+            payload["parameterSet"] = [
+                item.model_dump(by_alias=True, mode="json", exclude_none=True)
+                for item in parameter_set
+            ]
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        response = self.session.post(url=f"{self.base_path}/search", json=payload)
+        return [FacetItem.model_validate(x) for x in response.json().get("Facets") or []]

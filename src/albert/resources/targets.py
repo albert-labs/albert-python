@@ -162,7 +162,10 @@ class Target(BaseResource):
     """The kind of target (e.g. performance)."""
 
     parent_id: ProjectId | None = Field(default=None, alias="parentId")
-    """The ID of the project (format ``PRO...``) this target belongs to. When set, the target inherits its ACL (access control) policy from that project."""
+    """The ID of the project (format ``PRO...``) this target belongs to. When set, the target inherits its ACL (access control) policy from that project.
+
+    ``parent_id`` is stored when supplied (e.g. on create) but is never returned
+    on reads, so it always comes back as ``None`` even when set."""
 
     data_template_id: DataTemplateId = Field(alias="dataTemplateId")
     """The ID of the data template (format ``DAT...``) whose property is targeted."""

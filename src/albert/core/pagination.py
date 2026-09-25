@@ -36,6 +36,10 @@ class AlbertPaginator(Iterator[ItemType]):
     item is known to exist (remaining items on the current page, or a continuation key /
     offset for another page). When iteration runs to natural completion, ``has_more`` is
     False.
+
+    An item that fails to deserialize is logged, skipped (the rest of its page is still
+    yielded), and counted on
+    [`skipped_items`][albert.core.pagination.AlbertPaginator.skipped_items].
     """
 
     def __init__(
@@ -88,6 +92,7 @@ class AlbertPaginator(Iterator[ItemType]):
         self._last_key: str | None = None
         self._has_more = False
         self._total: int | None = None
+        self._skipped_items = 0
 
         self._iterator = self._create_iterator()
 
@@ -116,6 +121,15 @@ class AlbertPaginator(Iterator[ItemType]):
     def total(self) -> int | None:
         """Server-reported match count from the latest response, when present."""
         return self._total
+
+    @property
+    def skipped_items(self) -> int:
+        """Count of items dropped during iteration because they failed to deserialize.
+
+        Incremented each time a single unparseable item is skipped (the rest of its
+        page is still yielded). Zero when every item parsed.
+        """
+        return self._skipped_items
 
     def _record_total(self, data: dict[str, Any]) -> None:
         raw = data.get("total")
@@ -172,6 +186,7 @@ class AlbertPaginator(Iterator[ItemType]):
                     try:
                         deserialized.extend(self.deserialize([item]))
                     except ValidationError as e:
+                        self._skipped_items += 1
                         item_id = item.get("albertId") or item.get("id")
                         suffix = f" {item_id}" if item_id else ""
                         logger.warning(f"Skipping unparseable item{suffix}: {e}")
