@@ -4,9 +4,8 @@ from albert.collections.lots import LotCollection
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.companies import Company
 from albert.resources.lists import ListItem
-from albert.resources.parameter_groups import ParameterGroup, ParameterValue
 from albert.resources.lots import Lot
-from albert.resources.parameter_groups import ParameterGroup
+from albert.resources.parameter_groups import ParameterGroup, ParameterValue
 from albert.resources.tasks import BaseTask
 from albert.utils._patch import generate_parameter_group_patches
 
