@@ -44,7 +44,7 @@ Treating omitted fields as deletions emits bad `delete` ops that the API rejects
 
 Regression tests: `test_update_partial_leaves_omitted_fields_untouched` (lots),
 `test_update_partial_leaves_omitted_special_attrs_untouched` (tasks),
-`tests/utils/test_inventory_patches.py` (inventory CAS patch builder).
+`tests/unit/utils/test_inventory.py` (inventory CAS patch builder).
 
 ## Pagination — callers never see offset or limit
 
@@ -127,12 +127,30 @@ Why: release-please uses commit types to determine changelog entries. Mislabelin
 doc improvement as `chore` buries it; mislabeling a build change as `docs` creates a
 spurious changelog section.
 
-## Testing — when unit tests are acceptable
+## Testing — fake the transport, never the server
 
-Prefer integration-style tests against the live API. Do not add unit tests that mock
-the API with `FakeAlbertSession`.
+Integration tests against the live API are the primary mechanism. The SDK is a thin client:
+most bugs are contract mismatches (a payload the API rejects, a field it renames), and only
+a live call can catch those. A mocked API encodes our *assumptions* about the server, so it
+keeps passing exactly when the assumption is wrong.
 
-Exception: pure patch-payload builders and other side-effect-free helpers (e.g.
-`_generate_patch_payload`) may have focused unit tests when they guard non-obvious
-diff behavior — the same helpers documented in the `update()` section above. These
-are the cases where a unit test gives real signal because there is no I/O to fake.
+Unit tests (`tests/unit/`) are for logic the SDK owns, where there is no server behavior to
+assume: patch/diff builders, pagination state, `utils/` transforms, model validators, and
+session/auth plumbing.
+
+- **Patch builders get the full matrix.** They are where a wrong op silently wipes data
+  (see `update()` above), and live tests can only reach a few of the unset / `None` / `[]`
+  combinations.
+- **Fake at the transport, not the session.** `responses` (requests) and `respx` (httpx)
+  let the real `AlbertSession` code run: headers, encoding, error mapping. A hand-rolled
+  `requests.Session` subclass (the retired `FakeAlbertSession`) skips that code and drifts
+  from real response objects.
+- **Assert on what we send and how we react.** "The SDK sends this body" and "a 404 raises
+  `NotFoundError`" are SDK facts. "The API returns this shape" is not; that belongs in an
+  integration test.
+- **Don't unit-test public collection methods.** They are request → response → model; a
+  unit test would only mock the API. Extract any branching logic into a pure helper and
+  test that.
+- **Keep unit tests offline by construction.** `tests/unit/conftest.py` blocks sockets and
+  strips `ALBERT_*` env vars, and CI runs the unit job without credentials, so an
+  accidental live dependency fails immediately instead of passing locally.
