@@ -150,11 +150,13 @@ class BaseCollection:
                     all_ids = [x.id for x in value]
                     if len(all_ids) == 0:
                         continue
+                    # Keep list cardinality: the API stores an ADD newValue verbatim,
+                    # so a collapsed single-item scalar would corrupt the field's type.
                     data.append(
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.ADD,
-                            new_value=self._metadata_list_patch_value(value),
+                            new_value=self._metadata_list_patch_value(value, as_list=True),
                         )
                     )
                 else:
