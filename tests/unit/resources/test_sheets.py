@@ -206,14 +206,6 @@ def test_component_accepts_bare_inventory_id():
     assert component.inventory_item is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: Sheet.set_session (sheets.py:790) reads self.session before "
-        "BaseSessionResource.__init__ assigns self._session from the session kwarg, "
-        "so the propagation to Designs is always a no-op on construction."
-    ),
-)
 def test_sheet_set_session_propagates_to_designs(offline_session):
     """Test that a Sheet's session is copied onto each of its Designs after init."""
     sheet = Sheet(**_PROCESS_SHEET, session=offline_session)
