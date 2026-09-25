@@ -38,7 +38,7 @@ class ChatSessionCollection:
             session = await client.chat_sessions.create(
                 session=ChatSession(name="Titanium dioxide questions", source_session_id="ext-123")
             )
-            async for s in client.chat_sessions.get_all(name=["titanium"]):
+            async for s in client.chat_sessions.get_all(name=["Titanium dioxide questions"]):
                 print(s.id, s.name)
         ```
 
@@ -173,7 +173,7 @@ class ChatSessionCollection:
         self,
         *,
         name: list[str] | None = None,
-        exact_match: bool = False,
+        exact_match: bool = True,
         parent_id: str | None = None,
         max_items: int | None = None,
     ) -> AsyncIterator[ChatSession]:
@@ -187,7 +187,7 @@ class ChatSessionCollection:
             from albert import AsyncAlbert
 
             async with AsyncAlbert() as client:
-                async for session in client.chat_sessions.get_all(name=["titanium"]):
+                async for session in client.chat_sessions.get_all(name=["Titanium dioxide questions"]):
                     print(session.id, session.name)
             ```
 
@@ -196,8 +196,9 @@ class ChatSessionCollection:
         name : list[str] | None, optional
             Filter to sessions whose name matches any of the given values.
         exact_match : bool, optional
-            When ``True``, ``name`` must match exactly; otherwise it matches as a
-            substring. Defaults to ``False``.
+            When ``True`` (default), ``name`` matches session names exactly.
+            Fuzzy name matching (``exact_match=False``) is not currently supported
+            by Albert and a ``name`` filter then returns no results.
         parent_id : str | None, optional
             Filter to sessions filed under the given
             [`ChatFolder`][albert.resources.chats.ChatFolder].
@@ -213,8 +214,8 @@ class ChatSessionCollection:
         params: dict[str, str | list[str]] = {}
         if name:
             params["name"] = name
-        if exact_match:
-            params["exactMatch"] = "true"
+            if exact_match:
+                params["exactMatch"] = "true"
         if parent_id is not None:
             params["parentId"] = parent_id
 
