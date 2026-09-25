@@ -128,15 +128,18 @@ class CustomTemplatesCollection(BaseCollection):
         if len(templates) > 10:
             raise ValueError("A maximum of 10 CustomTemplates can be created at once.")
 
-        payload = [
-            template.model_dump(
+        payload = []
+        for template in templates:
+            dumped = template.model_dump(
                 mode="json",
                 by_alias=True,
                 exclude_none=True,
                 exclude_unset=True,
             )
-            for template in templates
-        ]
+            # ``category`` defaults on the model, so ``exclude_unset`` drops it
+            # when the caller did not set it explicitly; the API requires it.
+            dumped.setdefault("category", template.category.value)
+            payload.append(dumped)
         response = self.session.post(url=self.base_path, json=payload)
         response_data = response.json()
         created_payloads = (

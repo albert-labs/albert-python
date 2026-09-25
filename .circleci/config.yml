@@ -35,7 +35,9 @@ commands:
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
 jobs:
-  test:
+  # Lint + offline unit tests. Runs without a context on purpose: unit tests must
+  # not need credentials (tests/unit/conftest.py also blocks network and ALBERT_* env).
+  unit_test:
     executor:
       name: python/default
       tag: "3.10.15"
@@ -54,9 +56,55 @@ jobs:
           command: |
             uv run ruff check .
       - run:
-          name: Run pytest
+          name: Run unit tests
           command: |
-            uv run pytest -n 4 -v --tb=short -r fEsxX --durations=15
+            uv run pytest tests/unit -v --tb=short -r fEsxX \
+              --cov --cov-report=term-missing:skip-covered --cov-report=xml
+      - store_artifacts:
+          path: coverage.xml
+
+  test:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - checkout
+      - install_uv
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Run integration tests
+          command: |
+            uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 2>&1 | tee /tmp/pytest-output.log
+      - run:
+          name: Post failure summary to PR
+          when: on_fail
+          command: |
+            if [ -z "${CIRCLE_PULL_REQUEST:-}" ]; then
+              echo "Not a pull request build; skipping PR comment."
+              exit 0
+            fi
+            PR_NUMBER="${CIRCLE_PULL_REQUEST##*/}"
+            if [ -f /tmp/pytest-output.log ]; then
+              SUMMARY=$(sed -n '/short test summary info/,$p' /tmp/pytest-output.log | head -c 50000)
+              if [ -z "${SUMMARY}" ]; then
+                SUMMARY=$(tail -c 50000 /tmp/pytest-output.log)
+              fi
+            else
+              SUMMARY="The Integration Tests job failed before the pytest step ran. See the build log for the failing step."
+            fi
+            BODY=$(jq -n \
+              --arg branch "${CIRCLE_BRANCH}" \
+              --arg sha "${CIRCLE_SHA1:0:8}" \
+              --arg url "${CIRCLE_BUILD_URL}" \
+              --arg summary "${SUMMARY}" \
+              '{body: ("### CircleCI Integration Tests failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")}')
+            curl -sS -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_LABS}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/issues/${PR_NUMBER}/comments" \
+              -d "${BODY}"
 
   validate_version_bump:
     executor:
@@ -210,9 +258,13 @@ workflows:
     when:
       not: << pipeline.parameters.lambda_layer >>
     jobs:
+      - unit_test:
+          name: Unit Tests
       - test:
-          name: Test
+          name: Integration Tests
           context: dev
+          requires:
+            - Unit Tests
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev

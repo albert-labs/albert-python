@@ -5,9 +5,11 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.lists import ListsCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
+from albert.core.shared.models.base import EntityLink
 from albert.core.shared.types import _UNSET, MetadataItem, _UnsetType
 from albert.resources.substance_v4 import (
     SubstanceV4Create,
@@ -66,11 +68,16 @@ class SubstanceV4SearchPaginator(AlbertPaginator):
         if count == 0:
             return False
 
-        # The API omits pagination.lastKey on the final page.
-        if "lastKey" not in pagination:
+        # Follow the API's pagination.nextKey (offset + limit) instead of
+        # self-advancing by the received item count: on under-filled pages
+        # count < limit, so offset += count drifts behind nextKey and
+        # re-requests the previous page's tail (duplicate items). The API
+        # omits nextKey on the final page.
+        next_key = pagination.get("nextKey")
+        if next_key is None:
             return False
 
-        self._offset += count
+        self._offset = int(next_key)
         self.params["startKey"] = self._offset
         return True
 
@@ -121,6 +128,22 @@ class SubstanceV4Collection(BaseCollection):
         super().__init__(session=session)
         self.base_path = f"/api/{SubstanceV4Collection._api_version}/substances"
 
+    # Substance v4 list-type metadata is a special case. The v4 metadata PATCH
+    # endpoint expects {"id", "value"} objects and merges/removes list items by
+    # `id`, unlike services that accept bare list IDs: a bare string is stored
+    # literally on add (corrupting the list field) and 400s on delete (the
+    # handler maps over oldValue). Values are therefore always sent as lists of
+    # {"id", "value"} objects, hydrating an omitted value via lists.get_by_id.
+
+    def _list_metadata_value_payload(self, link: EntityLink) -> dict[str, str]:
+        """Build a list metadata {"id", "value"} payload, hydrating value when omitted."""
+        value = link.name or ListsCollection(session=self.session).get_by_id(id=link.id).name
+        return {"id": link.id, "value": value}
+
+    def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
+        """Serialize list metadata for PATCH as a list of {"id", "value"} objects."""
+        return [self._list_metadata_value_payload(link) for link in links]
+
     @validate_call
     def get_by_ids(
         self,
@@ -135,7 +158,9 @@ class SubstanceV4Collection(BaseCollection):
     ) -> SubstanceV4Response:
         """Get substances by their identifiers.
 
-        At least one of ``cas_ids``, ``sub_ids``, or ``external_ids`` must be provided.
+        At least one of ``cas_ids``, ``sub_ids``, or ``external_ids`` must be
+        provided. ``external_ids`` cannot be combined with ``cas_ids`` or
+        ``sub_ids``; the API rejects such requests.
 
         Parameters
         ----------
@@ -144,7 +169,8 @@ class SubstanceV4Collection(BaseCollection):
         sub_ids : list[str] | None
             Substance IDs to look up.
         external_ids : list[str] | None
-            External IDs to look up.
+            External IDs to look up. Cannot be combined with ``cas_ids`` or
+            ``sub_ids``.
         region : str, optional
             Region for hazard data. Common values: ``"global"``, ``"EU"``, ``"US"``,
             ``"UK"``. Defaults to ``"global"``.
@@ -170,6 +196,8 @@ class SubstanceV4Collection(BaseCollection):
         """
         if not any([cas_ids, sub_ids, external_ids]):
             raise ValueError("At least one of cas_ids, sub_ids, or external_ids must be provided.")
+        if external_ids and (cas_ids or sub_ids):
+            raise ValueError("external_ids cannot be combined with cas_ids or sub_ids.")
 
         params: dict = {"region": region}
         if cas_ids:
@@ -308,8 +336,10 @@ class SubstanceV4Collection(BaseCollection):
             BCP-47 language code for name translation (e.g. ``"EN"``, ``"DE"``,
             ``"FR"``), by default None.
         fetch_structures : bool | None, optional
-            When ``True``, each result includes linked structure identifiers and
-            chemical identity fields. By default ``None``.
+            Not currently supported by the search endpoint: the flag is ignored
+            on ``search_key`` and ``cas_ids`` queries and rejected with an error
+            on advanced-filter queries (``cas``, ``ec``, ``name``, ``inciname``).
+            Leave as ``None`` until endpoint support lands. By default ``None``.
         start_key : int, optional
             Offset to resume pagination from, by default 0.
         max_items : int, optional
@@ -342,7 +372,9 @@ class SubstanceV4Collection(BaseCollection):
         if classification_type:
             params["classificationType"] = classification_type
         if catch_errors is not None:
-            params["catchErrors"] = catch_errors
+            # Serialize as lowercase JSON ("true"/"false"), matching get_by_ids:
+            # the endpoint compares against a real boolean false.
+            params["catchErrors"] = json.dumps(catch_errors)
         if language:
             params["language"] = language
         if fetch_structures is not None:

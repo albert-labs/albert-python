@@ -88,6 +88,22 @@ class NotFoundError(AlbertClientError):
     """HTTP Error due to a 404 Not Found response."""
 
 
+class ConflictError(AlbertClientError):
+    """HTTP Error due to a 409 Conflict response."""
+
+
+class PreconditionFailedError(AlbertClientError):
+    """HTTP Error due to a 412 Precondition Failed response."""
+
+
+class UnsupportedMediaTypeError(AlbertClientError):
+    """HTTP Error due to a 415 Unsupported Media Type response."""
+
+
+class PreconditionRequiredError(AlbertClientError):
+    """HTTP Error due to a 428 Precondition Required response."""
+
+
 class AlbertServerError(AlbertHTTPError):
     """HTTP Error due to a server error response."""
 
@@ -110,6 +126,14 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return ForbiddenError
         case 404:
             return NotFoundError
+        case 409:
+            return ConflictError
+        case 412:
+            return PreconditionFailedError
+        case 415:
+            return UnsupportedMediaTypeError
+        case 428:
+            return PreconditionRequiredError
         case 500:
             return InternalServerError
         case 502:
@@ -158,6 +182,36 @@ def handle_http_errors() -> Iterator[None]:
         # TODO: Enable debug logging via requests directly
         logger.debug("Albert HTTP Error %s", albert_error)
         raise albert_error from e
+
+
+class AlbertPartialError(AlbertException):
+    """Raised when a bulk operation partially succeeds (HTTP 206) with failed items.
+
+    Some bulk endpoints answer a request where only some items succeeded with a
+    partial-success response carrying the created items and per-item failure details.
+    This error surfaces those failures instead of letting them pass silently.
+
+    Attributes
+    ----------
+    created_items : list[dict]
+        The items the operation completed successfully.
+    failed_items : list[dict]
+        The per-item failure details reported for the items that did not succeed.
+    """
+
+    created_items: list[dict]
+    failed_items: list[dict]
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        created_items: list[dict] | None = None,
+        failed_items: list[dict] | None = None,
+    ):
+        super().__init__(message)
+        self.created_items = created_items or []
+        self.failed_items = failed_items or []
 
 
 class CombinationGenerationError(AlbertException):

@@ -76,7 +76,7 @@ class EntityTypeCollection(BaseCollection):
     get_rules(id) -> list[EntityTypeRule]
         Get the conditional field rules configured for an entity type.
     set_rules(id, rules) -> list[EntityTypeRule]
-        Create or replace the conditional field rules for an entity type.
+        Add conditional field rules to an entity type (appended, not replaced).
     delete_rules(id) -> None
         Remove the conditional field rules for an entity type.
     """
@@ -206,6 +206,19 @@ class EntityTypeCollection(BaseCollection):
             generate_metadata_diff=False,
             stringify_values=False,
         )
+
+        # Attributes with nested/special handling are diffed by
+        # _generate_special_attribute_patches; drop their whole-attribute base
+        # ops so no attribute is patched twice in one request (the API rejects
+        # duplicate attributes in a single PATCH).
+        special_aliases = {
+            "customFields": entity_type.custom_fields,
+            "standardFieldVisibility": entity_type.standard_field_visibility,
+            "standardFieldRequired": entity_type.standard_field_required,
+            "searchQueryString": entity_type.search_query_string,
+        }
+        handled = {alias for alias, value in special_aliases.items() if value is not None}
+        patch.data = [d for d in patch.data if d.attribute not in handled]
 
         # Add special attribute updates to the patch
         special_patches = self._generate_special_attribute_patches(
@@ -389,16 +402,19 @@ class EntityTypeCollection(BaseCollection):
 
     @validate_call
     def set_rules(self, *, id: EntityTypeId, rules: list[EntityTypeRule]) -> list[EntityTypeRule]:
-        """Create or replace the conditional field rules for an entity type.
+        """Add conditional field rules to an entity type.
 
-        This replaces the entity type's full set of rules with the ones provided.
-        To read the current rules first, use [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules]; to remove all
-        rules, use [`delete_rules`][albert.collections.entity_types.EntityTypeCollection.delete_rules].
+        The provided rules are appended to the entity type's existing rules;
+        they do not replace them. To replace the full rule set, first remove
+        the existing rules with [`delete_rules`][albert.collections.entity_types.EntityTypeCollection.delete_rules],
+        then call this method. To read the current rules, use
+        [`get_rules`][albert.collections.entity_types.EntityTypeCollection.get_rules].
 
         !!! example
             ```python
-            existing = client.entity_types.get_rules(id="ETT1")
-            updated = client.entity_types.set_rules(id="ETT1", rules=existing)
+            # Replace the rule set: clear the existing rules, then set the new ones
+            client.entity_types.delete_rules(id="ETT1")
+            rules = client.entity_types.set_rules(id="ETT1", rules=[rule1, rule2])
             ```
 
         Parameters
@@ -406,12 +422,12 @@ class EntityTypeCollection(BaseCollection):
         id : EntityTypeId
             The Entity Type ID to set the rules for (format ``ETT...``).
         rules : list[EntityTypeRule]
-            The rules to apply to the entity type.
+            The rules to add to the entity type.
 
         Returns
         -------
         list[EntityTypeRule]
-            The updated rules as registered in Albert.
+            The rules as registered in Albert after the call.
         """
         response = self.session.put(
             f"{self.base_path}/rules/{id}",

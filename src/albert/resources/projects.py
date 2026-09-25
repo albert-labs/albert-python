@@ -19,8 +19,9 @@ class ProjectClass(str, Enum):
 
     - ``PRIVATE``: visible only to the project's ACL members (the default).
     - ``SHARED``: visible more broadly across the organization.
-    - ``CONFIDENTIAL``: most tightly controlled access.
-    - ``RESTRICTED``: limited access; returned for existing tenant projects.
+    - ``CONFIDENTIAL``: most tightly controlled standard access.
+    - ``RESTRICTED``: limited access; returned for existing tenant projects and
+      only usable when the tenant has the restricted project class feature enabled.
     """
 
     SHARED = "shared"
@@ -49,20 +50,20 @@ class State(str, Enum):
 class TaskConfig(BaseAlbertModel):
     """Default task settings applied when tasks are created within a project."""
 
-    datatemplateId: str | None = None
+    data_template_id: str | None = Field(default=None, alias="dataTemplateId")
     """ID of the data template tasks default to."""
 
-    workflowId: str | None = None
+    workflow_id: str | None = Field(default=None, alias="workflowId")
     """ID of the workflow tasks default to."""
 
-    defaultTaskName: str | None = None
+    default_task_name: str | None = Field(default=None, alias="defaultTaskName")
     """Default name applied to new tasks."""
 
     target: str | None = None
     """Default target for the configured tasks."""
 
-    hidden: bool | None = False
-    """Whether this configuration is hidden in the UI."""
+    hidden: str | None = Field(default=None)
+    """Whether this configuration is hidden in the UI (``"true"`` or ``"false"``)."""
 
 
 class GridDefault(str, Enum):
@@ -128,10 +129,10 @@ class Project(BaseSessionResource):
     acl: list[ACL] | None = Field(default_factory=list, alias="ACL")
     """Access-control entries controlling who can access the project. Optional."""
 
-    old_api_params: dict | None = None
+    old_api_params: dict | None = Field(default=None, alias="oldApiParams")
     """Read-only. Do not use."""
 
-    task_config: list[TaskConfig] | None = Field(default_factory=list)
+    task_config: list[TaskConfig] | None = Field(default_factory=list, alias="TaskConfig")
     """Default task settings applied to tasks created within the project."""
 
     grid: GridDefault | None = None

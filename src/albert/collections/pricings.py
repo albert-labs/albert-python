@@ -60,6 +60,7 @@ class PricingCollection(BaseCollection):
     _updatable_attributes = {
         "pack_size",
         "price",
+        "price_l",
         "currency",
         "description",
         "fob",
@@ -309,10 +310,15 @@ class PricingCollection(BaseCollection):
         -----
         The following fields can be updated: ``currency``, ``default``,
         ``description``, ``expiration_date``, ``fob``, ``inventory_id``,
-        ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``.
+        ``lead_time``, ``lead_time_unit``, ``pack_size``, ``price``, ``price_l``.
 
         ``default`` must be ``0`` (not default) or ``1`` (default). Can only be
         set via update, not on create.
+
+        ``price_l`` can only be changed when it already has a value on the
+        pricing; setting it for the first time or clearing it via update is
+        rejected. Set it on [`create`][albert.collections.pricings.PricingCollection.create] instead.
+        Fields cannot be cleared to ``None`` via update.
         """
         current_pricing = self.get_by_id(id=pricing.id)
         patch_payload = self._pricing_patch_payload(existing=current_pricing, updated=pricing)
