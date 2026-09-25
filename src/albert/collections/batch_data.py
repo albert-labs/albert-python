@@ -139,13 +139,15 @@ class BatchDataCollection(BaseCollection):
             The kind of identifier passed as ``id``. Defaults to
             [`TASK_ID`][albert.resources.batch_data.BatchDataType.TASK_ID].
         limit : int, optional
-            Maximum number of row entries to return per response. Defaults to 100.
+            Maximum number of product columns to return per response (pagination
+            is over columns, not rows). Defaults to 100.
         start_key : str, optional
-            Pagination cursor identifying the first entry to evaluate; pass the
+            Pagination cursor identifying the first column to evaluate; pass the
             ``last_key`` from a previous response to continue where it left off.
         order_by : OrderBy, optional
             Direction in which results are sorted. Defaults to
             [`DESCENDING`][albert.core.shared.enums.OrderBy.DESCENDING].
+            Currently has no effect on the returned grid.
 
         Returns
         -------

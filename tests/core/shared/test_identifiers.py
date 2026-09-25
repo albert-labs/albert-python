@@ -18,6 +18,7 @@ from albert.core.shared.identifiers import (
     ensure_project_id,
     ensure_project_search_id,
     ensure_propertydata_id,
+    ensure_report_id,
     ensure_row_id,
     ensure_search_inventory_id,
     ensure_storage_location_id,
@@ -87,6 +88,22 @@ def test_ensure_lot_id_display_format():
     assert ensure_lot_id("LOT3") == "LOT3"
     assert ensure_lot_id("LOTB88954") == "LOTB88954"
     assert ensure_lot_id("lot3") == "LOT3"
+
+
+def test_ensure_report_id():
+    # Bare and prefixed forms
+    assert ensure_report_id("14") == "REP14"
+    assert ensure_report_id("REP14") == "REP14"
+    assert ensure_report_id("rep14") == "REP14"
+
+    # Fully qualified ids keep the report id, not a doubled prefix
+    assert ensure_report_id("ALB#REP14") == "REP14"
+    assert ensure_report_id("alb#rep14") == "REP14"
+
+    with pytest.raises(ValueError, match="ReportId cannot be empty"):
+        ensure_report_id("")
+    with pytest.raises(ValueError, match="ReportId cannot be empty"):
+        ensure_report_id(None)
 
 
 def test_ensure_interval_id():
