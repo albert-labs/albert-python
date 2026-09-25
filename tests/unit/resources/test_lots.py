@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from albert.core.shared.models.base import EntityLink
-from albert.resources.inventory import InventoryDensity
+from albert.resources.inventory import InventoryCategory, InventoryDensity
 from albert.resources.lots import Lot, LotVolumeUnit
 
 
@@ -152,3 +152,14 @@ def test_lot_numeric_serializer_leaves_non_decimal_formatting_untouched():
 
     round_tripped = Lot.model_validate(dumped)
     assert round_tripped.cost == float("inf")
+
+
+def test_lot_parent_category_alias():
+    """Test that parent_category parses from the parentIdCategory response field."""
+    lot = Lot(
+        albertId="LOT1",
+        parentId="INV1",
+        inventoryOnHand=10.0,
+        parentIdCategory="RawMaterials",
+    )
+    assert lot.parent_category == InventoryCategory.RAW_MATERIALS

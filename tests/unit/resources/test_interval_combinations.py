@@ -242,6 +242,31 @@ def test_block_rules_and_overrides_excluded_from_dump():
     assert "Datatemplate" in dumped
 
 
+def test_block_model_dump_does_not_double_wrap_lists():
+    """Test a direct Block model_dump keeps Workflow and Datatemplate as flat lists."""
+    block = Block(workflow=[{"id": "WFL1"}], data_template=[{"id": "DAT1"}])
+
+    dumped = block.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+    assert dumped["Workflow"] == [{"id": "WFL1"}]
+    assert dumped["Datatemplate"] == [{"id": "DAT1"}]
+
+
+def test_block_combinations_count_reads_from_final_workflow():
+    """Test the deprecated Block.combinations_count reflects the final workflow's count."""
+    block = Block(
+        workflow=[{"id": "WFL1", "category": "FINAL", "combinationsCount": 7}],
+        data_template=[{"id": "DAT1"}],
+    )
+
+    with pytest.warns(DeprecationWarning):
+        assert block.combinations_count == 7
+
+    empty_block = Block(workflow=[{"id": "WFL1"}], data_template=[{"id": "DAT1"}])
+    with pytest.warns(DeprecationWarning):
+        assert empty_block.combinations_count is None
+
+
 def test_workflow_build_rule_condition():
     """Test Workflow.build_rule_condition resolves IDs, unit, and operator correctly."""
     wf = Workflow(

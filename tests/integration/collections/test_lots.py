@@ -139,6 +139,16 @@ def test_update_partial_leaves_omitted_fields_untouched(client: Albert, seeded_l
     assert refetched.manufacturer_lot_number == "PRESERVE-ME"
 
 
+def test_update_cost_and_initial_quantity(client: Albert, seeded_lot: Lot):
+    """Test that updating cost and initial_quantity round-trips via update()."""
+    lot = seeded_lot.model_copy()
+    lot.cost = 42.5
+    lot.initial_quantity = 200.0
+    updated_lot = client.lots.update(lot=lot)
+    assert updated_lot.cost == pytest.approx(42.5)
+    assert updated_lot.initial_quantity == pytest.approx(200.0)
+
+
 def test_update_workflow_id(client: Albert, seeded_lot: Lot):
     """Test assigning workflow_id to a lot via update."""
     assert seeded_lot.workflow_id is None

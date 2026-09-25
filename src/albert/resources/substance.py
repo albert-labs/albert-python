@@ -479,11 +479,11 @@ class SubstanceInfo(BaseAlbertModel):
     )
     """Information about lethal doses and concentrations."""
 
-    m_factor: int | None = Field(None, alias="mFactor")
-    """M factor for acute toxicity."""
+    m_factor: int | float | str | None = Field(None, alias="mFactor")
+    """M factor for acute toxicity. The API may return a number or a string."""
 
-    m_factor_chronic: int | None = Field(None, alias="mFactorChronic")
-    """M factor for chronic toxicity."""
+    m_factor_chronic: int | float | str | None = Field(None, alias="mFactorChronic")
+    """M factor for chronic toxicity. The API may return a number or a string."""
 
     molecular_weight: list[MolecularWeight] | None = Field(None, alias="molecularWeight")
     """Molecular weight information."""
@@ -627,17 +627,19 @@ class SubstanceInfo(BaseAlbertModel):
     source: str | None = Field(None, alias="source")
     """Source of the substance information."""
 
-    specific_concentration_limit: str | None = Field(None, alias="specificConcentrationLimit")
-    """Specific concentration limit for the substance."""
+    specific_concentration_limit: list[dict] | str | None = Field(
+        None, alias="specificConcentrationLimit"
+    )
+    """Specific concentration limit for the substance. The API returns an array of limit objects, but some tenants return a plain string."""
 
     stockholm_conv_list: bool | None = Field(None, alias="stockholmConvList")
     """Indicates if the substance is on the Stockholm Convention list."""
 
-    stot_affected_organs: str | None = Field(None, alias="stotAffectedOrgans")
-    """Organs affected by STOT."""
+    stot_affected_organs: str | dict | None = Field(None, alias="stotAffectedOrgans")
+    """Organs affected by STOT. The API may return a string or an object."""
 
-    stot_route_of_exposure: str | None = Field(None, alias="stotRouteOfExposure")
-    """Route of exposure for STOT."""
+    stot_route_of_exposure: str | dict | None = Field(None, alias="stotRouteOfExposure")
+    """Route of exposure for STOT. The API may return a string or an object."""
 
     tcsi_notified: bool | None = Field(None, alias="tcsiNotified")
     """Indicates if the substance is TCSI notified."""

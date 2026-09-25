@@ -251,7 +251,7 @@ class ChatMessage(BaseResource):
     """Client-generated request trace identifier that groups the components of one turn. Auto-generated on create when not set. Serialized as ``sourceRequestId``."""
 
     sequence: str | None = Field(default=None)
-    """Zero-padded position of this component within the session (e.g. ``"000"``, ``"001"``)."""
+    """Zero-padded position of this component within the session (e.g. ``"000"``, ``"001"``). Required on create; defaults to ``"000"`` when not set."""
 
     component_type: ChatComponentType = Field(alias="componentType")
     """The kind of component this message carries (e.g. text, image, reasoning block). Required. Serialized as ``componentType``."""

@@ -137,6 +137,18 @@ def test_create_many_rejects_mixed_categories(client: Albert):
         client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
 
 
+def test_delete_with_delay(client: Albert, seed_prefix: str, seeded_locations):
+    """Test that delete accepts the optional delay parameter."""
+    task = client.tasks.create(
+        task=GeneralTask(name=f"{seed_prefix} - delete delay", location=seeded_locations[0])
+    )
+    try:
+        client.tasks.delete(id=task.id, delay=0)
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.tasks.delete(id=task.id)
+
+
 def test_update(
     client: Albert,
     seeded_tasks,
