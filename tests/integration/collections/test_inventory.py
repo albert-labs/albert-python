@@ -1,0 +1,603 @@
+from contextlib import suppress
+from uuid import uuid4
+
+import pytest
+
+from albert.client import Albert
+from albert.collections.inventory import InventoryCategory
+from albert.core.shared.enums import SecurityClass
+from albert.core.shared.identifiers import ensure_inventory_id
+from albert.core.shared.models.base import EntityLink
+from albert.exceptions import BadRequestError, NotFoundError
+from albert.resources.cas import Cas
+from albert.resources.companies import Company
+from albert.resources.custom_fields import FieldType, ServiceType
+from albert.resources.facet import FacetItem, FacetValue
+from albert.resources.inventory import (
+    CasAmount,
+    InventoryItem,
+    InventoryUnitCategory,
+)
+from albert.resources.lots import Lot
+from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
+from albert.resources.tags import Tag
+from albert.resources.users import User
+from tests.integration.utils.wait import poll_until
+
+pytestmark = pytest.mark.xdist_group("inventory")
+
+
+def assert_valid_inventory_items(returned_list: list[InventoryItem]):
+    """Assert basic InventoryItem structure and types."""
+    assert returned_list, "Expected at least one InventoryItem"
+    for item in returned_list[:10]:
+        assert isinstance(item, InventoryItem)
+        assert isinstance(item.name, (str | None))
+        assert isinstance(item.id, str)
+
+
+def test_inventory_get_all_with_pagination(client: Albert):
+    """Test inventory get_all respects pagination and item type."""
+    results = list(client.inventory.get_all(max_items=10))
+    assert len(results) <= 10
+    assert_valid_inventory_items(results)
+
+
+def test_inventory_get_all_with_filters(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_cas: list[Cas],
+    static_user: User,
+):
+    """Test inventory get_all and search with filters (text, category, cas, company, user)."""
+    test_item = seeded_inventory[1]
+    matching_cas = next(x for x in seeded_cas if x.id in test_item.cas[0].id)
+    seeded_ids = {item.id for item in seeded_inventory}
+
+    def normalize_inv_id(item_id: str) -> str:
+        return item_id if item_id.upper().startswith("INV") else f"INV{item_id}"
+
+    def filter_seeded(items):
+        return [item for item in items if normalize_inv_id(item.id) in seeded_ids]
+
+    def scoped_search(*, created_by=None, updated_by=None):
+        return poll_until(
+            lambda: filter_seeded(
+                list(
+                    client.inventory.search(
+                        text=seed_prefix,
+                        created_by=created_by,
+                        updated_by=updated_by,
+                        max_items=100,
+                    )
+                )
+            )
+        )
+
+    results = poll_until(
+        lambda: list(
+            client.inventory.get_all(
+                text=test_item.name,
+                category=InventoryCategory.CONSUMABLES,
+                cas=matching_cas,
+                company=test_item.company,
+                max_items=10,
+            )
+        )
+    )
+
+    assert_valid_inventory_items(results)
+    for item in results[:10]:
+        assert test_item.name.lower() in item.name.lower()
+
+    user = User(id=static_user.id, name=static_user.name)
+    by_id = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.id)}
+    by_name = {normalize_inv_id(item.id) for item in scoped_search(created_by=static_user.name)}
+    by_user = {normalize_inv_id(item.id) for item in scoped_search(created_by=user)}
+    assert by_id == by_name == by_user
+    assert test_item.id in by_id
+
+    assert test_item.created and test_item.created.at
+    from_created_at = test_item.created.at.date().isoformat()
+    recently_created = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.search(
+                    text=seed_prefix,
+                    from_created_at=from_created_at,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert test_item.id in {normalize_inv_id(item.id) for item in recently_created}
+
+    hydrated_by_creator = poll_until(
+        lambda: filter_seeded(
+            list(
+                client.inventory.get_all(
+                    text=seed_prefix,
+                    created_by=static_user.id,
+                    max_items=100,
+                )
+            )
+        )
+    )
+    assert hydrated_by_creator
+
+    facets = client.inventory.get_all_facets(text=seed_prefix, created_by=static_user.id)
+    assert facets
+
+    search_hits = poll_until(
+        lambda: filter_seeded(list(client.inventory.search(text=test_item.name, max_items=10)))
+    )
+    hit = next(item for item in search_hits if normalize_inv_id(item.id) == test_item.id)
+    assert hit.manufacturer is not None
+    company_name = (
+        test_item.company.name if isinstance(test_item.company, Company) else test_item.company
+    )
+    assert hit.manufacturer == company_name
+
+
+def test_inventory_hydration_from_search(client: Albert, seed_prefix: str, seeded_inventory):
+    """Test that inventory search results can be hydrated to full InventoryItem."""
+    # Filter to this worker's seeds: text search is fuzzy (tokenized) and can rank
+    # unrelated or deleted items (search item ids lack the INV prefix)
+    seeded_ids = {i.id for i in seeded_inventory}
+    search_results = poll_until(
+        lambda: [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100)
+            if f"INV{p.id}" in seeded_ids
+        ]
+    )
+    assert search_results, "Expected at least one inventory item in search results"
+
+    for partial in search_results:
+        hydrated = partial.hydrate()
+        assert hydrated.id == f"INV{partial.id}"
+        assert hydrated.name == partial.name
+
+
+def test_inventory_search_with_name_only_storage_location_filter(
+    client: Albert,
+    seed_prefix: str,
+    seeded_inventory: list[InventoryItem],
+    seeded_lots: list[Lot],
+    seeded_storage_locations: list[StorageLocation],
+):
+    """Test that inventory search accepts a name-only StorageLocationFilter."""
+    unit = seeded_storage_locations[1]
+    seeded_ids = {i.id for i in seeded_inventory}
+    expected_ids = {
+        lot.inventory_id
+        for lot in seeded_lots
+        if lot.storage_location and lot.storage_location.id == unit.id
+    }
+    assert expected_ids, "Expected seeded lots at the storage location"
+
+    def search_scoped(**kwargs):
+        return [
+            p
+            for p in client.inventory.search(text=seed_prefix, max_items=100, **kwargs)
+            if f"INV{p.id}" in seeded_ids
+        ]
+
+    filter_results = poll_until(
+        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)])
+    )
+    assert {f"INV{p.id}" for p in filter_results} == expected_ids
+
+    # The full StorageLocation object from a lookup remains accepted.
+    object_results = poll_until(lambda: search_scoped(storage_location=unit))
+    assert {f"INV{p.id}" for p in object_results} == expected_ids
+
+
+@pytest.mark.skip(reason="LLM search is currently not working as expected.")
+def test_inventory_get_all_match_all_conditions(
+    client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
+):
+    """Test inventory tag filtering with match_all_conditions True and False."""
+    tag_list = [seeded_tags[0].tag, seeded_tags[1].tag]
+
+    or_results = list(
+        client.inventory.get_all(
+            tags=tag_list,
+            match_all_conditions=False,
+            max_items=10,
+        )
+    )
+    assert_valid_inventory_items(or_results)
+    for item in or_results:
+        assert any(t.tag in tag_list for t in item.tags)
+
+    and_results = list(
+        client.inventory.get_all(
+            tags=tag_list,
+            match_all_conditions=True,
+            max_items=10,
+        )
+    )
+    assert_valid_inventory_items(and_results)
+    for item in and_results:
+        assert all(t.tag in tag_list for t in item.tags)
+        assert len(item.tags) >= 2
+
+
+def test_get_by_id(client: Albert, seeded_inventory):
+    get_by_id = client.inventory.get_by_id(id=seeded_inventory[1].id)
+    assert isinstance(get_by_id, InventoryItem)
+    assert seeded_inventory[1].name == get_by_id.name
+    assert seeded_inventory[1].id == get_by_id.id
+
+    id_2 = seeded_inventory[0].id.replace("INV", "")
+    get_by_id = client.inventory.get_by_id(id=id_2)
+    assert isinstance(get_by_id, InventoryItem)
+    assert seeded_inventory[0].name == get_by_id.name
+    assert seeded_inventory[0].id == get_by_id.id
+
+
+def test_get_by_id_preserves_metadata_list_item_names(
+    client: Albert,
+    seed_prefix: str,
+    static_custom_fields,
+    static_lists,
+    seeded_companies,
+):
+    """Test list metadata includes names when an inventory item is retrieved."""
+    custom_field = next(
+        field
+        for field in static_custom_fields
+        if field.service == ServiceType.INVENTORIES and field.field_type == FieldType.LIST
+    )
+    list_item = next(item for item in static_lists if item.list_type == custom_field.name)
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Metadata names",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+            metadata={custom_field.name: [EntityLink(id=list_item.id)]},
+        ),
+        avoid_duplicates=False,
+    )
+
+    try:
+        retrieved = client.inventory.get_by_id(id=created.id)
+        metadata_link = retrieved.metadata[custom_field.name][0]
+
+        assert metadata_link.id == list_item.id
+        assert metadata_link.name == list_item.name
+        assert retrieved.model_dump(mode="json", by_alias=True)["Metadata"][custom_field.name] == [
+            {"id": list_item.id, "name": list_item.name}
+        ]
+    finally:
+        client.inventory.delete(id=created.id)
+
+
+def test_get_by_ids(client: Albert, seeded_inventory):
+    # Use this worker's seeded IDs directly; a search round-trip would race other
+    # workers' teardown deletes and fuzzy text matching
+    inventory_ids = [x.id for x in seeded_inventory]
+
+    # Assert same length obtained
+    items = client.inventory.get_by_ids(ids=inventory_ids)
+    assert len(items) == len(inventory_ids)
+
+    # TODO: Enable this test after INV-70/add-flag-called-preserve-order complete
+    # for inventory_id, inventory in zip(inventory_ids, bulk_get, strict=True):
+    #     assert f"INV{inventory_id}" == inventory.id
+
+
+def test_inventory_update(client: Albert, seed_prefix: str, seeded_inventory: list[InventoryItem]):
+    # get a test inventory item
+    inventory_item = seeded_inventory[0]
+
+    assert client.inventory.exists(inventory_item=inventory_item)
+    d = "testing SDK CRUD"
+    inventory_item.description = d
+
+    updated = client.inventory.update(inventory_item=inventory_item)
+    assert updated.description == d
+    assert updated.id == inventory_item.id
+
+
+def test_collection_blocks_formulation(client: Albert, seeded_projects):
+    """assert that trying to create a FORMULATION with a collection block raises an error"""
+
+    # create a formulation with the collection block
+    with pytest.raises(NotImplementedError):
+        r = client.inventory.create(
+            inventory_item=InventoryItem(
+                name="test formulation",
+                category=InventoryCategory.FORMULAS,
+                project_id=seeded_projects[0].id,
+            )
+        )
+
+        # delete the collection block in case it was created
+        client.inventory.delete(r)
+        assert not client.inventory.exists(r.id)
+
+
+def test_blocks_dupes(caplog, client: Albert, seeded_inventory: list[InventoryItem]):
+    ii_copy = seeded_inventory[0].model_copy(update={"id": None})
+    returned_ii = client.inventory.create(inventory_item=ii_copy)
+
+    assert returned_ii.id == seeded_inventory[0].id
+    assert returned_ii.name == seeded_inventory[0].name
+    assert (
+        f"Inventory item already exists with name {returned_ii.name} and company {returned_ii.company.name}, returning existing item."
+        in caplog.text
+    )
+
+
+def test_blocks_dupes_with_entity_link_company(
+    client: Albert, seeded_inventory: list[InventoryItem]
+):
+    """Test duplicate detection when the company is provided as an entity link."""
+    original = seeded_inventory[0]
+    ii_copy = original.model_copy(
+        update={"id": None, "company": original.company.to_entity_link()}
+    )
+    returned_ii = client.inventory.create(inventory_item=ii_copy)
+
+    assert returned_ii.id == original.id
+    assert returned_ii.name == original.name
+
+
+def test_update_inventory_item_standard_attributes(
+    client: Albert, seeded_inventory: list[InventoryItem]
+):
+    """
+    Test updating each updatable attribute for an InventoryItem.
+
+    Parameters
+    ----------
+    client : Albert
+        The Albert client instance.
+    seeded_inventory : List[InventoryItem]
+        A list of seeded inventory items.
+    """
+
+    # Assume we have at least one seeded inventory item
+
+    updated_inventory_item = seeded_inventory[0].model_copy(
+        update={
+            "name": "Updated Inventory Name",
+            "description": "Updated Description",
+            "security_class": "confidential",
+            "alias": "Updated Alias",
+        }
+    )
+    # Perform the update
+    updated_item = client.inventory.update(inventory_item=updated_inventory_item)
+
+    # Verify that all updatable attributes have been updated
+    assert updated_item.name == "Updated Inventory Name"
+    assert updated_item.description == "Updated Description"
+    assert updated_item.security_class == "confidential"
+    assert updated_item.alias == "Updated Alias"
+
+    # Optionally, re-fetch the item and verify the updates are persisted
+    fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
+    assert fetched_item.name == "Updated Inventory Name"
+    assert fetched_item.description == "Updated Description"
+    assert fetched_item.security_class == "confidential"
+    assert fetched_item.alias == "Updated Alias"
+
+
+def test_update_many_inventory_items(client: Albert, seeded_inventory: list[InventoryItem]):
+    """Test updating multiple inventory items in one call."""
+    items = seeded_inventory[:2]
+    to_update = [
+        item.model_copy(update={"description": f"update_many description {i}"})
+        for i, item in enumerate(items)
+    ]
+    updated = client.inventory.update_many(inventory_items=to_update)
+    updated_by_id = {item.id: item for item in updated}
+    assert set(updated_by_id) == {item.id for item in items}
+    for i, item in enumerate(items):
+        assert updated_by_id[item.id].description == f"update_many description {i}"
+
+
+def test_update_inventory_item_advanced_attributes(
+    client: Albert,
+    seeded_inventory: list[InventoryItem],
+    seeded_cas: list[Cas],
+    seeded_companies: list[Company],
+    seeded_tags: list[Tag],
+):
+    """
+    Test updating advanced attributes for an InventoryItem.
+
+    Parameters
+    ----------
+    client : Albert
+        The Albert client instance.
+    seeded_inventory : List[InventoryItem]
+        A list of seeded inventory items.
+    """
+
+    updated_inventory_item = seeded_inventory[0].model_copy(
+        update={
+            "cas": [CasAmount(id=seeded_cas[1].id, min=0.5, max=0.75, target=0.6)],
+            "company": seeded_companies[1],
+            "tags": [seeded_tags[0], seeded_tags[1]],
+            "alias": "Updated Alias Again",
+        }
+    )
+
+    returned_item = client.inventory.update(inventory_item=updated_inventory_item)
+    assert returned_item.cas[0].id == seeded_cas[1].id
+    assert returned_item.cas[0].min == 0.5
+    assert returned_item.cas[0].max == 0.75
+    assert returned_item.cas[0].target == 0.6
+    assert returned_item.company.id == seeded_inventory[1].company.id
+    assert len(returned_item.tags) == 2
+    assert seeded_tags[1].id in [x.id for x in returned_item.tags]
+    assert seeded_tags[0].id in [x.id for x in returned_item.tags]
+
+    # Get the updated item and verify the changes are persisted
+    fetched_item = client.inventory.get_by_id(id=updated_inventory_item.id)
+    assert fetched_item.cas[0].id == seeded_cas[1].id
+    assert fetched_item.cas[0].min == 0.5
+    assert fetched_item.cas[0].max == 0.75
+    assert fetched_item.company.id == seeded_inventory[1].company.id
+    assert len(fetched_item.tags) == 2
+    assert seeded_tags[1].id in [x.id for x in fetched_item.tags]
+    assert seeded_tags[0].id in [x.id for x in fetched_item.tags]
+
+    # Update existing values
+
+    fetched_item.cas = [
+        CasAmount(id=seeded_cas[1].id, min=0.1, max=0.5, target=0.3),
+        CasAmount(id=seeded_cas[0].id, min=0.4, max=0.9),
+    ]
+    fetched_item.company = seeded_companies[0]
+    fetched_item.tags = [seeded_tags[0]]
+
+    returned_item = client.inventory.update(inventory_item=fetched_item)
+
+    for c in returned_item.cas:
+        if c.id == seeded_cas[1].id:
+            assert c.min == 0.1
+            assert c.max == 0.5
+            assert c.target == 0.3
+        elif c.id == seeded_cas[0].id:
+            assert c.min == 0.4
+            assert c.max == 0.9
+
+    assert returned_item.company.id == seeded_inventory[0].company.id
+    assert len(returned_item.tags) == 1
+    assert seeded_tags[0].id in [x.id for x in returned_item.tags]
+
+    # remove an existing Cas
+    fetched_item.cas = [CasAmount(id=seeded_cas[0].id, min=0.4, max=0.9)]
+    returned_item = client.inventory.update(inventory_item=fetched_item)
+    assert len(returned_item.cas) == 1
+    # You can't unset a company
+    with pytest.raises(BadRequestError):
+        fetched_item.company = None
+        client.inventory.update(inventory_item=fetched_item)
+
+
+def test_get_facets(client: Albert):
+    facets = client.inventory.get_all_facets()
+    assert len(facets) > 0
+    expected_facets = [
+        "Category",
+        "Manufacturer",
+        "Location",
+        "Storage Location",
+        "CAS Number",
+        "Tags",
+        "Pictograms",
+        "Quarantine Status",
+        "Created By",
+        "Lot Owner",
+        "Lot Created By",
+    ]
+    for facet in facets:
+        assert isinstance(facet, FacetItem)
+        assert facet.name in expected_facets
+
+    assert isinstance(facets[0].value[0], FacetValue)
+
+
+def test_get_facet_by_name(client: Albert):
+    facets = client.inventory.get_facet_by_name("Category")
+    assert isinstance(facets, list)
+    assert len(facets) > 0
+    assert isinstance(facets[0], FacetItem)
+    assert facets[0].name == "Category"
+
+    facets = client.inventory.get_facet_by_name(["Category", "Manufacturer"])
+    assert len(facets) == 2
+    assert facets[0].name == "Category"
+    assert facets[1].name == "Manufacturer"
+
+    # The list order is not preserved, the API always returns facets in the same order
+    facets = client.inventory.get_facet_by_name(["Manufacturer", "Category"])
+    assert len(facets) == 2
+    assert facets[0].name == "Category"
+    assert facets[1].name == "Manufacturer"
+
+
+def test_inventory_search_with_tags(
+    client: Albert, seeded_inventory: list[InventoryItem], seeded_tags: list[Tag]
+):
+    """Test inventory search with tag filters and match_all_conditions."""
+    tags_to_check = [x.tag for x in seeded_tags[:2]]
+    results = client.inventory.search(
+        tags=tags_to_check,
+        match_all_conditions=True,
+        max_items=10,
+    )
+
+    ids = [x.id for x in seeded_inventory]
+    matches = [x for x in results if ensure_inventory_id(x.id) in ids]
+
+    for m in matches:
+        tags = [x.tag for x in m.tags]
+
+        assert any(t in tags for t in tags_to_check)
+
+
+def test_create_volume_inventory_item(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test creating a volume-based inventory item reads back density and on-hand volume fields."""
+    volume_item = InventoryItem(
+        name=f"{seed_prefix} - Volume Solvent {uuid4()}",
+        description="Volume test item",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.VOLUME,
+        density=0.85,
+        security_class=SecurityClass.SHARED,
+        company=seeded_companies[0],
+    )
+    created = client.inventory.create(inventory_item=volume_item, avoid_duplicates=False)
+    try:
+        assert created.id is not None
+        assert created.unit_category == InventoryUnitCategory.VOLUME
+        assert created.density is not None
+        assert created.density.value == pytest.approx(0.85)
+        assert created.density.locked_at_creation is True
+        assert created.density.unit_name is not None
+        assert created.inventory_on_hand_l is None
+
+        fetched = client.inventory.get_by_id(id=created.id)
+        assert fetched.density is not None
+        assert fetched.density.value == pytest.approx(0.85)
+        assert fetched.density.locked_at_creation is True
+        assert fetched.density.unit_name is not None
+        assert fetched.inventory_on_hand_l is None
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.inventory.delete(id=created.id)
+
+
+def test_update_rejects_unit_category_change_to_volume(
+    client: Albert,
+    seed_prefix: str,
+    seeded_companies: list[Company],
+):
+    """Test backend rejects updating unit_category to volume on an existing mass item."""
+    mass_item = InventoryItem(
+        name=f"{seed_prefix} - Mass Item {uuid4()}",
+        category=InventoryCategory.RAW_MATERIALS,
+        unit_category=InventoryUnitCategory.MASS,
+        security_class=SecurityClass.SHARED,
+        company=seeded_companies[0],
+    )
+    created = client.inventory.create(inventory_item=mass_item, avoid_duplicates=False)
+    try:
+        created.unit_category = InventoryUnitCategory.VOLUME
+        with pytest.raises(BadRequestError):
+            client.inventory.update(inventory_item=created)
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.inventory.delete(id=created.id)
