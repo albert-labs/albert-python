@@ -108,6 +108,26 @@ def test_hydrate_project(client: Albert, seed_prefix: str, seeded_projects: list
     assert projects, "Expected at least one project in search results"
 ```
 
+`poll_until` stops at the first **non-empty** result by default. Our NoSQL store plus
+search index is eventually consistent, so freshly seeded items become visible one by one
+and a partial page is normal during indexing. If the assertion needs the **complete**
+expected set (exact-equality asserts against your fixture's ids), pass a `predicate` so
+polling continues until the set is whole; without it the test flakes the moment one item
+indexes before the rest:
+
+```python
+expected_ids = {f"INV{lot.inventory_id}" for lot in seeded_lots if ...}
+results = poll_until(
+    lambda: search_scoped(...),
+    predicate=lambda results: {f"INV{p.id}" for p in results} == expected_ids,
+)
+assert {f"INV{p.id}" for p in results} == expected_ids
+```
+
+Even with a predicate, a rare timeout is expected behavior of an eventually consistent
+index. Treat it as a re-run, not a code change — but write the predicate to describe the
+full expectation so only genuine lag can trip it.
+
 Also:
 
 - Never assert **exact counts** of unscoped `search()`/`get_all()` results; other workers
@@ -156,7 +176,7 @@ group's files with `-n 4` to catch cross-worker races.
 
 - [ ] `pytestmark = pytest.mark.xdist_group("...")` chosen per Rule 1 (or deliberately unmarked because only `client` is used)
 - [ ] No mutation of `seeded_*` entities; private entities cleaned up in `try/finally`
-- [ ] Search assertions scoped, id-filtered, and wrapped in `poll_until`
+- [ ] Search assertions scoped, id-filtered, and wrapped in `poll_until` (with a `predicate` when asserting a complete expected set)
 - [ ] No exact-count asserts on global queries
 - [ ] Names of created entities include `seed_prefix` or `TEST - <uuid>`
 - [ ] Ran the file plus its group with `-n 4` locally
