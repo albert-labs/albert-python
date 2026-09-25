@@ -185,6 +185,20 @@ Exception: when a backend caps page size below `DEFAULT_LIMIT` (1000), set `limi
   - Patch builders cover the unset / explicit `None` / `[]` / changed / unchanged matrix.
 - **New or changed branching logic in a collection** (payload assembly, diffing, validation,
   batching) goes into a pure helper with unit tests in the same PR.
+- **Tests for a new feature or method:**
+  1. Public collection method: integration test in
+     `tests/integration/collections/test_<collection>.py` per the integration guide.
+  2. Branching logic (payload building, diffing, validation, batching, transforms): a pure
+     helper with unit tests for every behavior, per "Writing standards" in
+     `tests/unit/TESTING.md` (one behavior per test, parametrize same-assertion tables,
+     whole-result assertions, deterministic).
+  3. New resource validator or serializer: accept, reject, and coerce unit tests plus a
+     wire-format round trip.
+  4. New public method: the meta tests enforce keyword-only arguments, the `max_items`
+     default, docstring rules, and the collection `Methods` listing. Run
+     `uv run pytest tests/unit/meta`.
+  5. Bug fix: add the failing case as a test first; if it was pinned with `xfail`, remove
+     the marker.
 - Test docstrings should be crisp, start with "Test ...", and avoid implementation details.
 - Verify changes work, don't assume: always run `uv run pytest tests/unit`, and run the
   related integration files with `-n 4`.
