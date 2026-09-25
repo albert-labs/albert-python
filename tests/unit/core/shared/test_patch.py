@@ -1,6 +1,8 @@
 from albert.collections.lots import LotCollection
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.resources.lots import Lot
+from albert.resources.parameter_groups import ParameterGroup, ParameterValue
+from albert.utils._patch import generate_parameter_group_patches
 
 
 def test_exclude_unset_default():
@@ -52,3 +54,30 @@ def test_lots_patch_payload_stringifies_numeric_values():
     assert by_attribute["initialQuantity"].operation == PatchOperation.UPDATE
     assert by_attribute["initialQuantity"].old_value == "100"
     assert by_attribute["initialQuantity"].new_value == "200"
+
+
+def test_parameter_group_row_delete_uses_parameters_attribute():
+    """Test that deleting a parameter group row emits the ``parameters`` attribute."""
+    existing = ParameterGroup(
+        name="Mixing Step",
+        parameters=[
+            ParameterValue(id="PRM123", value="500", sequence="ROW1"),
+            ParameterValue(id="PRM456", value="600", sequence="ROW2"),
+        ],
+    )
+    updated = ParameterGroup(
+        name="Mixing Step",
+        parameters=[ParameterValue(id="PRM123", value="500", sequence="ROW1")],
+    )
+
+    general_patches, _, _ = generate_parameter_group_patches(
+        initial_patches=PatchPayload(data=[]),
+        updated_parameter_group=updated,
+        existing_parameter_group=existing,
+    )
+    dumped = general_patches.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+    deletes = [d for d in dumped["data"] if d["operation"] == "delete"]
+    assert len(deletes) == 1
+    assert deletes[0]["attribute"] == "parameters"
+    assert deletes[0]["oldValue"] == ["ROW2"]
