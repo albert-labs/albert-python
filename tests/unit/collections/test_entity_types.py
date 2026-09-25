@@ -6,7 +6,7 @@ nested-field add-vs-update, whole-list custom_fields diffing) with no I/O to
 fake.
 """
 
-import pytest
+import responses
 
 from albert.collections.entity_types import EntityTypeCollection
 from albert.core.shared.models.patch import PatchOperation
@@ -20,6 +20,7 @@ from albert.resources.entity_types import (
     EntityTypeStandardFieldVisibility,
     FieldSection,
 )
+from tests.unit.conftest import UNIT_BASE_URL
 
 
 def _entity_type(**kwargs) -> EntityType:
@@ -83,15 +84,6 @@ def test_changed_custom_fields_emits_update_op(offline_session) -> None:
     assert patches[0].new_value == [{"id": "CTF1", "section": "top", "hidden": True}]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: src/albert/collections/entity_types.py "
-        "_generate_special_attribute_patches emits an unconditional update op for "
-        "custom_fields whenever both existing and updated set it, even when the "
-        "dumped values are identical (no equality check before the append)."
-    ),
-)
 def test_unchanged_custom_fields_emits_no_op(offline_session) -> None:
     """Test that identical custom_fields content emits no patch operation."""
     existing = _entity_type(
@@ -106,6 +98,24 @@ def test_unchanged_custom_fields_emits_no_op(offline_session) -> None:
     )
 
     assert patches == []
+
+
+@responses.activate
+def test_update_with_no_changes_sends_no_patch(offline_session) -> None:
+    """Test that updating an entity type with unchanged custom_fields sends no PATCH."""
+    custom_fields = [EntityCustomField(id="CTF1", section=FieldSection.TOP, hidden=False)]
+    current = _entity_type(custom_fields=custom_fields)
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/entitytypes/ETT1",
+        json=current.model_dump(by_alias=True, mode="json", exclude_none=True),
+    )
+
+    result = EntityTypeCollection(session=offline_session).update(
+        entity_type=_entity_type(custom_fields=custom_fields)
+    )
+
+    assert result.id == "ETT1"
+    assert [c.request.method for c in responses.calls] == ["GET"]
 
 
 def test_unset_standard_field_visibility_emits_no_patches(offline_session) -> None:
