@@ -137,12 +137,18 @@ class PropertyDataCollection(BaseCollection):
         Overwrite a task block's results from tabular data.
     bulk_delete_task_data(...) -> None
         Delete a task block's results.
-    void_task_data(...) / unvoid_task_data(...) -> None
-        Void/unvoid all results in a task block.
-    void_interval_data(...) / unvoid_interval_data(...) -> None
-        Void/unvoid the results of one interval combination.
-    void_trial_data(...) / unvoid_trial_data(...) -> None
-        Void/unvoid the results of one trial.
+    void_task_data(...) -> None
+        Void all results in a task block.
+    unvoid_task_data(...) -> None
+        Unvoid all results in a task block.
+    void_interval_data(...) -> None
+        Void the results of one interval combination.
+    unvoid_interval_data(...) -> None
+        Unvoid the results of one interval combination.
+    void_trial_data(...) -> None
+        Void the results of one trial.
+    unvoid_trial_data(...) -> None
+        Unvoid the results of one trial.
     search(...) -> Iterator[PropertyDataSearchItem]
         Search recorded property data across the platform.
     """
