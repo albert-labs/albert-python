@@ -81,7 +81,7 @@ jobs:
               --arg summary "${SUMMARY}" \
               '{body: ("### CircleCI Test failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")}')
             curl -sS -X POST \
-              -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_PYTHON}" \
+              -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_LABS}" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/issues/${PR_NUMBER}/comments" \
               -d "${BODY}"
