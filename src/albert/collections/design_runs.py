@@ -137,7 +137,7 @@ class DesignRunCollection(BaseCollection):
         history, use a different Smart Dataset. ``anchor_targets`` optionally narrows
         the comparison further to experiments that already have a measurement for
         every named target id. That changes which existing rows the batch is spread
-        against, not what the batch is optimized for — there is no direction, target
+        against, not what the batch is optimized for: there is no direction, target
         value, or scoring involved.
 
         Parameters

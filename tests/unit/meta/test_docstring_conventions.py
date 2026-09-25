@@ -161,14 +161,7 @@ def test_no_sphinx_roles_in_docstrings() -> None:
 
 
 # Pre-existing; remove entries as they are fixed. Do not add new ones.
-KNOWN_EM_DASH_VIOLATIONS: frozenset[str] = frozenset(
-    {
-        "albert.collections.design_runs.DesignRunCollection.create_doe",
-        "albert.collections.notebooks.NotebookCollection.update_block_content",
-        "albert.collections.projects.ProjectCollection.search",
-        "albert.resources.sheets.Sheet.add_task_row",
-    }
-)
+KNOWN_EM_DASH_VIOLATIONS: frozenset[str] = frozenset()
 
 
 def test_no_em_dash_in_docstrings() -> None:
@@ -197,11 +190,7 @@ EXAMPLE_ADMONITION_CASES = [
 ]
 
 # Pre-existing; remove entries as they are fixed. Do not add new ones.
-KNOWN_EXAMPLE_PLACEMENT_VIOLATIONS: frozenset[str] = frozenset(
-    {
-        "albert.exceptions.CombinationGenerationError",
-    }
-)
+KNOWN_EXAMPLE_PLACEMENT_VIOLATIONS: frozenset[str] = frozenset()
 
 
 def _example_misplaced(entry: _DocEntry) -> bool:
@@ -250,11 +239,7 @@ COLLECTION_CLASSES = _iter_collection_classes()
 COLLECTIONS_WITH_PUBLIC_METHODS = [cls for cls in COLLECTION_CLASSES if _public_method_names(cls)]
 
 # Pre-existing; remove entries as they are fixed. Do not add new ones.
-KNOWN_METHODS_SECTION_VIOLATIONS: frozenset[str] = frozenset(
-    {
-        "albert.collections.property_data.PropertyDataCollection",
-    }
-)
+KNOWN_METHODS_SECTION_VIOLATIONS: frozenset[str] = frozenset()
 
 
 def _missing_from_methods_section(cls: type) -> list[str] | None:

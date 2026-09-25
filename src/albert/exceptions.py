@@ -225,15 +225,6 @@ class CombinationGenerationError(AlbertException):
     callers to inspect the task state and retry generation for only the failed blocks
     using [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
 
-    Attributes
-    ----------
-    task : PropertyTask or None
-        The created Property task, re-fetched from the platform.
-    failed_blocks : list[str]
-        List of block IDs (format ``BLK...``) whose combination generation failed.
-    job_states : dict[str, str]
-        Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
-
     !!! example
         ```python
         from albert import Albert
@@ -252,6 +243,15 @@ class CombinationGenerationError(AlbertException):
                     block_id=block_id,
                 )
         ```
+
+    Attributes
+    ----------
+    task : PropertyTask or None
+        The created Property task, re-fetched from the platform.
+    failed_blocks : list[str]
+        List of block IDs (format ``BLK...``) whose combination generation failed.
+    job_states : dict[str, str]
+        Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
     """
 
     task: PropertyTask | None

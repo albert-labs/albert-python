@@ -1763,7 +1763,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
     ) -> Row:
         """Link a task into this sheet's Results section as a task (TAS) row.
 
-        Creating a task does not place it in the worksheet's Results grid — the
+        Creating a task does not place it in the worksheet's Results grid: the
         platform only adds the TAS row when the task is created from the worksheet
         UI. Call this after creating a property task programmatically so the task
         (and its results) shows up in the sheet.
