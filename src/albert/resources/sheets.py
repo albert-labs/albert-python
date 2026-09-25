@@ -945,13 +945,18 @@ class Sheet(BaseSessionResource):  # noqa:F811
             new_dicts.append(this_dict)
         return new_dicts
 
-    def _clear_formulation_from_column(self, *, column: Column):
-        cleared_cells = []
-        for cell in column.cells:
-            if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL:
-                cell_copy = cell.model_copy(update={"value": "", "calculation": ""})
-                cleared_cells.append(cell_copy)
+    def _clear_formulation_from_column(self, *, column: Column) -> list[Cell]:
+        """Blank the column's ingredient cells and return their prior state."""
+        original_cells = [
+            cell
+            for cell in column.cells
+            if cell.type == CellType.INVENTORY and cell.row_type != CellType.TOTAL
+        ]
+        cleared_cells = [
+            cell.model_copy(update={"value": "", "calculation": ""}) for cell in original_cells
+        ]
         self.update_cells(cells=cleared_cells)
+        return original_cells
 
     def add_formulation(
         self,
@@ -1013,11 +1018,12 @@ class Sheet(BaseSessionResource):  # noqa:F811
         """
 
         all_cells: list[Cell] = []
+        cleared_cells: list[Cell] = []
         existing_formulation_names = [x.name for x in self.columns]
         if clear and formulation_name in existing_formulation_names:
             # get the existing column and clear it out to put the new formulation in
             col = self.get_column(column_name=formulation_name, inventory_id=inventory_id)
-            self._clear_formulation_from_column(column=col)
+            cleared_cells = self._clear_formulation_from_column(column=col)
         else:
             col = self.add_formulation_columns(formulation_names=[formulation_name])[0]
         column_id = col.column_id
@@ -1113,7 +1119,14 @@ class Sheet(BaseSessionResource):  # noqa:F811
         total_cells = [c for c in all_cells if _is_total_cell(c)]
 
         if ingredient_cells:
-            self.update_cells(cells=ingredient_cells)
+            try:
+                self.update_cells(cells=ingredient_cells)
+            except AlbertException:
+                # A failed write must not leave the cleared column blank.
+                if cleared_cells:
+                    self.grid = None
+                    self.update_cells(cells=cleared_cells)
+                raise
 
         if total_cells:
             # grid reset for safety
@@ -1918,25 +1931,22 @@ class Sheet(BaseSessionResource):  # noqa:F811
 
         data: list[PatchDatum] = []
 
-        # Handle format change
-        if cell.format != current_cell.format:
-            if cell.format is None or cell.format == {}:
-                data.append(
-                    PatchDatum(
-                        operation="delete",
-                        attribute="cellFormat",
-                        old_value=current_cell.format,
-                    )
+        # Handle format change. Only an explicitly set, non-empty format is sent: the
+        # ``{}`` default means "unspecified", and the API rejects a cellFormat delete.
+        if (
+            "format" in cell.model_fields_set
+            and cell.format
+            and cell.format != current_cell.format
+        ):
+            # cellFormat is only valid under the update schema; the add enum rejects it.
+            data.append(
+                PatchDatum(
+                    operation="update",
+                    attribute="cellFormat",
+                    old_value=current_cell.format,
+                    new_value=cell.format,
                 )
-            else:
-                data.append(
-                    PatchDatum(
-                        operation="update",
-                        attribute="cellFormat",
-                        old_value=current_cell.format,
-                        new_value=cell.format,
-                    )
-                )
+            )
 
         # Handle calculation change
         if cell.calculation != current_cell.calculation:

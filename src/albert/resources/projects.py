@@ -20,8 +20,8 @@ class ProjectClass(str, Enum):
     - ``PRIVATE``: visible only to the project's ACL members (the default).
     - ``SHARED``: visible more broadly across the organization.
     - ``CONFIDENTIAL``: most tightly controlled standard access.
-    - ``RESTRICTED``: restricted access; only usable when the tenant has the
-      restricted project class feature enabled.
+    - ``RESTRICTED``: limited access; returned for existing tenant projects and
+      only usable when the tenant has the restricted project class feature enabled.
     """
 
     SHARED = "shared"

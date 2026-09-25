@@ -106,23 +106,26 @@ class DataType(str, Enum):
 class Operator(str, Enum):
     """A comparison operator constraining a numeric parameter value.
 
-    Used by [`ValueValidation`][albert.resources.parameter_groups.ValueValidation] to bound acceptable values (e.g. ``gte`` with
-    a ``min`` requires the value to be at least ``min``).
+    Used by [`ValueValidation`][albert.resources.parameter_groups.ValueValidation] to bound acceptable values. ``between``
+    takes ``min`` and ``max``; every single-bound operator takes ``value`` (e.g. ``gte``
+    with ``value="0"`` requires the value to be at least 0).
 
     Attributes
     ----------
     BETWEEN : str
         Value must fall between ``min`` and ``max`` (inclusive).
     LESS_THAN : str
-        Value must be less than ``max``.
+        Value must be less than ``value``.
     LESS_THAN_OR_EQUAL : str
-        Value must be less than or equal to ``max``.
+        Value must be less than or equal to ``value``.
     GREATER_THAN_OR_EQUAL : str
-        Value must be greater than or equal to ``min``.
+        Value must be greater than or equal to ``value``.
     GREATER_THAN : str
-        Value must be greater than ``min``.
+        Value must be greater than ``value``.
     EQUALS : str
-        Value must equal the specified value.
+        Value must equal ``value``.
+    NOT_EQUALS : str
+        Not accepted by the API for parameter validations.
     """
 
     BETWEEN = "between"
@@ -178,16 +181,16 @@ class ValueValidation(BaseAlbertModel):
     """The data type the value must conform to. Required."""
 
     value: str | list[EnumValidationValue] | None = Field(default=None)
-    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise an optional expected value. For ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
+    """For ``ENUM`` types, the list of allowed options (see [`EnumValidationValue`][albert.resources.parameter_groups.EnumValidationValue]); otherwise the bound for single-bound operators (``lt``, ``lte``, ``gt``, ``gte``, ``eq``). For ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     min: str | None = Field(default=None)
-    """The lower bound, used with ``operator``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
+    """The lower bound, used only with ``operator="between"``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     max: str | None = Field(default=None)
-    """The upper bound, used with ``operator``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
+    """The upper bound, used only with ``operator="between"``. For numeric types, a numeric string; for ``date`` and ``timestamp`` types, a string in the wire format documented on [`DataType`][albert.resources.parameter_groups.DataType]."""
 
     operator: Operator | None = Field(default=None)
-    """The comparison operator applied against ``min`` and/or ``max``."""
+    """The comparison operator: ``between`` uses ``min`` and ``max``; the others use ``value``."""
 
 
 class ParameterValue(BaseAlbertModel):
