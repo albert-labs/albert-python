@@ -15,6 +15,7 @@ from albert.resources.product_design import (
 )
 from albert.resources.projects import Project, ProjectClass, TaskConfig
 from albert.resources.property_data import PropertyData, TaskDataColumn, TaskPropertyCreate
+from albert.resources.substance import SubstanceInfo
 from albert.resources.substance_v4 import SubstanceV4Info, SubstanceV4SearchItem
 
 # Recorded from GET /api/v3/productdesign/DESIGN/unpack?formulaId=INVP603-004
@@ -181,3 +182,30 @@ def test_task_property_create_sends_visible_trial_number_as_number():
 
     assert isinstance(payload["visibleTrialNo"], int)
     assert payload["visibleTrialNo"] == 1
+
+
+def test_substance_info_tolerates_wider_v3_field_types():
+    """``SubstanceInfo`` fields whose v3 payloads are wider than first modeled.
+
+    Per the api-substance-v3 spec, ``specificConcentrationLimit`` is an array of
+    objects, ``mFactor``/``mFactorChronic`` may be strings, and the STOT fields
+    may be objects; the narrow types raised ValidationError on real responses.
+    """
+    substance = SubstanceInfo.model_validate(
+        {
+            "casID": "50-00-0",
+            "specificConcentrationLimit": [
+                {"class": "Skin Corr.", "hCode": "H314", "category": "1"}
+            ],
+            "mFactor": "10",
+            "mFactorChronic": "1",
+            "stotAffectedOrgans": {"organ": "liver"},
+            "stotRouteOfExposure": {"route": "oral"},
+        }
+    )
+
+    assert isinstance(substance.specific_concentration_limit, list)
+    assert substance.m_factor == "10"
+    assert substance.m_factor_chronic == "1"
+    assert substance.stot_affected_organs == {"organ": "liver"}
+    assert substance.stot_route_of_exposure == {"route": "oral"}

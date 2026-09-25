@@ -112,7 +112,10 @@ def _substance_v4_page(
     if total is not None:
         pagination["total"] = total
     if has_more:
+        # Mirrors the API's buildPagination: lastKey is the current page's
+        # offset, nextKey is the offset of the next page (offset + limit).
         pagination["lastKey"] = start_key
+        pagination["nextKey"] = start_key + 20
     return {
         "substances": [
             {"substanceId": f"SUB{i}", "casID": f"{i}-00-0", "name": f"Substance {i}"}
@@ -510,6 +513,34 @@ def test_substance_v4_paginator_stops_when_last_key_absent() -> None:
     assert pag.has_more is False
     assert pag.total == 27
     assert session.call_count == 2
+
+
+def test_substance_v4_paginator_follows_next_key_on_underfilled_page() -> None:
+    """SubstanceV4SearchPaginator: an under-filled page still advances by nextKey.
+
+    Regression: the paginator self-advanced startKey by the received item count.
+    When a page comes back under-filled (count < limit), that drifts behind the
+    API's nextKey (offset + limit) and re-requests the previous page's tail,
+    duplicating items across pages.
+    """
+    session = _ScriptedSession(
+        [
+            _substance_v4_page(15, total=30, start_key=0, has_more=True),
+            _substance_v4_page(15, total=30, start_key=20, has_more=False),
+        ]
+    )
+
+    pag = SubstanceV4SearchPaginator(
+        path="/api/v4/substances/search",
+        session=session,
+        params={"searchKey": "water"},
+    )
+    items = list(pag)
+
+    assert len(items) == 30
+    assert pag.has_more is False
+    assert session.call_count == 2
+    assert session.requests[1]["params"]["startKey"] == 20
 
 
 def test_substance_v4_paginator_full_page_at_cap_uses_total() -> None:
