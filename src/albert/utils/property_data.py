@@ -78,7 +78,7 @@ def resolve_return_scope(
         if prefetched_block is not None:
             return [prefetched_block]
         if inventory_id is None or block_id is None:
-            raise ValueError("inventory_id and block_id are required when return_scope='combo'.")
+            raise ValueError("inventory_id and block_id are required when return_scope='block'.")
         return [
             get_task_block_properties(
                 inventory_id=inventory_id,
@@ -642,13 +642,29 @@ def get_all_columns_used_in_calculations(*, first_row_data_column: list):
     return used_columns
 
 
+_MAX_POW_RESULT_BITS = 100_000
+
+
+def _safe_pow(base: float, exponent: float) -> float:
+    """Raise ``base`` to ``exponent``, rejecting integer results too large to compute quickly."""
+    if (
+        isinstance(base, int)
+        and isinstance(exponent, int)
+        and exponent > 0
+        and base.bit_length() * exponent > _MAX_POW_RESULT_BITS
+        and abs(base) > 1
+    ):
+        raise ValueError("Exponentiation result is too large.")
+    return operator.pow(base, exponent)
+
+
 _ALLOWED_BINOPS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
     ast.Mod: operator.mod,
-    ast.Pow: operator.pow,
+    ast.Pow: _safe_pow,
 }
 _ALLOWED_UNARYOPS = {
     ast.UAdd: operator.pos,
