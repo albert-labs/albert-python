@@ -35,7 +35,9 @@ commands:
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
 jobs:
-  test:
+  # Lint + offline unit tests. Runs without a context on purpose: unit tests must
+  # not need credentials (tests/unit/conftest.py also blocks network and ALBERT_* env).
+  unit_test:
     executor:
       name: python/default
       tag: "3.10.15"
@@ -54,9 +56,27 @@ jobs:
           command: |
             uv run ruff check .
       - run:
-          name: Run pytest
+          name: Run unit tests
           command: |
-            uv run pytest -n 4 -v --tb=short -r fEsxX --durations=15
+            uv run pytest tests/unit -v --tb=short -r fEsxX \
+              --cov --cov-report=term-missing:skip-covered --cov-report=xml
+      - store_artifacts:
+          path: coverage.xml
+
+  test:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - checkout
+      - install_uv
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Run integration tests
+          command: |
+            uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15
 
   validate_version_bump:
     executor:
@@ -210,9 +230,13 @@ workflows:
     when:
       not: << pipeline.parameters.lambda_layer >>
     jobs:
+      - unit_test:
+          name: Unit Tests
       - test:
           name: Test
           context: dev
+          requires:
+            - Unit Tests
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev
