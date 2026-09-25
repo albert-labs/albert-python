@@ -1,5 +1,8 @@
+import json
+
 import pandas as pd
 import pytest
+import responses
 
 from albert.exceptions import AlbertException
 from albert.resources.sheets import (
@@ -8,6 +11,7 @@ from albert.resources.sheets import (
     DesignType,
     Sheet,
 )
+from tests.unit.conftest import UNIT_BASE_URL
 
 
 def test_get_current_cell_exact_row_match():
@@ -113,3 +117,58 @@ def test_get_cell_value():
     assert cell.color is None
     assert cell.min_value is None
     assert cell.max_value is None
+
+
+_PROCESS_SHEET = {
+    "albertId": "SHEET1",
+    "name": "Test",
+    "Formulas": [],
+    "hidden": False,
+    "Designs": [
+        {"albertId": "DES1", "designType": "products", "state": {}},
+        {"albertId": "DES2", "designType": "results", "state": {}},
+        {"albertId": "DES3", "designType": "apps", "state": {}},
+        {"albertId": "DES4", "designType": "process", "state": {}},
+    ],
+    "projectId": "PRJ1",
+}
+
+
+def _process_sheet(session) -> Sheet:
+    sheet = Sheet(**_PROCESS_SHEET, session=session)
+    # Nested Designs are not always given the parent session by validators.
+    for design in sheet.designs:
+        design._session = session
+    return sheet
+
+
+@responses.activate
+def test_add_parameter_group_row_empty_process_design_omits_reference(offline_session):
+    """Test that the first PRG row on an empty Process Design sends no referenceId/position."""
+    responses.post(
+        f"{UNIT_BASE_URL}/api/v3/designs/DES4/rows",
+        json=[{"rowId": "ROW5", "id": "PRG1", "type": "PRG", "name": "Mix", "labelName": "Mix"}],
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/designs/DES4/grid",
+        json={"total": 0, "designId": "DES4", "Items": [], "Formulas": [], "RowSequence": []},
+    )
+
+    row = _process_sheet(offline_session).add_parameter_group_row(parameter_group_id="PRG1")
+
+    assert row.row_id == "ROW5"
+    assert row.type == CellType.PRG
+    posted = [c for c in responses.calls if c.request.method == "POST"]
+    assert len(posted) == 1
+    assert json.loads(posted[0].request.body) == [{"type": "PRG", "id": "PRG1"}]
+
+
+@responses.activate
+def test_add_parameter_group_row_empty_response_raises(offline_session):
+    """Test that an empty create response raises a clear AlbertException."""
+    responses.post(f"{UNIT_BASE_URL}/api/v3/designs/DES4/rows", json=[])
+
+    with pytest.raises(AlbertException, match="No rows returned"):
+        _process_sheet(offline_session).add_parameter_group_row(
+            parameter_group_id="PRG1", reference_id="ROW1"
+        )

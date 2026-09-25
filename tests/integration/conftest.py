@@ -96,7 +96,6 @@ from tests.integration.seeding import (
     generate_workflow_seeds,
     pick_report_type_id,
 )
-from tests.integration.utils.fake_session import FakeAlbertSession
 
 
 def _pmap(fn: Callable, items) -> list:
@@ -182,15 +181,6 @@ async def async_client() -> AsyncGenerator[AsyncAlbert, None]:
     )
     yield client
     await client.aclose()
-
-
-@pytest.fixture
-def fake_client() -> Albert:
-    """Fixture to provide a fake session for testing."""
-    client = Albert(
-        base_url="https://fake.albertinvent.com", token="fake-token", session=FakeAlbertSession()
-    )
-    return client
 
 
 @pytest.fixture(scope="session")
