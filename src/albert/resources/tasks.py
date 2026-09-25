@@ -471,6 +471,19 @@ class BaseTask(BaseTaggedResource):
     entity_type: TaskEntityType | None = Field(default=None, alias="EntityType")
     """Internal entity-type classification. See Also --------"""
 
+    def to_note_mention(self) -> str:
+        """Convert the task to a note mention string.
+
+        Returns
+        -------
+        str
+            The note mention string.
+        """
+        # define formatted string
+        mention = f'<span data-albertid="{self.id}" data-type="TASK" contenteditable="false" class="mention_tool_at"><span class="mention-at-symbol-span" contenteditable="false">@</span><span class="mention-id-span" contenteditable="false">{self.id[3:]}</span><span class="mention-id-name-separator" contenteditable="false"> | </span><span class="mention-id-full-name-span" contenteditable="false">{self.name}</span></span>&nbsp;'
+        # return formatted
+        return mention
+
 
 class PropertyTask(BaseTask):
     """A task that tests and documents the properties of a material.
