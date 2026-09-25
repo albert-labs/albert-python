@@ -6655,8 +6655,8 @@
 <li><code>PRIVATE</code>: visible only to the project's ACL members (the default).</li>
 <li><code>SHARED</code>: visible more broadly across the organization.</li>
 <li><code>CONFIDENTIAL</code>: most tightly controlled standard access.</li>
-<li><code>RESTRICTED</code>: restricted access; only usable when the tenant has the
-  restricted project class feature enabled.</li>
+<li><code>RESTRICTED</code>: limited access; returned for existing tenant projects and
+  only usable when the tenant has the restricted project class feature enabled.</li>
 </ul>
 
 
@@ -7724,7 +7724,7 @@ only from the client's perspective.</p>
 </span><span id="__span-0-264"><a id="__codelineno-0-264" name="__codelineno-0-264" href="#__codelineno-0-264"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span>
 </span><span id="__span-0-265"><a id="__codelineno-0-265" name="__codelineno-0-265" href="#__codelineno-0-265"></a><span class="w">    </span><span class="p">},</span>
 </span><span id="__span-0-266"><a id="__codelineno-0-266" name="__codelineno-0-266" href="#__codelineno-0-266"></a><span class="w">    </span><span class="nt">"ProjectClass"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267" href="#__codelineno-0-267"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The access-control class of a project, governing who can see it.\n\n- ``PRIVATE``: visible only to the project's ACL members (the default).\n- ``SHARED``: visible more broadly across the organization.\n- ``CONFIDENTIAL``: most tightly controlled standard access.\n- ``RESTRICTED``: restricted access; only usable when the tenant has the\n  restricted project class feature enabled."</span><span class="p">,</span>
+</span><span id="__span-0-267"><a id="__codelineno-0-267" name="__codelineno-0-267" href="#__codelineno-0-267"></a><span class="w">      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The access-control class of a project, governing who can see it.\n\n- ``PRIVATE``: visible only to the project's ACL members (the default).\n- ``SHARED``: visible more broadly across the organization.\n- ``CONFIDENTIAL``: most tightly controlled standard access.\n- ``RESTRICTED``: limited access; returned for existing tenant projects and\n  only usable when the tenant has the restricted project class feature enabled."</span><span class="p">,</span>
 </span><span id="__span-0-268"><a id="__codelineno-0-268" name="__codelineno-0-268" href="#__codelineno-0-268"></a><span class="w">      </span><span class="nt">"enum"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-0-269"><a id="__codelineno-0-269" name="__codelineno-0-269" href="#__codelineno-0-269"></a><span class="w">        </span><span class="s2">"shared"</span><span class="p">,</span>
 </span><span id="__span-0-270"><a id="__codelineno-0-270" name="__codelineno-0-270" href="#__codelineno-0-270"></a><span class="w">        </span><span class="s2">"confidential"</span><span class="p">,</span>
