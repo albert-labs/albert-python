@@ -153,8 +153,12 @@ in docstrings. Add one when a rule is mechanically checkable and has been broken
 
 ```bash
 uv run pytest tests/unit
-uv run pytest tests/unit --cov=albert --cov-report=term-missing   # see untested lines
+uv run pytest tests/unit --cov --cov-report=term-missing   # see untested lines
 ```
+
+Use `--cov` (source comes from `pyproject.toml`) or `--cov=albert`. A dotted submodule target
+such as `--cov=albert.utils.tasks` fails with `numpy: cannot load module more than once per
+process`; read the per-file row from the package-level report instead.
 
 ## Checklist
 
