@@ -133,6 +133,29 @@ def test_cell_changes_send_explicit_format_as_update():
     assert datum.new_value == {"precision": 3}
 
 
+def test_cell_changes_send_format_as_update_when_cell_has_no_prior_format():
+    sheet = _sheet_with_formatted_cell()
+    current = sheet._get_current_cell(
+        cell=Cell(colId="COL1", rowId="ROW1", value="1", type=CellType.INVENTORY, design_id="DES1")
+    )
+    object.__setattr__(current, "format", {})
+    cell = Cell(
+        colId="COL1",
+        rowId="ROW1",
+        value="1",
+        type=CellType.INVENTORY,
+        design_id="DES1",
+        cellFormat={"bgColor": "red"},
+    )
+
+    payload = sheet._get_cell_changes(cell=cell)
+
+    assert payload is not None
+    (datum,) = [d for d in payload["data"] if d.attribute == "cellFormat"]
+    assert datum.operation == "update"
+    assert datum.new_value == {"bgColor": "red"}
+
+
 def test_add_formulation_restores_cleared_column_when_write_fails(monkeypatch):
     """AI-1926: ``clear=True`` must not leave the column blank after a failed write."""
     sheet = _sheet_with_formatted_cell()
