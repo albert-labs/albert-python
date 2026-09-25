@@ -92,14 +92,14 @@ jobs:
                 SUMMARY=$(tail -c 50000 /tmp/pytest-output.log)
               fi
             else
-              SUMMARY="The Test job failed before the pytest step ran. See the build log for the failing step."
+              SUMMARY="The Integration Tests job failed before the pytest step ran. See the build log for the failing step."
             fi
             BODY=$(jq -n \
               --arg branch "${CIRCLE_BRANCH}" \
               --arg sha "${CIRCLE_SHA1:0:8}" \
               --arg url "${CIRCLE_BUILD_URL}" \
               --arg summary "${SUMMARY}" \
-              '{body: ("### CircleCI Test failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")}')
+              '{body: ("### CircleCI Integration Tests failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")}')
             curl -sS -X POST \
               -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_PYTHON}" \
               -H "Accept: application/vnd.github+json" \
@@ -261,7 +261,7 @@ workflows:
       - unit_test:
           name: Unit Tests
       - test:
-          name: Test
+          name: Integration Tests
           context: dev
           requires:
             - Unit Tests
