@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.59.0](https://github.com/albert-labs/albert-python/compare/v1.58.0...v1.59.0) (2026-09-25)
+
+
+### Features
+
+* **core:** typed exceptions for 409/412/415/428 ([#772](https://github.com/albert-labs/albert-python/issues/772)) ([0343dbe](https://github.com/albert-labs/albert-python/commit/0343dbeb86ab6c7fb1d8ef134c9fb8ee342f6975))
+
+
+### Bug Fixes
+
+* **chat:** send required sequence on create, default exact_match=True ([#773](https://github.com/albert-labs/albert-python/issues/773)) ([498105e](https://github.com/albert-labs/albert-python/commit/498105ef2eaf90678d871bf5004107ee99dd0ee3))
+* **collections:** small correctness and docstring sweep (SDK-169) ([#785](https://github.com/albert-labs/albert-python/issues/785)) ([2dd62a8](https://github.com/albert-labs/albert-python/commit/2dd62a8e06c8f0625bf33d0e13a29d6bf92aa9df))
+* **core:** async HTTP errors carry .response and request body ([#794](https://github.com/albert-labs/albert-python/issues/794)) ([9f1b399](https://github.com/albert-labs/albert-python/commit/9f1b3992d03a3eb7e34346ff87040a843ddcf1cd))
+* **core:** surface partial-success failures and skipped items ([#771](https://github.com/albert-labs/albert-python/issues/771)) ([6cd9101](https://github.com/albert-labs/albert-python/commit/6cd910124663c3703bfc797a0b2500e4a59f52b9))
+* **lots:** parent_category alias and numeric patch encoding ([#774](https://github.com/albert-labs/albert-python/issues/774)) ([5daa67b](https://github.com/albert-labs/albert-python/commit/5daa67b0c06870088cf49d08ea6e25398ebb016d))
+* **models:** SDK-163 misc model and validator fixes ([#777](https://github.com/albert-labs/albert-python/issues/777)) ([2e2d7b7](https://github.com/albert-labs/albert-python/commit/2e2d7b7df5c668d286b90cc8d3838024b283e19d))
+* **notebooks:** copy ACL alias, template_id, Office/report blocks ([#781](https://github.com/albert-labs/albert-python/issues/781)) ([73f1b41](https://github.com/albert-labs/albert-python/commit/73f1b4108d872c12db8221060264055934782c07))
+* **patch:** stop unset tags wiping tags; skip unchanged entity type custom_fields ([#792](https://github.com/albert-labs/albert-python/issues/792)) ([32e26e5](https://github.com/albert-labs/albert-python/commit/32e26e57c4191c2d4f83db4c3ac295cc998044f3))
+* **projects:** TaskConfig aliases, restricted class, metadata guard ([#775](https://github.com/albert-labs/albert-python/issues/775)) ([c505f85](https://github.com/albert-labs/albert-python/commit/c505f85843b939b5f943c4c995932c337e5475f9))
+* **resources:** session propagation, Tags alias conversion, hydrate guard ([#793](https://github.com/albert-labs/albert-python/issues/793)) ([9337f11](https://github.com/albert-labs/albert-python/commit/9337f1165f54557ac3f255b484112b71141f11cc))
+* **sheets:** stop cellFormat delete diffs and restore on failed clear ([#789](https://github.com/albert-labs/albert-python/issues/789)) ([5b37c4b](https://github.com/albert-labs/albert-python/commit/5b37c4bf49219fbad08628ca4b8b58b0fb06eb81))
+* **substance_v4:** add missing JP, EU, US and DE regulatory fields ([#788](https://github.com/albert-labs/albert-python/issues/788)) ([1a8149d](https://github.com/albert-labs/albert-python/commit/1a8149da51bd5568d416d5534daa6bf1717a800a))
+* **substances:** v3 doc/field types; v4 metadata patch + paginator ([#782](https://github.com/albert-labs/albert-python/issues/782)) ([4d51bde](https://github.com/albert-labs/albert-python/commit/4d51bde388706852c5fc5155020e9b91c0a732b2))
+* **tasks:** Block model fixes, delete() delay param, doc cleanups ([#779](https://github.com/albert-labs/albert-python/issues/779)) ([3a8441f](https://github.com/albert-labs/albert-python/commit/3a8441fc1acec7e7b38dcb7fb9e4fd61c9ad7c2e))
+* **workflows:** gate shortName to Special params, surface facets ([#783](https://github.com/albert-labs/albert-python/issues/783)) ([a3c203b](https://github.com/albert-labs/albert-python/commit/a3c203bc6bf360a9cc1674508ee590ae984b7e82))
+
 ## [1.58.0](https://github.com/albert-labs/albert-python/compare/v1.57.1...v1.58.0) (2026-09-24)
 
 
