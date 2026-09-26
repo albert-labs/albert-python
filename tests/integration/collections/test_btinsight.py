@@ -2,7 +2,7 @@ import pytest
 
 from albert import Albert
 from albert.resources.btinsight import BTInsight, BTInsightCategory, BTInsightRegistry
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("bt")
 

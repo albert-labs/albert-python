@@ -8,7 +8,7 @@ from albert.exceptions import NotFoundError
 from albert.resources.acls import ACL, AccessControlLevel
 from albert.resources.attachments import Attachment
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 

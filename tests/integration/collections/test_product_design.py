@@ -4,7 +4,7 @@ from albert import Albert
 from albert.resources.inventory import InventoryItem
 from albert.resources.product_design import UnpackedProductDesign
 from albert.resources.worksheets import Worksheet
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("sheets")
 
@@ -16,7 +16,7 @@ def test_search(
     seeded_worksheet: Worksheet,
 ):
     """Test search finds the seeded formula on the product design grid within its project."""
-    seeded_ids = {p.id for p in seeded_products}
+    product = seeded_products[0]
     hits = poll_until(
         lambda: [
             hit
@@ -25,11 +25,11 @@ def test_search(
                 project_id=seeded_worksheet.project_id,
                 max_items=50,
             )
-            if hit.id in seeded_ids
+            if hit.id == product.id
         ]
     )
     assert hits, "Expected seeded formula in product design search results"
-    assert seeded_products[0].id in {hit.id for hit in hits}
+    assert hits[0].id == product.id
 
 
 def test_get_unpacked(client: Albert, seeded_products: list[InventoryItem]):

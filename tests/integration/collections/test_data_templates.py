@@ -25,7 +25,7 @@ from albert.resources.parameters import Parameter
 from albert.resources.tags import Tag
 from albert.resources.units import Unit
 from albert.resources.users import User
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
