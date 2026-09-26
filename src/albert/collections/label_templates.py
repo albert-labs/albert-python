@@ -16,6 +16,7 @@ from albert.core.shared.identifiers import (
     LotId,
     TaskId,
 )
+from albert.core.shared.models.patch import PatchOperation
 from albert.core.utils import ensure_list
 from albert.resources.label_templates import (
     LabelPrintPayload,
@@ -318,6 +319,10 @@ class LabelTemplateCollection(BaseCollection):
         -----
         The following fields can be updated: ``default``, ``metadata``,
         ``name``, ``template_file``.
+
+        Only value changes are supported: a template created without
+        ``default`` cannot be made the default later, and fields cannot be
+        cleared back to unset.
         """
         current = self.get_by_id(id=label_template.id)
         patch_payload = self._generate_patch_payload(
@@ -326,6 +331,12 @@ class LabelTemplateCollection(BaseCollection):
             generate_metadata_diff=False,
         )
         if patch_payload.data:
+            # The template API supports only `update` operations; rewrite
+            # add/delete ops so setting a previously unset field (e.g.
+            # `metadata`) does not fail outright.
+            for datum in patch_payload.data:
+                if datum.operation != PatchOperation.UPDATE:
+                    datum.operation = PatchOperation.UPDATE
             self.session.patch(
                 f"{self.base_path}/{label_template.id}",
                 json=patch_payload.model_dump(mode="json", by_alias=True),

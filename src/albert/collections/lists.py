@@ -124,8 +124,11 @@ class ListsCollection(BaseCollection):
             One or more item names to filter by.
         category : ListItemCategory, optional
             Restrict results to a single category (e.g. ``userDefined``, ``inventory``).
+            Currently not applied server-side; filter client-side if needed.
         list_type : str, optional
             Restrict results to a single list type (often a custom field name).
+            Results are only returned when ``list_type`` is provided; queries
+            without it come back empty.
         order_by : OrderBy, optional
             Sort direction for results. Defaults to ``OrderBy.DESCENDING``.
         start_key : str, optional

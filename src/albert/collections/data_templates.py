@@ -556,8 +556,8 @@ class DataTemplateCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``name``, ``description``, and
-        ``metadata`` on the template itself, and per-parameter ``value``, ``unit``,
+        The following fields can be updated: ``name``, ``description``,
+        ``metadata``, and ``tags`` on the template itself, and per-parameter ``value``, ``unit``,
         ``required``, and ``validation``.
 
         Warnings
@@ -565,6 +565,10 @@ class DataTemplateCollection(BaseCollection):
         Only scalar data column values (text, number, dropdown) can be updated with
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
+
+        Enum (dropdown) option changes on an existing data column are only
+        applied when that column already has an enum validation; adding options
+        to a column that has none is not supported and those changes are skipped.
         """
 
         existing = self.get_by_id(id=data_template.id)

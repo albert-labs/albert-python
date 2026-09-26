@@ -122,7 +122,8 @@ class TargetCollection(BaseCollection):
         parent_id : ProjectId, optional
             The ID of a parent project to inherit the ACL (access control) policy
             from when the caller does not own the target record. Supply this if a
-            plain lookup is denied for permission reasons.
+            plain lookup is denied for permission reasons. The returned target
+            never includes ``parent_id`` (it is stored but not returned on reads).
 
         Returns
         -------

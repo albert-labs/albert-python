@@ -1938,19 +1938,15 @@ class Sheet(BaseSessionResource):  # noqa:F811
             and cell.format
             and cell.format != current_cell.format
         ):
-            if current_cell.format:
-                data.append(
-                    PatchDatum(
-                        operation="update",
-                        attribute="cellFormat",
-                        old_value=current_cell.format,
-                        new_value=cell.format,
-                    )
+            # cellFormat is only valid under the update schema; the add enum rejects it.
+            data.append(
+                PatchDatum(
+                    operation="update",
+                    attribute="cellFormat",
+                    old_value=current_cell.format,
+                    new_value=cell.format,
                 )
-            else:
-                data.append(
-                    PatchDatum(operation="add", attribute="cellFormat", new_value=cell.format)
-                )
+            )
 
         # Handle calculation change
         if cell.calculation != current_cell.calculation:
