@@ -32,7 +32,7 @@ The conftest guards enforce the first two mechanically:
 - **Open a network connection.** `_block_network` raises on any real `connect`.
 - **Read credentials or `.env`.** `_strip_albert_env` removes every `ALBERT_*` variable.
 - **Import from `tests/integration/`** (`client`, `seeded_*`, `static_*`, `seed_prefix`,
-  `poll_until`, `seeding`).
+  `seeding`). Shared, network-free helpers live in `tests/utils/` (e.g. `poll_until`).
 - **Encode assumed server behavior.** A fake response may be shaped like a real one, but the
   assertion is about what the SDK sends or how it reacts, never "the API returns X".
 - **Assert trivia.** That a Pydantic field exists, that a default is `None`, that a

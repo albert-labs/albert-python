@@ -1,6 +1,24 @@
-import pytest
+import json
 
+import pytest
+import requests
+
+from albert.exceptions import InternalServerError
 from tests.utils.wait import poll_until
+
+
+def _make_server_error() -> InternalServerError:
+    req = requests.PreparedRequest()
+    req.method = "GET"
+    req.url = "https://example.com/api/v3/x"
+    req.body = None
+    resp = requests.Response()
+    resp.status_code = 500
+    resp.reason = "Internal Server Error"
+    resp.request = req
+    resp._content = json.dumps({"errors": "transient failure"}).encode()
+    resp.encoding = "utf-8"
+    return InternalServerError(resp)
 
 
 def test_poll_until_returns_first_non_empty_by_default():
@@ -40,8 +58,8 @@ def test_poll_until_returns_last_partial_result_on_timeout():
 
 
 def test_poll_until_recovers_from_transient_fetch_error():
-    """Test that a one-off fetch exception does not fail the poll."""
-    outcomes = iter([RuntimeError("transient 503"), ["a"]])
+    """Test that a one-off AlbertServerError does not fail the poll."""
+    outcomes = iter([_make_server_error(), ["a"]])
 
     def fetch():
         outcome = next(outcomes)
@@ -53,10 +71,24 @@ def test_poll_until_recovers_from_transient_fetch_error():
 
 
 def test_poll_until_reraises_fetch_error_after_timeout():
-    """Test that a fetch that always raises propagates the exception after the timeout."""
+    """Test that a fetch that always raises AlbertServerError propagates after the timeout."""
 
     def fetch():
-        raise RuntimeError("persistent 503")
+        raise _make_server_error()
 
-    with pytest.raises(RuntimeError, match="persistent 503"):
+    with pytest.raises(InternalServerError):
         poll_until(fetch, timeout=0.01, interval=0.005)
+
+
+def test_poll_until_does_not_catch_non_server_errors():
+    """Test that non-AlbertServerError exceptions propagate immediately without polling."""
+    calls = [0]
+
+    def fetch():
+        calls[0] += 1
+        raise AttributeError("lambda typo")
+
+    with pytest.raises(AttributeError, match="lambda typo"):
+        poll_until(fetch, timeout=30.0, interval=0)
+
+    assert calls[0] == 1

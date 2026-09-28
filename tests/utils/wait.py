@@ -1,6 +1,8 @@
 import time
 from collections.abc import Callable
 
+from albert.exceptions import AlbertServerError
+
 
 def poll_until(
     fetch: Callable[[], list],
@@ -19,15 +21,15 @@ def poll_until(
     non-empty but partially indexed result satisfies the default check while
     remaining items are still becoming visible.
 
-    Exceptions raised by ``fetch`` (for example a transient 5xx or 429) do not
-    end polling: the poll retries until the deadline and re-raises the last
-    exception if the deadline expires on an erroring attempt.
+    ``AlbertServerError`` exceptions raised by ``fetch`` (for example a transient
+    5xx) do not end polling: the poll retries until the deadline and re-raises the
+    last exception if the deadline expires on an erroring attempt.
     """
     deadline = time.monotonic() + timeout
     while True:
         try:
             result = fetch()
-        except Exception:
+        except AlbertServerError:
             if time.monotonic() >= deadline:
                 raise
         else:
