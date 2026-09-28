@@ -104,6 +104,12 @@ class PropertyData(BaseAlbertModel):
     value: str | None = Field(default=None)
     """The stored result value. All values are stored as strings in Albert."""
 
+    value_numeric: float | None = Field(default=None, alias="valueNumeric")
+    """The numeric form of the value, when the column is numeric. Serialized as ``valueNumeric``."""
+
+    value_string: str | None = Field(default=None, alias="valueString")
+    """The string form of the value, when the column is string-typed. Serialized as ``valueString``."""
+
     value_type: str | None = Field(default=None, alias="valueType")
     """The type of the value (e.g. numeric, string, image, curve). Serialized as ``valueType``."""
 
@@ -837,7 +843,7 @@ class TaskPropertyCreate(BaseResource):
             if self.trial_number is not None:
                 self.visible_trial_number = self.trial_number
             else:
-                self.visible_trial_number = "1"
+                self.visible_trial_number = 1
         return self
 
 
