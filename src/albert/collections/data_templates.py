@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from itertools import islice
 from typing import Any
 
+import pandas as pd
 from pydantic import Field, validate_call
 
 from albert.collections.base import BaseCollection
@@ -34,11 +35,13 @@ from albert.utils._patch import (
     create_parameters_with_enums,
     generate_data_template_patches,
 )
+from albert.utils.curve_data import fetch_curve_dataframe
 from albert.utils.data_template import (
     build_curve_example,
     build_image_example,
     ensure_data_column_validation,
     get_target_data_column,
+    validate_data_column_type,
 )
 
 DEFAULT_ADDITIONAL_FIELDS = [
@@ -122,6 +125,8 @@ class DataTemplateCollection(BaseCollection):
         Delete a template by its ID.
     set_curve_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for a curve data column (shown on the details page).
+    get_curve_example(data_template_id, ...) -> pd.DataFrame | None
+        Get the example curve of a curve data column as a DataFrame.
     set_image_example(data_template_id, example, ...) -> DataTemplate
         Set the example row for an image data column (shown on the details page).
     get_document_version_history(document_id) -> list[DocumentVersion]
@@ -956,6 +961,74 @@ class DataTemplateCollection(BaseCollection):
             json=payload.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
         return self.get_by_id(id=data_template_id)
+
+    @validate_call
+    def get_curve_example(
+        self,
+        *,
+        data_template_id: DataTemplateId,
+        data_column_id: DataColumnId | None = None,
+        data_column_name: str | None = None,
+    ) -> pd.DataFrame | None:
+        """Get the example curve of a curve data column as a DataFrame.
+
+        Reads back the example set with
+        [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example]
+        (the sample shown on the Data Template details page). Columns are named by the
+        headers of the uploaded CSV, values are returned as stored (typically strings),
+        and rows are ordered by the curve's X axis when one is defined. Identify the
+        column by exactly one of ``data_column_id`` or ``data_column_name``.
+
+        !!! example
+            ```python
+            df = client.data_templates.get_curve_example(
+                data_template_id="DAT9999999", data_column_name="Viscosity Curve"
+            )
+            df.head()
+            #   Shear Rate Viscosity
+            # 0         10       1.2
+            ```
+
+        Parameters
+        ----------
+        data_template_id : DataTemplateId
+            The Data Template ID that owns the column (format ``DAT...``).
+        data_column_id : DataColumnId, optional
+            The curve column's ID. Provide exactly one of ``data_column_id`` or
+            ``data_column_name``.
+        data_column_name : str, optional
+            The curve column's name. Provide exactly one of ``data_column_id`` or
+            ``data_column_name``.
+
+        Returns
+        -------
+        pd.DataFrame | None
+            The example curve points, one row per point. None when the column has no
+            curve example.
+        """
+        data_template = self.get_by_id(id=data_template_id)
+        target_column = get_target_data_column(
+            data_template=data_template,
+            data_template_id=data_template_id,
+            data_column_id=data_column_id,
+            data_column_name=data_column_name,
+        )
+        validate_data_column_type(target_column=target_column)
+        db_metadata = target_column.db_metadata
+        storage_key = target_column.storage_key_reference
+        file_key = storage_key and (storage_key.s3_input or storage_key.rawfile)
+        if not (db_metadata and db_metadata.table_name and db_metadata.partition_key and file_key):
+            return None
+        return fetch_curve_dataframe(
+            session=self.session,
+            data_template_id=data_template_id,
+            table_name=db_metadata.table_name,
+            partition_key=db_metadata.partition_key,
+            file_key=file_key,
+            csv_mapping=target_column.csv_mapping,
+            curve_data=target_column.curve_data,
+            source_id=data_template_id,
+        )
 
     @validate_call
     def set_image_example(

@@ -1,6 +1,7 @@
 from contextlib import suppress
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from albert import Albert
@@ -9,6 +10,9 @@ from albert.exceptions import ForbiddenError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
+    Axis,
+    CurveDataEntityLink,
+    CurveExample,
     DataColumnValue,
     DataTemplate,
     DataTemplateSearchItem,
@@ -784,3 +788,63 @@ def test_upload_and_attach_script_to_data_template_requires_py_suffix(
             name=f"{seed_prefix} invalid script file",
             extension_names=["csv"],
         )
+
+
+def test_get_curve_example_round_trip(client: Albert, seed_prefix: str):
+    """Test a curve example reads back as the uploaded CSV, and a missing example is None."""
+    dt_id = None
+    dc_ids = []
+    try:
+        dc_stress = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example stress")
+        )
+        dc_strain = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example strain")
+        )
+        dc_curve = client.data_columns.create(
+            data_column=DataColumn(name=f"{seed_prefix} - example curve")
+        )
+        dc_ids = [dc_stress.id, dc_strain.id, dc_curve.id]
+        dt = client.data_templates.create(
+            data_template=DataTemplate(
+                name=f"{seed_prefix} - curve example dt",
+                data_column_values=[DataColumnValue(data_column=dc_curve)],
+            )
+        )
+        dt_id = dt.id
+        curve_col = dt.data_column_values[0]
+        curve_col.validation = [ValueValidation(datatype=DataType.CURVE)]
+        curve_col.curve_data = [
+            CurveDataEntityLink(id=dc_stress.id, name=dc_stress.name, axis=Axis.X),
+            CurveDataEntityLink(id=dc_strain.id, name=dc_strain.name, axis=Axis.Y),
+        ]
+        client.data_templates.update(data_template=dt)
+
+        assert (
+            client.data_templates.get_curve_example(
+                data_template_id=dt_id, data_column_id=dc_curve.id
+            )
+            is None
+        )
+
+        client.data_templates.set_curve_example(
+            data_template_id=dt_id,
+            data_column_id=dc_curve.id,
+            example=CurveExample(
+                file_path="tests/data/curve_test.csv",
+                field_mapping={"Stress": dc_stress.name, "Strain": dc_strain.name},
+            ),
+        )
+        df = client.data_templates.get_curve_example(
+            data_template_id=dt_id, data_column_name=dc_curve.name
+        )
+
+        expected = pd.read_csv("tests/data/curve_test.csv", dtype=str)
+        pd.testing.assert_frame_equal(df.astype(str), expected, check_dtype=False)
+    finally:
+        if dt_id:
+            with suppress(NotFoundError):
+                client.data_templates.delete(id=dt_id)
+        for dc_id in dc_ids:
+            with suppress(NotFoundError):
+                client.data_columns.delete(id=dc_id)

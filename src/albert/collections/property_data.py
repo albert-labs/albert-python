@@ -6,6 +6,7 @@ import pandas as pd
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.data_templates import DataTemplateCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -37,11 +38,13 @@ from albert.resources.property_data import (
     PropertyDataPatchDatum,
     PropertyDataSearchItem,
     ReturnScope,
+    TaskCurveData,
     TaskPropertyCreate,
     TaskPropertyData,
     TaskPropertyRecord,
 )
 from albert.resources.workflows import Workflow
+from albert.utils import curve_data as curve_data_utils
 from albert.utils import property_data as property_data_utils
 
 
@@ -123,6 +126,8 @@ class PropertyDataCollection(BaseCollection):
         Get results across all block/inventory combinations of a task.
     get_task_property_records(task_id, with_data_only=True, inventory_id=None, lot_id=None) -> list[TaskPropertyRecord]
         Get a task's results as flat rows, with their parameter setpoints attached.
+    get_task_curve_data(task_id, ...) -> list[TaskCurveData]
+        Get the curve data recorded on a task, one DataFrame per curve.
     check_for_task_data(task_id) -> list[CheckPropertyData]
         Report which block/interval combinations of a task have data.
     check_block_interval_for_data(block_id, task_id, interval_id) -> CheckPropertyData
@@ -381,6 +386,126 @@ class PropertyDataCollection(BaseCollection):
         response = self.session.get(url=self.base_path, params=params)
         response_json = response.json()
         return TaskPropertyData(**response_json[0])
+
+    @validate_call
+    def get_task_curve_data(
+        self,
+        *,
+        task_id: TaskId,
+        block_id: BlockId | None = None,
+        inventory_id: InventoryId | None = None,
+        lot_id: LotId | None = None,
+        data_column_id: DataColumnId | None = None,
+        include_void: bool = False,
+    ) -> list[TaskCurveData]:
+        """Get the curve data recorded on a task, one DataFrame per curve.
+
+        Finds every curve data column that has an uploaded curve and reads its points
+        back. Each curve is returned with the block, inventory item, interval, trial, and
+        data column it was recorded in. Columns are named by the headers of the uploaded
+        CSV, values are returned as stored (typically strings), and rows are ordered by
+        the curve's X axis when the data template defines one.
+
+        Each curve is read with its own request, so narrow the read with ``block_id``,
+        ``inventory_id``, ``lot_id``, or ``data_column_id`` when only some curves are of
+        interest.
+
+        !!! example
+            ```python
+            curves = client.property_data.get_task_curve_data(task_id="TASFOR1")
+            for curve in curves:
+                print(curve.block_id, curve.trial_number, curve.data_column_name)
+                curve.data.to_csv(f"{curve.block_id}_{curve.trial_number}.csv", index=False)
+
+            # One curve column in one block
+            curves = client.property_data.get_task_curve_data(
+                task_id="TASFOR1", block_id="BLK1", data_column_id="DAC9999999"
+            )
+            ```
+
+        Parameters
+        ----------
+        task_id : TaskId
+            The task to read curves from (format ``TAS...``).
+        block_id : BlockId, optional
+            Only return curves in this block (format ``BLK...``). Defaults to None
+            (every block).
+        inventory_id : InventoryId, optional
+            Only return curves for this inventory item (format ``INV...``). Defaults to
+            None (every inventory item on the task).
+        lot_id : LotId, optional
+            Only return curves for this lot (format ``LOT...``). Defaults to None
+            (every lot).
+        data_column_id : DataColumnId, optional
+            Only return curves for this curve data column (format ``DAC...``). Defaults
+            to None (every curve column).
+        include_void : bool, optional
+            When True, also return curves from voided trials and intervals. Defaults to
+            False.
+
+        Returns
+        -------
+        list[TaskCurveData]
+            One entry per recorded curve, in block, interval, trial, column order.
+            Empty when the task has no recorded curves matching the filters.
+        """
+        blocks = self.get_all_task_properties(
+            task_id=task_id, with_data_only=True, inventory_id=inventory_id, lot_id=lot_id
+        )
+        curves = curve_data_utils.find_task_curves(
+            blocks=blocks,
+            block_id=block_id,
+            data_column_id=data_column_id,
+            include_void=include_void,
+        )
+        if not curves:
+            return []
+
+        data_templates = DataTemplateCollection(session=self.session)
+        curve_links = {
+            (data_template_id, column.data_column_id): column.curve_data
+            for data_template_id in {block.data_template.id for block, *_ in curves}
+            for column in data_templates.get_by_id(id=data_template_id).data_column_values or []
+        }
+
+        results = []
+        for block, interval, trial, column in curves:
+            property_data = column.property_data
+            table_name, partition_key, file_key = curve_data_utils.curve_query_source(
+                property_data=property_data
+            )
+            data_template_id = block.data_template.id
+            data = curve_data_utils.fetch_curve_dataframe(
+                session=self.session,
+                data_template_id=data_template_id,
+                table_name=table_name,
+                partition_key=partition_key,
+                file_key=file_key,
+                csv_mapping=property_data.csv_mapping,
+                curve_data=curve_links.get((data_template_id, column.id)),
+                source_id=task_id,
+                parent_id=task_id,
+                block_id=block.block_id,
+            )
+            inventory = block.inventory
+            results.append(
+                TaskCurveData(
+                    task_id=task_id,
+                    block_id=block.block_id,
+                    data_template_id=data_template_id,
+                    inventory_id=getattr(inventory, "inventory_id", None),
+                    lot_id=getattr(inventory, "lot_id", None),
+                    interval_combination=interval.interval_combination,
+                    trial_number=trial.trial_number,
+                    void=interval.void or trial.void,
+                    data_column_id=column.id,
+                    data_column_name=column.name,
+                    property_data_id=property_data.id,
+                    file_name=property_data.value,
+                    data=data,
+                )
+            )
+        return results
 
     @validate_call
     def check_for_task_data(self, *, task_id: TaskId) -> list[CheckPropertyData]:
