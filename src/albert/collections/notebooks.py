@@ -352,7 +352,7 @@ class NotebookCollection(BaseCollection):
         does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).
 
         When writing @-mention chips (``<span data-albertid="..." data-type="...">``
-        spans) into block text, also create the backing mention links — saving the
+        spans) into block text, also create the backing mention links. Saving the
         HTML does not register them, and without a link the chip does not resolve
         in the UI. Create one link per mentioned entity with
         [`create`][albert.collections.links.LinksCollection.create]

@@ -356,7 +356,7 @@ class ProjectCollection(BaseCollection):
 
         !!! example
             ```python
-            # Keep the paginator reference — do not wrap in list() if you need
+            # Keep the paginator reference; do not wrap in list() if you need
             # completeness signals after iteration.
             hits = client.projects.search(text="coatings", max_items=25)
             for hit in hits:
