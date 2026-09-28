@@ -5,7 +5,7 @@ import pytest
 from albert import Albert
 from albert.exceptions import AlbertException
 from albert.resources.notebooks import Notebook
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("projects")
 

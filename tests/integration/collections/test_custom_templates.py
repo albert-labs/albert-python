@@ -9,7 +9,7 @@ from albert.resources.custom_templates import (
     _CustomTemplateDataUnion,
 )
 from albert.resources.users import User
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("customtemplates")
 
