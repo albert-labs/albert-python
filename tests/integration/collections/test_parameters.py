@@ -4,7 +4,7 @@ import pytest
 
 from albert.client import Albert
 from albert.resources.parameters import Parameter
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("datatemplates")
 
@@ -35,6 +35,7 @@ def test_parameter_get_all_by_ids(client: Albert, seeded_parameters: list[Parame
     ids = [x.id for x in seeded_parameters]
     results = poll_until(
         lambda: [p for p in client.parameters.get_all(ids=ids, max_items=10) if p.id in set(ids)],
+        predicate=lambda results: len(results) == len(ids),
         timeout=15.0,
         interval=1.0,
     )
@@ -53,6 +54,7 @@ def test_get_by_ids(client: Albert, seeded_parameters: list[Parameter]):
     ids = [x.id for x in seeded_parameters]
     results = poll_until(
         lambda: [p for p in client.parameters.get_by_ids(ids=ids) if p.id in set(ids)],
+        predicate=lambda results: len(results) == len(ids),
         timeout=15.0,
         interval=1.0,
     )
@@ -74,6 +76,7 @@ def test_get_by_ids_omits_unknown_ids(client: Albert, seeded_parameters: list[Pa
             for p in client.parameters.get_by_ids(ids=[*known_ids, "PRM0"])
             if p.id in set(known_ids)
         ],
+        predicate=lambda results: len(results) == len(known_ids),
         timeout=15.0,
         interval=1.0,
     )

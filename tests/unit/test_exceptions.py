@@ -221,19 +221,9 @@ def test_get_http_error_cls_maps_status_code(status_code, expected_cls):
     assert _get_http_error_cls(status_code) is expected_cls
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: _get_http_error_cls's fallback branch does `raise AlbertHTTPError` "
-        "(bare class) for a status code outside 400-599, but AlbertHTTPError.__init__ "
-        "requires a `response` argument, so this raises TypeError instead of a "
-        "usable AlbertHTTPError (src/albert/exceptions.py:121-122)."
-    ),
-)
-def test_get_http_error_cls_unmapped_status_code_raises_albert_http_error():
-    """Test that an out-of-range status code still raises an AlbertHTTPError."""
-    with pytest.raises(AlbertHTTPError):
-        _get_http_error_cls(999)
+def test_get_http_error_cls_unmapped_status_code_returns_albert_http_error():
+    """Test that an out-of-range status code maps to the base AlbertHTTPError class."""
+    assert _get_http_error_cls(999) is AlbertHTTPError
 
 
 # --- message extraction: different error body shapes (sync) -------------------
@@ -414,16 +404,6 @@ def test_albert_partial_error_preserves_items():
     assert err.failed_items == failed
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: handle_async_http_errors builds its exception via "
-        "Exception.__new__(error_cls, message) and never sets `.response`, unlike the "
-        "sync path where AlbertHTTPError.__init__ always sets self.response "
-        "(src/albert/exceptions.py:144-148). Accessing `.response` on an async-raised "
-        "error raises AttributeError instead of returning the httpx.Response."
-    ),
-)
 async def test_handle_async_http_errors_sets_response_attribute():
     """Test that an async-raised HTTP error exposes the triggering response."""
     resp = _make_httpx_response(status_code=404, body=json.dumps({"errors": "missing"}).encode())
@@ -435,15 +415,6 @@ async def test_handle_async_http_errors_sets_response_attribute():
     assert exc_info.value.response is resp
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: handle_async_http_errors formats the message inline instead of calling "
-        "error_cls._format_message(response), so BadRequestError's request-body suffix "
-        "never appears on the async path even though it always appears on the sync path "
-        "(src/albert/exceptions.py:72-76 vs 137-142)."
-    ),
-)
 async def test_handle_async_http_errors_bad_request_includes_body():
     """Test that an async 400 error includes the outgoing request body, like the sync path."""
     resp = _make_httpx_response(status_code=400, body=json.dumps({"errors": "invalid"}).encode())

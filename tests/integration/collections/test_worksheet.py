@@ -3,7 +3,7 @@ import pytest
 from albert import Albert
 from albert.resources.inventory import InventoryItem
 from albert.resources.worksheets import Worksheet
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("sheets")
 

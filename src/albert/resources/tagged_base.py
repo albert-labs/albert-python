@@ -44,5 +44,7 @@ class BaseTaggedResource(BaseResource):
                     # We do not expect this else to be hit because tags should only be Tag or str
                     logging.warning(f"Unexpected value for Tag. {t} of type {type(t)}")
                     continue
+            # Drop the raw alias key: pydantic prefers it over the field name.
+            data = {k: v for k, v in data.items() if k != "Tags"}
             data["tags"] = new_tags
         return data

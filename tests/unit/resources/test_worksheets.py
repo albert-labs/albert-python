@@ -1,5 +1,3 @@
-import pytest
-
 from albert.resources.sheets import Sheet
 from albert.resources.worksheets import Worksheet
 
@@ -23,15 +21,6 @@ def test_add_session_to_sheets_noop_without_session():
     assert sheet.designs[0].session is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: Worksheet.add_session_to_sheets (worksheets.py:46) reads self.session before "
-        "BaseSessionResource.__init__ assigns self._session from the session kwarg, so "
-        "propagation to sheets/designs is always a no-op on construction (same root cause "
-        "as Sheet.set_session in sheets.py:790)."
-    ),
-)
 def test_add_session_to_sheets_propagates_session(offline_session):
     """Test that a worksheet's session is propagated to its sheets and their designs."""
     sheet = _make_sheet()

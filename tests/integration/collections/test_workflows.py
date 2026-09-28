@@ -4,7 +4,7 @@ from albert import Albert
 from albert.resources.facet import FacetItem
 from albert.resources.parameters import ParameterCategory
 from albert.resources.workflows import Workflow, WorkflowSearchItem
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 

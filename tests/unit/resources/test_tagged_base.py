@@ -27,14 +27,6 @@ def test_convert_tags_from_field_name_key_with_string_tags():
     assert resource.tags[0].tag == "urgent"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: tagged_base.py:47 sets data['tags'] but leaves the original data['Tags'] "
-        "key (raw, unconverted) in place; pydantic validates from the alias key 'Tags' "
-        "when both are present, so the conversion is silently bypassed."
-    ),
-)
 def test_convert_tags_falls_back_to_alias_key():
     """Test tags are read from the 'Tags' alias key when 'tags' is absent."""
     resource = BaseTaggedResource.model_validate({"Tags": ["urgent"]})

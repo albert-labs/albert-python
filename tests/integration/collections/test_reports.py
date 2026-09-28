@@ -12,7 +12,7 @@ from albert.resources.reports import (
     FullAnalyticalReport,
 )
 from albert.resources.tasks import BaseTask
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("tasks")
 
@@ -24,7 +24,6 @@ def test_search_reports(
 ):
     """Test searching reports finds seeded reports scoped to their project."""
     expected = seeded_reports[0]
-    seeded_ids = {r.id for r in seeded_reports}
     hits = poll_until(
         lambda: [
             hit
@@ -33,13 +32,12 @@ def test_search_reports(
                 project_id=expected.project_id,
                 max_items=50,
             )
-            if hit.id in seeded_ids
+            if hit.id == expected.id
         ]
     )
-    hit_ids = {hit.id for hit in hits}
-    assert expected.id in hit_ids
+    assert hits, "Expected seeded report in search results"
 
-    hit = next(item for item in hits if item.id == expected.id)
+    hit = hits[0]
     assert hit.name is not None
     assert seed_prefix in hit.name
     assert hit.project_id == expected.project_id
