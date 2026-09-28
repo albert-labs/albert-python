@@ -192,6 +192,7 @@ class UnitFamilyV4Collection(BaseCollection):
             )
         return families
 
+    @validate_call
     def search(
         self,
         *,

@@ -207,6 +207,7 @@ class UnitV4Collection(BaseCollection):
             units.extend(UnitV4(**item) for item in response.json().get("items") or [])
         return units
 
+    @validate_call
     def search(
         self,
         *,
