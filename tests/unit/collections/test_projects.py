@@ -182,6 +182,15 @@ def test_starred_record_ids_match_project_case_insensitively() -> None:
     assert ids == ["USP2", "USP3"]
 
 
+def test_starred_record_ids_fall_back_to_id_key() -> None:
+    """Test that records keyed by ``id`` instead of ``albertId`` are still matched."""
+    records = [{"id": "USP17620", "savedId": "PRO1"}]
+
+    ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO1")
+
+    assert ids == ["USP17620"]
+
+
 def test_starred_record_ids_empty_when_project_not_starred() -> None:
     """Test that an unstarred project yields no record IDs, so unstar does nothing."""
     records = [{"albertId": "USP1", "savedId": "PRO1"}, {"savedId": "PRO2"}]

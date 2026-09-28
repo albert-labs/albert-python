@@ -384,6 +384,7 @@ class ProjectCollection(BaseCollection):
             with suppress(NotFoundError):
                 self.session.delete(f"{_PERSONALIZATION_PATH}/{record_id}")
 
+    @validate_call
     def get_starred(self, *, max_items: int | None = None) -> Iterator[Project]:
         """Get the current user's starred (pinned / favorite) projects.
 
@@ -442,9 +443,10 @@ class ProjectCollection(BaseCollection):
         """Return the personalization record IDs that star ``project_id``."""
         target = project_id.upper()
         return [
-            record["albertId"]
+            record_id
             for record in records
-            if record.get("albertId") and str(record.get("savedId", "")).upper() == target
+            if (record_id := record.get("albertId") or record.get("id"))
+            and str(record.get("savedId", "")).upper() == target
         ]
 
     @staticmethod
