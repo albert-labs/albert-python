@@ -12174,9 +12174,9 @@ are applied; changes to other fields are ignored.</p>
 
 <details class="note" open>
   <summary>Notes</summary>
-  <p>The following fields can be updated: <code>alias</code>, <code>description</code>,
-<code>is_formula_override</code>, <code>metadata</code>, <code>name</code>, <code>security_class</code>,
-<code>unit_category</code>.
+  <p>The following fields can be updated: <code>acls</code>, <code>alias</code>, <code>company</code>,
+<code>description</code>, <code>is_formula_override</code>, <code>metadata</code>, <code>name</code>,
+<code>security_class</code>, <code>tags</code>, <code>unit_category</code>.
 Note that <code>unit_category</code> cannot be changed to or from <code>volume</code>,
 and <code>density</code> is fixed at creation.
 On individual CAS entries (via <code>cas</code>): <code>min</code>, <code>max</code>, <code>target</code>,
@@ -12187,7 +12187,12 @@ patchable on existing entries.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1725">1725</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1720">1720</a></span>
+<span class="normal"><a href="#__codelineno-0-1721">1721</a></span>
+<span class="normal"><a href="#__codelineno-0-1722">1722</a></span>
+<span class="normal"><a href="#__codelineno-0-1723">1723</a></span>
+<span class="normal"><a href="#__codelineno-0-1724">1724</a></span>
+<span class="normal"><a href="#__codelineno-0-1725">1725</a></span>
 <span class="normal"><a href="#__codelineno-0-1726">1726</a></span>
 <span class="normal"><a href="#__codelineno-0-1727">1727</a></span>
 <span class="normal"><a href="#__codelineno-0-1728">1728</a></span>
@@ -12232,62 +12237,57 @@ patchable on existing entries.</p>
 <span class="normal"><a href="#__codelineno-0-1767">1767</a></span>
 <span class="normal"><a href="#__codelineno-0-1768">1768</a></span>
 <span class="normal"><a href="#__codelineno-0-1769">1769</a></span>
-<span class="normal"><a href="#__codelineno-0-1770">1770</a></span>
-<span class="normal"><a href="#__codelineno-0-1771">1771</a></span>
-<span class="normal"><a href="#__codelineno-0-1772">1772</a></span>
-<span class="normal"><a href="#__codelineno-0-1773">1773</a></span>
-<span class="normal"><a href="#__codelineno-0-1774">1774</a></span>
-<span class="normal"><a href="#__codelineno-0-1775">1775</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1725"><a id="__codelineno-0-1725" name="__codelineno-0-1725"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_item</span><span class="p">:</span> <span class="n">InventoryItem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
-</span><span id="__span-0-1726"><a id="__codelineno-0-1726" name="__codelineno-0-1726"></a><span class="w">    </span><span class="sd">"""Update an existing inventory item.</span>
-</span><span id="__span-0-1727"><a id="__codelineno-0-1727" name="__codelineno-0-1727"></a>
-</span><span id="__span-0-1728"><a id="__codelineno-0-1728" name="__codelineno-0-1728"></a><span class="sd">    Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields</span>
-</span><span id="__span-0-1729"><a id="__codelineno-0-1729" name="__codelineno-0-1729"></a><span class="sd">    on the returned object, then pass it here. Only the fields listed in Notes</span>
-</span><span id="__span-0-1730"><a id="__codelineno-0-1730" name="__codelineno-0-1730"></a><span class="sd">    are applied; changes to other fields are ignored.</span>
-</span><span id="__span-0-1731"><a id="__codelineno-0-1731" name="__codelineno-0-1731"></a>
-</span><span id="__span-0-1732"><a id="__codelineno-0-1732" name="__codelineno-0-1732"></a><span class="sd">    !!! example</span>
-</span><span id="__span-0-1733"><a id="__codelineno-0-1733" name="__codelineno-0-1733"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-1734"><a id="__codelineno-0-1734" name="__codelineno-0-1734"></a><span class="sd">        item = client.inventory.get_by_id(id="INVA9999999")</span>
-</span><span id="__span-0-1735"><a id="__codelineno-0-1735" name="__codelineno-0-1735"></a><span class="sd">        item.description = "Updated description"</span>
-</span><span id="__span-0-1736"><a id="__codelineno-0-1736" name="__codelineno-0-1736"></a><span class="sd">        updated = client.inventory.update(inventory_item=item)</span>
-</span><span id="__span-0-1737"><a id="__codelineno-0-1737" name="__codelineno-0-1737"></a><span class="sd">        updated.description</span>
-</span><span id="__span-0-1738"><a id="__codelineno-0-1738" name="__codelineno-0-1738"></a><span class="sd">        # 'Updated description'</span>
-</span><span id="__span-0-1739"><a id="__codelineno-0-1739" name="__codelineno-0-1739"></a><span class="sd">        ```</span>
+<span class="normal"><a href="#__codelineno-0-1770">1770</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1720"><a id="__codelineno-0-1720" name="__codelineno-0-1720"></a><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_item</span><span class="p">:</span> <span class="n">InventoryItem</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InventoryItem</span><span class="p">:</span>
+</span><span id="__span-0-1721"><a id="__codelineno-0-1721" name="__codelineno-0-1721"></a><span class="w">    </span><span class="sd">"""Update an existing inventory item.</span>
+</span><span id="__span-0-1722"><a id="__codelineno-0-1722" name="__codelineno-0-1722"></a>
+</span><span id="__span-0-1723"><a id="__codelineno-0-1723" name="__codelineno-0-1723"></a><span class="sd">    Fetch the item (e.g. with [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]), modify the updatable fields</span>
+</span><span id="__span-0-1724"><a id="__codelineno-0-1724" name="__codelineno-0-1724"></a><span class="sd">    on the returned object, then pass it here. Only the fields listed in Notes</span>
+</span><span id="__span-0-1725"><a id="__codelineno-0-1725" name="__codelineno-0-1725"></a><span class="sd">    are applied; changes to other fields are ignored.</span>
+</span><span id="__span-0-1726"><a id="__codelineno-0-1726" name="__codelineno-0-1726"></a>
+</span><span id="__span-0-1727"><a id="__codelineno-0-1727" name="__codelineno-0-1727"></a><span class="sd">    !!! example</span>
+</span><span id="__span-0-1728"><a id="__codelineno-0-1728" name="__codelineno-0-1728"></a><span class="sd">        ```python</span>
+</span><span id="__span-0-1729"><a id="__codelineno-0-1729" name="__codelineno-0-1729"></a><span class="sd">        item = client.inventory.get_by_id(id="INVA9999999")</span>
+</span><span id="__span-0-1730"><a id="__codelineno-0-1730" name="__codelineno-0-1730"></a><span class="sd">        item.description = "Updated description"</span>
+</span><span id="__span-0-1731"><a id="__codelineno-0-1731" name="__codelineno-0-1731"></a><span class="sd">        updated = client.inventory.update(inventory_item=item)</span>
+</span><span id="__span-0-1732"><a id="__codelineno-0-1732" name="__codelineno-0-1732"></a><span class="sd">        updated.description</span>
+</span><span id="__span-0-1733"><a id="__codelineno-0-1733" name="__codelineno-0-1733"></a><span class="sd">        # 'Updated description'</span>
+</span><span id="__span-0-1734"><a id="__codelineno-0-1734" name="__codelineno-0-1734"></a><span class="sd">        ```</span>
+</span><span id="__span-0-1735"><a id="__codelineno-0-1735" name="__codelineno-0-1735"></a>
+</span><span id="__span-0-1736"><a id="__codelineno-0-1736" name="__codelineno-0-1736"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1737"><a id="__codelineno-0-1737" name="__codelineno-0-1737"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1738"><a id="__codelineno-0-1738" name="__codelineno-0-1738"></a><span class="sd">    inventory_item : InventoryItem</span>
+</span><span id="__span-0-1739"><a id="__codelineno-0-1739" name="__codelineno-0-1739"></a><span class="sd">        The item to update. Must have a valid ``id``.</span>
 </span><span id="__span-0-1740"><a id="__codelineno-0-1740" name="__codelineno-0-1740"></a>
-</span><span id="__span-0-1741"><a id="__codelineno-0-1741" name="__codelineno-0-1741"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-1742"><a id="__codelineno-0-1742" name="__codelineno-0-1742"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-1743"><a id="__codelineno-0-1743" name="__codelineno-0-1743"></a><span class="sd">    inventory_item : InventoryItem</span>
-</span><span id="__span-0-1744"><a id="__codelineno-0-1744" name="__codelineno-0-1744"></a><span class="sd">        The item to update. Must have a valid ``id``.</span>
+</span><span id="__span-0-1741"><a id="__codelineno-0-1741" name="__codelineno-0-1741"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-1742"><a id="__codelineno-0-1742" name="__codelineno-0-1742"></a><span class="sd">    -------</span>
+</span><span id="__span-0-1743"><a id="__codelineno-0-1743" name="__codelineno-0-1743"></a><span class="sd">    InventoryItem</span>
+</span><span id="__span-0-1744"><a id="__codelineno-0-1744" name="__codelineno-0-1744"></a><span class="sd">        The updated item.</span>
 </span><span id="__span-0-1745"><a id="__codelineno-0-1745" name="__codelineno-0-1745"></a>
-</span><span id="__span-0-1746"><a id="__codelineno-0-1746" name="__codelineno-0-1746"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-1747"><a id="__codelineno-0-1747" name="__codelineno-0-1747"></a><span class="sd">    -------</span>
-</span><span id="__span-0-1748"><a id="__codelineno-0-1748" name="__codelineno-0-1748"></a><span class="sd">    InventoryItem</span>
-</span><span id="__span-0-1749"><a id="__codelineno-0-1749" name="__codelineno-0-1749"></a><span class="sd">        The updated item.</span>
-</span><span id="__span-0-1750"><a id="__codelineno-0-1750" name="__codelineno-0-1750"></a>
-</span><span id="__span-0-1751"><a id="__codelineno-0-1751" name="__codelineno-0-1751"></a><span class="sd">    Notes</span>
-</span><span id="__span-0-1752"><a id="__codelineno-0-1752" name="__codelineno-0-1752"></a><span class="sd">    -----</span>
-</span><span id="__span-0-1753"><a id="__codelineno-0-1753" name="__codelineno-0-1753"></a><span class="sd">    The following fields can be updated: ``alias``, ``description``,</span>
-</span><span id="__span-0-1754"><a id="__codelineno-0-1754" name="__codelineno-0-1754"></a><span class="sd">    ``is_formula_override``, ``metadata``, ``name``, ``security_class``,</span>
-</span><span id="__span-0-1755"><a id="__codelineno-0-1755" name="__codelineno-0-1755"></a><span class="sd">    ``unit_category``.</span>
-</span><span id="__span-0-1756"><a id="__codelineno-0-1756" name="__codelineno-0-1756"></a><span class="sd">    Note that ``unit_category`` cannot be changed to or from ``volume``,</span>
-</span><span id="__span-0-1757"><a id="__codelineno-0-1757" name="__codelineno-0-1757"></a><span class="sd">    and ``density`` is fixed at creation.</span>
-</span><span id="__span-0-1758"><a id="__codelineno-0-1758" name="__codelineno-0-1758"></a><span class="sd">    On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,</span>
-</span><span id="__span-0-1759"><a id="__codelineno-0-1759" name="__codelineno-0-1759"></a><span class="sd">    ``cas_category``, ``inventory_function``.</span>
-</span><span id="__span-0-1760"><a id="__codelineno-0-1760" name="__codelineno-0-1760"></a><span class="sd">    ``substance_id`` can be set when adding a new CAS entry; it is not</span>
-</span><span id="__span-0-1761"><a id="__codelineno-0-1761" name="__codelineno-0-1761"></a><span class="sd">    patchable on existing entries.</span>
-</span><span id="__span-0-1762"><a id="__codelineno-0-1762" name="__codelineno-0-1762"></a><span class="sd">    """</span>
-</span><span id="__span-0-1763"><a id="__codelineno-0-1763" name="__codelineno-0-1763"></a>    <span class="c1"># Fetch the current object state from the server or database</span>
-</span><span id="__span-0-1764"><a id="__codelineno-0-1764" name="__codelineno-0-1764"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-1765"><a id="__codelineno-0-1765" name="__codelineno-0-1765"></a>    <span class="c1"># Generate the PATCH payload</span>
-</span><span id="__span-0-1766"><a id="__codelineno-0-1766" name="__codelineno-0-1766"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-1767"><a id="__codelineno-0-1767" name="__codelineno-0-1767"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
-</span><span id="__span-0-1768"><a id="__codelineno-0-1768" name="__codelineno-0-1768"></a>    <span class="p">)</span>
-</span><span id="__span-0-1769"><a id="__codelineno-0-1769" name="__codelineno-0-1769"></a>
-</span><span id="__span-0-1770"><a id="__codelineno-0-1770" name="__codelineno-0-1770"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_apply_inventory_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-1771"><a id="__codelineno-0-1771" name="__codelineno-0-1771"></a>        <span class="n">url</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">patch_payload</span><span class="o">=</span><span class="n">patch_payload</span>
-</span><span id="__span-0-1772"><a id="__codelineno-0-1772" name="__codelineno-0-1772"></a>    <span class="p">)</span>
-</span><span id="__span-0-1773"><a id="__codelineno-0-1773" name="__codelineno-0-1773"></a>
-</span><span id="__span-0-1774"><a id="__codelineno-0-1774" name="__codelineno-0-1774"></a>    <span class="n">updated_inv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-1775"><a id="__codelineno-0-1775" name="__codelineno-0-1775"></a>    <span class="k">return</span> <span class="n">updated_inv</span>
+</span><span id="__span-0-1746"><a id="__codelineno-0-1746" name="__codelineno-0-1746"></a><span class="sd">    Notes</span>
+</span><span id="__span-0-1747"><a id="__codelineno-0-1747" name="__codelineno-0-1747"></a><span class="sd">    -----</span>
+</span><span id="__span-0-1748"><a id="__codelineno-0-1748" name="__codelineno-0-1748"></a><span class="sd">    The following fields can be updated: ``acls``, ``alias``, ``company``,</span>
+</span><span id="__span-0-1749"><a id="__codelineno-0-1749" name="__codelineno-0-1749"></a><span class="sd">    ``description``, ``is_formula_override``, ``metadata``, ``name``,</span>
+</span><span id="__span-0-1750"><a id="__codelineno-0-1750" name="__codelineno-0-1750"></a><span class="sd">    ``security_class``, ``tags``, ``unit_category``.</span>
+</span><span id="__span-0-1751"><a id="__codelineno-0-1751" name="__codelineno-0-1751"></a><span class="sd">    Note that ``unit_category`` cannot be changed to or from ``volume``,</span>
+</span><span id="__span-0-1752"><a id="__codelineno-0-1752" name="__codelineno-0-1752"></a><span class="sd">    and ``density`` is fixed at creation.</span>
+</span><span id="__span-0-1753"><a id="__codelineno-0-1753" name="__codelineno-0-1753"></a><span class="sd">    On individual CAS entries (via ``cas``): ``min``, ``max``, ``target``,</span>
+</span><span id="__span-0-1754"><a id="__codelineno-0-1754" name="__codelineno-0-1754"></a><span class="sd">    ``cas_category``, ``inventory_function``.</span>
+</span><span id="__span-0-1755"><a id="__codelineno-0-1755" name="__codelineno-0-1755"></a><span class="sd">    ``substance_id`` can be set when adding a new CAS entry; it is not</span>
+</span><span id="__span-0-1756"><a id="__codelineno-0-1756" name="__codelineno-0-1756"></a><span class="sd">    patchable on existing entries.</span>
+</span><span id="__span-0-1757"><a id="__codelineno-0-1757" name="__codelineno-0-1757"></a><span class="sd">    """</span>
+</span><span id="__span-0-1758"><a id="__codelineno-0-1758" name="__codelineno-0-1758"></a>    <span class="c1"># Fetch the current object state from the server or database</span>
+</span><span id="__span-0-1759"><a id="__codelineno-0-1759" name="__codelineno-0-1759"></a>    <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-1760"><a id="__codelineno-0-1760" name="__codelineno-0-1760"></a>    <span class="c1"># Generate the PATCH payload</span>
+</span><span id="__span-0-1761"><a id="__codelineno-0-1761" name="__codelineno-0-1761"></a>    <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-1762"><a id="__codelineno-0-1762" name="__codelineno-0-1762"></a>        <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
+</span><span id="__span-0-1763"><a id="__codelineno-0-1763" name="__codelineno-0-1763"></a>    <span class="p">)</span>
+</span><span id="__span-0-1764"><a id="__codelineno-0-1764" name="__codelineno-0-1764"></a>
+</span><span id="__span-0-1765"><a id="__codelineno-0-1765" name="__codelineno-0-1765"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_apply_inventory_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-1766"><a id="__codelineno-0-1766" name="__codelineno-0-1766"></a>        <span class="n">url</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">patch_payload</span><span class="o">=</span><span class="n">patch_payload</span>
+</span><span id="__span-0-1767"><a id="__codelineno-0-1767" name="__codelineno-0-1767"></a>    <span class="p">)</span>
+</span><span id="__span-0-1768"><a id="__codelineno-0-1768" name="__codelineno-0-1768"></a>
+</span><span id="__span-0-1769"><a id="__codelineno-0-1769" name="__codelineno-0-1769"></a>    <span class="n">updated_inv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-1770"><a id="__codelineno-0-1770" name="__codelineno-0-1770"></a>    <span class="k">return</span> <span class="n">updated_inv</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -12388,7 +12388,12 @@ earlier updates are not rolled back.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/albert/collections/inventory.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1793">1793</a></span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1788">1788</a></span>
+<span class="normal"><a href="#__codelineno-0-1789">1789</a></span>
+<span class="normal"><a href="#__codelineno-0-1790">1790</a></span>
+<span class="normal"><a href="#__codelineno-0-1791">1791</a></span>
+<span class="normal"><a href="#__codelineno-0-1792">1792</a></span>
+<span class="normal"><a href="#__codelineno-0-1793">1793</a></span>
 <span class="normal"><a href="#__codelineno-0-1794">1794</a></span>
 <span class="normal"><a href="#__codelineno-0-1795">1795</a></span>
 <span class="normal"><a href="#__codelineno-0-1796">1796</a></span>
@@ -12432,61 +12437,56 @@ earlier updates are not rolled back.</p>
 <span class="normal"><a href="#__codelineno-0-1834">1834</a></span>
 <span class="normal"><a href="#__codelineno-0-1835">1835</a></span>
 <span class="normal"><a href="#__codelineno-0-1836">1836</a></span>
-<span class="normal"><a href="#__codelineno-0-1837">1837</a></span>
-<span class="normal"><a href="#__codelineno-0-1838">1838</a></span>
-<span class="normal"><a href="#__codelineno-0-1839">1839</a></span>
-<span class="normal"><a href="#__codelineno-0-1840">1840</a></span>
-<span class="normal"><a href="#__codelineno-0-1841">1841</a></span>
-<span class="normal"><a href="#__codelineno-0-1842">1842</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1793"><a id="__codelineno-0-1793" name="__codelineno-0-1793"></a><span class="nd">@validate_call</span>
-</span><span id="__span-0-1794"><a id="__codelineno-0-1794" name="__codelineno-0-1794"></a><span class="k">def</span><span class="w"> </span><span class="nf">update_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
-</span><span id="__span-0-1795"><a id="__codelineno-0-1795" name="__codelineno-0-1795"></a><span class="w">    </span><span class="sd">"""Update multiple inventory items.</span>
+<span class="normal"><a href="#__codelineno-0-1837">1837</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-1788"><a id="__codelineno-0-1788" name="__codelineno-0-1788"></a><span class="nd">@validate_call</span>
+</span><span id="__span-0-1789"><a id="__codelineno-0-1789" name="__codelineno-0-1789"></a><span class="k">def</span><span class="w"> </span><span class="nf">update_many</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">inventory_items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InventoryItem</span><span class="p">]:</span>
+</span><span id="__span-0-1790"><a id="__codelineno-0-1790" name="__codelineno-0-1790"></a><span class="w">    </span><span class="sd">"""Update multiple inventory items.</span>
+</span><span id="__span-0-1791"><a id="__codelineno-0-1791" name="__codelineno-0-1791"></a>
+</span><span id="__span-0-1792"><a id="__codelineno-0-1792" name="__codelineno-0-1792"></a><span class="sd">    Same per-item semantics as [`update`][albert.collections.inventory.InventoryCollection.update],</span>
+</span><span id="__span-0-1793"><a id="__codelineno-0-1793" name="__codelineno-0-1793"></a><span class="sd">    but the current state of all items is fetched up front in batched calls</span>
+</span><span id="__span-0-1794"><a id="__codelineno-0-1794" name="__codelineno-0-1794"></a><span class="sd">    and the updated items are re-fetched the same way, so updating N items</span>
+</span><span id="__span-0-1795"><a id="__codelineno-0-1795" name="__codelineno-0-1795"></a><span class="sd">    avoids N individual read round-trips.</span>
 </span><span id="__span-0-1796"><a id="__codelineno-0-1796" name="__codelineno-0-1796"></a>
-</span><span id="__span-0-1797"><a id="__codelineno-0-1797" name="__codelineno-0-1797"></a><span class="sd">    Same per-item semantics as [`update`][albert.collections.inventory.InventoryCollection.update],</span>
-</span><span id="__span-0-1798"><a id="__codelineno-0-1798" name="__codelineno-0-1798"></a><span class="sd">    but the current state of all items is fetched up front in batched calls</span>
-</span><span id="__span-0-1799"><a id="__codelineno-0-1799" name="__codelineno-0-1799"></a><span class="sd">    and the updated items are re-fetched the same way, so updating N items</span>
-</span><span id="__span-0-1800"><a id="__codelineno-0-1800" name="__codelineno-0-1800"></a><span class="sd">    avoids N individual read round-trips.</span>
-</span><span id="__span-0-1801"><a id="__codelineno-0-1801" name="__codelineno-0-1801"></a>
-</span><span id="__span-0-1802"><a id="__codelineno-0-1802" name="__codelineno-0-1802"></a><span class="sd">    !!! example</span>
-</span><span id="__span-0-1803"><a id="__codelineno-0-1803" name="__codelineno-0-1803"></a><span class="sd">        ```python</span>
-</span><span id="__span-0-1804"><a id="__codelineno-0-1804" name="__codelineno-0-1804"></a><span class="sd">        items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])</span>
-</span><span id="__span-0-1805"><a id="__codelineno-0-1805" name="__codelineno-0-1805"></a><span class="sd">        for item in items:</span>
-</span><span id="__span-0-1806"><a id="__codelineno-0-1806" name="__codelineno-0-1806"></a><span class="sd">            item.description = "Updated description"</span>
-</span><span id="__span-0-1807"><a id="__codelineno-0-1807" name="__codelineno-0-1807"></a><span class="sd">        updated = client.inventory.update_many(inventory_items=items)</span>
-</span><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a><span class="sd">        ```</span>
+</span><span id="__span-0-1797"><a id="__codelineno-0-1797" name="__codelineno-0-1797"></a><span class="sd">    !!! example</span>
+</span><span id="__span-0-1798"><a id="__codelineno-0-1798" name="__codelineno-0-1798"></a><span class="sd">        ```python</span>
+</span><span id="__span-0-1799"><a id="__codelineno-0-1799" name="__codelineno-0-1799"></a><span class="sd">        items = client.inventory.get_by_ids(ids=["INVA9999999", "INVA9999998"])</span>
+</span><span id="__span-0-1800"><a id="__codelineno-0-1800" name="__codelineno-0-1800"></a><span class="sd">        for item in items:</span>
+</span><span id="__span-0-1801"><a id="__codelineno-0-1801" name="__codelineno-0-1801"></a><span class="sd">            item.description = "Updated description"</span>
+</span><span id="__span-0-1802"><a id="__codelineno-0-1802" name="__codelineno-0-1802"></a><span class="sd">        updated = client.inventory.update_many(inventory_items=items)</span>
+</span><span id="__span-0-1803"><a id="__codelineno-0-1803" name="__codelineno-0-1803"></a><span class="sd">        ```</span>
+</span><span id="__span-0-1804"><a id="__codelineno-0-1804" name="__codelineno-0-1804"></a>
+</span><span id="__span-0-1805"><a id="__codelineno-0-1805" name="__codelineno-0-1805"></a><span class="sd">    Parameters</span>
+</span><span id="__span-0-1806"><a id="__codelineno-0-1806" name="__codelineno-0-1806"></a><span class="sd">    ----------</span>
+</span><span id="__span-0-1807"><a id="__codelineno-0-1807" name="__codelineno-0-1807"></a><span class="sd">    inventory_items : list[InventoryItem]</span>
+</span><span id="__span-0-1808"><a id="__codelineno-0-1808" name="__codelineno-0-1808"></a><span class="sd">        The items to update. Each must have a valid ``id``.</span>
 </span><span id="__span-0-1809"><a id="__codelineno-0-1809" name="__codelineno-0-1809"></a>
-</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="sd">    Parameters</span>
-</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a><span class="sd">    ----------</span>
-</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a><span class="sd">    inventory_items : list[InventoryItem]</span>
-</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">        The items to update. Each must have a valid ``id``.</span>
+</span><span id="__span-0-1810"><a id="__codelineno-0-1810" name="__codelineno-0-1810"></a><span class="sd">    Returns</span>
+</span><span id="__span-0-1811"><a id="__codelineno-0-1811" name="__codelineno-0-1811"></a><span class="sd">    -------</span>
+</span><span id="__span-0-1812"><a id="__codelineno-0-1812" name="__codelineno-0-1812"></a><span class="sd">    list[InventoryItem]</span>
+</span><span id="__span-0-1813"><a id="__codelineno-0-1813" name="__codelineno-0-1813"></a><span class="sd">        The updated items. Order is not guaranteed to match the input list.</span>
 </span><span id="__span-0-1814"><a id="__codelineno-0-1814" name="__codelineno-0-1814"></a>
-</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">    Returns</span>
-</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">    -------</span>
-</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">    list[InventoryItem]</span>
-</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a><span class="sd">        The updated items. Order is not guaranteed to match the input list.</span>
-</span><span id="__span-0-1819"><a id="__codelineno-0-1819" name="__codelineno-0-1819"></a>
-</span><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a><span class="sd">    Notes</span>
-</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a><span class="sd">    -----</span>
-</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a><span class="sd">    The same fields can be updated as with</span>
-</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a><span class="sd">    [`update`][albert.collections.inventory.InventoryCollection.update].</span>
-</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a><span class="sd">    Updates are applied sequentially per item; if an error occurs mid-batch,</span>
-</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a><span class="sd">    earlier updates are not rolled back.</span>
-</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a><span class="sd">    """</span>
-</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">inventory_items</span><span class="p">:</span>
-</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a>        <span class="k">return</span> <span class="p">[]</span>
-</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">inventory_items</span><span class="p">]</span>
-</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a>    <span class="n">existing_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">)}</span>
-</span><span id="__span-0-1831"><a id="__codelineno-0-1831" name="__codelineno-0-1831"></a>    <span class="k">for</span> <span class="n">inventory_item</span> <span class="ow">in</span> <span class="n">inventory_items</span><span class="p">:</span>
-</span><span id="__span-0-1832"><a id="__codelineno-0-1832" name="__codelineno-0-1832"></a>        <span class="n">current_object</span> <span class="o">=</span> <span class="n">existing_by_id</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-1833"><a id="__codelineno-0-1833" name="__codelineno-0-1833"></a>        <span class="k">if</span> <span class="n">current_object</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-0-1834"><a id="__codelineno-0-1834" name="__codelineno-0-1834"></a>            <span class="c1"># Raises NotFoundError, matching update() on an unknown ID.</span>
-</span><span id="__span-0-1835"><a id="__codelineno-0-1835" name="__codelineno-0-1835"></a>            <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-</span><span id="__span-0-1836"><a id="__codelineno-0-1836" name="__codelineno-0-1836"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-1837"><a id="__codelineno-0-1837" name="__codelineno-0-1837"></a>            <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
-</span><span id="__span-0-1838"><a id="__codelineno-0-1838" name="__codelineno-0-1838"></a>        <span class="p">)</span>
-</span><span id="__span-0-1839"><a id="__codelineno-0-1839" name="__codelineno-0-1839"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_inventory_patch_payload</span><span class="p">(</span>
-</span><span id="__span-0-1840"><a id="__codelineno-0-1840" name="__codelineno-0-1840"></a>            <span class="n">url</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">patch_payload</span><span class="o">=</span><span class="n">patch_payload</span>
-</span><span id="__span-0-1841"><a id="__codelineno-0-1841" name="__codelineno-0-1841"></a>        <span class="p">)</span>
-</span><span id="__span-0-1842"><a id="__codelineno-0-1842" name="__codelineno-0-1842"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">)</span>
+</span><span id="__span-0-1815"><a id="__codelineno-0-1815" name="__codelineno-0-1815"></a><span class="sd">    Notes</span>
+</span><span id="__span-0-1816"><a id="__codelineno-0-1816" name="__codelineno-0-1816"></a><span class="sd">    -----</span>
+</span><span id="__span-0-1817"><a id="__codelineno-0-1817" name="__codelineno-0-1817"></a><span class="sd">    The same fields can be updated as with</span>
+</span><span id="__span-0-1818"><a id="__codelineno-0-1818" name="__codelineno-0-1818"></a><span class="sd">    [`update`][albert.collections.inventory.InventoryCollection.update].</span>
+</span><span id="__span-0-1819"><a id="__codelineno-0-1819" name="__codelineno-0-1819"></a><span class="sd">    Updates are applied sequentially per item; if an error occurs mid-batch,</span>
+</span><span id="__span-0-1820"><a id="__codelineno-0-1820" name="__codelineno-0-1820"></a><span class="sd">    earlier updates are not rolled back.</span>
+</span><span id="__span-0-1821"><a id="__codelineno-0-1821" name="__codelineno-0-1821"></a><span class="sd">    """</span>
+</span><span id="__span-0-1822"><a id="__codelineno-0-1822" name="__codelineno-0-1822"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">inventory_items</span><span class="p">:</span>
+</span><span id="__span-0-1823"><a id="__codelineno-0-1823" name="__codelineno-0-1823"></a>        <span class="k">return</span> <span class="p">[]</span>
+</span><span id="__span-0-1824"><a id="__codelineno-0-1824" name="__codelineno-0-1824"></a>    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">inventory_items</span><span class="p">]</span>
+</span><span id="__span-0-1825"><a id="__codelineno-0-1825" name="__codelineno-0-1825"></a>    <span class="n">existing_by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">item</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">)}</span>
+</span><span id="__span-0-1826"><a id="__codelineno-0-1826" name="__codelineno-0-1826"></a>    <span class="k">for</span> <span class="n">inventory_item</span> <span class="ow">in</span> <span class="n">inventory_items</span><span class="p">:</span>
+</span><span id="__span-0-1827"><a id="__codelineno-0-1827" name="__codelineno-0-1827"></a>        <span class="n">current_object</span> <span class="o">=</span> <span class="n">existing_by_id</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-1828"><a id="__codelineno-0-1828" name="__codelineno-0-1828"></a>        <span class="k">if</span> <span class="n">current_object</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-1829"><a id="__codelineno-0-1829" name="__codelineno-0-1829"></a>            <span class="c1"># Raises NotFoundError, matching update() on an unknown ID.</span>
+</span><span id="__span-0-1830"><a id="__codelineno-0-1830" name="__codelineno-0-1830"></a>            <span class="n">current_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_id</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</span><span id="__span-0-1831"><a id="__codelineno-0-1831" name="__codelineno-0-1831"></a>        <span class="n">patch_payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_inventory_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-1832"><a id="__codelineno-0-1832" name="__codelineno-0-1832"></a>            <span class="n">existing</span><span class="o">=</span><span class="n">current_object</span><span class="p">,</span> <span class="n">updated</span><span class="o">=</span><span class="n">inventory_item</span>
+</span><span id="__span-0-1833"><a id="__codelineno-0-1833" name="__codelineno-0-1833"></a>        <span class="p">)</span>
+</span><span id="__span-0-1834"><a id="__codelineno-0-1834" name="__codelineno-0-1834"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_inventory_patch_payload</span><span class="p">(</span>
+</span><span id="__span-0-1835"><a id="__codelineno-0-1835" name="__codelineno-0-1835"></a>            <span class="n">url</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">inventory_item</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">patch_payload</span><span class="o">=</span><span class="n">patch_payload</span>
+</span><span id="__span-0-1836"><a id="__codelineno-0-1836" name="__codelineno-0-1836"></a>        <span class="p">)</span>
+</span><span id="__span-0-1837"><a id="__codelineno-0-1837" name="__codelineno-0-1837"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_by_ids</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">)</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>

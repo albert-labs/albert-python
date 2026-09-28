@@ -6940,7 +6940,7 @@ order of the blocks is preserved, any block not already on Albert is
 created, and any existing block that is no longer present is deleted. This
 does not change the notebook name (use <a class="autorefs autorefs-internal" href="#albert.collections.notebooks.NotebookCollection.update"><code>update</code></a> for that).</p>
 <p>When writing @-mention chips (<code>&lt;span data-albertid="..." data-type="..."&gt;</code>
-spans) into block text, also create the backing mention links — saving the
+spans) into block text, also create the backing mention links. Saving the
 HTML does not register them, and without a link the chip does not resolve
 in the UI. Create one link per mentioned entity with
 <a class="autorefs autorefs-internal" href="../links/#albert.collections.links.LinksCollection.create"><code>create</code></a>
@@ -7119,7 +7119,7 @@ an existing block's type is changed in place.</p>
 </span><span id="__span-0-352"><a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">    does not change the notebook name (use [`update`][albert.collections.notebooks.NotebookCollection.update] for that).</span>
 </span><span id="__span-0-353"><a id="__codelineno-0-353" name="__codelineno-0-353"></a>
 </span><span id="__span-0-354"><a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">    When writing @-mention chips (``&lt;span data-albertid="..." data-type="..."&gt;``</span>
-</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">    spans) into block text, also create the backing mention links — saving the</span>
+</span><span id="__span-0-355"><a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">    spans) into block text, also create the backing mention links. Saving the</span>
 </span><span id="__span-0-356"><a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">    HTML does not register them, and without a link the chip does not resolve</span>
 </span><span id="__span-0-357"><a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">    in the UI. Create one link per mentioned entity with</span>
 </span><span id="__span-0-358"><a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">    [`create`][albert.collections.links.LinksCollection.create]</span>
