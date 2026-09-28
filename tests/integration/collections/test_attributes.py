@@ -18,7 +18,7 @@ from albert.resources.data_columns import DataColumn
 from albert.resources.inventory import InventoryItem
 from albert.resources.lots import Lot
 from albert.resources.parameter_groups import DataType, EnumValidationValue, Operator
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 

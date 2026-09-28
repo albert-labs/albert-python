@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import Field, PrivateAttr
+from pydantic import Field, ModelWrapValidatorHandler, PrivateAttr, model_validator
+from typing_extensions import Self
 
 from albert.core.base import BaseAlbertModel
 from albert.core.session import AlbertSession
@@ -81,9 +83,15 @@ class BaseResource(BaseAlbertModel):
 class BaseSessionResource(BaseResource):
     _session: AlbertSession | None = PrivateAttr(default=None)
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self._session = data.get("session")
+    @model_validator(mode="wrap")
+    @classmethod
+    def _bind_session(cls, data: Any, handler: ModelWrapValidatorHandler[Self]) -> Self:
+        # Bind the session inside validation so subclass ``mode="after"`` validators
+        # that propagate it to nested resources can already see it.
+        instance = handler(data)
+        if isinstance(data, dict) and "session" in data:
+            instance._session = data["session"]
+        return instance
 
     @property
     def session(self) -> AlbertSession | None:

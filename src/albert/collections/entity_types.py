@@ -225,6 +225,8 @@ class EntityTypeCollection(BaseCollection):
             existing=current_entity_type, updated=entity_type
         )
         patch.data.extend(special_patches)
+        if not patch.data:
+            return current_entity_type
 
         self.session.patch(
             f"{self.base_path}/{entity_type.id}",
@@ -270,20 +272,21 @@ class EntityTypeCollection(BaseCollection):
             )
 
         if updated.custom_fields is not None and existing.custom_fields is not None:
-            patches.append(
-                PatchDatum(
-                    operation=PatchOperation.UPDATE,
-                    attribute="customFields",
-                    new_value=[
-                        x.model_dump(by_alias=True, exclude_none=True)
-                        for x in updated.custom_fields
-                    ],
-                    old_value=[
-                        x.model_dump(by_alias=True, exclude_none=True)
-                        for x in existing.custom_fields
-                    ],
+            new_custom_fields = [
+                x.model_dump(by_alias=True, exclude_none=True) for x in updated.custom_fields
+            ]
+            old_custom_fields = [
+                x.model_dump(by_alias=True, exclude_none=True) for x in existing.custom_fields
+            ]
+            if new_custom_fields != old_custom_fields:
+                patches.append(
+                    PatchDatum(
+                        operation=PatchOperation.UPDATE,
+                        attribute="customFields",
+                        new_value=new_custom_fields,
+                        old_value=old_custom_fields,
+                    )
                 )
-            )
         if updated.custom_fields is not None and existing.custom_fields is None:
             patches.append(
                 PatchDatum(

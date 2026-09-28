@@ -37,15 +37,6 @@ def test_bind_collection_returns_self():
     assert item._collection is collection
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BUG: _mixins.py:17 _collection PrivateAttr default is never applied when "
-        "HydrationMixin (not itself a BaseModel) is mixed into a pydantic model, so an "
-        "unbound resource's self._collection is a truthy ModelPrivateAttr sentinel, not "
-        "None; hydrate() falls through to AlbertException instead of RuntimeError."
-    ),
-)
 def test_hydrate_without_bound_collection_raises_runtime_error():
     """Test that hydrate raises RuntimeError when no collection was ever bound."""
     item = _FakeSearchItem(id="ITM1")

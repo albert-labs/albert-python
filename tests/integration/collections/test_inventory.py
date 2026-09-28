@@ -22,7 +22,7 @@ from albert.resources.lots import Lot
 from albert.resources.storage_locations import StorageLocation, StorageLocationFilter
 from albert.resources.tags import Tag
 from albert.resources.users import User
-from tests.integration.utils.wait import poll_until
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("inventory")
 
@@ -62,6 +62,8 @@ def test_inventory_get_all_with_filters(
         return [item for item in items if normalize_inv_id(item.id) in seeded_ids]
 
     def scoped_search(*, created_by=None, updated_by=None):
+        # Every seeded item is created by static_user and matches text=seed_prefix, so
+        # the complete scoped set is seeded_ids; wait for all of it before comparing.
         return poll_until(
             lambda: filter_seeded(
                 list(
@@ -72,7 +74,10 @@ def test_inventory_get_all_with_filters(
                         max_items=100,
                     )
                 )
-            )
+            ),
+            predicate=lambda results: (
+                {normalize_inv_id(item.id) for item in results} == seeded_ids
+            ),
         )
 
     results = poll_until(
@@ -101,17 +106,17 @@ def test_inventory_get_all_with_filters(
     assert test_item.created and test_item.created.at
     from_created_at = test_item.created.at.date().isoformat()
     recently_created = poll_until(
-        lambda: filter_seeded(
-            list(
-                client.inventory.search(
-                    text=seed_prefix,
-                    from_created_at=from_created_at,
-                    max_items=100,
-                )
+        lambda: [
+            item
+            for item in client.inventory.search(
+                text=seed_prefix,
+                from_created_at=from_created_at,
+                max_items=100,
             )
-        )
+            if normalize_inv_id(item.id) == test_item.id
+        ]
     )
-    assert test_item.id in {normalize_inv_id(item.id) for item in recently_created}
+    assert recently_created, "Expected the seeded item in from_created_at search results"
 
     hydrated_by_creator = poll_until(
         lambda: filter_seeded(
@@ -130,9 +135,13 @@ def test_inventory_get_all_with_filters(
     assert facets
 
     search_hits = poll_until(
-        lambda: filter_seeded(list(client.inventory.search(text=test_item.name, max_items=10)))
+        lambda: [
+            item
+            for item in client.inventory.search(text=test_item.name, max_items=10)
+            if normalize_inv_id(item.id) == test_item.id
+        ]
     )
-    hit = next(item for item in search_hits if normalize_inv_id(item.id) == test_item.id)
+    hit = search_hits[0]
     assert hit.manufacturer is not None
     company_name = (
         test_item.company.name if isinstance(test_item.company, Company) else test_item.company
@@ -185,12 +194,16 @@ def test_inventory_search_with_name_only_storage_location_filter(
         ]
 
     filter_results = poll_until(
-        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)])
+        lambda: search_scoped(storage_location=[StorageLocationFilter(name=unit.name)]),
+        predicate=lambda results: {f"INV{p.id}" for p in results} == expected_ids,
     )
     assert {f"INV{p.id}" for p in filter_results} == expected_ids
 
     # The full StorageLocation object from a lookup remains accepted.
-    object_results = poll_until(lambda: search_scoped(storage_location=unit))
+    object_results = poll_until(
+        lambda: search_scoped(storage_location=unit),
+        predicate=lambda results: {f"INV{p.id}" for p in results} == expected_ids,
+    )
     assert {f"INV{p.id}" for p in object_results} == expected_ids
 
 

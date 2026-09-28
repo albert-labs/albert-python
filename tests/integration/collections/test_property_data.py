@@ -258,6 +258,32 @@ def test_add_and_update_property_data_on_inventory(
     assert r[0].data_columns[0].value == "55.5"
 
 
+def test_update_property_on_inventory_adds_then_updates(
+    client: Albert,
+    seeded_inventory: list[BaseTask],
+    seeded_data_columns: list[BaseTask],
+):
+    """Test update adds the value when the item has none for the column, then updates it."""
+    inv = seeded_inventory[0]
+    column_id = seeded_data_columns[2].id
+
+    added = client.property_data.update_property_on_inventory(
+        inventory_id=inv.id,
+        property_data=InventoryDataColumn(data_column_id=column_id, value="11.1"),
+    )
+    match = [p for p in added.custom_property_data if p.data_column.data_column_id == column_id]
+    assert len(match) == 1
+    assert match[0].data_column.property_data.value == "11.1"
+
+    updated = client.property_data.update_property_on_inventory(
+        inventory_id=inv.id,
+        property_data=InventoryDataColumn(data_column_id=column_id, value="22.2"),
+    )
+    match = [p for p in updated.custom_property_data if p.data_column.data_column_id == column_id]
+    assert len(match) == 1
+    assert match[0].data_column.property_data.value == "22.2"
+
+
 def test_task_property_calculation_evaluation(
     client: Albert,
     seed_prefix: str,
