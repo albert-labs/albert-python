@@ -78,11 +78,11 @@ class ProjectCollection(BaseCollection):
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
     star(id) -> Project
-        Star (pin) a project for the current user.
+        Star a project for the current user.
     unstar(id) -> None
         Remove a project from the current user's starred projects.
     get_starred(...) -> Iterator[Project]
-        Get the current user's starred projects, fully populated.
+        Get the current user's starred projects.
     """
 
     _api_version = "v3"
@@ -321,11 +321,10 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def star(self, *, id: ProjectId) -> Project:
-        """Star (pin / favorite) a project for the current user.
+        """Star a project for the current user.
 
-        Starred projects appear in the user's Starred Projects list in the Albert
-        app. Starring applies to the user the client is authenticated as. Starring
-        a project that is already starred leaves it starred.
+        Starring a project adds it to the current user's starred projects list.
+        If the project is already starred, this method leaves it starred.
 
         !!! example
             ```python
@@ -342,7 +341,7 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Project
-            The fully populated starred project.
+            The fully populated starred Project.
         """
         project = self.get_by_id(id=id)
         payload = [
@@ -363,7 +362,7 @@ class ProjectCollection(BaseCollection):
     def unstar(self, *, id: ProjectId) -> None:
         """Remove a project from the current user's starred projects.
 
-        Unstarring a project that is not starred does nothing.
+        If the project is not starred, this method does nothing.
 
         !!! example
             ```python
@@ -386,10 +385,10 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def get_starred(self, *, max_items: int | None = None) -> Iterator[Project]:
-        """Get the current user's starred (pinned / favorite) projects.
+        """Get the current user's starred projects.
 
-        Projects are yielded most recently starred first. Starred projects the user
-        can no longer access are skipped.
+        Yields fully populated [`Project`][albert.resources.projects.Project] entities
+        belonging to the current user's starred list.
 
         !!! example
             ```python
@@ -407,7 +406,7 @@ class ProjectCollection(BaseCollection):
         Returns
         -------
         Iterator[Project]
-            An iterator of fully populated starred projects.
+            An iterator of fully populated Project entities.
         """
 
         def _hydrate(record: dict) -> Project | None:

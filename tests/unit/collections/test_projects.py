@@ -218,5 +218,5 @@ def _bad_request(body: object) -> BadRequestError:
     ],
 )
 def test_is_already_starred_error(body: object, expected: bool) -> None:
-    """Test that only the duplicate-star error is recognised as already starred."""
+    """Test that only the duplicate-star error is recognized as already starred."""
     assert ProjectCollection._is_already_starred_error(_bad_request(body)) is expected

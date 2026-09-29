@@ -232,7 +232,7 @@ def test_reactivate_project(client: Albert, seeded_locations, seed_prefix: str):
 
 
 def test_star_get_starred_and_unstar_project(client: Albert, seeded_locations, seed_prefix: str):
-    """Test starring, listing and unstarring a project for the current user."""
+    """Test starring, getting starred, and unstarring a project for the current user."""
     project = client.projects.create(
         project=Project(
             description=f"{seed_prefix} - Project to Star",
