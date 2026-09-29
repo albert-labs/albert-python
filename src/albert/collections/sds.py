@@ -191,9 +191,11 @@ class SDSCollection(BaseCollection):
         """Get tenant-specific options for one SDS input field.
 
         Entity query names do not always match [`SDSRequest`][albert.resources.sds.SDSRequest]
-        field names (e.g. ``flashpoint`` → ``flash_point``). If ``display`` is
-        false, omit the field. If ``data`` is a list of objects with ``value``,
-        send that ``value``.
+        field names (e.g. ``flashpoint`` → ``flash_point``).         If ``display`` is
+        false, omit the field. An empty list response has no display flag and
+        means the field is not configured, so ``display`` is false. A non-empty
+        list is the option list, so ``display`` is true. If ``data`` is a list
+        of objects with ``value``, send that ``value``.
 
         !!! example
             ```python
@@ -236,7 +238,10 @@ class SDSCollection(BaseCollection):
         params = {k: v for k, v in params.items() if v is not None}
         payload = self.session.get(f"{self.base_path}/data", params=params).json()
         if isinstance(payload, list):
-            return SDSFieldOptions(data=payload, display=True)
+            # Bare list: options, or "not configured" when empty. The endpoint
+            # sends ``{"display": false}`` to hide a field and ``{"display": true}``
+            # to show a free-text one. An empty list has neither, so it is hidden.
+            return SDSFieldOptions(data=payload, display=bool(payload))
         return SDSFieldOptions.model_validate(payload)
 
     @validate_call
