@@ -5,7 +5,7 @@
   <img src="assets/Albert_Wordmark_RGB_Colour.svg" class="logo only-light" alt="Albert Logo">
 </div>
 
-[![CI](https://img.shields.io/circleci/build/github/albert-labs/albert-python/main?label=CI)](https://app.circleci.com/pipelines/github/albert-labs/albert-python?branch=main)
+[![CI](https://github.com/albert-labs/albert-python/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/albert-labs/albert-python/actions/workflows/test.yml)
 [![pypi](https://img.shields.io/pypi/v/albert.svg)](https://pypi.python.org/pypi/albert)
 [![downloads](https://img.shields.io/pypi/dm/albert.svg)](https://pypi.org/project/albert/)<br>
 [![license](https://img.shields.io/github/license/albert-labs/albert-python.svg)](https://github.com/albert-labs/albert-python/blob/main/LICENSE)
