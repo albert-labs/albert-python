@@ -1,5 +1,8 @@
 """Unit tests for the Personalization resource model's wire round-trips."""
 
+import pytest
+from pydantic import ValidationError
+
 from albert.resources.personalization import Personalization, PersonalizationCategory
 
 
@@ -33,6 +36,22 @@ def test_personalization_reads_id_from_create_payload() -> None:
     )
 
     assert record.id == "USP17620"
+
+
+def test_personalization_create_payload_omits_category() -> None:
+    """Test that the create response shape (recorded live) has no ``category`` key."""
+    payload = {
+        "id": "USP17620",
+        "parentId": "USR4227",
+        "savedId": "PROMO130903",
+        "savedName": "test-worksheets",
+    }
+
+    with pytest.raises(ValidationError):
+        Personalization(**payload)
+
+    payload["category"] = "Starred Projects"
+    assert Personalization(**payload).category is PersonalizationCategory.STARRED_PROJECTS
 
 
 def test_personalization_create_dump_uses_wire_aliases() -> None:

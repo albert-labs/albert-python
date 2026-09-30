@@ -102,7 +102,10 @@ class PersonalizationCollection(BaseCollection):
             by_alias=True, exclude_none=True, exclude_unset=True, mode="json"
         )
         response = self.session.post(self.base_path, json=[payload])
-        return Personalization(**response.json()[0])
+        data = response.json()[0]
+        # The create response omits `category`; the value just sent is authoritative.
+        data.setdefault("category", payload["category"])
+        return Personalization(**data)
 
     @validate_call
     def get_by_id(self, *, id: str) -> Personalization:
