@@ -253,6 +253,13 @@ workflows:
       - lambda_layer_setup:
           name: Lambda Layer Matrix Setup
           context: dev
+          # Manual runs may target a release tag (backfill); jobs without tag
+          # filters are skipped on tag-triggered pipelines.
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /^v.+$/
 
   main:
     when:
