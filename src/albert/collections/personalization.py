@@ -10,7 +10,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.resources.personalization import Personalization, PersonalizationCategory
 
-# The list endpoint parses `limit` with no fallback, so the SDK always sends a page size.
+# The list handler parses `limit` with no fallback, so the SDK always sends a page size.
 _PERSONALIZATION_PAGE_LIMIT = 200
 
 
@@ -223,7 +223,7 @@ class PersonalizationCollection(BaseCollection):
         saved_id: str | None,
         user_id: str | None,
     ) -> dict[str, Any]:
-        """Build the query parameters for a personalization list request."""
+        """Build the query parameters for listing personalization records."""
         if saved_id and user_id:
             raise ValueError("Only one of `saved_id` or `user_id` can be provided.")
         if sub_category and not category:
