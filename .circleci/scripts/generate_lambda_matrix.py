@@ -32,6 +32,22 @@ def job_name(runtime: str, arch: str) -> str:
     return f"lambda_layer_{runtime_slug}_{arch}"
 
 
+def job_filter_lines() -> list[str]:
+    """Branch and tag filters every generated workflow job needs.
+
+    CircleCI skips jobs without tag filters on tag-triggered pipelines, and the
+    release workflow is triggered by pushing the release tag. Branch filters keep
+    manual ad hoc runs (lambda_layer=true on a branch) working.
+    """
+    return [
+        "          filters:",
+        "            branches:",
+        "              only: /.*/",
+        "            tags:",
+        "              only: /^v.+$/",
+    ]
+
+
 def build_job(runtime: str, arch: str, sdk_version: str, regions: str, account_id: str) -> dict:
     zip_path = f"dist/lambda/albert-python-{sdk_version}-py{runtime}-{arch}.zip"
     manifest_name = f"{job_name(runtime, arch)}.tsv"
@@ -242,9 +258,11 @@ def generate(
     for name in workflow_jobs:
         lines.append(f"      - {name}:")
         lines.append("          context: dev")
+        lines.extend(job_filter_lines())
     for final_job in (RELEASE_NOTES_JOB, CATALOG_JOB):
         lines.append(f"      - {final_job}:")
         lines.append("          context: dev")
+        lines.extend(job_filter_lines())
         lines.append("          requires:")
         for name in workflow_jobs:
             lines.append(f"            - {name}")
