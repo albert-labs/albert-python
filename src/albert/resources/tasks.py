@@ -203,6 +203,12 @@ class TaskState(str, Enum):
     The state generally advances as work progresses: an unclaimed task is
     picked up, started, finished, and eventually closed (or cancelled).
 
+    State is coupled to the assignee: a task without an assignee is always
+    ``Unclaimed``, and a task cannot be ``Not Started`` or ``In Progress``
+    with no one assigned. Creating a task without an assignee defaults its
+    state to ``Unclaimed``; see
+    [`create`][albert.collections.tasks.TaskCollection.create].
+
     Attributes
     ----------
     UNCLAIMED : str
@@ -450,7 +456,7 @@ class BaseTask(BaseTaggedResource):
     """Overall result summary for the task."""
 
     state: TaskState | None = Field(default=None)
-    """Current lifecycle state of the task."""
+    """Current lifecycle state of the task. A task without an ``assigned_to`` is always ``Unclaimed``; ``Not Started`` and ``In Progress`` require an assignee. On create, a missing state defaults to ``Unclaimed`` when the task has no assignee."""
 
     project: SerializeAsEntityLink[Project] | list[SerializeAsEntityLink[Project]] | None = Field(
         default=None, alias="Project"
@@ -460,7 +466,7 @@ class BaseTask(BaseTaggedResource):
     assigned_to: (
         SerializeAsEntityLinkWithName[User] | SerializeAsEntityLinkWithName[Team] | None
     ) = Field(default=None, alias="AssignedTo")
-    """The user or team responsible for the task."""
+    """The user or team responsible for the task. When ``None``, the task is unassigned and its ``state`` must be ``Unclaimed`` (terminal states such as ``Completed`` are allowed on create for ingestion flows)."""
 
     page_state: PageState | None = Field(
         alias="PageState",
