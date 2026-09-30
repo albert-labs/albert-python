@@ -42,9 +42,6 @@ def test_personalization_crud(client: Albert, seeded_locations, seed_prefix: str
         assert record.id in {r.id for r in starred}
         assert all(r.category is PersonalizationCategory.STARRED_PROJECTS for r in starred)
 
-        by_saved_id = list(client.personalization.get_all(saved_id=project.id))
-        assert record.id in {r.id for r in by_saved_id}
-
         client.personalization.delete(id=record.id)
         record, deleted_id = None, record.id
         with pytest.raises(NotFoundError):

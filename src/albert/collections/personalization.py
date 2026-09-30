@@ -137,15 +137,12 @@ class PersonalizationCollection(BaseCollection):
         *,
         category: PersonalizationCategory | None = None,
         sub_category: str | None = None,
-        saved_id: str | None = None,
         user_id: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Personalization]:
         """Get personalization records, with optional filters.
 
-        Records are listed either for one user or for one saved entity across
-        users: pass ``saved_id`` for the latter. When neither ``saved_id`` nor
-        ``user_id`` is given, records of the current user are returned.
+        When ``user_id`` is not given, records of the current user are returned.
 
         !!! example
             ```python
@@ -163,12 +160,9 @@ class PersonalizationCollection(BaseCollection):
             Only return records in this category.
         sub_category : str, optional
             Only return records in this subcategory. Requires ``category``.
-        saved_id : str, optional
-            Only return records saving this entity ID (e.g. a Project ID),
-            across users. Cannot be combined with ``user_id``.
         user_id : str, optional
-            Only return records belonging to this user. Cannot be combined with
-            ``saved_id``. Defaults to the current user when neither is given.
+            Only return records belonging to this user. Defaults to the current
+            user.
         max_items : int, optional
             Maximum number of records to return in total. If None, returns all
             matching records.
@@ -181,13 +175,12 @@ class PersonalizationCollection(BaseCollection):
         Raises
         ------
         ValueError
-            If both ``saved_id`` and ``user_id`` are given, or ``sub_category``
-            is given without ``category``.
+            If ``sub_category`` is given without ``category``.
         """
         params = self._get_all_params(
-            category=category, sub_category=sub_category, saved_id=saved_id, user_id=user_id
+            category=category, sub_category=sub_category, user_id=user_id
         )
-        if "savedId" not in params and "createdBy" not in params:
+        if "createdBy" not in params:
             params["createdBy"] = UserCollection(session=self.session).get_current_user().id
         return AlbertPaginator(
             mode=PaginationMode.KEY,
@@ -223,18 +216,13 @@ class PersonalizationCollection(BaseCollection):
         *,
         category: PersonalizationCategory | None,
         sub_category: str | None,
-        saved_id: str | None,
         user_id: str | None,
     ) -> dict[str, Any]:
         """Build the query parameters for listing personalization records."""
-        if saved_id and user_id:
-            raise ValueError("Only one of `saved_id` or `user_id` can be provided.")
         if sub_category and not category:
             raise ValueError("`category` is required when `sub_category` is provided.")
         params: dict[str, Any] = {"limit": _PERSONALIZATION_PAGE_LIMIT}
-        if saved_id:
-            params["savedId"] = saved_id
-        elif user_id:
+        if user_id:
             params["createdBy"] = user_id
         if category:
             params["category"] = category.value
