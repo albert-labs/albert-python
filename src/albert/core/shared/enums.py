@@ -44,12 +44,15 @@ class SecurityClass(str, Enum):
         Access is limited to designated users only.
     PRIVATE : str
         Visible only to the owner. Used by Projects.
+    PUBLIC : str
+        Accessible publicly. Returned by Parameter Groups.
     """
 
     SHARED = "shared"
     RESTRICTED = "restricted"
     CONFIDENTIAL = "confidential"
     PRIVATE = "private"
+    PUBLIC = "public"
 
 
 class PaginationMode(str, Enum):

@@ -167,6 +167,7 @@ class ParameterGroupCollection(BaseCollection):
             ParameterGroup(**item)
             for batch in batches
             for item in self.session.get(url, params={"id": batch}).json()["Items"]
+            if item is not None
         ]
 
     @validate_call
