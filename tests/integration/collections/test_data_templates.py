@@ -6,7 +6,7 @@ import pytest
 
 from albert import Albert
 from albert.core.shared.models.base import EntityLink
-from albert.exceptions import ForbiddenError, NotFoundError
+from albert.exceptions import ForbiddenError, InternalServerError, NotFoundError
 from albert.resources.attachments import Attachment, AttachmentCategory
 from albert.resources.data_columns import DataColumn
 from albert.resources.data_templates import (
@@ -846,5 +846,8 @@ def test_get_curve_example_round_trip(client: Albert, seed_prefix: str):
             with suppress(NotFoundError):
                 client.data_templates.delete(id=dt_id)
         for dc_id in dc_ids:
-            with suppress(NotFoundError):
+            # TODO(backend): api-datacolumn's delete splices the parent template's column
+            # list by the curve child record's missing sequence (findIndex -> -1), emptying
+            # it, so the follow-up column delete 500s. Drop InternalServerError once fixed.
+            with suppress(NotFoundError, InternalServerError):
                 client.data_columns.delete(id=dc_id)
