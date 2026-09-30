@@ -78,6 +78,7 @@ from albert.utils.tasks import (
     fetch_csv_table_rows,
     generate_adv_patch_payload,
     map_csv_headers_to_columns,
+    mirror_project_from_parent_id,
     resolve_attachment,
 )
 from albert.utils.worker_jobs import poll_worker_job
@@ -241,11 +242,14 @@ class TaskCollection(BaseCollection):
             The created task (a ``PropertyTask``, ``BatchTask``, or ``GeneralTask``),
             populated with its assigned Task ID.
         """
-        payload = [task.model_dump(mode="json", by_alias=True, exclude_none=True)]
+        payload = mirror_project_from_parent_id(
+            payload=task.model_dump(mode="json", by_alias=True, exclude_none=True),
+            parent_id=task.parent_id,
+        )
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"
-        response = self.session.post(url=url, json=payload)
+        response = self.session.post(url=url, json=[payload])
         task_data = response.json()[0]
         return TaskAdapter.validate_python(task_data)
 
@@ -300,7 +304,13 @@ class TaskCollection(BaseCollection):
         if len(parent_ids) != 1:
             raise AlbertException("All tasks in create_many must share the same parent_id.")
         task = tasks[0]
-        payload = [t.model_dump(mode="json", by_alias=True, exclude_none=True) for t in tasks]
+        payload = [
+            mirror_project_from_parent_id(
+                payload=t.model_dump(mode="json", by_alias=True, exclude_none=True),
+                parent_id=t.parent_id,
+            )
+            for t in tasks
+        ]
         url = f"{self.base_path}/multi?category={task.category.value}"
         if task.parent_id is not None:
             url = f"{url}&parentId={task.parent_id}"

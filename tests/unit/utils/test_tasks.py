@@ -35,9 +35,59 @@ from albert.utils.tasks import (
     generate_adv_patch_payload,
     is_metadata_item_list,
     map_csv_headers_to_columns,
+    mirror_project_from_parent_id,
     resolve_attachment,
 )
 from tests.unit.conftest import UNIT_BASE_URL
+
+# ---------------------------------------------------------------------------
+# mirror_project_from_parent_id
+# ---------------------------------------------------------------------------
+
+
+def test_mirror_project_from_parent_id_injects_project_for_project_parent():
+    """Test that a Project parent_id is mirrored into a payload missing Project."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="PRO1")
+
+    assert result == {"name": "Task", "Project": {"id": "PRO1"}}
+
+
+def test_mirror_project_from_parent_id_preserves_existing_project():
+    """Test that an explicit Project in the payload is never overwritten."""
+    payload = {"name": "Task", "Project": {"id": "PRO9"}}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="PRO1")
+
+    assert result == {"name": "Task", "Project": {"id": "PRO9"}}
+
+
+def test_mirror_project_from_parent_id_ignores_non_project_parent():
+    """Test that an Inventory parent_id is not mirrored into Project."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="INV1")
+
+    assert result == {"name": "Task"}
+
+
+def test_mirror_project_from_parent_id_no_parent_leaves_payload_untouched():
+    """Test that a missing parent_id leaves the payload unchanged."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id=None)
+
+    assert result == {"name": "Task"}
+
+
+def test_mirror_project_from_parent_id_accepts_lowercase_prefix():
+    """Test that a lowercase project prefix is still recognized as a Project ID."""
+    payload = {"name": "Task"}
+
+    result = mirror_project_from_parent_id(payload=payload, parent_id="pro1")
+
+    assert result == {"name": "Task", "Project": {"id": "pro1"}}
 
 
 def _payload(offline_session, *, existing: GeneralTask, updated: GeneralTask):

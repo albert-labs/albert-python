@@ -25,6 +25,13 @@ from albert.resources.tasks import (
 CSV_EXTENSIONS: set[str] = {"csv"}
 
 
+def mirror_project_from_parent_id(*, payload: dict, parent_id: str | None) -> dict:
+    """Mirror ``parent_id`` into the payload's ``Project`` link when it is a Project ID."""
+    if parent_id is not None and "Project" not in payload and parent_id.upper().startswith("PRO"):
+        payload["Project"] = {"id": parent_id}
+    return payload
+
+
 def build_property_payload(
     *,
     data_rows: Iterable[dict[str, dict]],
