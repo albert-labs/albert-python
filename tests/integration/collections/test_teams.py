@@ -113,6 +113,31 @@ def test_update(client: Albert, seed_prefix: str, second_user: User):
             client.teams.delete(id=team.id)
 
 
+def test_update_multiple_members(
+    client: Albert, seed_prefix: str, second_user: User, third_user: User
+):
+    """Test update adds and removes multiple members in a single call."""
+    team = client.teams.create(name=f"{seed_prefix}-update-multi-members")
+    try:
+        # Add two members in one update call
+        team.members = [
+            TeamMember(id=second_user.id, role="TeamViewer"),
+            TeamMember(id=third_user.id, role="TeamViewer"),
+        ]
+        client.teams.update(team=team)
+        updated = _assert_member_present(client, team.id, second_user.id)
+        assert third_user.id in [m.id for m in updated.members or []]
+
+        # Remove both members in one update call
+        updated.members = []
+        client.teams.update(team=updated)
+        updated = _assert_member_absent(client, team.id, second_user.id)
+        assert third_user.id not in [m.id for m in updated.members or []]
+    finally:
+        with suppress(Exception):
+            client.teams.delete(id=team.id)
+
+
 def test_add_and_remove_users(client: Albert, seed_prefix: str, second_user: User):
     """Test adding and removing users, including duplicate and non-member error cases."""
     team = client.teams.create(name=f"{seed_prefix}-add-remove-users")
