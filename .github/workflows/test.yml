@@ -1,0 +1,114 @@
+name: Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, next]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/next' }}
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          python-version: "3.10.15"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check formatting
+        run: uv run ruff format . --check
+
+      - name: Check lints
+        run: uv run ruff check .
+
+      - name: Run unit tests
+        run: |
+          uv run pytest tests/unit -v --tb=short -r fEsxX \
+            --cov --cov-report=term-missing:skip-covered --cov-report=xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  integration-tests:
+    name: Integration Tests
+    needs: unit-tests
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          python-version: "3.10.15"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run integration tests
+        env:
+          ALBERT_CLIENT_ID_SDK: ${{ secrets.ALBERT_CLIENT_ID_SDK }}
+          ALBERT_CLIENT_SECRET_SDK: ${{ secrets.ALBERT_CLIENT_SECRET_SDK }}
+          ALBERT_BASE_URL: ${{ secrets.ALBERT_BASE_URL }}
+        run: |
+          uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 2>&1 | tee /tmp/pytest-output.log
+
+      - name: Post failure summary
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -f /tmp/pytest-output.log ]; then
+            SUMMARY=$(sed -n '/short test summary info/,$p' /tmp/pytest-output.log | head -c 50000)
+            if [ -z "${SUMMARY}" ]; then
+              SUMMARY=$(tail -c 50000 /tmp/pytest-output.log)
+            fi
+          else
+            SUMMARY="The Integration Tests job failed before the pytest step ran. See the build log for the failing step."
+          fi
+
+          SHORT_SHA="${SHA:0:8}"
+          COMMENT_BODY=$(jq -n \
+            --arg branch "${BRANCH}" \
+            --arg sha "${SHORT_SHA}" \
+            --arg url "${RUN_URL}" \
+            --arg summary "${SUMMARY}" \
+            '("### Integration Tests failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")')
+
+          echo "$COMMENT_BODY" | jq -r . >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ -n "${PR_NUMBER}" ]; then
+            gh pr comment "${PR_NUMBER}" --body "$(echo "$COMMENT_BODY" | jq -r .)" || echo "Failed to post PR comment"
+          fi
