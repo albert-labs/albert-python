@@ -36,6 +36,7 @@ from albert.resources.data_templates import (
 from albert.resources.lots import Lot
 from albert.resources.units import Unit
 from albert.resources.workflows import Workflow
+from albert.utils.dataframes import OrientTightDataFrame
 
 ########################## Supporting GET Classes ##########################
 
@@ -607,6 +608,66 @@ class TaskPropertyRecord(BaseAlbertModel):
                 row[f"setpoint.{name}"] = value
             rows.append(row)
         return pd.DataFrame(rows)
+
+
+class TaskCurveData(BaseAlbertModel):
+    """The curve recorded in one trial of a curve data column on a task.
+
+    Returned by
+    [`get_task_curve_data`][albert.collections.property_data.PropertyDataCollection.get_task_curve_data].
+    Identifies where the curve was recorded (block, inventory item, interval, trial,
+    and data column) and carries the curve points in ``data``.
+
+    !!! example
+        ```python
+        curves = client.property_data.get_task_curve_data(task_id="TASFOR1")
+        curve = curves[0]
+        curve.data_column_name, curve.trial_number
+        # ('Viscosity Curve', 1)
+        curve.data.head()
+        #   Temperature Count
+        # 0           0     6
+        ```
+    """
+
+    task_id: TaskId
+    """The task the curve was recorded on (format ``TAS...``)."""
+
+    block_id: BlockId | None = Field(default=None)
+    """The block the curve belongs to (format ``BLK...``)."""
+
+    data_template_id: DataTemplateId | None = Field(default=None)
+    """The data template that defines the curve column (format ``DAT...``)."""
+
+    inventory_id: InventoryId | None = Field(default=None)
+    """The inventory item the curve was measured on (format ``INV...``)."""
+
+    lot_id: LotId | None = Field(default=None)
+    """The lot the curve was measured on (format ``LOT...``), if any."""
+
+    interval_combination: str | None = Field(default=None)
+    """The interval combination the curve was recorded under (e.g. ``default`` or ``ROW1``)."""
+
+    trial_number: int | None = Field(default=None)
+    """The trial number the curve was recorded in."""
+
+    void: bool = Field(default=False)
+    """Whether the trial or its interval is voided."""
+
+    data_column_id: DataColumnId | None = Field(default=None)
+    """The curve data column (format ``DAC...``)."""
+
+    data_column_name: str | None = Field(default=None)
+    """The curve data column's display name."""
+
+    property_data_id: PropertyDataId | None = Field(default=None)
+    """The stored property data record for the curve (format ``PTD...``)."""
+
+    file_name: str | None = Field(default=None)
+    """The name of the CSV file the curve was uploaded from."""
+
+    data: OrientTightDataFrame
+    """The curve points, one row per point and one column per curve result, named by the uploaded CSV headers. Values are returned as stored (typically strings)."""
 
 
 ########################## Supporting POST Classes ##########################

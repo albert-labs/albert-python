@@ -1,5 +1,6 @@
 from contextlib import suppress
 
+import pandas as pd
 import pytest
 
 from albert import Albert
@@ -759,6 +760,18 @@ def test_mixed_scalar_and_curve_task_property_upload(
         assert curve_col.property_data.storage_key is not None
         assert curve_col.property_data.job is not None
         assert curve_col.property_data.job.get("state") == "successful"
+
+        curves = client.property_data.get_task_curve_data(
+            task_id=task_id, block_id=block_id, data_column_id=dc_curve.id
+        )
+        assert [c.data_column_id for c in curves] == [dc_curve.id]
+        assert curves[0].file_name == "curve_test.csv"
+        expected = pd.read_csv("tests/data/curve_test.csv", dtype=str)
+        pd.testing.assert_frame_equal(curves[0].data.astype(str), expected, check_dtype=False)
+        assert (
+            client.property_data.get_task_curve_data(task_id=task_id, data_column_id=dc_scalar.id)
+            == []
+        )
         # Clean up created task early so subsequent tests have a clean slate
         client.tasks.delete(id=task_id)
         task_id = None
