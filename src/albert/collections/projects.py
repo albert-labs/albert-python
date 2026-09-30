@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
-from albert.collections.users import UserCollection
+from albert.collections.personalization import PersonalizationCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
@@ -14,11 +14,8 @@ from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError, BadRequestError, NotFoundError
 from albert.resources.acls import ACL
+from albert.resources.personalization import Personalization, PersonalizationCategory
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
-
-_PERSONALIZATION_PATH = "/api/v3/personalization"
-_STARRED_PROJECTS_CATEGORY = "Starred Projects"
-_PERSONALIZATION_PAGE_LIMIT = 200
 
 
 class ProjectCollection(BaseCollection):
@@ -344,15 +341,13 @@ class ProjectCollection(BaseCollection):
             The fully populated starred Project.
         """
         project = self.get_by_id(id=id)
-        payload = [
-            {
-                "category": _STARRED_PROJECTS_CATEGORY,
-                "savedId": project.id,
-                "savedName": project.description,
-            }
-        ]
+        record = Personalization(
+            category=PersonalizationCategory.STARRED_PROJECTS,
+            saved_id=project.id,
+            saved_name=project.description,
+        )
         try:
-            self.session.post(_PERSONALIZATION_PATH, json=payload)
+            PersonalizationCollection(session=self.session).create(personalization=record)
         except BadRequestError as e:
             if not self._is_already_starred_error(e):
                 raise
@@ -378,10 +373,11 @@ class ProjectCollection(BaseCollection):
         -------
         None
         """
-        records = self._starred_records()
+        personalizations = PersonalizationCollection(session=self.session)
+        records = personalizations.get_all(category=PersonalizationCategory.STARRED_PROJECTS)
         for record_id in self._starred_record_ids(records=records, project_id=id):
             with suppress(NotFoundError):
-                self.session.delete(f"{_PERSONALIZATION_PATH}/{record_id}")
+                personalizations.delete(id=record_id)
 
     @validate_call
     def get_starred(self, *, max_items: int | None = None) -> Iterator[Project]:
@@ -409,43 +405,28 @@ class ProjectCollection(BaseCollection):
             An iterator of fully populated Project entities.
         """
 
-        def _hydrate(record: dict) -> Project | None:
-            project_id = record.get("savedId")
-            if not project_id:
+        def _hydrate(record: Personalization) -> Project | None:
+            if not record.saved_id:
                 return None
             try:
-                return self.get_by_id(id=project_id)
+                return self.get_by_id(id=record.saved_id)
             except AlbertHTTPError as e:
-                logger.warning(f"Error fetching starred project {project_id}: {e}")
+                logger.warning(f"Error fetching starred project {record.saved_id}: {e}")
                 return None
 
-        return MappedPaginator(self._starred_records(max_items=max_items), _hydrate)
-
-    def _starred_records(self, *, max_items: int | None = None) -> AlbertPaginator[dict]:
-        """Iterate the current user's raw starred-project personalization records."""
-        user_id = UserCollection(session=self.session).get_current_user().id
-        return AlbertPaginator(
-            mode=PaginationMode.KEY,
-            path=_PERSONALIZATION_PATH,
-            session=self.session,
-            params={
-                "createdBy": user_id,
-                "category": _STARRED_PROJECTS_CATEGORY,
-                "limit": _PERSONALIZATION_PAGE_LIMIT,
-            },
-            max_items=max_items,
-            deserialize=lambda items: items,
+        records = PersonalizationCollection(session=self.session).get_all(
+            category=PersonalizationCategory.STARRED_PROJECTS, max_items=max_items
         )
+        return MappedPaginator(records, _hydrate)
 
     @staticmethod
-    def _starred_record_ids(*, records: Iterable[dict], project_id: str) -> list[str]:
+    def _starred_record_ids(*, records: Iterable[Personalization], project_id: str) -> list[str]:
         """Return the personalization record IDs that star ``project_id``."""
         target = project_id.upper()
         return [
-            record_id
+            record.id
             for record in records
-            if (record_id := record.get("albertId") or record.get("id"))
-            and str(record.get("savedId", "")).upper() == target
+            if record.id and (record.saved_id or "").upper() == target
         ]
 
     @staticmethod

@@ -14,6 +14,7 @@ import requests
 from albert.collections.projects import ProjectCollection
 from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
+from albert.resources.personalization import Personalization, PersonalizationCategory
 from tests.unit.conftest import UNIT_BASE_URL
 
 
@@ -172,9 +173,15 @@ def test_none_fgc_on_both_sides_emits_no_op(offline_session) -> None:
 def test_starred_record_ids_match_project_case_insensitively() -> None:
     """Test that starred-record lookup matches the project ID regardless of case."""
     records = [
-        {"albertId": "USP1", "savedId": "PRO1"},
-        {"albertId": "USP2", "savedId": "pro2"},
-        {"albertId": "USP3", "savedId": "PRO2"},
+        Personalization(
+            id="USP1", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO1"
+        ),
+        Personalization(
+            id="USP2", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="pro2"
+        ),
+        Personalization(
+            id="USP3", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO2"
+        ),
     ]
 
     ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO2")
@@ -182,18 +189,14 @@ def test_starred_record_ids_match_project_case_insensitively() -> None:
     assert ids == ["USP2", "USP3"]
 
 
-def test_starred_record_ids_fall_back_to_id_key() -> None:
-    """Test that records keyed by ``id`` instead of ``albertId`` are still matched."""
-    records = [{"id": "USP17620", "savedId": "PRO1"}]
-
-    ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO1")
-
-    assert ids == ["USP17620"]
-
-
 def test_starred_record_ids_empty_when_project_not_starred() -> None:
     """Test that an unstarred project yields no record IDs, so unstar does nothing."""
-    records = [{"albertId": "USP1", "savedId": "PRO1"}, {"savedId": "PRO2"}]
+    records = [
+        Personalization(
+            id="USP1", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO1"
+        ),
+        Personalization(category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO2"),
+    ]
 
     ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO2")
 
