@@ -179,6 +179,7 @@ nav:
           - Parameter Groups: collections/parameter_groups.md
           - Parameters: collections/parameters.md
           - PDF Generator: collections/pdf_generator.md
+          - Personalization: collections/personalization.md
           - Pricings: collections/pricings.md
           - Product Design: collections/product_design.md
           - Projects: collections/projects.md
@@ -238,6 +239,7 @@ nav:
           - Parameter Groups: resources/parameter_groups.md
           - Parameters: resources/parameters.md
           - PDF Generator: resources/pdf_generator.md
+          - Personalization: resources/personalization.md
           - Pricings: resources/pricings.md
           - Product Design: resources/product_design.md
           - Projects: resources/projects.md
