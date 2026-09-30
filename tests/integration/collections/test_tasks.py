@@ -137,6 +137,27 @@ def test_create_many_rejects_mixed_categories(client: Albert):
         client.tasks.create_many(tasks=[GeneralTask(name="a"), BatchTask(name="b")])
 
 
+def test_create_with_project_parent_id_links_project(
+    client: Albert, seed_prefix: str, seeded_locations, seeded_projects
+):
+    """Test that create links the task to the project when only parent_id is set."""
+    project = seeded_projects[0]
+    task = client.tasks.create(
+        task=GeneralTask(
+            name=f"{seed_prefix} - project parent link",
+            location=seeded_locations[0],
+            parent_id=project.id,
+        )
+    )
+    try:
+        fetched = client.tasks.get_by_id(id=task.id)
+        links = fetched.project if isinstance(fetched.project, list) else [fetched.project]
+        assert project.id in {link.id for link in links if link is not None}
+    finally:
+        with suppress(NotFoundError, BadRequestError):
+            client.tasks.delete(id=task.id)
+
+
 def test_delete_with_delay(client: Albert, seed_prefix: str, seeded_locations):
     """Test that delete accepts the optional delay parameter."""
     task = client.tasks.create(
