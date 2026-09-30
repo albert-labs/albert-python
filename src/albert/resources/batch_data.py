@@ -27,12 +27,13 @@ class BatchValuePatchDatum(BaseAlbertModel):
         from albert.resources.batch_data import BatchValuePatchDatum
 
         # Step 1: add the lot child row under the ingredient row. The lot id
-        # goes in the payload's top-level `lot_id`; `new_value` is the numeric
-        # initial amount ("0" is fine). `attribute` stays "lotId".
-        add_lot = BatchValuePatchDatum(operation="add", new_value="0")
+        # goes on this datum's `lot_id`; `new_value` is the numeric initial
+        # amount ("0" is fine). `attribute` stays "lotId".
+        add_lot = BatchValuePatchDatum(operation="add", lot_id="LOT123", new_value="0")
 
         # Step 2: write the recorded amount on the child row created above
-        # (re-read the grid to discover its row id). `old_value` is required.
+        # (re-read the grid to discover its row id). `old_value` is required;
+        # use "0" for the first write to a new lot row.
         write_amount = BatchValuePatchDatum(
             attribute="cell",
             operation="update",
@@ -45,7 +46,10 @@ class BatchValuePatchDatum(BaseAlbertModel):
     """The field being changed. Defaults to ``"lotId"`` (lot assignment; amounts use ``"cell"``)."""
 
     lot_id: str | None = Field(default=None, alias="lotId")
-    """The lot identifier being assigned, when applicable."""
+    """The lot to link when adding a lot child row (``operation="add"``, ``attribute="lotId"``).
+
+    Required for that change: the lot is linked only when its id is set here.
+    """
 
     new_value: str | None = Field(default=None, alias="newValue")
     """The new value to set for the attribute."""
@@ -93,19 +97,18 @@ class BatchValuePatchPayload(BaseAlbertModel):
         )
 
         # Step 1 of the lot flow: add the lot's child row under an ingredient
-        # row. The lot id is the payload's top-level `lot_id`; the datum's
-        # `new_value` is the numeric initial amount.
+        # row. The lot id goes on the datum's `lot_id`; `new_value` is the
+        # numeric initial amount.
         patch = BatchValuePatchPayload(
             id=BatchValueId(row_id="ROW1", col_id="COL9999999"),
-            lot_id="LOT123",
-            data=[BatchValuePatchDatum(operation="add", new_value="0")],
+            data=[BatchValuePatchDatum(operation="add", lot_id="LOT123", new_value="0")],
         )
         ```
 
-    Note that lot rows created through this endpoint may surface in the
-    platform without the lot's display name (the "View all lots used" report
-    can show a blank lot). Verify the child row reads back with a non-empty
-    name when the lot identity matters for reporting.
+    To confirm a lot was linked, re-read the grid: the new child row's ``id`` is
+    the lot id. A child row with no ``id`` is not linked to any lot, so amounts
+    written to it are not recorded against a lot. The child row's ``name`` can be
+    blank even when the lot is linked.
     """
 
     id: BatchValueId = Field(alias="Id")
@@ -115,7 +118,9 @@ class BatchValuePatchPayload(BaseAlbertModel):
     """The individual changes to apply to that cell."""
 
     lot_id: str | None = Field(default=None, alias="lotId")
-    """The lot identifier associated with the change, when applicable."""
+    """Not used to link a lot. Set ``lot_id`` on the
+    [`BatchValuePatchDatum`][albert.resources.batch_data.BatchValuePatchDatum] instead:
+    a lot id set only here adds a child row that is not linked to the lot."""
 
 
 class BatchDataType(str, Enum):

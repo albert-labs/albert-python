@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.59.1](https://github.com/albert-labs/albert-python/compare/v1.59.0...v1.59.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **propertydata:** property data audit fixes (SDK-160) ([#780](https://github.com/albert-labs/albert-python/issues/780)) ([88aa99f](https://github.com/albert-labs/albert-python/commit/88aa99ff38f71c1e0d5a050ede0131c3323ced67))
+* **sds:** hide field options that come back as an empty list ([#802](https://github.com/albert-labs/albert-python/issues/802)) ([c9c7884](https://github.com/albert-labs/albert-python/commit/c9c7884a20e5cad7f8f5f6df074710d7d2046d6e))
+
+
+### Documentation
+
+* **batch_data:** put lotId on the add datum so the lot links ([#803](https://github.com/albert-labs/albert-python/issues/803)) ([52cfadc](https://github.com/albert-labs/albert-python/commit/52cfadc3ae85cda1c007de55e7843461caf2a565))
+* fix inventory update Notes and pinned docstring violations ([#796](https://github.com/albert-labs/albert-python/issues/796)) ([e294ba4](https://github.com/albert-labs/albert-python/commit/e294ba4383dfe56d9e25bc0b9e2933648df4e413))
+
 ## [1.59.0](https://github.com/albert-labs/albert-python/compare/v1.58.0...v1.59.0) (2026-09-25)
 
 

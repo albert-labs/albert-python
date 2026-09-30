@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
@@ -324,33 +325,66 @@ class TeamCollection(BaseCollection):
         """
         current = self.get_by_id(id=team.id)
         url = f"{self.base_path}/{team.id}"
+
+        for operations in self._generate_patch_payloads(current=current, updated=team):
+            response = self.session.patch(url, json={"data": operations})
+            if response.status_code == 206:
+                failed_items = (response.json() or {}).get("FailedItems") or []
+                if failed_items:
+                    logger.warning(
+                        "Team update partially succeeded", extra={"failed": failed_items}
+                    )
+
+        return self.get_by_id(id=team.id)
+
+    @staticmethod
+    def _generate_patch_payloads(*, current: Team, updated: Team) -> list[list[dict[str, Any]]]:
+        """Build the patch operations needed to update a team, grouped per request.
+
+        The API accepts each attribute at most once per call (``fgc`` role
+        changes excepted), so each member add/remove operation is placed in
+        its own request while all other operations are batched together.
+
+        Parameters
+        ----------
+        current : Team
+            The team's current state.
+        updated : Team
+            The team with the desired changes applied.
+
+        Returns
+        -------
+        list[list[dict[str, Any]]]
+            One list of patch operations per request to send, in send order.
+        """
         operations = []
+        member_operations = []
 
         # Name diff
-        if current.name != team.name:
+        if current.name != updated.name:
             operations.append(
                 {
                     "operation": "update",
                     "attribute": "name",
                     "oldValue": current.name,
-                    "newValue": team.name,
+                    "newValue": updated.name,
                 }
             )
 
         # Member diff: None means "no change", empty list means "remove all"
-        if team.members is not None:
+        if updated.members is not None:
             current_ids = {m.id for m in current.members or []}
-            updated_ids = {m.id for m in team.members}
+            updated_ids = {m.id for m in updated.members}
 
             added = updated_ids - current_ids
             removed = current_ids - updated_ids
 
-            updated_members = {m.id: m for m in team.members}
+            updated_members = {m.id: m for m in updated.members}
 
             for uid in added:
                 member = updated_members[uid]
                 role = member.role or "TeamViewer"
-                operations.append(
+                member_operations.append(
                     {
                         "operation": "add",
                         "attribute": "ACL",
@@ -359,7 +393,7 @@ class TeamCollection(BaseCollection):
                 )
 
             for uid in removed:
-                operations.append(
+                member_operations.append(
                     {
                         "operation": "delete",
                         "attribute": "ACL",
@@ -385,11 +419,9 @@ class TeamCollection(BaseCollection):
                         }
                     )
 
-        if operations:
-            payload = {"data": operations}
-            self.session.patch(url, json=payload)
-
-        return self.get_by_id(id=team.id)
+        payloads = [operations] if operations else []
+        payloads.extend([operation] for operation in member_operations)
+        return payloads
 
     @validate_call
     def delete(self, *, id: TeamId) -> None:

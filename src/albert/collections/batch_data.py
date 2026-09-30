@@ -187,17 +187,33 @@ class BatchDataCollection(BaseCollection):
             )
 
             client = Albert()
-            patch = BatchValuePatchPayload(
+
+            # Step 1: add the lot's child row under the ingredient row. The lot
+            # id goes on the datum's `lot_id`; `new_value` is the initial amount.
+            add_lot = BatchValuePatchPayload(
                 id=BatchValueId(row_id="ROW1", col_id="COL9999999"),
+                data=[BatchValuePatchDatum(operation="add", lot_id="LOT123", new_value="0")],
+            )
+            client.batch_data.update_used_batch_amounts(task_id="TAS123", patches=[add_lot])
+
+            # Step 2: re-read the grid, find the child row whose `id` is the lot,
+            # and write the amount on it (parent rows reject value writes).
+            grid = client.batch_data.get_by_id(id="TAS123")
+            lot_row = next(
+                child
+                for row in grid.rows or []
+                for child in row.child_rows or []
+                if child.id == "LOT123"
+            )
+            write_amount = BatchValuePatchPayload(
+                id=BatchValueId(row_id=lot_row.row_id, col_id="COL9999999"),
                 data=[
                     BatchValuePatchDatum(
-                        operation="update",
-                        new_value="LOT123",
-                        old_value="LOT100",
+                        attribute="cell", operation="update", old_value="0", new_value="0.025"
                     )
                 ],
             )
-            client.batch_data.update_used_batch_amounts(task_id="TAS123", patches=[patch])
+            client.batch_data.update_used_batch_amounts(task_id="TAS123", patches=[write_amount])
             ```
 
         Parameters
@@ -205,8 +221,8 @@ class BatchDataCollection(BaseCollection):
         task_id : TaskId
             The Task ID of the batch task to update (format ``TAS...``).
         patches : list[BatchValuePatchPayload]
-            Patch entries describing which batch values to update and the lot to
-            assign to each.
+            Patch entries describing which batch values to update. To link a lot,
+            set ``lot_id`` on the ``add`` datum, not on the payload.
 
         Returns
         -------
