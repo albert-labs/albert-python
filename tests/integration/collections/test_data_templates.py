@@ -50,7 +50,7 @@ def assert_valid_data_template_items(
 
 def test_data_template_get_all_basic(client: Albert, seeded_data_templates: list[DataTemplate]):
     """Test get_all returns hydrated DataTemplate results."""
-    results = list(client.data_templates.get_all(max_items=10))
+    results = poll_until(lambda: list(client.data_templates.get_all(max_items=10)))
     assert_valid_data_template_items(results, DataTemplate)
 
 
@@ -820,6 +820,16 @@ def test_get_curve_example_round_trip(client: Albert, seed_prefix: str):
         ]
         client.data_templates.update(data_template=dt)
 
+        # Curve settings can lag before reads see them; poll until the column shows them.
+        poll_until(
+            lambda: [
+                col
+                for col in client.data_templates.get_by_id(id=dt_id).data_column_values or []
+                if col.curve_data
+                and any(v.datatype == DataType.CURVE for v in col.validation or [])
+            ]
+        )
+
         assert (
             client.data_templates.get_curve_example(
                 data_template_id=dt_id, data_column_id=dc_curve.id
@@ -846,8 +856,9 @@ def test_get_curve_example_round_trip(client: Albert, seed_prefix: str):
             with suppress(NotFoundError):
                 client.data_templates.delete(id=dt_id)
         for dc_id in dc_ids:
-            # TODO(backend): api-datacolumn's delete splices the parent template's column
-            # list by the curve child record's missing sequence (findIndex -> -1), emptying
-            # it, so the follow-up column delete 500s. Drop InternalServerError once fixed.
+            # TODO(backend, SUP-2324): api-datacolumn's delete splices the parent template's
+            # column list by the curve child record's missing sequence (findIndex -> -1),
+            # emptying it, so the follow-up column delete 500s. Drop InternalServerError once
+            # fixed.
             with suppress(NotFoundError, InternalServerError):
                 client.data_columns.delete(id=dc_id)
