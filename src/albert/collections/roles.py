@@ -6,33 +6,77 @@ from albert.resources.roles import Role
 
 
 class RoleCollection(BaseCollection):
-    """RoleCollection is a collection class for managing Role entities in the Albert platform."""
+    """Manage Roles in the Albert platform.
+
+    A Role defines a set of access permissions (policies) within a tenant.
+    Roles are assigned to users ([`User`][albert.resources.users.User]) to
+    govern what they can do, and are referenced by entity ACLs alongside the
+    users they apply to.
+
+    This collection is accessed as ``client.roles``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        client = Albert()
+        roles = client.roles.get_all()
+        for role in roles:
+            print(role.id, role.name)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for role requests.
+
+    Methods
+    -------
+    get_by_id(id) -> Role
+        Get a single role by its ID.
+    get_all(params=None) -> list[Role]
+        Get all available roles.
+    create(role) -> Role
+        Create a new role.
+    """
 
     _api_version = "v3"
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the RoleCollection with the provided session.
+        """Initialize a RoleCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{RoleCollection._api_version}/acl/roles"
 
     def get_by_id(self, *, id: str) -> Role:
-        """
-        Retrieve a Role by its ID.
+        """Get a single role by its ID.
+
+        !!! example
+            ```python
+            role = client.roles.get_by_id(id="role#admin")
+            role.name
+            # 'Administrator'
+            ```
+
         Parameters
         ----------
         id : str
-            The ID of the role.
+            The ID of the role. Role IDs may contain ``#`` characters and are
+            URL-encoded automatically.
+
         Returns
         -------
         Role
-            The retrieved role.
+            The fully populated role.
         """
         # role IDs have # symbols
         url = urllib.parse.quote(f"{self.base_path}/{id}")
@@ -40,12 +84,24 @@ class RoleCollection(BaseCollection):
         return Role(**response.json())
 
     def create(self, *, role: Role):
-        """
-        Create a new role.
+        """Create a new role.
+
+        !!! example
+            ```python
+            from albert.resources.roles import Role
+            role = client.roles.create(role=Role(name="Lab Analyst", tenant="TEN123"))
+            role.id
+            ```
+
         Parameters
         ----------
         role : Role
             The role to create.
+
+        Returns
+        -------
+        Role
+            The newly created role.
         """
         response = self.session.post(
             self.base_path,
@@ -54,17 +110,25 @@ class RoleCollection(BaseCollection):
         return Role(**response.json())
 
     def get_all(self, *, params: dict | None = None) -> list[Role]:
-        """Get all the available Roles
+        """Get all available roles.
+
+        !!! example
+            ```python
+            roles = client.roles.get_all()
+            [r.name for r in roles]
+            # ['Administrator', 'Standard User']
+            ```
 
         Parameters
         ----------
         params : dict, optional
-            _description_, by default {}
+            Optional query parameters passed through to the API to filter or
+            shape the results. Defaults to no parameters.
 
         Returns
         -------
-        List
-            List of available Roles
+        list[Role]
+            All roles available in the tenant.
         """
         if params is None:
             params = {}

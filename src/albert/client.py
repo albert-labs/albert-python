@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 
 from pydantic import SecretStr
 
 from albert.collections.activities import ActivityCollection
 from albert.collections.attachments import AttachmentCollection
+from albert.collections.attributes import AttributeCollection
 from albert.collections.batch_data import BatchDataCollection
 from albert.collections.btdataset import BTDatasetCollection
 from albert.collections.btinsight import BTInsightCollection
@@ -20,10 +22,12 @@ from albert.collections.custom_fields import CustomFieldCollection
 from albert.collections.custom_templates import CustomTemplatesCollection
 from albert.collections.data_columns import DataColumnCollection
 from albert.collections.data_templates import DataTemplateCollection
+from albert.collections.design_runs import DesignRunCollection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
 from albert.collections.inventory import InventoryCollection
+from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
 from albert.collections.lists import ListsCollection
 from albert.collections.locations import LocationCollection
@@ -32,6 +36,7 @@ from albert.collections.notebooks import NotebookCollection
 from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
+from albert.collections.pdf_generator import PDFGeneratorCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -39,10 +44,12 @@ from albert.collections.property_data import PropertyDataCollection
 from albert.collections.report_templates import ReportTemplateCollection
 from albert.collections.reports import ReportCollection
 from albert.collections.roles import RoleCollection
+from albert.collections.sds import SDSCollection
 from albert.collections.smart_datasets import SmartDatasetCollection
 from albert.collections.storage_classes import StorageClassesCollection
 from albert.collections.storage_locations import StorageLocationsCollection
 from albert.collections.substance import SubstanceCollection
+from albert.collections.substance_v4 import SubstanceV4Collection
 from albert.collections.synthesis import SynthesisCollection
 from albert.collections.tags import TagCollection
 from albert.collections.targets import TargetCollection
@@ -105,9 +112,9 @@ class Albert:
 
     Helpers
     -------------------
-    - `from_token` — Create a client using a static token.
-    - `from_sso` — Create a client using interactive browser-based SSO login.
-    - `from_client_credentials` — Create a client using OAuth2 client credentials.
+    - `from_token`: Create a client using a static token.
+    - `from_sso`: Create a client using interactive browser-based SSO login.
+    - `from_client_credentials`: Create a client using OAuth2 client credentials.
     """
 
     def __init__(
@@ -118,6 +125,7 @@ class Albert:
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
         session: AlbertSession | None = None,
     ):
         if auth_manager and base_url and base_url != auth_manager.base_url:
@@ -135,6 +143,7 @@ class Albert:
             auth_manager=auth_manager,
             retries=retries,
             timeout=timeout,
+            headers=headers,
         )
 
     @classmethod
@@ -144,9 +153,10 @@ class Albert:
         base_url: str | None,
         token: str,
         timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using a static token for authentication."""
-        return cls(base_url=base_url, token=token, timeout=timeout)
+        return cls(base_url=base_url, token=token, timeout=timeout, headers=headers)
 
     @classmethod
     def from_sso(
@@ -158,12 +168,13 @@ class Albert:
         tenant_id: str | None = None,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using interactive OAuth2 SSO login."""
         resolved_base_url = base_url or default_albert_base_url()
         oauth = AlbertSSOClient(base_url=resolved_base_url, email=email)
         oauth.authenticate(minimum_port=port, tenant_id=tenant_id)
-        return cls(auth_manager=oauth, retries=retries, timeout=timeout)
+        return cls(auth_manager=oauth, retries=retries, timeout=timeout, headers=headers)
 
     @classmethod
     def from_client_credentials(
@@ -174,6 +185,7 @@ class Albert:
         client_secret: str,
         retries: int | None = None,
         timeout: float | tuple[float, float] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Albert:
         """Create an Albert client using client credentials authentication."""
         resolved_base_url = base_url or default_albert_base_url()
@@ -182,7 +194,7 @@ class Albert:
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
         )
-        return cls(auth_manager=creds, retries=retries, timeout=timeout)
+        return cls(auth_manager=creds, retries=retries, timeout=timeout, headers=headers)
 
     @property
     def projects(self) -> ProjectCollection:
@@ -195,6 +207,14 @@ class Albert:
     @property
     def attachments(self) -> AttachmentCollection:
         return AttachmentCollection(session=self.session)
+
+    @property
+    def attributes(self) -> AttributeCollection:
+        return AttributeCollection(session=self.session)
+
+    @property
+    def design_runs(self) -> DesignRunCollection:
+        return DesignRunCollection(session=self.session)
 
     @property
     def tags(self) -> TagCollection:
@@ -297,6 +317,14 @@ class Albert:
         return CustomTemplatesCollection(session=self.session)
 
     @property
+    def label_templates(self) -> LabelTemplateCollection:
+        return LabelTemplateCollection(session=self.session)
+
+    @property
+    def pdf_generator(self) -> PDFGeneratorCollection:
+        return PDFGeneratorCollection(session=self.session)
+
+    @property
     def parameter_groups(self) -> ParameterGroupCollection:
         return ParameterGroupCollection(session=self.session)
 
@@ -311,6 +339,10 @@ class Albert:
     @property
     def product_design(self) -> ProductDesignCollection:
         return ProductDesignCollection(session=self.session)
+
+    @property
+    def sds(self) -> SDSCollection:
+        return SDSCollection(session=self.session)
 
     @property
     def storage_locations(self) -> StorageLocationsCollection:
@@ -353,6 +385,10 @@ class Albert:
         return SubstanceCollection(session=self.session)
 
     @property
+    def substances_v4(self) -> SubstanceV4Collection:
+        return SubstanceV4Collection(session=self.session)
+
+    @property
     def links(self) -> LinksCollection:
         return LinksCollection(session=self.session)
 
@@ -371,14 +407,14 @@ class Albert:
 
 class AsyncAlbert:
     """
-    Async client for interacting with the Albert chat API (🧪Beta).
+    Async client for interacting with the Albert chat API (🧪 Beta).
 
     !!! warning "Beta Feature!"
         Please do not use in production or without explicit guidance from Albert. You might otherwise have a bad experience.
         This feature currently falls outside of the Albert support contract, but we'd love your feedback!
 
     Uses ``httpx.AsyncClient`` under the hood and must be closed when no longer
-    needed — either by calling ``await client.aclose()`` or by using the client
+    needed, either by calling ``await client.aclose()`` or by using the client
     as an async context manager (``async with AsyncAlbert(...) as client``).
 
     Parameters
@@ -435,6 +471,7 @@ class AsyncAlbert:
         base_url: str | None = None,
         token: str | None = None,
         auth_manager: AlbertClientCredentials | AlbertSSOClient | None = None,
+        headers: Mapping[str, str] | None = None,
         session: AsyncAlbertSession | None = None,
     ):
         if session is not None:
@@ -454,10 +491,17 @@ class AsyncAlbert:
             base_url=resolved_base_url,
             token=token or os.getenv("ALBERT_TOKEN"),
             auth_manager=auth_manager,
+            headers=headers,
         )
 
     @classmethod
-    def from_token(cls, *, base_url: str | None = None, token: str) -> AsyncAlbert:
+    def from_token(
+        cls,
+        *,
+        base_url: str | None = None,
+        token: str,
+        headers: Mapping[str, str] | None = None,
+    ) -> AsyncAlbert:
         """
         Create an AsyncAlbert client using a static token for authentication.
 
@@ -468,13 +512,15 @@ class AsyncAlbert:
             environment variable or "https://app.albertinvent.com".
         token : str
             A static JWT token used for all requests.
+        headers : Mapping[str, str], optional
+            Extra headers applied to every request the client makes.
 
         Returns
         -------
         AsyncAlbert
             A configured async client authenticated with the given token.
         """
-        return cls(base_url=base_url, token=token)
+        return cls(base_url=base_url, token=token, headers=headers)
 
     @classmethod
     def from_client_credentials(
@@ -483,6 +529,7 @@ class AsyncAlbert:
         base_url: str | None = None,
         client_id: str,
         client_secret: str,
+        headers: Mapping[str, str] | None = None,
     ) -> AsyncAlbert:
         """
         Create an AsyncAlbert client using client credentials authentication.
@@ -496,6 +543,8 @@ class AsyncAlbert:
             The OAuth2 client ID.
         client_secret : str
             The OAuth2 client secret.
+        headers : Mapping[str, str], optional
+            Extra headers applied to every request the client makes.
 
         Returns
         -------
@@ -508,7 +557,7 @@ class AsyncAlbert:
             secret=SecretStr(client_secret),
             base_url=resolved_base_url,
         )
-        return cls(auth_manager=creds)
+        return cls(auth_manager=creds, headers=headers)
 
     @property
     def chat_sessions(self) -> ChatSessionCollection:

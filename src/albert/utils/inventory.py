@@ -46,6 +46,8 @@ def _build_cas_add_operation(cas_amount: CasAmount) -> dict[str, Any]:
         operation["type"] = cas_amount.type
     if cas_amount.classification_type:
         operation["classificationType"] = cas_amount.classification_type
+    if "substance_id" in cas_amount.model_fields_set and cas_amount.substance_id:
+        operation["substanceId"] = cas_amount.substance_id
     return operation
 
 
@@ -152,15 +154,27 @@ def _build_cas_scalar_operation(
     return payload
 
 
+_CAS_REQUIRED_SCALAR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("min", "min"),
+    ("max", "max"),
+)
+_CAS_OPTIONAL_SCALAR_FIELDS: tuple[tuple[str, str], ...] = (
+    ("target", "inventoryValue"),
+    ("cas_category", "casCategory"),
+)
+
+
 def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> list[dict[str, Any]]:
     identifier = _cas_identifier(updated) or _cas_identifier(existing)
 
-    scalar_operations = [
-        ("max", existing.max, updated.max),
-        ("min", existing.min, updated.min),
-        ("inventoryValue", existing.target, updated.target),
-        ("casCategory", existing.cas_category, updated.cas_category),
+    scalar_operations: list[tuple[str, Any, Any]] = [
+        (attribute, getattr(existing, field), getattr(updated, field))
+        for field, attribute in _CAS_REQUIRED_SCALAR_FIELDS
     ]
+    for field, attribute in _CAS_OPTIONAL_SCALAR_FIELDS:
+        if field not in updated.model_fields_set:
+            continue
+        scalar_operations.append((attribute, getattr(existing, field), getattr(updated, field)))
 
     operations: list[dict[str, Any]] = []
     for attribute, old_value, new_value in scalar_operations:
@@ -173,13 +187,14 @@ def _build_cas_update_operations(existing: CasAmount, updated: CasAmount) -> lis
         if operation is not None:
             operations.append(operation)
 
-    operations.extend(
-        _build_inventory_function_operations(
-            entity_id=identifier,
-            existing=existing.inventory_function,
-            updated=updated.inventory_function,
+    if "inventory_function" in updated.model_fields_set:
+        operations.extend(
+            _build_inventory_function_operations(
+                entity_id=identifier,
+                existing=existing.inventory_function,
+                updated=updated.inventory_function,
+            )
         )
-    )
 
     return operations
 
@@ -214,7 +229,7 @@ def _build_cas_patch_operations(
         if identifier is None:
             continue
         operations.append(_build_cas_add_operation(cas_amount))
-        if cas_amount.target is not None:
+        if "target" in cas_amount.model_fields_set and cas_amount.target is not None:
             target_operation = _build_cas_scalar_operation(
                 attribute="inventoryValue",
                 entity_id=identifier,
@@ -223,7 +238,7 @@ def _build_cas_patch_operations(
             )
             if target_operation is not None:
                 operations.append(target_operation)
-        if cas_amount.cas_category is not None:
+        if "cas_category" in cas_amount.model_fields_set and cas_amount.cas_category is not None:
             cas_category_operation = _build_cas_scalar_operation(
                 attribute="casCategory",
                 entity_id=identifier,
@@ -232,13 +247,14 @@ def _build_cas_patch_operations(
             )
             if cas_category_operation is not None:
                 operations.append(cas_category_operation)
-        operations.extend(
-            _build_inventory_function_operations(
-                entity_id=identifier,
-                existing=None,
-                updated=cas_amount.inventory_function,
+        if "inventory_function" in cas_amount.model_fields_set:
+            operations.extend(
+                _build_inventory_function_operations(
+                    entity_id=identifier,
+                    existing=None,
+                    updated=cas_amount.inventory_function,
+                )
             )
-        )
 
     removals = [existing_lookup[key] for key in existing_lookup.keys() - updated_lookup.keys()]
     for cas_amount in removals:

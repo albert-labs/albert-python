@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import contextlib
 from collections.abc import AsyncIterator, Iterator
+from typing import TYPE_CHECKING
 
 import httpx
 import requests
 
 from albert.core.logging import logger
+
+if TYPE_CHECKING:
+    from albert.resources.tasks import PropertyTask
 
 
 class AlbertException(Exception):
@@ -17,7 +23,7 @@ class AlbertAuthError(AlbertException):
     """Raised when authentication fails (e.g., bad credentials, expired token)."""
 
 
-def _restore_albert_http_error(cls: type, message: str) -> "AlbertHTTPError":
+def _restore_albert_http_error(cls: type, message: str) -> AlbertHTTPError:
     """Reconstruct an AlbertHTTPError from a pickled message string.
 
     Python's default exception pickling stores args and calls __init__(*args)
@@ -34,7 +40,7 @@ def _restore_albert_http_error(cls: type, message: str) -> "AlbertHTTPError":
 class AlbertHTTPError(AlbertException):
     """Base class for all erors due to HTTP responses."""
 
-    def __init__(self, response: requests.Response):
+    def __init__(self, response: requests.Response | httpx.Response):
         message = self._format_message(response)
         super().__init__(message)
         self.response = response
@@ -43,15 +49,18 @@ class AlbertHTTPError(AlbertException):
         return (_restore_albert_http_error, (type(self), self.message))
 
     @classmethod
-    def _format_message(cls, response: requests.Response) -> str:
+    def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         try:
             payload = response.json()
             errors = payload.get("errors") or payload
         except ValueError:
             errors = response.text.strip()
+        reason = (
+            response.reason if isinstance(response, requests.Response) else response.reason_phrase
+        )
         message = (
             f"{response.request.method} '{response.request.url}' failed with status code "
-            f"{response.status_code} ({response.reason})."
+            f"{response.status_code} ({reason})."
         )
         return f"{message} Errors: {errors}" if errors else message
 
@@ -64,9 +73,17 @@ class BadRequestError(AlbertClientError):
     """HTTP Error due to a 400 Bad Request response."""
 
     @classmethod
-    def _format_message(cls, response: requests.Response) -> str:
+    def _format_message(cls, response: requests.Response | httpx.Response) -> str:
         message = super()._format_message(response)
-        message += f"\nBody:\n{response.request.body}"
+        request = response.request
+        if isinstance(request, requests.PreparedRequest):
+            body = request.body
+        else:
+            try:
+                body = request.content
+            except httpx.RequestNotRead:
+                body = None
+        message += f"\nBody:\n{body}"
         return message
 
 
@@ -80,6 +97,22 @@ class ForbiddenError(AlbertClientError):
 
 class NotFoundError(AlbertClientError):
     """HTTP Error due to a 404 Not Found response."""
+
+
+class ConflictError(AlbertClientError):
+    """HTTP Error due to a 409 Conflict response."""
+
+
+class PreconditionFailedError(AlbertClientError):
+    """HTTP Error due to a 412 Precondition Failed response."""
+
+
+class UnsupportedMediaTypeError(AlbertClientError):
+    """HTTP Error due to a 415 Unsupported Media Type response."""
+
+
+class PreconditionRequiredError(AlbertClientError):
+    """HTTP Error due to a 428 Precondition Required response."""
 
 
 class AlbertServerError(AlbertHTTPError):
@@ -104,6 +137,14 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
             return ForbiddenError
         case 404:
             return NotFoundError
+        case 409:
+            return ConflictError
+        case 412:
+            return PreconditionFailedError
+        case 415:
+            return UnsupportedMediaTypeError
+        case 428:
+            return PreconditionRequiredError
         case 500:
             return InternalServerError
         case 502:
@@ -113,7 +154,7 @@ def _get_http_error_cls(status_code: int) -> type[AlbertHTTPError]:
         case code if 500 <= code < 600:
             return AlbertServerError
         case _:
-            raise AlbertHTTPError
+            return AlbertHTTPError
 
 
 @contextlib.asynccontextmanager
@@ -121,25 +162,8 @@ async def handle_async_http_errors() -> AsyncIterator[None]:
     try:
         yield
     except httpx.HTTPStatusError as e:
-        response = e.response
-        try:
-            payload = response.json()
-            errors = payload.get("errors") or payload
-        except Exception:
-            errors = response.text.strip()
-        reason = getattr(response, "reason_phrase", str(response.status_code))
-        message = (
-            f"{response.request.method} '{response.request.url}' failed with status code "
-            f"{response.status_code} ({reason})."
-        )
-        if errors:
-            message = f"{message} Errors: {errors}"
-        error_cls = _get_http_error_cls(response.status_code)
-        # Bypass AlbertHTTPError.__init__ (requires requests.Response) — use
-        # Exception.__new__ which sets exc.args and is safe in Python 3.12+.
-        exc = Exception.__new__(error_cls, message)
-        exc.message = message
-        raise exc from e
+        error_cls = _get_http_error_cls(e.response.status_code)
+        raise error_cls(e.response) from e
 
 
 @contextlib.contextmanager
@@ -152,3 +176,91 @@ def handle_http_errors() -> Iterator[None]:
         # TODO: Enable debug logging via requests directly
         logger.debug("Albert HTTP Error %s", albert_error)
         raise albert_error from e
+
+
+class AlbertPartialError(AlbertException):
+    """Raised when a bulk operation partially succeeds (HTTP 206) with failed items.
+
+    Some bulk endpoints answer a request where only some items succeeded with a
+    partial-success response carrying the created items and per-item failure details.
+    This error surfaces those failures instead of letting them pass silently.
+
+    Attributes
+    ----------
+    created_items : list[dict]
+        The items the operation completed successfully.
+    failed_items : list[dict]
+        The per-item failure details reported for the items that did not succeed.
+    """
+
+    created_items: list[dict]
+    failed_items: list[dict]
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        created_items: list[dict] | None = None,
+        failed_items: list[dict] | None = None,
+    ):
+        super().__init__(message)
+        self.created_items = created_items or []
+        self.failed_items = failed_items or []
+
+
+class CombinationGenerationError(AlbertException):
+    """Raised when background combination generation fails for one or more task blocks.
+
+    Raised by [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+    when ``wait=True`` and combination generation does not complete successfully on all blocks.
+
+    Because the task itself has already been created on the platform, this exception
+    carries the created task instance and details about which blocks failed. This allows
+    callers to inspect the task state and retry generation for only the failed blocks
+    using [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations].
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.exceptions import CombinationGenerationError
+        from albert.resources.tasks import Block, PropertyTask
+
+        client = Albert()
+        try:
+            task = client.tasks.create_with_combinations(task=prop_task)
+        except CombinationGenerationError as err:
+            print(f"Task {err.task.id} was created, but some blocks failed combination generation.")
+            for block_id in err.failed_blocks:
+                # Retry generation on the failed block:
+                client.tasks.generate_block_combinations(
+                    task_id=err.task.id,
+                    block_id=block_id,
+                )
+        ```
+
+    Attributes
+    ----------
+    task : PropertyTask or None
+        The created Property task, re-fetched from the platform.
+    failed_blocks : list[str]
+        List of block IDs (format ``BLK...``) whose combination generation failed.
+    job_states : dict[str, str]
+        Mapping of block IDs to their final job states (e.g. ``{"BLK1": "successful", "BLK2": "failed"}``).
+    """
+
+    task: PropertyTask | None
+    failed_blocks: list[str]
+    job_states: dict[str, str]
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        task: PropertyTask | None = None,
+        failed_blocks: list[str] | None = None,
+        job_states: dict[str, str] | None = None,
+    ):
+        super().__init__(message)
+        self.task = task
+        self.failed_blocks = failed_blocks or []
+        self.job_states = job_states or {}

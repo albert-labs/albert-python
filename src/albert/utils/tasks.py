@@ -139,6 +139,7 @@ def resolve_attachment(
     allowed_extensions: set[str],
     note_text: str | None,
     upload_key: str | None = None,
+    content_type: str | None = None,
 ) -> str:
     """Ensure an attachment is available, optionally uploading a new file."""
     if file_path is not None:
@@ -158,6 +159,7 @@ def resolve_attachment(
                 note_text=note_text_to_use,
                 file_name=path.name,
                 upload_key=upload_key,
+                content_type=content_type,
             )
         uploaded_attachments = uploaded_attachment_note.attachments or []
         if not uploaded_attachments:

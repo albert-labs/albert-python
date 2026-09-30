@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
@@ -11,42 +12,112 @@ from albert.resources.links import Link, LinkCategory
 
 
 class LinksCollection(BaseCollection):
-    """LinksCollection is a collection class for managing Link entities in the Albert platform."""
+    """Manage Links in the Albert platform.
+
+    A Link represents a directional relationship between two entities in Albert:
+    a parent and a child. Links capture cross-entity relationships such as a
+    mention, a linked Task, a synthesis relationship, or a linked Inventory
+    Item (see [`LinkCategory`][albert.resources.links.LinkCategory]). Links have no
+    updatable fields; they are created, retrieved, and deleted.
+
+    This collection is accessed as ``client.links``.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.links import LinkCategory
+        client = Albert()
+        links = client.links.get_all(id="INVA9999999", type="all", category=LinkCategory.MENTION)
+        for link in links:
+            print(link.parent.id, "->", link.child.id)
+        ```
+
+    Parameters
+    ----------
+    session : AlbertSession
+        The authenticated Albert session used for API calls.
+
+    Attributes
+    ----------
+    base_path : str
+        The base API route for link requests.
+
+    Methods
+    -------
+    create(links) -> list[Link]
+        Create one or more links.
+    get_all(...) -> Iterator[Link]
+        Iterate over links, optionally filtered by entity, type, and category.
+    get_by_id(id) -> Link
+        Get a single link by its ID.
+    delete(id) -> None
+        Delete a link by its ID.
+    """
 
     _api_version = "v3"
     _updatable_attributes = {}  # No updatable attributes for links
 
     def __init__(self, *, session: AlbertSession):
-        """
-        Initializes the LinksCollection with the provided session.
+        """Initialize a LinksCollection.
 
         Parameters
         ----------
         session : AlbertSession
-            The Albert session instance.
+            The authenticated Albert session used for API calls.
         """
         super().__init__(session=session)
         self.base_path = f"/api/{LinksCollection._api_version}/links"
 
     def create(self, *, links: list[Link]) -> list[Link]:
-        """
-        Creates a new link entity.
+        """Create one or more links.
+
+        !!! example
+            ```python
+            from albert.resources.links import Link, LinkCategory
+            from albert.core.shared.models.base import EntityLink
+            created = client.links.create(
+                links=[
+                    Link(
+                        parent=EntityLink(id="INVA9999999"),
+                        child=EntityLink(id="INVA9999998"),
+                        category=LinkCategory.LINKED_INVENTORY,
+                    )
+                ]
+            )
+            created[0].id
+            # 'LNK1'
+            ```
 
         Parameters
         ----------
         links : list[Link]
-            List of Link entities to create.
+            The links to create. Each requires a ``parent``, a ``child``, and a
+            ``category``.
 
         Returns
         -------
-        Link
-            The created link entity.
+        list[Link]
+            The created links, each populated with its assigned Link ID.
+
+        Notes
+        -----
+        If the API reports a partial success (some links failed to create), a
+        warning is logged and only the successfully created links are returned.
         """
         response = self.session.post(
             self.base_path,
             json=[l.model_dump(by_alias=True, exclude_none=True, mode="json") for l in links],
         )
-        return [Link(**l) for l in response.json()]
+        data = response.json()
+        if isinstance(data, list):
+            created, failed = data, []
+        else:
+            # Partial success (206) wraps the created links in an envelope.
+            created = data.get("CreatedItems") or data.get("Items") or []
+            failed = data.get("FailedItems") or []
+        if response.status_code == 206 or failed:
+            logger.warning("Link creation partially succeeded", extra={"failed": failed})
+        return [Link(**l) for l in created]
 
     def get_all(
         self,
@@ -57,18 +128,27 @@ class LinksCollection(BaseCollection):
         start_key: str | None = None,
         max_items: int | None = None,
     ) -> Iterator[Link]:
-        """
-        Get all link entities with optional filters.
+        """Iterate over links, with optional filters.
+
+        !!! example
+            ```python
+            for link in client.links.get_all(id="INVA9999999", type="all"):
+                print(link.category, link.parent.id, link.child.id)
+            ```
 
         Parameters
         ----------
         type : str, optional
-            The type of the link entities to return. Allowed values are `parent`, `child`, and `all`.
-            If type is "all", both parent and child records for the given ID will be returned.
+            Which side of the relationship to return relative to ``id``. Allowed
+            values are ``"parent"``, ``"child"``, and ``"all"``. When ``"all"``,
+            both parent and child records for the given ID are returned.
         category : LinkCategory, optional
-            The category of the link entities to return. Allowed values are `mention`, `linkedTask`, and `synthesis`.
+            The link category to filter by (e.g. ``mention``, ``linkedTask``,
+            ``synthesis``, ``linkedInventory``). See
+            [`LinkCategory`][albert.resources.links.LinkCategory].
         id : str, optional
-            The ID of the entity to fetch links for.
+            The ID of the entity to fetch links for. Must include the full entity
+            prefix (e.g. ``"INVA9999999"``).
         start_key : str, optional
             The pagination key to start from.
         max_items : int, optional
@@ -77,7 +157,7 @@ class LinksCollection(BaseCollection):
         Returns
         -------
         Iterator[Link]
-            An iterator of Link entities.
+            An iterator over the matching links.
         """
         params = {
             "type": type,
@@ -97,18 +177,24 @@ class LinksCollection(BaseCollection):
 
     @validate_call
     def get_by_id(self, *, id: LinkId) -> Link:
-        """
-        Retrieves a link entity by its ID.
+        """Get a link by its ID.
+
+        !!! example
+            ```python
+            link = client.links.get_by_id(id="LNK1")
+            link.category
+            # <LinkCategory.MENTION: 'mention'>
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the link entity to retrieve.
+        id : LinkId
+            The Link ID (format ``LNK...``).
 
         Returns
         -------
         Link
-            The retrieved link entity.
+            The fully populated link.
         """
         path = f"{self.base_path}/{id}"
         response = self.session.get(path)
@@ -116,13 +202,17 @@ class LinksCollection(BaseCollection):
 
     @validate_call
     def delete(self, *, id: LinkId) -> None:
-        """
-        Deletes a link entity by its ID.
+        """Delete a link by its ID.
+
+        !!! example
+            ```python
+            client.links.delete(id="LNK1")
+            ```
 
         Parameters
         ----------
-        id : str
-            The ID of the link entity to delete.
+        id : LinkId
+            The Link ID to delete (format ``LNK...``).
 
         Returns
         -------

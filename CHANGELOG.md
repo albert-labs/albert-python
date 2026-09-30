@@ -5,6 +5,461 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.59.1](https://github.com/albert-labs/albert-python/compare/v1.59.0...v1.59.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **propertydata:** property data audit fixes (SDK-160) ([#780](https://github.com/albert-labs/albert-python/issues/780)) ([88aa99f](https://github.com/albert-labs/albert-python/commit/88aa99ff38f71c1e0d5a050ede0131c3323ced67))
+* **sds:** hide field options that come back as an empty list ([#802](https://github.com/albert-labs/albert-python/issues/802)) ([c9c7884](https://github.com/albert-labs/albert-python/commit/c9c7884a20e5cad7f8f5f6df074710d7d2046d6e))
+
+
+### Documentation
+
+* **batch_data:** put lotId on the add datum so the lot links ([#803](https://github.com/albert-labs/albert-python/issues/803)) ([52cfadc](https://github.com/albert-labs/albert-python/commit/52cfadc3ae85cda1c007de55e7843461caf2a565))
+* fix inventory update Notes and pinned docstring violations ([#796](https://github.com/albert-labs/albert-python/issues/796)) ([e294ba4](https://github.com/albert-labs/albert-python/commit/e294ba4383dfe56d9e25bc0b9e2933648df4e413))
+
+## [1.59.0](https://github.com/albert-labs/albert-python/compare/v1.58.0...v1.59.0) (2026-09-25)
+
+
+### Features
+
+* **core:** typed exceptions for 409/412/415/428 ([#772](https://github.com/albert-labs/albert-python/issues/772)) ([0343dbe](https://github.com/albert-labs/albert-python/commit/0343dbeb86ab6c7fb1d8ef134c9fb8ee342f6975))
+
+
+### Bug Fixes
+
+* **chat:** send required sequence on create, default exact_match=True ([#773](https://github.com/albert-labs/albert-python/issues/773)) ([498105e](https://github.com/albert-labs/albert-python/commit/498105ef2eaf90678d871bf5004107ee99dd0ee3))
+* **collections:** small correctness and docstring sweep (SDK-169) ([#785](https://github.com/albert-labs/albert-python/issues/785)) ([2dd62a8](https://github.com/albert-labs/albert-python/commit/2dd62a8e06c8f0625bf33d0e13a29d6bf92aa9df))
+* **core:** async HTTP errors carry .response and request body ([#794](https://github.com/albert-labs/albert-python/issues/794)) ([9f1b399](https://github.com/albert-labs/albert-python/commit/9f1b3992d03a3eb7e34346ff87040a843ddcf1cd))
+* **core:** surface partial-success failures and skipped items ([#771](https://github.com/albert-labs/albert-python/issues/771)) ([6cd9101](https://github.com/albert-labs/albert-python/commit/6cd910124663c3703bfc797a0b2500e4a59f52b9))
+* **lots:** parent_category alias and numeric patch encoding ([#774](https://github.com/albert-labs/albert-python/issues/774)) ([5daa67b](https://github.com/albert-labs/albert-python/commit/5daa67b0c06870088cf49d08ea6e25398ebb016d))
+* **models:** SDK-163 misc model and validator fixes ([#777](https://github.com/albert-labs/albert-python/issues/777)) ([2e2d7b7](https://github.com/albert-labs/albert-python/commit/2e2d7b7df5c668d286b90cc8d3838024b283e19d))
+* **notebooks:** copy ACL alias, template_id, Office/report blocks ([#781](https://github.com/albert-labs/albert-python/issues/781)) ([73f1b41](https://github.com/albert-labs/albert-python/commit/73f1b4108d872c12db8221060264055934782c07))
+* **patch:** stop unset tags wiping tags; skip unchanged entity type custom_fields ([#792](https://github.com/albert-labs/albert-python/issues/792)) ([32e26e5](https://github.com/albert-labs/albert-python/commit/32e26e57c4191c2d4f83db4c3ac295cc998044f3))
+* **projects:** TaskConfig aliases, restricted class, metadata guard ([#775](https://github.com/albert-labs/albert-python/issues/775)) ([c505f85](https://github.com/albert-labs/albert-python/commit/c505f85843b939b5f943c4c995932c337e5475f9))
+* **resources:** session propagation, Tags alias conversion, hydrate guard ([#793](https://github.com/albert-labs/albert-python/issues/793)) ([9337f11](https://github.com/albert-labs/albert-python/commit/9337f1165f54557ac3f255b484112b71141f11cc))
+* **sheets:** stop cellFormat delete diffs and restore on failed clear ([#789](https://github.com/albert-labs/albert-python/issues/789)) ([5b37c4b](https://github.com/albert-labs/albert-python/commit/5b37c4bf49219fbad08628ca4b8b58b0fb06eb81))
+* **substance_v4:** add missing JP, EU, US and DE regulatory fields ([#788](https://github.com/albert-labs/albert-python/issues/788)) ([1a8149d](https://github.com/albert-labs/albert-python/commit/1a8149da51bd5568d416d5534daa6bf1717a800a))
+* **substances:** v3 doc/field types; v4 metadata patch + paginator ([#782](https://github.com/albert-labs/albert-python/issues/782)) ([4d51bde](https://github.com/albert-labs/albert-python/commit/4d51bde388706852c5fc5155020e9b91c0a732b2))
+* **tasks:** Block model fixes, delete() delay param, doc cleanups ([#779](https://github.com/albert-labs/albert-python/issues/779)) ([3a8441f](https://github.com/albert-labs/albert-python/commit/3a8441fc1acec7e7b38dcb7fb9e4fd61c9ad7c2e))
+* **workflows:** gate shortName to Special params, surface facets ([#783](https://github.com/albert-labs/albert-python/issues/783)) ([a3c203b](https://github.com/albert-labs/albert-python/commit/a3c203bc6bf360a9cc1674508ee590ae984b7e82))
+
+## [1.58.0](https://github.com/albert-labs/albert-python/compare/v1.57.1...v1.58.0) (2026-09-24)
+
+
+### Features
+
+* **inventory:** add update_many for bulk inventory updates ([#762](https://github.com/albert-labs/albert-python/issues/762)) ([813338e](https://github.com/albert-labs/albert-python/commit/813338efcbf8d664963d5f962722b637d3743a22))
+* **inventory:** add volume-based ingredients and lots support ([#746](https://github.com/albert-labs/albert-python/issues/746)) ([4303120](https://github.com/albert-labs/albert-python/commit/43031200d1077a702858ff124fda1b18db192709))
+* **parameters:** add get_by_ids for bulk parameter fetch ([#767](https://github.com/albert-labs/albert-python/issues/767)) ([f9d41e4](https://github.com/albert-labs/albert-python/commit/f9d41e4674c1d1046f4c7b4259a870d8f7146e40))
+* **projects:** add reactivate method for soft-deleted projects ([#758](https://github.com/albert-labs/albert-python/issues/758)) ([80f5166](https://github.com/albert-labs/albert-python/commit/80f5166bf44dab73f57afaca168c5f4338fc7d4b))
+* **sheets:** add bulk column and row operations ([#763](https://github.com/albert-labs/albert-python/issues/763)) ([d5b1497](https://github.com/albert-labs/albert-python/commit/d5b149799f6f67def4215c9dd6206a375c5deb70))
+* **tasks:** add add_blocks for bulk block attachment ([#761](https://github.com/albert-labs/albert-python/issues/761)) ([20fc104](https://github.com/albert-labs/albert-python/commit/20fc10405a071cbde5a9a5bab640334478f7962b))
+* **tasks:** add create_many for bulk task creation ([#760](https://github.com/albert-labs/albert-python/issues/760)) ([24fe631](https://github.com/albert-labs/albert-python/commit/24fe631450f50fddb5aba1b429433093f97b4e35))
+
+
+### Bug Fixes
+
+* **collections:** align get_by_ids chunk sizes with endpoint limits ([#766](https://github.com/albert-labs/albert-python/issues/766)) ([6517804](https://github.com/albert-labs/albert-python/commit/6517804238e3536dee92300976a4e1ebb0cf1a23))
+* property data ([#756](https://github.com/albert-labs/albert-python/issues/756)) ([9bb004f](https://github.com/albert-labs/albert-python/commit/9bb004f767d66da3a0b32e199727171624751b30))
+* **storage_locations:** construct get_all rows directly when hydrated ([#768](https://github.com/albert-labs/albert-python/issues/768)) ([642bfdb](https://github.com/albert-labs/albert-python/commit/642bfdbe7477a5142e1ca7b77c698c2da46d982b))
+* **workflows:** construct create() results directly from response ([#765](https://github.com/albert-labs/albert-python/issues/765)) ([925b444](https://github.com/albert-labs/albert-python/commit/925b4440119e4f04597196a5a97ef05146dcf8fa))
+
+
+### Documentation
+
+* document the release-please release process in CONTRIBUTING ([#770](https://github.com/albert-labs/albert-python/issues/770)) ([14c2030](https://github.com/albert-labs/albert-python/commit/14c2030e2cefd198d706918ae2198f37b19a42db))
+* replace Albert Invent with Albert and fix list rendering ([#752](https://github.com/albert-labs/albert-python/issues/752)) ([c0b9a6a](https://github.com/albert-labs/albert-python/commit/c0b9a6a96a39e38f43a10639498f16c0bad29fbb))
+* **workflows:** clarify sequence fields are read-only on create ([#673](https://github.com/albert-labs/albert-python/issues/673)) ([6559311](https://github.com/albert-labs/albert-python/commit/6559311e98b9aa9f6a51dd4ecdf6075b16af7dda))
+
+## [1.57.1](https://github.com/albert-labs/albert-python/compare/v1.57.0...v1.57.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* add missing FORMULAS member to SpecialParameterType (ML-1611) ([#747](https://github.com/albert-labs/albert-python/issues/747)) ([3b4559f](https://github.com/albert-labs/albert-python/commit/3b4559ff0cc0dfce5406dc370c270ee0645d1e9a))
+
+## [1.57.0](https://github.com/albert-labs/albert-python/compare/v1.56.0...v1.57.0) (2026-09-21)
+
+
+### Features
+
+* **intervals:** support increased intervals ([#728](https://github.com/albert-labs/albert-python/issues/728)) ([658096f](https://github.com/albert-labs/albert-python/commit/658096f01bb80dcc645d0a9ad56edcbe46871b72))
+
+
+### Bug Fixes
+
+* **reports:** strip ALB# qualifier from report IDs in URL paths ([#741](https://github.com/albert-labs/albert-python/issues/741)) ([eb0437c](https://github.com/albert-labs/albert-python/commit/eb0437c3deefc9246cd2ecdbf4e05045b0cb6da3))
+
+## [1.56.0](https://github.com/albert-labs/albert-python/compare/v1.55.0...v1.56.0) (2026-09-18)
+
+
+### Features
+
+* **client:** support caller-supplied default headers on both sessions ([#740](https://github.com/albert-labs/albert-python/issues/740)) ([27998f6](https://github.com/albert-labs/albert-python/commit/27998f674d7eb3104504ccb40b707ba4ac0f1d06))
+
+
+### Bug Fixes
+
+* **activities:** expose actor details in activity search and feed items ([#738](https://github.com/albert-labs/albert-python/issues/738)) ([7356d1c](https://github.com/albert-labs/albert-python/commit/7356d1c1dce9fbf1d445593ece1394e9277caa4e))
+
+## [1.55.0](https://github.com/albert-labs/albert-python/compare/v1.54.0...v1.55.0) (2026-09-16)
+
+
+### Features
+
+* **parameters:** add SpecialParameterType enum and special_type field to ParameterValue and TargetParameter ([#735](https://github.com/albert-labs/albert-python/issues/735)) ([c479fbe](https://github.com/albert-labs/albert-python/commit/c479fbe356a4197c1f8b112018acfe7bd51ecaf4))
+
+## [1.54.0](https://github.com/albert-labs/albert-python/compare/v1.53.0...v1.54.0) (2026-09-16)
+
+
+### Features
+
+* **chats:** add permissionActions to ChatMessage (AI-1832) ([#736](https://github.com/albert-labs/albert-python/issues/736)) ([ee27511](https://github.com/albert-labs/albert-python/commit/ee275118f7a27fb7f7ec44ea94ab34edd0495375))
+* **users:** add delete method ([#733](https://github.com/albert-labs/albert-python/issues/733)) ([8779c41](https://github.com/albert-labs/albert-python/commit/8779c416c6f82260b62117ed95ffa39c641da096))
+
+## [1.53.0](https://github.com/albert-labs/albert-python/compare/v1.52.0...v1.53.0) (2026-09-10)
+
+
+### Features
+
+* **notebooks:** add search for notebook block content ([#721](https://github.com/albert-labs/albert-python/issues/721)) ([7b5fd67](https://github.com/albert-labs/albert-python/commit/7b5fd67581e72a935e6e9e10a45b5fcd61616489))
+* **product_design:** add search support ([#726](https://github.com/albert-labs/albert-python/issues/726)) ([4a3463f](https://github.com/albert-labs/albert-python/commit/4a3463f84171d6ae309ffca8a0820e8a55c94010))
+* **reports:** add search support ([#723](https://github.com/albert-labs/albert-python/issues/723)) ([b335724](https://github.com/albert-labs/albert-python/commit/b33572420d51a4f35148ee1c10f492515a78fae3))
+* **synthesis:** add search support ([#722](https://github.com/albert-labs/albert-python/issues/722)) ([98df8fa](https://github.com/albert-labs/albert-python/commit/98df8fa027d4d44c0fc92c4ac2ed488e74cd1632))
+* **teams:** add search support ([#725](https://github.com/albert-labs/albert-python/issues/725)) ([dfb1d4a](https://github.com/albert-labs/albert-python/commit/dfb1d4aa21acfa1927db4ec0735c01d4b7f9b7b3))
+* **worksheets:** add search support ([#724](https://github.com/albert-labs/albert-python/issues/724)) ([a4c72a0](https://github.com/albert-labs/albert-python/commit/a4c72a08dab17c0591a42076ac33c1e862dee575))
+
+## [1.52.0](https://github.com/albert-labs/albert-python/compare/v1.51.0...v1.52.0) (2026-09-09)
+
+
+### Features
+
+* **data_columns:** add search support ([#720](https://github.com/albert-labs/albert-python/issues/720)) ([b2d7ded](https://github.com/albert-labs/albert-python/commit/b2d7ded6b0380b5a8987fabb30a9d68cf0862145))
+* **sheets:** add reorder_columns for worksheet column order ([#714](https://github.com/albert-labs/albert-python/issues/714)) ([605e049](https://github.com/albert-labs/albert-python/commit/605e04968f5ed88aee9a75c27e1c7c9b0475aa6a))
+
+
+### Bug Fixes
+
+* **property_data:** force text/csv on curve CSV uploads ([#730](https://github.com/albert-labs/albert-python/issues/730)) ([6cd6ac0](https://github.com/albert-labs/albert-python/commit/6cd6ac0fec8c0e808677ac49100f34791e20a80a))
+
+## [1.51.0](https://github.com/albert-labs/albert-python/compare/v1.50.0...v1.51.0) (2026-09-02)
+
+
+### Features
+
+* **workflows:** add search method ([#694](https://github.com/albert-labs/albert-python/issues/694)) ([1b2f1e9](https://github.com/albert-labs/albert-python/commit/1b2f1e92a6932f1a730eb1c6f49529963f35fb25))
+
+
+### Bug Fixes
+
+* **lots:** include external_barcode_id in update patch ([#716](https://github.com/albert-labs/albert-python/issues/716)) ([a36e2a1](https://github.com/albert-labs/albert-python/commit/a36e2a11d2f17c0e32066124de0180fcfd4dc98d))
+
+## [1.50.0](https://github.com/albert-labs/albert-python/compare/v1.49.0...v1.50.0) (2026-08-31)
+
+
+### Features
+
+* **sds:** model the remaining optional SDSRequest fields ([#711](https://github.com/albert-labs/albert-python/issues/711)) ([c3d1d4a](https://github.com/albert-labs/albert-python/commit/c3d1d4a4b4032cbbf5650346339bf10805386b84))
+
+
+### Bug Fixes
+
+* **sheets:** default new formula columns to rightOf last column ([#713](https://github.com/albert-labs/albert-python/issues/713)) ([cc4a64b](https://github.com/albert-labs/albert-python/commit/cc4a64b98d37adb656304de7a75fcf435a7b642e))
+
+## [1.49.0](https://github.com/albert-labs/albert-python/compare/v1.48.0...v1.49.0) (2026-08-27)
+
+
+### Features
+
+* **sheets:** Sheet.add_task_row + batch lot-assignment docstring fixes (Ask Albert SDK follow-up [#2](https://github.com/albert-labs/albert-python/issues/2)) ([#705](https://github.com/albert-labs/albert-python/issues/705)) ([d3c7898](https://github.com/albert-labs/albert-python/commit/d3c7898e0fc65288f3141d362aef9108112b0708))
+
+## [1.48.0](https://github.com/albert-labs/albert-python/compare/v1.47.2...v1.48.0) (2026-08-27)
+
+
+### Features
+
+* **data_templates:** add get_document_version_history method ([#706](https://github.com/albert-labs/albert-python/issues/706)) ([4840b76](https://github.com/albert-labs/albert-python/commit/4840b76b99901675933b07411a0550c66af00f0c))
+* **design_runs:** add per-run objective weights ([#710](https://github.com/albert-labs/albert-python/issues/710)) ([3114416](https://github.com/albert-labs/albert-python/commit/3114416ecbc4462800b46a53f18abfdce38bd1e2))
+
+
+### Bug Fixes
+
+* **ci:** restore [@claude](https://github.com/claude) interactive mode in Claude Code workflow ([#708](https://github.com/albert-labs/albert-python/issues/708)) ([368fc30](https://github.com/albert-labs/albert-python/commit/368fc30211a9f33262104a17a7b3cf9bdcb5d245))
+* **substances_v4:** align search docs with search_key precedence ([#707](https://github.com/albert-labs/albert-python/issues/707)) ([397eefb](https://github.com/albert-labs/albert-python/commit/397eefbcea645ca2ba711cd086299461c8ceeaea))
+
+## [1.47.2](https://github.com/albert-labs/albert-python/compare/v1.47.1...v1.47.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **storage_locations:** add name-only StorageLocationFilter for inventory search ([#699](https://github.com/albert-labs/albert-python/issues/699)) ([dd4fb44](https://github.com/albert-labs/albert-python/commit/dd4fb440ca440cd868cf65fcbdd54a8a6efecd8c))
+
+
+### Documentation
+
+* **storage_locations:** clarify StorageLocationFilter name wording ([#704](https://github.com/albert-labs/albert-python/issues/704)) ([4002571](https://github.com/albert-labs/albert-python/commit/40025711374375fd3bbf2aa78f35eddf3e3b914a))
+
+## [1.47.1](https://github.com/albert-labs/albert-python/compare/v1.47.0...v1.47.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **property_data:** recalculate columns on task property upsert ([#693](https://github.com/albert-labs/albert-python/issues/693)) ([f486dcc](https://github.com/albert-labs/albert-python/commit/f486dcc846d067aa95b33e7104c38201a3400898))
+* speed the test suite and harden fixtures for staging ([#702](https://github.com/albert-labs/albert-python/issues/702)) ([410a959](https://github.com/albert-labs/albert-python/commit/410a9590b840b3a944b5dc7debba5997bfc7f63c))
+
+## [1.47.0](https://github.com/albert-labs/albert-python/compare/v1.46.0...v1.47.0) (2026-08-20)
+
+
+### Features
+
+* **sds:** add generate_sds for formula inventory items ([#689](https://github.com/albert-labs/albert-python/issues/689)) ([95bbde2](https://github.com/albert-labs/albert-python/commit/95bbde2c49956e403b706d59662ce1b50ccf8e31))
+
+
+### Bug Fixes
+
+* column unpinning in sheet ([#696](https://github.com/albert-labs/albert-python/issues/696)) ([4036f7f](https://github.com/albert-labs/albert-python/commit/4036f7ffee8e1ee9172998405925f0918acbf872))
+
+## [1.46.0](https://github.com/albert-labs/albert-python/compare/v1.45.0...v1.46.0) (2026-08-18)
+
+
+### Features
+
+* **collections:** add missing search filters for attributes and btinsight ([#684](https://github.com/albert-labs/albert-python/issues/684)) ([d269e60](https://github.com/albert-labs/albert-python/commit/d269e604d5d7511932d11edb38fc5ea44564f0aa))
+* **collections:** add missing search filters for data templates and parameter groups ([#685](https://github.com/albert-labs/albert-python/issues/685)) ([0a20d70](https://github.com/albert-labs/albert-python/commit/0a20d709f4140ad6e0720f5cb05ed2657db0451a))
+* **collections:** add missing search filters for projects and users ([#683](https://github.com/albert-labs/albert-python/issues/683)) ([53bca03](https://github.com/albert-labs/albert-python/commit/53bca03ddda860889d166c2c28b9e328eb3a3de6))
+* **collections:** add missing search filters for substance v4 and property data ([#687](https://github.com/albert-labs/albert-python/issues/687)) ([37a87ac](https://github.com/albert-labs/albert-python/commit/37a87ac9516f779780dc6eb152762d213fb31ec5))
+* **collections:** add missing search filters for tasks and lots ([#686](https://github.com/albert-labs/albert-python/issues/686)) ([4d89e71](https://github.com/albert-labs/albert-python/commit/4d89e71ad012f3d0b189ece442e9819011b6dbfd))
+* **inventory:** add missing search filters for parity with API ([#688](https://github.com/albert-labs/albert-python/issues/688)) ([203397c](https://github.com/albert-labs/albert-python/commit/203397cc68902a4dc83c561b064e7f79c56df4c5))
+
+
+### Bug Fixes
+
+* **hazards:** support model-selected symbol status ([#670](https://github.com/albert-labs/albert-python/issues/670)) ([9054239](https://github.com/albert-labs/albert-python/commit/90542392d1834749949ef874cc9424a38c020842))
+* keep substance ids and region-scoped fields the substance v4 API returns ([#691](https://github.com/albert-labs/albert-python/issues/691)) ([e55cbae](https://github.com/albert-labs/albert-python/commit/e55cbaeb4dec2ae9afb6b3bf76cb6cc57866e059))
+* **property_data:** use correct search wire keys for lot and taskCreatedby ([#682](https://github.com/albert-labs/albert-python/issues/682)) ([e175cc2](https://github.com/albert-labs/albert-python/commit/e175cc20a167215e1efef5843e828ff11935feea))
+
+## [1.45.0](https://github.com/albert-labs/albert-python/compare/v1.44.0...v1.45.0) (2026-08-14)
+
+
+### Features
+
+* added name for designruns ([#679](https://github.com/albert-labs/albert-python/issues/679)) ([a466d02](https://github.com/albert-labs/albert-python/commit/a466d0206e0a024a27859583422c76b997b65696))
+
+## [1.44.0](https://github.com/albert-labs/albert-python/compare/v1.43.1...v1.44.0) (2026-08-13)
+
+
+### Features
+
+* add space_filling design-run SDK surface ([#677](https://github.com/albert-labs/albert-python/issues/677)) ([84bf374](https://github.com/albert-labs/albert-python/commit/84bf37407dfb1f0db85c3b4364c3a2f22bba289a))
+
+
+### Bug Fixes
+
+* **data_templates:** apply default number validation on add ([#675](https://github.com/albert-labs/albert-python/issues/675)) ([30f294c](https://github.com/albert-labs/albert-python/commit/30f294c57ca97d2458dfe420f556ec703564dafe))
+
+
+### Documentation
+
+* clarify service filter behavior in custom fields list docstring ([#629](https://github.com/albert-labs/albert-python/issues/629)) ([a581afa](https://github.com/albert-labs/albert-python/commit/a581afa7bd50bb5bcbed7b91f901518acb490eb4))
+
+## [1.43.1](https://github.com/albert-labs/albert-python/compare/v1.43.0...v1.43.1) (2026-08-12)
+
+
+### Bug Fixes
+
+* agent-safety docstring + search-model tolerance fixes from alpha feedback RCA ([#666](https://github.com/albert-labs/albert-python/issues/666)) ([56f83af](https://github.com/albert-labs/albert-python/commit/56f83afb4a9226235cb90b2d89c4452799a17517))
+
+## [1.43.0](https://github.com/albert-labs/albert-python/compare/v1.42.0...v1.43.0) (2026-08-12)
+
+
+### Features
+
+* **attachments:** add upload_and_attach_script_to_data_template ([#662](https://github.com/albert-labs/albert-python/issues/662)) ([e3047b9](https://github.com/albert-labs/albert-python/commit/e3047b9f3ad783f71122031a6d9dcbe7eac7da97))
+
+
+### Bug Fixes
+
+* **lots:** type inventory_on_hand filter as enum ([#669](https://github.com/albert-labs/albert-python/issues/669)) ([c3efb2a](https://github.com/albert-labs/albert-python/commit/c3efb2a1dbcf516a680cbdc81e337e7cc5b20fc6))
+* **projects:** support ACL updates via update() ([#668](https://github.com/albert-labs/albert-python/issues/668)) ([5652e31](https://github.com/albert-labs/albert-python/commit/5652e3138f1dc62a7ea3925b160f307ee9a3395b))
+* **sheets:** omit referenceId so new formula columns aren't dropped ([#630](https://github.com/albert-labs/albert-python/issues/630)) ([b70d07e](https://github.com/albert-labs/albert-python/commit/b70d07e43cc65e3826dcdbb72d0fde8a3e868848))
+* **substance_v4:** stop search pagination at final page ([#663](https://github.com/albert-labs/albert-python/issues/663)) ([4f49c67](https://github.com/albert-labs/albert-python/commit/4f49c67c3d19f978e0ba0ad67fe83938da372b04))
+
+## [1.42.0](https://github.com/albert-labs/albert-python/compare/v1.41.0...v1.42.0) (2026-08-06)
+
+
+### Features
+
+* optional ChatSessionRef on design run create ([#660](https://github.com/albert-labs/albert-python/issues/660)) ([ba85f4c](https://github.com/albert-labs/albert-python/commit/ba85f4c516f31ae14e054af46a494393e6fb913f))
+
+## [1.41.0](https://github.com/albert-labs/albert-python/compare/v1.40.0...v1.41.0) (2026-08-05)
+
+
+### Features
+
+* **substance_v4, attributes:** promote substance v4 and attributes to stable ([#549](https://github.com/albert-labs/albert-python/issues/549)) ([92757b8](https://github.com/albert-labs/albert-python/commit/92757b8b58d497599b75909f4206ee4f2cfcf6a3))
+
+
+### Bug Fixes
+
+* **inventory:** preserve metadata list item names ([#658](https://github.com/albert-labs/albert-python/issues/658)) ([98798c2](https://github.com/albert-labs/albert-python/commit/98798c2b1af55881da949abbf097fc8a49b3bfdb))
+* **lots:** add workflow_id update support ([#656](https://github.com/albert-labs/albert-python/issues/656)) ([f9773f2](https://github.com/albert-labs/albert-python/commit/f9773f2077f901decb1ae83cbf5441c44c90fbb9))
+* **sheets:** use None default for Design.state field ([#657](https://github.com/albert-labs/albert-python/issues/657)) ([f488d01](https://github.com/albert-labs/albert-python/commit/f488d019e05445b16060447c55772b46153e6fb8))
+
+## [1.40.0](https://github.com/albert-labs/albert-python/compare/v1.39.0...v1.40.0) (2026-07-31)
+
+
+### Features
+
+* **attachments:** add upload_and_attach_document_to_inventory_item ([#618](https://github.com/albert-labs/albert-python/issues/618)) ([1dc3145](https://github.com/albert-labs/albert-python/commit/1dc3145a4d75d1e7c864fda104d0355e6ec52e00))
+
+
+### Bug Fixes
+
+* **pricings:** support default field via update ([#653](https://github.com/albert-labs/albert-python/issues/653)) ([b0dfc0c](https://github.com/albert-labs/albert-python/commit/b0dfc0cfb06b63f91e4344b9b5f5ec197312e216))
+* **sdk:** tolerate malformed entity-link metadata in parameter groups ([#650](https://github.com/albert-labs/albert-python/issues/650)) ([4f71ae9](https://github.com/albert-labs/albert-python/commit/4f71ae9d62366f9c1c509ec9a253d4f2f28baa9b))
+
+## [1.39.0](https://github.com/albert-labs/albert-python/compare/v1.38.2...v1.39.0) (2026-07-29)
+
+
+### Features
+
+* **search:** add filters, metadata_filters, and SearchItem fields ([#636](https://github.com/albert-labs/albert-python/issues/636)) ([4557a03](https://github.com/albert-labs/albert-python/commit/4557a03765150ff26f9a93258b78f4503a98d751))
+
+## [1.38.2](https://github.com/albert-labs/albert-python/compare/v1.38.1...v1.38.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* **cas:** batch PATCH updates to respect 9-item API limit ([#646](https://github.com/albert-labs/albert-python/issues/646)) ([5d70ff8](https://github.com/albert-labs/albert-python/commit/5d70ff88e9ab7a48dc4f6290c0527f290b836123))
+* **locations:** exclude read-only fields from create payload ([#649](https://github.com/albert-labs/albert-python/issues/649)) ([e623176](https://github.com/albert-labs/albert-python/commit/e62317637e481dffe55273c7b758cd745238bebf))
+
+
+### Documentation
+
+* clarify workflow registration and WFL1 default ([#637](https://github.com/albert-labs/albert-python/issues/637)) ([919fd7f](https://github.com/albert-labs/albert-python/commit/919fd7f75ae9a3f27c947e0e6ad482a6a8fc984b))
+* **lots:** document create-required fields on Lot and create() ([#632](https://github.com/albert-labs/albert-python/issues/632)) ([68ecc51](https://github.com/albert-labs/albert-python/commit/68ecc51bf52a0c8cf11893098bde3a35e929d20e))
+
+## [1.38.1](https://github.com/albert-labs/albert-python/compare/v1.38.0...v1.38.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **sheets:** allow first PRG on empty Process Design ([#644](https://github.com/albert-labs/albert-python/issues/644)) ([b2e2acd](https://github.com/albert-labs/albert-python/commit/b2e2acdb1ea4ea9d7fb7a96e1be03b88b1abb5ae))
+
+## [1.38.0](https://github.com/albert-labs/albert-python/compare/v1.37.1...v1.38.0) (2026-07-27)
+
+
+### Features
+
+* add has_more to AlbertPaginator + Sheet.add_parameter_group_row (AI-1086, AI-1087, AI-1071) ([#635](https://github.com/albert-labs/albert-python/issues/635)) ([7929e46](https://github.com/albert-labs/albert-python/commit/7929e46f32622d71a88e1a8f2c4ace3f9b59cf79))
+
+## [1.37.1](https://github.com/albert-labs/albert-python/compare/v1.37.0...v1.37.1) (2026-07-24)
+
+
+### Performance Improvements
+
+* **tests:** parallelize integration test suite with pytest-xdist ([#633](https://github.com/albert-labs/albert-python/issues/633)) ([58e3df0](https://github.com/albert-labs/albert-python/commit/58e3df0595b8ef4b3ea3cd85a3ff0e0b0d4f2ba2))
+
+
+### Documentation
+
+* **smart-projects:** clarify project-bound create-and-assign flow ([#641](https://github.com/albert-labs/albert-python/issues/641)) ([80dee12](https://github.com/albert-labs/albert-python/commit/80dee12a0c9720689d795a27fc93c2464f4dfa01))
+
+## [1.37.0](https://github.com/albert-labs/albert-python/compare/v1.36.1...v1.37.0) (2026-07-23)
+
+
+### Features
+
+* **design-runs:** add validate preflight method ([#638](https://github.com/albert-labs/albert-python/issues/638)) ([20b77f7](https://github.com/albert-labs/albert-python/commit/20b77f735b8f48c113ca88467dbb5482c9284caa))
+
+## [1.36.1](https://github.com/albert-labs/albert-python/compare/v1.36.0...v1.36.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* **resources:** support date and timestamp field formats ([#623](https://github.com/albert-labs/albert-python/issues/623)) ([fb382bc](https://github.com/albert-labs/albert-python/commit/fb382bc54f5634c214c8e4d2375665436416e779))
+
+## [1.36.0](https://github.com/albert-labs/albert-python/compare/v1.35.0...v1.36.0) (2026-07-17)
+
+
+### Features
+
+* SDK support for api-designruns ([#626](https://github.com/albert-labs/albert-python/issues/626)) ([b38e03a](https://github.com/albert-labs/albert-python/commit/b38e03adaa3afa97263d82b9f963a23e55a1b0b2))
+
+## [1.35.0](https://github.com/albert-labs/albert-python/compare/v1.34.1...v1.35.0) (2026-07-17)
+
+
+### Features
+
+* add label template and PDF generator collections ([#625](https://github.com/albert-labs/albert-python/issues/625)) ([0bc3e1b](https://github.com/albert-labs/albert-python/commit/0bc3e1bac7103b03b665994b481da4cbf50f4898))
+
+## [1.34.1](https://github.com/albert-labs/albert-python/compare/v1.34.0...v1.34.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **cas:** hydrate list metadata names and send entity links on PATCH ([#621](https://github.com/albert-labs/albert-python/issues/621)) ([ca97f8e](https://github.com/albert-labs/albert-python/commit/ca97f8ed27a4c88a31667aebf9ffd8684e1ce769))
+* **inventory:** dedup when company is an entity link ([#584](https://github.com/albert-labs/albert-python/issues/584)) ([6b40de7](https://github.com/albert-labs/albert-python/commit/6b40de79fd692f519ddcd8d3ad8125eb48cc6b90))
+* **property-data:** handle empty response on get_properties_on_inventory ([#613](https://github.com/albert-labs/albert-python/issues/613)) ([69f4c23](https://github.com/albert-labs/albert-python/commit/69f4c238f42f361a8251485de7a1bf705ed1435e))
+* **tasks:** use FINAL workflow id when updating block workflow ([#622](https://github.com/albert-labs/albert-python/issues/622)) ([58d5ca4](https://github.com/albert-labs/albert-python/commit/58d5ca4bb4a7989d9bf79157f8a6849353c7a74f))
+* **units:** match unit names case-insensitively in get_or_create ([#614](https://github.com/albert-labs/albert-python/issues/614)) ([3268c35](https://github.com/albert-labs/albert-python/commit/3268c35dab78031b9b25017672f75000c569d2b0))
+
+
+### Documentation
+
+* upgrade docstrings across collections and resources ([#619](https://github.com/albert-labs/albert-python/issues/619)) ([921e3a0](https://github.com/albert-labs/albert-python/commit/921e3a023b8caf2563b7a3b947d939765612d923))
+
+## [1.34.0](https://github.com/albert-labs/albert-python/compare/v1.33.0...v1.34.0) (2026-07-10)
+
+
+### Features
+
+* **chats:** add plan and permission component types and action fields ([#589](https://github.com/albert-labs/albert-python/issues/589)) ([ac71e18](https://github.com/albert-labs/albert-python/commit/ac71e18c1df02a7f999ab30f5edf2b9d5854bdd5))
+
+
+### Bug Fixes
+
+* **cas:** skip PATCH when no updatable fields changed ([#615](https://github.com/albert-labs/albert-python/issues/615)) ([e84dac6](https://github.com/albert-labs/albert-python/commit/e84dac6b3147f756c3781f71db5eb7886a736eb3))
+
+## [1.33.0](https://github.com/albert-labs/albert-python/compare/v1.32.1...v1.33.0) (2026-07-08)
+
+
+### Features
+
+* **btdataset:** add targets to BTDatasetReferences ([#609](https://github.com/albert-labs/albert-python/issues/609)) ([89d7021](https://github.com/albert-labs/albert-python/commit/89d7021b2f28d66434f6682687f3bb7c18b7d98e))
+
+
+### Bug Fixes
+
+* add attachments field to ChatMessage ([#588](https://github.com/albert-labs/albert-python/issues/588)) ([c06ba6e](https://github.com/albert-labs/albert-python/commit/c06ba6e12050e155dfb689ea703a9d3ffb1aff9f))
+* **chats:** add attachments field to ChatMessage ([c06ba6e](https://github.com/albert-labs/albert-python/commit/c06ba6e12050e155dfb689ea703a9d3ffb1aff9f))
+* **ci:** route manifest-file per target branch in release-please workflow ([#594](https://github.com/albert-labs/albert-python/issues/594)) ([cc1778b](https://github.com/albert-labs/albert-python/commit/cc1778bf653c4b701bfc75a5dc5efb2f229587a5))
+* **ci:** trigger claude review workflows only on PR state changes ([#597](https://github.com/albert-labs/albert-python/issues/597)) ([8abce3f](https://github.com/albert-labs/albert-python/commit/8abce3fe15b5719f4f5f7cecc6fcbb21e9c9491a))
+
+## [1.32.1](https://github.com/albert-labs/albert-python/compare/v1.32.0...v1.32.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **parameter-groups:** add missing timestamp DataType enum value ([#590](https://github.com/albert-labs/albert-python/issues/590)) ([e143327](https://github.com/albert-labs/albert-python/commit/e1433274ccabdeee3f152975ca394277dfb5ad5d))
+
+## [1.32.0](https://github.com/albert-labs/albert-python/compare/v1.31.0...v1.32.0) (2026-07-03)
+
+
+### Features
+
+* **notebooks:** add append_blocks to safely add blocks ([#581](https://github.com/albert-labs/albert-python/issues/581)) ([87fddc0](https://github.com/albert-labs/albert-python/commit/87fddc0793e0d4da24af71a545f6eed4733728da))
+* **session:** add configurable request timeout ([#572](https://github.com/albert-labs/albert-python/issues/572)) ([960f1de](https://github.com/albert-labs/albert-python/commit/960f1de714a852990548ee691f3886fa14fc9016))
+
+
+### Bug Fixes
+
+* **ci:** harden and upgrade claude-code workflows ([#586](https://github.com/albert-labs/albert-python/issues/586)) ([4a70bd3](https://github.com/albert-labs/albert-python/commit/4a70bd388ecfcfd220b10165ab632f967f065a20))
+* **data-templates:** correct payload for datacolumn delete in update() ([#585](https://github.com/albert-labs/albert-python/issues/585)) ([a9cbe5d](https://github.com/albert-labs/albert-python/commit/a9cbe5d461ef12d6efdc29599386e1a9afaafcfe))
+* **synthesis:** omit null smiles and default blockId on create ([#580](https://github.com/albert-labs/albert-python/issues/580)) ([0f63644](https://github.com/albert-labs/albert-python/commit/0f63644032d62c00fd122e0730888bb5c08c72b9))
+
 ## [1.31.0](https://github.com/albert-labs/albert-python/compare/v1.30.1...v1.31.0) (2026-07-01)
 
 

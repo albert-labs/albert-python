@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Generic, TypeVar
 
-from pydantic import PrivateAttr
 from typing_extensions import Self  # available in `typing` from Python 3.11
 
 from albert.exceptions import AlbertException
@@ -14,7 +13,8 @@ T = TypeVar("T")
 
 
 class HydrationMixin(Generic[T]):
-    _collection: BaseCollection | None = PrivateAttr(default=None)
+    # Plain class default: pydantic does not register PrivateAttr on non-BaseModel mixins.
+    _collection: BaseCollection | None = None
 
     def _bind_collection(self, collection: BaseCollection) -> Self:
         self._collection = collection

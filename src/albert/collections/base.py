@@ -1,5 +1,7 @@
+from typing import Any
+
 from albert.core.session import AlbertSession
-from albert.core.shared.models.base import BaseResource
+from albert.core.shared.models.base import BaseResource, EntityLink
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
 from albert.core.shared.types import MetadataItem
 
@@ -17,8 +19,26 @@ class BaseCollection:
     # Class property specifying updatable attributes
     _updatable_attributes = {}
 
+    # Updatable attributes that must never emit a `delete` patch op when set to None.
+    # Some APIs reject delete ops on required fields with a 400 (e.g. company `name`),
+    # so a collection lists those attributes here and the delete op is skipped instead
+    # of sending a request the API will reject. Treat as immutable: subclasses replace
+    # the set rather than mutating it in place.
+    _non_deletable_attributes: set[str] = set()
+
     def __init__(self, *, session: AlbertSession):
         self.session = session
+
+    def _metadata_list_patch_value(self, links: list[EntityLink], *, as_list: bool = False) -> Any:
+        """Serialize list metadata for PATCH. Override in subclasses when needed.
+
+        Default behavior sends bare list IDs. CasCollection overrides this to send
+        entity-link objects because the CAS API does not normalize list metadata IDs.
+        """
+        all_ids = [link.id for link in links]
+        if as_list:
+            return all_ids
+        return all_ids[0] if len(all_ids) == 1 else all_ids
 
     def _generate_metadata_diff(
         self,
@@ -50,7 +70,7 @@ class BaseCollection:
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.DELETE,
-                            old_value=all_ids[0] if len(all_ids) == 1 else all_ids,
+                            old_value=self._metadata_list_patch_value(value),
                         )
                     )
                 else:
@@ -72,8 +92,10 @@ class BaseCollection:
                         )
                     )
                 elif isinstance(updated_metadata[key], list):
-                    existing_ids = [v.id for v in value] if isinstance(value, list) else [value.id]
-                    updated_ids = [v.id for v in updated_metadata[key]]
+                    existing_links = value if isinstance(value, list) else [value]
+                    updated_links = updated_metadata[key]
+                    existing_ids = [v.id for v in existing_links]
+                    updated_ids = [v.id for v in updated_links]
                     if set(existing_ids) == set(updated_ids):  # no membership change, skip
                         continue
 
@@ -83,7 +105,9 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.DELETE,
-                                old_value=existing_ids,
+                                old_value=self._metadata_list_patch_value(
+                                    existing_links, as_list=True
+                                ),
                             )
                         )
                     else:
@@ -94,8 +118,12 @@ class BaseCollection:
                             PatchDatum(
                                 attribute=attribute,
                                 operation=PatchOperation.UPDATE,
-                                old_value=existing_ids,
-                                new_value=updated_ids,
+                                old_value=self._metadata_list_patch_value(
+                                    existing_links, as_list=True
+                                ),
+                                new_value=self._metadata_list_patch_value(
+                                    updated_links, as_list=True
+                                ),
                             )
                         )
                 else:
@@ -122,11 +150,13 @@ class BaseCollection:
                     all_ids = [x.id for x in value]
                     if len(all_ids) == 0:
                         continue
+                    # Keep list cardinality: the API stores an ADD newValue verbatim,
+                    # so a collapsed single-item scalar would corrupt the field's type.
                     data.append(
                         PatchDatum(
                             attribute=attribute,
                             operation=PatchOperation.ADD,
-                            new_value=all_ids[0] if len(all_ids) == 1 else all_ids,
+                            new_value=self._metadata_list_patch_value(value, as_list=True),
                         )
                     )
                 else:
@@ -196,12 +226,16 @@ class BaseCollection:
                         )
                     )
                 if new_value is None and old_value is not None:
-                    # Delete the attribute
-                    data.append(
-                        PatchDatum(
-                            attribute=alias, operation=PatchOperation.DELETE, old_value=old_value
+                    # Delete the attribute, unless the collection marks it as
+                    # non-deletable (the API would reject the delete op with a 400).
+                    if attribute not in self._non_deletable_attributes:
+                        data.append(
+                            PatchDatum(
+                                attribute=alias,
+                                operation=PatchOperation.DELETE,
+                                old_value=old_value,
+                            )
                         )
-                    )
                 elif old_value is not None and new_value != old_value:
                     # Update existing attribute
                     old_value = str(old_value) if stringify_values else old_value

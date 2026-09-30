@@ -12,7 +12,7 @@
 
 ## Overview
 
-Albert Python is the official Albert Invent Software Development Kit (SDK) for Python
+Albert Python is the official Albert Software Development Kit (SDK) for Python
 that provides a comprehensive and easy-to-use interface for interacting with the Albert Platform.
 The SDK allows Python developers to write software that interacts with various platform resources,
 such as inventories, projects, companies, tags, and many more.
@@ -38,10 +38,7 @@ Get all projects:
 from albert import Albert
 
 # Initialize with a static JWT token
-client = Albert.from_token(
-    base_url="https://app.albertinvent.com",
-    token="YOUR_JWT_TOKEN"
-)
+client = Albert.from_token(base_url="https://app.albertinvent.com", token="YOUR_JWT_TOKEN")
 
 for project in client.projects.get_all(max_items=10):
     print(project.name)

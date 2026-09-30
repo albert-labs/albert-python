@@ -4,7 +4,8 @@
     ".": {
       "package-name": "albert",
       "version-file": "src/albert/__init__.py",
-      "include-v-in-tag": true
+      "include-v-in-tag": true,
+      "component": ""
     }
   }
 }

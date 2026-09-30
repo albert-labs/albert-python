@@ -1,8 +1,31 @@
 version: 2.1
 
+setup: true
+
+parameters:
+  lambda_layer:
+    type: boolean
+    default: false
+  lambda_runtimes:
+    type: string
+    default: "3.11,3.12,3.13,3.14"
+  lambda_archs:
+    type: string
+    default: "x86_64,arm64"
+  lambda_regions:
+    type: string
+    # Keep in sync with DEFAULT_REGIONS in .circleci/scripts/generate_lambda_matrix.py
+    # and the Regions list in docs/lambda.md.
+    default: "us-west-2,us-east-1,eu-central-1,eu-west-1"
+  lambda_account_id:
+    type: string
+    default: ""
+
 orbs:
+  continuation: circleci/continuation@1.0.0
   python: circleci/python@3.2.0
   snyk: snyk/snyk@2.3.0
+  aws-cli: circleci/aws-cli@4.0
 
 commands:
   install_uv:
@@ -12,6 +35,34 @@ commands:
           command: curl -LsSf https://astral.sh/uv/install.sh | sh
 
 jobs:
+  # Lint + offline unit tests. Runs without a context on purpose: unit tests must
+  # not need credentials (tests/unit/conftest.py also blocks network and ALBERT_* env).
+  unit_test:
+    executor:
+      name: python/default
+      tag: "3.10.15"
+    steps:
+      - checkout
+      - install_uv
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Check formatting
+          command: |
+            uv run ruff format . --check
+      - run:
+          name: Check lints
+          command: |
+            uv run ruff check .
+      - run:
+          name: Run unit tests
+          command: |
+            uv run pytest tests/unit -v --tb=short -r fEsxX \
+              --cov --cov-report=term-missing:skip-covered --cov-report=xml
+      - store_artifacts:
+          path: coverage.xml
+
   test:
     executor:
       name: python/default
@@ -23,21 +74,37 @@ jobs:
           name: Install dependencies
           command: uv sync
       - run:
-          name: Set environment
+          name: Run integration tests
           command: |
-            echo 'export ALBERT_BASE_URL="https://app.albertinvent.com"' >> "$BASH_ENV"
+            uv run pytest tests/integration -n 4 -v --tb=short -r fEsxX --durations=15 2>&1 | tee /tmp/pytest-output.log
       - run:
-          name: Check formatting
+          name: Post failure summary to PR
+          when: on_fail
           command: |
-            uv run ruff format . --check
-      - run:
-          name: Check lints
-          command: |
-            uv run ruff check .
-      - run:
-          name: Run pytest
-          command: |
-            uv run pytest
+            if [ -z "${CIRCLE_PULL_REQUEST:-}" ]; then
+              echo "Not a pull request build; skipping PR comment."
+              exit 0
+            fi
+            PR_NUMBER="${CIRCLE_PULL_REQUEST##*/}"
+            if [ -f /tmp/pytest-output.log ]; then
+              SUMMARY=$(sed -n '/short test summary info/,$p' /tmp/pytest-output.log | head -c 50000)
+              if [ -z "${SUMMARY}" ]; then
+                SUMMARY=$(tail -c 50000 /tmp/pytest-output.log)
+              fi
+            else
+              SUMMARY="The Integration Tests job failed before the pytest step ran. See the build log for the failing step."
+            fi
+            BODY=$(jq -n \
+              --arg branch "${CIRCLE_BRANCH}" \
+              --arg sha "${CIRCLE_SHA1:0:8}" \
+              --arg url "${CIRCLE_BUILD_URL}" \
+              --arg summary "${SUMMARY}" \
+              '{body: ("### CircleCI Integration Tests failed\n\n**Branch:** `" + $branch + "` (" + $sha + ")\n**Build:** " + $url + "\n\n```\n" + $summary + "\n```")}')
+            curl -sS -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN_ALBERT_LABS}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/issues/${PR_NUMBER}/comments" \
+              -d "${BODY}"
 
   validate_version_bump:
     executor:
@@ -135,12 +202,69 @@ jobs:
               fi
             fi
 
+  lambda_layer_setup:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Validate lambda layer parameters
+          command: |
+            set -euo pipefail
+
+            if [[ -n "<< pipeline.parameters.lambda_account_id >>" ]] && \
+              ! [[ "<< pipeline.parameters.lambda_account_id >>" =~ ^[0-9]{12}$ ]]; then
+              echo "lambda_account_id must be a 12-digit AWS account ID."
+              exit 1
+            fi
+
+            # The layer is built from this checkout, so the SDK version is read from the
+            # package itself. When triggered on a release tag, the tag must agree with it.
+            if [[ -n "${CIRCLE_TAG:-}" ]]; then
+              python scripts/validate_release_tag.py --tag "${CIRCLE_TAG}"
+            fi
+            SDK_VERSION="$(python -c '
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, "scripts")
+            from validate_release_tag import extract_version
+            print(extract_version(Path("src/albert/__init__.py").read_text()))
+            ')"
+            echo "Building lambda layers for albert ${SDK_VERSION} from ${CIRCLE_TAG:-branch ${CIRCLE_BRANCH:-unknown}}"
+            echo "export LAMBDA_SDK_VERSION=${SDK_VERSION}" >> "$BASH_ENV"
+      - run:
+          name: Generate continuation config
+          command: |
+            python .circleci/scripts/generate_lambda_matrix.py \
+              --runtimes   "<< pipeline.parameters.lambda_runtimes >>" \
+              --archs      "<< pipeline.parameters.lambda_archs >>" \
+              --sdk-version "${LAMBDA_SDK_VERSION}" \
+              --regions    "<< pipeline.parameters.lambda_regions >>" \
+              --account-id "<< pipeline.parameters.lambda_account_id >>" \
+              --output     /tmp/lambda_continuation.yml
+      - continuation/continue:
+          configuration_path: /tmp/lambda_continuation.yml
+          parameters: "{}"
+
 workflows:
-  main:
+  lambda_layer_matrix:
+    when: << pipeline.parameters.lambda_layer >>
     jobs:
-      - test:
-          name: Test
+      - lambda_layer_setup:
+          name: Lambda Layer Matrix Setup
           context: dev
+
+  main:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
+    jobs:
+      - unit_test:
+          name: Unit Tests
+      - test:
+          name: Integration Tests
+          context: dev
+          requires:
+            - Unit Tests
       - deploy_docs:
           name: Deploy Docs On Merge to Main
           mode: dev
@@ -150,6 +274,8 @@ workflows:
               only: main
 
   release:
+    when:
+      not: << pipeline.parameters.lambda_layer >>
     jobs:
       - validate_release_tag:
           name: Validate Release Tag
@@ -164,6 +290,19 @@ workflows:
           context: dev
           requires:
             - Validate Release Tag
+          filters:
+            tags:
+              only: /^v.+$/
+            branches:
+              ignore: /.*/
+      # Lambda layers are built from this checkout and published for every release
+      # tag. This continues the pipeline into the generated matrix config; the ad hoc
+      # lambda_layer_matrix workflow above remains for manual runs on a branch.
+      - lambda_layer_setup:
+          name: Publish Lambda Layers
+          context: dev
+          requires:
+            - Publish to PyPI
           filters:
             tags:
               only: /^v.+$/

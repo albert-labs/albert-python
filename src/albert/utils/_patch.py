@@ -18,6 +18,7 @@ from albert.resources.parameter_groups import (
     ParameterValue,
 )
 from albert.resources.tags import Tag
+from albert.utils.data_template import ensure_data_column_validation
 
 
 def _parameter_unit_patches(
@@ -648,10 +649,14 @@ def generate_data_template_patches(
         updated_data_column=updated_data_columns,
     )
 
-    tag_patches = handle_tags(
-        existing_tags=existing_data_template.tags,
-        updated_tags=updated_data_template.tags,
-        attribute_name="tag",
+    tag_patches = (
+        handle_tags(
+            existing_tags=existing_data_template.tags,
+            updated_tags=updated_data_template.tags,
+            attribute_name="tag",
+        )
+        if "tags" in updated_data_template.model_fields_set
+        else []
     )
     # add the general patches
     general_patches.data.extend(patches)
@@ -816,6 +821,7 @@ def create_data_columns_with_enums(
     pending: dict[str, list[EnumValidationValue]] = {}
     payloads: list[dict] = []
     for col in data_columns:
+        ensure_data_column_validation(col)
         d = col.model_dump(mode="json", by_alias=True, exclude_none=True)
         if (
             col.data_column_id is not None
@@ -874,10 +880,14 @@ def generate_parameter_group_patches(
         updated_parameters=updated_parameter_group.parameters,
         parameter_attribute_name="parameter",
     )
-    tag_patches = handle_tags(
-        existing_tags=existing_parameter_group.tags,
-        updated_tags=updated_parameter_group.tags,
-        attribute_name="tagId",
+    tag_patches = (
+        handle_tags(
+            existing_tags=existing_parameter_group.tags,
+            updated_tags=updated_parameter_group.tags,
+            attribute_name="tagId",
+        )
+        if "tags" in updated_parameter_group.model_fields_set
+        else []
     )
     # add to the general patches
     general_patches.data.extend(parameter_patches)
