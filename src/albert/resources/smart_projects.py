@@ -11,6 +11,7 @@ from albert.core.logging import logger
 from albert.core.shared.identifiers import ProjectId, SmartDatasetId, TargetId
 from albert.core.shared.models.base import BaseSessionResource
 from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPayload
+from albert.exceptions import AlbertHTTPError
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.targets import Target
 from albert.utils.projects import build_default_smart_dataset_scope
@@ -298,7 +299,7 @@ class SmartProject(BaseSessionResource):
                     parent_id = item.get("parentProjectId")
                     if parent_id:
                         linked_parent_project_ids.append(parent_id)
-            except Exception as e:
+            except AlbertHTTPError as e:
                 logger.warning(
                     f"Could not fetch linked reference formulas for project {self.project_id}: {e}"
                 )
