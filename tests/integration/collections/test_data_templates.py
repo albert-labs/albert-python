@@ -436,6 +436,7 @@ def test_enum_option_readded_reuses_original_id(
         )
     )
     try:
+        dt = client.data_templates.get_by_id(id=dt.id)
         original = {x.text: x.id for x in dt.data_column_values[0].validation[0].value}
         assert original["Readd"] is not None
 
