@@ -360,6 +360,8 @@ def test_reference_formulas_lifecycle(
         )
         assert isinstance(updated_linked, ReferenceFormula)
         assert updated_linked.reference_formula_type == "CustomBaseline"
+        assert updated_linked.parent_project_id == source_project.id
+        assert updated_linked.is_external_formula is True
 
         # 9. Delete in-project reference formula
         client.projects.delete_reference_formula(

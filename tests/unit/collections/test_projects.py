@@ -387,14 +387,45 @@ def test_get_all_reference_formulas_project_scoped_filters(offline_session) -> N
 
 @responses.activate
 def test_update_reference_formula_type_wire(offline_session) -> None:
-    """Test update_reference_formula_type sends PATCH datum and returns ReferenceFormula."""
+    """Test update_reference_formula_type sends PATCH datum and returns hydrated ReferenceFormula."""
     responses.patch(
         f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas/WKS456/INV789",
         status=204,
     )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas",
+        json={
+            "Items": [
+                {
+                    "projectId": "PRO123",
+                    "worksheetId": "WKS456",
+                    "inventoryId": "INV789",
+                    "inventoryName": "Formula A",
+                    "parentProjectId": "PRO123",
+                    "isExternalFormula": False,
+                    "referenceFormulaType": "Leading",
+                }
+            ]
+        },
+    )
     responses.patch(
         f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas/external/INV789",
         status=204,
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas",
+        json={
+            "Items": [
+                {
+                    "projectId": "PRO123",
+                    "inventoryId": "INV789",
+                    "inventoryName": "Formula External",
+                    "parentProjectId": "PRO456",
+                    "isExternalFormula": True,
+                    "referenceFormulaType": "CustomType",
+                }
+            ]
+        },
     )
     collection = ProjectCollection(session=offline_session)
 
@@ -419,15 +450,17 @@ def test_update_reference_formula_type_wire(offline_session) -> None:
     }
     assert rf1.reference_formula_type == "Leading"
     assert rf1.sheet_id == "WKS456"
+    assert rf1.inventory_name == "Formula A"
+    assert rf1.parent_project_id == "PRO123"
     assert rf1.is_external_formula is False
 
-    # Linked formula (no sheet_id) without expected_type
+    # Linked formula (no sheet_id) without expected_type preserves external parent_project_id
     rf2 = collection.update_reference_formula_type(
         project_id="PRO123",
         inventory_id="INV789",
         reference_formula_type="CustomType",
     )
-    call2 = responses.calls[1]
+    call2 = responses.calls[2]
     assert _json.loads(call2.request.body) == {
         "data": [
             {
@@ -439,7 +472,33 @@ def test_update_reference_formula_type_wire(offline_session) -> None:
     }
     assert rf2.reference_formula_type == "CustomType"
     assert rf2.sheet_id is None
+    assert rf2.inventory_name == "Formula External"
+    assert rf2.parent_project_id == "PRO456"
     assert rf2.is_external_formula is True
+
+
+@responses.activate
+def test_update_reference_formula_type_fallback_on_get_error(offline_session) -> None:
+    """Test update_reference_formula_type falls back to constructed model when fetch fails."""
+    responses.patch(
+        f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas/WKS456/INV789",
+        status=204,
+    )
+    responses.get(
+        f"{UNIT_BASE_URL}/api/v3/projects/PRO123/referenceFormulas",
+        status=500,
+        json={"error": "Internal error"},
+    )
+    collection = ProjectCollection(session=offline_session)
+    rf = collection.update_reference_formula_type(
+        project_id="PRO123",
+        sheet_id="WKS456",
+        inventory_id="INV789",
+        reference_formula_type=ReferenceFormulaType.LEADING,
+    )
+    assert rf.reference_formula_type == "Leading"
+    assert rf.sheet_id == "WKS456"
+    assert rf.project_id == "PRO123"
 
 
 @responses.activate

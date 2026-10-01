@@ -1005,6 +1005,14 @@ class ProjectCollection(BaseCollection):
             if query_params:
                 params = query_params
 
+        # The reference formula endpoints are backed by DynamoDB (not OpenSearch)
+        # and return a single-page response containing {total: int, Items: [...]}.
+        # - The tenant-wide route rejects unknown query parameters (sending limit or offset
+        #   causes a 400 Bad Request).
+        # - The project-scoped route declares startKey in OpenAPI and does not accept offset.
+        # KEY mode avoids sending limit/offset parameters, correctly iterates all items
+        # in the single response page, and is forward-compatible if the backend implements
+        # startKey/lastKey pagination in the future.
         return AlbertPaginator(
             path=path,
             mode=PaginationMode.KEY,
@@ -1106,6 +1114,24 @@ class ProjectCollection(BaseCollection):
             path,
             json=payload.model_dump(by_alias=True, mode="json"),
         )
+        try:
+            matching = next(
+                (
+                    rf
+                    for rf in self.get_all_reference_formulas(
+                        project_id=project_id,
+                        sheet_id=sheet_id,
+                        linked_only=sheet_id is None,
+                    )
+                    if rf.inventory_id == inventory_id
+                ),
+                None,
+            )
+            if matching is not None:
+                return matching
+        except AlbertHTTPError:
+            pass
+
         return ReferenceFormula(
             project_id=project_id,
             inventory_id=inventory_id,
