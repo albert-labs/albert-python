@@ -502,6 +502,16 @@ def test_generate_enum_patches_new_option_matching_existing_text_is_rehydrated()
     assert generate_enum_patches(existing, updated) == []
 
 
+def test_generate_enum_patches_remove_then_readd_same_text():
+    """Test that removing an option then re-adding its text emits a delete, then an add by text."""
+    original = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(id="E2", text="Hi")]
+    after_removal = [EnumValidationValue(id="E1", text="Low")]
+    readded = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(text="Hi")]
+
+    assert generate_enum_patches(original, after_removal) == [{"operation": "delete", "id": "E2"}]
+    assert generate_enum_patches(after_removal, readded) == [{"operation": "add", "text": "Hi"}]
+
+
 def test_generate_enum_patches_ignores_non_enum_validation_value_entries():
     """Test that non-EnumValidationValue entries in either list are filtered out."""
     existing = [EnumValidationValue(id="E1", text="Low"), "not-an-enum-value"]
