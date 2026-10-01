@@ -628,6 +628,44 @@ def test_generate_data_column_patches_enum_newly_added_has_no_existing_options()
     assert enum_patches == {"1": [{"operation": "add", "text": "High"}]}
 
 
+@pytest.mark.parametrize(
+    "initial_validation",
+    [None, [], [ValueValidation(datatype=DataType.STRING)]],
+)
+def test_generate_data_column_patches_switch_to_enum_routes_options_to_enum_patches(
+    initial_validation,
+):
+    """Test that switching a column to ENUM sends options as enum adds, not inline validation."""
+    updated_validation = [
+        ValueValidation(
+            datatype=DataType.ENUM,
+            value=[EnumValidationValue(text="tbd"), EnumValidationValue(text="n/a")],
+        )
+    ]
+    initial = [_dc(sequence="1", validation=initial_validation)]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert patches == []
+    assert enum_patches == {
+        "1": [{"operation": "add", "text": "tbd"}, {"operation": "add", "text": "n/a"}]
+    }
+
+
+def test_generate_data_column_patches_switch_to_empty_enum_keeps_validation_patch():
+    """Test that switching to ENUM with no options still patches the validation."""
+    updated_validation = [ValueValidation(datatype=DataType.ENUM, value=[])]
+    initial = [_dc(sequence="1", validation=[ValueValidation(datatype=DataType.STRING)])]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert enum_patches == {"1": []}
+    assert len(patches) == 1
+    assert patches[0].actions[0].attribute == "validation"
+
+
 # ---------------------------------------------------------------------------
 # generate_parameter_patches
 # ---------------------------------------------------------------------------

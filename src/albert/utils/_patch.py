@@ -16,6 +16,7 @@ from albert.resources.parameter_groups import (
     EnumValidationValue,
     ParameterGroup,
     ParameterValue,
+    ValueValidation,
 )
 from albert.resources.tags import Tag
 from albert.utils.data_template import ensure_data_column_validation
@@ -409,6 +410,11 @@ def generate_data_column_patches(
             these_actions.append(value_patch)
         if calculation_patch:
             these_actions.append(calculation_patch)
+        enum_options_patches = _data_column_enum_option_patches(initial_dc, updated_dc)
+        if enum_options_patches is not None:
+            enum_patches[updated_dc.sequence] = enum_options_patches
+            if enum_options_patches and not _is_enum_validation(initial_dc.validation):
+                validation_patch = None
         if validation_patch:
             these_actions.append(validation_patch)
         if curve_data_patch:
@@ -427,24 +433,30 @@ def generate_data_column_patches(
         unit_patch = _data_column_unit_patches(initial_dc, updated_dc)
         if unit_patch:
             patches.append(unit_patch)
-
-        if (
-            updated_dc.validation is not None
-            and updated_dc.validation != []
-            and updated_dc.validation[0].datatype == DataType.ENUM
-        ):
-            existing_enums = []
-            if (
-                initial_dc.validation is not None
-                and initial_dc.validation != []
-                and initial_dc.validation[0].datatype == DataType.ENUM
-            ):
-                existing_enums = initial_dc.validation[0].value
-            enum_patches[updated_dc.sequence] = generate_enum_patches(
-                existing_enums=existing_enums,
-                updated_enums=updated_dc.validation[0].value,
-            )
     return patches, new_data_columns, enum_patches
+
+
+def _is_enum_validation(validation: list[ValueValidation] | None) -> bool:
+    return bool(validation) and validation[0].datatype == DataType.ENUM
+
+
+def _data_column_enum_option_patches(
+    initial_dc: DataColumnValue, updated_dc: DataColumnValue
+) -> list[dict] | None:
+    """Diff enum options for a column whose updated validation is ENUM, else None.
+
+    Options must go through the enums endpoint, which mints the enum IDs; an inline
+    validation patch stores options without IDs, which breaks translations.
+    """
+    if not _is_enum_validation(updated_dc.validation):
+        return None
+    existing_enums = (
+        initial_dc.validation[0].value if _is_enum_validation(initial_dc.validation) else []
+    )
+    return generate_enum_patches(
+        existing_enums=existing_enums,
+        updated_enums=updated_dc.validation[0].value,
+    )
 
 
 def generate_enum_patches(
