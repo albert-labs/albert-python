@@ -5,7 +5,7 @@ from enum import Enum
 from pydantic import Field, PrivateAttr, field_validator
 
 from albert.core.base import BaseAlbertModel
-from albert.core.shared.identifiers import AttachmentId, ProjectId
+from albert.core.shared.identifiers import AttachmentId, InventoryId, ProjectId, WorksheetId
 from albert.core.shared.models.base import BaseSessionResource, EntityLinkWithName
 from albert.core.shared.types import MetadataItem, SerializeAsEntityLink
 from albert.resources._mixins import HydrationMixin
@@ -246,3 +246,107 @@ class DocumentSearchItem(BaseAlbertModel):
 
     created_at: str | None = Field(default=None, alias="createdAt")
     """Timestamp when the document was created."""
+
+
+class ReferenceFormulaType(str, Enum):
+    """Standard reference formula designations for reformulation projects.
+
+    In Albert reformulation workflows, reference formulas serve as comparison
+    points across the project lifecycle. They are displayed as reference columns
+    in Target Overview and reference bars in Compare Formula Data, allowing
+    chemists to benchmark experimental results against known baselines without
+    re-entering data or duplicating records.
+
+    - ``ORIGINAL``: "Original" (in-app: "The formula you're iterating from").
+      The starting-point commercial or benchmark formula being reformulated or replaced.
+    - ``LEADING``: "Leading" (in-app: "A top experimental candidate"). A promising
+      intermediate candidate tracked against project goals.
+    - ``FINAL``: "Final" (in-app: "The project's selected outcome formula"). The formula
+      selected as the successful outcome of the project.
+    - ``CONTROL``: "Control" (in-app: "The designated experimental control"). A formula
+      used as an experimental baseline or control.
+    - ``OTHER``: "Other" (in-app: "Any other reference"). Any other reference designation
+      at user discretion. Custom label strings may also be supplied in place of
+      this enum member when calling reference formula methods.
+    """
+
+    ORIGINAL = "Original"
+    LEADING = "Leading"
+    FINAL = "Final"
+    CONTROL = "Control"
+    OTHER = "Other"
+
+
+class ReferenceFormula(BaseAlbertModel):
+    """A formula designated as a comparison point within an Albert project.
+
+    Reference formulas provide baseline comparison points for chemists working on
+    reformulation projects. Once designated and synced with the project dataset via
+    [`update_dataset`][albert.resources.smart_projects.SmartProject.update_dataset],
+    reference formulas surface in two primary reporting and analysis interfaces:
+
+    * **Target Overview**: reference formulas appear as visually distinct reference
+      columns alongside experimental formulas, populating historical performance
+      results against project targets automatically without re-entering data.
+    * **Compare Formula Data**: reference formulas appear as distinct reference bars
+      plotted against target ranges, allowing chemists to see how experimental
+      iterations compare to the commercial formula being replicated or competitor
+      baselines being benchmarked.
+
+    Albert supports two product designation flows:
+
+    1. **Worksheet flow (in-project)**: designated via
+       [`set_reference_formula`][albert.collections.projects.ProjectCollection.set_reference_formula].
+       Applies to a formula already within this project's worksheet and is scoped to a
+       specific sheet. The ingredients and process design sections of the column are
+       locked by default upon designation in the worksheet to prevent accidental edits.
+    2. **Target Overview flow (cross-project linked)**: designated via
+       [`link_reference_formula`][albert.collections.projects.ProjectCollection.link_reference_formula].
+       Links an existing formula from another project that the caller has view/read access
+       to. Albert includes the source project's full dataset in the project's smart dataset
+       scope to power inverse design machine learning (Breakthrough), while surfacing only
+       the specifically designated reference formula columns in the Target Overview and
+       Compare Data UI.
+
+    Removing a designation via
+    [`delete_reference_formula`][albert.collections.projects.ProjectCollection.delete_reference_formula]
+    reverts the column or unlinks the view without deleting the underlying formula or its
+    experimental history.
+
+    !!! example
+        ```python
+        from albert import Albert
+        from albert.resources.projects import ReferenceFormulaType
+
+        client = Albert()
+        rf = client.projects.set_reference_formula(
+            project_id="PRO123",
+            sheet_id="WKS456",
+            inventory_id="INV123-001",
+            reference_formula_type=ReferenceFormulaType.ORIGINAL,
+        )
+        rf.reference_formula_type
+        # 'Original'
+        ```
+    """
+
+    project_id: ProjectId = Field(alias="projectId")
+    """The ID of the project holding this reference formula designation."""
+
+    inventory_id: InventoryId = Field(alias="inventoryId")
+    """The inventory ID of the designated formula (format ``INV...``)."""
+
+    inventory_name: str | None = Field(default=None, alias="inventoryName")
+    """The display name of the designated formula inventory item, when populated."""
+
+    reference_formula_type: str = Field(alias="referenceFormulaType")
+    """The role this formula plays on the project (e.g. Original, Leading, Final, Control, or a custom string)."""
+
+    is_external_formula: bool = Field(alias="isExternalFormula")
+    """True when the formula originates from another project and is linked into this project."""
+
+    parent_project_id: ProjectId | None = Field(default=None, alias="parentProjectId")
+    """The project where the formula originates. Equals ``project_id`` for in-project formulas."""
+
+    sheet_id: WorksheetId | None = Field(default=None, alias="worksheetId")
+    """The worksheet sheet ID where an in-project formula is designated. None for cross-project linked formulas."""
