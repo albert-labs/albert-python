@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.60.0](https://github.com/albert-labs/albert-python/compare/v1.59.1...v1.60.0) (2026-10-01)
+
+
+### Features
+
+* **property_data:** add curve data read-back for tasks and template examples ([#800](https://github.com/albert-labs/albert-python/issues/800)) ([d3518e1](https://github.com/albert-labs/albert-python/commit/d3518e1783838b0788eafc671023f1e3aadb5cc7))
+
+
+### Bug Fixes
+
+* **ci:** run lambda layer publish jobs on release tag pipelines ([#804](https://github.com/albert-labs/albert-python/issues/804)) ([4312776](https://github.com/albert-labs/albert-python/commit/4312776ed54a40e739f3f74e0ff8a126ff1f359f))
+* **parametergroups:** row-delete attribute, null guard, public class ([#776](https://github.com/albert-labs/albert-python/issues/776)) ([0f496dd](https://github.com/albert-labs/albert-python/commit/0f496ddd96432af922c43cd06470ba07ee051835))
+* send enum values when switching a data column to enum ([#812](https://github.com/albert-labs/albert-python/issues/812)) ([63b3be0](https://github.com/albert-labs/albert-python/commit/63b3be07b2fced021c42b742aabd5c2d6acc9091))
+* **tasks:** mirror parent_id to Project body on create when absent ([#574](https://github.com/albert-labs/albert-python/issues/574)) ([262e468](https://github.com/albert-labs/albert-python/commit/262e468326597e9e47093b3c8c5d6f6db5383955))
+* **teams:** split multi-member update ops into per-member requests ([#778](https://github.com/albert-labs/albert-python/issues/778)) ([17f37c5](https://github.com/albert-labs/albert-python/commit/17f37c571d452e730d802f180f73ac55ace96b3a))
+
+
+### Reverts
+
+* **ci:** keep lambda layer publishing manual-only ([#804](https://github.com/albert-labs/albert-python/issues/804)) ([#807](https://github.com/albert-labs/albert-python/issues/807)) ([2fe3c6d](https://github.com/albert-labs/albert-python/commit/2fe3c6d0c187695b9dd045ec36e69b2eea8c545a))
+
 ## [1.59.1](https://github.com/albert-labs/albert-python/compare/v1.59.0...v1.59.1) (2026-09-30)
 
 
