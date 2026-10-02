@@ -9,6 +9,7 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DataTemplateId
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
+from albert.exceptions import AlbertException
 from albert.resources.data_templates import DataColumnValue
 from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tasks import (
@@ -20,6 +21,7 @@ from albert.resources.tasks import (
     TaskMetadataDataTemplate,
     TaskMetadataWorkflow,
     TaskPatchPayload,
+    TaskState,
 )
 
 CSV_EXTENSIONS: set[str] = {"csv"}
@@ -30,6 +32,25 @@ def mirror_project_from_parent_id(*, payload: dict, parent_id: str | None) -> di
     if parent_id is not None and "Project" not in payload and parent_id.upper().startswith("PRO"):
         payload["Project"] = {"id": parent_id}
     return payload
+
+
+def resolve_unassigned_task_state(*, state: TaskState | None) -> TaskState:
+    """Resolve the create-time lifecycle state for a task that has no assignee.
+
+    An unassigned task must start Unclaimed. A missing state defaults to
+    ``TaskState.UNCLAIMED`` and ownership states (``NOT_STARTED``,
+    ``IN_PROGRESS``) are rejected, since a task cannot be claimed or in
+    progress with no one assigned. Explicit terminal states (``COMPLETED``,
+    ``CLOSED``, ``CANCELLED``) pass through for ingestion flows.
+    """
+    if state is None:
+        return TaskState.UNCLAIMED
+    if state in (TaskState.NOT_STARTED, TaskState.IN_PROGRESS):
+        raise AlbertException(
+            f"Task state '{state.value}' requires an assignee. Set assigned_to, or leave "
+            "state unset to create the task as 'Unclaimed'."
+        )
+    return state
 
 
 def build_property_payload(
