@@ -1,12 +1,21 @@
-"""Unit tests for ProjectCollection ACL PATCH payload generation.
+"""Unit tests for ProjectCollection private helpers.
 
 Allowed under the patch-builder exception in OPINIONS.md: these guard
-non-obvious diff behavior in ``_generate_acl_patch_operations`` with no I/O to
-fake.
+non-obvious diff behavior in ``_generate_acl_patch_operations`` and the
+starred-project record matching / duplicate-star detection helpers, with no
+I/O to fake.
 """
 
+import json
+
+import pytest
+import requests
+
 from albert.collections.projects import ProjectCollection
+from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
+from albert.resources.personalization import Personalization, PersonalizationCategory
+from tests.unit.conftest import UNIT_BASE_URL
 
 
 def test_no_acl_changes_emit_no_ops(offline_session) -> None:
@@ -159,3 +168,58 @@ def test_none_fgc_on_both_sides_emits_no_op(offline_session) -> None:
     )
 
     assert ops == []
+
+
+def test_starred_record_ids_match_project_case_insensitively() -> None:
+    """Test that starred-record lookup matches the project ID regardless of case."""
+    records = [
+        Personalization(
+            id="USP1", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO1"
+        ),
+        Personalization(
+            id="USP2", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="pro2"
+        ),
+        Personalization(
+            id="USP3", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO2"
+        ),
+    ]
+
+    ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO2")
+
+    assert ids == ["USP2", "USP3"]
+
+
+def test_starred_record_ids_empty_when_project_not_starred() -> None:
+    """Test that an unstarred project yields no record IDs, so unstar does nothing."""
+    records = [
+        Personalization(
+            id="USP1", category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO1"
+        ),
+        Personalization(category=PersonalizationCategory.STARRED_PROJECTS, saved_id="PRO2"),
+    ]
+
+    ids = ProjectCollection._starred_record_ids(records=records, project_id="PRO2")
+
+    assert ids == []
+
+
+def _bad_request(body: object) -> BadRequestError:
+    request = requests.Request("POST", f"{UNIT_BASE_URL}/api/v3/personalization").prepare()
+    response = requests.Response()
+    response.status_code = 400
+    response.request = request
+    response._content = json.dumps(body).encode()
+    return BadRequestError(response)
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ({"title": "Bad Request", "errors": [{"msg": "savedId already exist"}]}, True),
+        ({"title": "Bad Request", "errors": [{"msg": "projectId PRO1 does not exist"}]}, False),
+        ({"title": "Bad Request"}, False),
+    ],
+)
+def test_is_already_starred_error(body: object, expected: bool) -> None:
+    """Test that only the duplicate-star error is recognized as already starred."""
+    assert ProjectCollection._is_already_starred_error(_bad_request(body)) is expected
