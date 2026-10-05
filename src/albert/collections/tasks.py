@@ -157,7 +157,7 @@ class TaskCollection(BaseCollection):
     create_many(tasks) -> list[BaseTask]
         Create multiple tasks in a single call.
     create_with_combinations(task, wait=True) -> PropertyTask (🧪 Beta)
-        Create a Property task and orchestrate combination generation across all its blocks.
+        Create a Property task and generate its block combinations (increased intervals).
     get_by_id(id) -> BaseTask
         Get a single fully populated task by its ID.
     search(...) -> Iterator[TaskSearchItem]
@@ -220,8 +220,20 @@ class TaskCollection(BaseCollection):
         - [`BatchTask`][albert.resources.tasks.BatchTask]: manufacture a batch.
         - [`GeneralTask`][albert.resources.tasks.GeneralTask]: any other lab work.
 
-        For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks are
-        added separately with [`add_block`][albert.collections.tasks.TaskCollection.add_block] after creation.
+        For a PropertyTask, set ``parent_id`` to the parent Project ID. Blocks can be
+        set on the task's ``blocks`` or added after creation with
+        [`add_block`][albert.collections.tasks.TaskCollection.add_block].
+
+        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, ``create`` does not
+            generate combinations for a Property task's blocks, so those blocks show no
+            rows. This applies even when a block's workflow has no intervals, because
+            every block needs at least its baseline combination. Create Property tasks
+            with blocks using
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+            instead, or call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each block after ``create``. General tasks are not affected.
 
         !!! example
             ```python
@@ -261,6 +273,14 @@ class TaskCollection(BaseCollection):
 
         All tasks must share the same category (mixing task types is not
         supported) and, when set, the same ``parent_id``.
+
+        !!! warning "Property tasks with increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, ``create_many`` does not
+            generate combinations for Property task blocks, so those blocks show no rows,
+            even when a block's workflow has no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each block of each created task, or create tasks one at a time with
+            [`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations].
 
         !!! example
             ```python
@@ -325,6 +345,17 @@ class TaskCollection(BaseCollection):
         wait: bool = True,
     ) -> PropertyTask:
         """Create a Property task and generate interval combinations across all its blocks (🧪 Beta).
+
+        Use this method instead of
+        [`create`][albert.collections.tasks.TaskCollection.create] to create Property
+        tasks with blocks when increased intervals is enabled for your tenant. Every
+        block then needs its combinations generated, including blocks whose workflow
+        has no intervals (a single baseline combination). Only
+        [`PropertyTask`][albert.resources.tasks.PropertyTask] is supported, and only
+        when increased intervals is enabled; otherwise the task is rejected and not
+        created, so use [`create`][albert.collections.tasks.TaskCollection.create]
+        instead. Albert enables increased intervals per tenant; if you're unsure
+        whether it's enabled for yours, contact your Albert representative.
 
         Provides an all-in-one method to create a Property task and materialize
         child-workflow combination variants across every task block.
@@ -553,6 +584,13 @@ class TaskCollection(BaseCollection):
         blocks, e.g. one per test. Once a block exists, results are written against
         it through the Property Data collection.
 
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, adding a block does not
+            generate its combinations, so the block shows no rows, even when its workflow
+            has no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for the added block, leaving ``old_workflow_id`` unset.
+
         !!! example
             ```python
             client.tasks.add_block(
@@ -604,6 +642,13 @@ class TaskCollection(BaseCollection):
         with a Workflow (the parameter conditions to run under), exactly as with
         [`add_block`][albert.collections.tasks.TaskCollection.add_block]; only
         the block's workflow and data template IDs are used.
+
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, adding blocks does not
+            generate their combinations, so the blocks show no rows, even when their
+            workflows have no intervals. Call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            for each added block, leaving ``old_workflow_id`` unset.
 
         !!! example
             ```python
@@ -669,6 +714,14 @@ class TaskCollection(BaseCollection):
 
         Use this to change the conditions a block runs under without removing and
         re-adding the block. The task must be a Property or Batch task.
+
+        !!! warning "Increased intervals (🧪 Beta)"
+            When increased intervals is enabled for your tenant, changing a block's
+            workflow does not regenerate its combinations: the block keeps the
+            combinations of the previous workflow until you call
+            [`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+            with ``old_workflow_id`` set to the workflow you replaced. Doing so keeps
+            interval barcodes for unchanged combinations and removes obsolete ones.
 
         !!! example
             ```python

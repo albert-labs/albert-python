@@ -9,6 +9,24 @@ Tasks in Albert are a way to manage and track your daily work and collaborate wi
     Please do not use in production or without explicit guidance from Albert. This feature currently
     falls outside of the Albert support contract, but we'd love your feedback!
 
+### Which method should I use?
+
+| Action | Increased intervals not enabled | Increased intervals enabled |
+| --- | --- | --- |
+| Create a General task | `create` | `create` |
+| Create a Property task with blocks | `create` | `create_with_combinations` |
+| Create several Property tasks | `create_many` | `create_many`, then `generate_block_combinations` for each block |
+| Add a block | `add_block` / `add_blocks` | Same, then `generate_block_combinations` |
+| Change a block's workflow | `update_block_workflow` | Same, then `generate_block_combinations(old_workflow_id=<previous>)` |
+| Remove a block | `remove_block` | `remove_block` |
+
+When increased intervals is enabled, every Property task block needs its combinations
+generated before it shows rows, even when its workflow has no intervals.
+[`create_with_combinations`][albert.collections.tasks.TaskCollection.create_with_combinations]
+does this for you. For blocks created or changed any other way, call
+[`generate_block_combinations`][albert.collections.tasks.TaskCollection.generate_block_combinations]
+for each block.
+
 When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On [`PropertyTask`][albert.resources.tasks.PropertyTask] blocks, Albert manages this matrix of conditions through **intervals**, **rules**, and **combination overrides**.
 
 ### What are intervals?

@@ -570,10 +570,6 @@ class DataTemplateCollection(BaseCollection):
         Only scalar data column values (text, number, dropdown) can be updated with
         this method. Use [`set_curve_example`][albert.collections.data_templates.DataTemplateCollection.set_curve_example] or [`set_image_example`][albert.collections.data_templates.DataTemplateCollection.set_image_example] to set
         example values for curve and image data column types.
-
-        Enum (dropdown) option changes on an existing data column are only
-        applied when that column already has an enum validation; adding options
-        to a column that has none is not supported and those changes are skipped.
         """
 
         existing = self.get_by_id(id=data_template.id)
@@ -603,21 +599,9 @@ class DataTemplateCollection(BaseCollection):
                 data_template_url=path,
                 data_columns=new_data_columns,
             )
-        existing_columns_by_sequence = {
-            x.sequence: x for x in (existing.data_column_values or []) if x.sequence is not None
-        }
         if len(data_column_enum_patches) > 0:
             for sequence, enum_patches in data_column_enum_patches.items():
                 if len(enum_patches) == 0:
-                    continue
-                existing_column = existing_columns_by_sequence.get(sequence)
-                has_existing_enum_validation = (
-                    existing_column is not None
-                    and existing_column.validation is not None
-                    and len(existing_column.validation) > 0
-                    and existing_column.validation[0].datatype == DataType.ENUM
-                )
-                if not has_existing_enum_validation:
                     continue
                 self.session.put(
                     f"{self.base_path}/{existing.id}/datacolumns/{sequence}/enums",

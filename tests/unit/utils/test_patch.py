@@ -502,6 +502,16 @@ def test_generate_enum_patches_new_option_matching_existing_text_is_rehydrated()
     assert generate_enum_patches(existing, updated) == []
 
 
+def test_generate_enum_patches_remove_then_readd_same_text():
+    """Test that removing an option then re-adding its text emits a delete, then an add by text."""
+    original = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(id="E2", text="Hi")]
+    after_removal = [EnumValidationValue(id="E1", text="Low")]
+    readded = [EnumValidationValue(id="E1", text="Low"), EnumValidationValue(text="Hi")]
+
+    assert generate_enum_patches(original, after_removal) == [{"operation": "delete", "id": "E2"}]
+    assert generate_enum_patches(after_removal, readded) == [{"operation": "add", "text": "Hi"}]
+
+
 def test_generate_enum_patches_ignores_non_enum_validation_value_entries():
     """Test that non-EnumValidationValue entries in either list are filtered out."""
     existing = [EnumValidationValue(id="E1", text="Low"), "not-an-enum-value"]
@@ -626,6 +636,44 @@ def test_generate_data_column_patches_enum_newly_added_has_no_existing_options()
     _, _, enum_patches = generate_data_column_patches(initial, updated)
 
     assert enum_patches == {"1": [{"operation": "add", "text": "High"}]}
+
+
+@pytest.mark.parametrize(
+    "initial_validation",
+    [None, [], [ValueValidation(datatype=DataType.STRING)]],
+)
+def test_generate_data_column_patches_switch_to_enum_routes_options_to_enum_patches(
+    initial_validation,
+):
+    """Test that switching a column to ENUM sends options as enum adds, not inline validation."""
+    updated_validation = [
+        ValueValidation(
+            datatype=DataType.ENUM,
+            value=[EnumValidationValue(text="tbd"), EnumValidationValue(text="n/a")],
+        )
+    ]
+    initial = [_dc(sequence="1", validation=initial_validation)]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert patches == []
+    assert enum_patches == {
+        "1": [{"operation": "add", "text": "tbd"}, {"operation": "add", "text": "n/a"}]
+    }
+
+
+def test_generate_data_column_patches_switch_to_empty_enum_keeps_validation_patch():
+    """Test that switching to ENUM with no options still patches the validation."""
+    updated_validation = [ValueValidation(datatype=DataType.ENUM, value=[])]
+    initial = [_dc(sequence="1", validation=[ValueValidation(datatype=DataType.STRING)])]
+    updated = [_dc(sequence="1", validation=updated_validation)]
+
+    patches, _, enum_patches = generate_data_column_patches(initial, updated)
+
+    assert enum_patches == {"1": []}
+    assert len(patches) == 1
+    assert patches[0].actions[0].attribute == "validation"
 
 
 # ---------------------------------------------------------------------------
