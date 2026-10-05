@@ -75,11 +75,11 @@ class ProjectCollection(BaseCollection):
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
     star(id) -> Project
-        Star a project for the current user.
+        Star (pin, favorite) a project for the current user.
     unstar(id) -> None
-        Remove a project from the current user's starred projects.
+        Remove a project from the current user's starred (pinned, favorited) projects.
     get_starred(...) -> Iterator[Project]
-        Get the current user's starred projects.
+        Get the current user's starred (pinned, favorited) projects.
     """
 
     _api_version = "v3"
@@ -318,7 +318,7 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def star(self, *, id: ProjectId) -> Project:
-        """Star a project for the current user.
+        """Star (pin, favorite) a project for the current user.
 
         Starring a project adds it to the current user's starred projects list.
         If the project is already starred, this method leaves it starred.
@@ -355,7 +355,7 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def unstar(self, *, id: ProjectId) -> None:
-        """Remove a project from the current user's starred projects.
+        """Remove a project from the current user's starred (pinned, favorited) projects.
 
         If the project is not starred, this method does nothing.
 
@@ -381,7 +381,7 @@ class ProjectCollection(BaseCollection):
 
     @validate_call
     def get_starred(self, *, max_items: int | None = None) -> Iterator[Project]:
-        """Get the current user's starred projects.
+        """Get the current user's starred (pinned, favorited) projects.
 
         Yields fully populated [`Project`][albert.resources.projects.Project] entities
         belonging to the current user's starred list.
