@@ -5200,6 +5200,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#which-method-should-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which method should I use?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-are-intervals" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5397,6 +5408,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#which-method-should-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which method should I use?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-are-intervals" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5546,6 +5568,54 @@
 Please do not use in production or without explicit guidance from Albert. This feature currently
 falls outside of the Albert support contract, but we'd love your feedback!</p>
 </div>
+<h3 id="which-method-should-i-use">Which method should I use?</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Increased intervals not enabled</th>
+<th>Increased intervals enabled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create a General task</td>
+<td><code>create</code></td>
+<td><code>create</code></td>
+</tr>
+<tr>
+<td>Create a Property task with blocks</td>
+<td><code>create</code></td>
+<td><code>create_with_combinations</code></td>
+</tr>
+<tr>
+<td>Create several Property tasks</td>
+<td><code>create_many</code></td>
+<td><code>create_many</code>, then <code>generate_block_combinations</code> for each block</td>
+</tr>
+<tr>
+<td>Add a block</td>
+<td><code>add_block</code> / <code>add_blocks</code></td>
+<td>Same, then <code>generate_block_combinations</code></td>
+</tr>
+<tr>
+<td>Change a block's workflow</td>
+<td><code>update_block_workflow</code></td>
+<td>Same, then <code>generate_block_combinations(old_workflow_id=&lt;previous&gt;)</code></td>
+</tr>
+<tr>
+<td>Remove a block</td>
+<td><code>remove_block</code></td>
+<td><code>remove_block</code></td>
+</tr>
+</tbody>
+</table>
+<p>When increased intervals is enabled, every Property task block needs its combinations
+generated before it shows rows, even when its workflow has no intervals.
+<a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.create_with_combinations"><code>create_with_combinations</code></a>
+does this for you. For blocks created or changed any other way, call
+<a class="autorefs autorefs-internal" href="../../collections/tasks/#albert.collections.tasks.TaskCollection.generate_block_combinations"><code>generate_block_combinations</code></a>
+for each block.</p>
 <p>When designing experiments or testing formulations, scientists frequently vary one or more workflow parameters across discrete values. On <a class="autorefs autorefs-internal" href="../../resources/tasks/#albert.resources.tasks.PropertyTask"><code>PropertyTask</code></a> blocks, Albert manages this matrix of conditions through <strong>intervals</strong>, <strong>rules</strong>, and <strong>combination overrides</strong>.</p>
 <h3 id="what-are-intervals">What are intervals?</h3>
 <p>An <strong>interval</strong> is a discrete setpoint value assigned to a parameter within a workflow. When multiple parameters define intervals:</p>
