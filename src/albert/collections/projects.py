@@ -1,17 +1,20 @@
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
+from contextlib import suppress
 from typing import Any
 
 from pydantic import validate_call
 
 from albert.collections.base import BaseCollection
+from albert.collections.personalization import PersonalizationCollection
 from albert.core.logging import logger
 from albert.core.pagination import AlbertPaginator, MappedPaginator
 from albert.core.session import AlbertSession
 from albert.core.shared.enums import OrderBy, PaginationMode
 from albert.core.shared.identifiers import ProjectId, SearchProjectId
 from albert.core.utils import ensure_list
-from albert.exceptions import AlbertHTTPError
+from albert.exceptions import AlbertHTTPError, BadRequestError, NotFoundError
 from albert.resources.acls import ACL
+from albert.resources.personalization import Personalization, PersonalizationCategory
 from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
@@ -71,6 +74,12 @@ class ProjectCollection(BaseCollection):
         Same filters as search, but returns fully populated projects (slower).
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
+    star(id) -> Project
+        Star (pin, favorite) a project for the current user.
+    unstar(id) -> None
+        Remove a project from the current user's starred (pinned, favorited) projects.
+    get_starred(...) -> Iterator[Project]
+        Get the current user's starred (pinned, favorited) projects.
     """
 
     _api_version = "v3"
@@ -306,6 +315,132 @@ class ProjectCollection(BaseCollection):
         url = f"{self.base_path}/{id}/reactivate"
         self.session.patch(url)
         return self.get_by_id(id=id)
+
+    @validate_call
+    def star(self, *, id: ProjectId) -> Project:
+        """Star (pin, favorite) a project for the current user.
+
+        Starring a project adds it to the current user's starred projects list.
+        If the project is already starred, this method leaves it starred.
+
+        !!! example
+            ```python
+            project = client.projects.star(id="PRO123")
+            project.description
+            # 'Weatherproof Coatings 2026'
+            ```
+
+        Parameters
+        ----------
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
+
+        Returns
+        -------
+        Project
+            The fully populated starred Project.
+        """
+        project = self.get_by_id(id=id)
+        record = Personalization(
+            category=PersonalizationCategory.STARRED_PROJECTS,
+            saved_id=project.id,
+            saved_name=project.description,
+        )
+        try:
+            PersonalizationCollection(session=self.session).create(personalization=record)
+        except BadRequestError as e:
+            if not self._is_already_starred_error(e):
+                raise
+        return project
+
+    @validate_call
+    def unstar(self, *, id: ProjectId) -> None:
+        """Remove a project from the current user's starred (pinned, favorited) projects.
+
+        If the project is not starred, this method does nothing.
+
+        !!! example
+            ```python
+            client.projects.unstar(id="PRO123")
+            ```
+
+        Parameters
+        ----------
+        id : ProjectId
+            The Project ID (format ``PRO...``, e.g. ``"PRO123"``).
+
+        Returns
+        -------
+        None
+        """
+        personalizations = PersonalizationCollection(session=self.session)
+        records = personalizations.get_all(category=PersonalizationCategory.STARRED_PROJECTS)
+        for record_id in self._starred_record_ids(records=records, project_id=id):
+            with suppress(NotFoundError):
+                personalizations.delete(id=record_id)
+
+    @validate_call
+    def get_starred(self, *, max_items: int | None = None) -> Iterator[Project]:
+        """Get the current user's starred (pinned, favorited) projects.
+
+        Yields fully populated [`Project`][albert.resources.projects.Project] entities
+        belonging to the current user's starred list.
+
+        !!! example
+            ```python
+            for project in client.projects.get_starred():
+                print(project.id, project.description)
+            # PRO123 Weatherproof Coatings 2026
+            ```
+
+        Parameters
+        ----------
+        max_items : int, optional
+            Maximum number of projects to return in total. If None, returns all
+            starred projects.
+
+        Returns
+        -------
+        Iterator[Project]
+            An iterator of fully populated Project entities.
+        """
+
+        def _hydrate(record: Personalization) -> Project | None:
+            if not record.saved_id:
+                return None
+            try:
+                return self.get_by_id(id=record.saved_id)
+            except AlbertHTTPError as e:
+                logger.warning(f"Error fetching starred project {record.saved_id}: {e}")
+                return None
+
+        records = PersonalizationCollection(session=self.session).get_all(
+            category=PersonalizationCategory.STARRED_PROJECTS, max_items=max_items
+        )
+        return MappedPaginator(records, _hydrate)
+
+    @staticmethod
+    def _starred_record_ids(*, records: Iterable[Personalization], project_id: str) -> list[str]:
+        """Return the personalization record IDs that star ``project_id``."""
+        target = project_id.upper()
+        return [
+            record.id
+            for record in records
+            if record.id and (record.saved_id or "").upper() == target
+        ]
+
+    @staticmethod
+    def _is_already_starred_error(error: BadRequestError) -> bool:
+        """Return True if ``error`` reports that the project is already starred."""
+        try:
+            payload = error.response.json()
+        except ValueError:
+            return False
+        errors = payload.get("errors") if isinstance(payload, dict) else None
+        return any(
+            isinstance(item, dict) and "savedId already exist" in str(item.get("msg", ""))
+            for item in errors or []
+        )
 
     @validate_call
     def search(

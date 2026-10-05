@@ -229,3 +229,39 @@ def test_reactivate_project(client: Albert, seeded_locations, seed_prefix: str):
     finally:
         with suppress(NotFoundError):
             client.projects.delete(id=project.id)
+
+
+def test_star_get_starred_and_unstar_project(client: Albert, seeded_locations, seed_prefix: str):
+    """Test starring, getting starred, and unstarring a project for the current user."""
+    project = client.projects.create(
+        project=Project(
+            description=f"{seed_prefix} - Project to Star",
+            locations=[EntityLink(id=seeded_locations[1].id)],
+        )
+    )
+    try:
+        starred = client.projects.star(id=project.id)
+        assert isinstance(starred, Project)
+        assert starred.id == project.id
+
+        again = client.projects.star(id=project.id)
+        assert again.id == project.id
+
+        starred_ids = poll_until(
+            lambda: [p.id for p in client.projects.get_starred() if p.id == project.id]
+        )
+        assert starred_ids == [project.id]
+
+        client.projects.unstar(id=project.id)
+        remaining = poll_until(
+            lambda: [p.id for p in client.projects.get_starred()],
+            predicate=lambda ids: project.id not in ids,
+        )
+        assert project.id not in remaining
+
+        client.projects.unstar(id=project.id)
+    finally:
+        with suppress(NotFoundError):
+            client.projects.unstar(id=project.id)
+        with suppress(NotFoundError):
+            client.projects.delete(id=project.id)

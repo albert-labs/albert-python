@@ -316,7 +316,7 @@ class CasCollection(BaseCollection):
 - Beta badge: `(🧪 Beta)` (with a space).
 - No em dashes (`—`); use commas, colons, or parentheses (org language policy).
 
-- Docstrings must describe **what** a method does from the caller's perspective — never mention internal implementation details or backend API specifics (e.g. diffing, patching, HTTP methods, "returned by the API").
+- Docstrings must describe **what** a method does from the caller's perspective — never how it is wired to the backend. Banned terms in public docstrings: `endpoint`, `route`, HTTP verbs (`GET`, `POST`, `PATCH`, `DELETE`), HTTP status codes (`HTTP 200`, `404`), `request` / `response`, `payload`, `JSON`, `diffing`, `patching`, and phrasing like "returned by the API". Keep code comments and log messages free of these too whenever a caller-neutral phrasing exists. The standard `session` Parameters line and `base_path` Attributes line ("The base API route for \<entity\> requests") are the sanctioned exceptions.
   - Wrong: `"""Update an attachment by diffing the current server state."""`
   - Right: `"""Update an attachment."""`
   - Wrong: `The updated attachment returned by the API.`

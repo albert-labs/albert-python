@@ -37,6 +37,7 @@ from albert.collections.notes import NotesCollection
 from albert.collections.parameter_groups import ParameterGroupCollection
 from albert.collections.parameters import ParameterCollection
 from albert.collections.pdf_generator import PDFGeneratorCollection
+from albert.collections.personalization import PersonalizationCollection
 from albert.collections.pricings import PricingCollection
 from albert.collections.product_design import ProductDesignCollection
 from albert.collections.projects import ProjectCollection
@@ -331,6 +332,10 @@ class Albert:
     @property
     def parameters(self) -> ParameterCollection:
         return ParameterCollection(session=self.session)
+
+    @property
+    def personalization(self) -> PersonalizationCollection:
+        return PersonalizationCollection(session=self.session)
 
     @property
     def property_data(self) -> PropertyDataCollection:
