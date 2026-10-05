@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.61.0](https://github.com/albert-labs/albert-python/compare/v1.60.0...v1.61.0) (2026-10-05)
+
+
+### Features
+
+* **projects:** add star, unstar and get_starred for starred projects ([#801](https://github.com/albert-labs/albert-python/issues/801)) ([843c921](https://github.com/albert-labs/albert-python/commit/843c921441baca474ffa7da6354f13602d1de4db))
+
+
+### Bug Fixes
+
+* **sheets:** use multi-task endpoint in add_task_row ([#813](https://github.com/albert-labs/albert-python/issues/813)) ([58f0ce5](https://github.com/albert-labs/albert-python/commit/58f0ce5851c620a43a7aaa99448dbbfd7f0070ed))
+
+
+### Documentation
+
+* **tasks:** clarify create vs create_with_combinations for increased intervals ([#815](https://github.com/albert-labs/albert-python/issues/815)) ([69f41ca](https://github.com/albert-labs/albert-python/commit/69f41ca5ac53b40e4531cb8eb13e780bfe1530db))
+
 ## [1.60.0](https://github.com/albert-labs/albert-python/compare/v1.59.1...v1.60.0) (2026-10-01)
 
 
