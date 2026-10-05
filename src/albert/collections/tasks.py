@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import requests
 from pydantic import validate_call
@@ -50,7 +50,9 @@ from albert.resources.tasks import (
     BaseTask,
     BatchTask,
     Block,
+    CsvTableFile,
     CsvTableInput,
+    CsvTableInputV2,
     CsvTableResponseItem,
     GeneralTask,
     HistoryEntity,
@@ -1354,8 +1356,8 @@ class TaskCollection(BaseCollection):
         self,
         *,
         task_id: TaskId,
-        inventory_id: InventoryId,
         data_template_id: DataTemplateId,
+        inventory_id: InventoryId | None = None,
         block_id: BlockId | None = None,
         attachment_id: AttachmentId | None = None,
         file_path: str | Path | None = None,
@@ -1364,6 +1366,7 @@ class TaskCollection(BaseCollection):
         interval: str = "default",
         field_mapping: dict[str, str] | None = None,
         mode: ImportMode = ImportMode.CSV,
+        schema_version: Literal[1, 2] | None = None,
     ) -> BaseTask:
         """
         Import results from an attachment into property data. Reuse an existing attachment or upload a
@@ -1387,13 +1390,15 @@ class TaskCollection(BaseCollection):
         ----------
         task_id : TaskId
             The property task receiving the results.
-        block_id : BlockId | None
-            Target block on the task where the data will be written. Optional, when a
-            single block present on the task. If multiple blocks exist, this parameter must be provided.
-        inventory_id : InventoryId
-            Inventory item id.
         data_template_id : DataTemplateId
             Data template Id.
+        inventory_id : InventoryId | None, optional
+            Inventory item id. Required when ``mode`` is ``ImportMode.CSV``. Optional when
+            ``mode`` is ``ImportMode.SCRIPT`` if the script dynamically resolves or emits
+            inventory IDs.
+        block_id : BlockId | None, optional
+            Target block on the task where the data will be written. Optional when a
+            single block is present on the task. If multiple blocks exist, this parameter must be provided.
         attachment_id : AttachmentId | None, optional
             Existing attachment to use. Exactly one of ``attachment_id`` or
             ``file_path`` must be provided.
@@ -1418,6 +1423,12 @@ class TaskCollection(BaseCollection):
         mode : ImportMode, optional
             Import mode to use, by default ImportMode.CSV. Use ImportMode.SCRIPT to run a custom
             script to process the CSV before import. This requires a script attachment on the data template.
+        schema_version : {1, 2} | None, optional
+            The TaskMetadata schema version to send to the script execution runner. When
+            None (the default), automatically detected from the block's Increased Intervals
+            configuration (version 2 if increased intervals are configured on the block, otherwise
+            version 1). Explicitly pass 1 for legacy ROW payloads or 2 for Increased Intervals
+            compact payloads.
 
         Returns
         -------
@@ -1425,6 +1436,9 @@ class TaskCollection(BaseCollection):
             The task with the newly imported results.
         """
         logger.info("Importing results for task %s using %s mode", task_id, mode)
+
+        if mode is ImportMode.CSV and inventory_id is None:
+            raise ValueError("'inventory_id' is required when mode is ImportMode.CSV.")
 
         if (attachment_id is None) == (file_path is None):
             raise ValueError("Provide exactly one of 'attachment_id' or 'file_path'.")
@@ -1500,93 +1514,155 @@ class TaskCollection(BaseCollection):
                 task=task_details,
                 block_id=block_id,
                 filename=attachment_details.name,
+                session=self.session,
+                schema_version=schema_version,
             )
-            csv_payload = CsvTableInput(
-                script_s3_url=script_signed_url,
-                data_s3_url=attachment_details.signed_url,
-                task_metadata=metadata,
-            )
-            response = self.session.post(
-                f"/api/{self._api_version}/proxy/csvtable",
-                json=csv_payload.model_dump(by_alias=True, mode="json"),
-            )
+            if metadata.schema_version == 2:
+                csv_payload = CsvTableInputV2(
+                    script_s3_url=script_signed_url,
+                    files=[
+                        CsvTableFile(
+                            data_s3_url=attachment_details.signed_url,
+                            filename=attachment_details.name,
+                        )
+                    ],
+                    task_metadata=metadata,
+                )
+                response = self.session.post(
+                    f"/api/{self._api_version}/proxy/csvtable",
+                    params={"schemaVersion": 2},
+                    json=csv_payload.to_payload_dict(),
+                )
+            else:
+                csv_payload = CsvTableInput(
+                    script_s3_url=script_signed_url,
+                    data_s3_url=attachment_details.signed_url,
+                    task_metadata=metadata,
+                )
+                response = self.session.post(
+                    f"/api/{self._api_version}/proxy/csvtable",
+                    json=csv_payload.to_payload_dict(),
+                )
             response_body = response.json()
             table_results = [CsvTableResponseItem.model_validate(item) for item in response_body]
-            table_rows = table_results[0].data if table_results else None
-            if not isinstance(table_rows, list) or len(table_rows) < 2:
-                raise ValueError(
-                    "Script CSV preview must contain a header row followed by at least one data row."
-                )
+            if not table_results:
+                raise ValueError("Script execution returned no results.")
+            blocks_to_process = table_results
         else:
             table_rows = fetch_csv_table_rows(
                 session=self.session,
                 attachment_id=str(attachment_id),
             )
+            blocks_to_process = [
+                CsvTableResponseItem(
+                    interval=interval,
+                    inv_id=inventory_id,
+                    lot_id=lot_id,
+                    data=table_rows,
+                )
+            ]
 
-        header_row = table_rows[0]
-        data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
-        if not data_rows:
-            raise ValueError("No data rows detected in CSV preview.")
-
-        header_sequence: list[tuple[str, str]] = []
-        if isinstance(header_row, dict):
-            # API is expected to return lowercase `col#` keys (e.g. `col1`).
-            for key, value in header_row.items():
-                if not isinstance(key, str) or not isinstance(value, str):
-                    continue
-                normalized_key = key.strip().lower()
-                header_name = value
-                if not header_name:
-                    continue
-                header_sequence.append((normalized_key, header_name))
-        logger.debug("CSV header sequence: %s", header_sequence)
         data_columns = data_template.data_column_values or []
-        column_to_csv_key = map_csv_headers_to_columns(
-            header_sequence=header_sequence,
-            data_columns=data_columns,
-            field_mapping=field_mapping,
-        )
+        imported_any = False
+        mapped_any_columns = False
 
-        if not column_to_csv_key:
+        for block_result in blocks_to_process:
+            table_rows = block_result.data
+            if not isinstance(table_rows, list) or len(table_rows) < 2:
+                continue
+
+            header_row = table_rows[0]
+            data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
+            if not data_rows:
+                continue
+
+            header_sequence: list[tuple[str, str]] = []
+            if isinstance(header_row, dict):
+                # API is expected to return lowercase `col#` keys (e.g. `col1`).
+                for key, value in header_row.items():
+                    if not isinstance(key, str) or not isinstance(value, str):
+                        continue
+                    normalized_key = key.strip().lower()
+                    header_name = value
+                    if not header_name:
+                        continue
+                    header_sequence.append((normalized_key, header_name))
+            logger.debug("CSV header sequence: %s", header_sequence)
+
+            column_to_csv_key = map_csv_headers_to_columns(
+                header_sequence=header_sequence,
+                data_columns=data_columns,
+                field_mapping=field_mapping,
+            )
+
+            if not column_to_csv_key:
+                if mode is ImportMode.CSV or len(blocks_to_process) == 1:
+                    raise ValueError(
+                        "Unable to map any data template columns to CSV fields. Ensure CSV headers match data template column names."
+                    )
+                logger.warning(
+                    "Unable to map any data template columns to CSV fields for block %s.",
+                    block_id,
+                )
+                continue
+
+            mapped_any_columns = True
+
+            target_interval = block_result.interval or interval
+            target_inventory_id = block_result.inv_id or inventory_id
+            target_lot_id = block_result.lot_id or lot_id
+
+            if not target_inventory_id:
+                raise ValueError(
+                    "No inventory ID was specified and none was produced by the script."
+                )
+
+            # Build task property payload
+            properties_to_add = build_property_payload(
+                data_rows=data_rows,
+                column_to_csv_key=column_to_csv_key,
+                data_columns=data_columns,
+                interval=target_interval,
+                data_template_id=data_template_id,
+            )
+
+            if not properties_to_add:
+                continue
+
+            imported_any = True
+
+            # Delete existing property data before writing new values
+            logger.warning(
+                "Existing property data for block %s, inventory %s, lot %s, interval %s will be overwritten.",
+                block_id,
+                target_inventory_id,
+                target_lot_id or "None",
+                target_interval,
+            )
+            with suppress(NotFoundError):
+                property_data_collection.bulk_delete_task_data(
+                    task_id=task_id,
+                    block_id=block_id,
+                    inventory_id=target_inventory_id,
+                    lot_id=target_lot_id,
+                    interval_id=target_interval,
+                )
+
+            property_data_collection.add_properties_to_task(
+                inventory_id=target_inventory_id,
+                task_id=task_id,
+                block_id=block_id,
+                lot_id=target_lot_id,
+                properties=properties_to_add,
+            )
+
+        if not mapped_any_columns:
             raise ValueError(
                 "Unable to map any data template columns to CSV fields. Ensure CSV headers match data template column names."
             )
 
-        # Build task property payload
-        properties_to_add = build_property_payload(
-            data_rows=data_rows,
-            column_to_csv_key=column_to_csv_key,
-            data_columns=data_columns,
-            interval=interval,
-            data_template_id=data_template_id,
-        )
-
-        if not properties_to_add:
+        if not imported_any:
             raise ValueError("CSV data produced no values to import after filtering empty cells.")
-
-        # Delete existing property data before writing new values
-        logger.warning(
-            "Existing property data for block %s, inventory %s, lot %s will be overwritten during CSV import.",
-            block_id,
-            inventory_id,
-            lot_id or "None",
-        )
-        with suppress(NotFoundError):
-            property_data_collection.bulk_delete_task_data(
-                task_id=task_id,
-                block_id=block_id,
-                inventory_id=inventory_id,
-                lot_id=lot_id,
-                interval_id=interval,
-            )
-
-        property_data_collection.add_properties_to_task(
-            inventory_id=inventory_id,
-            task_id=task_id,
-            block_id=block_id,
-            lot_id=lot_id,
-            properties=properties_to_add,
-        )
 
         return self.get_by_id(id=task_id)
 

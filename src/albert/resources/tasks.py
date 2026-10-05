@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import AliasChoices, Field, TypeAdapter
 from typing_extensions import deprecated
 
 from albert.core.base import BaseAlbertModel
@@ -800,28 +800,147 @@ class TaskMetadataBlockdata(BaseAlbertModel):
     )
 
 
+class TaskMetadataInventory(BaseAlbertModel):
+    """Inventory item summary on TaskMetadata."""
+
+    id: str
+    name: str | None = None
+    category: str | None = None
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+    lot_number: str | None = Field(default=None, alias="lotNumber")
+    barcode_id: str | None = Field(default=None, alias="barcodeId")
+
+    @property
+    def inventory_id(self) -> str:
+        """Alias for id, matching TaskInventoryInformation."""
+        return self.id
+
+
+class TaskMetadataIntervalCombo(BaseAlbertModel):
+    """Child-workflow interval combination entry (schema v2)."""
+
+    id: str
+    values: list[str | None]
+
+
+class TaskMetadataIntervals(BaseAlbertModel):
+    """Interval columns and combinations (schema v2)."""
+
+    columns: list[str] = Field(default_factory=list)
+    combos: list[TaskMetadataIntervalCombo] = Field(default_factory=list)
+
+
+class TaskMetadataInventoryReference(BaseAlbertModel):
+    """Per-file column name hints for inventory/lot grouping (schema v2)."""
+
+    inventory_id: str | None = Field(default=None, alias="inventoryId")
+    inventory_name: str | None = Field(default=None, alias="inventoryName")
+    lot_id: str | None = Field(default=None, alias="lotId")
+    lot_name: str | None = Field(default=None, alias="lotName")
+
+
 class TaskMetadata(BaseAlbertModel):
     """Top-level metadata describing the task context for scripts."""
 
     filename: str | None = None
     task_id: str | None = Field(default=None, alias="taskId")
     block_id: str | None = Field(default=None, alias="blockId")
-    inventories: list[TaskInventoryInformation] = Field(default_factory=list, alias="Inventories")
+    inventories: list[TaskMetadataInventory] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("Inventories", "inventories"),
+        serialization_alias="inventories",
+    )
     blockdata: TaskMetadataBlockdata | None = Field(default=None, alias="Blockdata")
+
+    # Schema v2 (INCREASED_INTERVALS) fields
+    schema_version: int | None = Field(default=None, alias="schemaVersion")
+    data_template_id: str | None = Field(default=None, alias="dataTemplateId")
+    intervals: TaskMetadataIntervals | None = None
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference", exclude=True
+    )
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize TaskMetadata according to schemaVersion (v1 or v2).
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized task metadata dictionary formatted for v1 or v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        if self.schema_version == 2:
+            data.pop("Blockdata", None)
+            data["schemaVersion"] = 2
+            if "Inventories" in data:
+                data["inventories"] = data.pop("Inventories")
+        else:
+            data.pop("schemaVersion", None)
+            data.pop("dataTemplateId", None)
+            data.pop("intervals", None)
+            if "inventories" in data:
+                data["Inventories"] = data.pop("inventories")
+        return data
 
 
 # Models for CSV tables endpoints
 class CsvTableInput(BaseAlbertModel):
-    """Payload for invoking the CSV table proxy endpoint."""
+    """Payload for invoking the CSV table proxy endpoint (schema v1)."""
 
     script_s3_url: str = Field(alias="scriptS3URL")
     data_s3_url: str = Field(alias="dataS3URL")
     task_metadata: TaskMetadata = Field(alias="TaskMetadata")
 
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v1 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v1.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
+
+class CsvTableFile(BaseAlbertModel):
+    """File entry in CsvTableInputV2."""
+
+    data_s3_url: str = Field(alias="dataS3URL")
+    filename: str
+    inventory_reference: TaskMetadataInventoryReference | None = Field(
+        default=None, alias="inventoryReference"
+    )
+
+
+class CsvTableInputV2(BaseAlbertModel):
+    """Payload for invoking the CSV table proxy endpoint (schema v2)."""
+
+    script_s3_url: str = Field(alias="scriptS3URL")
+    files: list[CsvTableFile] = Field(..., min_length=1, max_length=1)
+    task_metadata: TaskMetadata = Field(alias="TaskMetadata")
+
+    def to_payload_dict(self) -> dict[str, Any]:
+        """Serialize payload for the v2 CSV table proxy endpoint.
+
+        Returns
+        -------
+        dict[str, Any]
+            The serialized request dictionary formatted for v2.
+        """
+        data = self.model_dump(by_alias=True, mode="json", exclude_none=True)
+        data["TaskMetadata"] = self.task_metadata.to_payload_dict()
+        return data
+
 
 class CsvTableResponseItem(BaseAlbertModel):
     """Single table response emitted by the CSV table proxy."""
 
+    interval: str | None = Field(default=None, alias="Interval")
+    inv_id: str | None = Field(default=None, alias="InvId")
+    lot_id: str | None = Field(default=None, alias="LotId")
     data: list[dict[str, Any]] = Field(alias="Data")
 
 

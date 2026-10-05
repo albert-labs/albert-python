@@ -729,6 +729,198 @@ def test_build_task_metadata_defaults_inventories_to_empty_list():
     assert metadata.inventories == []
 
 
+def test_build_task_metadata_v2_autodetect_from_intervals_start_from():
+    """Test that a block with intervals_start_from defaults to schemaVersion=2."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL1", name="Workflow A")],
+        data_template=[EntityLink(id="DAT1", name="Data Template A")],
+        intervals_start_from="all",
+    )
+    task = PropertyTask(
+        id="TAS1",
+        name="Task",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV1", lot_id="LOT1")],
+    )
+
+    metadata = build_task_metadata(task=task, block_id="BLK1", filename="results.csv")
+
+    assert metadata.schema_version == 2
+    assert metadata.data_template_id == "DAT1"
+    assert metadata.blockdata is None
+    assert metadata.intervals is not None
+    assert metadata.intervals.columns == []
+    assert metadata.intervals.combos == []
+    assert len(metadata.inventories) == 1
+    assert metadata.inventories[0].id == "INV1"
+    assert metadata.inventories[0].inventory_id == "INV1"
+
+    payload_dict = metadata.to_payload_dict()
+    assert payload_dict["schemaVersion"] == 2
+    assert payload_dict["dataTemplateId"] == "DAT1"
+    assert "inventories" in payload_dict
+    assert "Blockdata" not in payload_dict
+
+
+def test_build_task_metadata_v1_populates_intervals_and_workflow_json_with_session():
+    """Test that build_task_metadata queries workflow endpoints for v1."""
+    block = Block(
+        id="BLK1",
+        workflow=[EntityLink(id="WFL100", name="Workflow 100")],
+        data_template=[EntityLink(id="DAT100", name="Data Template 100")],
+    )
+    task = PropertyTask(
+        id="TAS100",
+        name="Task 100",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV100", lot_id="LOT100")],
+    )
+
+    class FakeResponse:
+        def __init__(self, data, status_code=200):
+            self._data = data
+            self.status_code = status_code
+
+        def json(self):
+            return self._data
+
+    class FakeSession:
+        def get(self, path, params=None):
+            if path == "/api/v3/workflows/intervals" and params == {"id": "WFL100"}:
+                return FakeResponse(
+                    [
+                        {
+                            "albertId": "WFL100",
+                            "Intervals": [
+                                {
+                                    "interval": "ROW1XROW2",
+                                    "intervalParams": "INT1XINT1",
+                                    "intervalString": "Temp: 25",
+                                    "sequence": 1,
+                                    "intervalDetails": [
+                                        {"name": "Temp", "value": "25", "unitName": "C"}
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                )
+            if path == "/api/v3/workflows/WFL100":
+                return FakeResponse(
+                    {
+                        "albertId": "WFL100",
+                        "name": "Workflow 100",
+                        "ParameterGroups": [
+                            {
+                                "id": "PRG1",
+                                "name": "Group 1",
+                                "prgSequence": 1,
+                                "rowId": "ROW1",
+                                "Parameters": [
+                                    {
+                                        "id": "PRM1",
+                                        "name": "Temp",
+                                        "rowId": "ROW2",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                )
+            return FakeResponse({}, 404)
+
+    metadata = build_task_metadata(
+        task=task, block_id="BLK1", filename="results.csv", session=FakeSession()
+    )
+
+    assert metadata.schema_version == 1
+    assert metadata.blockdata is not None
+    assert metadata.blockdata.id == "BLK1"
+    assert len(metadata.blockdata.workflow) == 1
+    wf = metadata.blockdata.workflow[0]
+    assert wf.albert_id == "WFL100"
+    assert len(wf.intervals) == 1
+    assert wf.intervals[0].interval == "ROW1XROW2"
+    assert wf.intervals[0].interval_details[0].name == "Temp"
+    assert wf.intervals[0].interval_details[0].value == "25"
+    assert metadata.blockdata.workflow_json.albert_id == "WFL100"
+
+    payload = metadata.to_payload_dict()
+    assert "schemaVersion" not in payload
+    assert "dataTemplateId" not in payload
+    assert "Blockdata" in payload
+    assert "Inventories" in payload
+
+
+def test_build_task_metadata_v2_populates_columns_and_combos_with_session():
+    """Test that build_task_metadata queries combinations for v2."""
+    block = Block(
+        id="BLK2",
+        workflow=[EntityLink(id="WFL200", name="Workflow 200")],
+        data_template=[EntityLink(id="DAT200", name="Data Template 200")],
+        intervals_start_from="all",
+    )
+    task = PropertyTask(
+        id="TAS200",
+        name="Task 200",
+        blocks=[block],
+        inventory_information=[TaskInventoryInformation(inventory_id="INV200", lot_id="LOT200")],
+    )
+
+    class FakeResponse:
+        def __init__(self, data, status_code=200):
+            self._data = data
+            self.status_code = status_code
+
+        def json(self):
+            return self._data
+
+    class FakeSession:
+        def get(self, path, params=None):
+            if path == "/api/v3/workflows/intervals":
+                return FakeResponse(
+                    [
+                        {
+                            "albertId": "WFL200",
+                            "Intervals": [
+                                {
+                                    "interval": "ROW5XROW9",
+                                    "intervalDetails": [
+                                        {"name": "Cure Box", "value": "C13582"},
+                                        {"name": "Strain", "value": "45"},
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                )
+            if path == "/api/v3/tasks/TAS200/blocks/BLK2/combinations":
+                return FakeResponse(
+                    {
+                        "combinations": [
+                            {
+                                "id": "WFL900001",
+                                "intervalRowKey": "ROW5XROW9",
+                            }
+                        ]
+                    }
+                )
+            return FakeResponse({}, 404)
+
+    metadata = build_task_metadata(
+        task=task, block_id="BLK2", filename="test.csv", session=FakeSession()
+    )
+
+    assert metadata.schema_version == 2
+    assert metadata.data_template_id == "DAT200"
+    assert metadata.intervals is not None
+    assert metadata.intervals.columns == ["Cure Box", "Strain"]
+    assert len(metadata.intervals.combos) == 1
+    assert metadata.intervals.combos[0].id == "WFL900001"
+    assert metadata.intervals.combos[0].values == ["C13582", "45"]
+
+
 # ---------------------------------------------------------------------------
 # resolve_attachment
 # ---------------------------------------------------------------------------

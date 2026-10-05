@@ -9,15 +9,20 @@ from albert.core.session import AlbertSession
 from albert.core.shared.identifiers import DataTemplateId
 from albert.core.shared.models.base import EntityLink, EntityLinkWithName
 from albert.core.shared.models.patch import PatchOperation
+from albert.exceptions import AlbertHTTPError
 from albert.resources.data_templates import DataColumnValue
 from albert.resources.property_data import TaskDataColumn, TaskPropertyCreate
 from albert.resources.tasks import (
     BaseTask,
     PropertyTask,
-    TaskInventoryInformation,
     TaskMetadata,
     TaskMetadataBlockdata,
     TaskMetadataDataTemplate,
+    TaskMetadataInterval,
+    TaskMetadataIntervalCombo,
+    TaskMetadataIntervalDetail,
+    TaskMetadataIntervals,
+    TaskMetadataInventory,
     TaskMetadataWorkflow,
     TaskPatchPayload,
 )
@@ -74,28 +79,136 @@ def build_property_payload(
 
 def build_task_metadata(
     *,
-    task: PropertyTask,
+    task: PropertyTask | BaseTask,
     block_id: str,
     filename: str | None,
+    session: AlbertSession | None = None,
+    schema_version: int | None = None,
 ) -> TaskMetadata:
-    """Construct task metadata payload for script-driven imports."""
+    """Construct task metadata payload for script-driven imports.
 
-    inventories: list[TaskInventoryInformation] = []
-    for inv in task.inventory_information or []:
-        inventories.append(
-            TaskInventoryInformation(
-                inventory_id=inv.inventory_id,
-                lot_id=inv.lot_id,
-                lot_number=inv.lot_number,
-                barcode_id=inv.barcode_id,
-            )
-        )
-
+    Supports both v1 (legacy ROW combinations and Blockdata) and v2
+    (Increased Intervals compact schemaVersion=2 and intervals.combos).
+    When schema_version is omitted, auto-detects from the block's
+    Increased Intervals attributes (intervals_start_from, jobId, combinationsCount).
+    """
     block_info = next((blk for blk in (task.blocks or []) if blk.id == block_id), None)
     if block_info is None:
         raise ValueError(
             f"Block '{block_id}' not found on task {task.id} for metadata construction."
         )
+
+    # Determine schema version
+    if schema_version is not None:
+        resolved_version = schema_version
+    else:
+        has_increased_intervals = (
+            block_info.intervals_start_from is not None
+            or getattr(block_info, "job_id", None) is not None
+            or any(
+                getattr(wf, "combinations_count", None) is not None
+                for wf in (block_info.workflow or [])
+            )
+        )
+        resolved_version = 2 if has_increased_intervals else 1
+
+    inventories: list[TaskMetadataInventory] = []
+    for inv in task.inventory_information or []:
+        inv_id = getattr(inv, "inventory_id", None) or getattr(inv, "id", None)
+        inv_name = getattr(inv, "name", None) or getattr(inv, "inventory_name", None) or inv_id
+        inventories.append(
+            TaskMetadataInventory(
+                id=inv_id,
+                name=inv_name,
+                category=getattr(inv, "category", None),
+                lot_id=inv.lot_id,
+                lot_name=getattr(inv, "lot_name", None),
+                lot_number=inv.lot_number,
+                barcode_id=getattr(inv, "barcode_id", None),
+            )
+        )
+
+    if resolved_version == 2:
+        dt_list = block_info.data_template or []
+        first_dt = dt_list[0] if isinstance(dt_list, list) and dt_list else dt_list
+        data_template_id = getattr(first_dt, "id", None) or ""
+
+        columns: list[str] = []
+        combos: list[TaskMetadataIntervalCombo] = []
+
+        if session is not None:
+            final_wf = next(
+                (
+                    wf
+                    for wf in (block_info.workflow or [])
+                    if getattr(wf, "category", None) == "FINAL"
+                ),
+                (block_info.workflow[0] if block_info.workflow else None),
+            )
+            wf_id = getattr(final_wf, "id", None) if final_wf else None
+
+            if wf_id:
+                row_key_to_values: dict[str, list[str | None]] = {}
+                try:
+                    intervals_resp = session.get(
+                        "/api/v3/workflows/intervals", params={"id": wf_id}
+                    )
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v2 workflow intervals for workflow %s: %s",
+                        wf_id,
+                        e,
+                    )
+                    intervals_resp = None
+
+                if intervals_resp is not None and intervals_resp.status_code == 200:
+                    intervals_data = intervals_resp.json()
+                    wfl_intervals = (
+                        intervals_data[0].get("Intervals", []) if intervals_data else []
+                    )
+                    if wfl_intervals:
+                        first_int_details = wfl_intervals[0].get("intervalDetails", [])
+                        columns = [d.get("name", "") for d in first_int_details if d.get("name")]
+                        for item in wfl_intervals:
+                            rkey = item.get("interval")
+                            vals = [d.get("value") for d in item.get("intervalDetails", [])]
+                            if rkey:
+                                row_key_to_values[rkey] = vals
+
+                try:
+                    combos_resp = session.get(
+                        f"/api/v3/tasks/{task.id}/blocks/{block_id}/combinations"
+                    )
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v2 combinations for block %s on task %s: %s",
+                        block_id,
+                        task.id,
+                        e,
+                    )
+                    combos_resp = None
+
+                if combos_resp is not None and combos_resp.status_code == 200:
+                    combos_data = combos_resp.json().get("combinations", [])
+                    for c in combos_data:
+                        cid = c.get("id")
+                        rkey = c.get("intervalRowKey")
+                        c_vals = row_key_to_values.get(rkey, [])
+                        if cid:
+                            combos.append(TaskMetadataIntervalCombo(id=cid, values=c_vals))
+
+        intervals = TaskMetadataIntervals(columns=columns, combos=combos)
+        return TaskMetadata(
+            filename=filename,
+            task_id=task.id,
+            block_id=block_id,
+            schema_version=2,
+            data_template_id=data_template_id,
+            inventories=inventories,
+            intervals=intervals,
+        )
+
+    # resolved_version == 1
     data_templates: list[TaskMetadataDataTemplate] = []
     for dt in block_info.data_template or []:
         data_templates.append(
@@ -106,12 +219,64 @@ def build_task_metadata(
                 standards=getattr(dt, "standards", None),
             )
         )
+
     workflows: list[TaskMetadataWorkflow] = []
+    workflow_json: dict[str, Any] = {}
     for wf in block_info.workflow or []:
+        wf_id = getattr(wf, "id", None)
+        wf_intervals: list[TaskMetadataInterval] = []
+        if session is not None and wf_id:
+            try:
+                int_resp = session.get("/api/v3/workflows/intervals", params={"id": wf_id})
+            except AlbertHTTPError as e:
+                logger.warning(
+                    "Could not fetch v1 workflow intervals for workflow %s: %s", wf_id, e
+                )
+                int_resp = None
+
+            if int_resp is not None and int_resp.status_code == 200:
+                int_data = int_resp.json()
+                raw_intervals = int_data[0].get("Intervals", []) if int_data else []
+                for raw_int in raw_intervals:
+                    wf_intervals.append(
+                        TaskMetadataInterval(
+                            interval=raw_int.get("interval"),
+                            interval_params=raw_int.get("intervalParams"),
+                            interval_string=raw_int.get("intervalString"),
+                            sequence=raw_int.get("sequence"),
+                            interval_details=[
+                                TaskMetadataIntervalDetail(
+                                    name=d.get("name"),
+                                    value=d.get("value"),
+                                    unit_name=d.get("unitName"),
+                                )
+                                for d in raw_int.get("intervalDetails", [])
+                            ],
+                        )
+                    )
+
+            if not workflow_json:
+                try:
+                    wfl_resp = session.get(f"/api/v3/workflows/{wf_id}")
+                except AlbertHTTPError as e:
+                    logger.warning(
+                        "Could not fetch v1 workflow details for workflow %s: %s", wf_id, e
+                    )
+                    wfl_resp = None
+
+                if wfl_resp is not None and wfl_resp.status_code == 200:
+                    workflow_json = wfl_resp.json()
+
+        wf_name = (
+            getattr(wf, "name", None)
+            or (workflow_json.get("name") if isinstance(workflow_json, dict) else None)
+            or "Workflow"
+        )
         workflows.append(
             TaskMetadataWorkflow(
-                albert_id=getattr(wf, "id", None),
-                name=getattr(wf, "name", None),
+                albert_id=wf_id,
+                name=wf_name,
+                intervals=wf_intervals,
             )
         )
 
@@ -119,11 +284,13 @@ def build_task_metadata(
         id=block_id,
         datatemplate=data_templates,
         workflow=workflows,
+        workflow_json=workflow_json,
     )
     return TaskMetadata(
         filename=filename,
         task_id=task.id,
         block_id=block_id,
+        schema_version=1,
         inventories=inventories,
         blockdata=blockdata,
     )
