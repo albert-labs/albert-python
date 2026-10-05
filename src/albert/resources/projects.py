@@ -263,7 +263,7 @@ class ReferenceFormulaType(str, Enum):
       intermediate candidate tracked against project goals.
     - ``FINAL``: "Final" (in-app: "The project's selected outcome formula"). The formula
       selected as the successful outcome of the project.
-    - ``CONTROL``: "Control" (in-app: "The designated experimental control"). A formula
+    - ``CONTROL``: "Control" (in-app: "A designated experimental control"). A formula
       used as an experimental baseline or control.
     - ``OTHER``: "Other" (in-app: "Any other reference"). Any other reference designation
       at user discretion. Custom label strings may also be supplied in place of
