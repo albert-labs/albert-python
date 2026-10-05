@@ -288,6 +288,29 @@ def test_get_by_id_preserves_metadata_list_item_names(
         client.inventory.delete(id=created.id)
 
 
+def test_reactivate_inventory(client: Albert, seed_prefix: str, seeded_companies: list[Company]):
+    """Test reactivating a deleted inventory item restores access."""
+    created = client.inventory.create(
+        inventory_item=InventoryItem(
+            name=f"{seed_prefix} - Reactivate {uuid4()}",
+            category=InventoryCategory.RAW_MATERIALS,
+            company=seeded_companies[0],
+        ),
+        avoid_duplicates=False,
+    )
+    try:
+        client.inventory.delete(id=created.id)
+        with pytest.raises(NotFoundError):
+            client.inventory.get_by_id(id=created.id)
+
+        reactivated = client.inventory.reactivate(id=created.id)
+        assert reactivated.id == created.id
+        assert reactivated.status == "active"
+    finally:
+        with suppress(NotFoundError):
+            client.inventory.delete(id=created.id)
+
+
 def test_get_by_ids(client: Albert, seeded_inventory):
     # Use this worker's seeded IDs directly; a search round-trip would race other
     # workers' teardown deletes and fuzzy text matching

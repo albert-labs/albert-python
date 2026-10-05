@@ -100,6 +100,8 @@ class InventoryCollection(BaseCollection):
         Update multiple items, fetching current state in one batched call.
     delete(id) -> None
         Delete an item by its ID.
+    reactivate(id) -> InventoryItem
+        Reactivate a deleted item by its ID.
     merge(parent_id, child_id, modules=None) -> None
         Merge duplicate item(s) into a single parent item.
     exists(inventory_item) -> bool
@@ -561,6 +563,38 @@ class InventoryCollection(BaseCollection):
 
         url = f"{self.base_path}/{id}"
         self.session.delete(url)
+
+    @validate_call
+    def reactivate(self, *, id: InventoryId) -> InventoryItem:
+        """Reactivate a deleted inventory item by its ID.
+
+        Restores an item previously deleted with
+        [`delete`][albert.collections.inventory.InventoryCollection.delete], including
+        a duplicate removed by
+        [`merge`][albert.collections.inventory.InventoryCollection.merge]. The item's
+        lots are restored with it. Data already carried over to the merge parent
+        stays on the parent.
+
+        !!! example
+            ```python
+            item = client.inventory.reactivate(id="INVA9999999")
+            item.status
+            # 'active'
+            ```
+
+        Parameters
+        ----------
+        id : InventoryId
+            The Inventory ID to reactivate (format ``INV...``).
+
+        Returns
+        -------
+        InventoryItem
+            The fully populated reactivated InventoryItem.
+        """
+        url = f"{self.base_path}/{id}/reactivate"
+        self.session.patch(url)
+        return self.get_by_id(id=id)
 
     @validate_call
     def _prepare_parameters(
