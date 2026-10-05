@@ -1816,7 +1816,7 @@ class Sheet(BaseSessionResource):  # noqa:F811
         if design_obj is None:
             raise AlbertException("Sheet has no Results section; cannot add a task row")
         if name is None:
-            task = self.session.get(f"/api/v3/tasks/{task_id}").json()
+            task = self.session.get(f"/api/v3/tasks/multi/{task_id}").json()
             name = task.get("name") or task_id
         payload_item: dict[str, str] = {
             "type": CellType.TAS.value,
