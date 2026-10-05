@@ -94,7 +94,7 @@ class ProjectCollection(BaseCollection):
     document_search(...) -> Iterator[DocumentSearchItem]
         Search documents (attachments) linked to a project.
     set_reference_formula(...) -> ReferenceFormula
-        This promotes a project's formula to a designated reference type that can be easily referenced within a project. Reference formulas can be of any type defined in [`ReferenceFormulaType`][albert.resources.projects.ReferenceFormulaType]. The [`OTHER`][albert.resources.projects.ReferenceFormulaType.OTHER] reference type allows for custom naming of the type.
+        This promotes a formula to a designated reference type that can be easily referenced within a project. Reference formulas can be of any type defined in [`ReferenceFormulaType`][albert.resources.projects.ReferenceFormulaType]. The [`OTHER`][albert.resources.projects.ReferenceFormulaType.OTHER] reference type allows for custom naming of the type.
     link_reference_formula(...) -> ReferenceFormula
         Links a formula from another project into this project for comparison. In order to link a formula to a project, that formula must be set as a reference formula.
     get_all_reference_formulas(...) -> Iterator[ReferenceFormula]
