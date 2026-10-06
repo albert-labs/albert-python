@@ -76,3 +76,39 @@ def test_view_set_order(client: Albert):
     finally:
         with suppress(NotFoundError):
             client.views.delete(id=view.id)
+
+
+def test_view_builders(client: Albert):
+    """Test building a view's filters and columns with the helper methods."""
+    filters = client.views.list_filters(entity=ViewEntity.DATA_TEMPLATES)
+    by_key = {f.key: f for f in filters}
+    assert by_key["owner"].multi is True
+
+    values = client.views.suggest_filter_values(entity=ViewEntity.DATA_TEMPLATES, filter="owner")
+    assert all(value.name for value in values)
+
+    query = client.views.build_query(
+        entity=ViewEntity.DATA_TEMPLATES,
+        owner=["SDK Test"],
+        search="coating",
+        contains={"description": "polymer"},
+    )
+    assert query.filter == {"owner": ["SDK Test"]}
+
+    columns = client.views.build_columns(entity=ViewEntity.DATA_TEMPLATES, hide=["tags"])
+    assert columns, "columns are built from the grid's default view"
+    assert next(c for c in columns if c.id == "tags").is_hidden is True
+
+    view = client.views.create(
+        view=View(
+            name=_name(),
+            entity=ViewEntity.DATA_TEMPLATES,
+            state=ViewState(query=[query], columns=columns),
+        )
+    )
+    try:
+        assert view.state.query[0].filter == {"owner": ["SDK Test"]}
+        assert next(c for c in view.state.columns if c.id == "tags").is_hidden is True
+    finally:
+        with suppress(NotFoundError):
+            client.views.delete(id=view.id)

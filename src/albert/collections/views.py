@@ -9,10 +9,21 @@ from albert.core.session import AlbertSession
 from albert.core.shared.enums import PaginationMode
 from albert.core.shared.identifiers import ViewId
 from albert.exceptions import AlbertException, NotFoundError
-from albert.resources.views import View, ViewColumn, ViewEntity, ViewState
+from albert.resources.facet import FacetValue
+from albert.resources.views import View, ViewColumn, ViewEntity, ViewFilter, ViewQuery, ViewState
+from albert.utils.views import (
+    build_view_columns,
+    build_view_query,
+    facet_values,
+    grid_filters,
+    grid_search_path,
+)
 
 # The list handler parses `limit` with no fallback, so the SDK always sends a page size.
 _VIEW_PAGE_LIMIT = 200
+
+# Facet value suggestions mirror the grid's filter bar, which pages facet values by 50.
+_FACET_SUGGEST_LIMIT = 50
 
 _STATE_ALIASES = {
     "columns": "columns",
@@ -79,6 +90,14 @@ class ViewCollection(BaseCollection):
         Get the tab order of the current user's views for a grid.
     set_order(entity, view_ids) -> None
         Set the tab order of the current user's views for a grid.
+    list_filters(entity) -> list[ViewFilter]
+        List the filters a grid accepts in a saved view.
+    build_query(entity, ...) -> ViewQuery
+        Build the filters and search text of a view from caller-friendly values.
+    build_columns(entity, ...) -> list[ViewColumn]
+        Build the columns of a view from the grid's default columns.
+    suggest_filter_values(entity, filter, ...) -> list[FacetValue]
+        Suggest valid values for a grid filter, with match counts.
     """
 
     _api_version = "v3"
@@ -402,6 +421,250 @@ class ViewCollection(BaseCollection):
                 ]
             },
         )
+
+    @validate_call
+    def list_filters(self, *, entity: ViewEntity) -> list[ViewFilter]:
+        """List the filters a grid accepts in a saved view.
+
+        The filters mirror the filter parameters of the matching collection's
+        search method (for example the Projects grid accepts the same filters as
+        [`ProjectCollection.search`][albert.collections.projects.ProjectCollection.search]),
+        so they stay in step with the platform automatically. Values are display
+        names, not IDs; use
+        [`suggest_filter_values`][albert.collections.views.ViewCollection.suggest_filter_values]
+        to look up valid values.
+
+        !!! example
+            ```python
+            from albert.resources.views import ViewEntity
+
+            filters = client.views.list_filters(entity=ViewEntity.PROJECTS)
+            [(f.key, f.multi) for f in filters[:3]]
+            # [('status', True), ('marketSegment', True), ('application', True)]
+            ```
+
+        Parameters
+        ----------
+        entity : ViewEntity
+            The grid to list filters for.
+
+        Returns
+        -------
+        list[ViewFilter]
+            The filters the grid accepts.
+
+        Raises
+        ------
+        AlbertException
+            If the grid has no search to derive filters from (Parameters, Units,
+            Unit Families).
+        """
+        return list(grid_filters(entity))
+
+    @validate_call
+    def build_query(
+        self,
+        *,
+        entity: ViewEntity,
+        search: str | None = None,
+        contains: dict[str, str] | None = None,
+        custom_fields: dict[str, Any] | None = None,
+        filters: dict[str, Any] | None = None,
+        allow_unknown: bool = False,
+        **filter_kwargs: Any,
+    ) -> ViewQuery:
+        """Build the filters and search text of a view from caller-friendly values.
+
+        Filters are given as keyword arguments named after the grid's filter keys
+        or the matching search parameters (``market_segment=[...]`` and
+        ``marketSegment=[...]`` both work; see
+        [`list_filters`][albert.collections.views.ViewCollection.list_filters]).
+        Multi-value filters accept a single value or a list; single-value filters
+        (for example the Tasks grid's ``due_date_duration``) take a plain value.
+        Unknown keys raise an error listing the valid filters, so a typo cannot
+        silently save a view that shows no results.
+
+        !!! example
+            ```python
+            from albert.resources.views import View, ViewEntity, ViewState
+
+            query = client.views.build_query(
+                entity=ViewEntity.PROJECTS,
+                status=["Active"],
+                location=["San Diego"],
+                search="coating",
+            )
+            view = client.views.create(
+                view=View(
+                    name="Active Coatings",
+                    entity=ViewEntity.PROJECTS,
+                    state=ViewState(query=[query]),
+                )
+            )
+            ```
+
+        Parameters
+        ----------
+        entity : ViewEntity
+            The grid the query applies to.
+        search : str, optional
+            Free-text search applied on top of the filters.
+        contains : dict[str, str], optional
+            "Contains text" filters, keyed by column key (for example
+            ``{"description": "polymer"}``).
+        custom_fields : dict[str, Any], optional
+            Custom field (metadata) filters, keyed by field name.
+        filters : dict[str, Any], optional
+            Grid filters as a mapping. Use this form for keys that are not valid
+            Python names (for example the Inventory grid's ``project.*`` filters).
+            Keyword arguments override duplicate keys.
+        allow_unknown : bool, optional
+            When True, unrecognized filter keys are kept as given instead of raising.
+        **filter_kwargs : Any
+            Grid filters as keyword arguments.
+
+        Returns
+        -------
+        ViewQuery
+            The built query, ready for [`ViewState`][albert.resources.views.ViewState].
+
+        Raises
+        ------
+        ValueError
+            If a filter key is unknown (and ``allow_unknown`` is False) or a
+            single-value filter is given a list.
+        AlbertException
+            If the grid has no search to derive filters from.
+        """
+        merged = {**(filters or {}), **filter_kwargs}
+        return build_view_query(
+            entity=entity,
+            filters=merged,
+            custom_fields=custom_fields,
+            search=search,
+            contains=contains,
+            allow_unknown=allow_unknown,
+        )
+
+    @validate_call
+    def build_columns(
+        self,
+        *,
+        entity: ViewEntity,
+        keep: list[str] | None = None,
+        hide: list[str] | None = None,
+    ) -> list[ViewColumn]:
+        """Build the columns of a view from the grid's default columns.
+
+        Starts from the columns of the grid's built-in "All" view, so the result
+        always matches the grid as users know it, then narrows it down: ``keep``
+        keeps only the named columns (in grid order), while ``hide`` keeps every
+        column but hides the named ones.
+
+        !!! example
+            ```python
+            from albert.resources.views import ViewEntity
+
+            columns = client.views.build_columns(
+                entity=ViewEntity.TASKS, hide=["notes", "lot"]
+            )
+            [column.id for column in columns]
+            # ['albertId', 'category', 'assignedTo', ...]
+            ```
+
+        Parameters
+        ----------
+        entity : ViewEntity
+            The grid to build columns for.
+        keep : list[str], optional
+            Column IDs to keep, dropping the rest. Cannot be combined with ``hide``.
+        hide : list[str], optional
+            Column IDs to keep but hide. Cannot be combined with ``keep``.
+
+        Returns
+        -------
+        list[ViewColumn]
+            The built columns, in grid order.
+
+        Raises
+        ------
+        ValueError
+            If both ``keep`` and ``hide`` are given, or either names a column the
+            grid's default view does not have.
+        AlbertException
+            If the grid has no default view to copy columns from.
+        """
+        defaults = self._default_columns(entity=entity)
+        if defaults is None:
+            raise AlbertException(
+                f"No default view found for '{entity.value}' to copy columns from."
+            )
+        return build_view_columns(defaults=defaults, keep=keep, hide=hide)
+
+    @validate_call
+    def suggest_filter_values(
+        self, *, entity: ViewEntity, filter: str, text: str | None = None
+    ) -> list[FacetValue]:
+        """Suggest valid values for a grid filter, with match counts.
+
+        Filter values are display names, and a value the grid does not recognize
+        makes a saved view show no results. Use this to turn a partial name into
+        values that actually match, the same way the grid's filter bar completes
+        values as you type.
+
+        !!! example
+            ```python
+            from albert.resources.views import ViewEntity
+
+            values = client.views.suggest_filter_values(
+                entity=ViewEntity.PROJECTS, filter="location", text="san"
+            )
+            [value.name for value in values]
+            # ['San Diego', 'Santa Clara']
+            query = client.views.build_query(
+                entity=ViewEntity.PROJECTS, location=[values[0].name]
+            )
+            ```
+
+        Parameters
+        ----------
+        entity : ViewEntity
+            The grid the filter belongs to.
+        filter : str
+            The filter key or search parameter name (for example ``location``).
+        text : str, optional
+            Text to match within the filter's values.
+
+        Returns
+        -------
+        list[FacetValue]
+            The matching values with their counts. Empty when the grid has no
+            value catalog for the filter.
+
+        Raises
+        ------
+        ValueError
+            If ``filter`` is not a known filter for the grid.
+        AlbertException
+            If the grid has no search to look values up in.
+        """
+        available = grid_filters(entity)
+        spec = next((f for f in available if f.key == filter or f.parameter == filter), None)
+        if spec is None:
+            valid = ", ".join(sorted(f.key for f in available))
+            raise ValueError(
+                f"Unknown filter '{filter}' for the '{entity.value}' grid. Valid filters: {valid}."
+            )
+        result = self.session.post(
+            grid_search_path(entity),
+            json={
+                "offset": 0,
+                "limit": _FACET_SUGGEST_LIMIT,
+                "facetField": spec.key,
+                "facetText": text,
+            },
+        )
+        return facet_values(result.json(), key=spec.key)
 
     def _default_columns(self, *, entity: ViewEntity) -> list[ViewColumn] | None:
         """Return the columns of the grid's built-in default view, if the user has one.
