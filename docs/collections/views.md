@@ -1,0 +1,1 @@
+::: albert.collections.views.ViewCollection

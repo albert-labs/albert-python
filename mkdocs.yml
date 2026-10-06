@@ -201,6 +201,7 @@ nav:
           - UN Numbers: collections/un_numbers.md
           - Units: collections/units.md
           - Users: collections/users.md
+          - Views: collections/views.md
           - Workflows: collections/workflows.md
           - Worksheets: collections/worksheets.md
       - Resources:
@@ -262,6 +263,7 @@ nav:
           - UN Numbers: resources/un_numbers.md
           - Units: resources/units.md
           - Users: resources/users.md
+          - Views: resources/views.md
           - Workflows: resources/workflows.md
           - Worksheets:
               - Worksheets: resources/worksheets.md
