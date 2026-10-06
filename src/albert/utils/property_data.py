@@ -425,6 +425,31 @@ def trial_has_recorded_data(
     return any(col.property_data is not None for col in trial.data_columns)
 
 
+def stored_trial_number(*, trial: Trial) -> int:
+    """Return the trial number used when writing a value onto this row.
+
+    A row's displayed number can differ from the number that identifies the
+    stored trial. Use the stored number when it is present.
+    """
+    raw = trial.back_end_trial_number
+    if raw is None:
+        return trial.trial_number
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return trial.trial_number
+
+
+def _targets_column(*, data_column: PropertyValue, prop: TaskPropertyCreate) -> bool:
+    """Return True when a block column is the one a write is aimed at."""
+    column_id = prop.data_column.data_column_id
+    sequence = prop.data_column.column_sequence
+    unique_id = f"{column_id}#{sequence}"
+    if data_column.data_column_unique_id == unique_id:
+        return True
+    return data_column.id == column_id and data_column.sequence == sequence
+
+
 def prepare_new_task_property(
     *,
     prop: TaskPropertyCreate,
@@ -435,8 +460,8 @@ def prepare_new_task_property(
 
     A block listing can include an empty placeholder trial. That placeholder is
     not a stored trial, so trial_number is omitted and a new trial is created.
-    If the trial already has data, trial_number is kept so a missing column is
-    added to that trial.
+    If the trial already has data, trial_number is the stored trial number so a
+    missing column is added to that trial.
     """
     if trial_number is None:
         return prop
@@ -445,12 +470,27 @@ def prepare_new_task_property(
         interval_combination=prop.interval_combination,
         trial_number=trial_number,
     ):
-        if prop.trial_number == trial_number:
+        row = get_on_platform_row(
+            existing_data_rows=existing_data_rows,
+            interval_combination=prop.interval_combination,
+            trial_number=trial_number,
+        )
+        stored = stored_trial_number(trial=row) if row is not None else trial_number
+        if prop.trial_number == stored:
             return prop
-        return prop.model_copy(update={"trial_number": trial_number})
+        return prop.model_copy(update={"trial_number": stored})
     if prop.trial_number is None:
         return prop
     return prop.model_copy(update={"trial_number": None})
+
+
+def _trials_for_interval(
+    *, existing_data_rows: TaskPropertyData, interval_combination: str
+) -> list[Trial]:
+    for interval in existing_data_rows.data:
+        if interval.interval_combination == interval_combination:
+            return list(interval.trials)
+    return []
 
 
 def process_property(
@@ -463,23 +503,25 @@ def process_property(
     trial_number: int,
 ) -> list | None:
     """Resolve patches for a property against existing trials."""
-    for interval in existing_data_rows.data:
-        if interval.interval_combination != prop.interval_combination:
-            continue
-
-        for trial in interval.trials:
-            if trial.trial_number != trial_number:
-                continue
-
-            trial_patches = process_trial(
-                session=session,
-                task_id=task_id,
-                block_id=block_id,
-                trial=trial,
-                prop=prop,
-            )
-            if trial_patches is not None:
-                return trial_patches
+    trials = _trials_for_interval(
+        existing_data_rows=existing_data_rows,
+        interval_combination=prop.interval_combination,
+    )
+    # The displayed trial number wins. The stored number is the fallback for
+    # callers that already passed it.
+    chosen = [trial for trial in trials if trial.trial_number == trial_number]
+    if not chosen:
+        chosen = [trial for trial in trials if stored_trial_number(trial=trial) == trial_number]
+    for trial in chosen:
+        trial_patches = process_trial(
+            session=session,
+            task_id=task_id,
+            block_id=block_id,
+            trial=trial,
+            prop=prop,
+        )
+        if trial_patches is not None:
+            return trial_patches
 
     return None
 
@@ -524,8 +566,7 @@ def process_trial(
     """Generate patch operations for a trial's matching data column."""
     for data_column in trial.data_columns:
         if (
-            data_column.data_column_unique_id
-            == f"{prop.data_column.data_column_id}#{prop.data_column.column_sequence}"
+            _targets_column(data_column=data_column, prop=prop)
             and data_column.property_data is not None
         ):
             if isinstance(prop.value, CurvePropertyValue):

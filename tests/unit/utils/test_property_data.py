@@ -11,6 +11,7 @@ import pytest
 from albert.core.shared.models.patch import PatchOperation
 from albert.resources.property_data import (
     DataInterval,
+    ImagePropertyValue,
     PropertyData,
     PropertyDataInventoryInformation,
     PropertyValue,
@@ -36,6 +37,7 @@ from albert.utils.property_data import (
     evaluate_calculation,
     flatten_task_property_data,
     form_calculated_task_property_patches,
+    form_existing_row_value_patches,
     generate_data_patch_payload,
     get_all_columns_used_in_calculations,
     get_columns_used_in_calculation,
@@ -452,6 +454,112 @@ def test_prepare_new_task_property_returns_unchanged_for_unset_trial_number_on_p
     result = prepare_new_task_property(prop=prop, existing_data_rows=existing, trial_number=1)
 
     assert result is prop
+
+
+def test_prepare_new_task_property_uses_stored_trial_number():
+    """Test that a new column on a filled row is addressed by the stored trial number."""
+    prop = _make_prop(trial_number=1)
+    prop = prop.model_copy(
+        update={"data_column": TaskDataColumn(data_column_id="DAC2", column_sequence="COL2")}
+    )
+    trial = Trial(
+        trial_number=1,
+        back_end_trial_number="5",
+        data_columns=[
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="filled"),
+            )
+        ],
+    )
+    existing = TaskPropertyData(
+        parent_id="TAS1",
+        data=[DataInterval(interval_combination="default", trials=[trial])],
+    )
+
+    result = prepare_new_task_property(prop=prop, existing_data_rows=existing, trial_number=1)
+
+    assert result.trial_number == 5
+
+
+def test_empty_image_cell_with_id_is_patched(monkeypatch: pytest.MonkeyPatch):
+    """Test that an image write updates an existing empty cell instead of creating one."""
+    monkeypatch.setattr(
+        "albert.utils.property_data.resolve_image_property_value",
+        lambda **kwargs: {"fileName": "a.png", "s3Key": {"original": "k"}},
+    )
+    trial = Trial(
+        trial_number=1,
+        data_columns=[
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="filled"),
+            ),
+            PropertyValue(
+                id="DAC2",
+                sequence="COL2",
+                property_data=PropertyData(id="PTD2", value=None),
+            ),
+        ],
+    )
+    existing = TaskPropertyData(
+        parent_id="TAS1",
+        data=[DataInterval(interval_combination="default", trials=[trial])],
+    )
+    prop = TaskPropertyCreate(
+        interval_combination="default",
+        data_column=TaskDataColumn(data_column_id="DAC2", column_sequence="COL2"),
+        value=ImagePropertyValue(file_path="a.png"),
+        trial_number=1,
+    )
+
+    patches, new = form_existing_row_value_patches(
+        session=SimpleNamespace(),
+        task_id="TAS1",
+        block_id="BLK1",
+        existing_data_rows=existing,
+        properties=[prop],
+    )
+
+    assert new == []
+    assert [(p.property_column_id, p.operation, p.new_value["fileName"]) for p in patches] == [
+        ("PTD2", PatchOperation.UPDATE, "a.png")
+    ]
+
+
+def test_unchanged_scalar_on_existing_cell_is_left_alone():
+    """Test that writing the current value does not create a new cell or a patch."""
+    existing = _property_data(
+        [
+            PropertyValue(
+                id="DAC1",
+                sequence="COL1",
+                data_column_unique_id="DAC1#COL1",
+                property_data=PropertyData(id="PTD1", value="1"),
+            )
+        ]
+    )
+    prop = TaskPropertyCreate(
+        interval_combination="default",
+        data_column=TaskDataColumn(data_column_id="DAC1", column_sequence="COL1"),
+        value="1",
+        trial_number=1,
+    )
+
+    patches, new = form_existing_row_value_patches(
+        session=SimpleNamespace(),
+        task_id="TAS1",
+        block_id="BLK1",
+        existing_data_rows=existing,
+        properties=[prop],
+    )
+
+    assert patches == []
+    assert new == []
 
 
 # ---------------------------------------------------------------------------
