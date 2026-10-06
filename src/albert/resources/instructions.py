@@ -9,11 +9,14 @@ They come in two layers, which this module's models reflect:
   laid out as ordered rows with one value per relevant column. This is the table
   shown on the inventory details page in the Albert interface. Row content comes
   from the Worksheet and is edited there; the SDK reads the rows and can reorder
-  the stages.
+  the stages. The row order is an
+  [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
 - The **instruction texts** ([`Instruction`][albert.resources.instructions.Instruction]):
   authored notes such as "Take the pH of the batch", attached to the formula as
   a whole or pinned to one ingredient row. These are created, renamed,
-  reordered, copied between formulas, and deleted through the SDK.
+  reordered, copied between formulas, and deleted through the SDK. Their order
+  within each row (or at formula level) is an
+  [`InstructionOrder`][albert.resources.instructions.InstructionOrder].
 
 Most models here are read-only views returned by the
 [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
@@ -53,12 +56,12 @@ class InstructionRowType(str, Enum):
         temperature or mixing time. Moves with its parent group.
     BLANK : str
         A blank separator row from the Sheet design, used to visually group
-        rows. Carries no recipe content and never appears in the row sequence.
+        rows. Carries no recipe content and never appears in the row order.
     TOTAL : str
         The batch total row, which rolls up the ingredient amounts (for
         example the total batch size they sum to). The Albert interface uses
         it to display each ingredient as a percentage of the batch and does
-        not list it among the instructions. Never appears in the row sequence.
+        not list it among the instructions. Never appears in the row order.
     """
 
     INVENTORY = "INV"
@@ -74,9 +77,9 @@ class InstructionDesignType(str, Enum):
     Attributes
     ----------
     PRODUCTS : str
-        The Products design, which holds the formula's ingredient rows.
+        The Product Design, which holds the formula's ingredient rows.
     PROCESS : str
-        The Process design, which holds the procedure's parameter group and
+        The Process Design, which holds the procedure's parameter group and
         parameter rows.
     """
 
@@ -266,7 +269,7 @@ class InstructionSequence(BaseAlbertModel):
 
     Lists every row of the formula's procedure in display order, along with the
     ``version`` used to detect conflicting edits. Ingredient rows always follow
-    the order set on the Sheet's Products design, while parameter group rows
+    the order set on the Sheet's Product Design, while parameter group rows
     can be reordered per formula via
     [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
     See

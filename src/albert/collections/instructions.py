@@ -47,9 +47,11 @@ class InstructionsCollection(BaseCollection):
       rows are read through
       [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].
 
-    The overall row order is held in an
-    [`InstructionSequence`][albert.resources.instructions.InstructionSequence] and
-    is determined in three places:
+    The row order is held in an
+    [`InstructionSequence`][albert.resources.instructions.InstructionSequence]
+    and the instruction-text order in
+    [`InstructionOrder`][albert.resources.instructions.InstructionOrder]
+    buckets. Both are determined as follows:
 
     - Ingredient rows always follow the order set on the Sheet's Product Design;
       they cannot be reordered per formula.
@@ -63,18 +65,25 @@ class InstructionsCollection(BaseCollection):
     - Parameter rows (the readings and targets inside a group, such as
       temperature or mixing time) belong to their parent parameter group and
       move with it; they are not individually reorderable.
+    - Instruction texts order independently of the rows: each ingredient row
+      has its own order for the instructions pinned to it, plus one order for
+      the formula-level instructions. New instructions are appended at the end
+      of their order by default; reorder them with
+      [`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence].
+      When instructions are listed for a formula, the formula-level
+      instructions come first, then each row's instructions.
 
     Reordering rows with
     [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]
     uses unique row IDs (format ``DES...#ROW...``), which are not the names or
     IDs users usually have in hand. To find them, fetch the formula's
-    instruction rows with
+    procedure table with
     [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
     and match rows by their display ``name`` or by the entity behind the row
     (``id`` holds the parameter group ID or the ingredient's inventory ID); each
     row's ``row_unique_id`` is the value to pass when reordering. Rows that have
-    no values for the formula yet do not appear in the rows, but are
-    listed by
+    no values for the formula yet do not appear in the procedure table, but do
+    appear in the row order returned by
     [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
 
     This collection is accessed as ``client.inventory.instructions``.
@@ -119,9 +128,9 @@ class InstructionsCollection(BaseCollection):
     get_by_inventory_id(inventory_id) -> InstructionLayout
         Get the procedure table of a formula: its rows with their values.
     get_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
-        Get the ordered instruction row sequence of a formula.
+        Get the row order of a formula's procedure.
     update_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
-        Move a parameter group row to a new position in the instruction sequence.
+        Move a parameter group row to a new position in the row order.
     """
 
     _api_version = "v3"
@@ -219,7 +228,8 @@ class InstructionsCollection(BaseCollection):
         Exactly one filter must be provided: a formula (``parent_id``), a creator
         (``created_by``), or a last editor (``updated_by``). Results are returned
         as a lazily paginated iterator; when filtering by formula, instructions
-        come back in display order.
+        come back in display order (formula-level instructions first, then each
+        ingredient row's).
 
         !!! example
             ```python
@@ -340,8 +350,8 @@ class InstructionsCollection(BaseCollection):
         ``DES...#ROW...``; match rows by name in
         [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
         results and read ``row_unique_id``). Without a row link, the instruction
-        is formula-level. A new instruction is placed after the existing
-        instructions in its row; reorder with
+        is formula-level. A new instruction is appended at the end of its order
+        by default (its row's, or the formula-level one); reorder with
         [`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence].
 
         !!! example
@@ -587,7 +597,8 @@ class InstructionsCollection(BaseCollection):
         Returns
         -------
         InstructionLayout
-            The formula's rows, including the sequence ``version``.
+            The formula's procedure table, including the version of the row
+            order.
         """
         path = f"{self._inventory_base_path}/{inventory_id}/instructions"
         response = self.session.get(path)
@@ -597,11 +608,11 @@ class InstructionsCollection(BaseCollection):
     def get_sequence(
         self, *, inventory_id: InventoryId, exclude_hidden: bool = False
     ) -> InstructionSequence:
-        """Get the ordered instruction row sequence of a formula.
+        """Get the row order of a formula's procedure.
 
-        The sequence lists each row of the formula's procedure in display order.
-        If the order has never been customized, it matches the Sheet the formula
-        lives on; see
+        Lists every row of the formula's procedure in display order, including
+        rows that have no values for the formula yet. If the order has never
+        been customized, it matches the Sheet the formula lives on; see
         [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
         for how the order is determined. The returned ``version`` is required
         when reordering rows with
@@ -613,7 +624,7 @@ class InstructionsCollection(BaseCollection):
             client = Albert()
             sequence = client.inventory.instructions.get_sequence(inventory_id="INV123")
             for row in sequence.rows:
-                print(item.row_id, item.is_hidden)
+                print(row.row_id, row.is_hidden)
             ```
 
         Parameters
@@ -627,7 +638,7 @@ class InstructionsCollection(BaseCollection):
         Returns
         -------
         InstructionSequence
-            The formula's instruction row sequence, including its ``version``.
+            The formula's row order, including its ``version``.
         """
         path = f"{self._inventory_base_path}/{inventory_id}/instructions/sequence"
         response = self.session.get(path, params={"excludeHiddenItems": exclude_hidden})
@@ -643,7 +654,7 @@ class InstructionsCollection(BaseCollection):
         position: SequencePosition,
         version: int,
     ) -> InstructionSequence:
-        """Move a parameter group row to a new position in the formula's procedure.
+        """Move a parameter group row to a new position in the row order.
 
         Only parameter group rows (the stages of the procedure) can be
         reordered; ingredient rows always follow the Sheet's Product Design. The
@@ -653,13 +664,14 @@ class InstructionsCollection(BaseCollection):
 
         Both IDs use the unique row format ``DES...#ROW...``, which users rarely
         know directly. Find them by matching display names in the formula's
-        instruction rows, as in the example below; each row's ``row_unique_id``
+        procedure table, as in the example below; each row's ``row_unique_id``
         is the value to pass here.
 
-        The ``version`` guards against conflicting edits: it must match the
-        sequence's current version, or the move is rejected and the sequence
-        should be re-fetched before retrying. The updated sequence (with its new
-        version) is returned, so consecutive moves can chain off each result.
+        The ``version`` guards against conflicting edits: it must match the row
+        order's current version, or the move is rejected and the row order
+        should be re-fetched before retrying. The updated row order (with its
+        new version) is returned, so consecutive moves can chain off each
+        result.
 
         !!! example
             ```python
@@ -695,13 +707,13 @@ class InstructionsCollection(BaseCollection):
         position : SequencePosition
             Whether to place the moved row ``above`` or ``below`` the reference row.
         version : int
-            The sequence's current version, as returned by
+            The row order's current version, as returned by
             [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
 
         Returns
         -------
         InstructionSequence
-            The updated instruction row sequence, including its new ``version``.
+            The updated row order, including its new ``version``.
 
         Notes
         -----
