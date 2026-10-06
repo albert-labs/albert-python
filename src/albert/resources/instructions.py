@@ -7,18 +7,19 @@ from albert.core.base import BaseAlbertModel
 
 
 class InstructionRowType(str, Enum):
-    """The kind of row an instruction item represents.
+    """The kind of row in a formula's batching instructions.
 
     Attributes
     ----------
     INVENTORY : str
         An ingredient row from the Product Design (a raw material in the formula).
     PARAMETER_GROUP : str
-        A process group from the Process Design (a stage of the procedure, such
-        as "Premix" or "Heating"). Only parameter group rows can be reordered.
+        A parameter group from the Process Design (a stage of the procedure,
+        such as "Premix" or "Heating"). Only parameter group rows can be
+        reordered per formula.
     PARAMETER : str
-        A measurement row inside a process group (a target or reading, such as
-        temperature or mixing time).
+        A measurement row inside a parameter group (a target or reading, such as
+        temperature or mixing time). Parameter rows move with their parent group.
     BLOCK : str
         A block row. Blocks give structure but are not part of the reorderable sequence.
     TOTAL : str
@@ -108,11 +109,14 @@ class InstructionValue(BaseAlbertModel):
 
 
 class InstructionItem(BaseAlbertModel):
-    """One row of a formula's batch instructions.
+    """One row of a formula's batching instructions: an ingredient, a procedure
+    stage, or a measurement.
 
-    Instructions are the ordered rows that describe how a formula is made: its
-    ingredient rows, its process groups (procedure stages), and the measurement
-    rows inside them. Each row carries its per-column values in ``values``.
+    Batching instructions are the ordered rows that describe how one specific
+    formula is made as a batch: its ingredient rows, its parameter groups
+    (procedure stages), and the measurement rows inside them. Each row carries
+    its per-column values in ``values``. The order of the rows is given by
+    [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
     """
 
     id: str | None = Field(default=None)
@@ -161,11 +165,13 @@ class InstructionItem(BaseAlbertModel):
 
 
 class InventoryInstructions(BaseAlbertModel):
-    """The batch instructions of a single formula inventory item.
+    """The batching instructions of a single formula.
 
-    This is the ordered set of rows (ingredients, process groups, and
-    measurements) that apply to one formula, along with the ``version`` used
-    for reordering its process groups.
+    This is the formula-specific procedure for making the formula as a batch:
+    the ordered set of rows (ingredients, parameter groups, and measurements)
+    that apply to it, along with the ``version`` used for reordering its
+    parameter groups via
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
     """
 
     total: int | None = Field(default=None)
@@ -198,11 +204,16 @@ class InstructionSequenceItem(BaseAlbertModel):
 
 
 class InstructionSequence(BaseAlbertModel):
-    """The ordered instruction sequence of a formula inventory item.
+    """The ordered instruction sequence of a single formula.
 
-    The sequence lists every instruction row in display order. Users can
-    customize the order of process group rows; the result is stored alongside
-    a ``version`` that is used to detect conflicting edits.
+    The sequence lists every row of the formula's procedure in display order.
+    Ingredient rows always follow the order set on the Sheet's Product Design,
+    while the order of parameter group rows can be customized per formula via
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
+    See
+    [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
+    for the full picture of how the order is determined. The sequence is stored
+    alongside a ``version`` that is used to detect conflicting edits.
     """
 
     id: str | None = Field(default=None)

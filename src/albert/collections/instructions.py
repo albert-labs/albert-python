@@ -11,20 +11,33 @@ from albert.resources.instructions import (
 
 
 class InstructionsCollection(BaseCollection):
-    """Manage batch instructions for formula inventory items in the Albert platform.
+    """Manage the formula-specific batching instructions of formulas in the Albert platform.
 
-    Batch instructions are the ordered rows that describe how a formula is made:
-    its ingredient rows from the Product Design, its process groups (the stages
-    of the procedure) from the Process Design, and the measurement rows inside
-    them. Each row carries its values for the relevant Worksheet columns, so a
-    formula made in several batch columns shows one value per column.
+    Batching instructions describe the procedure for making one specific formula
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) as a batch: the
+    ordered steps and measurements that turn its ingredients into the final
+    product. They are a formula-specific view of the formula's
+    [`Sheet`][albert.resources.sheets.Sheet], combining its ingredient rows from
+    the Product Design with the parameter groups (procedure stages such as
+    "Premix" or "Heating") and their measurement rows from the Process Design.
+    Each row carries its values for the relevant Worksheet columns, so a formula
+    made in several batch columns shows one value per column.
 
-    Every formula inventory item
-    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) has one set of
-    instructions, identified by the formula's inventory ID. The order of the rows
-    is held in an [`InstructionSequence`][albert.resources.instructions.InstructionSequence]:
-    ingredient rows always follow the Worksheet, while process group rows can be
-    reordered to customize the procedure's stage order for that formula.
+    The overall row order is held in an
+    [`InstructionSequence`][albert.resources.instructions.InstructionSequence] and
+    is determined in three places:
+
+    - Ingredient rows always follow the order set on the Sheet's Product Design;
+      they cannot be reordered per formula.
+    - Parameter group rows default to the Sheet's Process Design order, but each
+      formula can override the order of its own groups with
+      [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence],
+      placing a group above or below any other row (ingredient or parameter
+      group). A parameter group stays with the ingredient it follows, so
+      reordering ingredients on the Sheet carries the formula's groups along;
+      groups newly added to the Sheet are appended at the end.
+    - Measurement rows belong to their parent parameter group and move with it;
+      they are not individually reorderable.
 
     This collection is accessed as ``client.instructions``.
 
@@ -50,11 +63,11 @@ class InstructionsCollection(BaseCollection):
     Methods
     -------
     get_by_inventory_id(inventory_id) -> InventoryInstructions
-        Get the batch instructions of a formula inventory item.
+        Get the batching instructions of a formula.
     get_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
-        Get the ordered instruction sequence of a formula inventory item.
+        Get the ordered instruction sequence of a formula.
     update_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
-        Move a process group row to a new position in the instruction sequence.
+        Move a parameter group row to a new position in the instruction sequence.
     """
 
     _api_version = "v3"
@@ -89,12 +102,15 @@ class InstructionsCollection(BaseCollection):
 
     @validate_call
     def get_by_inventory_id(self, *, inventory_id: InventoryId) -> InventoryInstructions:
-        """Get the batch instructions of a formula inventory item.
+        """Get the batching instructions of a formula.
 
-        Returns every instruction row of the formula in display order: ingredient
-        rows, process groups, and measurement rows, each with its values for the
-        relevant Worksheet columns. To get only the row order without the values,
-        use [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
+        Returns every instruction row of the formula's procedure in display
+        order: ingredient rows, parameter groups (procedure stages), and
+        measurement rows, each with its values for the relevant Worksheet
+        columns. To get only the row order without the values, use
+        [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
+        See [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
+        for how the overall order is determined.
 
         !!! example
             ```python
@@ -123,11 +139,14 @@ class InstructionsCollection(BaseCollection):
     def get_sequence(
         self, *, inventory_id: InventoryId, exclude_hidden: bool = False
     ) -> InstructionSequence:
-        """Get the ordered instruction sequence of a formula inventory item.
+        """Get the ordered instruction sequence of a formula.
 
-        The sequence lists each instruction row in display order. If the order
-        has never been customized, it matches the Worksheet. The returned
-        ``version`` is required when reordering rows with
+        The sequence lists each row of the formula's procedure in display order.
+        If the order has never been customized, it matches the Sheet the formula
+        lives on; see
+        [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
+        for how the order is determined. The returned ``version`` is required
+        when reordering rows with
         [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
 
         !!! example
@@ -166,13 +185,15 @@ class InstructionsCollection(BaseCollection):
         position: SequencePosition,
         version: int,
     ) -> InstructionSequence:
-        """Move a process group row to a new position in the instruction sequence.
+        """Move a parameter group row to a new position in the formula's procedure.
 
-        Only process group rows (the stages of the procedure) can be reordered;
-        ingredient rows always follow the Worksheet. The row identified by
-        ``source_id`` is placed directly above or below the row identified by
-        ``reference_id``. Both IDs use the unique row format ``DES...#ROW...``,
-        as found on [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]
+        Only parameter group rows (the stages of the procedure) can be
+        reordered; ingredient rows always follow the Sheet's Product Design. The
+        row identified by ``source_id`` is placed directly above or below the row
+        identified by ``reference_id``, which can be an ingredient row or another
+        parameter group row. Both IDs use the unique row format
+        ``DES...#ROW...``, as found on
+        [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]
         results.
 
         The ``version`` guards against conflicting edits: it must match the
@@ -202,10 +223,11 @@ class InstructionsCollection(BaseCollection):
         inventory_id : InventoryId
             The ID of the formula inventory item (format ``INV...``).
         source_id : str
-            The unique ID of the process group row to move (format ``DES...#ROW...``).
+            The unique ID of the parameter group row to move (format ``DES...#ROW...``).
         reference_id : str
             The unique ID of the row to place the moved row next to (format
-            ``DES...#ROW...``).
+            ``DES...#ROW...``). Can be an ingredient row or another parameter
+            group row.
         position : SequencePosition
             Whether to place the moved row ``above`` or ``below`` the reference row.
         version : int
