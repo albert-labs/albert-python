@@ -14,10 +14,12 @@ from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPay
 from albert.exceptions import AlbertHTTPError
 from albert.resources.smart_datasets import SmartDatasetScope
 from albert.resources.targets import Target
-from albert.utils.projects import build_default_smart_dataset_scope
+from albert.utils.projects import (
+    build_default_smart_dataset_scope,
+    parse_linked_parent_project_ids,
+)
 
 _PROJECTS_BASE_PATH = "/api/v3/projects"
-_build_default_smart_dataset_scope = build_default_smart_dataset_scope
 
 
 class SmartProjectScope(BaseAlbertModel):
@@ -293,18 +295,13 @@ class SmartProject(BaseSessionResource):
                     f"{_PROJECTS_BASE_PATH}/{self.project_id}/referenceFormulas",
                     params={"worksheetId": "external"},
                 )
-                data = response.json()
-                items = data.get("Items") or data.get("items") or []
-                for item in items:
-                    parent_id = item.get("parentProjectId")
-                    if parent_id:
-                        linked_parent_project_ids.append(parent_id)
+                linked_parent_project_ids = parse_linked_parent_project_ids(response.json())
             except AlbertHTTPError as e:
                 logger.warning(
                     f"Could not fetch linked reference formulas for project {self.project_id}: {e}"
                 )
 
-            scope = _build_default_smart_dataset_scope(
+            scope = build_default_smart_dataset_scope(
                 project_id=self.project_id,
                 target_ids=self.scope.targets,
                 linked_parent_project_ids=linked_parent_project_ids,

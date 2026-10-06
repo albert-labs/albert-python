@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from albert.core.shared.identifiers import (
@@ -48,6 +49,24 @@ def reference_formula_path(
     return f"{base_path}/{project_id}/referenceFormulas/{key_segment}/{inventory_id}"
 
 
+def reference_formula_type_value(reference_formula_type: ReferenceFormulaType | str) -> str:
+    """Return the wire string for a reference formula type designation.
+
+    Parameters
+    ----------
+    reference_formula_type : ReferenceFormulaType | str
+        The designation, either an enum member or a custom label.
+
+    Returns
+    -------
+    str
+        The designation as a plain string.
+    """
+    if isinstance(reference_formula_type, Enum):
+        return reference_formula_type.value
+    return str(reference_formula_type)
+
+
 def in_project_reference_formula_payload(
     *,
     project_id: ProjectId,
@@ -73,17 +92,12 @@ def in_project_reference_formula_payload(
     dict[str, Any]
         Wire-format JSON payload for the POST /projects/{id}/referenceFormulas request.
     """
-    type_val = (
-        reference_formula_type.value
-        if hasattr(reference_formula_type, "value")
-        else str(reference_formula_type)
-    )
     return {
         "worksheetId": sheet_id,
         "parentProjectId": project_id,
         "inventoryId": inventory_id,
         "isExternalFormula": False,
-        "referenceFormulaType": type_val,
+        "referenceFormulaType": reference_formula_type_value(reference_formula_type),
     }
 
 
@@ -109,17 +123,29 @@ def linked_reference_formula_payload(
     dict[str, Any]
         Wire-format JSON payload for the POST /projects/{id}/referenceFormulas request.
     """
-    type_val = (
-        reference_formula_type.value
-        if hasattr(reference_formula_type, "value")
-        else str(reference_formula_type)
-    )
     return {
         "parentProjectId": parent_project_id,
         "inventoryId": inventory_id,
         "isExternalFormula": True,
-        "referenceFormulaType": type_val,
+        "referenceFormulaType": reference_formula_type_value(reference_formula_type),
     }
+
+
+def parse_linked_parent_project_ids(payload: dict[str, Any]) -> list[ProjectId]:
+    """Extract parent project IDs from a reference formula list payload.
+
+    Parameters
+    ----------
+    payload : dict[str, Any]
+        The decoded list payload, expected to contain an ``Items`` (or ``items``) list.
+
+    Returns
+    -------
+    list[ProjectId]
+        The parent project IDs of linked reference formulas, in payload order.
+    """
+    items = payload.get("Items") or payload.get("items") or []
+    return [item["parentProjectId"] for item in items if item.get("parentProjectId")]
 
 
 def build_default_smart_dataset_scope(

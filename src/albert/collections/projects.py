@@ -32,6 +32,7 @@ from albert.utils.projects import (
     in_project_reference_formula_payload,
     linked_reference_formula_payload,
     reference_formula_path,
+    reference_formula_type_value,
 )
 
 
@@ -1130,13 +1131,10 @@ class ProjectCollection(BaseCollection):
             path = f"{self.base_path}/referenceFormulas"
         else:
             path = f"{self.base_path}/{project_id}/referenceFormulas"
-            query_params: dict[str, str] = {}
             if sheet_id is not None:
-                query_params["worksheetId"] = sheet_id
+                params = {"worksheetId": sheet_id}
             elif linked_only:
-                query_params["worksheetId"] = "external"
-            if query_params:
-                params = query_params
+                params = {"worksheetId": "external"}
 
         # The reference formula endpoints are backed by DynamoDB (not OpenSearch)
         # and return a single-page response containing {total: int, Items: [...]}.
@@ -1225,21 +1223,13 @@ class ProjectCollection(BaseCollection):
             inventory_id=inventory_id,
             base_path=self.base_path,
         )
-        new_val = (
-            reference_formula_type.value
-            if hasattr(reference_formula_type, "value")
-            else str(reference_formula_type)
-        )
         patch_kwargs: dict[str, Any] = {
             "operation": PatchOperation.UPDATE.value,
             "attribute": "referenceFormulaType",
-            "newValue": new_val,
+            "newValue": reference_formula_type_value(reference_formula_type),
         }
         if expected_type is not None:
-            old_val = (
-                expected_type.value if hasattr(expected_type, "value") else str(expected_type)
-            )
-            patch_kwargs["oldValue"] = old_val
+            patch_kwargs["oldValue"] = reference_formula_type_value(expected_type)
 
         datum = PatchDatum(**patch_kwargs)
         payload = PatchPayload(data=[datum])
@@ -1268,7 +1258,7 @@ class ProjectCollection(BaseCollection):
         return ReferenceFormula(
             project_id=project_id,
             inventory_id=inventory_id,
-            reference_formula_type=new_val,
+            reference_formula_type=reference_formula_type_value(reference_formula_type),
             is_external_formula=sheet_id is None,
             parent_project_id=project_id if sheet_id is not None else None,
             sheet_id=sheet_id,

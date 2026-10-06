@@ -5,6 +5,7 @@ from albert.utils.projects import (
     build_default_smart_dataset_scope,
     in_project_reference_formula_payload,
     linked_reference_formula_payload,
+    parse_linked_parent_project_ids,
     reference_formula_path,
 )
 
@@ -78,6 +79,36 @@ def test_reference_formula_payload_custom_string_type() -> None:
         reference_formula_type="CustomBaseline",
     )
     assert linked["referenceFormulaType"] == "CustomBaseline"
+
+
+def test_parse_linked_parent_project_ids_items_key() -> None:
+    """Test linked parent project IDs are extracted from an Items payload."""
+    payload = {
+        "total": 2,
+        "Items": [
+            {"parentProjectId": "PRO2", "inventoryId": "INV1"},
+            {"parentProjectId": "PRO3", "inventoryId": "INV2"},
+        ],
+    }
+    assert parse_linked_parent_project_ids(payload) == ["PRO2", "PRO3"]
+
+
+def test_parse_linked_parent_project_ids_lowercase_items_key() -> None:
+    """Test linked parent project IDs fall back to a lowercase items key."""
+    payload = {"items": [{"parentProjectId": "PRO2"}]}
+    assert parse_linked_parent_project_ids(payload) == ["PRO2"]
+
+
+def test_parse_linked_parent_project_ids_skips_missing_parent() -> None:
+    """Test items without a parentProjectId are skipped."""
+    payload = {"Items": [{"inventoryId": "INV1"}, {"parentProjectId": "PRO2"}]}
+    assert parse_linked_parent_project_ids(payload) == ["PRO2"]
+
+
+def test_parse_linked_parent_project_ids_empty_payload() -> None:
+    """Test an empty or missing items list yields no parent project IDs."""
+    assert parse_linked_parent_project_ids({}) == []
+    assert parse_linked_parent_project_ids({"Items": []}) == []
 
 
 def test_build_default_smart_dataset_scope_target_parent_map() -> None:
