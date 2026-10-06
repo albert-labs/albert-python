@@ -8,6 +8,7 @@ from typing_extensions import deprecated
 from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
+from albert.collections.instructions import InstructionsCollection
 from albert.collections.tags import TagCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -55,7 +56,10 @@ class InventoryCollection(BaseCollection):
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
     Worksheets, Tasks, and Property Data all point back to.
 
-    This collection is accessed as ``client.inventory``.
+    This collection is accessed as ``client.inventory``. A formula's batching
+    instructions are managed through the sub-collection
+    ``client.inventory.instructions``
+    ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]).
 
     !!! example
         ```python
@@ -139,6 +143,11 @@ class InventoryCollection(BaseCollection):
         """
         super().__init__(session=session)
         self.base_path = f"/api/{InventoryCollection._api_version}/inventories"
+
+    @property
+    def instructions(self) -> InstructionsCollection:
+        """Manage the batching instructions of formulas."""
+        return InstructionsCollection(session=self.session)
 
     @validate_call
     def merge(

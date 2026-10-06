@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import Field
 
 from albert.core.base import BaseAlbertModel
+from albert.core.shared.models.base import BaseResource
 
 
 class InstructionRowType(str, Enum):
@@ -236,3 +237,102 @@ class InstructionSequence(BaseAlbertModel):
 
     sequence: list[InstructionSequenceItem] | None = Field(default=None)
     """The instruction rows in their current display order."""
+
+
+class InstructionDesignLink(BaseAlbertModel):
+    """Where an instruction is pinned within a formula.
+
+    Every instruction belongs to a formula (its parent). An instruction can
+    additionally be pinned to one ingredient row of that formula; without a
+    row link it is a formula-level instruction.
+    """
+
+    product_id: str | None = Field(default=None, alias="productId")
+    """The ID of the formula the instruction belongs to (format ``INV...``)."""
+
+    design_row_id: str | None = Field(default=None, alias="designRowId")
+    """The unique ID of the ingredient row the instruction is pinned to
+    (format ``DES...#ROW...``). When None, the instruction applies to the
+    formula as a whole. Match rows by name in
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
+    results and read their ``row_unique_id`` to find this value."""
+
+    design_inv_id: str | None = Field(default=None, alias="designInvId")
+    """The inventory ID of the ingredient behind the linked row (format
+    ``INVA...``), when the instruction is pinned to a row."""
+
+
+class Instruction(BaseResource):
+    """An authored instruction on a formula (an advanced batch instruction).
+
+    An instruction is a free-text procedure note, such as "Take the pH of the
+    batch". It always belongs to exactly one formula (its ``parent_id``) and can
+    optionally be pinned to one of the formula's ingredient rows via
+    ``design``. Instructions are created, edited, and ordered per formula
+    through the
+    [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection].
+
+    !!! example
+        ```python
+        from albert.resources.instructions import Instruction
+        instruction = Instruction(name="Take the pH of the batch", parent_id="INV123")
+        ```
+    """
+
+    name: str | None = Field(default=None, max_length=1000)
+    """The instruction text (for example "Take the pH of the batch")."""
+
+    parent_id: str | None = Field(default=None, alias="parentId")
+    """The ID of the formula the instruction belongs to (format ``INV...``).
+    Required when creating an instruction."""
+
+    design: InstructionDesignLink | None = Field(default=None, alias="Design")
+    """Where the instruction is pinned. Omit ``design_row_id`` for a
+    formula-level instruction."""
+
+    id: str | None = Field(default=None, alias="albertId")
+    """The Albert ID of the instruction (format ``ABI...``). Assigned by Albert
+    when the instruction is created."""
+
+
+class InstructionRowSequence(BaseAlbertModel):
+    """The order of instructions within one row of a formula.
+
+    Each bucket holds the instruction IDs that share the same pin: either one
+    ingredient row, or the formula-level bucket (no ``design_row_id``).
+    """
+
+    design_row_id: str | None = Field(default=None, alias="designRowId")
+    """The unique ID of the ingredient row this bucket belongs to (format
+    ``DES...#ROW...``). None marks the formula-level bucket."""
+
+    instruction_ids: list[str] = Field(default_factory=list, alias="rowSequence")
+    """The IDs of the instructions in this bucket, in display order (format
+    ``ABI...``)."""
+
+
+class InstructionSet(BaseAlbertModel):
+    """The instructions authored on a single formula, with their ordering."""
+
+    id: str | None = Field(default=None)
+    """The ID of the formula the instructions belong to (format ``INV...``)."""
+
+    parent_id: str | None = Field(default=None, alias="parentId")
+    """The ID of the formula the instructions belong to (same as ``id``)."""
+
+    instructions: list[Instruction] = Field(default_factory=list, alias="data")
+    """The formula's instructions, in display order."""
+
+    sequence: list[InstructionRowSequence] = Field(default_factory=list)
+    """The per-row ordering of the formula's instructions."""
+
+
+class InstructionCopyResult(BaseAlbertModel):
+    """The outcome of copying instructions from one formula to others."""
+
+    copied: int = Field(default=0)
+    """The number of target formulas that received the instructions."""
+
+    skipped: int = Field(default=0)
+    """The number of target formulas skipped, for example because they already
+    had instructions of their own."""
