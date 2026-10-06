@@ -18,7 +18,7 @@ class InstructionRowType(str, Enum):
         such as "Premix" or "Heating"). Only parameter group rows can be
         reordered per formula.
     PARAMETER : str
-        A measurement row inside a parameter group (a target or reading, such as
+        A parameter row inside a parameter group (a reading or target, such as
         temperature or mixing time). Parameter rows move with their parent group.
     BLOCK : str
         A block row. Blocks give structure but are not part of the reorderable sequence.
@@ -110,11 +110,11 @@ class InstructionValue(BaseAlbertModel):
 
 class InstructionItem(BaseAlbertModel):
     """One row of a formula's batching instructions: an ingredient, a procedure
-    stage, or a measurement.
+    stage, or a parameter.
 
     Batching instructions are the ordered rows that describe how one specific
     formula is made as a batch: its ingredient rows, its parameter groups
-    (procedure stages), and the measurement rows inside them. Each row carries
+    (procedure stages), and the parameter rows inside them. Each row carries
     its per-column values in ``values``. The order of the rows is given by
     [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
     """
@@ -122,7 +122,7 @@ class InstructionItem(BaseAlbertModel):
     id: str | None = Field(default=None)
     """The ID of the entity behind the row: the ingredient's inventory ID
     (format ``INVA...``) for ingredient rows, the parameter group ID (format
-    ``PRG...``) for procedure stage rows, or the parameter ID for measurement
+    ``PRG...``) for procedure stage rows, or the parameter ID for parameter
     rows. Useful for matching a row to an entity you already know."""
 
     row_id: str | None = Field(default=None, alias="rowId")
@@ -173,7 +173,7 @@ class InventoryInstructions(BaseAlbertModel):
     """The batching instructions of a single formula.
 
     This is the formula-specific procedure for making the formula as a batch:
-    the ordered set of rows (ingredients, parameter groups, and measurements)
+    the ordered set of rows (ingredients, parameter groups, and parameters)
     that apply to it, along with the ``version`` used for reordering its
     parameter groups via
     [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].

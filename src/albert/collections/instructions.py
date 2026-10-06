@@ -15,11 +15,11 @@ class InstructionsCollection(BaseCollection):
 
     Batching instructions describe the procedure for making one specific formula
     ([`InventoryItem`][albert.resources.inventory.InventoryItem]) as a batch: the
-    ordered steps and measurements that turn its ingredients into the final
+    ordered steps and parameters that turn its ingredients into the final
     product. They are a formula-specific view of the formula's
     [`Sheet`][albert.resources.sheets.Sheet], combining its ingredient rows from
     the Product Design with the parameter groups (procedure stages such as
-    "Premix" or "Heating") and their measurement rows from the Process Design.
+    "Premix" or "Heating") and the parameters inside them from the Process Design.
     Each row carries its values for the relevant Worksheet columns, so a formula
     made in several batch columns shows one value per column.
 
@@ -36,8 +36,9 @@ class InstructionsCollection(BaseCollection):
       group). A parameter group stays with the ingredient it follows, so
       reordering ingredients on the Sheet carries the formula's groups along;
       groups newly added to the Sheet are appended at the end.
-    - Measurement rows belong to their parent parameter group and move with it;
-      they are not individually reorderable.
+    - Parameter rows (the readings and targets inside a group, such as
+      temperature or mixing time) belong to their parent parameter group and
+      move with it; they are not individually reorderable.
 
     Reordering rows with
     [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]
@@ -119,7 +120,7 @@ class InstructionsCollection(BaseCollection):
 
         Returns every instruction row of the formula's procedure in display
         order: ingredient rows, parameter groups (procedure stages), and
-        measurement rows, each with its values for the relevant Worksheet
+        parameter rows, each with its values for the relevant Worksheet
         columns. To get only the row order without the values, use
         [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
         See [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
