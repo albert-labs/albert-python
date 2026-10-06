@@ -1566,14 +1566,19 @@ class TaskCollection(BaseCollection):
         imported_any = False
         mapped_any_columns = False
 
+        single_block = len(blocks_to_process) == 1
         for block_result in blocks_to_process:
             table_rows = block_result.data
             if not isinstance(table_rows, list) or len(table_rows) < 2:
+                if single_block:
+                    raise ValueError("No data rows detected in CSV preview.")
                 continue
 
             header_row = table_rows[0]
             data_rows = [row for row in table_rows[1:] if isinstance(row, dict)]
             if not data_rows:
+                if single_block:
+                    raise ValueError("No data rows detected in CSV preview.")
                 continue
 
             header_sequence: list[tuple[str, str]] = []
