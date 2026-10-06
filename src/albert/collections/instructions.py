@@ -39,6 +39,19 @@ class InstructionsCollection(BaseCollection):
     - Measurement rows belong to their parent parameter group and move with it;
       they are not individually reorderable.
 
+    Reordering rows with
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence]
+    uses unique row IDs (format ``DES...#ROW...``), which are not the names or
+    IDs users usually have in hand. To find them, fetch the formula's
+    instructions with
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
+    and match rows by their display ``name`` or by the entity behind the row
+    (``id`` holds the parameter group ID or the ingredient's inventory ID); each
+    row's ``row_unique_id`` is the value to pass when reordering. Rows that have
+    no values for the formula yet do not appear in the instructions, but are
+    listed by
+    [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
+
     This collection is accessed as ``client.instructions``.
 
     !!! example
@@ -191,10 +204,12 @@ class InstructionsCollection(BaseCollection):
         reordered; ingredient rows always follow the Sheet's Product Design. The
         row identified by ``source_id`` is placed directly above or below the row
         identified by ``reference_id``, which can be an ingredient row or another
-        parameter group row. Both IDs use the unique row format
-        ``DES...#ROW...``, as found on
-        [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]
-        results.
+        parameter group row.
+
+        Both IDs use the unique row format ``DES...#ROW...``, which users rarely
+        know directly. Find them by matching display names in the formula's
+        instructions, as in the example below; each instruction row's
+        ``row_unique_id`` is the value to pass here.
 
         The ``version`` guards against conflicting edits: it must match the
         sequence's current version, or the move is rejected and the sequence
@@ -207,12 +222,15 @@ class InstructionsCollection(BaseCollection):
             from albert.resources.instructions import SequencePosition
 
             client = Albert()
+            instructions = client.instructions.get_by_inventory_id(inventory_id="INV123")
+            ids_by_name = {item.name: item.row_unique_id for item in instructions.items}
+
             sequence = client.instructions.get_sequence(inventory_id="INV123")
             updated = client.instructions.update_sequence(
                 inventory_id="INV123",
-                source_id="DES413129#ROW42",
-                reference_id="DES413126#ROW15",
-                position=SequencePosition.ABOVE,
+                source_id=ids_by_name["Heating"],
+                reference_id=ids_by_name["Premix"],
+                position=SequencePosition.BELOW,
                 version=sequence.version,
             )
             print(updated.version)

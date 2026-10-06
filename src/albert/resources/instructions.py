@@ -120,15 +120,20 @@ class InstructionItem(BaseAlbertModel):
     """
 
     id: str | None = Field(default=None)
-    """The ID of the entity behind the row (for example the ingredient's inventory
-    ID, format ``INV...``, or the parameter ID)."""
+    """The ID of the entity behind the row: the ingredient's inventory ID
+    (format ``INVA...``) for ingredient rows, the parameter group ID (format
+    ``PRG...``) for procedure stage rows, or the parameter ID for measurement
+    rows. Useful for matching a row to an entity you already know."""
 
     row_id: str | None = Field(default=None, alias="rowId")
     """The short ID of the row within its design (format ``ROW...``)."""
 
     row_unique_id: str | None = Field(default=None, alias="rowUniqueId")
     """The globally unique row ID, combining the design ID and row ID
-    (format ``DES...#ROW...``). Used to identify rows when reordering."""
+    (format ``DES...#ROW...``). This is the value to pass when reordering rows
+    with
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence];
+    match rows by ``name`` or ``id`` to find it."""
 
     type: InstructionRowType | None = Field(default=None)
     """The kind of row (ingredient, parameter group, parameter, block, or total)."""
@@ -193,7 +198,10 @@ class InstructionSequenceItem(BaseAlbertModel):
     """One row's place in a formula's instruction sequence."""
 
     row_id: str | None = Field(default=None, alias="rowId")
-    """The globally unique row ID (format ``DES...#ROW...``)."""
+    """The globally unique row ID (format ``DES...#ROW...``). To find the ID for
+    a row you know by name, match it in
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
+    results and read its ``row_unique_id``."""
 
     design_type: InstructionDesignType | None = Field(default=None, alias="designType")
     """The design the row comes from: ``products`` for ingredient rows,
