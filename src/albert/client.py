@@ -26,6 +26,7 @@ from albert.collections.design_runs import DesignRunCollection
 from albert.collections.entity_types import EntityTypeCollection
 from albert.collections.files import FileCollection
 from albert.collections.hazards import HazardsCollection
+from albert.collections.instructions import InstructionsCollection
 from albert.collections.inventory import InventoryCollection
 from albert.collections.label_templates import LabelTemplateCollection
 from albert.collections.links import LinksCollection
@@ -232,6 +233,10 @@ class Albert:
     @property
     def inventory(self) -> InventoryCollection:
         return InventoryCollection(session=self.session)
+
+    @property
+    def instructions(self) -> InstructionsCollection:
+        return InstructionsCollection(session=self.session)
 
     @property
     def companies(self) -> CompanyCollection:
