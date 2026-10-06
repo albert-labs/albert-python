@@ -395,6 +395,8 @@ def test_reference_formulas_lifecycle(
             client.projects.delete(id=host_project.id)
         with suppress(Exception):
             client.projects.delete(id=source_project.id)
+
+
 def test_star_get_starred_and_unstar_project(client: Albert, seeded_locations, seed_prefix: str):
     """Test starring, getting starred, and unstarring a project for the current user."""
     project = client.projects.create(

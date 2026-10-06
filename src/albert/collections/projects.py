@@ -20,6 +20,7 @@ from albert.core.shared.models.patch import PatchDatum, PatchOperation, PatchPay
 from albert.core.utils import ensure_list
 from albert.exceptions import AlbertHTTPError, BadRequestError, NotFoundError
 from albert.resources.acls import ACL
+from albert.resources.personalization import Personalization, PersonalizationCategory
 from albert.resources.projects import (
     DocumentSearchItem,
     Project,
@@ -31,10 +32,7 @@ from albert.utils.projects import (
     in_project_reference_formula_payload,
     linked_reference_formula_payload,
     reference_formula_path,
-    reference_formula_payload,
 )
-from albert.resources.personalization import Personalization, PersonalizationCategory
-from albert.resources.projects import DocumentSearchItem, Project, ProjectSearchItem
 
 
 class ProjectCollection(BaseCollection):
@@ -902,7 +900,6 @@ class ProjectCollection(BaseCollection):
     _reference_formula_path = staticmethod(reference_formula_path)
     _in_project_reference_formula_payload = staticmethod(in_project_reference_formula_payload)
     _linked_reference_formula_payload = staticmethod(linked_reference_formula_payload)
-    _reference_formula_payload = staticmethod(reference_formula_payload)
 
     @validate_call
     def set_reference_formula(

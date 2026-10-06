@@ -1,14 +1,11 @@
 """Unit tests for project and reference formula utility helpers."""
 
-import pytest
-
 from albert.resources.projects import ReferenceFormulaType
 from albert.utils.projects import (
     build_default_smart_dataset_scope,
     in_project_reference_formula_payload,
     linked_reference_formula_payload,
     reference_formula_path,
-    reference_formula_payload,
 )
 
 
@@ -66,8 +63,8 @@ def test_linked_reference_formula_payload() -> None:
 
 
 def test_reference_formula_payload_custom_string_type() -> None:
-    """Test reference formula payload builder tolerates arbitrary string type designations."""
-    in_project = reference_formula_payload(
+    """Test reference formula payload builders tolerate arbitrary string type designations."""
+    in_project = in_project_reference_formula_payload(
         project_id="PRO123",
         sheet_id="WKS456",
         inventory_id="INV789",
@@ -75,29 +72,12 @@ def test_reference_formula_payload_custom_string_type() -> None:
     )
     assert in_project["referenceFormulaType"] == "CustomBaseline"
 
-    linked = reference_formula_payload(
+    linked = linked_reference_formula_payload(
         parent_project_id="PRO456",
         inventory_id="INV789",
         reference_formula_type="CustomBaseline",
     )
     assert linked["referenceFormulaType"] == "CustomBaseline"
-
-
-def test_reference_formula_payload_missing_required_ids() -> None:
-    """Test reference_formula_payload raises ValueError when required project IDs are omitted."""
-    with pytest.raises(ValueError, match="project_id is required"):
-        reference_formula_payload(
-            sheet_id="WKS123",
-            inventory_id="INV123",
-            reference_formula_type=ReferenceFormulaType.ORIGINAL,
-        )
-
-    with pytest.raises(ValueError, match="parent_project_id is required"):
-        reference_formula_payload(
-            sheet_id=None,
-            inventory_id="INV123",
-            reference_formula_type=ReferenceFormulaType.CONTROL,
-        )
 
 
 def test_build_default_smart_dataset_scope_target_parent_map() -> None:

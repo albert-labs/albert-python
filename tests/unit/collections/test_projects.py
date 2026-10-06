@@ -6,20 +6,17 @@ starred-project record matching / duplicate-star detection helpers, with no
 I/O to fake.
 """
 
-import json as _json
-
-import pytest
-import responses
 import json
 
 import pytest
 import requests
+import responses
 
 from albert.collections.projects import ProjectCollection
 from albert.exceptions import BadRequestError
 from albert.resources.acls import ACL, AccessControlLevel
-from albert.resources.projects import ReferenceFormulaType
 from albert.resources.personalization import Personalization, PersonalizationCategory
+from albert.resources.projects import ReferenceFormulaType
 from tests.unit.conftest import UNIT_BASE_URL
 
 
@@ -229,8 +226,8 @@ def test_linked_reference_formula_payload() -> None:
 
 
 def test_reference_formula_payload_custom_string_type() -> None:
-    """Test reference formula payload tolerates arbitrary string type designations."""
-    in_project = ProjectCollection._reference_formula_payload(
+    """Test reference formula payloads tolerate arbitrary string type designations."""
+    in_project = ProjectCollection._in_project_reference_formula_payload(
         project_id="PRO123",
         sheet_id="WKS456",
         inventory_id="INV789",
@@ -238,7 +235,7 @@ def test_reference_formula_payload_custom_string_type() -> None:
     )
     assert in_project["referenceFormulaType"] == "CustomBaseline"
 
-    linked = ProjectCollection._reference_formula_payload(
+    linked = ProjectCollection._linked_reference_formula_payload(
         parent_project_id="PRO456",
         inventory_id="INV789",
         reference_formula_type="CustomBaseline",
@@ -293,7 +290,7 @@ def test_set_reference_formula_wire(offline_session) -> None:
     assert len(responses.calls) == 1
     call = responses.calls[0]
     assert call.request.method == "POST"
-    assert _json.loads(call.request.body) == {
+    assert json.loads(call.request.body) == {
         "worksheetId": "WKS456",
         "parentProjectId": "PRO123",
         "inventoryId": "INV789",
@@ -331,7 +328,7 @@ def test_link_reference_formula_wire(offline_session) -> None:
     assert len(responses.calls) == 1
     call = responses.calls[0]
     assert call.request.method == "POST"
-    assert _json.loads(call.request.body) == {
+    assert json.loads(call.request.body) == {
         "parentProjectId": "PRO456",
         "inventoryId": "INV789",
         "isExternalFormula": True,
@@ -445,7 +442,7 @@ def test_update_reference_formula_type_wire(offline_session) -> None:
         expected_type=ReferenceFormulaType.ORIGINAL,
     )
     call1 = responses.calls[0]
-    assert _json.loads(call1.request.body) == {
+    assert json.loads(call1.request.body) == {
         "data": [
             {
                 "operation": "update",
@@ -468,7 +465,7 @@ def test_update_reference_formula_type_wire(offline_session) -> None:
         reference_formula_type="CustomType",
     )
     call2 = responses.calls[2]
-    assert _json.loads(call2.request.body) == {
+    assert json.loads(call2.request.body) == {
         "data": [
             {
                 "operation": "update",
@@ -533,6 +530,8 @@ def test_delete_reference_formula_wire(offline_session) -> None:
         inventory_id="INV789",
     )
     assert responses.calls[1].request.method == "DELETE"
+
+
 def test_starred_record_ids_match_project_case_insensitively() -> None:
     """Test that starred-record lookup matches the project ID regardless of case."""
     records = [
