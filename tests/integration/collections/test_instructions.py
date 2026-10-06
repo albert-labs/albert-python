@@ -3,9 +3,9 @@ import pytest
 from albert import Albert
 from albert.resources.instructions import (
     Instruction,
+    InstructionLayout,
     InstructionRowType,
     InstructionSequence,
-    InventoryInstructions,
     SequencePosition,
 )
 from albert.resources.inventory import InventoryItem
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.xdist_group("sheets")
 def _sequence_positions(sequence: InstructionSequence, row_ids: list[str]) -> dict[str, int]:
     """Map each row ID to its index in the sequence."""
     positions = {}
-    for idx, item in enumerate(sequence.sequence):
+    for idx, item in enumerate(sequence.rows):
         if item.row_id in row_ids:
             positions[item.row_id] = idx
     return positions
@@ -29,12 +29,12 @@ def test_get_by_inventory_id(client: Albert, seeded_products: list[InventoryItem
 
     instructions = client.inventory.instructions.get_by_inventory_id(inventory_id=formula.id)
 
-    assert isinstance(instructions, InventoryInstructions)
+    assert isinstance(instructions, InstructionLayout)
     assert instructions.inventory_id == formula.id
     assert instructions.version >= 1
-    assert instructions.items
-    assert instructions.total == len(instructions.items)
-    ingredient_rows = [i for i in instructions.items if i.type == InstructionRowType.INVENTORY]
+    assert instructions.rows
+    assert instructions.total == len(instructions.rows)
+    ingredient_rows = [i for i in instructions.rows if i.type == InstructionRowType.INVENTORY]
     assert ingredient_rows, "Expected at least one ingredient row in the instructions"
 
 
@@ -47,7 +47,7 @@ def test_get_sequence(client: Albert, seeded_products: list[InventoryItem]):
     assert isinstance(sequence, InstructionSequence)
     assert sequence.id == formula.id
     assert sequence.version >= 1
-    assert sequence.sequence
+    assert sequence.rows
 
 
 def test_get_sequence_exclude_hidden(client: Albert, seeded_products: list[InventoryItem]):
@@ -56,7 +56,7 @@ def test_get_sequence_exclude_hidden(client: Albert, seeded_products: list[Inven
         inventory_id=seeded_products[0].id, exclude_hidden=True
     )
 
-    assert all(item.is_hidden is False for item in sequence.sequence)
+    assert all(row.is_hidden is False for row in sequence.rows)
 
 
 def test_update_sequence_moves_process_group_row(

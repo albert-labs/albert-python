@@ -1,3 +1,28 @@
+"""Models for the batching instructions of formulas.
+
+Batching instructions describe how one specific formula is made as a batch.
+They come in two layers, which this module's models reflect:
+
+- The **procedure table** ([`InstructionLayout`][albert.resources.instructions.InstructionLayout]
+  and [`InstructionRow`][albert.resources.instructions.InstructionRow]): the formula's
+  ingredients, procedure stages (parameter groups), and readings (parameters),
+  laid out as ordered rows with one value per relevant column. This is the table
+  shown on the inventory details page in the Albert interface. Row content comes
+  from the Worksheet and is edited there; the SDK reads the rows and can reorder
+  the stages.
+- The **instruction texts** ([`Instruction`][albert.resources.instructions.Instruction]):
+  authored notes such as "Take the pH of the batch", attached to the formula as
+  a whole or pinned to one ingredient row. These are created, renamed,
+  reordered, copied between formulas, and deleted through the SDK.
+
+Most models here are read-only views returned by the
+[`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
+(accessed as ``client.inventory.instructions``); only
+[`Instruction`][albert.resources.instructions.Instruction] and
+[`InstructionDesignLink`][albert.resources.instructions.InstructionDesignLink]
+are constructed directly, to author instruction texts.
+"""
+
 from enum import Enum
 from typing import Any
 
@@ -8,41 +33,51 @@ from albert.core.shared.models.base import BaseResource
 
 
 class InstructionRowType(str, Enum):
-    """The kind of row in a formula's batching instructions.
+    """The kind of row in a formula's procedure table.
+
+    In the Albert interface, ingredient and total rows are what you see in the
+    formula table on the inventory details page, while parameter groups and
+    parameters come from the Worksheet's Process Design.
 
     Attributes
     ----------
     INVENTORY : str
-        An ingredient row from the Product Design (a raw material in the formula).
+        An ingredient row: one component material of the formula, carrying its
+        amount (and allowed range) per batch column.
     PARAMETER_GROUP : str
-        A parameter group from the Process Design (a stage of the procedure,
-        such as "Premix" or "Heating"). Only parameter group rows can be
-        reordered per formula.
+        A stage of the procedure, such as "Premix" or "Heating". Groups the
+        parameter rows below it and is the only kind of row whose order can be
+        customized per formula.
     PARAMETER : str
-        A parameter row inside a parameter group (a reading or target, such as
-        temperature or mixing time). Parameter rows move with their parent group.
-    BLOCK : str
-        A block row. Blocks give structure but are not part of the reorderable sequence.
+        A single reading or target inside a parameter group, such as
+        temperature or mixing time. Moves with its parent group.
+    BLANK : str
+        A blank separator row from the Sheet design, used to visually group
+        rows. Carries no recipe content and never appears in the row sequence.
     TOTAL : str
-        A total row that rolls up values across the formula.
+        The batch total row, which rolls up the ingredient amounts (for
+        example the total batch size they sum to). The Albert interface uses
+        it to display each ingredient as a percentage of the batch and does
+        not list it among the instructions. Never appears in the row sequence.
     """
 
     INVENTORY = "INV"
     PARAMETER_GROUP = "PRG"
     PARAMETER = "PRM"
-    BLOCK = "BLK"
+    BLANK = "BLK"
     TOTAL = "TOT"
 
 
 class InstructionDesignType(str, Enum):
-    """The design a sequence row comes from.
+    """The Sheet design a sequenced row comes from.
 
     Attributes
     ----------
     PRODUCTS : str
-        The Product Design, which holds the formula's ingredient rows.
+        The Products design, which holds the formula's ingredient rows.
     PROCESS : str
-        The Process Design, which holds the procedure's parameter group rows.
+        The Process design, which holds the procedure's parameter group and
+        parameter rows.
     """
 
     PRODUCTS = "products"
@@ -65,11 +100,13 @@ class SequencePosition(str, Enum):
 
 
 class InstructionValue(BaseAlbertModel):
-    """A single cell of an instruction row.
+    """One cell of a procedure row: the row's content for a single column.
 
-    Each value belongs to one column of the Worksheet grid, so a row has one
-    value per relevant column (for example the ingredient name, the manufacturer,
-    or the amount used in a given batch column).
+    A row has one value per relevant column, for example the ingredient's
+    amount in a given batch column, its manufacturer, or the row's batch
+    instruction text. The ``type`` says which kind of content the value holds.
+
+    Read-only; values are edited on the Worksheet.
     """
 
     id: str | None = Field(default=None)
@@ -80,8 +117,10 @@ class InstructionValue(BaseAlbertModel):
     """The ID of the Worksheet column this value belongs to (format ``COL...``)."""
 
     type: str | None = Field(default=None)
-    """The kind of value (for example ``DEF`` for a defined column, ``LKP`` for a
-    lookup, ``INV`` for an inventory amount, or ``FNC`` for a calculated value)."""
+    """The kind of value: ``DEF`` for a defined column such as the row name,
+    ``INV`` for an ingredient amount, ``BTI`` for the row's batch instruction
+    text (the Batch Instruction column in the Albert interface), ``LKP`` for a
+    looked-up attribute, or ``FNC`` for a calculated value."""
 
     name: str | None = Field(default=None)
     """The display name of the column this value belongs to."""
@@ -109,21 +148,25 @@ class InstructionValue(BaseAlbertModel):
     """The structured result of a calculated (``FNC``) value, when present."""
 
 
-class InstructionItem(BaseAlbertModel):
-    """One row of a formula's batching instructions: an ingredient, a procedure
-    stage, or a parameter.
+class InstructionRow(BaseAlbertModel):
+    """One row of a formula's procedure table.
 
-    Batching instructions are the ordered rows that describe how one specific
-    formula is made as a batch: its ingredient rows, its parameter groups
-    (procedure stages), and the parameter rows inside them. Each row carries
-    its per-column values in ``values``. The order of the rows is given by
-    [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
+    A row is one line of the procedure: an ingredient, a procedure stage
+    (parameter group), a single reading (parameter), or a structural row
+    (blank separator, batch total). ``type`` says which, and ``values`` carries
+    the row's content per column.
+
+    Read-only view returned by
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].
+    Row content is edited on the Worksheet; only the order of parameter group
+    rows can be changed through the SDK, via
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
     """
 
     id: str | None = Field(default=None)
     """The ID of the entity behind the row: the ingredient's inventory ID
     (format ``INVA...``) for ingredient rows, the parameter group ID (format
-    ``PRG...``) for procedure stage rows, or the parameter ID for parameter
+    ``PRG...``) for parameter group rows, or the parameter ID for parameter
     rows. Useful for matching a row to an entity you already know."""
 
     row_id: str | None = Field(default=None, alias="rowId")
@@ -137,10 +180,10 @@ class InstructionItem(BaseAlbertModel):
     match rows by ``name`` or ``id`` to find it."""
 
     type: InstructionRowType | None = Field(default=None)
-    """The kind of row (ingredient, parameter group, parameter, block, or total)."""
+    """The kind of row."""
 
     name: str | None = Field(default=None)
-    """The display name of the row (for example the ingredient or step name)."""
+    """The display name of the row (for example the ingredient or stage name)."""
 
     original_name: str | None = Field(default=None, alias="originalName")
     """The row's original name before any renaming, when different."""
@@ -161,7 +204,7 @@ class InstructionItem(BaseAlbertModel):
     """The category ID of the parameter for parameter rows."""
 
     category_name: str | None = Field(default=None, alias="categoryName")
-    """The display name of the parameter or process group category."""
+    """The display name of the parameter or parameter group category."""
 
     validation: dict[str, Any] | None = Field(default=None)
     """Validation rules configured on a parameter row, when present."""
@@ -170,33 +213,39 @@ class InstructionItem(BaseAlbertModel):
     """The row's cell values, one per relevant Worksheet column."""
 
 
-class InventoryInstructions(BaseAlbertModel):
-    """The batching instructions of a single formula.
+class InstructionLayout(BaseAlbertModel):
+    """The procedure table of a single formula: its rows with their values.
 
-    This is the formula-specific procedure for making the formula as a batch:
-    the ordered set of rows (ingredients, parameter groups, and parameters)
-    that apply to it, along with the ``version`` used for reordering its
-    parameter groups via
-    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
+    Covers everything the formula's procedure involves, in display order:
+    ingredients with their amounts, procedure stages and their readings, and
+    any batch instruction text entered per row.
+
+    Read-only view returned by
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].
+    The row order alone (without values) is available from
+    [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence].
     """
 
     total: int | None = Field(default=None)
-    """The number of instruction rows in ``items``."""
+    """The number of rows in ``rows``."""
 
     inventory_id: str | None = Field(default=None, alias="inventoryId")
-    """The ID of the formula inventory item these instructions belong to
-    (format ``INV...``)."""
+    """The ID of the formula the rows belong to (format ``INV...``)."""
 
     version: int | None = Field(default=None)
-    """The current version of the instruction sequence. Pass this value when
-    reordering so simultaneous edits are detected."""
+    """The current version of the row order. Pass this value when reordering
+    rows so simultaneous edits are detected."""
 
-    items: list[InstructionItem] | None = Field(default=None)
-    """The ordered instruction rows for the formula."""
+    rows: list[InstructionRow] = Field(default_factory=list, alias="items")
+    """The formula's rows in display order."""
 
 
-class InstructionSequenceItem(BaseAlbertModel):
-    """One row's place in a formula's instruction sequence."""
+class InstructionSequenceRow(BaseAlbertModel):
+    """One row's place in the row order of a formula's batching instructions.
+
+    Read-only view returned as part of
+    [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
+    """
 
     row_id: str | None = Field(default=None, alias="rowId")
     """The globally unique row ID (format ``DES...#ROW...``). To find the ID for
@@ -205,42 +254,47 @@ class InstructionSequenceItem(BaseAlbertModel):
     results and read its ``row_unique_id``."""
 
     design_type: InstructionDesignType | None = Field(default=None, alias="designType")
-    """The design the row comes from: ``products`` for ingredient rows,
-    ``process`` for process rows."""
+    """The Sheet design the row comes from: ``products`` for ingredient rows,
+    ``process`` for parameter group and parameter rows."""
 
     is_hidden: bool | None = Field(default=None, alias="isHidden")
     """Whether the row is currently hidden on the Worksheet."""
 
 
 class InstructionSequence(BaseAlbertModel):
-    """The ordered instruction sequence of a single formula.
+    """The row order of a single formula's batching instructions.
 
-    The sequence lists every row of the formula's procedure in display order.
-    Ingredient rows always follow the order set on the Sheet's Product Design,
-    while the order of parameter group rows can be customized per formula via
+    Lists every row of the formula's procedure in display order, along with the
+    ``version`` used to detect conflicting edits. Ingredient rows always follow
+    the order set on the Sheet's Products design, while parameter group rows
+    can be reordered per formula via
     [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
     See
     [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]
-    for the full picture of how the order is determined. The sequence is stored
-    alongside a ``version`` that is used to detect conflicting edits.
+    for the full picture of how the order is determined.
+
+    Read-only view returned by
+    [`get_sequence`][albert.collections.instructions.InstructionsCollection.get_sequence]
+    and
+    [`update_sequence`][albert.collections.instructions.InstructionsCollection.update_sequence].
     """
 
     id: str | None = Field(default=None)
-    """The ID of the formula inventory item the sequence belongs to (format ``INV...``)."""
+    """The ID of the formula the sequence belongs to (format ``INV...``)."""
 
     version: int | None = Field(default=None)
-    """The current version of the sequence. Pass this value when reordering so
+    """The current version of the row order. Pass this value when reordering so
     simultaneous edits are detected."""
 
     is_overridden: bool | None = Field(default=None, alias="isOverridden")
     """Whether the order has been customized away from the Worksheet default."""
 
-    sequence: list[InstructionSequenceItem] | None = Field(default=None)
-    """The instruction rows in their current display order."""
+    rows: list[InstructionSequenceRow] = Field(default_factory=list, alias="sequence")
+    """The rows in their current display order."""
 
 
 class InstructionDesignLink(BaseAlbertModel):
-    """Where an instruction is pinned within a formula.
+    """Where an instruction text is pinned within a formula.
 
     Every instruction belongs to a formula (its parent). An instruction can
     additionally be pinned to one ingredient row of that formula; without a
@@ -258,19 +312,23 @@ class InstructionDesignLink(BaseAlbertModel):
     results and read their ``row_unique_id`` to find this value."""
 
     design_inv_id: str | None = Field(default=None, alias="designInvId")
-    """The inventory ID of the ingredient behind the linked row (format
-    ``INVA...``), when the instruction is pinned to a row."""
+    """Read-only. The inventory ID of the ingredient behind the linked row
+    (format ``INVA...``), when the instruction is pinned to a row."""
 
 
 class Instruction(BaseResource):
-    """An authored instruction on a formula (an advanced batch instruction).
+    """An authored instruction text on a formula.
 
-    An instruction is a free-text procedure note, such as "Take the pH of the
-    batch". It always belongs to exactly one formula (its ``parent_id``) and can
-    optionally be pinned to one of the formula's ingredient rows via
-    ``design``. Instructions are created, edited, and ordered per formula
-    through the
-    [`InstructionsCollection`][albert.collections.instructions.InstructionsCollection].
+    A free-text procedure note, such as "Take the pH of the batch", shown with
+    the formula's batching instructions in the Albert interface. Every
+    instruction belongs to exactly one formula (its ``parent_id``) and can
+    optionally be pinned to one of the formula's ingredient rows via ``design``.
+
+    Construct this model to author an instruction through
+    [`create`][albert.collections.instructions.InstructionsCollection.create].
+    ``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and
+    read-only. After creation, only ``name`` can be changed, via
+    [`update`][albert.collections.instructions.InstructionsCollection.update].
 
     !!! example
         ```python
@@ -280,39 +338,51 @@ class Instruction(BaseResource):
     """
 
     name: str | None = Field(default=None, max_length=1000)
-    """The instruction text (for example "Take the pH of the batch")."""
+    """The instruction text (for example "Take the pH of the batch"). The only
+    field that can be changed after creation."""
 
     parent_id: str | None = Field(default=None, alias="parentId")
     """The ID of the formula the instruction belongs to (format ``INV...``).
-    Required when creating an instruction."""
+    Required at creation and fixed afterwards."""
 
     design: InstructionDesignLink | None = Field(default=None, alias="Design")
     """Where the instruction is pinned. Omit ``design_row_id`` for a
-    formula-level instruction."""
+    formula-level instruction. Fixed at creation."""
 
     id: str | None = Field(default=None, alias="albertId")
-    """The Albert ID of the instruction (format ``ABI...``). Assigned by Albert
-    when the instruction is created."""
+    """Read-only. The Albert ID of the instruction (format ``ABI...``), assigned
+    at creation."""
 
 
-class InstructionRowSequence(BaseAlbertModel):
-    """The order of instructions within one row of a formula.
+class InstructionOrder(BaseAlbertModel):
+    """The display order of the instruction texts pinned to one row.
 
-    Each bucket holds the instruction IDs that share the same pin: either one
-    ingredient row, or the formula-level bucket (no ``design_row_id``).
+    Instruction texts are ordered independently within each pin: one order per
+    ingredient row, plus one order for the formula-level instructions (the
+    bucket with no ``design_row_id``).
+
+    Read-only view returned as part of
+    [`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the
+    order with
+    [`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence].
     """
 
     design_row_id: str | None = Field(default=None, alias="designRowId")
-    """The unique ID of the ingredient row this bucket belongs to (format
-    ``DES...#ROW...``). None marks the formula-level bucket."""
+    """The unique ID of the ingredient row this order belongs to (format
+    ``DES...#ROW...``). None marks the formula-level instructions."""
 
     instruction_ids: list[str] = Field(default_factory=list, alias="rowSequence")
-    """The IDs of the instructions in this bucket, in display order (format
-    ``ABI...``)."""
+    """The IDs of the pinned instructions in display order (format ``ABI...``)."""
 
 
 class InstructionSet(BaseAlbertModel):
-    """The instructions authored on a single formula, with their ordering."""
+    """The instruction texts authored on a single formula, with their order.
+
+    Read-only view returned by
+    [`get_by_parent_ids`][albert.collections.instructions.InstructionsCollection.get_by_parent_ids]
+    and
+    [`update_row_sequence`][albert.collections.instructions.InstructionsCollection.update_row_sequence].
+    """
 
     id: str | None = Field(default=None)
     """The ID of the formula the instructions belong to (format ``INV...``)."""
@@ -321,14 +391,18 @@ class InstructionSet(BaseAlbertModel):
     """The ID of the formula the instructions belong to (same as ``id``)."""
 
     instructions: list[Instruction] = Field(default_factory=list, alias="data")
-    """The formula's instructions, in display order."""
+    """The formula's instruction texts, in display order."""
 
-    sequence: list[InstructionRowSequence] = Field(default_factory=list)
-    """The per-row ordering of the formula's instructions."""
+    sequence: list[InstructionOrder] = Field(default_factory=list)
+    """The per-row ordering of the formula's instruction texts."""
 
 
 class InstructionCopyResult(BaseAlbertModel):
-    """The outcome of copying instructions from one formula to others."""
+    """The outcome of copying instruction texts from one formula to others.
+
+    Read-only view returned by
+    [`copy`][albert.collections.instructions.InstructionsCollection.copy].
+    """
 
     copied: int = Field(default=0)
     """The number of target formulas that received the instructions."""

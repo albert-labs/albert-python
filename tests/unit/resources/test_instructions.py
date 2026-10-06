@@ -4,10 +4,10 @@ from albert.resources.instructions import (
     Instruction,
     InstructionCopyResult,
     InstructionDesignType,
+    InstructionLayout,
     InstructionRowType,
     InstructionSequence,
     InstructionSet,
-    InventoryInstructions,
 )
 
 INVENTORY_INSTRUCTIONS_PAYLOAD = {
@@ -64,14 +64,14 @@ INSTRUCTION_SEQUENCE_PAYLOAD = {
 
 def test_inventory_instructions_wire_round_trip() -> None:
     """Test an instructions payload survives validation with aliases intact."""
-    instructions = InventoryInstructions.model_validate(INVENTORY_INSTRUCTIONS_PAYLOAD)
+    instructions = InstructionLayout.model_validate(INVENTORY_INSTRUCTIONS_PAYLOAD)
 
     assert instructions.inventory_id == "INVMO135329-006"
     assert instructions.version == 2
-    assert instructions.items[0].row_unique_id == "DES413126#ROW12"
-    assert instructions.items[0].type == InstructionRowType.INVENTORY
-    assert instructions.items[0].values[1].min_value == "5"
-    assert instructions.items[1].label_name == "Mixing time"
+    assert instructions.rows[0].row_unique_id == "DES413126#ROW12"
+    assert instructions.rows[0].type == InstructionRowType.INVENTORY
+    assert instructions.rows[0].values[1].min_value == "5"
+    assert instructions.rows[1].label_name == "Mixing time"
 
     assert instructions.model_dump(by_alias=True, mode="json", exclude_none=True) == (
         INVENTORY_INSTRUCTIONS_PAYLOAD
@@ -84,8 +84,8 @@ def test_instruction_sequence_wire_round_trip() -> None:
 
     assert sequence.id == "INVMO135329-006"
     assert sequence.is_overridden is True
-    assert sequence.sequence[1].design_type == InstructionDesignType.PROCESS
-    assert sequence.sequence[0].is_hidden is True
+    assert sequence.rows[1].design_type == InstructionDesignType.PROCESS
+    assert sequence.rows[0].is_hidden is True
 
     assert sequence.model_dump(by_alias=True, mode="json", exclude_none=True) == (
         INSTRUCTION_SEQUENCE_PAYLOAD

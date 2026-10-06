@@ -10,10 +10,10 @@ from albert.core.shared.identifiers import InventoryId
 from albert.resources.instructions import (
     Instruction,
     InstructionCopyResult,
-    InstructionRowSequence,
+    InstructionLayout,
+    InstructionOrder,
     InstructionSequence,
     InstructionSet,
-    InventoryInstructions,
     SequencePosition,
 )
 
@@ -28,8 +28,9 @@ class InstructionsCollection(BaseCollection):
     """Manage the batching instructions of formulas in the Albert platform.
 
     Batching instructions describe the procedure for making one specific formula
-    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) as a batch.
-    Two layers make up what you see:
+    ([`InventoryItem`][albert.resources.inventory.InventoryItem]) as a batch:
+    what you see on the formula's Instructions panel in the Albert interface.
+    Two layers make it up:
 
     - **Instruction texts** ([`Instruction`][albert.resources.instructions.Instruction]):
       authored steps and notes, such as "Take the pH of the batch". Every
@@ -38,10 +39,12 @@ class InstructionsCollection(BaseCollection):
       a pin it is a formula-level instruction. Instructions are created, edited,
       reordered within their row, copied between formulas, and deleted through
       this collection.
-    - **Instruction rows** ([`InstructionItem`][albert.resources.instructions.InstructionItem]):
+    - **The procedure table** ([`InstructionLayout`][albert.resources.instructions.InstructionLayout]
+      and [`InstructionRow`][albert.resources.instructions.InstructionRow]):
       the formula's ingredient rows, parameter groups (procedure stages such as
       "Premix" or "Heating"), and parameter rows from its Worksheet, which give
-      the instructions their structure. Rows are read through
+      the instructions their structure. Row content is edited on the Worksheet;
+      rows are read through
       [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].
 
     The overall row order is held in an
@@ -113,8 +116,8 @@ class InstructionsCollection(BaseCollection):
         Reorder the instructions within one row of a formula.
     copy(source_id, target_ids) -> InstructionCopyResult
         Copy a formula's instructions and their order to other formulas.
-    get_by_inventory_id(inventory_id) -> InventoryInstructions
-        Get the instruction rows of a formula, with their values.
+    get_by_inventory_id(inventory_id) -> InstructionLayout
+        Get the procedure table of a formula: its rows with their values.
     get_sequence(inventory_id, exclude_hidden=False) -> InstructionSequence
         Get the ordered instruction row sequence of a formula.
     update_sequence(inventory_id, source_id, reference_id, position, version) -> InstructionSequence
@@ -153,7 +156,7 @@ class InstructionsCollection(BaseCollection):
     @staticmethod
     def _build_row_sequence_payload(
         *,
-        sequence: list[InstructionRowSequence],
+        sequence: list[InstructionOrder],
         design_row_id: str | None,
         instruction_ids: list[str],
     ) -> dict:
@@ -556,10 +559,10 @@ class InstructionsCollection(BaseCollection):
         return InstructionCopyResult(**response.json())
 
     @validate_call
-    def get_by_inventory_id(self, *, inventory_id: InventoryId) -> InventoryInstructions:
-        """Get the instruction rows of a formula, with their values.
+    def get_by_inventory_id(self, *, inventory_id: InventoryId) -> InstructionLayout:
+        """Get the procedure table of a formula: its rows with their values.
 
-        Returns every instruction row of the formula in display order:
+        Returns every row of the formula's procedure in display order:
         ingredient rows, parameter groups (procedure stages), and parameter
         rows, each with its values for the relevant Worksheet columns. To get
         only the row order without the values, use
@@ -571,8 +574,8 @@ class InstructionsCollection(BaseCollection):
             ```python
             from albert import Albert
             client = Albert()
-            rows = client.inventory.instructions.get_by_inventory_id(inventory_id="INV123")
-            for row in rows.items:
+            layout = client.inventory.instructions.get_by_inventory_id(inventory_id="INV123")
+            for row in layout.rows:
                 print(row.type, row.name)
             ```
 
@@ -583,12 +586,12 @@ class InstructionsCollection(BaseCollection):
 
         Returns
         -------
-        InventoryInstructions
-            The formula's instruction rows, including the sequence ``version``.
+        InstructionLayout
+            The formula's rows, including the sequence ``version``.
         """
         path = f"{self._inventory_base_path}/{inventory_id}/instructions"
         response = self.session.get(path)
-        return InventoryInstructions(**response.json())
+        return InstructionLayout(**response.json())
 
     @validate_call
     def get_sequence(
@@ -609,7 +612,7 @@ class InstructionsCollection(BaseCollection):
             from albert import Albert
             client = Albert()
             sequence = client.inventory.instructions.get_sequence(inventory_id="INV123")
-            for item in sequence.sequence:
+            for row in sequence.rows:
                 print(item.row_id, item.is_hidden)
             ```
 
@@ -665,8 +668,8 @@ class InstructionsCollection(BaseCollection):
 
             client = Albert()
             instructions = client.inventory.instructions
-            rows = instructions.get_by_inventory_id(inventory_id="INV123")
-            ids_by_name = {row.name: row.row_unique_id for row in rows.items}
+            layout = instructions.get_by_inventory_id(inventory_id="INV123")
+            ids_by_name = {row.name: row.row_unique_id for row in layout.rows}
 
             sequence = instructions.get_sequence(inventory_id="INV123")
             updated = instructions.update_sequence(
