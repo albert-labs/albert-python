@@ -59,3 +59,16 @@ def test_view_state_serializes_to_wire_keys() -> None:
         "query": [{"filter": {"owner": ["Jane Doe"]}}],
         "sortBy": [{"id": "createdAt", "dir": "desc"}],
     }
+
+
+@pytest.mark.parametrize("name", ["A", "x" * 51])
+def test_view_name_rejects_out_of_range_length(name: str) -> None:
+    """Test that a name shorter than 2 or longer than 50 characters is rejected."""
+    with pytest.raises(ValidationError):
+        View(name=name, entity=ViewEntity.TASKS)
+
+
+@pytest.mark.parametrize("name", ["AB", "x" * 50])
+def test_view_name_accepts_boundary_lengths(name: str) -> None:
+    """Test that names of exactly 2 and 50 characters are accepted."""
+    assert View(name=name, entity=ViewEntity.TASKS).name == name

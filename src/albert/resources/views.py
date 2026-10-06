@@ -196,7 +196,7 @@ class View(BaseResource):
     id: ViewId | None = Field(default=None, alias="albertId")
     """The Albert ID of the view (format ``VEW...``). Assigned by Albert when the view is created."""
 
-    name: str
+    name: str = Field(min_length=2, max_length=50)
     """The display name of the view, shown on its tab. Must be 2 to 50 characters."""
 
     entity: ViewEntity
