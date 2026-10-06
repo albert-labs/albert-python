@@ -140,6 +140,27 @@ class ViewQuery(BaseAlbertModel):
     """Text each column in ``contains_field`` must contain. Paired by position with ``contains_field``."""
 
 
+class ViewFilter(BaseAlbertModel):
+    """A filter a grid accepts in a saved view.
+
+    The available filters for a grid mirror the filter parameters of the matching
+    collection's search method (for example the Projects grid accepts the same
+    filters as
+    [`ProjectCollection.search`][albert.collections.projects.ProjectCollection.search]).
+    List them with
+    [`ViewCollection.list_filters`][albert.collections.views.ViewCollection.list_filters].
+    """
+
+    key: str
+    """The filter key used in [`ViewQuery.filter`][albert.resources.views.ViewQuery.filter] (e.g. ``marketSegment``)."""
+
+    multi: bool
+    """Whether the filter takes a list of values (True) or a single value (False)."""
+
+    parameter: str | None = Field(default=None)
+    """The search method parameter the filter mirrors (e.g. ``market_segment``), when one exists."""
+
+
 class ViewState(BaseAlbertModel):
     """The saved layout of a view: its columns, filters, sorting, and grouping.
 
