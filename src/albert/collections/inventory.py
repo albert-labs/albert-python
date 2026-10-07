@@ -56,6 +56,16 @@ class InventoryCollection(BaseCollection):
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
     Worksheets, Tasks, and Property Data all point back to.
 
+    Formula items carry batching instructions: the procedure for making the
+    formula as a batch, shown on the formula's Instructions panel in the Albert
+    interface. Reach for them when you need to read or communicate how a formula
+    is made: the ingredient amounts per batch, the procedure stages and their
+    readings, and authored step notes such as "Take the pH of the batch". Read a
+    formula's procedure table inline with
+    [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]
+    (``include_instructions=True``); manage instruction texts and the row order
+    through the nested `instructions` collection below.
+
     This collection is accessed as ``client.inventory``.
 
     !!! example
@@ -150,7 +160,15 @@ class InventoryCollection(BaseCollection):
 
     @property
     def instructions(self) -> InstructionsCollection:
-        """Manage the batching instructions of formulas."""
+        """Manage a formula's batching instructions.
+
+        Use this collection to author and organize instruction texts (create,
+        rename, reorder, copy between formulas, delete) and to move parameter
+        group rows. To simply read a formula's procedure table together with the
+        item, use
+        [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]
+        with ``include_instructions=True``.
+        """
         return InstructionsCollection(session=self.session)
 
     @validate_call

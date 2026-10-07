@@ -308,9 +308,13 @@ class InventoryItem(BaseTaggedResource):
     is used across the platform, and once saved it is referenced everywhere by its
     Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``). Raw materials are typically
     linked to a manufacturing ``company`` and a compositional breakdown of CAS
-    amounts. Formula items are designed in Worksheets rather than created here (the
+    amounts.     Formula items are designed in Worksheets rather than created here (the
     [`create`][albert.collections.inventory.InventoryCollection.create] method rejects
-    Formula items), and a Formula requires a ``project_id``.
+    Formula items), and a Formula requires a ``project_id``. A formula also carries
+    batching instructions (the procedure for making it as a batch): load them onto
+    the item with ``include_instructions=True`` on
+    [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id], and
+    manage them through ``client.inventory.instructions``.
 
     Items are managed through
     [`InventoryCollection`][albert.collections.inventory.InventoryCollection] (``client.inventory``).
