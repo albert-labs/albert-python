@@ -19,10 +19,16 @@ explicitly provided participates in the diff.
   - **unset** (`attribute not in model_fields_set`) -> no-op, leave server value.
   - **explicit `None`** -> delete the attribute.
   - **explicit `[]` / `{}`** -> clear to empty (an update, not a delete).
-- Watch for `or []` / `or {}` coercions in special-case attribute loops
+- Watch for `or []` / `or {}` / `or ""` coercions in special-case attribute loops
   (e.g. `inventory_information`, `tags`, `assigned_to`, `project` in tasks). They
   erase the unset-vs-empty distinction before the diff runs — guard with
   `model_fields_set` first.
+- **Gate on `model_fields_set` before any value comparison.** An equality
+  short-circuit like `if existing.name == updated.name: return existing` fails
+  open when `name` is unset (`None != "current value"`), and the fall-through
+  then emits a patch built from `updated.name or ""` — wiping the field. An
+  unset field must produce no patch entry at all. If no set field differs,
+  return the fetched entity without a request.
 - **Nested models need the same rule.** Top-level `update()` may gate on
   `updated.model_fields_set` (e.g. `cas` on `InventoryItem`), but optional fields
   on nested models must also be gated on `child.model_fields_set`. Required nested
@@ -46,6 +52,19 @@ Regression tests: `test_update_partial_leaves_omitted_fields_untouched` (lots),
 `test_update_partial_leaves_omitted_special_attrs_untouched` (tasks),
 `tests/unit/utils/test_inventory.py` (inventory CAS patch builder).
 
+## Exception handling — catch narrow, keep messages specific
+
+- Never `except Exception` (or bare `except`) in SDK code. Catch `AlbertHTTPError`
+  or the specific subclass the code can genuinely handle. A broad catch masks
+  programming errors and can silently swallow the exact failure the code path
+  exists to fix (e.g. a metadata-parse bug hidden by a fallback that returns
+  defaults).
+- When refactoring control flow, preserve specific error messages. A new loop or
+  fall-through branch must not demote a specific, actionable error (e.g. "No
+  data rows detected in CSV preview") to a generic one (e.g. "Unable to map any
+  data template columns"). Keep per-case guards (`if single_block: raise ...`)
+  so each failure mode keeps its message.
+
 ## Pagination — callers never see offset or limit
 
 `AlbertPaginator` owns all pagination state internally. `offset` and `limit` are
@@ -55,6 +74,38 @@ Why: exposing raw pagination params leaks backend details, invites misuse, and
 diverges from the SDK's iterator-style API.
 
 Some endpoints reject `limit` above a fixed cap (e.g. workflow search `<= 100`, substance v4 search `<= 20`). Set a module-level page-size constant and pass `limit` in the payload or paginator params to that cap; `AlbertPaginator` still owns `offset` and must not surface `limit` on the public collection method.
+
+## Pagination — choosing the mode for a new endpoint
+
+Decide `PaginationMode` from response-shape evidence, not from what sibling
+methods use: a `total` field in the payload is the OFFSET signature; a `lastKey`
+continuation token is KEY. Check the backend handler or OpenAPI spec before
+shipping a new list/search method. Choosing KEY for an endpoint that never
+returns `lastKey` silently truncates results after the first page.
+
+For a brand-new service, verify the whole envelope (`Items` key, continuation
+key, accepted query params) with a live integration test before merge. Assumed
+envelopes have shipped broken: a newly added service required a different query
+param than the SDK sent and rejected an unsupported one, found only when
+integration tests ran.
+
+## Raw payloads — read both `albertId` and `id`
+
+Services differ on which key carries the entity ID in raw (non-model) payloads.
+When reading an ID from a dict payload, use
+`record.get("albertId") or record.get("id")`, matching `core/pagination.py` and
+`property_data.py`. Reading only one key makes methods like `unstar` silently
+no-op against services that return the other.
+
+## Field aliases — changing one is a wire change for every consumer
+
+`alias=` controls both validation and serialization; `serialization_alias=`
+controls `model_dump(by_alias=True)` output. Changing either on a shared model
+flips the wire key for every code path that serializes that model, including
+endpoints unrelated to the change at hand. Before editing an alias, grep all
+`model_dump(by_alias=True)` call sites of the model. When one flow needs a
+different key, prefer a version-aware `to_payload_dict()` over a global alias
+edit.
 
 ## Paginators — override _response_items for non-standard response keys
 
@@ -126,6 +177,13 @@ use `warnings.warn(..., DeprecationWarning, stacklevel=2)` in `__init__` as well
 Why: release-please uses commit types to determine changelog entries. Mislabeling a
 doc improvement as `chore` buries it; mislabeling a build change as `docs` creates a
 spurious changelog section.
+
+## Releases — fix vs feat commit type
+
+A change that adds a caller-visible capability (a method, parameter, model, or
+option) is `feat`, even when the work is motivated by a bug. `fix` is only for
+correcting existing behavior — including adding a missing field to an existing
+resource model (see the naming rule above).
 
 ## Testing — fake the transport, never the server
 
