@@ -5,10 +5,9 @@ from typing import Any
 from pydantic import TypeAdapter, validate_call
 from typing_extensions import deprecated
 
-from albert.collections.base import BaseCollection
 from albert.collections.cas import Cas
 from albert.collections.companies import Company, CompanyCollection
-from albert.collections.instructions import InstructionsCollection
+from albert.collections.instructions import InstructionsCollection, InventoryInstructionsMixin
 from albert.collections.tags import TagCollection
 from albert.core.pagination import AlbertPaginator
 from albert.core.session import AlbertSession
@@ -37,7 +36,7 @@ from albert.resources.users import User
 from albert.utils.inventory import _build_cas_patch_operations
 
 
-class InventoryCollection(BaseCollection):
+class InventoryCollection(InventoryInstructionsMixin):
     """Manage Inventory Items in the Albert platform.
 
     An Inventory Item is a catalog entry for a physical or formulated material
@@ -88,7 +87,10 @@ class InventoryCollection(BaseCollection):
     instructions : InstructionsCollection
         Manage a formula's batching instructions
         ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]),
-        accessed as ``client.inventory.instructions``.
+        accessed as ``client.inventory.instructions``. The same instruction
+        actions (for example
+        [`get_batch_instructions`][albert.collections.instructions.InventoryInstructionsMixin.get_batch_instructions])
+        are also available directly on this collection.
 
     Methods
     -------
