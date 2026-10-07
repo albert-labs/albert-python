@@ -56,10 +56,7 @@ class InventoryCollection(BaseCollection):
     (format ``INV...``, e.g. ``"INVA9999999"``). They are the building blocks that
     Worksheets, Tasks, and Property Data all point back to.
 
-    This collection is accessed as ``client.inventory``. A formula's batching
-    instructions are managed through the sub-collection
-    ``client.inventory.instructions``
-    ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]).
+    This collection is accessed as ``client.inventory``.
 
     !!! example
         ```python
@@ -85,6 +82,13 @@ class InventoryCollection(BaseCollection):
     ----------
     base_path : str
         The base API route for inventory requests.
+
+    Nested Collections
+    ------------------
+    instructions : InstructionsCollection
+        Manage a formula's batching instructions
+        ([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]),
+        accessed as ``client.inventory.instructions``.
 
     Methods
     -------
