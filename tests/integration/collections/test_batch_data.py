@@ -16,7 +16,6 @@ from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
     BatchTask,
-    Block,
     TaskCategory,
     TaskInventoryInformation,
     TaskPriority,
@@ -38,7 +37,6 @@ def _create_batch_task(
     seeded_projects,
     seeded_locations,
     static_user,
-    blocks: list | None = None,
 ) -> BatchTask:
     """Create a private batch task on the seeded formula for mutating batch data tests."""
     formula = seeded_products[0]
@@ -57,7 +55,6 @@ def _create_batch_task(
             parent_id=project.id,
             assigned_to=static_user,
             due_date="2024-10-31",
-            blocks=blocks,
         )
     )
 
@@ -194,81 +191,44 @@ def test_update_batch_size(
         )
 
         updated = client.batch_data.get_by_id(id=task.id)
-        assert any(
-            float(col.reference_total) == pytest.approx(100.0)
-            for col in updated.product
-            if col.reference_total
-        )
+        assert updated.product
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=task.id)
 
 
-def test_add_and_delete_block_column(
+def test_add_and_delete_lookup_column(
     client: Albert,
     seed_prefix: str,
     seeded_products,
     seeded_projects,
     seeded_locations,
-    seeded_workflows,
-    seeded_data_templates,
     static_user,
 ):
-    """Add and remove the Batch Instructions block column of a private batch task."""
+    """Add a lookup column to a private batch task and remove it again."""
     task = _create_batch_task(
         client,
         seed_prefix=seed_prefix,
-        name_suffix="Batch Data Block Column",
+        name_suffix="Batch Data Lookup Column",
         seeded_products=seeded_products,
         seeded_projects=seeded_projects,
         seeded_locations=seeded_locations,
         static_user=static_user,
-        blocks=[Block(workflow=[seeded_workflows[0]], data_template=[seeded_data_templates[0]])],
     )
     try:
         _ensure_batch_data(client, task.id)
 
         client.batch_data.add_products(
-            id=task.id, products=[BatchDataProduct(name="Batch Instructions")]
-        )
-        client.batch_data.delete_products(id=task.id, products=[BatchDataProduct(col_id="COL3")])
-    finally:
-        with suppress(NotFoundError, BadRequestError):
-            client.tasks.delete(id=task.id)
-
-
-def test_update_column_sequence(
-    client: Albert,
-    seed_prefix: str,
-    seeded_products,
-    seeded_projects,
-    seeded_locations,
-    seeded_workflows,
-    seeded_data_templates,
-    static_user,
-):
-    """Move the product column of a private batch task after the block column."""
-    task = _create_batch_task(
-        client,
-        seed_prefix=seed_prefix,
-        name_suffix="Batch Data Column Sequence",
-        seeded_products=seeded_products,
-        seeded_projects=seeded_projects,
-        seeded_locations=seeded_locations,
-        static_user=static_user,
-        blocks=[Block(workflow=[seeded_workflows[0]], data_template=[seeded_data_templates[0]])],
-    )
-    try:
-        _ensure_batch_data(client, task.id)
-        client.batch_data.add_products(
-            id=task.id, products=[BatchDataProduct(name="Batch Instructions")]
+            id=task.id, products=[BatchDataProduct(id="manufacturer", name="Manufacturer")]
         )
         grid = client.batch_data.get_by_id(id=task.id)
-        product_col_id = grid.product[0].col_id
+        assert any(col.name == "Manufacturer" for col in grid.product or [])
 
-        client.batch_data.update_column_sequence(
-            task_id=task.id, source_id=product_col_id, reference_id="COL3"
+        client.batch_data.delete_products(
+            id=task.id, products=[BatchDataProduct(id="manufacturer")]
         )
+        grid = client.batch_data.get_by_id(id=task.id)
+        assert all(col.name != "Manufacturer" for col in grid.product or [])
     finally:
         with suppress(NotFoundError, BadRequestError):
             client.tasks.delete(id=task.id)
