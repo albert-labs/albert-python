@@ -56,7 +56,7 @@ class InventoryInstructionsMixin(BaseCollection):
       stage stays with the ingredient it follows, so reordering ingredients on
       the Sheet carries the formula's stages along; stages newly added to the
       Sheet are appended at the end.
-    - Reading rows (the readings and targets inside a stage, such as
+    - Parameter rows (the readings and targets inside a stage, such as
       temperature or mixing time) belong to their parent stage and move with
       it; they are not individually reorderable.
     - Instruction texts order independently of the rows: each ingredient row
