@@ -13,15 +13,16 @@ They come in two layers, which this module's models reflect:
   [`InstructionSequence`][albert.resources.instructions.InstructionSequence].
 - The **instruction texts** ([`Instruction`][albert.resources.instructions.Instruction]):
   authored notes such as "Take the pH of the batch", attached to the formula as
-  a whole or pinned to one ingredient row. These are created, renamed,
+  a whole or pinned to one ingredient row. These are created, edited,
   reordered, copied between formulas, and deleted through the SDK. Their order
   within each row (or at formula level) is an
   [`InstructionOrder`][albert.resources.instructions.InstructionOrder].
 
-All models here are read-only views returned by the instruction methods of
-[`InventoryInstructionsMixin`][albert.collections.instructions.InventoryInstructionsMixin]
-(available as both ``client.inventory.<method>`` and
-``client.inventory.instructions.<method>``).
+All models here are read-only views returned by the instruction methods on
+``client.inventory``
+([`InventoryInstructionsMixin`][albert.collections.instructions.InventoryInstructionsMixin])
+and, under shorter names, on ``client.inventory.instructions``
+([`InstructionsCollection`][albert.collections.instructions.InstructionsCollection]).
 """
 
 from enum import Enum
@@ -161,7 +162,7 @@ class InstructionRow(BaseAlbertModel):
     [`BatchInstructions`][albert.resources.instructions.BatchInstructions].
     Row content is edited on the Worksheet; only the order of parameter group
     rows can be changed through the SDK, via
-    [`move_procedure_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_procedure_stage].
+    [`move_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_stage].
     """
 
     id: str | None = Field(default=None)
@@ -177,7 +178,7 @@ class InstructionRow(BaseAlbertModel):
     """The globally unique row ID, combining the design ID and row ID
     (format ``DES...#ROW...``). This is the value to pass when moving procedure
     stages with
-    [`move_procedure_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_procedure_stage];
+    [`move_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_stage];
     match rows by ``name`` or ``id`` to find it."""
 
     type: InstructionRowType | None = Field(default=None)
@@ -269,13 +270,13 @@ class InstructionSequence(BaseAlbertModel):
     ``version`` used to detect conflicting edits. Ingredient rows always follow
     the order set on the Sheet's Product Design, while parameter group rows
     can be reordered per formula via
-    [`move_procedure_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_procedure_stage].
+    [`move_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_stage].
     See
     [`InventoryInstructionsMixin`][albert.collections.instructions.InventoryInstructionsMixin]
     for the full picture of how the order is determined.
 
     Read-only view returned by
-    [`move_procedure_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_procedure_stage].
+    [`move_stage`][albert.collections.instructions.InventoryInstructionsMixin.move_stage].
     """
 
     id: str | None = Field(default=None)
@@ -327,7 +328,7 @@ class Instruction(BaseResource):
     [`add_instruction`][albert.collections.instructions.InventoryInstructionsMixin.add_instruction].
     ``id``, ``status``, ``created``, and ``updated`` are assigned by Albert and
     read-only. After creation, only ``name`` can be changed, via
-    [`rename_instruction`][albert.collections.instructions.InventoryInstructionsMixin.rename_instruction].
+    [`update_instruction`][albert.collections.instructions.InventoryInstructionsMixin.update_instruction].
 
     !!! example
         ```python
@@ -366,7 +367,7 @@ class InstructionOrder(BaseAlbertModel):
     Read-only view returned as part of
     [`InstructionSet`][albert.resources.instructions.InstructionSet]. Change the
     order with
-    [`set_instruction_order`][albert.collections.instructions.InventoryInstructionsMixin.set_instruction_order].
+    [`reorder_instructions`][albert.collections.instructions.InventoryInstructionsMixin.reorder_instructions].
     """
 
     design_row_id: str | None = Field(default=None, alias="designRowId")
@@ -381,7 +382,7 @@ class InstructionSet(BaseAlbertModel):
     """The instruction texts authored on a single formula, with their order.
 
     Read-only view returned by
-    [`set_instruction_order`][albert.collections.instructions.InventoryInstructionsMixin.set_instruction_order];
+    [`reorder_instructions`][albert.collections.instructions.InventoryInstructionsMixin.reorder_instructions];
     the same texts and order also surface through
     [`BatchInstructions`][albert.resources.instructions.BatchInstructions].
     """
@@ -407,7 +408,10 @@ class BatchInstructions(BaseAlbertModel):
     with their per-row order, and the current version of the row order.
 
     Read-only view returned by
-    [`get_batch_instructions`][albert.collections.instructions.InventoryInstructionsMixin.get_batch_instructions].
+    [`get_batch_instructions`][albert.collections.instructions.InventoryInstructionsMixin.get_batch_instructions]
+    (``client.inventory``) and
+    [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
+    (``client.inventory.instructions``).
     """
 
     id: str | None = Field(default=None)

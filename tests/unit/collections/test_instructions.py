@@ -1,4 +1,4 @@
-"""Unit tests for the InventoryInstructionsMixin pure payload and validation helpers."""
+"""Unit tests for the instructions surface: pure helpers and collection wiring."""
 
 import pytest
 
@@ -6,21 +6,37 @@ from albert.collections.instructions import InstructionsCollection, InventoryIns
 from albert.collections.inventory import InventoryCollection
 from albert.resources.instructions import InstructionOrder, SequencePosition
 
-INSTRUCTION_METHODS = (
+MIXIN_METHODS = (
     "get_batch_instructions",
     "add_instruction",
-    "rename_instruction",
+    "update_instruction",
     "delete_instruction",
-    "set_instruction_order",
+    "reorder_instructions",
     "copy_instructions",
-    "move_procedure_stage",
+    "move_stage",
+)
+
+NESTED_METHODS = (
+    "get_by_inventory_id",
+    "get_all",
+    "add",
+    "update",
+    "delete",
+    "reorder",
+    "copy",
+    "move_stage",
 )
 
 
-def test_instruction_methods_shared_by_inventory_and_instructions_collections() -> None:
-    """Test the instruction actions are available on both collection surfaces."""
-    for name in INSTRUCTION_METHODS:
+def test_instruction_methods_available_on_inventory_collection() -> None:
+    """Test the instruction actions are mixed into the inventory collection."""
+    for name in MIXIN_METHODS:
         assert hasattr(InventoryCollection, name)
+
+
+def test_short_names_available_on_nested_collection() -> None:
+    """Test the nested instructions collection exposes short action names."""
+    for name in NESTED_METHODS:
         assert hasattr(InstructionsCollection, name)
 
 
@@ -60,6 +76,39 @@ def test_build_stage_move_payload_serializes_position_value(
     )
 
     assert payload["data"][0]["position"] == position.value
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({"created_by": "USR1"}, {"createdBy": "USR1"}),
+        ({"updated_by": "USR2"}, {"updatedBy": "USR2"}),
+    ],
+)
+def test_resolve_list_params_accepts_exactly_one_filter(kwargs, expected) -> None:
+    """Test each single list filter maps to its wire parameter."""
+    params = InstructionsCollection._resolve_list_params(
+        created_by=kwargs.get("created_by"),
+        updated_by=kwargs.get("updated_by"),
+    )
+
+    assert params == expected
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"created_by": "USR1", "updated_by": "USR2"},
+    ],
+)
+def test_resolve_list_params_rejects_zero_or_multiple_filters(kwargs) -> None:
+    """Test missing or competing list filters are rejected."""
+    with pytest.raises(ValueError, match="Exactly one"):
+        InstructionsCollection._resolve_list_params(
+            created_by=kwargs.get("created_by"),
+            updated_by=kwargs.get("updated_by"),
+        )
 
 
 def test_build_create_payload_links_formula_and_text() -> None:
@@ -146,9 +195,9 @@ def test_build_instruction_order_payload_rejects_non_permutation() -> None:
         )
 
 
-def test_build_rename_patch_wire_shape() -> None:
-    """Test a rename carries the current text as oldValue and the new text as newValue."""
-    patch = InventoryInstructionsMixin._build_rename_patch(
+def test_build_update_patch_wire_shape() -> None:
+    """Test a text update carries the current text as oldValue and the new text as newValue."""
+    patch = InventoryInstructionsMixin._build_update_patch(
         instruction_id="ABI1",
         old_text="Take the pH",
         new_text="Take the pH twice",
@@ -167,10 +216,10 @@ def test_build_rename_patch_wire_shape() -> None:
     }
 
 
-def test_build_rename_patch_unchanged_is_noop() -> None:
-    """Test an unchanged text produces no rename."""
+def test_build_update_patch_unchanged_is_noop() -> None:
+    """Test an unchanged text produces no update."""
     assert (
-        InventoryInstructionsMixin._build_rename_patch(
+        InventoryInstructionsMixin._build_update_patch(
             instruction_id="ABI1",
             old_text="Take the pH",
             new_text="Take the pH",
