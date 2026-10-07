@@ -16,6 +16,7 @@ from albert.resources.tasks import (
     BaseTask,
     BatchSizeUnit,
     BatchTask,
+    Block,
     TaskCategory,
     TaskInventoryInformation,
     TaskPriority,
@@ -37,6 +38,7 @@ def _create_batch_task(
     seeded_projects,
     seeded_locations,
     static_user,
+    blocks: list | None = None,
 ) -> BatchTask:
     """Create a private batch task on the seeded formula for mutating batch data tests."""
     formula = seeded_products[0]
@@ -55,6 +57,7 @@ def _create_batch_task(
             parent_id=project.id,
             assigned_to=static_user,
             due_date="2024-10-31",
+            blocks=blocks,
         )
     )
 
@@ -187,7 +190,7 @@ def test_update_batch_size(
         _ensure_batch_data(client, task.id)
 
         client.batch_data.update_batch_size(
-            task_id=task.id, formula_id=seeded_products[0].id, new_value=100.0
+            task_id=task.id, formula_id=seeded_products[0].id, new_value=100.0, old_value=50.0
         )
 
         updated = client.batch_data.get_by_id(id=task.id)
@@ -207,6 +210,8 @@ def test_add_and_delete_block_column(
     seeded_products,
     seeded_projects,
     seeded_locations,
+    seeded_workflows,
+    seeded_data_templates,
     static_user,
 ):
     """Add and remove the Batch Instructions block column of a private batch task."""
@@ -218,6 +223,7 @@ def test_add_and_delete_block_column(
         seeded_projects=seeded_projects,
         seeded_locations=seeded_locations,
         static_user=static_user,
+        blocks=[Block(workflow=[seeded_workflows[0]], data_template=[seeded_data_templates[0]])],
     )
     try:
         _ensure_batch_data(client, task.id)
@@ -237,6 +243,8 @@ def test_update_column_sequence(
     seeded_products,
     seeded_projects,
     seeded_locations,
+    seeded_workflows,
+    seeded_data_templates,
     static_user,
 ):
     """Move the product column of a private batch task after the block column."""
@@ -248,6 +256,7 @@ def test_update_column_sequence(
         seeded_projects=seeded_projects,
         seeded_locations=seeded_locations,
         static_user=static_user,
+        blocks=[Block(workflow=[seeded_workflows[0]], data_template=[seeded_data_templates[0]])],
     )
     try:
         _ensure_batch_data(client, task.id)

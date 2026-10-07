@@ -79,7 +79,7 @@ class BatchDataCollection(BaseCollection):
         Initialize the batch data entry for a batch task.
     get_by_id(id, type=..., limit=..., start_key=..., order_by=...) -> BatchData
         Get the batch data for a batch task by its ID.
-    get_lookup_column(id, start_key=..., start_key_type=...) -> BatchData
+    get_lookup_column(id) -> BatchData
         Get the lookup column data for a batch task.
     get_by_lot_id(id, max_items=...) -> Iterator[BatchDataLotUsage]
         Get the batch tasks and products that reference a lot.
@@ -87,7 +87,7 @@ class BatchDataCollection(BaseCollection):
         Get the reaction grid of a reaction batch task. (🧪 Beta)
     update_used_batch_amounts(task_id, patches) -> None
         Record which lots were used for the batch's recorded amounts.
-    update_batch_size(task_id, formula_id, new_value, old_value=...) -> None
+    update_batch_size(task_id, formula_id, new_value, old_value) -> None
         Update the batch size of a batch task and rescale its amounts.
     back_update_from_design(design_id, patches) -> None
         Back-update batch data from changed design values.
@@ -294,16 +294,6 @@ class BatchDataCollection(BaseCollection):
         )
 
     @staticmethod
-    def _build_batch_size_payload(
-        *, task_id: str, formula_id: str, new_value: float, old_value: float | None
-    ) -> dict[str, Any]:
-        """Assemble the batch size update body, omitting ``oldValue`` when unset."""
-        data: dict[str, Any] = {"formulaId": formula_id, "newValue": new_value}
-        if old_value is not None:
-            data["oldValue"] = old_value
-        return {"parentId": task_id, "data": data}
-
-    @staticmethod
     def _build_raw_cost_payload(entries: list[RawCostEntry]) -> list[dict[str, Any]]:
         """Assemble the raw cost body, nesting each entry's product and lot."""
         return [
@@ -330,18 +320,11 @@ class BatchDataCollection(BaseCollection):
             )
 
     @validate_call
-    def get_lookup_column(
-        self,
-        *,
-        id: TaskId,
-        start_key: str | None = None,
-        start_key_type: str | None = None,
-    ) -> BatchData:
+    def get_lookup_column(self, *, id: TaskId) -> BatchData:
         """Get the lookup column data for a batch task.
 
         Returns the batch data grid slice used by lookup columns, keyed by the
         owning Batch Task ([`BatchTask`][albert.resources.tasks.BatchTask]).
-        Pagination is over product columns, not rows.
 
         !!! example
             ```python
@@ -355,20 +338,13 @@ class BatchDataCollection(BaseCollection):
         ----------
         id : TaskId
             The Task ID of the batch task (format ``TAS...``).
-        start_key : str, optional
-            Pagination cursor identifying the first column to evaluate; pass the
-            ``last_key`` from a previous call to continue where it left off.
-        start_key_type : str, optional
-            The kind of identifier passed as ``start_key`` (``"formula"`` for a
-            formula ID; a column ID otherwise).
 
         Returns
         -------
         BatchData
             The lookup column batch data.
         """
-        params = {"startKey": start_key, "limit": 100, "startKeyType": start_key_type}
-        response = self.session.get(f"{self.base_path}/{id}/lookupColumn", params=params)
+        response = self.session.get(f"{self.base_path}/{id}/lookupColumn")
         return BatchData(**response.json())
 
     @validate_call
@@ -417,7 +393,7 @@ class BatchDataCollection(BaseCollection):
         task_id: TaskId,
         formula_id: InventoryId,
         new_value: float,
-        old_value: float | None = None,
+        old_value: float,
     ) -> None:
         """Update the batch size of a batch task and rescale its amounts.
 
@@ -443,7 +419,7 @@ class BatchDataCollection(BaseCollection):
             (format ``INV...``).
         new_value : float
             The new batch size.
-        old_value : float, optional
+        old_value : float
             The previous batch size.
 
         Returns
@@ -452,12 +428,10 @@ class BatchDataCollection(BaseCollection):
         """
         response = self.session.put(
             self.base_path,
-            json=self._build_batch_size_payload(
-                task_id=task_id,
-                formula_id=formula_id,
-                new_value=new_value,
-                old_value=old_value,
-            ),
+            json={
+                "parentId": task_id,
+                "data": {"formulaId": formula_id, "oldValue": old_value, "newValue": new_value},
+            },
         )
         self._raise_on_partial_failure(response)
 

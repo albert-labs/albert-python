@@ -17,30 +17,6 @@ def _make_response(status_code: int, body) -> requests.Response:
     return response
 
 
-# --- _build_batch_size_payload ---
-
-
-def test_build_batch_size_payload_omits_old_value_when_unset():
-    """Test that an unset old batch size is left out of the payload."""
-    payload = BatchDataCollection._build_batch_size_payload(
-        task_id="TAS123", formula_id="INV456", new_value=100.0, old_value=None
-    )
-
-    assert payload == {"parentId": "TAS123", "data": {"formulaId": "INV456", "newValue": 100.0}}
-
-
-def test_build_batch_size_payload_includes_old_value_when_set():
-    """Test that an explicit old batch size is sent."""
-    payload = BatchDataCollection._build_batch_size_payload(
-        task_id="TAS123", formula_id="INV456", new_value=100.0, old_value=50.0
-    )
-
-    assert payload == {
-        "parentId": "TAS123",
-        "data": {"formulaId": "INV456", "newValue": 100.0, "oldValue": 50.0},
-    }
-
-
 # --- _build_raw_cost_payload ---
 
 
