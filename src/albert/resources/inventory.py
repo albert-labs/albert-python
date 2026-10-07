@@ -14,6 +14,7 @@ from albert.resources._mixins import HydrationMixin
 from albert.resources.acls import ACL
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
+from albert.resources.instructions import InstructionLayout
 from albert.resources.lists import ListItem
 from albert.resources.locations import Location
 from albert.resources.tagged_base import BaseTaggedResource
@@ -411,6 +412,13 @@ class InventoryItem(BaseTaggedResource):
         default=None, alias="recentAttachmentId", exclude=True, frozen=True
     )
     """The ID of the most recent attachment on the item. Read-only. See Also --------"""
+
+    instructions: InstructionLayout | None = Field(default=None, exclude=True)
+    """The formula's batching instructions (its procedure table). Populated only
+    when requested with ``include_instructions=True`` on
+    [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id];
+    None otherwise, and always None for non-formula items. Manage instructions
+    through ``client.inventory.instructions``."""
 
     @field_validator("company", mode="before")
     @classmethod

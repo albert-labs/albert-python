@@ -45,7 +45,10 @@ class InstructionsCollection(BaseCollection):
       "Premix" or "Heating"), and parameter rows from its Worksheet, which give
       the instructions their structure. Row content is edited on the Worksheet;
       rows are read through
-      [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id].
+      [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id],
+      or loaded inline when fetching the formula via
+      [`get_by_id`][albert.collections.inventory.InventoryCollection.get_by_id]
+      with ``include_instructions=True``.
 
     The row order is held in an
     [`InstructionSequence`][albert.resources.instructions.InstructionSequence]

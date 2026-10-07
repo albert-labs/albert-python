@@ -8,6 +8,7 @@ fake. ``_apply_inventory_patch_payload`` batching is covered with ``responses``
 since it only asserts on the requests the SDK sends.
 """
 
+import pytest
 import responses
 
 from albert.collections.inventory import InventoryCollection
@@ -786,3 +787,29 @@ def test_apply_sends_nothing_when_no_changes(offline_session) -> None:
     )
 
     assert len(responses.calls) == 0
+
+
+@pytest.mark.parametrize(
+    ("category", "include", "expected"),
+    [
+        (InventoryCategory.FORMULAS, True, True),
+        (InventoryCategory.FORMULAS, False, False),
+        (InventoryCategory.RAW_MATERIALS, True, False),
+        (InventoryCategory.RAW_MATERIALS, False, False),
+        (InventoryCategory.EQUIPMENT, True, False),
+    ],
+)
+def test_should_attach_instructions_only_for_formulas_on_request(
+    category: InventoryCategory, include: bool, expected: bool
+) -> None:
+    """Test instructions attach only when requested and the item is a formula."""
+    item = InventoryItem(
+        name="Item",
+        category=category,
+        project_id="PROJ123" if category == InventoryCategory.FORMULAS else None,
+    )
+
+    assert (
+        InventoryCollection._should_attach_instructions(item=item, include_instructions=include)
+        is expected
+    )

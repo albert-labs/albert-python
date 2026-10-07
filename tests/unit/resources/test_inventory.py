@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from albert.core.shared.models.base import EntityLink
 from albert.resources.cas import Cas
 from albert.resources.companies import Company
+from albert.resources.instructions import InstructionLayout
 from albert.resources.inventory import (
     CasAmount,
     InventoryCategory,
@@ -280,3 +281,18 @@ def test_inventory_spec_value_casts_numeric_fields_to_str(value, expected):
     assert spec_value.min == expected
     assert spec_value.max == expected
     assert spec_value.reference == expected
+
+
+def test_instructions_field_stays_out_of_wire_dump() -> None:
+    """Test attached instructions never leak into an item's serialized form."""
+    item = InventoryItem(
+        name="Formula",
+        category=InventoryCategory.FORMULAS,
+        project_id="PROJ123",
+        instructions=InstructionLayout(inventory_id="INV123", version=1),
+    )
+
+    dumped = item.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+    assert "instructions" not in dumped
+    assert item.instructions.inventory_id == "INV123"

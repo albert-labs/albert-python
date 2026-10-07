@@ -94,7 +94,7 @@ class InventoryCollection(BaseCollection):
     -------
     create(inventory_item, avoid_duplicates=True) -> InventoryItem
         Create a new inventory item (raw material, consumable, or equipment).
-    get_by_id(id) -> InventoryItem
+    get_by_id(id, include_instructions=False) -> InventoryItem
         Get a single fully populated item by its ID.
     get_by_ids(ids) -> list[InventoryItem]
         Get many items by their IDs in batches.
@@ -377,23 +377,37 @@ class InventoryCollection(BaseCollection):
         return self.get_by_id(id=response.json()["albertId"])
 
     @validate_call
-    def get_by_id(self, *, id: InventoryId) -> InventoryItem:
+    def get_by_id(self, *, id: InventoryId, include_instructions: bool = False) -> InventoryItem:
         """Get a single, fully populated inventory item by its ID.
 
         For retrieving many items at once, use [`get_by_ids`][albert.collections.inventory.InventoryCollection.get_by_ids]. To find items
         without knowing their IDs, use [`search`][albert.collections.inventory.InventoryCollection.search] or [`get_all`][albert.collections.inventory.InventoryCollection.get_all].
+
+        For a formula, pass ``include_instructions=True`` to load its batching
+        instructions (the procedure table) onto the item's ``instructions``
+        attribute in the same call, instead of making a separate
+        [`get_by_inventory_id`][albert.collections.instructions.InstructionsCollection.get_by_inventory_id]
+        lookup.
 
         !!! example
             ```python
             item = client.inventory.get_by_id(id="INVA9999999")
             item.name
             # 'Titanium Dioxide'
+
+            formula = client.inventory.get_by_id(id="INVMO135329-006", include_instructions=True)
+            for row in formula.instructions.rows:
+                print(row.type, row.name)
             ```
 
         Parameters
         ----------
         id : InventoryId
             The Inventory ID (format ``INV...``, e.g. ``"INVA9999999"``).
+        include_instructions : bool, optional
+            When True and the item is a formula, also load its batching
+            instructions onto the item's ``instructions`` attribute. Ignored for
+            non-formula items. Default is False.
 
         Returns
         -------
@@ -402,7 +416,14 @@ class InventoryCollection(BaseCollection):
         """
         url = f"{self.base_path}/{id}"
         response = self.session.get(url)
-        return InventoryItem(**response.json())
+        item = InventoryItem(**response.json())
+        if self._should_attach_instructions(item=item, include_instructions=include_instructions):
+            item.instructions = self.instructions.get_by_inventory_id(inventory_id=id)
+        return item
+
+    @staticmethod
+    def _should_attach_instructions(*, item: InventoryItem, include_instructions: bool) -> bool:
+        return include_instructions and item.category == InventoryCategory.FORMULAS
 
     @validate_call
     def get_by_ids(self, *, ids: list[InventoryId]) -> list[InventoryItem]:

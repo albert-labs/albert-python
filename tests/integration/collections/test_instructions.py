@@ -213,3 +213,24 @@ def test_copy_instructions(
     finally:
         if created and created.id:
             instructions.delete(parent_id=source.id, id=created.id)
+
+
+def test_get_by_id_include_instructions(
+    client: Albert,
+    seeded_products: list[InventoryItem],
+    seeded_inventory: list[InventoryItem],
+):
+    """Test a formula carries its procedure table inline when asked."""
+    formula = seeded_products[0]
+
+    item = client.inventory.get_by_id(id=formula.id, include_instructions=True)
+
+    assert item.instructions is not None
+    assert item.instructions.inventory_id == formula.id
+    assert item.instructions.rows
+
+    raw_material = client.inventory.get_by_id(id=seeded_inventory[0].id, include_instructions=True)
+    assert raw_material.instructions is None
+
+    plain = client.inventory.get_by_id(id=formula.id)
+    assert plain.instructions is None
