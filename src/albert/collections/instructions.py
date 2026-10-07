@@ -17,10 +17,10 @@ from albert.resources.instructions import (
     SequencePosition,
 )
 
-# The list endpoint pages at most this many instructions per fetch.
+# List calls return at most this many instructions per fetch.
 _INSTRUCTIONS_PAGE_SIZE = 100
 
-# The bulk-read endpoint accepts at most this many formula IDs per call.
+# Bulk reads accept at most this many formula IDs per call.
 _INSTRUCTIONS_BULK_MAX_IDS = 15
 
 
@@ -161,6 +161,33 @@ class InstructionsCollection(BaseCollection):
                 "Exactly one of parent_id, created_by, or updated_by must be provided."
             )
         return provided
+
+    @staticmethod
+    def _validate_instruction_for_create(instruction: Instruction) -> None:
+        if not instruction.name or not instruction.parent_id:
+            raise ValueError("Instruction requires a name and a parent_id.")
+        if (
+            instruction.design
+            and instruction.design.product_id
+            and instruction.design.product_id != instruction.parent_id
+        ):
+            raise ValueError("design.product_id must match parent_id.")
+
+    @staticmethod
+    def _build_name_patch(*, existing: Instruction, updated: Instruction) -> dict | None:
+        if "name" not in updated.model_fields_set or updated.name == existing.name:
+            return None
+        return {
+            "id": updated.id,
+            "data": [
+                {
+                    "operation": "update",
+                    "attribute": "name",
+                    "oldValue": existing.name or "",
+                    "newValue": updated.name or "",
+                }
+            ],
+        }
 
     @staticmethod
     def _build_row_sequence_payload(
@@ -381,10 +408,10 @@ class InstructionsCollection(BaseCollection):
         Raises
         ------
         ValueError
-            If the instruction has no ``name`` or ``parent_id``.
+            If the instruction has no ``name`` or ``parent_id``, or its
+            ``design.product_id`` does not match ``parent_id``.
         """
-        if not instruction.name or not instruction.parent_id:
-            raise ValueError("Instruction requires a name and a parent_id.")
+        self._validate_instruction_for_create(instruction)
         design_payload: dict[str, str] = {"productId": instruction.parent_id}
         if instruction.design and instruction.design.design_row_id:
             design_payload["designRowId"] = instruction.design.design_row_id
@@ -429,22 +456,14 @@ class InstructionsCollection(BaseCollection):
 
         Notes
         -----
-        The following fields can be updated: ``name``.
+        The following fields can be updated: ``name``. Renames that change only
+        letter casing are rejected. An unset ``name`` (never assigned on the
+        model) is left unchanged rather than cleared.
         """
         existing = self.get_by_id(parent_id=instruction.parent_id, id=instruction.id)
-        if existing.name == instruction.name:
+        payload = self._build_name_patch(existing=existing, updated=instruction)
+        if payload is None:
             return existing
-        payload = {
-            "id": instruction.id,
-            "data": [
-                {
-                    "operation": "update",
-                    "attribute": "name",
-                    "oldValue": existing.name or "",
-                    "newValue": instruction.name or "",
-                }
-            ],
-        }
         self.session.patch(f"{self.base_path}/{instruction.parent_id}", json=payload)
         return self.get_by_id(parent_id=instruction.parent_id, id=instruction.id)
 

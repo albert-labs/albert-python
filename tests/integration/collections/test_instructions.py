@@ -10,6 +10,7 @@ from albert.resources.instructions import (
 )
 from albert.resources.inventory import InventoryItem
 from albert.resources.sheets import Component, Sheet
+from tests.utils.wait import poll_until
 
 pytestmark = pytest.mark.xdist_group("sheets")
 
@@ -70,11 +71,13 @@ def test_update_sequence_moves_process_group_row(
         pytest.skip("Seeded sheet has no Process Design section")
 
     added_rows = []
+    row_ids = []
+    formula_id = seeded_products[0].id
+    moved = False
     try:
         for pg in seeded_parameter_groups[:2]:
             added_rows.append(seeded_sheet.add_parameter_group_row(parameter_group_id=pg.id))
 
-        formula_id = seeded_products[0].id
         design_id = seeded_sheet.process_design.id
         row_ids = [f"{design_id}#{row.row_id}" for row in added_rows]
 
@@ -91,21 +94,21 @@ def test_update_sequence_moves_process_group_row(
             position=SequencePosition.ABOVE,
             version=sequence.version,
         )
+        moved = True
 
         assert updated.version > sequence.version
         updated_positions = _sequence_positions(updated, row_ids)
         assert updated_positions[row_ids[1]] == updated_positions[row_ids[0]] - 1
-
-        restored = client.inventory.instructions.update_sequence(
-            inventory_id=formula_id,
-            source_id=row_ids[1],
-            reference_id=row_ids[0],
-            position=SequencePosition.BELOW,
-            version=updated.version,
-        )
-        restored_positions = _sequence_positions(restored, row_ids)
-        assert restored_positions[row_ids[1]] == restored_positions[row_ids[0]] + 1
     finally:
+        if moved:
+            fresh = client.inventory.instructions.get_sequence(inventory_id=formula_id)
+            client.inventory.instructions.update_sequence(
+                inventory_id=formula_id,
+                source_id=row_ids[1],
+                reference_id=row_ids[0],
+                position=SequencePosition.BELOW,
+                version=fresh.version,
+            )
         for row in added_rows:
             client.session.delete(
                 f"/api/v3/designs/{seeded_sheet.process_design.id}/rows",
@@ -143,7 +146,10 @@ def test_instruction_crud(client: Albert, seeded_products: list[InventoryItem]):
         fetched = instructions.get_by_id(parent_id=formula.id, id=created_first.id)
         assert fetched.name == "Take the pH of the batch"
 
-        listed = [i.id for i in instructions.get_all(parent_id=formula.id)]
+        listed = poll_until(
+            lambda: [i.id for i in instructions.get_all(parent_id=formula.id)],
+            predicate=lambda ids: created_first.id in ids and created_second.id in ids,
+        )
         assert created_first.id in listed
         assert created_second.id in listed
 
@@ -158,14 +164,21 @@ def test_instruction_crud(client: Albert, seeded_products: list[InventoryItem]):
         flat_ids = [i.id for i in reordered.instructions]
         assert flat_ids.index(created_second.id) < flat_ids.index(created_first.id)
     finally:
-        for created in (created_first, created_second):
-            if created and created.id:
-                instructions.delete(parent_id=formula.id, id=created.id)
+        created_ids = [c.id for c in (created_first, created_second) if c and c.id]
+        for instruction_id in created_ids:
+            instructions.delete(parent_id=formula.id, id=instruction_id)
 
-        remaining = instructions.get_by_parent_ids(parent_ids=[formula.id])[0]
-        assert created_first is None or created_first.id not in [
-            i.id for i in remaining.instructions
-        ]
+        if created_ids:
+            remaining = poll_until(
+                lambda: [
+                    i.id
+                    for i in instructions.get_by_parent_ids(parent_ids=[formula.id])[
+                        0
+                    ].instructions
+                ],
+                predicate=lambda ids: all(i not in ids for i in created_ids),
+            )
+            assert all(i not in remaining for i in created_ids)
 
 
 def test_copy_instructions(

@@ -3,7 +3,12 @@
 import pytest
 
 from albert.collections.instructions import InstructionsCollection
-from albert.resources.instructions import InstructionOrder, SequencePosition
+from albert.resources.instructions import (
+    Instruction,
+    InstructionDesignLink,
+    InstructionOrder,
+    SequencePosition,
+)
 
 
 def test_build_sequence_move_payload_wire_shape() -> None:
@@ -135,3 +140,74 @@ def test_build_row_sequence_payload_rejects_non_permutation() -> None:
             design_row_id=None,
             instruction_ids=["ABI1", "ABI3"],
         )
+
+
+def test_validate_instruction_for_create_accepts_matching_pin() -> None:
+    """Test a pinned instruction whose product matches its parent passes."""
+    InstructionsCollection._validate_instruction_for_create(
+        Instruction(
+            name="Take the pH",
+            parent_id="INV123",
+            design=InstructionDesignLink(product_id="INV123", design_row_id="DES1#ROW2"),
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "instruction",
+    [
+        Instruction(parent_id="INV123"),
+        Instruction(name="Take the pH"),
+        Instruction(
+            name="Take the pH",
+            parent_id="INV123",
+            design=InstructionDesignLink(product_id="INV999", design_row_id="DES1#ROW2"),
+        ),
+    ],
+)
+def test_validate_instruction_for_create_rejects_invalid(instruction) -> None:
+    """Test missing name, missing parent, or a mismatched pin product is rejected."""
+    with pytest.raises(ValueError):
+        InstructionsCollection._validate_instruction_for_create(instruction)
+
+
+def test_build_name_patch_wire_shape() -> None:
+    """Test a rename carries the current text as oldValue and the new text as newValue."""
+    payload = InstructionsCollection._build_name_patch(
+        existing=Instruction(id="ABI1", parent_id="INV123", name="Take the pH"),
+        updated=Instruction(id="ABI1", parent_id="INV123", name="Take the pH twice"),
+    )
+
+    assert payload == {
+        "id": "ABI1",
+        "data": [
+            {
+                "operation": "update",
+                "attribute": "name",
+                "oldValue": "Take the pH",
+                "newValue": "Take the pH twice",
+            }
+        ],
+    }
+
+
+def test_build_name_patch_unchanged_is_noop() -> None:
+    """Test an unchanged name produces no patch."""
+    assert (
+        InstructionsCollection._build_name_patch(
+            existing=Instruction(id="ABI1", parent_id="INV123", name="Take the pH"),
+            updated=Instruction(id="ABI1", parent_id="INV123", name="Take the pH"),
+        )
+        is None
+    )
+
+
+def test_build_name_patch_unset_name_is_noop() -> None:
+    """Test an instruction without an assigned name is not cleared by update."""
+    assert (
+        InstructionsCollection._build_name_patch(
+            existing=Instruction(id="ABI1", parent_id="INV123", name="Take the pH"),
+            updated=Instruction(id="ABI1", parent_id="INV123"),
+        )
+        is None
+    )
